@@ -124,11 +124,9 @@ mutable struct Computed
     parent_idx::Int # index of parent.outputs this value refers to
     Computed(name) = new(name, false)
     function Computed(name, value::RefValue)
-        validate_node_value(value)
         return new(name, false, value)
     end
     function Computed(name, value::RefValue, parent::AbstractEdge, idx::Integer)
-        validate_node_value(value)
         return new(name, false, value, parent, idx)
     end
     function Computed(name, edge::AbstractEdge, idx::Integer)
@@ -276,7 +274,6 @@ Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of
 Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
 function Input(graph, name, @nospecialize(value), f, output, force_update = false)
-    validate_node_value(value)
     return Input{ComputeGraph}(
         graph, name, value, f, output, true, ComputeEdge[], force_update
     )
@@ -319,13 +316,6 @@ struct ComputeGraph <: AbstractComputeGraph
     should_deepcopy::Set{Symbol}
     observerfunctions::Vector{Observables.ObserverFunction}
     obs_to_update::Vector{Observable}
-end
-
-validate_node_value(x) = nothing
-validate_node_value(x::RefValue) = isassigned(x) ? validate_node_value(x[]) : nothing
-# shouldn't have those in input.value or computed.value[]
-function validate_node_value(::Union{T, RefValue{T}}) where {T <: Union{Computed, Input, ComputeGraph, ComputeEdge}}
-    error("The value of a compute node is not allowed to be of type ::$T.")
 end
 
 is_node_value_valid(x) = true

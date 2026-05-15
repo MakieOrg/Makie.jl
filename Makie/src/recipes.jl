@@ -793,7 +793,7 @@ function validate_attribute_keys(plot::P) where {P <: Plot}
     return
 end
 
-function collect_invalid_nested_attributes!(invalid_names, attr, keys, local_kwargs, idx = 1)
+function collect_invalid_nested_attributes!(invalid_names, attr, keys, @nospecialize(local_kwargs), idx = 1)
     # keys is the path to local_kwargs
     # mark as error if last(keys) does not exist in nesting
     key = last(keys)
