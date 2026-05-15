@@ -490,7 +490,6 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # Get dim of each argument. This needs to be reactive if we allow dynamic
     # attributes that change dim-mapping, e.g. direction
     kwarg_names = argument_dim_kwargs(P)
-    doc_attr = documented_attributes(P)
 
     # initialize the necessary attributes early
     for key in kwarg_names
