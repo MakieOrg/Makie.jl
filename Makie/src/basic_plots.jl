@@ -624,6 +624,19 @@ Plots one or multiple texts passed via the `text` keyword.
     offset = (0.0, 0.0)
     "Specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping."
     word_wrap_width = -1
+    """
+    Optional callable that intercepts `LaTeXString` text blocks instead of
+    the default MathTeXEngine glyph layout. Signature matches
+    `Makie.convert_text_string!`: `(outputs, latex_str, block_idx, N_blocks,
+    fontsize, font, align, rotation, justification, lineheight,
+    word_wrap_width, offset, fonts, color, strokecolor, strokewidth)`. Set
+    via theming to swap MathTeXEngine for e.g. `MakieTeX` full-LaTeX
+    rendering — useful for prototyping with MathTeXEngine and polishing
+    with real LaTeX without changing plot code (e.g. for `LaTeXString`s
+    that come from third-party plotting functions you don't control).
+    `nothing` (default) keeps the MathTeXEngine path.
+    """
+    latex_handler = @inherit latex_handler
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
     fxaa = false

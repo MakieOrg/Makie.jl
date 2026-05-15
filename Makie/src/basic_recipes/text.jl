@@ -372,6 +372,7 @@ end
 function compute_glyph_collections!(attr::ComputeGraph)
     inputs = [
         :input_text,
+        :latex_handler,
         :fontsize,
         :selected_font,
         :align,
@@ -395,7 +396,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :linesegments, :linewidths, :linecolors, :lineindices,
         :text_primitives, :text_primitive_block_indices,
     ]
-    return register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
+    return register_computation!(attr, inputs, outputs) do (input_texts, latex_handler, _inputs...), changed, cached
         _outputs = (
             glyphcollections = GlyphCollection[],
             glyphindices = UInt64[],
@@ -419,7 +420,13 @@ function compute_glyph_collections!(attr::ComputeGraph)
 
         N = length(input_texts)
         for (block_index, str) in enumerate(input_texts)
-            convert_text_string!(_outputs, str, block_index, N, _inputs...)
+            # `LaTeXString` is themable: if `latex_handler` is set, route the
+            # block through it instead of the built-in MathTeXEngine path.
+            if str isa LaTeXString && latex_handler !== nothing
+                latex_handler(_outputs, str, block_index, N, _inputs...)
+            else
+                convert_text_string!(_outputs, str, block_index, N, _inputs...)
+            end
         end
 
         return values(_outputs)

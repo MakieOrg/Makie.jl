@@ -39,6 +39,10 @@ const MAKIE_DEFAULT_THEME = Attributes(
     ),
     fontsize = 14,
     textcolor = :black,
+    # Callable that overrides MathTeXEngine for `LaTeXString` content in `text`.
+    # `nothing` keeps the default. Downstream renderers (e.g. MakieTeX) can
+    # supply a real-LaTeX handler here.
+    latex_handler = nothing,
     padding = Vec3f(0.05),
     figure_padding = 16,
     rowgap = 18,
