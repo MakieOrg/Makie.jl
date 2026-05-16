@@ -15,39 +15,44 @@ end
 
 Supertype for graphical elements that a `text` plot can render at the
 markerspace position of a text block. Built-in subtypes include
-[`ImageTextPrimitive`](@ref); downstream packages (e.g. MakieTeX) define
-their own to plug arbitrary content into `text`.
+[`ImageTextPrimitive`](@ref) and [`LineSegmentTextPrimitive`](@ref);
+downstream packages (e.g. MakieTeX) define their own to plug arbitrary
+content into `text`.
 
 A subtype `P` must implement:
 
 * `text_primitive_bbox(p::P)::Rect3d` — markerspace bounding box relative to
   the text block origin (used by the text plot's bounding-box pipeline).
-* `register_text_primitive_plot!(plot::Plot, ::Type{P}, items::Vector{P}, block_indices::Vector{Int})`
-  — register a child plot that renders `items`, observing the text plot's
-  current markerspace block positions.
+* `text_primitive_plotspecs(::Type{P}, items::Vector{P}, block_positions::Vector{Point3f}; markerspace)`
+   — returns a `Vector{PlotSpec}` describing how to render `items`. Called
+   once per concrete primitive type, with `block_positions[k]` being the
+   already-projected markerspace position of `items[k]`'s text block. The
+   PlotSpecs feed a single `plotlist!` child of the text plot, so the
+   actual child plot set is data-driven and updates reactively if the
+   primitive types in use change (e.g. swapping `latex_handler` at
+   runtime).
 
-Items are pushed by `convert_text_string!` overloads (one per input text type)
-into the `outputs.text_primitives` channel.
+Items are pushed by `convert_text_string!` overloads (one per input text
+type) into the `outputs.text_primitives` channel.
 """
 abstract type AbstractTextPrimitive end
 
 function text_primitive_bbox end
-function register_text_primitive_plot! end
 
 """
-    text_primitive_types(latex_handler) -> Tuple{Vararg{Type{<:AbstractTextPrimitive}}}
+    text_primitive_plotspecs(::Type{T}, items::Vector{T},
+                             block_positions::Vector{Point3f}; markerspace)
+        -> Vector{PlotSpec}
 
-The set of primitive types a `latex_handler` may push into a text plot. The
-text recipe uses this at construction time to decide which child plots to
-register (so a handler that emits only image markers doesn't drag along an
-empty `linesegments!` plot, and vice versa).
+Extension hook returning PlotSpecs that render `items` of primitive type
+`T`. `block_positions[k]` is the markerspace position of `items[k]`'s text
+block (already projected from data space). `markerspace` is the parent
+text plot's `markerspace` attribute.
 
-The default is conservative and registers child plots for both built-in
-primitive types. Downstream handlers should override:
-
-    Makie.text_primitive_types(::MyHandler) = (Makie.ImageTextPrimitive,)
+Default returns `PlotSpec[]` — a primitive type with no method here is
+silently invisible (still participates in bbox via `text_primitive_bbox`).
 """
-text_primitive_types(_handler) = (ImageTextPrimitive, LineSegmentTextPrimitive)
+text_primitive_plotspecs(::Type{<:AbstractTextPrimitive}, _items, _positions; markerspace = nothing) = PlotSpec[]
 
 """
     is_text_input(::Type) -> Bool
@@ -120,6 +125,14 @@ conversion_trait(::Type{<:Text}, args...) = PointBased()
 
 convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
+# `latex_handler` is `nothing` (use built-in MathTeXEngine) or any callable
+# matching `convert_text_string!`'s signature. Returning `Ref{Any}(h)` keeps
+# the compute-graph storage slot untyped — without it, the theme default of
+# `nothing` would pin the slot to `Ref{Nothing}` and break later
+# `plot.latex_handler = MakieTeXLaTeX()` swaps. (See ComputePipeline
+# `locked_resolve!(::Input)`: returning a `Ref` from the convert function
+# is the documented escape hatch from type-narrowing.)
+convert_attribute(h, ::key"latex_handler", ::key"text") = Ref{Any}(h)
 
 # Positions are always vectors so text should be too. Anything not already
 # a vector is wrapped in one — that includes built-in string types and any
@@ -535,55 +548,56 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
 
     register_colormapping!(attr)
     register_text_computations!(attr)
-
-    # Only register child plots for primitive types the input could actually
-    # produce. Saves a plain `text!("hello")` from ending up with empty
-    # `linesegments!` + `scatter!` children dangling off it.
-    eltyp = eltype(plot.input_text[])
-    has_latex = eltyp == Any || eltyp <: LaTeXString
-    handler = plot.latex_handler[]
-    if has_latex && handler === nothing
-        # MathTeXEngine is built in and is the LaTeXString renderer when no
-        # `latex_handler` is set. It produces glyphs + `HLine`s (fraction
-        # rules, √ bars) → `LineSegmentTextPrimitive`.
-        register_text_primitive_plot!(plot, LineSegmentTextPrimitive)
-    end
-    if has_latex && handler !== nothing
-        # Ask the handler which primitive types it produces. Overrideable
-        # by handler authors via `Makie.text_primitive_types(h)`.
-        for T in text_primitive_types(handler)
-            register_text_primitive_plot!(plot, T)
-        end
-    end
+    register_text_primitives_plotlist!(plot)
     return
 end
 
-"""
-    register_text_primitive_plot!(plot::Plot{text}, ::Type{P})
-
-Default-dispatch hook for plugging an `AbstractTextPrimitive` subtype into the
-`text` recipe. Called once per primitive type from `calculated_attributes!`.
-Built-in implementation handles [`ImageTextPrimitive`](@ref) by registering a
-child `scatter!` plot. Downstream packages can register their own primitive
-types by extending this method (and `text_primitive_bbox`).
-"""
-register_text_primitive_plot!(plot, ::Type{<:AbstractTextPrimitive}) = nothing
-
-# Filter the heterogeneous text_primitives channel for entries of a specific
-# concrete primitive type. Returns aligned vectors of items, block indices,
-# offsets, sizes, and rotations suitable for a child scatter plot.
-function _filter_text_primitives(primitives::Vector{AbstractTextPrimitive}, block_indices::Vector{Int}, ::Type{T}) where {T <: AbstractTextPrimitive}
-    items = T[]
-    idxs = Int[]
-    for (b, p) in zip(block_indices, primitives)
-        p isa T || continue
-        push!(items, p)
-        push!(idxs, b)
-    end
-    return items, idxs
+# Built-in plotspec hook for `ImageTextPrimitive`: one Scatter per text plot
+# whose markers are the per-block images, anchored at the block's projected
+# markerspace position.
+function text_primitive_plotspecs(
+        ::Type{T}, items::Vector{T}, block_positions::Vector{Point3f}; markerspace
+    ) where {T <: ImageTextPrimitive}
+    isempty(items) && return PlotSpec[]
+    return [PlotSpec(
+        :Scatter, block_positions;
+        marker = Any[p.image for p in items],
+        markersize = Vec2f[p.size for p in items],
+        marker_offset = Vec3f[p.marker_offset for p in items],
+        rotation = Quaternionf[p.rotation for p in items],
+        space = markerspace,
+        markerspace = markerspace,
+    )]
 end
 
-function register_text_primitive_plot!(plot, ::Type{<:ImageTextPrimitive})
+# Built-in plotspec hook for `LineSegmentTextPrimitive`: one LineSegments
+# child carrying a flat list of endpoint pairs already shifted by the
+# block's projected markerspace position.
+function text_primitive_plotspecs(
+        ::Type{T}, items::Vector{T}, block_positions::Vector{Point3f}; markerspace
+    ) where {T <: LineSegmentTextPrimitive}
+    isempty(items) && return PlotSpec[]
+    pts = Point3f[]
+    widths = Float32[]
+    colors = RGBAf[]
+    for (item, shift) in zip(items, block_positions)
+        push!(pts, item.p0 + shift, item.p1 + shift)
+        push!(widths, item.width, item.width)
+        push!(colors, item.color, item.color)
+    end
+    return [PlotSpec(
+        :LineSegments, pts;
+        linewidth = widths,
+        color = colors,
+        space = markerspace,
+    )]
+end
+
+# Drive a single `plotlist!` child off the `text_primitives` channel. The
+# spec vector is rebuilt whenever primitives change, so the actual child
+# plot set is data-driven and updates reactively (swap `latex_handler` at
+# runtime, get different children with no extra plumbing).
+function register_text_primitives_plotlist!(plot)
     register_model_clip_planes!(plot.attributes)
 
     map!(
@@ -591,74 +605,28 @@ function register_text_primitive_plot!(plot, ::Type{<:ImageTextPrimitive})
         [
             :text_primitives, :text_primitive_block_indices,
             :preprojection, :model_f32c, :positions_transformed_f32c,
-            :model_clip_planes, :space,
+            :model_clip_planes, :space, :markerspace,
         ],
-        [
-            :_image_primitive_positions, :_image_primitive_markers,
-            :_image_primitive_sizes, :_image_primitive_offsets,
-            :_image_primitive_rotations,
-        ]
-    ) do prims, indices, preprojection, model_f32c, positions, clip_planes, space
-        items, idxs = _filter_text_primitives(prims, indices, ImageTextPrimitive)
-        if isempty(items)
-            return (Point3f[], Any[], Vec2f[], Vec3f[], Quaternionf[])
-        end
+        :_text_primitive_plotspecs,
+    ) do prims, indices, preprojection, model_f32c, positions, clip_planes, space, markerspace
+        isempty(prims) && return PlotSpec[]
         markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
-        out_pos = [markerspace_positions[idxs[i]] for i in eachindex(items)]
-        out_marker = Any[p.image for p in items]
-        out_size = [p.size for p in items]
-        out_offset = [p.marker_offset for p in items]
-        out_rot = [p.rotation for p in items]
-        return (out_pos, out_marker, out_size, out_offset, out_rot)
+        # Group primitives by concrete type. Stable, type-keyed buckets so
+        # we can call the typed `text_primitive_plotspecs` method for each.
+        by_type = Dict{Type, Vector{Int}}()
+        for (k, p) in enumerate(prims)
+            push!(get!(() -> Int[], by_type, typeof(p)), k)
+        end
+        out = PlotSpec[]
+        for (T, ks) in by_type
+            items = T[prims[k] for k in ks]
+            block_positions = Point3f[markerspace_positions[indices[k]] for k in ks]
+            append!(out, text_primitive_plotspecs(T, items, block_positions; markerspace))
+        end
+        return out
     end
 
-    return scatter!(
-        plot, plot._image_primitive_positions;
-        marker = plot._image_primitive_markers,
-        markersize = plot._image_primitive_sizes,
-        marker_offset = plot._image_primitive_offsets,
-        rotation = plot._image_primitive_rotations,
-        space = plot.markerspace,
-        markerspace = plot.markerspace,
-    )
-end
-
-function register_text_primitive_plot!(plot, ::Type{<:LineSegmentTextPrimitive})
-    register_model_clip_planes!(plot.attributes)
-
-    map!(
-        plot.attributes,
-        [
-            :text_primitives, :text_primitive_block_indices,
-            :preprojection, :model_f32c, :positions_transformed_f32c,
-            :model_clip_planes, :space,
-        ],
-        [:_lineseg_points, :_lineseg_widths, :_lineseg_colors]
-    ) do prims, indices, preprojection, model_f32c, positions, clip_planes, space
-        items, idxs = _filter_text_primitives(prims, indices, LineSegmentTextPrimitive)
-        if isempty(items)
-            return (Point3f[], Float32[], RGBAf[])
-        end
-        markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
-        # `linesegments!` expects a flat list of endpoint pairs.
-        pts = Point3f[]
-        widths = Float32[]
-        colors = RGBAf[]
-        for (item, block_idx) in zip(items, idxs)
-            shift = markerspace_positions[block_idx]
-            push!(pts, item.p0 + shift, item.p1 + shift)
-            push!(widths, item.width, item.width)
-            push!(colors, item.color, item.color)
-        end
-        return (pts, widths, colors)
-    end
-
-    return linesegments!(
-        plot, plot._lineseg_points;
-        linewidth = plot._lineseg_widths,
-        color = plot._lineseg_colors,
-        space = plot.markerspace,
-    )
+    return plotlist!(plot, plot._text_primitive_plotspecs)
 end
 
 ################################################################################
