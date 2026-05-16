@@ -538,11 +538,36 @@ is_all_equal_scale(::Vector{Real}) = true
 is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
 is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
+"""
+    rasterize_marker_for_gpu(marker, markersize) -> Union{Nothing, AbstractMatrix{<:Colorant}, AbstractVector{<:AbstractMatrix{<:Colorant}}}
+
+Extension hook used by GPU-backed backends (currently GLMakie / WGLMakie) to
+rasterize an opaque scatter marker — e.g. a MakieTeX `CachedPDF` — into a
+texture-uploadable image at marker upload time. Returns `nothing` to defer
+to the existing SDF / image-matrix paths.
+
+CairoMakie does not go through this hook — it does its own native dispatch
+on the marker type and renders vector content directly. Backend extensions
+that want to keep a vector path for their own opaque markers should leave
+this returning `nothing` and provide a `draw_marker` (or equivalent)
+override instead.
+"""
+rasterize_marker_for_gpu(_marker, _markersize) = nothing
+
 function compute_marker_attributes((atlas, marker, font, scale), changed, last)
     # Note: Careful, changed[2] is not always called marker
     # TODO, only calculate offset if needed
     # [atlas_sym, :marker, :font, :markersize]
     # [:sdf_marker_shape, :sdf_uv, :image]
+
+    # Backend-side rasterization hook (e.g. MakieTeXGLMakieExt converts a
+    # `CachedPDF` marker into a `Matrix{ARGB32}` here so the existing
+    # image-marker branches below can handle it).
+    if !(marker isa Matrix{<:Colorant} || marker isa Vector{<:Matrix{<:Colorant}})
+        raster = rasterize_marker_for_gpu(marker, scale)
+        raster === nothing || (marker = raster)
+    end
+
     if marker isa Matrix{<:Colorant} # single image marker
         return (Cint(RECTANGLE), Vec4f(0, 0, 1, 1), marker)
     elseif marker isa Vector{<:Matrix{<:Colorant}} # multiple image markers
