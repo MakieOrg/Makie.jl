@@ -4,55 +4,47 @@ function check_textsize_deprecation(@nospecialize(dictlike))
     end
 end
 
-# Text primitives: pluggable graphical elements that a string layout can emit
-# alongside (or instead of) glyphs. Built-in: glyphs and MathTeX line segments
-# have dedicated channels for performance; arbitrary primitives go through
-# the `text_primitives` channel below and are dispatched to child plots via
-# `register_text_primitive_plot!`.
+# Side channel for arbitrary graphical content a `text` layout wants to
+# emit alongside glyphs. Items in the channel are plain `PlotSpec`s in
+# block-relative coords; the recipe owns a `PlotList` child plot that
+# materializes them, shifting each by the projected markerspace position
+# of its associated text block at draw time.
+#
+# A `convert_text_string!` method for a custom text type pushes three
+# parallel entries per emitted spec:
+#
+#   push!(outputs.text_specs, PlotSpec(:Scatter, …))   # block-relative
+#   push!(outputs.text_spec_block_indices, block_idx)
+#   push!(outputs.text_spec_bboxes, block_relative_bbox)
+#
+# `shift_text_spec(spec, offset)` is the hook for plot types whose
+# positional data isn't `args[1]`-as-a-Point-vector; defaults work for
+# `:Scatter` and `:LineSegments`.
 
 """
-    AbstractTextPrimitive
+    shift_text_spec(spec::PlotSpec, offset::Point3f) -> PlotSpec
 
-Supertype for graphical elements that a `text` plot can render at the
-markerspace position of a text block. Built-in subtypes include
-[`ImageTextPrimitive`](@ref) and [`LineSegmentTextPrimitive`](@ref);
-downstream packages (e.g. MakieTeX) define their own to plug arbitrary
-content into `text`.
-
-A subtype `P` must implement:
-
-* `text_primitive_bbox(p::P)::Rect3d` — markerspace bounding box relative to
-  the text block origin (used by the text plot's bounding-box pipeline).
-* `text_primitive_plotspecs(::Type{P}, items::Vector{P}, block_positions::Vector{Point3f}; markerspace)`
-   — returns a `Vector{PlotSpec}` describing how to render `items`. Called
-   once per concrete primitive type, with `block_positions[k]` being the
-   already-projected markerspace position of `items[k]`'s text block. The
-   PlotSpecs feed a single `plotlist!` child of the text plot, so the
-   actual child plot set is data-driven and updates reactively if the
-   primitive types in use change (e.g. swapping `latex_handler` at
-   runtime).
-
-Items are pushed by `convert_text_string!` overloads (one per input text
-type) into the `outputs.text_primitives` channel.
+Return a copy of `spec` with positional data offset by `offset` in
+markerspace. The default implementation treats `spec.args[1]` as the
+position vector and adds `offset` to each element — that works for
+`:Scatter`, `:LineSegments`, and any plot type that follows the same
+convention. Override on a per-`Val(spec.type)` basis for plot types
+whose positional data lives elsewhere.
 """
-abstract type AbstractTextPrimitive end
+function shift_text_spec(spec::PlotSpec, offset::Point3f)
+    return shift_text_spec(Val(spec.type), spec, offset)
+end
 
-function text_primitive_bbox end
-
-"""
-    text_primitive_plotspecs(::Type{T}, items::Vector{T},
-                             block_positions::Vector{Point3f}; markerspace)
-        -> Vector{PlotSpec}
-
-Extension hook returning PlotSpecs that render `items` of primitive type
-`T`. `block_positions[k]` is the markerspace position of `items[k]`'s text
-block (already projected from data space). `markerspace` is the parent
-text plot's `markerspace` attribute.
-
-Default returns `PlotSpec[]` — a primitive type with no method here is
-silently invisible (still participates in bbox via `text_primitive_bbox`).
-"""
-text_primitive_plotspecs(::Type{<:AbstractTextPrimitive}, _items, _positions; markerspace = nothing) = PlotSpec[]
+function shift_text_spec(::Val, spec::PlotSpec, offset::Point3f)
+    isempty(spec.args) && return spec
+    positions = spec.args[1]
+    positions isa AbstractVector || return spec
+    isempty(positions) && return spec
+    shifted = [Point3f(to_ndim(Point3f, p, 0)) + offset for p in positions]
+    new_args = copy(spec.args)
+    new_args[1] = shifted
+    return PlotSpec(spec.type, new_args...; spec.kwargs...)
+end
 
 """
     is_text_input(::Type) -> Bool
@@ -71,53 +63,6 @@ is_text_input(::Type) = false
 is_text_input(::Type{<:AbstractString}) = true
 is_text_input(::Type{<:RichText}) = true
 is_text_input(x) = is_text_input(typeof(x))
-
-"""
-    ImageTextPrimitive(image, marker_offset::Vec3f, size::Vec2f, rotation::Quaternionf)
-
-A text primitive that renders `image` as a single scatter marker at the
-text block's position. Used by e.g. MakieTeX to embed pre-rendered LaTeX
-into a Makie `text` plot.
-
-* `image`     — any marker accepted by `scatter` (typically a `Matrix{<:Colorant}`)
-* `marker_offset` — markerspace offset from the block origin to the marker's
-                    center (this matches `scatter`'s `marker_offset` semantics)
-* `size`      — markerspace marker size
-* `rotation`  — applied to the marker by scatter
-"""
-struct ImageTextPrimitive{I} <: AbstractTextPrimitive
-    image::I
-    marker_offset::Vec3f
-    size::Vec2f
-    rotation::Quaternionf
-end
-
-function text_primitive_bbox(p::ImageTextPrimitive)
-    half = 0.5 .* Vec3d(p.size..., 0)
-    bb = Rect3d(to_ndim(Point3d, p.marker_offset, 0) .- half, Vec3d(p.size..., 0))
-    return rotate_bbox(bb, p.rotation)
-end
-
-"""
-    LineSegmentTextPrimitive(p0::Point3f, p1::Point3f, width::Float32, color::RGBAf)
-
-A text primitive that renders a single line segment alongside glyphs in a
-text block. Used by the MathTeXEngine path for LaTeXStrings to draw fraction
-bars and `\\sqrt` rules. Endpoints are markerspace coordinates relative to
-the text block's position.
-"""
-struct LineSegmentTextPrimitive <: AbstractTextPrimitive
-    p0::Point3f
-    p1::Point3f
-    width::Float32
-    color::RGBAf
-end
-
-function text_primitive_bbox(p::LineSegmentTextPrimitive)
-    lo = min.(p.p0, p.p1) .- 0.5f0 * p.width
-    hi = max.(p.p0, p.p1) .+ 0.5f0 * p.width
-    return Rect3d(Point3d(lo), Vec3d(hi .- lo))
-end
 
 # We sort out position vs string(-like) vs mixed arguments before convert_arguments,
 # so that we only get positions here
@@ -402,19 +347,32 @@ function append_tex_linesegment_data!(
 
     block_idx = length(outputs.text_blocks)
 
+    # Accumulate all HLines for this text block into a single LineSegments
+    # spec — cheaper than one PlotList child per fraction bar / √ rule.
+    points = Point3f[]
+    widths = Float32[]
+    colors = RGBAf[]
+    bb = Rect3d()
     for (element, position, _) in tex_elements
         if element isa MathTeXEngine.HLine
             h = element
             x, y = position
             p0 = rotation * to_ndim(Point3f, fontsize .* Point2f(x, y) .- tex_offset, 0) .+ offset
             p1 = rotation * to_ndim(Point3f, fontsize .* Point2f(x + h.width, y) .- tex_offset, 0) .+ offset
-            push!(
-                outputs.text_primitives,
-                LineSegmentTextPrimitive(p0, p1, Float32(fontsize * h.thickness), color)
-            )
-            push!(outputs.text_primitive_block_indices, block_idx)
+            w = Float32(fontsize * h.thickness)
+            push!(points, p0, p1)
+            push!(widths, w, w)
+            push!(colors, color, color)
+            lo = min.(p0, p1) .- 0.5f0 * w
+            hi = max.(p0, p1) .+ 0.5f0 * w
+            bb = update_boundingbox(bb, Rect3d(Point3d(lo), Vec3d(hi .- lo)))
         end
     end
+    isempty(points) && return nothing
+
+    push!(outputs.text_specs, PlotSpec(:LineSegments, points; linewidth = widths, color = colors))
+    push!(outputs.text_spec_block_indices, block_idx)
+    push!(outputs.text_spec_bboxes, bb)
     return nothing
 end
 
@@ -442,7 +400,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :text_blocks,
         :text_color, :text_rotation, :text_scales,
         :text_strokewidth, :text_strokecolor,
-        :text_primitives, :text_primitive_block_indices,
+        :text_specs, :text_spec_block_indices, :text_spec_bboxes,
     ]
     return register_computation!(attr, inputs, outputs) do (input_texts, latex_handler, _inputs...), changed, cached
         _outputs = (
@@ -457,8 +415,9 @@ function compute_glyph_collections!(attr::ComputeGraph)
             text_scales = Vec2f[],
             text_strokewidth = Float32[],
             text_strokecolor = RGBAf[],
-            text_primitives = AbstractTextPrimitive[],
-            text_primitive_block_indices = Int[],
+            text_specs = PlotSpec[],
+            text_spec_block_indices = Int[],
+            text_spec_bboxes = Rect3d[],
         )
         # strokewidth = Float32[] # TODO: Skipped?
 
@@ -548,85 +507,46 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
 
     register_colormapping!(attr)
     register_text_computations!(attr)
-    register_text_primitives_plotlist!(plot)
+    register_text_specs_plotlist!(plot)
     return
 end
 
-# Built-in plotspec hook for `ImageTextPrimitive`: one Scatter per text plot
-# whose markers are the per-block images, anchored at the block's projected
-# markerspace position.
-function text_primitive_plotspecs(
-        ::Type{T}, items::Vector{T}, block_positions::Vector{Point3f}; markerspace
-    ) where {T <: ImageTextPrimitive}
-    isempty(items) && return PlotSpec[]
-    return [PlotSpec(
-        :Scatter, block_positions;
-        marker = Any[p.image for p in items],
-        markersize = Vec2f[p.size for p in items],
-        marker_offset = Vec3f[p.marker_offset for p in items],
-        rotation = Quaternionf[p.rotation for p in items],
-        space = markerspace,
-        markerspace = markerspace,
-    )]
-end
-
-# Built-in plotspec hook for `LineSegmentTextPrimitive`: one LineSegments
-# child carrying a flat list of endpoint pairs already shifted by the
-# block's projected markerspace position.
-function text_primitive_plotspecs(
-        ::Type{T}, items::Vector{T}, block_positions::Vector{Point3f}; markerspace
-    ) where {T <: LineSegmentTextPrimitive}
-    isempty(items) && return PlotSpec[]
-    pts = Point3f[]
-    widths = Float32[]
-    colors = RGBAf[]
-    for (item, shift) in zip(items, block_positions)
-        push!(pts, item.p0 + shift, item.p1 + shift)
-        push!(widths, item.width, item.width)
-        push!(colors, item.color, item.color)
-    end
-    return [PlotSpec(
-        :LineSegments, pts;
-        linewidth = widths,
-        color = colors,
-        space = markerspace,
-    )]
-end
-
-# Drive a single `plotlist!` child off the `text_primitives` channel. The
-# spec vector is rebuilt whenever primitives change, so the actual child
-# plot set is data-driven and updates reactively (swap `latex_handler` at
-# runtime, get different children with no extra plumbing).
-function register_text_primitives_plotlist!(plot)
+# Single `plotlist!` child driven by the `text_specs` channel. The spec
+# vector is rebuilt whenever specs / projections change, so the actual
+# rendered child set is data-driven and updates reactively (swap
+# `latex_handler` at runtime, get different children with no extra
+# plumbing). Each block-relative spec is shifted by the projected
+# markerspace position of its text block, plus the parent's `markerspace`
+# is propagated into every spec's `space` / `markerspace` kwargs so the
+# children render in the right coordinate system.
+function register_text_specs_plotlist!(plot)
     register_model_clip_planes!(plot.attributes)
 
     map!(
         plot.attributes,
         [
-            :text_primitives, :text_primitive_block_indices,
+            :text_specs, :text_spec_block_indices,
             :preprojection, :model_f32c, :positions_transformed_f32c,
             :model_clip_planes, :space, :markerspace,
         ],
-        :_text_primitive_plotspecs,
-    ) do prims, indices, preprojection, model_f32c, positions, clip_planes, space, markerspace
-        isempty(prims) && return PlotSpec[]
+        :_text_plotlist_specs,
+    ) do specs, indices, preprojection, model_f32c, positions, clip_planes, space, markerspace
+        isempty(specs) && return PlotSpec[]
         markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
-        # Group primitives by concrete type. Stable, type-keyed buckets so
-        # we can call the typed `text_primitive_plotspecs` method for each.
-        by_type = Dict{Type, Vector{Int}}()
-        for (k, p) in enumerate(prims)
-            push!(get!(() -> Int[], by_type, typeof(p)), k)
-        end
-        out = PlotSpec[]
-        for (T, ks) in by_type
-            items = T[prims[k] for k in ks]
-            block_positions = Point3f[markerspace_positions[indices[k]] for k in ks]
-            append!(out, text_primitive_plotspecs(T, items, block_positions; markerspace))
+        out = Vector{PlotSpec}(undef, length(specs))
+        for k in eachindex(specs)
+            offset = markerspace_positions[indices[k]]
+            shifted = shift_text_spec(specs[k], offset)
+            # Tag the spec with the parent text plot's markerspace.
+            kw = copy(shifted.kwargs)
+            kw[:space] = markerspace
+            get(kw, :markerspace, nothing) === nothing || (kw[:markerspace] = markerspace)
+            out[k] = PlotSpec(shifted.type, shifted.args...; kw...)
         end
         return out
     end
 
-    return plotlist!(plot, plot._text_primitive_plotspecs)
+    return plotlist!(plot, plot._text_plotlist_specs)
 end
 
 ################################################################################
@@ -772,9 +692,9 @@ function register_raw_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :text_primitives, :text_primitive_block_indices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :text_spec_bboxes, :text_spec_block_indices],
             :raw_string_boundingboxes
-        ) do blocks, bbs, origins, rotation, primitives, primitive_block_indices
+        ) do blocks, bbs, origins, rotation, spec_bboxes, spec_block_indices
 
             text_bbs = map(blocks) do idxs
                 output = Rect3d()
@@ -787,8 +707,8 @@ function register_raw_string_boundingboxes!(plot)
                 return output
             end
 
-            for (block_idx, prim) in zip(primitive_block_indices, primitives)
-                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], text_primitive_bbox(prim))
+            for (block_idx, bb) in zip(spec_block_indices, spec_bboxes)
+                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
             end
 
             return text_bbs
@@ -813,9 +733,9 @@ function register_fast_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :text_primitives, :text_primitive_block_indices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :text_spec_bboxes, :text_spec_block_indices],
             :fast_string_boundingboxes
-        ) do blocks, bbs, origins, rotation, primitives, primitive_block_indices
+        ) do blocks, bbs, origins, rotation, spec_bboxes, spec_block_indices
 
             text_bbs = map(blocks) do idxs
                 output = Rect3d(Point3d(NaN), Vec3d(0))
@@ -828,8 +748,8 @@ function register_fast_string_boundingboxes!(plot)
                 return output
             end
 
-            for (block_idx, prim) in zip(primitive_block_indices, primitives)
-                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], text_primitive_bbox(prim))
+            for (block_idx, bb) in zip(spec_block_indices, spec_bboxes)
+                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
             end
 
             return text_bbs
