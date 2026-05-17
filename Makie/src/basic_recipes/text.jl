@@ -4,42 +4,18 @@ function check_textsize_deprecation(@nospecialize(dictlike))
     end
 end
 
-# Side channel for arbitrary graphical content a `text` layout wants to
-# emit alongside glyphs. Items in the channel are plain `PlotSpec`s in
-# block-relative coords; the recipe owns a `PlotList` child plot that
-# materializes them, shifting each by the projected markerspace position
-# of its associated text block at draw time.
-#
-# A `convert_text_string!` method for a custom text type pushes three
-# parallel entries per emitted spec:
-#
-#   push!(outputs.text_specs, PlotSpec(:Scatter, …))   # block-relative
-#   push!(outputs.text_spec_block_indices, block_idx)
-#   push!(outputs.text_spec_bboxes, block_relative_bbox)
-#
-# `shift_text_spec(spec, offset)` is the hook for plot types whose
-# positional data isn't `args[1]`-as-a-Point-vector; defaults work for
-# `:Scatter` and `:LineSegments`.
-
 """
     shift_text_spec(spec::PlotSpec, offset::Point3f) -> PlotSpec
 
-Return a copy of `spec` with positional data offset by `offset` in
-markerspace. The default implementation treats `spec.args[1]` as the
-position vector and adds `offset` to each element — that works for
-`:Scatter`, `:LineSegments`, and any plot type that follows the same
-convention. Override on a per-`Val(spec.type)` basis for plot types
-whose positional data lives elsewhere.
+Return a copy of `spec` with positional data offset by `offset` in markerspace.
+The default treats `spec.args[1]` as a position vector — works for `:Scatter`,
+`:LineSegments`, etc. Override on `Val(spec.type)` for plot types whose
+positional data lives elsewhere.
 """
-function shift_text_spec(spec::PlotSpec, offset::Point3f)
-    return shift_text_spec(Val(spec.type), spec, offset)
-end
+shift_text_spec(spec::PlotSpec, offset::Point3f) = shift_text_spec(Val(spec.type), spec, offset)
 
 function shift_text_spec(::Val, spec::PlotSpec, offset::Point3f)
-    isempty(spec.args) && return spec
-    positions = spec.args[1]
-    positions isa AbstractVector || return spec
-    isempty(positions) && return spec
+    positions = first(spec.args)
     shifted = [Point3f(to_ndim(Point3f, p, 0)) + offset for p in positions]
     new_args = copy(spec.args)
     new_args[1] = shifted
@@ -49,20 +25,39 @@ end
 """
     is_text_input(::Type) -> Bool
 
-Trait that tells the `text` recipe "this type is one of my single-element
-inputs, route it into the string dispatch path rather than treating it as
-position data." Default `false`; built-in `true` for `AbstractString` and
-`RichText`. Downstream packages opt their types in with one method:
-
-    Makie.is_text_input(::Type{TeXString}) = true
-
-No subtyping required — the package's `convert_text_string!` method on the
-concrete type still does the work; this trait just gets the value to it.
+Trait marking single-element inputs the `text` recipe should route through the
+string dispatch path. Built-in for `AbstractString` and `RichText`; downstream
+packages opt in with `Makie.is_text_input(::Type{T}) = true`.
 """
 is_text_input(::Type) = false
 is_text_input(::Type{<:AbstractString}) = true
 is_text_input(::Type{<:RichText}) = true
-is_text_input(x) = is_text_input(typeof(x))
+
+"""
+    compile_text(handler, src, color, fontsize, lineheight) -> payload | nothing
+
+Engine-side step for a `text_handler`. Define methods dispatching on the input
+type the handler accepts (e.g. `LaTeXString`, `TypstString`, ...). Return an
+opaque payload the handler's `place_text!` later consumes, or `nothing` to
+fall through to the default glyph layout.
+
+Receives only the attributes that affect the rendered bytes — anything else
+(rotation, align, offset, ...) is for `place_text!`. Runs in a separate
+compute node so attribute changes that don't affect the engine output don't
+re-fire it.
+"""
+function compile_text end
+compile_text(handler, src, color, fontsize, lineheight) = nothing
+
+"""
+    place_text!(handler, outputs, i, N, compiled, fontsize, font, align, rotation,
+                justification, lineheight, word_wrap_width, offset, fonts, color,
+                strokecolor, strokewidth)
+
+Placement step. Receives the payload from `compile_text` plus the full
+attribute list and pushes to `outputs.text_specs`, `outputs.text_blocks`, etc.
+"""
+function place_text! end
 
 # We sort out position vs string(-like) vs mixed arguments before convert_arguments,
 # so that we only get positions here
@@ -70,18 +65,11 @@ conversion_trait(::Type{<:Text}, args...) = PointBased()
 
 convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
-# `latex_handler` is `nothing` (use built-in MathTeXEngine) or any callable
-# matching `convert_text_string!`'s signature. Returning `Ref{Any}(h)` keeps
-# the compute-graph storage slot untyped — without it, the theme default of
-# `nothing` would pin the slot to `Ref{Nothing}` and break later
-# `plot.latex_handler = MakieTeXLaTeX()` swaps. (See ComputePipeline
-# `locked_resolve!(::Input)`: returning a `Ref` from the convert function
-# is the documented escape hatch from type-narrowing.)
-convert_attribute(h, ::key"latex_handler", ::key"text") = Ref{Any}(h)
+# Wrap in `Ref{Any}` so the compute-graph slot stays untyped — otherwise
+# the default `nothing` pins it to `Ref{Nothing}` and blocks runtime swaps.
+convert_attribute(h, ::key"text_handler", ::key"text") = Ref{Any}(h)
 
-# Positions are always vectors so text should be too. Anything not already
-# a vector is wrapped in one — that includes built-in string types and any
-# downstream payload that opted in via `is_text_input`.
+# Positions are always vectors so text should be too.
 convert_attribute(x::AbstractVector, ::key"text", ::key"text") = Ref{Any}(vec(x))
 convert_attribute(x, ::key"text", ::key"text") = Ref{Any}([x])
 
@@ -105,19 +93,20 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     end
     register_computation!(attr, inputs, [:_positions, :input_text]) do inputs, changed, cached
         a_pos, a_text, args... = values(inputs)
-        # A single arg that opts in to `is_text_input` (built-in for
-        # AbstractString/RichText) is the text; the position comes from the
-        # attr. A vector whose element type opts in is a vector of texts.
+        # Single arg opting in via `is_text_input` is the text; position comes from the attr.
+        # Always emit a freshly-allocated vector for `:input_text` so ComputePipeline's
+        # `is_same(::Array, ::Array)` pointer-distinctness check can confirm structural
+        # equality on refires triggered by unrelated inputs (e.g. position layout writes).
         if length(args) == 1 && is_text_input(typeof(args[1]))
-            # position data will always be wrapped in a Vector, so strings should too
             return ((a_pos,), Ref{Any}([args[1]]))
         elseif length(args) == 1 && args[1] isa AbstractVector && is_text_input(eltype(args[1]))
-            return ((a_pos,), Ref{Any}(args[1]))
+            return ((a_pos,), Ref{Any}(copy(args[1])))
         elseif args isa Tuple{<:AbstractVector{<:Tuple{<:Any, <:VecTypes}}}
             # [(text, pos), ...] argument
             return ((last.(args[1]),), Ref{Any}(first.(args[1])))
         else # assume position data
-            return (args, Ref{Any}(to_string_arr(a_text)))
+            text_vec = to_string_arr(a_text)
+            return (args, Ref{Any}(text_vec === a_text ? copy(text_vec) : text_vec))
         end
     end
 
@@ -347,39 +336,36 @@ function append_tex_linesegment_data!(
 
     block_idx = length(outputs.text_blocks)
 
-    # Accumulate all HLines for this text block into a single LineSegments
-    # spec — cheaper than one PlotList child per fraction bar / √ rule.
     points = Point3f[]
     widths = Float32[]
     colors = RGBAf[]
     bb = Rect3d()
     for (element, position, _) in tex_elements
-        if element isa MathTeXEngine.HLine
-            h = element
-            x, y = position
-            p0 = rotation * to_ndim(Point3f, fontsize .* Point2f(x, y) .- tex_offset, 0) .+ offset
-            p1 = rotation * to_ndim(Point3f, fontsize .* Point2f(x + h.width, y) .- tex_offset, 0) .+ offset
-            w = Float32(fontsize * h.thickness)
-            push!(points, p0, p1)
-            push!(widths, w, w)
-            push!(colors, color, color)
-            lo = min.(p0, p1) .- 0.5f0 * w
-            hi = max.(p0, p1) .+ 0.5f0 * w
-            bb = update_boundingbox(bb, Rect3d(Point3d(lo), Vec3d(hi .- lo)))
-        end
+        element isa MathTeXEngine.HLine || continue
+        x, y = position
+        p0 = rotation * to_ndim(Point3f, fontsize .* Point2f(x, y) .- tex_offset, 0) .+ offset
+        p1 = rotation * to_ndim(Point3f, fontsize .* Point2f(x + element.width, y) .- tex_offset, 0) .+ offset
+        w = Float32(fontsize * element.thickness)
+        push!(points, p0, p1)
+        push!(widths, w, w)
+        push!(colors, color, color)
+        lo = min.(p0, p1) .- 0.5f0 * w
+        hi = max.(p0, p1) .+ 0.5f0 * w
+        bb = update_boundingbox(bb, Rect3d(Point3d(lo), Vec3d(hi .- lo)))
     end
-    isempty(points) && return nothing
+    isempty(points) && return
 
     push!(outputs.text_specs, PlotSpec(:LineSegments, points; linewidth = widths, color = colors))
     push!(outputs.text_spec_block_indices, block_idx)
     push!(outputs.text_spec_bboxes, bb)
-    return nothing
+    return
 end
 
 function compute_glyph_collections!(attr::ComputeGraph)
     inputs = [
         :input_text,
-        :latex_handler,
+        :text_handler,
+        :compiled_text_blocks,
         :fontsize,
         :selected_font,
         :align,
@@ -402,7 +388,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :text_strokewidth, :text_strokecolor,
         :text_specs, :text_spec_block_indices, :text_spec_bboxes,
     ]
-    return register_computation!(attr, inputs, outputs) do (input_texts, latex_handler, _inputs...), changed, cached
+    return register_computation!(attr, inputs, outputs) do (input_texts, text_handler, compiled_blocks, _inputs...), changed, cached
         _outputs = (
             glyphcollections = GlyphCollection[],
             glyphindices = UInt64[],
@@ -423,10 +409,9 @@ function compute_glyph_collections!(attr::ComputeGraph)
 
         N = length(input_texts)
         for (block_index, str) in enumerate(input_texts)
-            # `LaTeXString` is themable: if `latex_handler` is set, route the
-            # block through it instead of the built-in MathTeXEngine path.
-            if str isa LaTeXString && latex_handler !== nothing
-                latex_handler(_outputs, str, block_index, N, _inputs...)
+            compiled = text_handler === nothing ? nothing : compiled_blocks[block_index]
+            if compiled !== nothing
+                place_text!(text_handler, _outputs, block_index, N, compiled, _inputs...)
             else
                 convert_text_string!(_outputs, str, block_index, N, _inputs...)
             end
@@ -445,6 +430,25 @@ function register_text_computations!(attr::ComputeGraph)
     # Resolve colormapping to colors early. This allows rich text which returns
     # its own colors to be mixed with other text types which dont.
     add_computation!(attr, Val(:computed_color))
+
+    # Narrow-input handler compile node: only re-fires when something that
+    # changes the rendered bytes changes. Rotation/align/offset/etc. don't.
+    # `compile_text` returns `nothing` by default; handlers override on the
+    # input types they accept (e.g. `LaTeXString`, `TypstString`).
+    map!(
+        attr, [:input_text, :text_handler, :computed_color, :fontsize, :lineheight],
+        :compiled_text_blocks,
+    ) do texts, handler, colors, fontsizes, lineheights
+        handler === nothing && return Any[]
+        return Any[
+            compile_text(
+                handler, str,
+                sv_getindex(colors, i),
+                sv_getindex(fontsizes, i),
+                sv_getindex(lineheights, i),
+            ) for (i, str) in enumerate(texts)
+        ]
+    end
 
     # This computes :glyphindices, :font_per_char, :glyph_origins, :glyph_extents, :text_blocks
     # And :glyphcollection if applicable
@@ -511,14 +515,9 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     return
 end
 
-# Single `plotlist!` child driven by the `text_specs` channel. The spec
-# vector is rebuilt whenever specs / projections change, so the actual
-# rendered child set is data-driven and updates reactively (swap
-# `latex_handler` at runtime, get different children with no extra
-# plumbing). Each block-relative spec is shifted by the projected
-# markerspace position of its text block, plus the parent's `markerspace`
-# is propagated into every spec's `space` / `markerspace` kwargs so the
-# children render in the right coordinate system.
+# Materialize `text_specs` as a `plotlist!` child: shift each spec by the
+# projected markerspace position of its block, then render in the parent's
+# markerspace. Rebuilt reactively when specs or projections change.
 function register_text_specs_plotlist!(plot)
     register_model_clip_planes!(plot.attributes)
 
@@ -533,17 +532,13 @@ function register_text_specs_plotlist!(plot)
     ) do specs, indices, preprojection, model_f32c, positions, clip_planes, space, markerspace
         isempty(specs) && return PlotSpec[]
         markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
-        out = Vector{PlotSpec}(undef, length(specs))
-        for k in eachindex(specs)
-            offset = markerspace_positions[indices[k]]
-            shifted = shift_text_spec(specs[k], offset)
-            # Tag the spec with the parent text plot's markerspace.
+        return map(specs, indices) do spec, idx
+            shifted = shift_text_spec(spec, markerspace_positions[idx])
             kw = copy(shifted.kwargs)
             kw[:space] = markerspace
             get(kw, :markerspace, nothing) === nothing || (kw[:markerspace] = markerspace)
-            out[k] = PlotSpec(shifted.type, shifted.args...; kw...)
+            return PlotSpec(shifted.type, shifted.args...; kw...)
         end
-        return out
     end
 
     return plotlist!(plot, plot._text_plotlist_specs)

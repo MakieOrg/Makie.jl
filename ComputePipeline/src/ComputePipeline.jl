@@ -889,11 +889,16 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
 end
 
 function set_result!(edge::TypedEdge, result, i, value)
-    if isnothing(value) || is_same(edge.outputs[i][], value)
+    # Dereference once so callbacks returning `Ref{Any}(x)` (the type-narrowing
+    # opt-out) are still seen through by `is_same`. Without this, the Ref
+    # wrapper defeats the equality check because `outputs[i][]` stores the
+    # dereferenced inner value.
+    new_val = deref(value)
+    if isnothing(value) || is_same(edge.outputs[i][], new_val)
         edge.output_nodes[i].dirty = false
     else
         edge.output_nodes[i].dirty = true
-        edge.outputs[i][] = deref(value)
+        edge.outputs[i][] = new_val
     end
     if !isempty(result)
         next_val = first(result)
