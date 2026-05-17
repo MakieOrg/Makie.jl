@@ -528,6 +528,8 @@ orthographic, axis-aligned projections (the common 2D `Axis` case).
 Used to support `space = (:data, :relative)` style mixed per-axis spaces.
 """
 function combine_axis_projection_matrices(Mx::Mat4, My::Mat4, Mz::Mat4)
+    # TODO: Consider erroring when input matrices are not translation-scale
+    # matrices, i.e. if they have off-diagonal components
     return Mat4f(
         Mx[1, 1], 0, 0, 0,
         0, My[2, 2], 0, 0,

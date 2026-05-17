@@ -1018,6 +1018,7 @@ function (x::MapFunctionWrapper{false})(inputs, @nospecialize(changed), @nospeci
     result = x.user_func(values(inputs)...)
     return result
 end
+ispacked(::MapFunctionWrapper{packed}) where {packed} = packed
 
 """
     map!(f, compute_graph::ComputeGraph, inputs::Union{Symbol, Computed, Vector}, outputs::Union{Symbol, Vector{Symbol}}; init=nothing)
@@ -1409,6 +1410,7 @@ function TypedEdge_no_call(edge::ComputeEdge)
 end
 
 include("io.jl")
+include("modification.jl")
 
 export Computed, ComputeEdge
 export ComputeGraph

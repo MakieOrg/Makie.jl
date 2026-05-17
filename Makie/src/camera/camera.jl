@@ -99,7 +99,8 @@ function set_proj_view!(camera::Camera, projection, view)
     # But nobody should do that, right?
     # GLMakie uses map on view
     camera.view[] = view
-    return camera.projection[] = projection
+    camera.projection[] = projection
+    return
 end
 
 is_mouseinside(x, target) = is_mouseinside(get_scene(x), target)
@@ -319,66 +320,117 @@ function get_space_to_space_matrix(scene, input_space::Symbol, output_space::Sym
     return get_preprojection(get_scene(scene).compute, input_space, output_space)
 end
 
-struct CameraMatrixCallback <: Function
-    graph::ComputeGraph
+# for projection, view, projectionview
+function collect_mixed_inputs(get_name, graph, space::Symbol)
+    return [graph[get_name(space)]], Mat4f
 end
-(cb::CameraMatrixCallback)(_, names) = map(name -> Mat4f(cb.graph[name][]::Mat4d), names)
+
+function collect_mixed_inputs(get_name, graph, space_tuple::Tuple)
+    padded = to_ndim(NTuple{3, Symbol}, space_tuple, :data)
+    return collect_mixed_inputs(get_name, graph, padded)
+end
+
+function collect_mixed_inputs(get_name, graph, space_tuple::NTuple{3, Symbol})
+    # ComputePipeline does not allow duplicate inputs, so reduce spaces to
+    # a unique subset
+    names = [get_name(space) for space in space_tuple]
+    unique_names = unique(names)
+    inputs = getindex.(Ref(graph), unique_names)
+
+    # and create a callback that maps them back to the appropriate dimensions
+    indices = [findfirst(==(name), unique_names) for name in names]
+    callback =  (matrices...) -> build_split_space_matrix(indices, matrices...)
+    return inputs, callback
+end
+
+# for preprojection
+function collect_mixed_inputs(graph, space::Symbol, markerspace::Symbol)
+    inputs = [graph[get_camera_matrix_name(space, markerspace)]]
+    return inputs, Mat4f
+end
+
+function collect_mixed_inputs(graph, space_tuple::Tuple, markerspace::Symbol)
+    padded = to_ndim(NTuple{3, Symbol}, space_tuple, :data)
+    return collect_mixed_inputs(graph, padded, markerspace)
+end
+
+function collect_mixed_inputs(graph, space_tuple::NTuple{3, Symbol}, markerspace::Symbol)
+    names = [get_camera_matrix_name(space, markerspace) for space in space_tuple]
+    unique_names = unique(names)
+    inputs = getindex.(Ref(graph), unique_names)
+
+    indices = [findfirst(==(name), unique_names) for name in names]
+    callback =  (matrices...) -> build_split_space_matrix(indices, matrices...)
+    return inputs, callback
+end
+
+function build_split_space_matrix(indices, matrices...)
+    M1 = matrices[indices[1]]
+    M2 = matrices[indices[2]]
+    M3 = matrices[indices[3]]
+    return combine_axis_projection_matrices(M1, M2, M3)
+end
 
 function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
-    output_keys = [:projectionview, :projection, :view]
+    # We allow space to be a tuple for mixed spaces. In that case multiple
+    # camera matrices need to merged. collect_mixed_inputs() gets the appropriate
+    # inputs and callback for that
+    space = plot_graph.space[]
 
-    # `space` (and `markerspace`) may be a per-axis tuple, in which case the standard
-    # name-based lookup doesn't apply. We resolve such matrices via `register_per_axis_camera_matrix!`
-    # below and use the homogeneous representative space for the projectionview/projection/view trio.
-    space_val = haskey(plot_graph, :space) ? plot_graph[:space][] : :data
-    space_is_tuple = space_val isa Tuple
-    has_markerspace = haskey(plot_graph, :markerspace)
-    markerspace_val = has_markerspace ? plot_graph[:markerspace][] : space_val
-    markerspace_is_tuple = markerspace_val isa Tuple
+    if haskey(plot_graph, :markerspace)
+        # We don't allow mixed spaces for markerspace (would they be useful for anything?)
+        markerspace = plot_graph.markerspace[]::Symbol
 
-    # `_homogeneous_or_tuple_first` collapses a tuple to its first axis when used as the
-    # representative space for projectionview/projection/view. Mixed projectionview/view
-    # values are intentionally not supported yet — markerspace is expected to be a Symbol.
-    rep_space(s) = s isa Tuple ? first(s) : s
+        add_input!((k, v) -> Mat4f(v), plot_graph, :projectionview, scene_graph[get_projectionview_name(markerspace)])
+        add_input!((k, v) -> Mat4f(v), plot_graph, :projection, scene_graph[get_projection_name(markerspace)])
+        add_input!((k, v) -> Mat4f(v), plot_graph, :view, scene_graph[get_view_name(markerspace)])
 
-    # merging Symbols is somewhat expensive so we shouldn't do it repetitively
-    if has_markerspace
-        if space_is_tuple || markerspace_is_tuple
-            # Build (projectionview, projection, view) names from the markerspace representative.
-            # Don't bake `:preprojection` into the camera_matrix_names — it's registered below.
-            map!(plot_graph, :markerspace, :camera_matrix_names) do markerspace
-                ms = rep_space(markerspace)
-                return get_projectionview_name(ms), get_projection_name(ms), get_view_name(ms)
-            end
-        else
-            map!(plot_graph, [:space, :markerspace], :camera_matrix_names) do space, markerspace
-                return get_projectionview_name(markerspace), get_projection_name(markerspace),
-                    get_view_name(markerspace), get_camera_matrix_name(space, markerspace)
-            end
-            push!(output_keys, :preprojection)
+        inputs, callback = collect_mixed_inputs(scene_graph, space, markerspace)
+        map!(callback, plot_graph, inputs, :preprojection)
+
+        # replace edge inputs and callbacks when marker/space changes
+        on(plot_graph.markerspace) do markerspace
+            ComputePipeline.unsafe_replace_inputs!(
+                plot_graph.projectionview,
+                scene_graph[get_projectionview_name(markerspace)]
+            )
+            ComputePipeline.unsafe_replace_inputs!(
+                plot_graph.projection,
+                scene_graph[get_projection_name(markerspace)]
+            )
+            ComputePipeline.unsafe_replace_inputs!(
+                plot_graph.view,
+                scene_graph[get_view_name(markerspace)]
+            )
+            return
         end
+
+        onany(plot_graph.space, plot_graph.markerspace) do space, markerspace
+            inputs, callback = collect_mixed_inputs(scene_graph, space, markerspace)
+            ComputePipeline.unsafe_replace_inputs!(callback, plot_graph.preprojection, inputs)
+        end
+
     else
-        if space_is_tuple
-            map!(plot_graph, :space, :camera_matrix_names) do space
-                sp = rep_space(space)
-                return get_projectionview_name(sp), get_projection_name(sp), get_view_name(sp)
-            end
-        else
-            map!(plot_graph, :space, :camera_matrix_names) do space
-                return get_projectionview_name(space), get_projection_name(space), get_view_name(space)
-            end
+
+        inputs, callback1 = collect_mixed_inputs(get_projectionview_name, scene_graph, space)
+        map!(callback1, plot_graph, inputs, :projectionview)
+
+        inputs, callback2 = collect_mixed_inputs(get_projection_name, scene_graph, space)
+        map!(callback2, plot_graph, inputs, :projection)
+
+        inputs, callback3 = collect_mixed_inputs(get_view_name, scene_graph, space)
+        map!(callback3, plot_graph, inputs, :view)
+
+        on(plot_graph.space) do space
+            inputs, callback1 = collect_mixed_inputs(get_projectionview_name, scene_graph, space)
+            ComputePipeline.unsafe_replace_inputs!(callback1, plot_graph.projectionview, inputs)
+
+            inputs, callback2 = collect_mixed_inputs(get_projection_name, scene_graph, space)
+            ComputePipeline.unsafe_replace_inputs!(callback2, plot_graph.projection, inputs)
+
+            inputs, callback3 = collect_mixed_inputs(get_view_name, scene_graph, space)
+            ComputePipeline.unsafe_replace_inputs!(callback3, plot_graph.view, inputs)
         end
-    end
-
-    input_keys = Computed[scene_graph.camera_trigger, plot_graph.camera_matrix_names]
-
-    # Update camera matrices in plot if space changed or a relevant camera update happened
-    callback = CameraMatrixCallback(scene_graph)
-    map!(callback, plot_graph, input_keys, output_keys)
-
-    # Per-axis preprojection (space -> markerspace) when space is a tuple.
-    if has_markerspace && space_is_tuple && !haskey(plot_graph, :preprojection)
-        register_per_axis_camera_matrix!(scene_graph, plot_graph, :space, :markerspace; matrix_name = :preprojection)
     end
 
     return
@@ -426,13 +478,6 @@ function register_camera_matrix!(
         input::Symbol, output::Symbol
     )
 
-    # If the dynamic input or output space resolves to a per-axis tuple, fall back to the
-    # per-axis registration which builds a combined matrix from the individual axis projections.
-    if (input in (:space, :markerspace) && haskey(plot_graph, input) && plot_graph[input][] isa Tuple) ||
-            (output in (:space, :markerspace) && haskey(plot_graph, output) && plot_graph[output][] isa Tuple)
-        return register_per_axis_camera_matrix!(scene_graph, plot_graph, input, output)
-    end
-
     # this can be :space_to_pixel, i.e. its not always a name for fetching from camera
     matrix_name = get_camera_matrix_name(input, output)
 
@@ -457,89 +502,58 @@ function register_camera_matrix!(
         return :projectionview
     end
 
-    _input = input in (:markerspace, :space) ? getindex(plot_graph, input) : input
-    _output = output in (:markerspace, :space) ? getindex(plot_graph, output) : output
+    const_input = input !== :markerspace && input !== :space
+    const_output = output !== :markerspace && output !== :space
 
-    isconst(x::Symbol) = true
-    isconst(x::Computed) = false
-
-    if isconst(_input) && isconst(_output)
+    if const_input && const_output
         # both spaces are constant so we don't need to be able to switch to a
         # different camera.
         add_input!(plot_graph, matrix_name, scene_graph[matrix_name])
         return matrix_name
     end
 
-    # dynamic case (space and/or markerspace used)
-    # Need to build name of the matrix dynamically before fetching it
-    name_name = Symbol(matrix_name, :_name)
+    # otherwise we need to replace the source(s)
 
-    if !isconst(_input) && isconst(_output)
-        map!(a -> get_camera_matrix_name(a, output), plot_graph, _input, name_name)
-    elseif isconst(_input) && !isconst(_output)
-        map!(b -> get_camera_matrix_name(input, b), plot_graph, _output, name_name)
-    else
-        map!(get_camera_matrix_name, plot_graph, [_input, _output], name_name)
-    end
+    # create output with temporarily input which will be updated by on/onany
+    map!(Mat4f, plot_graph, scene_graph.clip_to_clip, matrix_name)
 
-    inputs = Computed[scene_graph.camera_trigger, getindex(plot_graph, name_name)]
-    map!((_, name) -> Mat4f(scene_graph[name][]::Mat4d), plot_graph, inputs, matrix_name)
-
-    return matrix_name
-end
-
-"""
-    register_per_axis_camera_matrix!(scene_graph, plot_graph, input, output; matrix_name)
-
-Build a per-axis combined camera matrix when `input` (or `output`) resolves to
-a per-axis space tuple. Each axis gets its own `axis_space[i] -> output_axis_space[i]`
-matrix from the standard registration path, then `combine_axis_projection_matrices`
-zips them together by extracting the i-th diagonal entry and translation.
-
-The resulting matrix is exact for orthographic, axis-aligned cameras (a regular 2D
-`Axis`); off-diagonal terms (rotation/perspective) are dropped.
-"""
-function register_per_axis_camera_matrix!(
-        scene_graph::ComputePipeline.ComputeGraph, plot_graph::ComputePipeline.ComputeGraph,
-        input::Symbol, output::Symbol;
-        matrix_name::Union{Symbol, Nothing} = nothing,
-    )
-
-    function resolve_axes(s::Symbol)
-        if s in (:space, :markerspace) && haskey(plot_graph, s)
-            val = plot_graph[s][]
-            return val isa Tuple ? _padded_space_tuple(val) : (val::Symbol, val::Symbol, val::Symbol)
+    # input === output was already handled
+    if input === :space
+        if output === :markerspace
+            # this is preprojection, done already
+            @assert false "Unreachable"
         else
-            return (s, s, s)
+            on(plot_graph.space, update = true) do space
+                inputs, callback = collect_mixed_inputs(scene_graph, space, output)
+                ComputePipeline.unsafe_replace_inputs!(callback, plot_graph[matrix_name], inputs)
+            end
         end
-    end
-
-    in_axes = resolve_axes(input)
-    out_axes = resolve_axes(output)
-
-    if matrix_name === nothing
-        matrix_name = Symbol(
-            "per_axis_", input, "_", in_axes[1], "_", in_axes[2], "_", in_axes[3],
-            "__to__", output, "_", out_axes[1], "_", out_axes[2], "_", out_axes[3],
-        )
-    end
-
-    haskey(plot_graph, matrix_name) && return matrix_name
-
-    per_axis_names = Symbol[
-        register_camera_matrix!(scene_graph, plot_graph, in_axes[i], out_axes[i]) for i in 1:3
-    ]
-
-    # Two axes can resolve to the same source matrix (e.g. (:data, :relative, :relative)
-    # -> [:world_to_pixel, :relative_to_pixel, :relative_to_pixel]). ComputePipeline's
-    # NamedTuple-based input wiring requires unique names, so deduplicate and route by index.
-    unique_names = unique(per_axis_names)
-    idx = ntuple(i -> findfirst(==(per_axis_names[i]), unique_names)::Int, 3)
-    map!(plot_graph, unique_names, matrix_name) do mats...
-        Mx = Mat4f(mats[idx[1]])
-        My = Mat4f(mats[idx[2]])
-        Mz = Mat4f(mats[idx[3]])
-        return combine_axis_projection_matrices(Mx, My, Mz)
+    elseif output === :space
+        if input === :markerspace
+            # could also calculate `inv(preprojection)`
+            onany(plot_graph.space, plot_graph.markerspace, update = true) do space, markerspace
+                inputs, callback = collect_mixed_inputs(scene_graph, markerspace, space)
+                ComputePipeline.unsafe_replace_inputs!(callback, plot_graph[matrix_name], inputs)
+            end
+        else
+            on(plot_graph.space, update = true) do space
+                inputs, callback = collect_mixed_inputs(scene_graph, input, space)
+                ComputePipeline.unsafe_replace_inputs!(callback, plot_graph[matrix_name], inputs)
+            end
+        end
+    elseif input === :markerspace # only output const remains
+        @assert const_output "Unreachable"
+        # can't have mixed markerspace
+        on(plot_graph.markerspace, update = true) do markerspace
+            input_node = scene_graph[get_camera_matrix_name(markerspace, output)]
+            ComputePipeline.unsafe_replace_inputs!(callback, plot_graph[matrix_name], input_node)
+        end
+    else # output === :markerspace, input const
+        @assert const_input && (output === :markerspace) "Unreachable"
+        on(plot_graph.markerspace, update = true) do markerspace
+            input_node = scene_graph[get_camera_matrix_name(input, markerspace)]
+            ComputePipeline.unsafe_replace_inputs!(callback, plot_graph[matrix_name], input_node)
+        end
     end
 
     return matrix_name

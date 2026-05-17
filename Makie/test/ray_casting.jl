@@ -83,9 +83,6 @@
         function Makie.apply_transform(t::ScaleTransform, p::VT) where {VT <: VecTypes}
             return to_ndim(VT, t.xyz, NaN) .* p
         end
-        function Makie.apply_transform(t::ScaleTransform, p::VT) where {VT <: VecTypes}
-            return to_ndim(VT, t.xyz, NaN) .* p
-        end
 
         transform = Transformation(
             Vec3d(0.2, -0.3, 0.2), Vec3d(1), Makie.qrotation(Vec3f(1, 0.5, 0.1), 0.1),
