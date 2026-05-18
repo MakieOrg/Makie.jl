@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Added a unified color scheme for Block widgets. `MAKIE_DEFAULT_THEME` now contains a nested `colors` Attributes block with 9 role tokens (`background`, `surface`, `surface_subtle`, `border`, `text`, `text_muted`, `text_on_accent`, `accent`, `accent_subtle`) that every interactive Block (Button, Checkbox, Toggle, Slider, IntervalSlider, Menu, Textbox) reads its defaults from. A new helper `Makie.derive_colors(; accent, gray, background)` produces a full scheme from three inputs in the style of Radix UI's custom palette tool, so `set_theme!(colors = Makie.derive_colors(accent = :crimson))` recolors all widgets consistently. Mixing happens in Oklab so equal weights produce perceptually-even steps, which means default surfaces shift slightly from the historical literals: surface ≈ 0.92 (was 0.94), border ≈ 0.74 (was 0.80), muted text ≈ 0.50 (unchanged). The `@inherit` macro inside `@Block` now accepts a tuple of symbols (`@inherit((:colors, :accent), default)`) to walk nested theme dicts. The internal `COLOR_ACCENT` and `COLOR_ACCENT_DIMMED` `Ref`s have been removed. [#5628](https://github.com/MakieOrg/Makie.jl/pull/5628)
+- Added a unified `colors` theme block for Block widgets, plus a `Makie.derive_colors(; accent, gray, background)` helper that produces a full scheme from a few inputs. `set_theme!(colors = Makie.derive_colors(accent = :crimson))` recolors every interactive Block consistently — see the Block colors docs. [#5628](https://github.com/MakieOrg/Makie.jl/pull/5628)
+  - Default neutral surfaces shift very slightly from the historical literals; pixel-perfect reference images may need regeneration.
+  - The `@inherit` macro inside `@Block` now accepts a tuple of symbols (`@inherit((:colors, :accent), default)`) to walk nested theme dicts.
 
 ## Breaking
 
