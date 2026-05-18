@@ -23,17 +23,6 @@ function shift_text_spec(::Val, spec::PlotSpec, offset::Point3f)
 end
 
 """
-    is_text_input(::Type) -> Bool
-
-Trait marking single-element inputs the `text` recipe should route through the
-string dispatch path. Built-in for `AbstractString` and `RichText`; downstream
-packages opt in with `Makie.is_text_input(::Type{T}) = true`.
-"""
-is_text_input(::Type) = false
-is_text_input(::Type{<:AbstractString}) = true
-is_text_input(::Type{<:RichText}) = true
-
-"""
     compile_text(handler, src, color, fontsize, lineheight) -> payload | nothing
 
 Engine-side step for a `text_handler`. Define methods dispatching on the input
@@ -93,15 +82,13 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     end
     register_computation!(attr, inputs, [:_positions, :input_text]) do inputs, changed, cached
         a_pos, a_text, args... = values(inputs)
-        # Single arg opting in via `is_text_input` is the text; position comes from the attr.
-        # Always emit a freshly-allocated vector for `:input_text` so ComputePipeline's
-        # `is_same(::Array, ::Array)` pointer-distinctness check can confirm structural
-        # equality on refires triggered by unrelated inputs (e.g. position layout writes).
-        if length(args) == 1 && is_text_input(typeof(args[1]))
-            return ((a_pos,), Ref{Any}([args[1]]))
-        elseif length(args) == 1 && args[1] isa AbstractVector && is_text_input(eltype(args[1]))
-            return ((a_pos,), Ref{Any}(copy(args[1])))
-        elseif args isa Tuple{<:AbstractVector{<:Tuple{<:Any, <:VecTypes}}}
+        # Text always comes from the `text` keyword/attribute and positions from
+        # positional args. The only positional shorthand recognized here is the
+        # `[(text, pos), ...]` form. Always emit a freshly-allocated vector for
+        # `:input_text` so ComputePipeline's `is_same(::Array, ::Array)`
+        # pointer-distinctness check can confirm structural equality on refires
+        # triggered by unrelated inputs (e.g. position layout writes).
+        if args isa Tuple{<:AbstractVector{<:Tuple{<:Any, <:VecTypes}}}
             # [(text, pos), ...] argument
             return ((last.(args[1]),), Ref{Any}(first.(args[1])))
         else # assume position data
