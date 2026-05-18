@@ -25,6 +25,45 @@
     @test data_limits(p4) ≈ Rect3f(Point3f(NaN, 0.25, 0), Vec3f(NaN, 0.5, 0))
 end
 
+@testset "mixed-space data_limits" begin
+    # For mixed per-axis space (e.g. `space = (:data, :relative)`), only the :data
+    # axes contribute to data_limits; non-data axes return NaN so they don't pollute autolimits.
+    # Axes not covered by the tuple default to :data, so `(:data, :relative)` is equivalent
+    # to `(:data, :relative, :data)`.
+    function axes_finite(bb::Rect3)
+        mini = minimum(bb)
+        widt = widths(bb)
+        return ntuple(i -> isfinite(mini[i]) && isfinite(widt[i]), 3)
+    end
+
+    pos = Point2d[(2.0, 0.9), (5.0, 0.1)]
+
+    p_dr = scatter(pos; space = (:data, :relative)).plot
+    @test axes_finite(data_limits(p_dr)) == (true, false, true)
+    @test minimum(data_limits(p_dr))[1] ≈ 2.0
+    @test maximum(data_limits(p_dr))[1] ≈ 5.0
+
+    p_rd = scatter(pos; space = (:relative, :data)).plot
+    @test axes_finite(data_limits(p_rd)) == (false, true, true)
+    @test minimum(data_limits(p_rd))[2] ≈ 0.1
+    @test maximum(data_limits(p_rd))[2] ≈ 0.9
+
+    p_dp = scatter(pos; space = (:data, :pixel)).plot
+    @test axes_finite(data_limits(p_dp)) == (true, false, true)
+
+    # text follows the same rule
+    p_t = text(pos; text = ["a", "b"], space = (:data, :relative)).plot
+    @test axes_finite(data_limits(p_t)) == (true, false, true)
+    @test minimum(data_limits(p_t))[1] ≈ 2.0
+    @test maximum(data_limits(p_t))[1] ≈ 5.0
+
+    # Homogeneous tuple still treated as "all axes are :data" / "no axes are :data".
+    p_data_tuple = scatter(pos; space = (:data, :data)).plot
+    @test axes_finite(data_limits(p_data_tuple)) == (true, true, true)
+    p_rel_tuple = scatter(pos; space = (:relative, :relative)).plot
+    @test axes_finite(data_limits(p_rel_tuple)) == (false, false, true)
+end
+
 @testset "boundingbox(plot)" begin
     cat = FileIO.load(Makie.assetpath("cat.obj"))
 

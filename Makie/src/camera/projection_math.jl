@@ -432,12 +432,12 @@ end
     end
 end
 
-function _project(matrix::Mat4, pos::Vector{<:VecTypes}, clip_planes::Vector{Plane3f}, space::Symbol = :data, dim4::Real = 1)
+function _project(matrix::Mat4, pos::Vector{<:VecTypes}, clip_planes::Vector{Plane3f}, space = :data, dim4::Real = 1)
     return _project(Point3f, matrix, pos::Vector{<:VecTypes}, clip_planes, space, dim4)
 end
 function _project(
         ::Type{OT}, matrix::Mat4, pos::Vector{<:VecTypes}, clip_planes::Vector{Plane3f},
-        space::Symbol = :data, dim4::Real = 1
+        space = :data, dim4::Real = 1
     ) where {OT}
     projected = _project(OT, matrix, pos)
     if is_data_space(space)
@@ -516,6 +516,28 @@ function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool = true)
     end
 end
 
+"""
+    combine_axis_projection_matrices(Mx, My, Mz)
+
+Build a 4x4 projection matrix that uses each axis's individual matrix only for
+its own axis. Each output coordinate `i` is `M_i[i, i] * input[i] + M_i[i, 4]`.
+Off-diagonal entries are zeroed and the homogeneous row is identity, so this
+ignores cross-axis coupling (rotation, perspective). It is exact for
+orthographic, axis-aligned projections (the common 2D `Axis` case).
+
+Used to support `space = (:data, :relative)` style mixed per-axis spaces.
+"""
+function combine_axis_projection_matrices(Mx::Mat4, My::Mat4, Mz::Mat4)
+    # TODO: Consider erroring when input matrices are not translation-scale
+    # matrices, i.e. if they have off-diagonal components
+    return Mat4f(
+        Mx[1, 1], 0, 0, 0,
+        0, My[2, 2], 0, 0,
+        0, 0, Mz[3, 3], 0,
+        Mx[1, 4], My[2, 4], Mz[3, 4], 1,
+    )
+end
+
 function clip_to_space(cam::Camera, space::Symbol)
     if is_data_space(space)
         return inv(cam.projectionview[])
@@ -539,7 +561,7 @@ function get_space(scene::Scene)
 end
 get_space(::AbstractCamera) = :data
 function get_space(plot::Plot)
-    space = to_value(get(plot, :space, :data))::Symbol
+    space = to_value(get(plot, :space, :data))
     # :data should resolve based on the parent scene/camera
     if Makie.is_data_space(space) && (parent_scene(plot) !== nothing)
         return get_space(parent_scene(plot))

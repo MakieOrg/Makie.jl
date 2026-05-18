@@ -200,7 +200,7 @@ function to_model_space(model::Mat4, planes::Vector{<:Plane3})
     return apply_transform.((imodel,), planes)
 end
 
-function unclipped_indices(clip_planes::Vector{<:Plane3}, positions::AbstractArray, space::Symbol)
+function unclipped_indices(clip_planes::Vector{<:Plane3}, positions::AbstractArray, space)
     if Makie.is_data_space(space) && !isempty(clip_planes)
         indices = sizehint!(UInt32[], length(positions))
         for i in eachindex(positions)

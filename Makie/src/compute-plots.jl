@@ -101,7 +101,7 @@ end
 
 # This is data_limits(), not boundingbox()
 # TODO: Should data_limits() be simplified to be purely based on converted arguments?
-function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation, marker_offset)
+function scatter_limits(positions, space, markerspace, scale, offset, rotation, marker_offset)
     if space === markerspace
         bb = Rect3d()
         for (i, p) in enumerate(positions)
@@ -119,10 +119,23 @@ function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, of
             bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v2)
             bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
         end
-        return bb
+        return _mask_non_data_axes(bb, space)
     else
-        return Rect3d(positions)
+        return _mask_non_data_axes(Rect3d(positions), space)
     end
+end
+
+# For mixed-space plots, axes that aren't in :data don't define data limits and must
+# return NaN so they don't constrain axis autolimits. `update_boundingbox` already
+# handles NaN gracefully via `finite_min`/`finite_max`.
+_mask_non_data_axes(bb::Rect3d, space::Symbol) = bb
+function _mask_non_data_axes(bb::Rect3d, space::Tuple)
+    is_data_space(space) && return bb
+    mini = minimum(bb)
+    maxi = maximum(bb)
+    new_mini = ntuple(i -> is_axis_data_space(space, i) ? mini[i] : NaN, 3)
+    new_maxi = ntuple(i -> is_axis_data_space(space, i) ? maxi[i] : NaN, 3)
+    return Rect3d(Vec3d(new_mini), Vec3d(new_maxi) - Vec3d(new_mini))
 end
 
 function meshscatter_data_limits(positions, marker_bb, scales, rotation)

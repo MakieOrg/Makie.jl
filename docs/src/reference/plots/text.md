@@ -20,7 +20,7 @@ f = Figure()
 
 Axis(f[1, 1], aspect = DataAspect(), backgroundcolor = :gray50)
 
-scatter!(Point2f(0, 0))
+scatter!(Point2(0, 0))
 text!(0, 0, text = "center", align = (:center, :center))
 
 circlepoints = [(cos(a), sin(a)) for a in LinRange(0, 2pi, 16)[1:end-1]]
@@ -164,6 +164,52 @@ end
 
 f
 ```
+
+## Mixed per-axis space
+
+`space` can also be set to a tuple of symbols to use a different space per axis, e.g. `space = (:data, :relative)` interprets the x coordinate in `:data` space and the y coordinate in `:relative` space (`0` is the bottom of the viewport, `1` is the top).
+This is the natural way to annotate a [`vlines`](@ref) or [`hlines`](@ref): you know the data coordinate along the line, but the position along the line itself is most easily expressed relative to the viewport.
+A mixed-space plot only contributes to autolimits on the axes that are in `:data`, so the `:relative` (or `:pixel`/`:clip`) coordinates don't pollute the limits.
+
+```@figure
+using Random
+Random.seed!(2)
+n = 200
+y = cumsum(randn(n))
+y .-= (minimum(y) + maximum(y)) / 2
+
+f = Figure()
+ax = Axis(f[1, 1], xgridvisible = false, ygridvisible = false)
+lines!(ax, 1:n, y)
+
+events = [(40, "Event A"), (110, "Event B"), (165, "Event C")]
+for (x, name) in events
+    vlines!(ax, [x]; color = (:black, 0.4))
+    text!(ax, [Point2(x, 1)];
+        text = [name],
+        align = (:right, :top),
+        rotation = π / 2,
+        offset = (0, -4),
+        space = (:data, :relative),
+    )
+end
+
+for (yv, label, color) in (
+        (0, "zero", :crimson),
+        (minimum(y), "min = $(round(minimum(y); digits = 2))", :seagreen),
+    )
+    hlines!(ax, [yv]; color = color)
+    text!(ax, [Point2(4, yv)];
+        text = [label], color = color,
+        align = (:left, :bottom),
+        space = (:pixel, :data),
+    )
+end
+
+f
+```
+
+The mixed-space combiner uses each axis's diagonal projection only, so this is exact for orthographic, axis-aligned cameras (a regular 2D `Axis`). It is not designed for perspective or rotated 3D cameras.
 
 ## MathTeX
 

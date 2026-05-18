@@ -44,9 +44,9 @@ using Makie: is_identity_transform
             return p4d[Vec(1, 2, 3)] / p4d[4]
         end
 
-        # Nodes added: dynamic matrix name, camera matrix, combined matrix, output
+        # Nodes added: camera matrix, combined matrix, output
         run_checks(
-            Symbol(space, :_positions), projected, 4;
+            Symbol(space, :_positions), projected, 3;
             output_space = space
         )
     end
@@ -99,14 +99,24 @@ using Makie: is_identity_transform
     )
 
     for space in [:pixel, :clip, :relative]
-        # Nodes added: dynamic matrix name, camera matrix, combined matrix, output
+        # Nodes added: camera matrix, combined matrix, output
         input_name = Symbol(space, :_positions)
         run_checks(
-            Symbol(:inverse_, input_name), positions3D, 5 + (space == :pixel);
+            Symbol(:inverse_, input_name), positions3D, 4 + (space == :pixel);
             input_name = input_name, output_name = Symbol(:inverse_, input_name),
             input_space = space, output_space = :space
         )
     end
+
+    # Did we not define relative space with 0..1 depth?
+    # TODO: register_projected_positions ignores transform_func, f32convert for
+    # the y :data -> :pixel transformation
+    # mixed_output = Point3f.(1:10, getindex.(p.pixel_positions[], 2), 0) # -10_000?
+    # run_checks(
+    #     :mixed_space_pos, mixed_output, 1;
+    #     input_space = (:pixel, :data, :relative),
+    #     output_space = :pixel, output_name = :mixed_space_pos,
+    # )
 
 
     @testset "register_projected_positions! with float32convert changes" begin

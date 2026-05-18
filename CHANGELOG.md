@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `space` can now be set to a tuple of symbols (e.g. `space = (:data, :relative)`) to use a different space per axis. Useful for placing annotations on `vlines`/`hlines` where one coordinate is meaningful in data space and the other is best given relative to the viewport. Mixed-space plots only contribute to autolimits on their `:data` axes. The mixed-space combiner uses each axis's diagonal projection only and is intended for orthographic, axis-aligned cameras (typical 2D `Axis`). [#5612](https://github.com/MakieOrg/Makie.jl/pull/5612)
 - Reworked `Textbox` with selections, multi-cursor, copy / cut / paste, and word / line navigation [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
 - A trailing `'\n'` in a `text!` string now contributes a full empty line to the layout and bounding box (previously `"abc\n"` was laid out identically to `"abc"`) [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
 - Added decade-aware automatic ticks for `pseudolog10` and `Symlog10` axes via new `PseudologTicks` and `SymlogTicks` types. `LogTicks` is no longer accepted with these scales (it placed ticks at wrong positions). `Symlog10` is now a callable struct exposing its `lower`/`upper`/`linscale` parameters. Closes [#5270](https://github.com/MakieOrg/Makie.jl/issues/5270) [#5625](https://github.com/MakieOrg/Makie.jl/pull/5625)

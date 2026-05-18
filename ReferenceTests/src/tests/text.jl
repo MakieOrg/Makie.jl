@@ -666,3 +666,36 @@ end
     )
     f
 end
+
+@reference_test "mixed-space annotations" begin
+    f = Figure(size = (600, 250))
+
+    # vline annotation: x in :data, y in :relative
+    ax1 = Axis(f[1, 1], title = "(:data, :relative)", limits = (0 .. 10, -2 .. 2))
+    vlines!(ax1, [3.5]; color = :crimson)
+    scatter!(ax1, [Point2f(3.5, 0.95)]; color = :crimson, markersize = 12, space = (:data, :relative))
+    text!(
+        ax1, [Point2f(3.5, 0.92)]; text = ["x = 3.5"],
+        align = (:center, :top), space = (:data, :relative),
+    )
+
+    # hline annotation (reverse order): x in :relative, y in :data
+    ax2 = Axis(f[1, 2], title = "(:relative, :data)", limits = (0 .. 10, -2 .. 2))
+    hlines!(ax2, [1.0]; color = :seagreen)
+    scatter!(ax2, [Point2f(0.05, 1.0)]; color = :seagreen, markersize = 12, space = (:relative, :data))
+    text!(
+        ax2, [Point2f(0.07, 1.0)]; text = ["y = 1"],
+        align = (:left, :center), space = (:relative, :data),
+    )
+
+    # vline annotation with x in :data, y in :pixel (offset from the bottom)
+    ax3 = Axis(f[1, 3], title = "(:data, :pixel)", limits = (0 .. 10, -2 .. 2))
+    vlines!(ax3, [7.0]; color = :navy)
+    scatter!(ax3, [Point2f(7.0, 25.0)]; color = :navy, markersize = 12, space = (:data, :pixel))
+    text!(
+        ax3, [Point2f(7.0, 40.0)]; text = ["x = 7"],
+        align = (:center, :bottom), space = (:data, :pixel),
+    )
+
+    f
+end
