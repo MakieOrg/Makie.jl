@@ -56,7 +56,7 @@ function register_projected_positions!(
         scene_graph::ComputePipeline.ComputeGraph,
         plot_graph::ComputePipeline.ComputeGraph,
         ::Type{OT} = Point3f;
-        input_space::Symbol = :space,
+        input_space = :space,
         output_space::Symbol = :pixel,
         input_name::Symbol = :positions,
         output_name::Symbol = Symbol(output_space, :_, input_name),
@@ -219,7 +219,7 @@ function register_positions_projected!(
         scene_graph::ComputePipeline.ComputeGraph,
         plot_graph::ComputePipeline.ComputeGraph,
         ::Type{OT} = Point3f;
-        input_space::Symbol = :space,
+        input_space = :space,
         output_space::Symbol = :pixel,
         input_name::Symbol = :positions_transformed_f32c,
         output_name::Symbol = Symbol(output_space, :_positions),

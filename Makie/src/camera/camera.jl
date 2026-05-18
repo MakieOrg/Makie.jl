@@ -465,14 +465,34 @@ e.g. `:data_to_pixel` or `:space_to_pixel`. `:space_to_clip`, `:space_to_markers
 and `:markerspace_to_clip` will be renamed to `projectionview`, `preprojection` and
 `projectionview` respectively, to avoid duplicating nodes.
 """
-function register_camera_matrix!(plot, input::Union{Symbol, Computed}, output::Union{Symbol, Computed})
+function register_camera_matrix!(plot, input::Union{Tuple, Symbol, Computed}, output::Union{Tuple, Symbol, Computed})
     scene = parent_scene(plot)
 
     getname(x::Computed) = x.name::Symbol
     getname(x::Symbol) = x
+    getname(x::Tuple) = x
 
     return register_camera_matrix!(scene.compute, plot.attributes, getname(input), getname(output))
 end
+
+function register_camera_matrix!(
+        scene_graph::ComputePipeline.ComputeGraph, plot_graph::ComputePipeline.ComputeGraph,
+        _input::Tuple, output::Symbol
+    )
+    input = to_ndim(NTuple{3, Symbol}, _input, :data)
+
+    if any(s -> s === :space || s === :markerspace, input)
+        error(":space and :markerspace must not be used in a mixed (tuple) space: $input")
+    end
+
+    matrix_name = Symbol(join(input, '_') * "_to_$output")
+
+    inputs, callback = collect_mixed_inputs(scene_graph, input, output)
+    map!(callback, plot_graph, inputs, matrix_name)
+
+    return matrix_name
+end
+
 function register_camera_matrix!(
         scene_graph::ComputePipeline.ComputeGraph, plot_graph::ComputePipeline.ComputeGraph,
         input::Symbol, output::Symbol
