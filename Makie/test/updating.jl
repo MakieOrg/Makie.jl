@@ -126,6 +126,18 @@ end
     p.kwargs = Attributes(color = :blue, linewidth = 1)
     @test p.plots[2].color[] == to_color(:blue)
     @test p.plots[2].linewidth[] == 1
+
+    f, a, p = passthroughtest(1:5, 1:5, kwargs = (color = :red,))
+    @test p.kwargs.color[] == :red
+    @test p.kwargs.linewidth[] == 7
+
+    f, a, p = passthroughtest(1:5, 1:5, kwargs = (linewidth = 1,))
+    @test p.kwargs.color[] == :cyan
+    @test p.kwargs.linewidth[] == 1
+
+    f, a, p = passthroughtest(1:5, 1:5, kwargs = (color = :red, linewidth = 1))
+    @test p.kwargs.color[] == :red
+    @test p.kwargs.linewidth[] == 1
 end
 
 Makie.@recipe PassthroughTest1 begin
