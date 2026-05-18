@@ -369,42 +369,23 @@ attribute at the end of the path. Used by `@inherit((:a, :b), default)` and
 (e.g. the `colors` block). The form without a default errors if the key path
 is missing from both dicts.
 """
-function _inherit_nested(scene_attrs, current_theme, keys_path::Tuple, default)
-    for dict in (scene_attrs, current_theme)
-        cur = dict
-        ok = true
-        for k in keys_path
-            if cur isa Union{Attributes, AbstractDict} && haskey(cur, k)
-                cur = cur[k]
-            else
-                ok = false
-                break
-            end
-        end
-        ok && return to_value(cur)
-    end
-    return default
-end
+_walk_nested(cur, ::Tuple{}) = Some(to_value(cur))
+_walk_nested(cur, keys_path::Tuple) = (cur isa Union{Attributes, AbstractDict} && haskey(cur, keys_path[1])) ?
+    _walk_nested(cur[keys_path[1]], Base.tail(keys_path)) : nothing
 
-function _inherit_nested(scene_attrs, current_theme, keys_path::Tuple)
-    for dict in (scene_attrs, current_theme)
-        cur = dict
-        ok = true
-        for k in keys_path
-            if cur isa Union{Attributes, AbstractDict} && haskey(cur, k)
-                cur = cur[k]
-            else
-                ok = false
-                break
-            end
-        end
-        ok && return to_value(cur)
-    end
-    error(
+const _NO_DEFAULT = Ref{Any}()
+
+function _inherit_nested(scene_attrs, current_theme, keys_path::Tuple, default = _NO_DEFAULT)
+    found = _walk_nested(scene_attrs, keys_path)
+    found === nothing || return something(found)
+    found = _walk_nested(current_theme, keys_path)
+    found === nothing || return something(found)
+    default === _NO_DEFAULT && error(
         "@inherit could not resolve nested theme key ", keys_path,
         " — the theme is missing an expected entry. Restore the default ",
         "by calling `set_theme!()` or merge the missing values back in."
     )
+    return default
 end
 
 function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
@@ -436,6 +417,7 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
                     end
                 end
             elseif keyarg isa Expr && keyarg.head === :tuple &&
+                    !isempty(keyarg.args) &&
                     all(a -> a isa QuoteNode, keyarg.args)
                 keys_tuple = Expr(:tuple, keyarg.args...)
                 d = if has_default
