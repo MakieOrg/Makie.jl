@@ -30,22 +30,8 @@ const DEFAULT_PALETTES = generate_default_palette()
 
 const DEFAULT_ACCENT_COLOR = RGBf((79, 122, 214) ./ 255...)
 
-# sRGB-weighted relative luminance, used to decide light vs. dark behavior.
+# Rec. 709 / sRGB luminance coefficients.
 _relative_luminance(c) = 0.2126f0 * red(c) + 0.7152f0 * green(c) + 0.0722f0 * blue(c)
-
-# Perceptually-uniform mix in Oklab so that equal weights produce equal
-# perceived steps between the two poles, even when one of them is a saturated
-# accent or a non-neutral gray.
-function _mix_oklab(c1::RGBf, c2::RGBf, t::Real)
-    l1 = convert(Colors.Oklab, c1)
-    l2 = convert(Colors.Oklab, c2)
-    m = Colors.Oklab(
-        (1 - t) * l1.l + t * l2.l,
-        (1 - t) * l1.a + t * l2.a,
-        (1 - t) * l1.b + t * l2.b,
-    )
-    return RGBf(convert(Colors.RGB, m))
-end
 
 """
     derive_colors(; accent = Makie.DEFAULT_ACCENT_COLOR,
@@ -82,27 +68,23 @@ function derive_colors(;
     )
     bg = RGBf(to_color(background))
     a = RGBf(to_color(accent))
-    g = if gray === automatic
-        _relative_luminance(bg) >= 0.5f0 ? RGBf(0, 0, 0) : RGBf(1, 1, 1)
-    else
-        RGBf(to_color(gray))
-    end
+    auto_pole = _relative_luminance(bg) >= 0.5f0 ? RGBf(0, 0, 0) : RGBf(1, 1, 1)
+    g = RGBf(to_color(default_automatic(gray, auto_pole)))
 
-    # Text drawn on top of an accent fill needs to contrast with the accent
-    # itself, not with the page background; pick black or white by accent
-    # luminance regardless of the chosen gray pole.
+    # Text on an accent fill must contrast with the accent itself, not with the
+    # page background — pick by accent luminance regardless of `gray`.
     text_on_accent = _relative_luminance(a) >= 0.5f0 ? RGBf(0, 0, 0) : RGBf(1, 1, 1)
 
     return (
         background = bg,
-        surface = _mix_oklab(bg, g, 0.06),
-        surface_subtle = _mix_oklab(bg, g, 0.03),
-        border = _mix_oklab(bg, g, 0.2),
+        surface = lerp_oklab(bg, g, 0.06),
+        surface_subtle = lerp_oklab(bg, g, 0.03),
+        border = lerp_oklab(bg, g, 0.2),
         text = g,
-        text_muted = _mix_oklab(bg, g, 0.4),
+        text_muted = lerp_oklab(bg, g, 0.4),
         text_on_accent = text_on_accent,
         accent = a,
-        accent_subtle = _mix_oklab(bg, a, 0.45),
+        accent_subtle = lerp_oklab(bg, a, 0.45),
     )
 end
 
@@ -117,7 +99,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         italic = "TeX Gyre Heros Makie Italic",
         bold_italic = "TeX Gyre Heros Makie Bold Italic",
     ),
-    colors = Attributes(pairs(DEFAULT_COLORS)...),
+    colors = Attributes(DEFAULT_COLORS),
     fontsize = 14,
     textcolor = :black,
     padding = Vec3f(0.05),
