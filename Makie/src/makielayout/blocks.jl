@@ -359,30 +359,75 @@ function _attribute_list(T)
     return join(("`$k`" for k in ks), ", ")
 end
 
+"""
+    _inherit_nested(scene_attrs, current_theme, keys_path::NTuple, default)
+    _inherit_nested(scene_attrs, current_theme, keys_path::NTuple)
+
+Walks `scene_attrs` and then `current_theme` along `keys_path` to find the
+attribute at the end of the path. Used by `@inherit((:a, :b), default)` and
+`@inherit((:a, :b))` to support reading values out of nested theme dicts
+(e.g. the `colors` block). The form without a default errors if the key path
+is missing from both dicts.
+"""
+_walk_nested(cur, ::Tuple{}) = Some(to_value(cur))
+_walk_nested(cur, keys_path::Tuple) = (cur isa Union{Attributes, AbstractDict} && haskey(cur, keys_path[1])) ?
+    _walk_nested(cur[keys_path[1]], Base.tail(keys_path)) : nothing
+
+const _NO_DEFAULT = Ref{Any}()
+
+function _inherit_nested(scene_attrs, current_theme, keys_path::Tuple, default = _NO_DEFAULT)
+    found = _walk_nested(scene_attrs, keys_path)
+    found === nothing || return something(found)
+    found = _walk_nested(current_theme, keys_path)
+    found === nothing || return something(found)
+    default === _NO_DEFAULT && error(
+        "@inherit could not resolve nested theme key ", keys_path,
+        " — the theme is missing an expected entry. Restore the default ",
+        "by calling `set_theme!()` or merge the missing values back in."
+    )
+    return default
+end
+
 function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
 
     exprs = map(attrs) do a
 
         d = a.default
         if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
-            if length(d.args) != 4
-                error("@inherit works with exactly 2 arguments, expression was $d")
+            if !(length(d.args) in (3, 4))
+                error("@inherit works with 1 or 2 arguments, expression was $d")
             end
-            if !(d.args[3] isa QuoteNode)
-                error("Argument 1 of @inherit must be a :symbol, got $(d.args[3])")
-            end
-            key, default = d.args[3:4]
-            # first check scene theme
-            # then current_default_theme
-            # then default value
-            d = quote
-                if haskey($sceneattrsym, $key)
-                    to_value($sceneattrsym[$key]) # only use value of theme entry
-                elseif haskey($curthemesym, $key)
-                    to_value($curthemesym[$key]) # only use value of theme entry
-                else
-                    $default
+            keyarg = d.args[3]
+            has_default = length(d.args) == 4
+            # Accept either a single `:symbol` or a tuple of symbols `(:a, :b)`
+            # to walk nested theme dicts (e.g. `@inherit((:colors, :accent))`).
+            if keyarg isa QuoteNode
+                if !has_default
+                    error("@inherit(:key) requires a default value")
                 end
+                key = keyarg
+                default = d.args[4]
+                d = quote
+                    if haskey($sceneattrsym, $key)
+                        to_value($sceneattrsym[$key])
+                    elseif haskey($curthemesym, $key)
+                        to_value($curthemesym[$key])
+                    else
+                        $default
+                    end
+                end
+            elseif keyarg isa Expr && keyarg.head === :tuple &&
+                    !isempty(keyarg.args) &&
+                    all(a -> a isa QuoteNode, keyarg.args)
+                keys_tuple = Expr(:tuple, keyarg.args...)
+                d = if has_default
+                    default = d.args[4]
+                    :(_inherit_nested($sceneattrsym, $curthemesym, $keys_tuple, $default))
+                else
+                    :(_inherit_nested($sceneattrsym, $curthemesym, $keys_tuple))
+                end
+            else
+                error("Argument 1 of @inherit must be a :symbol or a tuple of symbols, got $keyarg")
             end
         end
 

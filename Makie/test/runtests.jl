@@ -36,6 +36,7 @@ end
         include("isolated/texture_atlas.jl")
         include("isolated/datetime_ticks.jl")
         include("isolated/argument_docs.jl")
+        include("isolated/derive_colors.jl")
     end
 
     @testset "Plots" begin
