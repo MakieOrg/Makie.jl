@@ -43,3 +43,13 @@ end
         @test !isempty(p.plots[1][1][])
     end
 end
+
+@testset "StatsBase.Histogram" begin
+    using StatsBase
+    h = fit(Histogram, rand(100), 0:0.1:1)
+    @test_nowarn plot(h)
+    h = fit(Histogram, rand(100), [0, 0.1, 1.0])
+    @test_nowarn plot(h)
+    h = fit(Histogram, (rand(100), rand(100)), ([0, 0.1, 1.0], [0, 0.9, 1.0]))
+    @test_nowarn plot(h)
+end
