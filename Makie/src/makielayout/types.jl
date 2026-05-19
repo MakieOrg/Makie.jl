@@ -1722,8 +1722,6 @@ end
         placeholder = "Click to edit..."
         "The currently stored string."
         stored_string = nothing
-        "The currently displayed string (for internal use)."
-        displayed_string = nothing
         "Controls if the displayed text is reset to the stored text when defocusing the textbox without submitting."
         reset_on_defocus = false
         "Controls if the textbox is defocused when a string is submitted."

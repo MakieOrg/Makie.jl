@@ -10,13 +10,9 @@ function initialize_block!(tbox::Textbox)
     roundedrectpoints = lift(roundedrectvertices, topscene, scenearea, tbox.cornerradius, tbox.cornersegments)
 
     # Initial displayed_string. Empty means "show the placeholder."
-    if isnothing(tbox.displayed_string[])
-        tbox.displayed_string[] = isnothing(tbox.stored_string[]) ? "" : tbox.stored_string[]
-    end
+    initial_string = isnothing(tbox.stored_string[]) ? "" : tbox.stored_string[]
 
-    displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator, ignore_equal_values = true) do str, validator
-        return validate_textbox(str, validator)::Bool
-    end
+    displayed_is_valid = Observable(validate_textbox(initial_string, tbox.validator[]))
 
     hovering = Observable(false)
 
@@ -54,10 +50,13 @@ function initialize_block!(tbox::Textbox)
     )
 
     # ── Text colour: real text vs placeholder ────────────────────────────────
-    realtextcolor = lift(topscene, tbox.textcolor, tbox.textcolor_placeholder, tbox.focused, tbox.displayed_string, tbox.stored_string) do tc, tcph, foc, disp, stored
+    realtextcolor = lift(
+        topscene, tbox.textcolor, tbox.textcolor_placeholder, tbox.focused,
+        displayed_is_valid
+    ) do tc, tcph, foc, valid
         # The text reads as "active" (regular color) when focused, or when the
         # displayed string already matches what's stored.
-        return foc || disp == stored ? to_color(tc) : to_color(tcph)
+        return foc || valid ? to_color(tc) : to_color(tcph)
     end
 
     # Position the editor at the top-left of the inner area, accounting for textpadding.
@@ -70,7 +69,7 @@ function initialize_block!(tbox::Textbox)
     # Placeholder is rendered as a separate text! that's visible whenever
     # the editor has no content. It stays visible after focus and only goes
     # away once the user types the first character.
-    placeholder_visible = lift(s -> isempty(s), tbox.displayed_string)
+    placeholder_visible = Observable(isempty(initial_string))
     placeholder_plot = text!(
         scene, text_origin; text = tbox.placeholder,
         align = (:left, :top), color = tbox.textcolor_placeholder,
@@ -80,7 +79,8 @@ function initialize_block!(tbox::Textbox)
 
     # ── The editable text itself ─────────────────────────────────────────────
     et = editabletext!(
-        scene, tbox.displayed_string;
+        scene,
+        initial_string,
         position = text_origin,
         align = (:left, :top),
         focused = tbox.focused,
@@ -101,14 +101,11 @@ function initialize_block!(tbox::Textbox)
     )
     setfield!(tbox, :editor, et)
 
-    # Sync displayed_string ↔ the editor's text. Passing the Observable to the
-    # recipe wires the forward direction (`tb.displayed_string` → editor text);
-    # this listener carries internal edits back out.
-    on(et.text) do t
-        if tbox.displayed_string[] != t
-            tbox.displayed_string[] = t
-        end
-        return
+    on(scene, et.text) do text
+        valid = validate_textbox(text, tbox.validator[])::Bool
+        displayed_is_valid[] = valid
+        placeholder_visible[] = isempty(text)
+        return Consume(false)
     end
 
     # ── Autosize ─────────────────────────────────────────────────────────────
@@ -117,14 +114,17 @@ function initialize_block!(tbox::Textbox)
     # avoids the layout-feedback cycle (autosize → scenearea → text_origin →
     # text plot bbox) that listening directly to the bbox would cause.
     text_plot = only(p for p in et.plots if p isa Makie.Text)
-    onany(topscene, tbox.displayed_string, tbox.placeholder, tbox.fontsize, tbox.font, tbox.textpadding) do disp, ph, fs, _fnt, padding
+    onany(
+        topscene, placeholder_visible, tbox.editor.arg1, tbox.placeholder,
+        tbox.fontsize, tbox.font, tbox.textpadding, update = true
+    ) do placeholder_visible, current_str, ph, fs, _fnt, padding
         l, r, b, t = padding
         # Width from the rendered text bbox (placeholder while empty, real text
         # once typed). Height is computed from line count + font metrics so an
         # empty trailing line (`disp` ends with `\n`) still grows the textbox.
         # Using a position-independent bbox here avoids registering a second
         # projected pipeline and the layout feedback cycle.
-        plot = isempty(disp) ? placeholder_plot : text_plot
+        plot = placeholder_visible ? placeholder_plot : text_plot
         bbs = Makie.fast_string_boundingboxes(plot)
         text_w = if isempty(bbs) || !isfinite(minimum(bbs[1])[1])
             Float32(fs) * 0.5f0
@@ -132,7 +132,7 @@ function initialize_block!(tbox::Textbox)
             Float32(widths(bbs[1])[1])
         end
         # n_lines counts visible lines including a trailing empty line.
-        sample = isempty(disp) ? ph : disp
+        sample = something(placeholder_visible ? ph : current_str, "")
         n_lines = count(==('\n'), sample) + 1
         font_obj = plot.selected_font[]::Makie.NativeFont
         line_h = Float32(font_obj.height / font_obj.units_per_EM * fs)
@@ -241,14 +241,13 @@ function initialize_block!(tbox::Textbox)
     end
 
     # Trigger initial autosize and bbox so the layout settles.
-    notify(tbox.displayed_string)
     tbox.layoutobservables.suggestedbbox[] = tbox.layoutobservables.suggestedbbox[]
 
     return tbox
 end
 
 function _reset_to_stored!(tbox::Textbox)
-    tbox.displayed_string[] = isnothing(tbox.stored_string[]) ? "" : tbox.stored_string[]
+    tbox.editor.arg1 = isnothing(tbox.stored_string[]) ? "" : tbox.stored_string[]
     return
 end
 
@@ -273,8 +272,8 @@ is_allowed(char, restriction::Function) = restriction(char)::Bool
 Resets the stored_string of the given `Textbox` to `nothing` without triggering listeners, and resets the `Textbox` to the `placeholder` text.
 """
 function reset!(tb::Textbox)
-    tb.stored_string.val = nothing
-    tb.displayed_string = ""
+    tb.editor.arg1 = ""
+    tb.stored_string = string
     defocus!(tb)
     return nothing
 end
@@ -296,7 +295,7 @@ end
 Sets the stored_string of the given `Textbox` to `string`, ignoring the possibility that it might not pass the validator function.
 """
 function unsafe_set!(tb::Textbox, string::String)
-    tb.displayed_string = string
+    tb.editor.arg1 = string
     tb.stored_string = string
     return nothing
 end
