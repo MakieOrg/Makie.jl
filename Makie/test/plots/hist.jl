@@ -43,3 +43,9 @@ end
         @test !isempty(p.plots[1][1][])
     end
 end
+
+@testset "StatsBase.Histogram recipes" begin
+    using StatsBase
+    h = fit(Histogram, rand(100), [0, 0.1, 0.9, 1])
+    f, a, p = @test_nowarn stairs(h)
+end
