@@ -595,7 +595,8 @@ function tight_ticklabel_spacing!(la::LineAxis)
 end
 
 
-iswhitespace(str) = match(r"^\s*$", str) !== nothing
+iswhitespace(str::AbstractString) = match(r"^\s*$", String(str)) !== nothing
+iswhitespace(_) = false
 
 function Base.delete!(la::LineAxis)
     for (_, d) in la.elements
