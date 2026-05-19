@@ -3,6 +3,7 @@
 Arrows are split into two plot types, `arrows2d` and `arrows3d`.
 They differ in the arrow markers they create - `arrows2d` creates 2D arrows and `arrows3d` creates 3D arrows.
 Both can be used with 2D and 3D coordinates.
+This type of plot is sometimes also called a quiver plot.
 
 ```@shortdocs; canonical=false
 arrows2d

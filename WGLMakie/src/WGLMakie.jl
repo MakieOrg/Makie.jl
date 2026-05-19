@@ -23,7 +23,6 @@ using GeometryBasics: StaticVector
 
 import Makie.FileIO
 using Makie: get_texture_atlas, SceneSpace, Pixel, Automatic
-using Makie: attribute_per_char, layout_text
 using Makie: MouseButtonEvent, KeyEvent
 using Makie: apply_transform, transform_func_obs
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
@@ -36,6 +35,7 @@ const WGL = ES6Module(joinpath(@__DIR__, "javascript", "WGLMakie.js"))
 
 include("html-widgets.jl")
 include("shader-abstractions.jl")
+include("spinner.jl")
 include("display.jl")
 include("three_plot.jl")
 include("serialization.jl")

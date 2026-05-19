@@ -8,7 +8,7 @@ The StatPlots.jl package is licensed under the MIT "Expat" License:
 """
     boxplot(x, y; kwargs...)
 
-Draw a Tukey style boxplot.The boxplot has 3 components:
+Draw a Tukey style boxplot. The boxplot has 3 components:
 - a `crossbar` spanning the interquartile (IQR) range (values from the 25th to
 the 75% percentile) with a midline marking the median
 - an `errorbar` including values from the interquartile range extended by `range * iqr`

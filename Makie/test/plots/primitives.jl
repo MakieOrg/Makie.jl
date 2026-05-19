@@ -96,6 +96,16 @@ end
     @test sc.colormap[] == :jet
 end
 
+@testset "adaptive colorrange one end" begin
+    colorrange = (30, Makie.automatic)
+    f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = colorrange)
+    @test sl.scaled_colorrange[] == Vec2f(30, 100)
+    f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (Makie.automatic, 30))
+    @test sl.scaled_colorrange[] == Vec2f(1, 30)
+    f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (Makie.automatic, Makie.automatic))
+    @test sl.scaled_colorrange[] == Vec2f(1, 100)
+end
+
 @recipe MaybeDict (data,) begin
     arg = nothing
 end
@@ -169,5 +179,17 @@ end
         update!(p, arg1 = fill(Vec2f(10), 5), arg2 = Point2f.(1:5), text = string.(1:5))
         boundingbox(p.plots[1]) # shouldn't error
         @test length(p.plots[2].plots) == 5
+    end
+
+    @testset "empty string at viewport center (no StackOverflow)" begin
+        # Empty strings produce zero-size bounding boxes. When such a label
+        # sits at the viewport center, the initial bias in
+        # calculate_best_offsets! used to call normalize(zero_vector) which
+        # produced NaN offsets. Combined with NaN != NaN defeating the
+        # ComputePipeline convergence check, this caused infinite recursion.
+        fig, ax, plt = scatter([1.0, 2.0, 3.0], [1.0, 2.0, 3.0])
+        # This must not throw a StackOverflowError
+        p = annotation!(ax, [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], text = ["A", "", "C"])
+        @test !any(x -> any(isnan, x), p.offsets[])
     end
 end

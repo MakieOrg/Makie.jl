@@ -177,12 +177,12 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         # isosurfaces
         # GLMakie texture size is typically limited 8192+
         # WGLMakie texture size may be limited to 4096+
-        N = ceil(Int, 2.5 * (max - min) / isorange)
-        if N > 4096
+        N_raw = ceil(Int, 2.5 * (max - min) / isorange)
+        if N_raw > 4096
             min_isorange = (max - min) / 4096
             @warn "Isorange maybe too small to resolve iso surfaces. Try `isorange > $min_isorange`"
         end
-        N = clamp(N, 100, 4096)
+        N = clamp(N_raw, 100, 4096)
 
         clip_range = tight_colorrange[1] - isorange .. tight_colorrange[2] + isorange
         return map(1:N) do i
