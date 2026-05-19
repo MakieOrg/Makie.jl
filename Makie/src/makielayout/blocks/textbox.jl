@@ -50,14 +50,7 @@ function initialize_block!(tbox::Textbox)
     )
 
     # ── Text colour: real text vs placeholder ────────────────────────────────
-    realtextcolor = lift(
-        topscene, tbox.textcolor, tbox.textcolor_placeholder, tbox.focused,
-        displayed_is_valid
-    ) do tc, tcph, foc, valid
-        # The text reads as "active" (regular color) when focused, or when the
-        # displayed string already matches what's stored.
-        return foc || valid ? to_color(tc) : to_color(tcph)
-    end
+    realtextcolor = Observable(to_color(:red))
 
     # Position the editor at the top-left of the inner area, accounting for textpadding.
     text_origin = lift(topscene, scenearea, tbox.textpadding) do area, padding
@@ -106,6 +99,16 @@ function initialize_block!(tbox::Textbox)
         displayed_is_valid[] = valid
         placeholder_visible[] = isempty(text)
         return Consume(false)
+    end
+
+    map!(
+        topscene, realtextcolor,
+        tbox.textcolor, tbox.textcolor_placeholder, tbox.focused,
+        et.arg1, tbox.stored_string
+    ) do tc, tcph, foc, displayed, stored
+        # The text reads as "active" (regular color) when focused, or when the
+        # displayed string already matches what's stored.
+        return foc || displayed == stored ? to_color(tc) : to_color(tcph)
     end
 
     # ── Autosize ─────────────────────────────────────────────────────────────

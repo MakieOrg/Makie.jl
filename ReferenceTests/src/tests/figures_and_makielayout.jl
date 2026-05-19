@@ -732,6 +732,7 @@ end
     Makie.focus!(tb1)
     click(e, 297, 221)
     Makie.defocus!(tb1)
+    @test tb1.stored_string[] == "1234567890qwertyuiop"
 
     tb2 = Makie.Textbox(f[2, 1], width = 100)
     Makie.set!(tb2, "1234567890qwertyuiop")
@@ -739,6 +740,10 @@ end
     Makie.focus!(tb2)
     send(e, Keyboard.backspace)
     Makie.defocus!(tb2)
+    @test tb2.stored_string[] == "1234567890qwertyuiop"
+    # should defocus!() or clicking away really not commit the change?
+    # send(e, Keyboard.enter)
+    # @test tb2.stored_string[] == "1234567890qwertyuio"
 
     tb3 = Makie.Textbox(f[3, 1], width = 100)
     Makie.set!(tb3, "1234567890qwertyuiop")
@@ -748,6 +753,9 @@ end
     send(e, Keyboard.left)
     send(e, Keyboard.left)
     Makie.defocus!(tb3)
+    @test tb3.stored_string[] == "1234567890qwertyuiop"
+    # send(e, Keyboard.enter)
+    # @test tb3.stored_string[] == "1234567890qwertyuiop"
 
     tb4 = Makie.Textbox(f[4, 1], width = 100)
     Makie.set!(tb4, "1234567890qwertyuiop")
@@ -758,6 +766,9 @@ end
         send(e, Keyboard.backspace)
     end
     Makie.defocus!(tb4)
+    @test tb4.stored_string[] == "1234567890qwertyuiop"
+    # send(e, Keyboard.enter)
+    # @test tb4.stored_string[] == "12qwertyuiop"
 
     f
 end

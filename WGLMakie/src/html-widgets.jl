@@ -385,7 +385,7 @@ end
 function replace_widget!(textbox::Makie.Textbox)
     Makie.hide!(textbox)
     scene = Makie.rootparent(textbox.blockscene)
-    initial_value = textbox.displayed_string[]
+    initial_value = textbox.editor.arg1[]
     validator = textbox.validator[]
 
     # Extract Makie styling attributes
@@ -446,7 +446,7 @@ function replace_widget!(textbox::Makie.Textbox)
     end
 
     stored_string_obs = create_synchronized_input_observable(textbox.stored_string)
-    displayed_string_obs = create_synchronized_input_observable(textbox.displayed_string)
+    displayed_string_obs = create_synchronized_input_observable(textbox.editor.arg1)
 
     textbox_input = DOM.input(;
         input_attrs...,
