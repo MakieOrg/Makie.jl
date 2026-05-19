@@ -455,7 +455,18 @@ function set_screen_visibility!(screen::Screen, visible::Bool)
         error(unimplemented_error)
     end
 
-    return set_screen_visibility!(screen.glscreen, visible)
+    set_screen_visibility!(screen.glscreen, visible)
+    if visible
+        macos_set_dock_visible(true)
+    else
+        any_visible = any(ALL_SCREENS) do s
+            s !== screen && s.owns_glscreen &&
+                GLAbstraction.context_alive(s.glscreen) &&
+                GLFW.GetWindowAttrib(s.glscreen, GLFW.VISIBLE) != 0
+        end
+        any_visible || macos_set_dock_visible(false)
+    end
+    return
 end
 
 function set_screen_visibility!(nw::GLFW.Window, visible::Bool)

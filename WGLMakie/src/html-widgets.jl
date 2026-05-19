@@ -436,7 +436,11 @@ function replace_widget!(textbox::Makie.Textbox)
     )
 
     # Add number-specific attributes for numeric validators
-    input_attrs = Dict(:type => input_type, :value => string(initial_value))
+    input_attrs = Dict(
+        :type => input_type,
+        :value => string(initial_value),
+        :placeholder => textbox.placeholder[],
+    )
     if input_type == "number"
         input_attrs[:step] = "any"  # Allow any decimal precision
     end

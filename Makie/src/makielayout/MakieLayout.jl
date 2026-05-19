@@ -2,7 +2,6 @@ import Format
 import Animations
 using GridLayoutBase
 using GridLayoutBase: GridSubposition
-import Showoff
 
 const FPS = Observable(30)
 const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))
@@ -42,7 +41,7 @@ export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!, reset_limits!, rlims!, thetalims!
-export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks, AngularTicks
+export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks, AngularTicks, PseudologTicks, SymlogTicks
 export hidexdecorations!, hideydecorations!, hidezdecorations!, hidedecorations!, hidespines!
 export hiderdecorations!, hidethetadecorations!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!

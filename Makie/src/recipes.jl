@@ -409,12 +409,24 @@ macro recipe(Tsym::Symbol, attrblock)
     return create_recipe_expr(Tsym, nothing, attrblock)
 end
 
-macro recipe(Tsym::Symbol, args, attrblock)
-    return create_recipe_expr(Tsym, args, attrblock)
+"""
+    @recipe_internal MyPlot ...
+
+Like `@recipe`, but does not `export` the generated `MyPlot` type alias or the
+`myplot` / `myplot!` constructors. Use for recipes whose API is still being
+worked out and which should only be reachable via the qualified `Makie.…` form
+until they stabilise.
+"""
+macro recipe_internal(Tsym::Symbol, attrblock)
+    return create_recipe_expr(Tsym, nothing, attrblock, false)
 end
 
-macro recipe(Tsym::Symbol, args, attrblock, _export)
-    return create_recipe_expr(Tsym, args, attrblock, _export)
+macro recipe_internal(Tsym::Symbol, args, attrblock)
+    return create_recipe_expr(Tsym, args, attrblock, false)
+end
+
+macro recipe(Tsym::Symbol, args, attrblock)
+    return create_recipe_expr(Tsym, args, attrblock)
 end
 
 function types_for_plot_arguments end
@@ -509,7 +521,7 @@ function argument_docs end
 # a @recipe, another empty `## Arguments` section will be added to the final
 # docstring. Any changes from the user-written docstring will not make it into
 # the new docstring. (Until Julia restart)
-function create_recipe_expr(Tsym, args, attrblock, _export = true)
+function create_recipe_expr(Tsym, args, attrblock, export_recipe = true)
     funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
     funcname! = esc(funcname!_sym)
@@ -604,7 +616,7 @@ function create_recipe_expr(Tsym, args, attrblock, _export = true)
         @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Use `?$($(string(funcname_sym)))` for detailed documentation." $funcname!_sym
     end
 
-    if _export
+    if export_recipe
         push!(q.args, :(export $PlotType, $funcname, $funcname!))
     end
 

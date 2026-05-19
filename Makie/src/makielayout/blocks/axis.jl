@@ -1444,6 +1444,7 @@ defaultlimits(limits::Tuple{Nothing, Real}, scale) = (defaultlimits(scale)[1], l
 defaultlimits(limits::Tuple{Nothing, Nothing}, scale) = defaultlimits(scale)
 
 defaultlimits(scale::ReversibleScale) = inverse_transform(scale).(scale.limits)
+defaultlimits(scale::Makie.Symlog10) = defaultlimits(scale.scale)
 defaultlimits(scale::LogFunctions) = let inv_scale = inverse_transform(scale)
     (inv_scale(0.0), inv_scale(3.0))
 end
@@ -1452,6 +1453,7 @@ defaultlimits(::typeof(sqrt)) = (0.0, 100.0)
 defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
 
 defined_interval(scale::ReversibleScale) = scale.interval
+defined_interval(scale::Makie.Symlog10) = defined_interval(scale.scale)
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
 defined_interval(::LogFunctions) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed, :open}(0, Inf)
@@ -1845,8 +1847,7 @@ function attribute_examples(::Type{Axis})
 
                 ax3 = Axis(f[3, 1],
                     yscale = Makie.pseudolog10,
-                    title = "Pseudolog scale with LogTicks",
-                    yticks = LogTicks(-2:2)
+                    title = "Pseudolog scale with automatic decade ticks"
                 )
 
                 for ax in [ax1, ax2, ax3]

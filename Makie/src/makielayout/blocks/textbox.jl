@@ -1,51 +1,4 @@
-using InteractiveUtils: clipboard
-
-function _reset_to_stored(cursorindex, tbox)
-    cursorindex[] = 0
-    if isnothing(tbox.stored_string[])
-        tbox.displayed_string[] = tbox.placeholder[]
-    else
-        tbox.displayed_string[] = tbox.stored_string[]
-    end
-    return
-end
-
-function _insertchar!(c, index, displayed_chars, tbox, cursorindex)
-    if displayed_chars[] == [' ']
-        empty!(displayed_chars[])
-        index = 1
-    end
-    newchars = [displayed_chars[][1:(index - 1)]; c; displayed_chars[][index:end]]
-    tbox.displayed_string[] = join(newchars)
-    return cursorindex[] = index
-end
-
-function _removechar!(index, displayed_chars, tbox, cursorindex)
-    newchars = [displayed_chars[][1:(index - 1)]; displayed_chars[][(index + 1):end]]
-
-    if isempty(newchars)
-        newchars = [' ']
-    end
-
-    if cursorindex[] >= index
-        cursorindex[] = max(0, cursorindex[] - 1)
-    end
-
-    return tbox.displayed_string[] = join(newchars)
-end
-
-function _cursor_forward(tbox, cursorindex)
-    return if tbox.displayed_string[] != " "
-        cursorindex[] = min(length(tbox.displayed_string[]), cursorindex[] + 1)
-    end
-end
-
-function _cursor_backward(cursorindex)
-    return cursorindex[] = max(0, cursorindex[] - 1)
-end
-
 function initialize_block!(tbox::Textbox)
-
     topscene = tbox.blockscene
 
     scenearea = lift(topscene, tbox.layoutobservables.computedbbox) do bb
@@ -54,25 +7,21 @@ function initialize_block!(tbox::Textbox)
 
     scene = Scene(topscene, scenearea, camera = campixel!)
 
-    cursorindex = Observable(0)
-    setfield!(tbox, :cursorindex, cursorindex)
-
-    bbox = lift(Rect2f ∘ Makie.zero_origin, topscene, scenearea)
-
     roundedrectpoints = lift(roundedrectvertices, topscene, scenearea, tbox.cornerradius, tbox.cornersegments)
 
-    tbox.displayed_string[] = isnothing(tbox.stored_string[]) ? tbox.placeholder[] : tbox.stored_string[]
+    # Initial displayed_string. Empty means "show the placeholder."
+    if isnothing(tbox.displayed_string[])
+        tbox.displayed_string[] = isnothing(tbox.stored_string[]) ? "" : tbox.stored_string[]
+    end
 
     displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator, ignore_equal_values = true) do str, validator
         return validate_textbox(str, validator)::Bool
     end
 
-    # update displayed string when placeholder changes
-    on(_ -> _reset_to_stored(cursorindex, tbox), tbox.placeholder)
-
     hovering = Observable(false)
-    realbordercolor = Observable{RGBAf}()
 
+    # ── Box background + border ──────────────────────────────────────────────
+    realbordercolor = Observable{RGBAf}()
     map!(
         topscene, realbordercolor, tbox.bordercolor, tbox.bordercolor_focused,
         tbox.bordercolor_focused_invalid, tbox.bordercolor_hover, tbox.focused, displayed_is_valid, hovering
@@ -90,7 +39,6 @@ function initialize_block!(tbox::Textbox)
         topscene, realboxcolor, tbox.boxcolor, tbox.boxcolor_focused,
         tbox.boxcolor_focused_invalid, tbox.boxcolor_hover, tbox.focused, displayed_is_valid, hovering
     ) do bc, bcf, bcfi, bch, focused, valid, hovering
-
         c = if focused
             valid ? bcf : bcfi
         else
@@ -99,234 +47,209 @@ function initialize_block!(tbox::Textbox)
         return to_color(c)
     end
 
-    box = poly!(
+    poly!(
         topscene, roundedrectpoints, strokewidth = tbox.borderwidth,
         strokecolor = realbordercolor,
-        color = realboxcolor, inspectable = false
+        color = realboxcolor, inspectable = false,
     )
 
-    displayed_chars = lift(ds -> [c for c in ds], topscene, tbox.displayed_string)
-
-    realtextcolor = Observable{RGBAf}()
-    map!(
-        topscene, realtextcolor, tbox.textcolor, tbox.textcolor_placeholder, tbox.focused,
-        tbox.stored_string, tbox.displayed_string
-    ) do tc, tcph, foc, cont, disp
-        # the textbox has normal text color if it's focused
-        # if it's defocused, the displayed text has to match the stored text in order
-        # to be normal colored
-        return to_color(foc || cont == disp ? tc : tcph)
+    # ── Text colour: real text vs placeholder ────────────────────────────────
+    realtextcolor = lift(topscene, tbox.textcolor, tbox.textcolor_placeholder, tbox.focused, tbox.displayed_string, tbox.stored_string) do tc, tcph, foc, disp, stored
+        # The text reads as "active" (regular color) when focused, or when the
+        # displayed string already matches what's stored.
+        return foc || disp == stored ? to_color(tc) : to_color(tcph)
     end
 
-    t = Label(
-        scene, text = tbox.displayed_string, bbox = bbox, halign = :left, valign = :top,
-        width = Auto(true), height = Auto(true), color = realtextcolor,
-        fontsize = tbox.fontsize, padding = tbox.textpadding
+    # Position the editor at the top-left of the inner area, accounting for textpadding.
+    text_origin = lift(topscene, scenearea, tbox.textpadding) do area, padding
+        # padding = (left, right, bottom, top); text uses (:left, :top) align so we anchor at the top-left
+        l, _r, _b, t = padding
+        return Point2f(l, widths(area)[2] - t)
+    end
+
+    # Placeholder is rendered as a separate text! that's visible whenever
+    # the editor has no content. It stays visible after focus and only goes
+    # away once the user types the first character.
+    placeholder_visible = lift(s -> isempty(s), tbox.displayed_string)
+    placeholder_plot = text!(
+        scene, text_origin; text = tbox.placeholder,
+        align = (:left, :top), color = tbox.textcolor_placeholder,
+        font = tbox.font, fontsize = tbox.fontsize,
+        visible = placeholder_visible, inspectable = false,
     )
 
-    textplot = t.blockscene.plots[1]
-    # Manually add positions without considering transformations to prevent
-    # infinite loop from translate!() in on(cursorpoints)
-    displayed_charbbs = map(textplot.positions, fast_glyph_boundingboxes_obs(textplot)) do pos, bbs
-        return [Rect2f(bb) + Point2f(pos[1]) for bb in bbs]
-    end
-
-    cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
-    cursorpoints = lift(topscene, cursorindex, displayed_charbbs; ignore_equal_values = true) do ci, bbs
-        isempty(bbs) && return Point2f(0)
-        local textplot = t.blockscene.plots[1]
-
-        hadvances = Float32[]
-        broadcast_foreach(textplot.glyph_extents[], textplot.text_scales[]) do ex, sc
-            hadvance = ex.hadvance * sc[1]
-            push!(hadvances, hadvance)
-        end
-
-        if ci > length(bbs)
-            # correct cursorindex if it's outside of the displayed charbbs range
-            ci = cursorindex[] = length(bbs)
-        end
-
-        line_ps = if 0 < ci < length(bbs)
-            leftline(bbs[ci + 1])
-        elseif ci == 0
-            leftline(bbs[1])
-        else
-            leftline(bbs[ci]) .+ (Point2f(hadvances[ci], 0),)
-        end
-
-        # could this be done statically as
-        # max_height = font.height / font.units_per_EM * fontsize
-        max_height = abs(line_ps[1][2] - line_ps[2][2])
-        if !(cursorsize[][2] ≈ max_height)
-            cursorsize[] = Vec2f(1, max_height)
-        end
-
-        return 0.5 * (line_ps[1] + line_ps[2])
-    end
-
-    cursor = scatter!(
-        scene, cursorpoints, marker = Rect, color = tbox.cursorcolor,
-        markersize = cursorsize, inspectable = false
+    # ── The editable text itself ─────────────────────────────────────────────
+    et = editabletext!(
+        scene, tbox.displayed_string;
+        position = text_origin,
+        align = (:left, :top),
+        focused = tbox.focused,
+        color = realtextcolor,
+        font = tbox.font,
+        fontsize = tbox.fontsize,
+        cursor_color = tbox.cursorcolor,
+        space = :pixel,
+        multiline = false,
+        manage_focus = false,            # Textbox drives focus (see below)
+        input_filter = c -> is_allowed(c, tbox.restriction[]),
+        on_submit = (text) -> begin
+            if displayed_is_valid[]
+                tbox.stored_string[] = text
+                tbox.defocus_on_submit[] && defocus!(tbox)
+            end
+        end,
     )
+    setfield!(tbox, :editor, et)
 
-    # backspace triggers both cursorindex and displayed_charbbs, but cursorpoints
-    # may only change on the first update (cursorindex). Here we need to react to
-    # displayed_charbbs too though, for right-realignment
-    onany(cursorpoints, displayed_charbbs) do cpts, charbbs
-        typeof(tbox.width[]) <: Number || return
-        isempty(charbbs) && return
-
-        current_translation = scene.transformation.translation[][1] # translates text + cursor
-        rel_cursor_pos = cpts[1][1] + current_translation # relative to text box origin
-        text_end_pos = right(charbbs[end]) # absolute / untranslated
-
-        cursor_outside_on_left = rel_cursor_pos < 0
-        cursor_outside_on_right = rel_cursor_pos > tbox.width[]
-        text_overflows_on_left = current_translation < 0
-        text_gap_on_right = text_end_pos + current_translation < tbox.width[]
-
-        if cursor_outside_on_left
-            # move cursor to left edge
-            translate!(Accum, scene, -rel_cursor_pos, 0, 0)
-
-        elseif cursor_outside_on_right
-            # move cursor to right edge
-            translate!(Accum, scene, tbox.width[] - rel_cursor_pos, 0, 0)
-
-        elseif text_overflows_on_left && text_gap_on_right
-            # move last character to right edge (without creating a gap on the left)
-            translate!(scene, min(0, tbox.width[] - text_end_pos), 0, 0)
+    # Sync displayed_string ↔ the editor's text. Passing the Observable to the
+    # recipe wires the forward direction (`tb.displayed_string` → editor text);
+    # this listener carries internal edits back out.
+    on(et.text) do t
+        if tbox.displayed_string[] != t
+            tbox.displayed_string[] = t
         end
-
         return
     end
 
-    tbox.cursoranimtask = nothing
-
-    on(topscene, t.layoutobservables.reporteddimensions) do dims
-        tbox.layoutobservables.autosize[] = dims.inner
+    # ── Autosize ─────────────────────────────────────────────────────────────
+    # Listen on the *inputs* (displayed_string, font, fontsize, padding) rather
+    # than on the rendered bbox observable; reading the bbox inside the callback
+    # avoids the layout-feedback cycle (autosize → scenearea → text_origin →
+    # text plot bbox) that listening directly to the bbox would cause.
+    text_plot = only(p for p in et.plots if p isa Makie.Text)
+    onany(topscene, tbox.displayed_string, tbox.placeholder, tbox.fontsize, tbox.font, tbox.textpadding) do disp, ph, fs, _fnt, padding
+        l, r, b, t = padding
+        # Width from the rendered text bbox (placeholder while empty, real text
+        # once typed). Height is computed from line count + font metrics so an
+        # empty trailing line (`disp` ends with `\n`) still grows the textbox.
+        # Using a position-independent bbox here avoids registering a second
+        # projected pipeline and the layout feedback cycle.
+        plot = isempty(disp) ? placeholder_plot : text_plot
+        bbs = Makie.fast_string_boundingboxes(plot)
+        text_w = if isempty(bbs) || !isfinite(minimum(bbs[1])[1])
+            Float32(fs) * 0.5f0
+        else
+            Float32(widths(bbs[1])[1])
+        end
+        # n_lines counts visible lines including a trailing empty line.
+        sample = isempty(disp) ? ph : disp
+        n_lines = count(==('\n'), sample) + 1
+        font_obj = plot.selected_font[]::Makie.NativeFont
+        line_h = Float32(font_obj.height / font_obj.units_per_EM * fs)
+        text_h = Float32(n_lines) * line_h
+        tbox.layoutobservables.autosize[] = (text_w + l + r, text_h + b + t)
+        return
     end
 
-    notify(ComputePipeline.get_observable!(t.text))
-
-    # trigger bbox
-    tbox.layoutobservables.suggestedbbox[] = tbox.layoutobservables.suggestedbbox[]
-
+    # ── Hover tracking ───────────────────────────────────────────────────────
     mouseevents = addmouseevents!(scene)
-
-    onmouseleftdown(mouseevents) do state
-        focus!(tbox)
-
-        if tbox.displayed_string[] == tbox.placeholder[]
-            tbox.displayed_string[] = " "
-            cursorindex[] = 0
-            return Consume(true)
-        elseif tbox.displayed_string[] == " "
-            return Consume(true)
-        end
-
-        pos = if typeof(tbox.width[]) <: Number
-            state.data .- scene.transformation.translation[][1:2]
-        else
-            state.data
-        end
-        closest_charindex = argmin(
-            [sum((pos .- center(bb)) .^ 2) for bb in displayed_charbbs[]]
-        )
-        # set cursor to index of closest char if right of center, or previous char if left of center
-        cursorindex[] = if (pos .- center(displayed_charbbs[][closest_charindex]))[1] > 0
-            closest_charindex
-        else
-            closest_charindex - 1
-        end
-
-        return Consume(true)
-    end
-
-    onmouseover(mouseevents) do state
+    onmouseover(mouseevents) do _
         hovering[] = true
         return Consume(false)
     end
-
-    onmouseout(mouseevents) do state
+    onmouseout(mouseevents) do _
         hovering[] = false
         return Consume(false)
     end
 
-    onmousedownoutside(mouseevents) do state
-        if tbox.reset_on_defocus[]
-            _reset_to_stored(cursorindex, tbox)
-        end
-        defocus!(tbox)
-        return Consume(false)
-    end
-
-    function appendchar!(c)
-        return _insertchar!(c, length(tbox.displayed_string[]), displayed_chars, tbox, cursorindex)
-    end
-
-    on(topscene, events(scene).unicode_input; priority = 60) do char
-        if tbox.focused[] && is_allowed(char, tbox.restriction[])
-            _insertchar!(char, cursorindex[] + 1, displayed_chars, tbox, cursorindex)
-            return Consume(true)
-        end
-        return Consume(false)
-    end
-
-
-    on(topscene, events(scene).keyboardbutton; priority = 60) do event
-        if tbox.focused[]
-            ctrl_v = (Keyboard.left_control | Keyboard.right_control) & Keyboard.v
-            if ispressed(scene, ctrl_v)
-                local content::String = ""
-                try
-                    content = clipboard()
-                catch err
-                    @warn "Accessing the clipboard failed: $err"
-                    return Consume(false)
-                end
-
-                if all(char -> is_allowed(char, tbox.restriction[]), content)
-                    foreach(char -> _insertchar!(char, cursorindex[] + 1, displayed_chars, tbox, cursorindex), content)
-                    return Consume(true)
-                else
-                    return Consume(false)
-                end
-            end
-
-            if event.action != Keyboard.release
-                key = event.key
-                if key == Keyboard.backspace
-                    _removechar!(cursorindex[], displayed_chars, tbox, cursorindex)
-                elseif key == Keyboard.delete
-                    _removechar!(cursorindex[] + 1, displayed_chars, tbox, cursorindex)
-                elseif key == Keyboard.enter || key == Keyboard.kp_enter
-                    # don't do anything for invalid input which should stay red
-                    if displayed_is_valid[]
-                        # submit the written text
-                        tbox.stored_string[] = tbox.displayed_string[]
-                        if tbox.defocus_on_submit[]
-                            defocus!(tbox)
-                        end
-                    end
-                elseif key == Keyboard.escape
-                    if tbox.reset_on_defocus[]
-                        _reset_to_stored(cursorindex, tbox)
-                    end
+    # ── Focus on click ───────────────────────────────────────────────────────
+    # Listen at priority 70, *above* EditableText's priority 60, so we set
+    # `focused` before the recipe inspects it (the recipe runs in
+    # `manage_focus = false` mode and only places a cursor when already focused).
+    on(topscene, events(scene).mousebutton, priority = 70) do event
+        event.button == Mouse.left || return Consume(false)
+        if event.action == Mouse.press
+            inside = Makie.is_mouseinside(scene)
+            if inside
+                tbox.focused[] || focus!(tbox)
+            else
+                if tbox.focused[]
+                    tbox.reset_on_defocus[] && _reset_to_stored!(tbox)
                     defocus!(tbox)
-                elseif key == Keyboard.right
-                    _cursor_forward(tbox, cursorindex)
-                elseif key == Keyboard.left
-                    _cursor_backward(cursorindex)
                 end
             end
-            return Consume(true)
         end
-
         return Consume(false)
     end
+
+    # ── Reset on Escape ──────────────────────────────────────────────────────
+    on(topscene, events(scene).keyboardbutton, priority = 70) do event
+        # Higher priority than EditableText (60) so we get to handle escape
+        # *and* let it pass through to the recipe's defocus path.
+        if tbox.focused[] && event.action == Keyboard.press && event.key == Keyboard.escape
+            if tbox.reset_on_defocus[]
+                _reset_to_stored!(tbox)
+            end
+            # EditableText also defocuses on escape; we let it through.
+        end
+        return Consume(false)
+    end
+
+    # ── Horizontal scroll when content exceeds the visible width ─────────────
+    # The inner `scene` holds the editor; translating it horizontally keeps the
+    # caret in view as the user types or moves past the right edge. We compute
+    # the caret's position in *text-layout* coordinates from the glyph data so
+    # the listener is invariant to the scene translation it produces — listening
+    # on the rendered caret plot would be a feedback loop because
+    # `markerspace_positions` depend on the scene's model matrix.
+    function _caret_layout_x()
+        head = isempty(et.cursors[]) ? 0 : et.cursors[][1].head
+        origins = text_plot.glyph_origins[]
+        head <= 0 && return 0.0f0
+        if head < length(origins)
+            return Float32(origins[head + 1][1])
+        elseif head == length(origins) && !isempty(origins)
+            extents = text_plot.glyph_extents[]
+            scales = text_plot.text_scales[]
+            return Float32(origins[end][1] + extents[end].hadvance * scales[end][1])
+        else
+            return 0.0f0
+        end
+    end
+
+    onany(topscene, et.cursors, text_plot.glyph_origins, scenearea) do _cs, _origins, area
+        typeof(tbox.width[]) <: Number || return
+        l, r, _b, _t = tbox.textpadding[]
+        # The text starts `l` pixels in; the right edge of the visible text region
+        # is `area.widths[1] - r`. Keep the caret inside that strip.
+        caret_x = l + _caret_layout_x()
+        tx = Float32(scene.transformation.translation[][1])
+        rel_x = caret_x + tx
+        right = Float32(area.widths[1]) - r
+        offset = if rel_x < l
+            l - rel_x
+        elseif rel_x > right
+            right - rel_x
+        else
+            0.0f0
+        end
+        offset == 0 || translate!(Accum, scene, offset, 0, 0)
+
+        # When the text shrinks past the right edge, pull it back so the box
+        # isn't padded with empty space.
+        origins = text_plot.glyph_origins[]
+        isempty(origins) && return
+        extents = text_plot.glyph_extents[]
+        scales = text_plot.text_scales[]
+        text_right = Float32(l + origins[end][1] + extents[end].hadvance * scales[end][1])
+        gap = right - (text_right + Float32(scene.transformation.translation[][1]))
+        tx2 = Float32(scene.transformation.translation[][1])
+        if tx2 < 0 && gap > 0
+            translate!(Accum, scene, min(gap, -tx2), 0, 0)
+        end
+        return
+    end
+
+    # Trigger initial autosize and bbox so the layout settles.
+    notify(tbox.displayed_string)
+    tbox.layoutobservables.suggestedbbox[] = tbox.layoutobservables.suggestedbbox[]
+
     return tbox
+end
+
+function _reset_to_stored!(tbox::Textbox)
+    tbox.displayed_string[] = isnothing(tbox.stored_string[]) ? "" : tbox.stored_string[]
+    return
 end
 
 function validate_textbox(str, validator::Function)
@@ -339,25 +262,19 @@ end
 
 function validate_textbox(str, validator::Regex)
     m = match(validator, str)
-    # check that the validator matches the whole string
     return !isnothing(m) && m.match == str
 end
 
-function is_allowed(char, restriction::Nothing)
-    return true
-end
-
-function is_allowed(char, restriction::Function)
-    return allowed::Bool = restriction(char)
-end
+is_allowed(_, ::Nothing) = true
+is_allowed(char, restriction::Function) = restriction(char)::Bool
 
 """
     reset!(tb::Textbox)
 Resets the stored_string of the given `Textbox` to `nothing` without triggering listeners, and resets the `Textbox` to the `placeholder` text.
 """
 function reset!(tb::Textbox)
-    tb.stored_string = nothing
-    tb.displayed_string = tb.placeholder[]
+    tb.stored_string.val = nothing
+    tb.displayed_string = ""
     defocus!(tb)
     return nothing
 end
@@ -389,27 +306,7 @@ end
 Focuses an `Textbox` and makes it ready to receive keyboard input.
 """
 function focus!(tb::Textbox)
-    if !tb.focused[]
-        tb.focused = true
-
-        cursoranim = Animations.Loop(
-            Animations.Animation(
-                [0, 1.0],
-                [Colors.alphacolor(COLOR_ACCENT[], 0), Colors.alphacolor(COLOR_ACCENT[], 1)],
-                Animations.sineio(n = 2, yoyo = true, postwait = 0.2)
-            ),
-            0.0, 0.0, 1000
-        )
-
-        if !isnothing(tb.cursoranimtask)
-            Animations.stop(tb.cursoranimtask)
-            tb.cursoranimtask = nothing
-        end
-
-        tb.cursoranimtask = Animations.animate_async(cursoranim; fps = 30) do t, color
-            tb.cursorcolor = color
-        end
-    end
+    tb.focused = true
     return nothing
 end
 
@@ -418,16 +315,6 @@ end
 Defocuses a `Textbox` so it doesn't receive keyboard input.
 """
 function defocus!(tb::Textbox)
-
-    if tb.displayed_string[] in (" ", "")
-        tb.displayed_string[] = tb.placeholder[]
-    end
-
-    if !isnothing(tb.cursoranimtask)
-        Animations.stop(tb.cursoranimtask)
-        tb.cursoranimtask = nothing
-    end
-    tb.cursorcolor = :transparent
     tb.focused = false
     return nothing
 end
