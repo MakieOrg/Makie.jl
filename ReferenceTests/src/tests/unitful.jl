@@ -63,7 +63,7 @@ end
         x_unit_in_label = true, x_unit_in_ticklabel = false,
         xlabel_suffix = "unit: {}",
         y_unit_in_label = true, y_unit_in_ticklabel = true,
-        ylabel_suffix = "{}"
+        ylabel_suffix = "{}", ylabel = rich("rich:", color = :red)
     )
     scatterlines!(ax, Point2.((1:10) .* u"s", sin.(1:10) .* u"m"))
 
@@ -72,7 +72,7 @@ end
         x_unit_in_label = true, x_unit_in_ticklabel = false,
         xlabel_suffix = "unit: {}",
         y_unit_in_label = true, y_unit_in_ticklabel = true,
-        ylabel_suffix = "{}",
+        ylabel_suffix = "{}", ylabel = L"\mathrm{latex}",
         z_unit_in_label = false, z_unit_in_ticklabel = true,
     )
     scatterlines!(ax, Point3.((1:10) .* u"s", sin.(1:10) .* u"m", cos.(1:10) .* u"m"))

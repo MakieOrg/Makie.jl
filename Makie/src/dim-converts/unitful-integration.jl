@@ -1,6 +1,7 @@
 using Dates, Observables
 import Unitful
 using Unitful: Quantity, LogScaled, @u_str, uconvert, ustrip
+using Latexify
 
 const SupportedUnits = Union{Period, Unitful.Quantity, Unitful.LogScaled, Unitful.Units}
 
@@ -138,12 +139,18 @@ function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin,
     return tick_vals, labels
 end
 
-function get_label_suffix(conversion::UnitfulConversion, format)
+function get_label_suffix(::Union{RichText, String}, conversion::UnitfulConversion, format)
     unit = conversion.unit[]
-    unit isa Automatic && return rich("")
+    unit isa Automatic && return ""
     ustr = unit_string(unit)
     str = unit_string_to_rich(ustr)
     return apply_format(str, format)
+end
+
+function get_label_suffix(::LaTeXString, conversion::UnitfulConversion, format)
+    unit = conversion.unit[]
+    unit isa Automatic && return ""
+    return apply_format(latexify(unit), format)
 end
 
 function convert_dim_value(conversion::UnitfulConversion, attr, values, last_values)

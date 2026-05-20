@@ -182,8 +182,7 @@ end
 function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label)
     should_show = show_dim_convert_in_axis_label(dim_convert, show_unit_in_label)
     if should_show
-        suffix = get_label_suffix(dim_convert, formatter)
-        return isempty(label) ? suffix : rich("$label ", suffix)
+        return add_label_suffix(label, dim_convert, formatter)
     else
         return label
     end
@@ -197,8 +196,8 @@ function _extract_computed(graph::ComputePipeline.AbstractComputeGraph, dictlike
     elseif entry isa Union{Attributes, ComputePipeline.AbstractComputeGraph}
         error("$name::$(typeof(entry)) is not supported in @extract_computed")
     else
-        # to_recipe_attribute does Ref{Any} wrapping (in case types can change)
-        add_input!(to_recipe_attribute, graph, name, entry)
+        add_input!(graph, name, entry)
+        ComputePipeline.set_type!(graph[name], Any)
         return graph[name]
     end
 end

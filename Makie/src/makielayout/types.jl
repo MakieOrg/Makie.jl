@@ -329,14 +329,14 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         """
         Formatter for the xlabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         xlabel_suffix = "[{}]"
         """
         Formatter for the ylabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         ylabel_suffix = "[{}]"
@@ -1803,21 +1803,21 @@ end
         """
         Formatter for the xlabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         xlabel_suffix = "[{}]"
         """
         Formatter for the ylabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         ylabel_suffix = "[{}]"
         """
         Formatter for the zlabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         zlabel_suffix = "[{}]"
