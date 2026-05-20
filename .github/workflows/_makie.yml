@@ -26,6 +26,8 @@ jobs:
       - uses: julia-actions/cache@v3
       - name: Develop and test Makie
         shell: julia --project=monorepo {0}
+        env:
+          JULIA_PKG_PRECOMPILE_AUTO: '0'
         run: |
           using Pkg
           # dev mono repo versions
