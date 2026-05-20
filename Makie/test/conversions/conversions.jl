@@ -366,10 +366,10 @@ end
     t1 = (1, 10)
     t2 = (1, 6)
 
-    xx = convert_arguments(Image, m3)
-    xx == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
     @testset "ImageLike conversion" begin
-        @test convert_arguments(Image, m3) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
+        # Default `dim_order = :yx`: x extent spans ncols, y extent spans nrows.
+        # The matrix itself flows through unchanged (modulo el32convert).
+        @test convert_arguments(Image, m3) == ((0.0f0, 6.0f0), (0.0f0, 10.0f0), o3)
         @test convert_arguments(Image, i1, i2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
         @test convert_arguments(Image, i1, t2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
         @test convert_arguments(Image, t1, t2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
@@ -378,6 +378,12 @@ end
         @test_throws ErrorException convert_arguments(Image, i1, v2, m3)
         @test_throws ErrorException convert_arguments(Image, v3, i1, m3)
         @test_throws ErrorException convert_arguments(Image, v1, i3, m3)
+
+        # `dim_order = :xy` swaps which matrix dim is the default x extent.
+        @test convert_arguments(Image, m3; storage = (:right, :down)) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
+        @test convert_arguments(Image, i1, i2, m3; storage = (:right, :down)) == ((1.0, 10.0), (1.0, 6.0), o3)
+        @test_throws ErrorException convert_arguments(Image, m3; storage = (:up, :up))
+        @test_throws ErrorException convert_arguments(Image, m3; storage = :bogus)
 
         # TODO: Should probably fail because it's not accepted by backends?
         @test convert_arguments(Image, m1, m2, m3) === (m1, m2, m3)
@@ -425,6 +431,65 @@ end
                 @test convert_arguments(Heatmap, data) == res
             end
         end
+    end
+end
+
+@testset "image orientation" begin
+    mat = [
+        RGBf(1, 0, 0) RGBf(0, 0, 1);
+        RGBf(0, 1, 0) RGBf(1, 1, 0)
+    ]
+
+    @testset "user matrix flows through every storage unchanged" begin
+        for s in ((:down, :right), (:up, :left), (:right, :down), (:left, :up))
+            x, y, data = convert_arguments(Image, mat; storage = s)
+            @test data === mat
+            @test x == Makie.EndPoints(0.0f0, 2.0f0)
+            @test y == Makie.EndPoints(0.0f0, 2.0f0)
+        end
+    end
+
+    @testset "default extents follow storage" begin
+        rect_mat = rand(Float32, 3, 5)
+        x_yx, y_yx, _ = convert_arguments(Image, rect_mat)
+        @test x_yx == Makie.EndPoints(0.0f0, 5.0f0)
+        @test y_yx == Makie.EndPoints(0.0f0, 3.0f0)
+        x_xy, y_xy, _ = convert_arguments(Image, rect_mat; storage = (:right, :down))
+        @test x_xy == Makie.EndPoints(0.0f0, 3.0f0)
+        @test y_xy == Makie.EndPoints(0.0f0, 5.0f0)
+    end
+
+    @testset "axis hint and storage attribute" begin
+        rect_mat = rand(Float32, 3, 5)
+
+        fig, ax, p = image(rect_mat)
+        @test ax.xreversed[] === false
+        @test ax.yreversed[] === true  # fixed Image default
+        @test p.image[] === rect_mat
+        # `storage` rides as a convert kwarg; if the user didn't pass one, the
+        # attribute is `nothing` and the documented default `(:down, :right)`
+        # fires at convert time and at render time.
+        @test p.storage[] === nothing || p.storage[] === (:down, :right)
+
+        _, _, p_explicit = image(rect_mat; storage = (:down, :right))
+        @test p_explicit.storage[] === (:down, :right)
+
+        # axis hint is fixed regardless of storage
+        for s in ((:down, :right), (:up, :left), (:right, :down), (:left, :down))
+            _, ax_s, _ = image(rect_mat; storage = s)
+            @test (ax_s.xreversed[], ax_s.yreversed[]) === (false, true)
+        end
+
+        @test_throws ErrorException image(rect_mat; storage = :bogus)
+        @test_throws ErrorException image(rect_mat; storage = (:up, :down))
+    end
+
+    @testset "mutating image! does not touch existing axis" begin
+        fig = Figure()
+        existing_ax = Axis(fig[1, 1])
+        image!(existing_ax, rand(3, 5))
+        @test existing_ax.xreversed[] === false
+        @test existing_ax.yreversed[] === false
     end
 end
 

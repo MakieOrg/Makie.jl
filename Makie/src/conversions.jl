@@ -454,13 +454,65 @@ function convert_arguments(
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
-# Note: used by dim_converts to normalize xs, ys, so no eltype on RangeLike
+# `storage` is `(dim1_direction, dim2_direction)` with each direction one of
+# `:up`, `:down`, `:left`, `:right`. Returns the internal `(dim_order, origin)`:
+# `dim_order` is `:yx` if the first array dim is vertical and `:xy` if it's
+# horizontal; `origin` is `(:begin | :end, :begin | :end)` for x then y, naming
+# which extent endpoint `image[1, 1]` anchors to.
+function _decode_image_storage(s)
+    vertical = (:up, :down)
+    horizontal = (:left, :right)
+    if !(s isa Tuple{Symbol, Symbol}) ||
+            !((s[1] in vertical && s[2] in horizontal) || (s[1] in horizontal && s[2] in vertical))
+        error("`storage` must be a tuple of one vertical (`:up`/`:down`) and one horizontal (`:left`/`:right`) direction, got `$(repr(s))`.")
+    end
+    d1, d2 = s
+    if d1 in vertical
+        dim_order = :yx
+        oy = d1 === :down ? :begin : :end
+        ox = d2 === :right ? :begin : :end
+    else
+        dim_order = :xy
+        ox = d1 === :right ? :begin : :end
+        oy = d2 === :down ? :begin : :end
+    end
+    return dim_order, (ox, oy)
+end
+
+# `storage` decides which matrix dim runs along which axis and from which end.
+# The data flows through untouched; backends read `storage` from the plot
+# attributes and handle the layout render-side (no reallocation).
+function convert_arguments(
+        ::ImageLike, data::AbstractMatrix{<:Union{Real, Colorant}};
+        storage = (:down, :right), kw...
+    )
+    dim_order, _ = _decode_image_storage(storage)
+    nrows, ncols = size(data)
+    x, y = dim_order === :yx ? ((0.0f0, Float32(ncols)), (0.0f0, Float32(nrows))) :
+        ((0.0f0, Float32(nrows)), (0.0f0, Float32(ncols)))
+    return convert_arguments(ImageLike(), x, y, data; storage = storage, kw...)
+end
+
+# Note: used by dim_converts to normalize xs, ys, so no eltype on RangeLike.
 function convert_arguments(
         ::ImageLike, xs::RangeLike, ys::RangeLike,
-        data::AbstractMatrix{<:Union{Real, Colorant}}
+        data::AbstractMatrix{<:Union{Real, Colorant}};
+        storage = (:down, :right), kw...
     )
+    _decode_image_storage(storage)  # validate
     x = to_endpoints(xs, "x", ImageLike)
     y = to_endpoints(ys, "y", ImageLike)
+    return (x, y, el32convert(data))
+end
+
+# Fixed point on (::EndPoints, ::EndPoints, ::AbstractMatrix); el32convert is
+# identity-preserving on Float32-typed inputs, so the convert trampoline sees
+# `trait_converted === args` and stops recursing.
+function convert_arguments(
+        ::ImageLike, x::EndPoints, y::EndPoints,
+        data::AbstractMatrix{<:Union{Real, Colorant}};
+        kw...
+    )
     return (x, y, el32convert(data))
 end
 

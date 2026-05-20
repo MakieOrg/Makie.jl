@@ -14,12 +14,38 @@ function image_grid!(::typeof(heatmap), attr)
     end
 end
 
+# For Image, `storage = (d1, d2)` describes the directions array dims run on
+# the conceptually-oriented quad. We decode it into the internal `dim_order`
+# (which dim is x vs y) and `origin` (which extent endpoint mat[1,1] anchors
+# to) here so the rest of the pipeline can stay simple.
+function _decode_storage(storage)
+    storage isa Tuple{Symbol, Symbol} || return (:yx, (:begin, :begin))
+    d1, d2 = storage
+    vertical = (:up, :down)
+    horizontal = (:left, :right)
+    if d1 in vertical && d2 in horizontal
+        dim_order = :yx
+        oy = d1 === :down ? :begin : :end
+        ox = d2 === :right ? :begin : :end
+    elseif d1 in horizontal && d2 in vertical
+        dim_order = :xy
+        ox = d1 === :right ? :begin : :end
+        oy = d2 === :down ? :begin : :end
+    else
+        dim_order = :yx
+        ox = oy = :begin
+    end
+    return dim_order, (ox, oy)
+end
+
 function image_grid!(::typeof(image), attr)
-    # Rect vertices
-    return map!(attr, [:positions_transformed_f32c, :image], [:grid_x, :grid_y, :is_regular_grid]) do positions, image
+    return map!(attr, [:positions_transformed_f32c, :image, :storage], [:grid_x, :grid_y, :is_regular_grid]) do positions, image, storage
         (x0, y0), _, (x1, y1), _ = positions
-        xs = range(x0, x1, length = size(image, 1) + 1)
-        ys = range(y0, y1, length = size(image, 2) + 1)
+        dim_order, _ = _decode_storage(storage)
+        x_cells = dim_order === :yx ? size(image, 2) : size(image, 1)
+        y_cells = dim_order === :yx ? size(image, 1) : size(image, 2)
+        xs = range(x0, x1, length = x_cells + 1)
+        ys = range(y0, y1, length = y_cells + 1)
         return (xs, ys, true)
     end
 end
@@ -30,15 +56,20 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, plot::Union{Heatmap, Imag
     attr = plot.attributes
     image_grid!(Makie.plotfunc(plot), attr)
     add_constant!(attr, :is_image, plot isa Image)
-    if plot isa Heatmap && !haskey(attr, :uv_transform)
-        add_constant!(attr, :uv_transform, nothing)
+    if plot isa Heatmap
+        if !haskey(attr, :uv_transform)
+            add_constant!(attr, :uv_transform, nothing)
+        end
+        # heatmap doesn't have a storage convention: it always reads `[x_idx, y_idx]`
+        # with no flips, which corresponds to a storage of `(:right, :down)`.
+        add_constant!(attr, :storage, (:right, :down))
     end
     imagelike_uv_transform!(attr)
     Makie.compute_colors!(attr)
     inputs = [
         :grid_x, :grid_y, :is_regular_grid, :image,
         :interpolate, :space, :projectionview, :model_f32c,
-        :clip_planes, :cairo_uv_transform, :resolution, :computed_color,
+        :clip_planes, :cairo_uv_transform, :resolution, :computed_color, :storage,
     ]
     extract_attributes!(attr, inputs, :cairo_attributes)
     ctx = screen.context
@@ -48,15 +79,38 @@ end
 
 function imagelike_uv_transform!(attr)
 
-    return map!(attr, [:uv_transform, :image, :is_image], :cairo_uv_transform) do T, image, is_image
+    return map!(attr, [:uv_transform, :image, :is_image, :storage], :cairo_uv_transform) do T, image, is_image, storage
         if is_image
             # Cairo uses pixel units so we need to transform those to a 0..1 range,
             # then apply uv_transform, then scale them back to pixel units.
             # Cairo also doesn't have the yflip we have in OpenGL, so we need to
             # invert y.
+            # The default transform (matching `(:right, :down)`) maps each rendered
+            # fragment at plot (i, j) to sample mat[i, j]. When `storage` has the
+            # first array dim running vertically we add a swap_xy on the source
+            # side so fragment (i, j) reads mat[j, i]; the per-axis flips then
+            # anchor `image[1, 1]` at the right extent endpoint.
             T3 = Mat3f(T[1], T[2], 0, T[3], T[4], 0, T[5], T[6], 1)
-            T3 = Makie.uv_transform(Vec2f(size(image))) * T3 *
-                Makie.uv_transform(Vec2f(0, 1), 1.0f0 ./ Vec2f(size(image, 1), -size(image, 2)))
+            dim_order, (ox, oy) = _decode_storage(storage)
+            # Flip in normalized 0..1 uv space, composed onto the user T on the
+            # right so it's applied right after the inner normalize step. For
+            # `dim_order = :yx` the final swap_xy at the end of the chain
+            # exchanges the local x and y, so we swap which flip matrix maps to
+            # which of `ox`/`oy`.
+            flipx_local = (dim_order === :yx ? oy : ox) === :end
+            flipy_local = (dim_order === :yx ? ox : oy) === :end
+            if flipx_local
+                T3 = T3 * Mat3f(-1, 0, 0, 0, 1, 0, 1, 0, 1)
+            end
+            if flipy_local
+                T3 = T3 * Mat3f(1, 0, 0, 0, -1, 0, 0, 1, 1)
+            end
+            sx, sy = dim_order === :yx ? (size(image, 2), size(image, 1)) : (size(image, 1), size(image, 2))
+            T3 = Makie.uv_transform(Vec2f(sx, sy)) * T3 *
+                Makie.uv_transform(Vec2f(0, 1), 1.0f0 ./ Vec2f(sx, -sy))
+            if dim_order === :yx
+                T3 = T3 * Mat3f(0, 1, 0, 1, 0, 0, 0, 0, 1)
+            end
             return T3[Vec(1, 2), Vec(1, 2, 3)]
         else
             return Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0)
@@ -75,6 +129,7 @@ function draw_image(ctx, not_svg, attr)
     clip_planes = attr.clip_planes
     color_image = attr.computed_color
     space = attr.space
+    dim_order, origin = _decode_storage(attr.storage)
 
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
@@ -153,12 +208,15 @@ function draw_image(ctx, not_svg, attr)
             cairo_project_to_screen_impl(projectionview, resolution, model, transformed)
         end
 
-        # Note: xs and ys should have size ni+1, nj+1
-        ni, nj = size(color_image)
+        # ni, nj are the number of cells along x and y. For dim_order = :yx the
+        # user matrix is (rows = y, cols = x) so we iterate columns along x and
+        # rows along y, with `color_image[row, col]` at cell `(col, row)`.
+        sz1, sz2 = size(color_image)
+        ni, nj = dim_order === :yx ? (sz2, sz1) : (sz1, sz2)
         if ni + 1 != length(xs) || nj + 1 != length(ys)
             error("Error in conversion pipeline. xs and ys should have size ni+1, nj+1. Found: xs: $(length(xs)), ys: $(length(ys)), ni: $(ni), nj: $(nj)")
         end
-        _draw_rect_heatmap(ctx, xys, ni, nj, color_image)
+        _draw_rect_heatmap(ctx, xys, ni, nj, color_image, dim_order, origin)
     end
     return
 end
@@ -177,7 +235,14 @@ function is_regularly_spaced(arr)
     return maxdiff ≈ mindiff
 end
 
-function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
+function _draw_rect_heatmap(ctx, xys, ni, nj, colors, dim_order::Symbol = :xy, origin::Tuple = (:begin, :begin))
+    # `dim_order` decides whether colors are indexed [x, y] (:xy) or [y, x] (:yx);
+    # `origin` mirrors the index along x or y so `colors[1, 1]` (in user terms)
+    # anchors to the named plot-space corner.
+    ox, oy = origin
+    fx(i) = ox === :end ? (ni - i + 1) : i
+    fy(j) = oy === :end ? (nj - j + 1) : j
+    color_at(i, j) = dim_order === :yx ? @inbounds(colors[fy(j), fx(i)]) : @inbounds(colors[fx(i), fy(j)])
     return @inbounds for i in 1:ni, j in 1:nj
         p1 = xys[i, j]
         p2 = xys[i + 1, j]
@@ -191,7 +256,8 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
         # white lines between them due to anti aliasing. To avoid this we
         # increase their size slightly.
 
-        if alpha(colors[i, j]) == 1
+        c = color_at(i, j)
+        if alpha(c) == 1
             # To avoid gaps between heatmap cells we pad cells.
             # For 3D compatibility (and rotation, inversion/mirror) we pad cells
             # using directional vectors, not along x/y directions.
@@ -212,7 +278,7 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
         Cairo.line_to(ctx, p3[1], p3[2])
         Cairo.line_to(ctx, p4[1], p4[2])
         Cairo.close_path(ctx)
-        Cairo.set_source_rgba(ctx, rgbatuple(colors[i, j])...)
+        Cairo.set_source_rgba(ctx, rgbatuple(c)...)
         Cairo.fill(ctx)
     end
 end
