@@ -19,31 +19,31 @@ end
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 17
     @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.program_cache) == 9
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 17
     @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.program_cache) == 9
 
     # Same for linesegments
     display(screen, linesegments(1:4))
     @test length(cache.shader_cache) == 17
     @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.program_cache) == 9
 
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
     @test length(cache.shader_cache) == 19
     @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 11
+    @test length(cache.program_cache) == 10
 
     # For second time no new shaders should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
     @test length(cache.shader_cache) == 19
     @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 11
+    @test length(cache.program_cache) == 10
 end
 
 @testset "unit tests" begin
@@ -190,11 +190,17 @@ end
 
     @test ax.scene.plots == [hmp, lp, tp]
 
-    function leaf_plots(p)
-        isempty(p.plots) && return [p]
-        return reduce(vcat, leaf_plots.(p.plots); init = Plot[])
+    # Text now wraps its primitives in a PlotList that itself isn't cached;
+    # collect every plot in the hierarchy that the screen actually has a
+    # RenderObject for so we can verify each one gets cleaned up by `empty!`.
+    function cached_plots(p)
+        result = haskey(screen.cache, objectid(p)) ? Plot[p] : Plot[]
+        for c in p.plots
+            append!(result, cached_plots(c))
+        end
+        return result
     end
-    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, leaf_plots(tp)...])
+    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, cached_plots(tp)...])
 
     empty!(ax)
 
