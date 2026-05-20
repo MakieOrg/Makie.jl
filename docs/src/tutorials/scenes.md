@@ -166,7 +166,7 @@ figure, axis, plot_object = scatter(1:4)
 relative_projection = Makie.camrelative(axis.scene);
 scatter!(relative_projection, [Point2f(0.5)], color=:red)
 # offset & text are in pixelspace
-text!(relative_projection, "Hi", position=Point2f(0.5), offset=Vec2f(5))
+text!(relative_projection, Point2f(0.5), text="Hi", offset=Vec2f(5))
 lines!(relative_projection, Rect(0, 0, 1, 1), color=:blue, linewidth=3)
 figure
 ```
