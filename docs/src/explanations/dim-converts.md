@@ -80,14 +80,6 @@ f
 
 Note that is also possible to completely replace the unit by passing a string without a value placeholder (`{}`) here.
 
-Units also support switching to a long representation for axis labels.
-This is controlled via
-
-```@figure dc_axis
-a.use_short_x_units = false
-f
-```
-
 The dim converts are kept track of in the (generated) axis.
 They can be accessed with `ax.dim1_conversion` and `ax.dim2_conversion`:
 
@@ -377,8 +369,7 @@ Makie.show_dim_convert_in_axis_label(::MyDimConversion) = true
 # This is called when `x/y/z_unit_in_label` resolves to true, and defaults to
 # an error when not implemented.
 # `format` contains the content of x/y/zlabel_suffix
-# `use_short_units` is a bool for switching to a long representation of a unit
-function Makie.get_label_suffix(::MyDimConversion, format, use_short_units)
+function Makie.get_label_suffix(::MyDimConversion, format)
     # Here we just use "my unit" as the unit string for the label and apply
     # the passed formatter.
     return Makie.apply_format("my unit", format)

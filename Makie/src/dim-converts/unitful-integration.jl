@@ -22,11 +22,6 @@ unit_string(::Union{Number, Nothing}) = ""
 unit_string(unit::T) where {T <: Unitful.MixedUnits} = string(unit)
 unit_string(unit::Unitful.LogScaled) = ""
 
-unit_string_long(unit) = unit_string_long(base_unit(unit))
-unit_string_long(::Unitful.Unit{Sym, D}) where {Sym, D} = string(Sym)
-unit_string_long(unit::Unitful.LogScaled) = string(unit)
-
-
 to_free_unit(unit::Unitful.FreeUnits, _) = unit
 to_free_unit(unit::Unitful.FreeUnits, ::Quantity) = unit
 to_free_unit(unit::Unitful.FreeUnits, ::Quantity{T, Dim, Unitful.FreeUnits{U, Dim, nothing}}) where {T, Dim, U} = unit
@@ -143,10 +138,10 @@ function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin,
     return tick_vals, labels
 end
 
-function get_label_suffix(conversion::UnitfulConversion, format, use_short_units)
+function get_label_suffix(conversion::UnitfulConversion, format)
     unit = conversion.unit[]
     unit isa Automatic && return rich("")
-    ustr = use_short_units ? unit_string(unit) : unit_string_long(unit)
+    ustr = unit_string(unit)
     str = unit_string_to_rich(ustr)
     return apply_format(str, format)
 end
