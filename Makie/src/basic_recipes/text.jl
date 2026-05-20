@@ -429,11 +429,11 @@ function register_text_computations!(attr::ComputeGraph)
         handler === nothing && return Any[]
         return Any[
             compile_text(
-                handler, str,
-                sv_getindex(colors, i),
-                sv_getindex(fontsizes, i),
-                sv_getindex(lineheights, i),
-            ) for (i, str) in enumerate(texts)
+                    handler, str,
+                    sv_getindex(colors, i),
+                    sv_getindex(fontsizes, i),
+                    sv_getindex(lineheights, i),
+                ) for (i, str) in enumerate(texts)
         ]
     end
 
