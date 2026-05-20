@@ -190,7 +190,11 @@ end
 
     @test ax.scene.plots == [hmp, lp, tp]
 
-    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots...])
+    function leaf_plots(p)
+        isempty(p.plots) && return [p]
+        return reduce(vcat, leaf_plots.(p.plots); init = Plot[])
+    end
+    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, leaf_plots(tp)...])
 
     empty!(ax)
 
