@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed `center!` (and therefore `reset_limits!`) crashing with `znear (Inf) must be different from tfar (Inf)` when called on a scene whose `boundingbox` is undefined - either empty, with all-non-data plots, or with zero-width content. `center!` now skips silently in those cases and waits for a later update with valid data.
 - Fixed `scatter` with `markerspace = :data` and the GLMakie `FastPixel` marker producing non-finite `gl_PointSize` when points were near or behind the camera near-plane, which on AMD drivers caused a hard GPU context loss. The clip-space billboard projection now divides each endpoint by its own `w` before subtracting, skips points with `w < 1e-6`, and clamps the final `gl_PointSize` to a finite range.
 - Reworked `Textbox` with selections, multi-cursor, copy / cut / paste, and word / line navigation [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
 - A trailing `'\n'` in a `text!` string now contributes a full empty line to the layout and bounding box (previously `"abc\n"` was laid out identically to `"abc"`) [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
