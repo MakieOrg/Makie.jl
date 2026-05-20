@@ -367,13 +367,10 @@ Makie.show_dim_convert_in_axis_label(::MyDimConversion) = true
 # Generates axis labels for the conversion.
 # This is called when `x/y/z_unit_in_label` resolves to true, and defaults to
 # an error when not implemented.
-# `format` contains the content of x/y/zlabel_suffix, which may be a Format.jl
-# formatting string, a callback or a overwrite string.
 # See `?Makie.add_label_suffix` and `?Makie.get_label_suffix`
-function Makie.get_label_suffix(::MyDimConversion, format)
-    # Here we just use "my unit" as the unit string for the label and apply
-    # the passed formatter.
-    return Makie.apply_format("my unit", format)
+function Makie.get_label_suffix(::MyDimConversion)
+    # Here we just use "my unit" as the unit string for the label
+    return "my unit"
 end
 
 barplot([MyUnit(1), MyUnit(2), MyUnit(3)], 1:3)
