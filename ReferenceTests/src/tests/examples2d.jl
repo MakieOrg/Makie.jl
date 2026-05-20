@@ -524,7 +524,7 @@ end
                 markersize = 5scales[j], space = space, markerspace = mspace
             )
             text!(
-                ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
+                ax, Point2f(xs[i][i], xs[i][j]); text = "$space\n$mspace",
                 fontsize = scales[j], space = space, markerspace = mspace,
                 align = (:center, :center), color = :black
             )
@@ -570,7 +570,7 @@ end
                 markersize = 5scales[j], space = space, markerspace = mspace
             )
             text!(
-                ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
+                ax, Point2f(xs[i][i], xs[i][j]); text = "$space\n$mspace",
                 fontsize = scales[j], space = space, markerspace = mspace,
                 align = (:center, :center), color = :black
             )

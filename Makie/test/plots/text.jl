@@ -107,14 +107,14 @@ end
     @test scales == fta_scales
 end
 
-@testset "old text syntax" begin
-    text("text", position = Point2f(0, 0))
-    text(["text"], position = [Point2f(0, 0)])
-    text(["text", "text"], position = [Point2f(0, 0), Point2f(1, 1)])
+@testset "text input forms" begin
+    text(Point2f(0, 0), text = "text")
+    text([Point2f(0, 0)], text = ["text"])
+    text([Point2f(0, 0), Point2f(1, 1)], text = ["text", "text"])
     text(collect(zip(["text", "text"], [Point2f(0, 0), Point2f(1, 1)])))
-    text(L"text", position = Point2f(0, 0))
-    text([L"text"], position = [Point2f(0, 0)])
-    text([L"text", L"text"], position = [Point2f(0, 0), Point2f(1, 1)])
+    text(Point2f(0, 0), text = L"text")
+    text([Point2f(0, 0)], text = [L"text"])
+    text([Point2f(0, 0), Point2f(1, 1)], text = [L"text", L"text"])
     text(collect(zip([L"text", L"text"], [Point2f(0, 0), Point2f(1, 1)])))
 
     err = ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.")
