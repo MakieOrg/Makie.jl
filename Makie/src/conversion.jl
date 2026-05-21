@@ -139,8 +139,10 @@ See also: [`CellGrid`](@ref), [`VertexGrid`](@ref)
 * `image` An `AbstractMatrix{<:Colorant}` defining the colors of an image, or an `AbstractMatrix{<:Real}`
     defining colors through color mapping.
 * `x, y, image` Defines the boundary of the image rectangle along with the image data. `x` and `y`
-    can be a `Tuple{<:Real, <:Real}` or `ClosedInterval{<:Real}`. Defaults to `0 .. size(image, 1)`
-    and `0 .. size(image, 2)` respectively.
+    can be a `Tuple{<:Real, <:Real}` or `ClosedInterval{<:Real}`. When omitted they default to
+    `0 .. n` along each axis, where `n` is the size of the array dimension that maps to that
+    axis under the current `storage` (`0 .. size(image, 2)` × `0 .. size(image, 1)` for the
+    default `storage = (:down, :right)`).
 """
 struct ImageLike <: ConversionTrait end
 conversion_trait(::Type{<:Image}) = ImageLike()

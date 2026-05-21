@@ -231,18 +231,6 @@ calculated_attributes!(plot::T) where {T} = calculated_attributes!(T, plot)
 
 """
 Plots an image on a rectangle bounded by `x` and `y`.
-
-`image(mat)` interprets the matrix in image-storage convention by default:
-`image[i, j]` is the pixel at row `i`, column `j` (matching the layout
-`FileIO.load`, NumPy/PIL, and `display(::Matrix)` use). When `x` and `y`
-default to the image size, `x` spans `(0, ncols)` (width) and `y` spans
-`(0, nrows)` (height). Freshly-created axes also get `yreversed = true`
-because images are conceptually oriented top-to-bottom while a math-style y
-axis grows upward.
-
-The orientation of the array on the quad is controlled by the single `storage`
-attribute (see below) which says, in directions, how the array is laid out on
-the conceptually-oriented quad.
 """
 @recipe Image (
     x::EndPoints,
@@ -252,19 +240,21 @@ the conceptually-oriented quad.
     "Sets whether colors should be interpolated between pixels."
     interpolate = true
     """
-    How the array is mapped onto the conceptually-oriented image quad, as a
-    tuple of two directions: the first entry is the direction the first array
-    dim runs along the quad, the second entry is the direction the second
-    array dim runs. Each entry must be one of `:up`, `:down`, `:left`,
-    `:right`; exactly one must be vertical and one horizontal. Default
-    `(:down, :right)` matches the typical image-storage convention
-    (`FileIO.load`, NumPy/PIL): first dim runs top-to-bottom, second
-    left-to-right.
+    A tuple `(d1, d2)` of directions describing how the first and second array
+    dims run on the rectangle in data space. Each entry is one of `:up`,
+    `:down`, `:left`, `:right`; exactly one must be vertical and one
+    horizontal. Directions are stated relative to the image-conventional data
+    space where y goes down and x to the right, which is why `image` sets
+    `yreversed = true` as an axis hint on freshly-created axes — so `:down`
+    in `storage` lines up with the visual downward direction on screen.
 
-    Directions are quad-relative — `:down` always means "towards the bottom of
-    the image" regardless of `xreversed` / `yreversed`. For an image stored
-    with `image[1, 1]` at the bottom-right and first dim along x, use
-    `storage = (:left, :up)`.
+    The default `(:down, :right)` matches the convention used by
+    `FileIO.load`, NumPy, PIL, OpenCV and the like: `image[1, 1]` is the
+    top-left pixel, the first array dim runs top-to-bottom, the second runs
+    left-to-right. If your image was stored differently, for example because
+    it was recorded by an unusual scientific instrument, adjust `storage`
+    accordingly (e.g. `(:left, :up)` for an image where `image[1, 1]` is the
+    bottom-right pixel and the first dim runs along x).
     """
     storage = (:down, :right)
     mixin_generic_plot_attributes()...

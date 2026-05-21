@@ -455,10 +455,10 @@ function convert_arguments(
 end
 
 # `storage` is `(dim1_direction, dim2_direction)` with each direction one of
-# `:up`, `:down`, `:left`, `:right`. Returns the internal `(dim_order, origin)`:
-# `dim_order` is `:yx` if the first array dim is vertical and `:xy` if it's
-# horizontal; `origin` is `(:begin | :end, :begin | :end)` for x then y, naming
-# which extent endpoint `image[1, 1]` anchors to.
+# `:up`, `:down`, `:left`, `:right`, describing how the two array dims run on
+# the conceptually-oriented quad. We decode it into `(dim_order, origin)`:
+# `dim_order = :yx` when the first array dim is vertical (and `:xy` when it's
+# horizontal); `origin` is `(x_corner, y_corner)` with each `:begin`/`:end`.
 function _decode_image_storage(s)
     vertical = (:up, :down)
     horizontal = (:left, :right)
@@ -479,30 +479,40 @@ function _decode_image_storage(s)
     return dim_order, (ox, oy)
 end
 
-# `storage` decides which matrix dim runs along which axis and from which end.
-# The data flows through untouched; backends read `storage` from the plot
-# attributes and handle the layout render-side (no reallocation).
+# Rearrange the user matrix so backends always see the legacy Makie layout
+# (`dim_order = :xy`, `origin = (:begin, :begin)` — `data[i, j]` at plot
+# `(x_i, y_j)`). All four flip combinations are lazy `view`s of the original
+# matrix (no copy at the Makie level). Backends may still materialize for
+# their own pipelines (e.g. Cairo needs row-major contiguous memory).
+function _stored_view(data, dim_order, origin)
+    base = dim_order === :yx ? PermutedDimsArray(data, (2, 1)) : data
+    ox, oy = origin
+    ix = ox === :end ? (size(base, 1):-1:1) : (1:size(base, 1))
+    iy = oy === :end ? (size(base, 2):-1:1) : (1:size(base, 2))
+    return (ix isa AbstractRange && iy isa AbstractRange) ? @view(base[ix, iy]) : @view(base[ix, iy])
+end
+
 function convert_arguments(
         ::ImageLike, data::AbstractMatrix{<:Union{Real, Colorant}};
         storage = (:down, :right), kw...
     )
     dim_order, _ = _decode_image_storage(storage)
     nrows, ncols = size(data)
-    x, y = dim_order === :yx ? ((0.0f0, Float32(ncols)), (0.0f0, Float32(nrows))) :
-        ((0.0f0, Float32(nrows)), (0.0f0, Float32(ncols)))
+    nx, ny = dim_order === :yx ? (ncols, nrows) : (nrows, ncols)
+    x = (0.0f0, Float32(nx))
+    y = (0.0f0, Float32(ny))
     return convert_arguments(ImageLike(), x, y, data; storage = storage, kw...)
 end
 
-# Note: used by dim_converts to normalize xs, ys, so no eltype on RangeLike.
 function convert_arguments(
         ::ImageLike, xs::RangeLike, ys::RangeLike,
         data::AbstractMatrix{<:Union{Real, Colorant}};
         storage = (:down, :right), kw...
     )
-    _decode_image_storage(storage)  # validate
+    dim_order, origin = _decode_image_storage(storage)
     x = to_endpoints(xs, "x", ImageLike)
     y = to_endpoints(ys, "y", ImageLike)
-    return (x, y, el32convert(data))
+    return (x, y, el32convert(_stored_view(data, dim_order, origin)))
 end
 
 # Fixed point on (::EndPoints, ::EndPoints, ::AbstractMatrix); el32convert is

@@ -440,10 +440,12 @@ end
         RGBf(0, 1, 0) RGBf(1, 1, 0)
     ]
 
-    @testset "user matrix flows through every storage unchanged" begin
+    @testset "user matrix flows through every storage without copy" begin
+        # `convert_arguments` returns a lazy SubArray/PermutedDimsArray view —
+        # the underlying buffer is the user's matrix, no allocation.
         for s in ((:down, :right), (:up, :left), (:right, :down), (:left, :up))
             x, y, data = convert_arguments(Image, mat; storage = s)
-            @test data === mat
+            @test parent(parent(data)) === mat || parent(data) === mat
             @test x == Makie.EndPoints(0.0f0, 2.0f0)
             @test y == Makie.EndPoints(0.0f0, 2.0f0)
         end
@@ -464,11 +466,8 @@ end
 
         fig, ax, p = image(rect_mat)
         @test ax.xreversed[] === false
-        @test ax.yreversed[] === true  # fixed Image default
-        @test p.image[] === rect_mat
-        # `storage` rides as a convert kwarg; if the user didn't pass one, the
-        # attribute is `nothing` and the documented default `(:down, :right)`
-        # fires at convert time and at render time.
+        @test ax.yreversed[] === true
+        @test parent(parent(p.image[])) === rect_mat || parent(p.image[]) === rect_mat
         @test p.storage[] === nothing || p.storage[] === (:down, :right)
 
         _, _, p_explicit = image(rect_mat; storage = (:down, :right))
