@@ -150,7 +150,13 @@ end
 
 function for_each_atomic_plot(f, plot::Text)
     f(plot)
-    return f(plot.plots[1]) # linesegments for latex
+    # Text materializes child primitives (latex linesegments, etc.) inside a
+    # PlotList. Descend through it so each rendered atom (not the wrapper) is
+    # visited — backends rely on this for per-plot polling and cleanup.
+    for child in plot.plots
+        for_each_atomic_plot(f, child)
+    end
+    return
 end
 
 function for_each_atomic_plot(f, plot::Plot)
