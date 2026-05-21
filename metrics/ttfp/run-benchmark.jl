@@ -20,6 +20,7 @@ base_branch = "ff/breaking-0.25"
 # Package = "CairoMakie"
 # n_samples = 2
 # base_branch = "breaking-release"
+base_branch = "ff/breaking-0.25"  # override: this PR targets the breaking branch (merge base)
 
 @info("Benchmarking $(Package) against $(base_branch) with $(n_samples) samples")
 
