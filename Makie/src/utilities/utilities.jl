@@ -644,6 +644,55 @@ function shared_attributes!(
     return output
 end
 
+function shared_attributes(attr::Attributes, target::Type{<:Plot}; drop = Symbol[])
+    if drop isa Union{Vector, Set}
+        push!(drop, :model)
+    elseif drop isa Dict
+        get!(drop, :model, nothing)
+    else
+        drop = (model = nothing, drop...)
+    end
+
+    return shared_attributes!(Attributes(), attr, documented_attributes(target), drop)
+end
+
+function shared_attributes!(
+        output::Attributes, attr::Attributes, allowed::DocumentedAttributes,
+        exclude::Union{Dict, NamedTuple}, layer = 1
+    )
+    for (key, idx) in allowed.nesting.keytables[layer]
+        is_excluded = haskey(exclude, key) && !isa(exclude[key], Union{Dict, NamedTuple})
+        if !is_excluded && haskey(attr, key)
+            if idx > 0
+                shared_attributes!(output, attr[key], allowed, get(exclude, key, NamedTuple()), idx)
+            else
+                fullkey = allowed.merged_keys[-idx]
+                output[fullkey] = attr[key]
+            end
+        end
+    end
+    return output
+end
+
+function shared_attributes!(
+        output::Attributes, attr::Attributes, allowed::DocumentedAttributes,
+        exclude::Union{Vector{Symbol}, Set{Symbol}}, layer = 1
+    )
+    for (key, idx) in allowed.nesting.keytables[layer]
+        if haskey(attr, key)
+            if idx > 0
+                shared_attributes!(output, attr[key], allowed, exclude, idx)
+            else
+                fullkey = allowed.merged_keys[-idx]
+                if !(fullkey in exclude)
+                    output[fullkey] = attr[key]
+                end
+            end
+        end
+    end
+    return output
+end
+
 isscalar(x::StaticVector) = true
 isscalar(x::Mat) = true
 isscalar(x::AbstractArray) = false

@@ -774,12 +774,13 @@ function has_nested_key(attr::DocumentedAttributes, keys::Symbol...)
     return true
 end
 
+has_flat_key(attr::DocumentedAttributes, key::Symbol) = haskey(attr.merged_key_to_index, key)
+function has_key_in_level(attr::DocumentedAttributes, layer::Int, key::Symbol)
+    return ComputePipeline.has_key_in_level(attr.nesting, layer, key)
+end
+
 root_keys(attr::DocumentedAttributes) = keys(attr.nesting.keytables[1])
 flattened_keys(attr::DocumentedAttributes) = attr.merged_keys
-
-function has_flat_key(attr::DocumentedAttributes, key::Symbol)
-    return haskey(attr.merged_key_to_index, key)
-end
 
 # empty keytables[1] implies no nesting, no attributes
 Base.isempty(attr::DocumentedAttributes) = isempty(attr.nesting.keytables[1])
@@ -813,8 +814,8 @@ associated with an attribute.
 function unchecked_nested_key_to_index(attr::DocumentedAttributes, keys::Symbol...)
     return unchecked_nested_key_to_index(attr, keys)
 end
-function unchecked_nested_key_to_index(attr::DocumentedAttributes, keys::Tuple)
-    idx = 1
+function unchecked_nested_key_to_index(attr::DocumentedAttributes, keys::Tuple, layer::Integer = 1)
+    idx = layer
     for (i, key) in enumerate(keys)
         if idx < 0 || !haskey(attr.nesting.keytables[idx], key)
             idx < 0 && error("Nested keys $keys could not be resolved because $(keys[i - 1]) is not nested.")
