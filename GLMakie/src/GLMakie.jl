@@ -126,9 +126,51 @@ WARN_ON_LOAD[] = true
 
 function __init__()
     activate!()
+    macos_set_dock_visible(false)
     # trigger OpenGL cleanup to avoid errors in debug mode
     return atexit(GLMakie.closeall)
 end
+
+function macos_set_dock_visible(visible::Bool)
+    Sys.isapple() || return
+    return try
+        nsapp_class = @ccall objc_getClass("NSApplication"::Cstring)::Ptr{Cvoid}
+        shared_app_sel = @ccall sel_registerName("sharedApplication"::Cstring)::Ptr{Cvoid}
+        set_policy_sel = @ccall sel_registerName("setActivationPolicy:"::Cstring)::Ptr{Cvoid}
+        nsapp = @ccall objc_msgSend(nsapp_class::Ptr{Cvoid}, shared_app_sel::Ptr{Cvoid})::Ptr{Cvoid}
+
+        NSApplicationActivationPolicyRegular = 0
+        NSApplicationActivationPolicyAccessory = 1
+        val = visible ? NSApplicationActivationPolicyRegular : NSApplicationActivationPolicyAccessory
+        @ccall objc_msgSend(nsapp::Ptr{Cvoid}, set_policy_sel::Ptr{Cvoid}, val::Clong)::Ptr{Cvoid}
+
+        if visible
+            macos_set_dock_icon(Makie.assetpath("icon_transparent.png"))
+        end
+    catch e
+        @warn "Failed to set dock visibility" e
+    end
+end
+
+function macos_set_dock_icon(path::String)
+    Sys.isapple() || return
+    nsstring_class = @ccall objc_getClass("NSString"::Cstring)::Ptr{Cvoid}
+    str_sel = @ccall sel_registerName("stringWithUTF8String:"::Cstring)::Ptr{Cvoid}
+    path_nsstr = @ccall objc_msgSend(nsstring_class::Ptr{Cvoid}, str_sel::Ptr{Cvoid}, path::Cstring)::Ptr{Cvoid}
+
+    nsimage_class = @ccall objc_getClass("NSImage"::Cstring)::Ptr{Cvoid}
+    alloc_sel = @ccall sel_registerName("alloc"::Cstring)::Ptr{Cvoid}
+    init_file_sel = @ccall sel_registerName("initWithContentsOfFile:"::Cstring)::Ptr{Cvoid}
+    image = @ccall objc_msgSend(nsimage_class::Ptr{Cvoid}, alloc_sel::Ptr{Cvoid})::Ptr{Cvoid}
+    image = @ccall objc_msgSend(image::Ptr{Cvoid}, init_file_sel::Ptr{Cvoid}, path_nsstr::Ptr{Cvoid})::Ptr{Cvoid}
+
+    nsapp_class = @ccall objc_getClass("NSApplication"::Cstring)::Ptr{Cvoid}
+    shared_app_sel = @ccall sel_registerName("sharedApplication"::Cstring)::Ptr{Cvoid}
+    nsapp = @ccall objc_msgSend(nsapp_class::Ptr{Cvoid}, shared_app_sel::Ptr{Cvoid})::Ptr{Cvoid}
+    set_icon_sel = @ccall sel_registerName("setApplicationIconImage:"::Cstring)::Ptr{Cvoid}
+    return @ccall objc_msgSend(nsapp::Ptr{Cvoid}, set_icon_sel::Ptr{Cvoid}, image::Ptr{Cvoid})::Ptr{Cvoid}
+end
+
 
 include("precompiles.jl")
 

@@ -162,29 +162,26 @@ function initialize_block!(ax::Axis3)
 
     xlabel_node = Observable{Any}()
     map!(
-        xlabel_node, ax.xlabel, ax.xlabel_suffix, ax.x_unit_in_label, ax.use_short_x_units,
-        x_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, use_short_unit, _
+        xlabel_node, ax.xlabel, ax.xlabel_suffix, ax.x_unit_in_label, x_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, _
         dc = ax.scene.conversions[1]
-        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label, use_short_unit)
+        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
     end
 
     ylabel_node = Observable{Any}()
     map!(
-        ylabel_node, ax.ylabel, ax.ylabel_suffix, ax.y_unit_in_label, ax.use_short_y_units,
-        y_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, use_short_unit, _
+        ylabel_node, ax.ylabel, ax.ylabel_suffix, ax.y_unit_in_label, y_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, _
         dc = ax.scene.conversions[2]
-        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label, use_short_unit)
+        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
     end
 
     zlabel_node = Observable{Any}()
     map!(
-        zlabel_node, ax.zlabel, ax.zlabel_suffix, ax.z_unit_in_label, ax.use_short_z_units,
-        z_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, use_short_unit, _
+        zlabel_node, ax.zlabel, ax.zlabel_suffix, ax.z_unit_in_label, z_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, _
         dc = ax.scene.conversions[3]
-        x = build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label, use_short_unit)
+        x = build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
         return x
     end
 
@@ -887,7 +884,7 @@ function add_panel!(topscene, ax, dim1, dim2, dim3, limits, min3)
         xautolimits = false, yautolimits = false, zautolimits = false,
         color = attr(:panelcolor), visible = attr(:panelvisible),
         strokecolor = :transparent, strokewidth = 0,
-        transformation = (plane, 0)
+        transformation = (plane, 0), clip_planes = Plane3f[]
     )
 
     on(plane_offset) do offset

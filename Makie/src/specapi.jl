@@ -1154,7 +1154,7 @@ function add_layout_updater!(parent_scene::Scene, layout::GridLayout, layout_obs
     return nothing
 end
 
-args_preferred_axis(::GridLayoutSpec) = FigureOnly
+preferred_axis_type(::GridLayoutSpec) = FigureOnly
 
 plot!(plot::Plot{plot, Tuple{GridLayoutSpec}}) = plot
 

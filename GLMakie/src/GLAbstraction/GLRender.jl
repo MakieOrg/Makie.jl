@@ -113,6 +113,10 @@ function render(mode::GLenum, indices::Int, ::Nothing, N_verts)
     return nothing
 end
 
+# Empirically bisected: GL_LINE_STRIP_ADJACENCY breaks at count >= 2_418_341.
+# Picked with ~17% headroom since the exact driver-side cutoff may drift.
+const MAC_LINE_STRIP_CHUNK = 2_000_000
+
 # using indexbuffer (faces)
 function render(mode::GLenum, indices::GLBuffer{T}, ::Nothing, N_verts) where {T <: Union{Integer, AbstractFace}}
     # Note: not discarding draw calls with 0 indices may cause segfaults even if
@@ -126,7 +130,26 @@ function render(mode::GLenum, indices::GLBuffer{T}, ::Nothing, N_verts) where {T
         N_addressed = GeometryBasics.raw(mapreduce(maximum, max, data))
         vao_boundscheck(N_verts, N_addressed)
     end
-    glDrawElements(mode, N, julia2glenum(T), C_NULL)
+    if Sys.isapple() && mode == GL_LINE_STRIP_ADJACENCY && N > MAC_LINE_STRIP_CHUNK
+        # macOS workaround for Makie#5491. Apple's OpenGL geometry-shader emulation emits
+        # one phantom segment between the first and last vertex when a single draw call
+        # exceeds ~2.42M indices. Splitting into chunks below the threshold sidesteps the
+        # bug per chunk. Consecutive chunks overlap by 3 indices to give the joints at the
+        # chunk boundary the same adjacency context they would have in a single draw; with
+        # LINE_STRIP_ADJACENCY a primitive (p, q, r, s) only draws segment q→r and uses
+        # p and s as joint hints, so this is adjacency-only overlap, not overdraw - every
+        # segment is drawn exactly once.
+        elt_size = sizeof(T)
+        glenum = julia2glenum(T)
+        offset = 0
+        while offset < N - 3
+            count = min(MAC_LINE_STRIP_CHUNK, N - offset)
+            glDrawElements(mode, count, glenum, Ptr{Cvoid}(offset * elt_size))
+            offset += MAC_LINE_STRIP_CHUNK - 3
+        end
+    else
+        glDrawElements(mode, N, julia2glenum(T), C_NULL)
+    end
     return nothing
 end
 

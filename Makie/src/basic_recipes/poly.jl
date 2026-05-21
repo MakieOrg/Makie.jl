@@ -53,7 +53,8 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         inspectable = plot.inspectable,
         transparency = plot.transparency,
         space = plot.space,
-        depth_shift = plot.depth_shift
+        depth_shift = plot.depth_shift,
+        clip_planes = plot.clip_planes
     )
     wireframe!(
         plot, plot[1],
@@ -61,7 +62,8 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         linewidth = plot.strokewidth, linecap = plot.linecap,
         visible = plot.visible, overdraw = plot.overdraw,
         inspectable = plot.inspectable, transparency = plot.transparency,
-        colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift
+        colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift,
+        clip_planes = plot.clip_planes
     )
     return plot
 end
@@ -180,7 +182,8 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         transparency = plot.transparency,
         inspectable = plot.inspectable,
         space = plot.space,
-        depth_shift = plot.depth_shift
+        depth_shift = plot.depth_shift,
+        clip_planes = plot.clip_planes
     )
 
     map!(to_lines, plot, :polygon, [:outline, :increment_at])
@@ -210,6 +213,7 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
         space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
-        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift
+        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift,
+        clip_planes = plot.clip_planes
     )
 end

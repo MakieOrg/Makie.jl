@@ -214,7 +214,7 @@ function create_test_figure()
     end
 
     # Bottom row - Live text preview
-    preview_text = lift(textbox_text.displayed_string, textbox_num.displayed_string, toggle_update.active) do text, num, auto
+    preview_text = lift(textbox_text.editor.arg1, textbox_num.editor.arg1, toggle_update.active) do text, num, auto
         status = auto ? "Auto-update: ON" : "Auto-update: OFF"
         "Preview: \"$text\" | Number: $num | $status"
     end

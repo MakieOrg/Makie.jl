@@ -385,7 +385,7 @@ end
 function replace_widget!(textbox::Makie.Textbox)
     Makie.hide!(textbox)
     scene = Makie.rootparent(textbox.blockscene)
-    initial_value = textbox.displayed_string[]
+    initial_value = textbox.editor.arg1[]
     validator = textbox.validator[]
 
     # Extract Makie styling attributes
@@ -436,13 +436,17 @@ function replace_widget!(textbox::Makie.Textbox)
     )
 
     # Add number-specific attributes for numeric validators
-    input_attrs = Dict(:type => input_type, :value => string(initial_value))
+    input_attrs = Dict(
+        :type => input_type,
+        :value => string(initial_value),
+        :placeholder => textbox.placeholder[],
+    )
     if input_type == "number"
         input_attrs[:step] = "any"  # Allow any decimal precision
     end
 
     stored_string_obs = create_synchronized_input_observable(textbox.stored_string)
-    displayed_string_obs = create_synchronized_input_observable(textbox.displayed_string)
+    displayed_string_obs = create_synchronized_input_observable(textbox.editor.arg1)
 
     textbox_input = DOM.input(;
         input_attrs...,

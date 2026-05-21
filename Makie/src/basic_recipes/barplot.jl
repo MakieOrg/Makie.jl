@@ -471,6 +471,7 @@ function _transformed_bbox(p::BarPlot)
         x1 = maximum(p.x[] .+ 0.5 .* p.barwidth[])
         y0 = minimum(min.(p.y[] .+ p.offset[], p.computed_fillto[]))
         y1 = maximum(max.(p.y[] .+ p.offset[], p.computed_fillto[]))
+        y0 = ifelse(y0 == -Inf, 0, y0)
         bb = Rect2d(x0, y0, x1 - x0, y1 - y0)
         return ifelse(p.in_y_direction[], bb, flip(bb))
 

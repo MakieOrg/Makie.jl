@@ -732,32 +732,43 @@ end
     Makie.focus!(tb1)
     click(e, 297, 221)
     Makie.defocus!(tb1)
+    @test tb1.stored_string[] == "1234567890qwertyuiop"
 
     tb2 = Makie.Textbox(f[2, 1], width = 100)
     Makie.set!(tb2, "1234567890qwertyuiop")
-    tb2.cursorindex[] = 20
+    tb2.editor.cursors[] = [Makie.EditCursor(20)]
     Makie.focus!(tb2)
     send(e, Keyboard.backspace)
     Makie.defocus!(tb2)
+    @test tb2.stored_string[] == "1234567890qwertyuiop"
+    # should defocus!() or clicking away really not commit the change?
+    # send(e, Keyboard.enter)
+    # @test tb2.stored_string[] == "1234567890qwertyuio"
 
     tb3 = Makie.Textbox(f[3, 1], width = 100)
     Makie.set!(tb3, "1234567890qwertyuiop")
-    tb3.cursorindex[] = 20
+    tb3.editor.cursors[] = [Makie.EditCursor(20)]
     Makie.focus!(tb3)
     click(e, 259, 173) # between 7 and 8
     send(e, Keyboard.left)
     send(e, Keyboard.left)
     Makie.defocus!(tb3)
+    @test tb3.stored_string[] == "1234567890qwertyuiop"
+    # send(e, Keyboard.enter)
+    # @test tb3.stored_string[] == "1234567890qwertyuiop"
 
     tb4 = Makie.Textbox(f[4, 1], width = 100)
     Makie.set!(tb4, "1234567890qwertyuiop")
-    tb4.cursorindex[] = 20
-    tb4.cursorindex[] = 10
+    tb4.editor.cursors[] = [Makie.EditCursor(20)]
+    tb4.editor.cursors[] = [Makie.EditCursor(10)]
     Makie.focus!(tb4)
     for _ in 1:8
         send(e, Keyboard.backspace)
     end
     Makie.defocus!(tb4)
+    @test tb4.stored_string[] == "1234567890qwertyuiop"
+    # send(e, Keyboard.enter)
+    # @test tb4.stored_string[] == "12qwertyuiop"
 
     f
 end

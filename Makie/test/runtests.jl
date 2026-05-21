@@ -37,6 +37,7 @@ end
         include("isolated/datetime_ticks.jl")
         include("isolated/argument_docs.jl")
         include("isolated/recipes.jl") # @recipe, @Block generated code
+        include("isolated/showoff.jl")
     end
 
     @testset "Plots" begin
@@ -80,6 +81,7 @@ end
         include("interactivity/Axis.jl")
         include("interactivity/Axis3.jl")
         include("interactivity/DataInspector.jl")
+        include("interactivity/EditableText.jl")
     end
 
     include("boundingboxes.jl")

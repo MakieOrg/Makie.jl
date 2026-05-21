@@ -1,13 +1,11 @@
 module Formatters
-    using Showoff
+    import ..Makie: format_ticks_plain, format_ticks_scientific_string
 
-    function scientific(ticks::AbstractVector)
-        return Showoff.showoff(ticks, :scientific)
-    end
+    scientific(ticks::AbstractVector) = format_ticks_scientific_string(ticks)
 
     function plain(ticks::AbstractVector)
         return try
-            Showoff.showoff(ticks, :plain)
+            format_ticks_plain(ticks; minus_sign = false)
         catch e
             bt = Base.catch_backtrace()
             Base.showerror(stderr, e)

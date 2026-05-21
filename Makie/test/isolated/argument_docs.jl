@@ -9,12 +9,13 @@
         :ComputePlots,
         :Plot,
         :Arrows, # This is just a deprecated alias
-        :DataInspectorTooltip,
     ]
     plot_types = filter(names(Makie, all = true)) do name
         isdefined(Makie, name) || return false
         val = getfield(Makie, name)
-        name in internal_plot_types && return false
+        if name in internal_plot_types || !Base.isexported(Makie, name)
+            return false
+        end
         return val isa Type && val <: Makie.Plot && !isabstracttype(val)
     end
 
