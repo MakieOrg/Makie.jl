@@ -864,7 +864,9 @@ function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
 
     # Maybe added by convert_kwargs?
     if !haskey(graph, :cycle)
-        _cycle = if haskey(kwargs, :cycle)
+        _cycle = if !isnothing(parent) && haskey(parent, :cycle)
+            parent.cycle
+        elseif haskey(kwargs, :cycle)
             kwargs[:cycle]
         elseif has_flat_key(attr, :cycle)
             lookup_default(P, nothing, :cycle)
