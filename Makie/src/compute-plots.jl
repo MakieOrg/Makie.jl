@@ -466,10 +466,17 @@ end
 function add_convert_kwargs!(attr, user_kw, P, args)
     conv_attributes = used_attributes(P, args...)
     intrinsics = default_theme(nothing)
+    recipe_defaults = default_theme(nothing, P)
     conv_attr_input = Symbol[]
     for key in conv_attributes
         if !haskey(attr.inputs, key) && !haskey(intrinsics, key) # can be added from plot attributes
-            default = key === :space ? :data : nothing
+            default = if haskey(recipe_defaults, key)
+                recipe_defaults[key]
+            elseif key === :space
+                :data
+            else
+                nothing
+            end
             add_input!(attr, key, pop!(user_kw, key, default))
             push!(conv_attr_input, key)
         end

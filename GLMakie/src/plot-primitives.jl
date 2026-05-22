@@ -881,10 +881,20 @@ end
 
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Image)
-    return draw_atomic_as_image(screen, scene, plot)
+    # GLMakie's image-shader baseline (no uv_transform) renders as if the array has
+    # orientation (:right, :up) — texture (0, 0) at the bottom-left of the quad,
+    # because OpenGL texture origin is at the bottom. We compose orientation_T
+    # after flip_y so the effective transform takes that baseline to the requested
+    # orientation. User-provided uv_transform is ignored for now.
+    flip_y = Mat3f(1, 0, 0, 0, -1, 0, 0, 1, 1)
+    map!(plot.attributes, [:orientation], :oriented_uv_transform) do orientation
+        ot = isnothing(orientation) ? Mat3f(I) : Makie.image_orientation_uv_transform(orientation)
+        return (ot * flip_y)[Vec(1, 2), Vec(1, 2, 3)]
+    end
+    return draw_atomic_as_image(screen, scene, plot; uv_transform_key = :oriented_uv_transform)
 end
 
-function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
+function draw_atomic_as_image(screen::Screen, scene::Scene, plot; uv_transform_key::Symbol = :uv_transform)
     attr = generic_robj_setup(screen, scene, plot)
 
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
@@ -898,7 +908,7 @@ function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
     uniforms = [
         :positions_transformed_f32c,
         :lowclip_color, :highclip_color, :nan_color,
-        :model_f32c, :uv_transform,
+        :model_f32c, uv_transform_key,
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -906,6 +916,7 @@ function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
         :scaled_color => :image, :model_f32c => :model,
+        uv_transform_key => :uv_transform,
     )
 
     robj = register_robj!(assemble_image_robj!, screen, scene, plot, inputs, uniforms, input2glname)

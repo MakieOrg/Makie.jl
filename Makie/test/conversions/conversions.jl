@@ -367,8 +367,8 @@ end
     t2 = (1, 6)
 
     @testset "ImageLike conversion" begin
-        # Default `dim_order = :yx`: x extent spans ncols, y extent spans nrows.
-        # The matrix itself flows through unchanged (modulo el32convert).
+        # Convert returns the user matrix unchanged (orientation is applied by backends).
+        # Rect extents follow orientation: default `(:down, :right)` puts ncols along x, nrows along y.
         @test convert_arguments(Image, m3) == ((0.0f0, 6.0f0), (0.0f0, 10.0f0), o3)
         @test convert_arguments(Image, i1, i2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
         @test convert_arguments(Image, i1, t2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
@@ -379,11 +379,11 @@ end
         @test_throws ErrorException convert_arguments(Image, v3, i1, m3)
         @test_throws ErrorException convert_arguments(Image, v1, i3, m3)
 
-        # `dim_order = :xy` swaps which matrix dim is the default x extent.
-        @test convert_arguments(Image, m3; storage = (:right, :down)) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
-        @test convert_arguments(Image, i1, i2, m3; storage = (:right, :down)) == ((1.0, 10.0), (1.0, 6.0), o3)
-        @test_throws ErrorException convert_arguments(Image, m3; storage = (:up, :up))
-        @test_throws ErrorException convert_arguments(Image, m3; storage = :bogus)
+        # Legacy `(:right, :down)` swaps which dim sizes which axis.
+        @test convert_arguments(Image, m3; orientation = (:right, :down)) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
+        @test convert_arguments(Image, i1, i2, m3; orientation = (:right, :down)) == ((1.0, 10.0), (1.0, 6.0), o3)
+        @test_throws ErrorException convert_arguments(Image, m3; orientation = (:up, :up))
+        @test_throws ErrorException convert_arguments(Image, m3; orientation = :bogus)
 
         # TODO: Should probably fail because it's not accepted by backends?
         @test convert_arguments(Image, m1, m2, m3) === (m1, m2, m3)
@@ -440,47 +440,48 @@ end
         RGBf(0, 1, 0) RGBf(1, 1, 0)
     ]
 
-    @testset "user matrix flows through every storage without copy" begin
-        # `convert_arguments` returns a lazy SubArray/PermutedDimsArray view —
-        # the underlying buffer is the user's matrix, no allocation.
+    @testset "user matrix flows through every orientation without copy" begin
+        # `convert_arguments` returns the user matrix unchanged for every orientation;
+        # backends apply orientation via their own render-time transforms (CTM for
+        # CairoMakie, uv_transform for GLMakie/WGLMakie). No allocation here.
         for s in ((:down, :right), (:up, :left), (:right, :down), (:left, :up))
-            x, y, data = convert_arguments(Image, mat; storage = s)
-            @test parent(parent(data)) === mat || parent(data) === mat
+            x, y, data = convert_arguments(Image, mat; orientation = s)
+            @test data === mat
             @test x == Makie.EndPoints(0.0f0, 2.0f0)
             @test y == Makie.EndPoints(0.0f0, 2.0f0)
         end
     end
 
-    @testset "default extents follow storage" begin
+    @testset "default extents follow orientation" begin
         rect_mat = rand(Float32, 3, 5)
         x_yx, y_yx, _ = convert_arguments(Image, rect_mat)
         @test x_yx == Makie.EndPoints(0.0f0, 5.0f0)
         @test y_yx == Makie.EndPoints(0.0f0, 3.0f0)
-        x_xy, y_xy, _ = convert_arguments(Image, rect_mat; storage = (:right, :down))
+        x_xy, y_xy, _ = convert_arguments(Image, rect_mat; orientation = (:right, :down))
         @test x_xy == Makie.EndPoints(0.0f0, 3.0f0)
         @test y_xy == Makie.EndPoints(0.0f0, 5.0f0)
     end
 
-    @testset "axis hint and storage attribute" begin
+    @testset "axis hint and orientation attribute" begin
         rect_mat = rand(Float32, 3, 5)
 
         fig, ax, p = image(rect_mat)
         @test ax.xreversed[] === false
         @test ax.yreversed[] === true
-        @test parent(parent(p.image[])) === rect_mat || parent(p.image[]) === rect_mat
-        @test p.storage[] === nothing || p.storage[] === (:down, :right)
+        @test p.image[] === rect_mat
+        @test p.orientation[] === nothing || p.orientation[] === (:down, :right)
 
-        _, _, p_explicit = image(rect_mat; storage = (:down, :right))
-        @test p_explicit.storage[] === (:down, :right)
+        _, _, p_explicit = image(rect_mat; orientation = (:down, :right))
+        @test p_explicit.orientation[] === (:down, :right)
 
-        # axis hint is fixed regardless of storage
+        # axis hint is fixed regardless of orientation
         for s in ((:down, :right), (:up, :left), (:right, :down), (:left, :down))
-            _, ax_s, _ = image(rect_mat; storage = s)
+            _, ax_s, _ = image(rect_mat; orientation = s)
             @test (ax_s.xreversed[], ax_s.yreversed[]) === (false, true)
         end
 
-        @test_throws ErrorException image(rect_mat; storage = :bogus)
-        @test_throws ErrorException image(rect_mat; storage = (:up, :down))
+        @test_throws ErrorException image(rect_mat; orientation = :bogus)
+        @test_throws ErrorException image(rect_mat; orientation = (:up, :down))
     end
 
     @testset "mutating image! does not touch existing axis" begin
@@ -489,6 +490,29 @@ end
         image!(existing_ax, rand(3, 5))
         @test existing_ax.xreversed[] === false
         @test existing_ax.yreversed[] === false
+    end
+
+    @testset "image_cell_to_matrix_index" begin
+        f = Makie.image_cell_to_matrix_index((:down, :right), 3, 5)
+        @test f(1, 1) == CartesianIndex(1, 1)
+        @test f(5, 3) == CartesianIndex(3, 5)
+        f2 = Makie.image_cell_to_matrix_index((:up, :left), 3, 5)
+        @test f2(1, 1) == CartesianIndex(3, 5)
+    end
+
+    @testset "image_matrix_to_cell_index inverts image_cell_to_matrix_index" begin
+        for orient in (
+                (:down, :right), (:down, :left), (:up, :right), (:up, :left),
+                (:right, :down), (:right, :up), (:left, :down), (:left, :up),
+            )
+            nx, ny = Makie.image_rect_cells(orient, 3, 5)
+            f = Makie.image_cell_to_matrix_index(orient, 3, 5)
+            g = Makie.image_matrix_to_cell_index(orient, 3, 5)
+            for cx in 1:nx, cy in 1:ny
+                idx = f(cx, cy)
+                @test g(idx[1], idx[2]) == (cx, cy)
+            end
+        end
     end
 end
 

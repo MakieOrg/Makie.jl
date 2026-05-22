@@ -990,18 +990,15 @@ end
     f
 end
 
-@reference_test "image storage variations" begin
-    # Column-major linear-index gradient (black at mat[1,1], white at mat[end,end])
-    # so the direction each array dim spreads on the quad is visually obvious,
-    # and any per-pixel rendering artifacts (gaps, overdraw) are easy to spot.
+@reference_test "image orientation variations" begin
     n_rows, n_cols = 8, 12
     li = LinearIndices((n_rows, n_cols))
     mat = [(v = (li[i, j] - 1) / (n_rows * n_cols - 1); RGBf(v, v, v)) for i in 1:n_rows, j in 1:n_cols]
     f = Figure(size = (900, 600))
     for (n, s) in enumerate([(:down, :right), (:down, :left), (:up, :right), (:right, :down)])
         row, col = divrem(n - 1, 2) .+ (1, 1)
-        ax = Axis(f[row, col]; aspect = DataAspect(), title = "storage = $(s)", yreversed = true)
-        image!(ax, mat; storage = s, interpolate = false)
+        ax = Axis(f[row, col]; aspect = DataAspect(), title = "orientation = $(s)", yreversed = true)
+        image!(ax, mat; orientation = s, interpolate = false)
     end
     f
 end

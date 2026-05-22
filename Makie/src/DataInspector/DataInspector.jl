@@ -422,12 +422,24 @@ end
 
 # Interpolations are calculated after transform func is applied, so they are
 # appropriate for transformed data. We need to back transform here to get pre-
-# transform data
+# transform data. For Image we translate the user-matrix index back to a
+# rect-cell via orientation so the tooltip lands at the centre of the picked
+# cell regardless of orientation.
 function get_tooltip_position(element::PlotElement{<:Image})
     plot = get_plot(element)
     p00, _, p11, _ = plot.positions_transformed[]
-    x = dimensional_element_getindex((p00[1], p11[1]), element, 1)
-    y = dimensional_element_getindex((p00[2], p11[2]), element, 2)
+    orientation = plot.orientation[]
+    i, j = Tuple(accessor(element).index)
+    if isnothing(orientation)
+        nx, ny = size(plot.image[])
+        cx, cy = i, j
+    else
+        mat_size = size(plot.image[])
+        nx, ny = Makie.image_rect_cells(orientation, mat_size...)
+        cx, cy = Makie.image_matrix_to_cell_index(orientation, mat_size...)(i, j)
+    end
+    x = p00[1] + (p11[1] - p00[1]) * (cx - 0.5) / nx
+    y = p00[2] + (p11[2] - p00[2]) * (cy - 0.5) / ny
     return Point2f(x, y)
 end
 
@@ -725,16 +737,28 @@ function update_indicator!(di::DataInspector, element::PlotElement{<:Union{Image
         update!(indicator; arg1 = p3d, color = color, visible = true)
         return indicator
     else
-        # TODO: Should this be a function?
         i, j = Tuple(accessor(element).index)
 
         plot = get_plot(element)
         if !haskey(plot, :x_transformed)
             add_computation!(plot.attributes, parent_scene(plot), Val(:heatmap_transform))
         end
-        bbox = _pixelated_image_bbox(
-            plot.x_transformed[], plot.y_transformed[], plot.image[], i, j, plot isa Heatmap
-        )
+        # For Image, accessor index is in user-matrix space; convert to rect-cell
+        # coords before drawing the bbox so the orientation transform is applied.
+        orientation = plot isa Image ? plot.orientation[] : nothing
+        bbox = if !isnothing(orientation)
+            mat_size = size(plot.image[])
+            cx, cy = Makie.image_matrix_to_cell_index(orientation, mat_size...)(i, j)
+            nx, ny = Makie.image_rect_cells(orientation, mat_size...)
+            xs, ys = plot.x_transformed[], plot.y_transformed[]
+            x0, x1 = extrema(xs); y0, y1 = extrema(ys)
+            nw, nh = (x1 - x0) / nx, (y1 - y0) / ny
+            Rect2d(x0 + nw * (cx - 1), y0 + nh * (cy - 1), nw, nh)
+        else
+            _pixelated_image_bbox(
+                plot.x_transformed[], plot.y_transformed[], plot.image[], i, j, plot isa Heatmap
+            )
+        end
         ps = to_ndim.(Point3d, convert_arguments(Lines, bbox)[1], 0)
         indicator = get_indicator_plot(di, Lines)
         update!(indicator, arg1 = ps, visible = true)
