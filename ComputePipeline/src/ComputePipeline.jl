@@ -1540,7 +1540,7 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
         @assert hasparent(input) "Computed should be guaranteed to have a parent edge, but does not"
         # Edges can have multiple outputs so multiple inputs of this edge could
         # come from the same edge
-        any(x -> x === new_edge, input.parent.dependents) && continue
+        any(x -> x === new_edge, input.parent.dependents::Vector{ComputeEdge{ComputeGraph}}) && continue
         push!(input.parent.dependents, new_edge)
     end
 
