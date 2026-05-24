@@ -51,7 +51,7 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     end
 
     # Continue with _register_expand_arguments with adjusted input names
-    _register_expand_arguments!(Text, attr, [:_positions], true)
+    _register_expand_arguments!(Text, attr, [:_positions], p._positions[], true)
 
     # And the rest of it
     _register_argument_conversions!(Text, attr, user_kw)

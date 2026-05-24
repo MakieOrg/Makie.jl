@@ -451,8 +451,6 @@ function ComputeGraph()
     return graph
 end
 
-_first_arg(args, changed, last) = (args[1],)
-
 """
     alias!(graph::ComputeGraph, input::Symbol, output::Symbol)
 
@@ -460,7 +458,7 @@ Creates `output` as an alias of `input`.
 """
 function alias!(attr::ComputeGraph, key::Symbol, alias_key::Symbol)
     # TODO: more efficient implementation!
-    register_computation!(_first_arg, attr, [key], [alias_key])
+    map!(compute_identity, attr, key, alias_key)
     return attr
 end
 

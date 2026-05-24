@@ -413,8 +413,8 @@ end
 # Split for text compat
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args) where {P}
     inputs = _register_input_arguments!(attr, input_args)
-    _register_expand_arguments!(P, attr, inputs)
-    _register_argument_conversions!(P, attr, user_kw)
+    expanded_args = _register_expand_arguments!(P, attr, inputs, input_args)
+    _register_argument_conversions!(P, attr, user_kw, expanded_args)
     return
 end
 
@@ -428,31 +428,24 @@ function _register_input_arguments!(attr::ComputeGraph, input_args::Tuple)
     return inputs
 end
 
-function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false) where {P}
+function _register_expand_arguments!(::Type{P}, attr, inputs, input_args, is_merged = false) where {P}
     # is_merged = true means that multiple arguments are collected in one input, i.e.:
     #   true:   one input where attr[input][] = (arg1, arg2, ...)
     #   false:  multiple inputs where map(k -> attr[k][], inputs) = [arg1, arg2, ...]
     # this is used in text
 
-    # Only 2 and 3d conversions are supported, and only
-    PTrait = if is_merged
-        @assert length(inputs) == 1
-        conversion_trait(P, attr[inputs[1]][]...)
-    else
-        conversion_trait(P, map(k -> attr[k][], inputs)...)
-    end
+    PTrait = conversion_trait(P, input_args...)
+    expanded = something(expand_dimensions(PTrait, input_args...), input_args)
+
     # call it args for backwards compatibility (plot.args)
     map!(attr, inputs, :args) do input_args...
         args = values(is_merged ? input_args[1] : input_args)
         args_exp = expand_dimensions(PTrait, args...)
-        if isnothing(args_exp)
-            # This can change types, so force Any type in Compute node
-            return Ref{Any}(args)
-        else
-            return Ref{Any}(args_exp)
-        end
+        return something(args_exp, args)
     end
-    return
+    # This can change types, so force Any type in Compute node
+    ComputePipeline.unsafe_init!(attr.args, Ref{Any}(expanded))
+    return expanded
 end
 
 # Julia 1.10 compat
@@ -498,8 +491,8 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
 
     if dim_tuple === nothing
         # args declared not dim-convertible by argument_dims().
-        map!(args -> Ref{Any}(args), attr, :args, :dim_converted)
-        return
+        ComputePipeline.alias!(attr, :args, :dim_converted)
+        return args
 
     elseif !(dim_tuple isa Tuple)
         # Format check
@@ -512,6 +505,7 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
         map!(attr, [:args, :convert_kwargs], :recursive_convert) do args, kwargs
             return convert_arguments(P, args...; kwargs...)
         end
+        ComputePipeline.unsafe_init!(attr.recursive_convert, args_converted)
         input = :recursive_convert
     else
         input = :args
@@ -602,10 +596,12 @@ function error_check_convert_arguments(P, args, user_kw, args_converted)
     end
 end
 
-function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
-    dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
+function _register_argument_conversions!(
+        ::Type{P}, attr::ComputeGraph, user_kw, args
+    ) where {P}
 
-    args = attr.args[]
+    dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))::DimConversions
+
     add_convert_kwargs!(attr, user_kw, P, args)
     kw = attr.convert_kwargs[]
     args_converted = convert_arguments(P, args...; kw...)
@@ -615,27 +611,26 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     # Controls whether the plot is forced to apply dim converts or allowed to
     # use plain data in a dim_convert scene. Typically true for plots to scenes
     # and false for plots to other plots
-    force_dimconverts = pop!(user_kw, :force_dimconverts)
+    force_dimconverts = pop!(user_kw, :force_dimconverts)::Bool
     defaults = default_theme(nothing, P)
-    space = to_value(get(user_kw, :space, get(defaults, :space, :data)))
+    space = to_value(get(user_kw, :space, get(defaults, :space, :data)))::Symbol
 
-    if !is_data_space(space)
+    # TODO: Can't infer types here because dim_conversions[i] are of unknown type
+    dim_converted = if !is_data_space(space)
         # dim converts do not apply in relative, pixel or clip space
-        map!(attr, :args, :dim_converted) do args
-            return Ref{Any}(args)
-        end
+        ComputePipeline.alias!(attr, :args, :dim_converted)
+        args
     elseif force_dimconverts && needs_dimconvert(dim_converts)
         add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
     elseif (status === true || status === SpecApi)
         # Nothing needs to be done, since we can just use convert_arguments without dim_converts
         # And just pass the arguments through
-        map!(attr, :args, :dim_converted) do args
-            return Ref{Any}(args)
-        end
+        ComputePipeline.alias!(attr, :args, :dim_converted)
+        args
     elseif isnothing(status) || status === false # we don't know (e.g. recipes) or incomplete conversion
         add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
     end
-    #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
+    # backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
 
     map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
         val = convert_arguments(P, dim_converted...; convert_kwargs...)
