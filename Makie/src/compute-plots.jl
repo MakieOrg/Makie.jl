@@ -581,7 +581,7 @@ function error_check_convert_arguments(P, args, user_kw, args_converted)
     end
 end
 
-function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
+function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw, args) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))::DimConversions
     add_input!(attr, :dim_conversions, dim_converts)
 
