@@ -458,7 +458,7 @@ Creates `output` as an alias of `input`.
 """
 function alias!(attr::ComputeGraph, key::Symbol, alias_key::Symbol)
     # TODO: more efficient implementation!
-    map!(compute_identity, attr, key, alias_key)
+    register_computation!(compute_identity, attr, [key], [alias_key])
     return attr
 end
 
@@ -1559,6 +1559,8 @@ struct MapFunctionWrapper{pack, FT} <: Function
     user_func::FT
     MapFunctionWrapper(f::FT, pack = true) where {FT} = new{pack, FT}(f)
 end
+
+MapFunctionWrapper(::typeof(compute_identity), pack = true) = compute_identity
 
 function (x::MapFunctionWrapper{true})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)

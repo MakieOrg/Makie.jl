@@ -413,7 +413,7 @@ end
 # Split for text compat
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args) where {P}
     inputs = _register_input_arguments!(attr, input_args)
-    expanded_args = _register_expand_arguments!(P, attr, inputs, input_args)
+    expanded_args = _register_expand_arguments!(P, attr, inputs, to_value.(input_args))
     _register_argument_conversions!(P, attr, user_kw, expanded_args)
     return
 end
@@ -436,7 +436,6 @@ function _register_expand_arguments!(::Type{P}, attr, inputs, input_args, is_mer
 
     PTrait = conversion_trait(P, input_args...)
     expanded = something(expand_dimensions(PTrait, input_args...), input_args)
-
     # call it args for backwards compatibility (plot.args)
     map!(attr, inputs, :args) do input_args...
         args = values(is_merged ? input_args[1] : input_args)
@@ -596,10 +595,7 @@ function error_check_convert_arguments(P, args, user_kw, args_converted)
     end
 end
 
-function _register_argument_conversions!(
-        ::Type{P}, attr::ComputeGraph, user_kw, args
-    ) where {P}
-
+function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw, args) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))::DimConversions
 
     add_convert_kwargs!(attr, user_kw, P, args)
