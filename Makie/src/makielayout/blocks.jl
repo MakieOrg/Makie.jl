@@ -677,7 +677,7 @@ function initialize_block_arguments!(
     # adds inputs :arg1, :arg2, ...
     arg_names = _register_input_arguments!(attr, args)
     # applies expand_dimensions and merges :arg1, ... into one :args tuple
-    _register_expand_arguments!(T, attr, arg_names)
+    expanded = _register_expand_arguments!(T, attr, arg_names, to_value.(args))
     # We probably don't want dim_converts here, so we don't use
     # _register_argument_conversions!(T, attr, kw_dict)
 
@@ -685,7 +685,7 @@ function initialize_block_arguments!(
     add_convert_kwargs!(attr, kw_dict, T, args)
 
     # apply convert_arguments
-    converted = convert_arguments(T, attr.args[]...; attr.convert_kwargs[]...)
+    converted = convert_arguments(T, expanded...; attr.convert_kwargs[]...)
 
     # Special case SpecApi
     if converted isa Union{BlockSpec, GridLayoutSpec} ||

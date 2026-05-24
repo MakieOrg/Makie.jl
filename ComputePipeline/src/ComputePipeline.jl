@@ -441,8 +441,6 @@ function ComputeGraph()
     return graph
 end
 
-_first_arg(args, changed, last) = (args[1],)
-
 """
     alias!(graph::ComputeGraph, input::Symbol, output::Symbol)
 
@@ -450,7 +448,7 @@ Creates `output` as an alias of `input`.
 """
 function alias!(attr::ComputeGraph, key::Symbol, alias_key::Symbol)
     # TODO: more efficient implementation!
-    register_computation!(_first_arg, attr, [key], [alias_key])
+    register_computation!(compute_identity, attr, [key], [alias_key])
     return attr
 end
 
@@ -1534,7 +1532,7 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
         @assert hasparent(input) "Computed should be guaranteed to have a parent edge, but does not"
         # Edges can have multiple outputs so multiple inputs of this edge could
         # come from the same edge
-        any(x -> x === new_edge, input.parent.dependents) && continue
+        any(x -> x === new_edge, input.parent.dependents::Vector{ComputeEdge{ComputeGraph}}) && continue
         push!(input.parent.dependents, new_edge)
     end
 
@@ -1555,6 +1553,8 @@ struct MapFunctionWrapper{pack, FT} <: Function
     user_func::FT
     MapFunctionWrapper(f::FT, pack = true) where {FT} = new{pack, FT}(f)
 end
+
+MapFunctionWrapper(::typeof(compute_identity), pack = true) = compute_identity
 
 function (x::MapFunctionWrapper{true})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
