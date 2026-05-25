@@ -8,36 +8,60 @@ end
 struct DataAspect end
 
 struct Cycle
-    cycle::Vector{Pair{Vector{Symbol}, Symbol}}
+    attribute_lookup::Dict{Symbol, Int}
+    palette_keys::Vector{Symbol}
     covary::Bool
 end
-Base.:(==)(a::Cycle, b::Cycle) = a.covary == b.covary && a.cycle == b.cycle
+
+function Base.:(==)(a::Cycle, b::Cycle)
+    return a.covary == b.covary &&
+        a.palette_keys == b.palette_keys &&
+        a.attribute_lookup == b.attribute_lookup
+end
 
 Cycle(cycle::Cycle) = cycle
-Cycle(cycle; covary = false) = Cycle(to_cycle(cycle), covary)
+Cycle(cycle; covary = false) = Cycle(cycle, covary)
+function Cycle(cycle, covary)
+    attribute_lookup = Dict{Symbol, Int}()
+    palette_keys = Symbol[] # keep order
+    flatten_cycle!(attribute_lookup, palette_keys, cycle)
+    return Cycle(attribute_lookup, palette_keys, covary)
+end
 
-palettesyms(cycle::Cycle) = [c[2] for c in cycle.cycle]
-attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
+# convert input to internal format
+flatten_cycle!(lookup, keys, ::Nothing) = nothing
+function flatten_cycle!(lookup, keys, s::Symbol)
+    push!(keys, s)
+    lookup[s] = length(keys)
+    return
+end
+function flatten_cycle!(lookup, keys, p::Pair{Symbol, Symbol})
+    push!(keys, p[2])
+    lookup[p[1]] = length(keys)
+    return
+end
+function flatten_cycle!(lookup, keys, p::Pair{Vector{Symbol}, Symbol})
+    push!(keys, p[2])
+    foreach(k -> lookup[k] = length(keys), first(p))
+    return
+end
+flatten_cycle!(lookup, keys, v::Vector) = foreach(x -> flatten_cycle!(lookup, keys, x), v)
 
-to_cycle(single) = [to_cycle_single(single)]
-to_cycle(::Nothing) = []
-to_cycle(symbolvec::Vector) = map(to_cycle_single, symbolvec)
-to_cycle_single(sym::Symbol) = [sym] => sym
-to_cycle_single(pair::Pair{Symbol, Symbol}) = [pair[1]] => pair[2]
-to_cycle_single(pair::Pair{Vector{Symbol}, Symbol}) = pair
+attrsyms(cycle::Cycle) = keys(cycle.attribute_lookup)
+palettesyms(cycle::Cycle) = cycle.palette_keys
 
 function get_cycle_attribute(palettes, attribute::Symbol, index::Int, cycle::Cycle)
-    cyclepalettes = [palettes[sym][] for sym in palettesyms(cycle)]
-    isym = findfirst(syms -> attribute in syms, attrsyms(cycle))
-    palette = cyclepalettes[isym]
+    palette_idx = cycle.attribute_lookup[attribute]
+    palette_key = cycle.palette_keys[palette_idx]
+    palette = to_value(palettes[palette_key])
     if cycle.covary
         return palette[mod1(index, length(palette))]
     else
-        cis = CartesianIndices(Tuple(length(p) for p in cyclepalettes))
+        cis = CartesianIndices(Tuple(length(to_value(palettes[s])) for s in palettesyms(cycle)))
         n = length(cis)
         k = mod1(index, n)
         idx = Tuple(cis[k])
-        return palette[idx[isym]]
+        return palette[idx[palette_idx]]
     end
 end
 

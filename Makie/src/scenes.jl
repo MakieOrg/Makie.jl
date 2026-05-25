@@ -164,6 +164,7 @@ mutable struct Scene <: AbstractScene
         add_light_computation!(scene.compute, scene, lights)
         add_input!(scene.compute, :transform_func, transformation.transform_func)
         ComputePipeline.set_type!(scene.compute.transform_func, Any)
+        add_input!(scene.compute, :cycle_counters, Dict{Symbol, Int}())
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true

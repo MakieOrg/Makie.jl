@@ -651,16 +651,6 @@ function push_without_add!(scene::Scene, plot)
     return
 end
 
-# PlotList children each get their own cycle position (unlike other recipes
-# where children inherit the recipe's position). The plotlist may not be in
-# scene.plots yet during initial creation, so we chain it onto the iterator;
-# the identity short-circuit in _cycle_position prevents double-counting
-# if it IS already there.
-function plot_cycle_index(parent::PlotList, plot::Plot)
-    scene = get_scene(parent)
-    return _cycle_position(plot, Iterators.flatten((scene.plots, (parent,))))
-end
-
 function diff_plotlist!(
         scene::Scene, plotspecs::Vector{PlotSpec},
         plotlist::Union{Nothing, PlotList} = nothing,
@@ -686,7 +676,7 @@ function diff_plotlist!(
         if isnothing(reused_plot)
             @debug("Creating new plot for spec")
             plot_obj = to_plot_object(plotspec)
-            # connect_plot! sets cycle_index correctly via plot_cycle_index(parent, plot).
+            # connect_plot! sets cycle_index correctly.
             # We don't push to scene.plots when there's a plotlist — the scene should
             # only contain the PlotList itself, to avoid e.g. double legend entries.
             connect_plot!(parent, plot_obj)
@@ -701,12 +691,21 @@ function diff_plotlist!(
             @debug("updating old plot with spec")
             delete!(reusable_plots, old_spec)
             deleteat!(reusable_plots_sorted, idx)
-            pos = plot_cycle_index(parent, reused_plot)
-            if pos != reused_plot.cycle_index[]
-                reused_plot.cycle_index = pos
-            end
             update_plot!(reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
+        end
+    end
+    if !isempty(reusable_plots)
+        # To keep consistency when removing and adding back plots, decrement the
+        # cycle counters of each unused plot in the parent scene.
+        # Only do this when the spec plots are the latest plots affecting cycling
+        # so that we don't reuse indices that other (newer) plots are using.
+        lookup = scene.compute[:cycle_counters][]::Dict{Symbol, Int}
+        for (spec, plot) in reusable_plots_sorted
+            name = spec.type
+            if haskey(lookup, name) && lookup[name] == plot.cycle_index[]
+                lookup[name] -= 1
+            end
         end
     end
     return new_plots

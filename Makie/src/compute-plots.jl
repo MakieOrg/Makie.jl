@@ -690,13 +690,75 @@ function ComputePipeline.get_callback_info(::AttributeConvert{key, plot}, value)
     return ComputePipeline.get_callback_info(convert_attribute, value, Key{key}(), Key{plot}())
 end
 
+struct CycleConvert{F} <: Function
+    callback::F
+    palettes::Attributes
+    graph::ComputeGraph
+    key::Symbol
+end
+
+(cc::CycleConvert)(val, @nospecialize(changed), @nospecialize(cached)) = (cc(val[1]),)
+function (cc::CycleConvert)(value)
+    if value isa Cycled
+        cycle = cc.graph.cycle[]::Cycle
+        x = get_cycle_attribute(cc.palettes, cc.key, value.i, cycle)
+        return cc.callback(x)
+    elseif isnothing(value)
+        cycle = cc.graph.cycle[]::Cycle
+        cycle_index = cc.graph.cycle_index[]::Int
+        x = get_cycle_attribute(cc.palettes, cc.key, cycle_index, cycle)
+        return cc.callback(x)
+    else
+        return cc.callback(value)
+    end
+end
+
+function get_next_cycle_index(scene, name)
+    lookup = scene.compute[:cycle_counters][]::Dict{Symbol, Int}
+    cycle_index = get(lookup, name, 0) + 1
+    lookup[name] = cycle_index
+    return cycle_index
+end
+
 function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where {T <: Plot}
     # So far we have set attributes based on the plot defaults and keyword
     # arguments. In this function we now resolve `@inherit`ed attributes and
     # apply `theme[plotsym(T)]` if it exists.
 
+    attr = documented_attributes(T)
+    name = plotsym(T)
+
+    # Handle cycling
+    if has_flat_key(attr, :cycle)
+        # This will increment the scenes cycle counter for this plot type (plotsym)
+        # when the first CycleConvert uses it. After that it will just grab the
+        # cached cycle index.
+        map!(() -> get_next_cycle_index(scene, name), graph, Symbol[], :cycle_index)
+
+        if !haskey(user_kw, :cycle)
+            _cycle = to_value(lookup_default(attr, scene, name, NamedTuple(), :cycle))
+            graph.cycle = _cycle
+        end
+    else
+        add_constant!(graph, :cycle_index, 0)
+        graph.cycle = Cycle([])
+    end
+
+    cycle = graph.cycle[]::Cycle
+
+    # Because we only adjust the callbacks of inputs that are in Cycle at this
+    # point in time, adding more attributes to cycle after creating the plot does
+    # not work. Adjusting which palettes are used for each attribute works though
+    for name in attrsyms(cycle)
+        # Should passthroughs be able to cycle?
+        # (i.e. should we change graph[name].parent instead?)
+        if haskey(graph.inputs, name)
+            input = graph.inputs[name]
+            input.f = CycleConvert(input.f, scene.theme.palette, graph, name)
+        end
+    end
+
     exclude = Set{Symbol}([:transformation, :model, :transform_func])
-    haskey(graph, :palette_lookup) && union!(exclude, keys(graph.palette_lookup[]))
 
     # TODO: Should add_theme!() be allowed to set used_attributes?
     # That would require add_convert_kwargs!() to not delete them from kwargs
@@ -704,8 +766,7 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
     conv_attributes = used_attributes(T, graph.args[]...)
     union!(exclude, conv_attributes)
 
-    attr = documented_attributes(T)
-    add_theme!(graph, attr, T, scene, exclude, user_kw)
+    add_theme!(graph, attr, T, scene, exclude, user_kw, cycle)
 
     return
 end
@@ -775,47 +836,6 @@ function Plot{Func}(user_args::Tuple, user_attributes::Union{Dict, NamedTuple}) 
     end
 end
 
-struct AttributeCallbackBuilder{T}
-    lookup::Dict{Symbol, Symbol}
-    cycle::T
-    graph::ComputeGraph
-    is_primitive::Bool
-    plotsym::Symbol
-end
-
-struct CycleConvert{F, T} <: Function
-    callback::F
-    cycle::T
-    graph::ComputeGraph
-    key::Symbol
-end
-
-(cc::CycleConvert)(val, @nospecialize(changed), @nospecialize(cached)) = (cc(val[1]),)
-function (cc::CycleConvert)(value)
-    palettes = cc.graph.palettes[]
-    if value isa Cycled
-        value = get_cycle_attribute(palettes, cc.key, value.i, cc.cycle)
-    end
-    isnothing(value) || return cc.callback(value)
-    pos = cc.graph.cycle_index[]
-    cyc = get_cycle_attribute(palettes, cc.key, pos, cc.cycle)
-    return cc.callback(cyc)
-end
-
-function (b::AttributeCallbackBuilder)(key::Symbol)
-    inner = if b.is_primitive
-        AttributeConvert(key, b.plotsym)
-    else
-        ComputePipeline.compute_identity
-    end
-
-    if haskey(b.lookup, key)
-        return CycleConvert(inner, b.cycle, b.graph, key)
-    else
-        return inner
-    end
-end
-
 function init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent)
     exclude = (:transformation, :transform_func)
     prepare_graph_for_attributes!(graph, attr, exclude, is_primitive = is_primitive)
@@ -828,60 +848,20 @@ function init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent)
     return
 end
 
-function init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent, lookup)
-    exclude = (:transformation, :transform_func)
-    prepare_graph_for_attributes!(graph, attr, exclude, is_primitive = is_primitive)
-    add_from_kwargs!(build_callback, graph, attr, kwargs, exclude)
-    if !isnothing(parent)
-        exclude_from_parent = (:model, :transformation, :transform_func, :model_f32c)
-        connect_parent!(build_callback, graph, parent, attr, exclude_from_parent)
-    end
-    # cycled attributes don't inherit defaults from theme, they are initialized
-    # with cycling instead
-    for (key, p) in lookup
-        if haskey(graph.outputs, key) && !isconnected(graph, key)
-            output = graph[key]
-            add_prepared_input!(build_callback(key), graph, key, nothing, output)
-        end
-    end
-    add_remaining_inputs!(build_callback, graph, attr, exclude)
-    return
-end
-
 function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
     attr = documented_attributes(P)
     name = Makie.plotkey(P)
     is_primitive = P <: PrimitivePlotTypes
 
-    # Maybe added by convert_kwargs?
+    # Cycle is added here to allow `plot(..., cycle = Observable(...))`. Updating
+    # cycle may only change which attribute maps to which, not which attributes
+    # are cycled (see add_theme!())
     if !haskey(graph, :cycle)
-        _cycle = if !isnothing(parent) && haskey(parent, :cycle)
-            parent.cycle
-        elseif haskey(kwargs, :cycle)
-            kwargs[:cycle]
-        elseif has_flat_key(attr, :cycle)
-            lookup_default(P, nothing, :cycle)
-        else
-            nothing
-        end
-        _cycle = _cycle === NoFallback() ? nothing : _cycle # probably unnecessary
+        _cycle = get(kwargs, :cycle, :uninitialized)
         add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
     end
 
-    # Cycle attributes are get set to plot, and then set in connect_plot!
-    add_input!(graph, :cycle_index, 0)
-    add_input!(graph, :palettes, nothing)
-
-    cycle = graph.cycle[]
-    if !isnothing(cycle)
-        asc = attrsyms(cycle)
-        ps = palettesyms(cycle)
-        # flatten to attribute -> palette
-        lookup = Dict([sym => p for (syms, p) in zip(asc, ps) for sym in syms])
-        add_input!(graph, :palette_lookup, lookup)
-        build_callback = AttributeCallbackBuilder(lookup, cycle, graph, is_primitive, name)
-        init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent, lookup)
-    elseif is_primitive
+    if is_primitive
         init_graph!(key -> AttributeConvert(key, name), graph, attr, true, kwargs, parent)
     else
         init_graph!(key -> compute_identity, graph, attr, false, kwargs, parent)
@@ -913,40 +893,6 @@ function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, graph)
 end
 
-# Count cycling position of `plot` among the top-level plots in `plot_iter`.
-# PlotList entries are expanded into their children so they participate in cycling.
-function _cycle_position(plot::Plot, plot_iter)
-    cycle = plot.cycle[]
-    isnothing(cycle) && return 0
-    syms = [s for ps in attrsyms(cycle) for s in ps]
-    pos = 1
-    for p in plot_iter
-        children = p isa PlotList ? p.plots : (p,)
-        for cp in children
-            cp === plot && return pos
-            if haskey(cp, :cycle) && !isnothing(cp.cycle[]) && plotfunc(cp) === plotfunc(plot)
-                is_cycling = any(syms) do x
-                    return haskey(cp.attributes.inputs, x) && isnothing(cp.attributes.inputs[x].value)
-                end
-                if is_cycling
-                    pos += 1
-                end
-            end
-        end
-    end
-    # not inserted yet
-    return pos
-end
-
-function plot_cycle_index(scene::Scene, plot::Plot)
-    return _cycle_position(plot, scene.plots)
-end
-
-# For recipes we use the recipes position?
-function plot_cycle_index(parent::Plot, ::Plot)
-    return plot_cycle_index(get_scene(parent), parent)
-end
-
 # should this just be connect_plot?
 function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     scene = parent_scene(parent)
@@ -966,8 +912,6 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         end
     end
 
-    plot.cycle_index = plot_cycle_index(parent, plot)
-    plot.palettes = get_scene(parent).theme.palette
     handle_transformation!(plot, parent)
 
     if plot isa PrimitivePlotTypes
