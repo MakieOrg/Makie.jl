@@ -796,6 +796,10 @@ function texelems_and_glyph_collection(
         )
     end
 
+    tex_bboxes = map(all_els) do (element, position, scale)
+        tex_element_bbox(element, position, scale, first(fontscale_px))
+    end
+
     basepositions = [to_ndim(Vec3f, fs, 0) .* to_ndim(Point3f, x[2], 0) for x in els]
 
     if word_wrap_width > 0
@@ -826,11 +830,13 @@ function texelems_and_glyph_collection(
         end
     end
 
-    bb = isempty(bboxes) ? BBox(0, 0, 0, 0) : begin
-            mapreduce(union, zip(bboxes, basepositions)) do (b, pos)
+    bb = if word_wrap_width > 0
+        isempty(bboxes) ? BBox(0, 0, 0, 0) : mapreduce(union, zip(bboxes, basepositions)) do (b, pos)
                 Rect2f(Rect3f(b) + pos)
         end
-        end
+    else
+        isempty(tex_bboxes) ? BBox(0, 0, 0, 0) : mapreduce(identity, union, tex_bboxes)
+    end
 
     xshift = get_xshift(minimum(bb)[1], maximum(bb)[1], halign)
     yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign, default = 0.0f0)
@@ -852,6 +858,14 @@ function texelems_and_glyph_collection(
     )
 
     return all_els, pre_align_gl, Point2f(xshift, yshift)
+end
+
+function tex_element_bbox(element, position, scale, fontsize)
+    x0 = fontsize * (position[1] + scale * MathTeXEngine.leftinkbound(element))
+    x1 = fontsize * (position[1] + scale * MathTeXEngine.rightinkbound(element))
+    y0 = fontsize * (position[2] + scale * MathTeXEngine.bottominkbound(element))
+    y1 = fontsize * (position[2] + scale * MathTeXEngine.topinkbound(element))
+    return Rect2f(Point2f(x0, y0), Vec2f(x1 - x0, y1 - y0))
 end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
