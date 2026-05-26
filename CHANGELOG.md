@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- Fixed `center!` (and therefore `reset_limits!`) crashing with `znear (Inf) must be different from tfar (Inf)` when called on a scene whose `boundingbox` is undefined - either empty, with all-non-data plots, or with zero-width content. `center!` now skips silently in those cases and waits for a later update with valid data.
-- Fixed `scatter` with `markerspace = :data` and the GLMakie `FastPixel` marker producing non-finite `gl_PointSize` when points were near or behind the camera near-plane, which on AMD drivers caused a hard GPU context loss. The clip-space billboard projection now divides each endpoint by its own `w` before subtracting, skips points with `w < 1e-6`, and clamps the final `gl_PointSize` to a finite range.
+- Fixed `center!` (and therefore `reset_limits!` in `LScene`) crashing with empty, NaN or zero-width content [#5634](https://github.com/MakieOrg/Makie.jl/pull/5634).
+- Fixed `FastPixel` scatter crash when markers are clipped in GLMakie [#5634](https://github.com/MakieOrg/Makie.jl/pull/5634).
 - Reworked `Textbox` with selections, multi-cursor, copy / cut / paste, and word / line navigation [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
 - A trailing `'\n'` in a `text!` string now contributes a full empty line to the layout and bounding box (previously `"abc\n"` was laid out identically to `"abc"`) [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
 - Added decade-aware automatic ticks for `pseudolog10` and `Symlog10` axes via new `PseudologTicks` and `SymlogTicks` types. `LogTicks` is no longer accepted with these scales (it placed ticks at wrong positions). `Symlog10` is now a callable struct exposing its `lower`/`upper`/`linscale` parameters. Closes [#5270](https://github.com/MakieOrg/Makie.jl/issues/5270) [#5625](https://github.com/MakieOrg/Makie.jl/pull/5625)
