@@ -466,7 +466,9 @@ end
 function add_convert_kwargs!(attr, user_kw, P, args)
     conv_attributes = used_attributes(P, args...)
     intrinsics = default_theme(nothing)
-    recipe_defaults = default_theme(nothing, P)
+    # Only look up recipe defaults if `default_theme(nothing, P)` is defined for
+    # this plot type — custom plots and ad-hoc SpecApi blocks may not implement it.
+    recipe_defaults = applicable(default_theme, nothing, P) ? default_theme(nothing, P) : Dict{Symbol, Any}()
     conv_attr_input = Symbol[]
     for key in conv_attributes
         if !haskey(attr.inputs, key) && !haskey(intrinsics, key) # can be added from plot attributes
