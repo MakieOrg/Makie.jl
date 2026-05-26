@@ -2,10 +2,10 @@
 #                               Type Conversions                               #
 ################################################################################
 
-function convert_arguments(CT::ConversionTrait, args...)
+function convert_arguments(CT::ConversionTrait, args...; kw...)
     expanded = expand_dimensions(CT, args...)
     if !isnothing(expanded)
-        return convert_arguments(CT, expanded...)
+        return convert_arguments(CT, expanded...; kw...)
     end
     return args
 end
