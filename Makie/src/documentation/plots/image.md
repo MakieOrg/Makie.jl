@@ -22,8 +22,8 @@ as a hint on the freshly-created axis.
 
 By default the axis stretches the image to fill its allocated space. Pass
 `axis = (; aspect = DataAspect())` to keep the pixels at their natural 1:1
-aspect ratio. See the [aspect tutorial](/tutorials/aspect-tutorial) for more
-on how aspect ratios interact with the rest of the layout.
+aspect ratio. See the "Aspect ratios and automatic figure sizes" tutorial for
+more on how aspect ratios interact with the rest of the layout.
 
 ```@figure
 using FileIO
