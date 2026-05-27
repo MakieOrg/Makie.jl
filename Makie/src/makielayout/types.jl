@@ -1401,6 +1401,12 @@ end
         prompt = "Select..."
         "Speed of scrolling in large Menu lists."
         scroll_speed = 15.0
+        "If `true`, the dropdown is preceded by a text box that filters options by `filter(query, label)`. Honored only at construction time."
+        searchable = false
+        "Placeholder text for the search box when `searchable = true`."
+        search_placeholder = "Search..."
+        "Predicate `(query::String, label::String) -> Bool` deciding whether an option matches the search. Used only when `searchable = true`."
+        filter = (q, s) -> occursin(lowercase(q), lowercase(s))
     end
 end
 

@@ -1,8 +1,9 @@
-function _update_option_colors!(hovered, optionstrings, optionpolycolors, m)
+function _update_option_colors!(hovered, optionstrings, optionpolycolors, m, filtered_indices)
     n = length(optionstrings[])
     resize!(optionpolycolors.val, n)
     map!(optionpolycolors.val, 1:n) do idx
-        if idx == m.i_selected[]
+        global_idx = filtered_indices[][idx]
+        if global_idx == m.i_selected[]
             return m.cell_color_active[]
         elseif idx == hovered
             return m.cell_color_hover[]
@@ -46,18 +47,25 @@ end
 function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
 
+    is_searchable = m.searchable[]
+    search_text = Observable("")
+    tbox_height_obs = is_searchable ?
+        lift(blockscene, m.fontsize, m.textpadding) do fs, pad
+            Float32(fs + pad[3] + pad[4])
+        end : Observable(0.0f0; ignore_equal_values = true)
+
     listheight = Observable(0.0; ignore_equal_values = true)
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
     _direction = Observable{Symbol}(:none; ignore_equal_values = true)
 
-    map!(blockscene, _direction, m.layoutobservables.computedbbox, m.direction) do bb, dir
+    map!(blockscene, _direction, m.layoutobservables.computedbbox, m.direction, tbox_height_obs) do bb, dir, tbh
         if dir == Makie.automatic
             pxa = viewport(blockscene)[]
             bottomspace = abs(bottom(pxa) - bottom(bb))
             topspace = abs(top(pxa) - top(bb))
             # slight preference for down
-            if bottomspace >= listheight[] || bottomspace > topspace
+            if bottomspace >= listheight[] + tbh || bottomspace > topspace
                 return :down
             else
                 return :up
@@ -69,16 +77,16 @@ function initialize_block!(m::Menu; default = 1)
 
     scenearea = Observable(Rect2i(0, 0, 0, 0), ignore_equal_values = true)
     map!(
-        blockscene, scenearea, m.layoutobservables.computedbbox, listheight, _direction, m.is_open;
+        blockscene, scenearea, m.layoutobservables.computedbbox, listheight, _direction, m.is_open, tbox_height_obs;
         update = true
-    ) do bbox, h, d, open
+    ) do bbox, h, d, open, tbh
         if open
             return round_to_IRect2D(
                 BBox(
                     left(bbox),
                     right(bbox),
-                    d === :down ? max(0, bottom(bbox) - h) : top(bbox),
-                    d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.viewport[]))
+                    d === :down ? max(0, bottom(bbox) - tbh - h) : top(bbox) + tbh,
+                    d === :down ? bottom(bbox) - tbh : min(top(bbox) + tbh + h, top(blockscene.viewport[]))
                 )
             )
         else
@@ -99,13 +107,70 @@ function initialize_block!(m::Menu; default = 1)
         translate!(menuscene, t[1], new_y, t[3])
     end
 
-    optionstrings = lift(o -> optionlabel.(o), blockscene, m.options; ignore_equal_values = true)
+    optionstrings_all = lift(o -> optionlabel.(o), blockscene, m.options; ignore_equal_values = true)
+
+    filtered_indices = lift(blockscene, optionstrings_all, search_text, m.filter; ignore_equal_values = true) do strings, query, filter_fn
+        isempty(query) ? collect(eachindex(strings)) : findall(s -> filter_fn(query, s)::Bool, strings)
+    end
+
+    optionstrings = lift(blockscene, optionstrings_all, filtered_indices) do strings, idx
+        strings[idx]
+    end
+
+    textbox_area = lift(blockscene, m.layoutobservables.computedbbox, _direction, m.is_open, tbox_height_obs) do bbox, d, open, tbh
+        if !(open && tbh > 0)
+            return BBox(0, 0, 0, 0)
+        end
+        if d === :down
+            return BBox(left(bbox), right(bbox), bottom(bbox) - tbh, bottom(bbox))
+        else
+            return BBox(left(bbox), right(bbox), top(bbox), top(bbox) + tbh)
+        end
+    end
+
+    if is_searchable
+        _plots_before = length(blockscene.plots)
+        _scenes_before = length(blockscene.children)
+        tbox = Textbox(blockscene;
+            placeholder = m.search_placeholder,
+            fontsize = m.fontsize,
+            textpadding = m.textpadding,
+            boxcolor = m.cell_color_inactive_even,
+            boxcolor_focused = m.cell_color_inactive_even,
+            boxcolor_hover = m.cell_color_inactive_even,
+            bordercolor_focused = m.cell_color_active,
+            tellwidth = false, tellheight = false,
+            width = lift(a -> Float32(widths(a)[1]), blockscene, textbox_area),
+        )
+        # Push the textbox above other figure-level content.
+        for p in @view blockscene.plots[(_plots_before + 1):end]
+            translate!(p, 0, 0, 250)
+        end
+        for s in @view blockscene.children[(_scenes_before + 1):end]
+            translate!(s, 0, 0, 250)
+        end
+        on(blockscene, textbox_area) do area
+            tbox.layoutobservables.suggestedbbox[] = area
+        end
+        on(blockscene, tbox.displayed_string) do s
+            search_text[] = s === nothing ? "" : String(s)
+        end
+        on(blockscene, m.is_open) do open
+            if open
+                focus!(tbox)
+            else
+                tbox.displayed_string[] = ""
+                search_text[] = ""
+                defocus!(tbox)
+            end
+        end
+    end
 
     selected_text = lift(blockscene, m.prompt, m.i_selected; ignore_equal_values = true) do prompt, i_selected
-        if i_selected == 0
+        if i_selected == 0 || i_selected > length(optionstrings_all[])
             prompt
         else
-            optionstrings[][i_selected]
+            optionstrings_all[][i_selected]
         end
     end
 
@@ -186,7 +251,7 @@ function initialize_block!(m::Menu; default = 1)
             BBox(0, w_bbox, h - heights_cumsum[i + 1], h - heights_cumsum[i])
         end
 
-        _update_option_colors!(0, optionstrings, optionpolycolors, m)
+        _update_option_colors!(0, optionstrings, optionpolycolors, m, filtered_indices)
         notify(optionrects)
         return
     end
@@ -211,6 +276,7 @@ function initialize_block!(m::Menu; default = 1)
         # track if we have been inside menu/options to clean up if we haven't been
         is_over_options = false
         is_over_button = false
+        is_over_textbox = is_searchable && m.is_open[] && position in textbox_area[]
 
         if Makie.is_mouseinside(menuscene) # the whole scene containing all options
             # Is inside the expanded menu selection (the polys cover the whole
@@ -220,11 +286,11 @@ function initialize_block!(m::Menu; default = 1)
                 was_inside_options[] = true
                 # we either clicked on an item or hover it
                 if _mouse_up(butt, was_pressed_options) # PRESSED
-                    m.i_selected[] = _pick_entry(mp[2], menuscene, list_y_bounds)
+                    m.i_selected[] = filtered_indices[][_pick_entry(mp[2], menuscene, list_y_bounds)]
                     m.is_open[] = false
                 else # HOVER
                     idx_hovered = _pick_entry(mp[2], menuscene, list_y_bounds)
-                    _update_option_colors!(idx_hovered, optionstrings, optionpolycolors, m)
+                    _update_option_colors!(idx_hovered, optionstrings, optionpolycolors, m, filtered_indices)
                 end
             else
                 # If not inside anymore, invalidate was_pressed
@@ -263,14 +329,14 @@ function initialize_block!(m::Menu; default = 1)
         # clean up hovers if we're outside
         if !is_over_options && was_inside_options[] # going from being inside to outside
             was_inside_options[] = false
-            _update_option_colors!(0, optionstrings, optionpolycolors, m)
+            _update_option_colors!(0, optionstrings, optionpolycolors, m, filtered_indices)
         end
         if !is_over_button && was_inside_button[]
             was_inside_button[] = false
             selectionpoly.color = m.selection_cell_color_inactive[]
         end
         # if mouse got over anything else, we close the menu
-        if !is_over_button && !is_over_options && butt.button == Mouse.left && butt.action == Mouse.press
+        if !is_over_button && !is_over_options && !is_over_textbox && butt.button == Mouse.left && butt.action == Mouse.press
             m.is_open[] = false
         end
         return Consume(false)
