@@ -1350,6 +1350,20 @@ on(menu2.selection) do selected_function
     # do something with the selected function
 end
 ```
+
+`searchable = true` adds a text box at the top of the dropdown
+that filters the visible options as the user types. The filter predicate is the
+filter attribute and defaults to a case-insensitive substring match on the
+option label.  `searchable` is only honored at construction time.  `i_selected`
+and `selection` always reference the original options, not the visible subset.
+
+```julia
+menu3 = Menu(fig[1, 1], options = ["Apple", "Apricot", "Banana", "Cherry"],
+             searchable = true, search_placeholder = "filter fruit...")
+# custom filter: prefix match instead of substring
+menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
+             searchable = true, filter = (q, label) -> startswith(label, q))
+```
 """
 @Block Menu begin
     @attributes begin
