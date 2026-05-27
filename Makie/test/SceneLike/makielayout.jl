@@ -23,7 +23,7 @@ end
 @testset "Searchable Menu" begin
     fig = Figure()
     m = Menu(fig[1, 1], options = ["Apple", "Apricot", "Banana"], searchable = true)
-    @test m.selection[] === nothing
+    @test m.selection[] === "Apple"
     m.i_selected[] = 2
     @test m.selection[] == "Apricot"
     # option mutation preserves selection by value+label
