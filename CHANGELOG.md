@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.24.11] - 2026-05-27
+
 - Reworked `Textbox` with selections, multi-cursor, copy / cut / paste, and word / line navigation [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
 - A trailing `'\n'` in a `text!` string now contributes a full empty line to the layout and bounding box (previously `"abc\n"` was laid out identically to `"abc"`) [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
 - Added decade-aware automatic ticks for `pseudolog10` and `Symlog10` axes via new `PseudologTicks` and `SymlogTicks` types. `LogTicks` is no longer accepted with these scales (it placed ticks at wrong positions). `Symlog10` is now a callable struct exposing its `lower`/`upper`/`linscale` parameters. Closes [#5270](https://github.com/MakieOrg/Makie.jl/issues/5270) [#5625](https://github.com/MakieOrg/Makie.jl/pull/5625)
@@ -1014,7 +1016,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.10...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...HEAD
+[0.24.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.10...v0.24.11
 [0.24.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.9...v0.24.10
 [0.24.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.8...v0.24.9
 [0.24.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.7...v0.24.8
