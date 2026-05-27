@@ -31,8 +31,10 @@ end
     @test m.i_selected[] == 2
     @test m.selection[] == "Apricot"
     # custom filter attribute is honored
-    m2 = Menu(fig[1, 2], options = ["sin", "sinh", "cos"], searchable = true,
-              filter = (q, s) -> startswith(s, q))
+    m2 = Menu(
+        fig[1, 2], options = ["sin", "sinh", "cos"], searchable = true,
+        filter = (q, s) -> startswith(s, q)
+    )
     @test m2.filter[]("sin", "sinh") == true
     @test m2.filter[]("sinh", "sin") == false
 end

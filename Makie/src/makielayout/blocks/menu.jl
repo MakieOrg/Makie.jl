@@ -52,7 +52,7 @@ function initialize_block!(m::Menu; default = 1)
     tbox_height_obs = is_searchable ?
         lift(blockscene, m.fontsize, m.textpadding) do fs, pad
             Float32(fs + pad[3] + pad[4])
-        end : Observable(0.0f0; ignore_equal_values = true)
+    end : Observable(0.0f0; ignore_equal_values = true)
 
     listheight = Observable(0.0; ignore_equal_values = true)
     # the direction is auto-chosen as up if there is too little space below and if the space below
@@ -131,7 +131,8 @@ function initialize_block!(m::Menu; default = 1)
     if is_searchable
         _plots_before = length(blockscene.plots)
         _scenes_before = length(blockscene.children)
-        tbox = Textbox(blockscene;
+        tbox = Textbox(
+            blockscene;
             placeholder = m.search_placeholder,
             fontsize = m.fontsize,
             textpadding = m.textpadding,
