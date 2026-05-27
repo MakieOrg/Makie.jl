@@ -56,6 +56,15 @@ end
     fig
 end
 
+@reference_test "Heatmap and Colorbar with units" begin
+    fig = Figure(size = (700, 400))
+    ax, p = heatmap(fig[1, 1], rand(3, 4) .* u"m")
+    Colorbar(fig[1, 2], p)
+    ax2, p2 = heatmap(fig[2, 1], (1:3) .* u"s", 1:4, rand(3, 4) .* u"K")
+    Colorbar(fig[2, 2], p2; label = "Temperature")
+    fig
+end
+
 @reference_test "Axis unit attributes" begin
     fig = Figure(size = (400, 600))
     ax = Axis(

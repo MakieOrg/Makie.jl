@@ -49,6 +49,15 @@ end
     f
 end
 
+@reference_test "DQ Heatmap and Colorbar with units" begin
+    fig = Figure(size = (700, 400))
+    ax, p = heatmap(fig[1, 1], rand(3, 4) * DQ.u"m")
+    Colorbar(fig[1, 2], p)
+    ax2, p2 = heatmap(fig[2, 1], (1:3) * DQ.u"s", 1:4, rand(3, 4) * DQ.u"K")
+    Colorbar(fig[2, 2], p2; label = "Temperature")
+    fig
+end
+
 @reference_test "DQ Unitful Axis3" begin
     fig = Figure(size = (700, 300))
     ax = Axis3(fig[1, 1], dim1_conversion = Makie.DQConversion(DQ.us"m"))

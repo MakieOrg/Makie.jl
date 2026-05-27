@@ -58,6 +58,9 @@
 - Fixed `Legend` not reflecting `linecap` and `joinstyle` set on `lines!`/`linesegments!` plots [#5621](https://github.com/MakieOrg/Makie.jl/pull/5621)
 - Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
 - GLMakie no longer shows a dock icon on macOS when only used for file export; the icon appears with the Makie logo when an interactive window is opened [#5223](https://github.com/MakieOrg/Makie.jl/pull/5223)
+- Added dim convert support for the value/color argument of grid-based plots (`heatmap`, `image`, `contour`, `contourf`, `surface`). For `Unitful` and `DynamicQuantities` quantities this allows e.g. `heatmap(rand(3, 4)u"m")` and propagates the unit to a `Colorbar` constructed from the plot via the new `dim_convert`, `unit_in_label`, `unit_in_ticklabel`, `label_suffix` and `use_short_unit` Colorbar attributes. Passing a `dim_convert` whose unit differs from the plot's rescales the colorbar's tick values into the requested unit.
+  - **minor breaking** `argument_dims(::CellGrid|::ImageLike|::VertexGrid, x, y, z)` now returns `(1, 2, 3)` instead of `(1, 2)`. Code that asserts on this return value (or on `plot.arg_dims[]` for heatmap/image/contour/contourf) needs to be updated. Recipes that override `argument_dims` for their own plot type are unaffected.
+  - **minor breaking** `Colorbar(fig, plot)` for a `surface` (or any plot) whose z values carry units now displays the unit on the colorbar axis. Reference snapshots that include such colorbars will diff.
 
 ## [0.24.10] - 2026-04-27
 
