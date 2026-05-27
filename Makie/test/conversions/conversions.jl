@@ -514,6 +514,15 @@ end
             end
         end
     end
+
+    @testset "nothing orientation is the default" begin
+        # `orientation` reaches backends as `nothing` when not set explicitly
+        # (it rides as a convert kwarg, which doesn't carry the recipe default).
+        @test Makie.image_orientation_swap(nothing) == Makie.image_orientation_swap((:down, :right))
+        @test Makie.image_rect_cells(nothing, 3, 5) == (5, 3)
+        @test Makie.image_cell_to_matrix_index(nothing, 3, 5)(1, 1) == CartesianIndex(1, 1)
+        @test Makie.image_orientation_uv_transform(nothing) == Makie.image_orientation_uv_transform((:down, :right))
+    end
 end
 
 @testset "Triplot" begin

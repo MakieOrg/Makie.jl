@@ -545,7 +545,7 @@ function create_shader(::Scene, plot::Union{Heatmap, Image})
         # orientation now subsumes).
         flip_y_mat = Mat3f(1, 0, 0, 0, -1, 0, 0, 1, 1)
         map!(attr, [:orientation], :wgl_uv_transform) do orientation
-            ot = isnothing(orientation) ? Mat3f(I) : Makie.image_orientation_uv_transform(orientation)
+            ot = Makie.image_orientation_uv_transform(orientation)
             return ot * flip_y_mat
         end
     end

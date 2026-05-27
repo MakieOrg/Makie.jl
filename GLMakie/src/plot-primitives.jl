@@ -888,7 +888,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Image)
     # orientation. User-provided uv_transform is ignored for now.
     flip_y = Mat3f(1, 0, 0, 0, -1, 0, 0, 1, 1)
     map!(plot.attributes, [:orientation], :oriented_uv_transform) do orientation
-        ot = isnothing(orientation) ? Mat3f(I) : Makie.image_orientation_uv_transform(orientation)
+        ot = Makie.image_orientation_uv_transform(orientation)
         return (ot * flip_y)[Vec(1, 2), Vec(1, 2, 3)]
     end
     return draw_atomic_as_image(screen, scene, plot; uv_transform_key = :oriented_uv_transform)

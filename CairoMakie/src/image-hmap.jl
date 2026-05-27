@@ -20,8 +20,7 @@ function image_grid!(::typeof(image), attr)
         [:grid_x, :grid_y, :is_regular_grid]
     ) do positions, image, orientation
         (x0, y0), _, (x1, y1), _ = positions
-        o = isnothing(orientation) ? (:down, :right) : orientation
-        nx_cells, ny_cells = Makie.image_rect_cells(o, size(image)...)
+        nx_cells, ny_cells = Makie.image_rect_cells(orientation, size(image)...)
         xs = range(x0, x1, length = nx_cells + 1)
         ys = range(y0, y1, length = ny_cells + 1)
         return (xs, ys, true)
@@ -113,7 +112,7 @@ function draw_image(ctx, not_svg, attr)
     clip_planes = attr.clip_planes
     color_image = attr.computed_color
     space = attr.space
-    orientation = something(attr.orientation, (:down, :right))
+    orientation = attr.orientation
 
     is_vector = is_vector_backend(ctx)
     is_identity_transform = Makie.is_translation_scale_matrix(model)

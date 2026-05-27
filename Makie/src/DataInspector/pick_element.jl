@@ -209,13 +209,11 @@ function IndexedAccessor(plot::Image, idx)
 
     mat_size = Base.size(plot.image[])  # user matrix (nrows, ncols)
     orientation = plot.orientation[]
-    nx_cells, ny_cells = orientation === nothing ? mat_size :
-        Makie.image_rect_cells(orientation, mat_size...)
+    nx_cells, ny_cells = Makie.image_rect_cells(orientation, mat_size...)
     cxy_interp = (pos - origin(rect)) ./ widths(rect) .* (nx_cells, ny_cells)
     cx = clamp(ceil(Int, cxy_interp[1]), 1, nx_cells)
     cy = clamp(ceil(Int, cxy_interp[2]), 1, ny_cells)
-    ij = orientation === nothing ? CartesianIndex(cx, cy) :
-        Makie.image_cell_to_matrix_index(orientation, mat_size...)(cx, cy)
+    ij = Makie.image_cell_to_matrix_index(orientation, mat_size...)(cx, cy)
     return IndexedAccessor(Tuple(ij), mat_size)
 end
 

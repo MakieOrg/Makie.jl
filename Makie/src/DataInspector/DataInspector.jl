@@ -429,15 +429,10 @@ function get_tooltip_position(element::PlotElement{<:Image})
     plot = get_plot(element)
     p00, _, p11, _ = plot.positions_transformed[]
     orientation = plot.orientation[]
+    mat_size = size(plot.image[])
     i, j = Tuple(accessor(element).index)
-    if isnothing(orientation)
-        nx, ny = size(plot.image[])
-        cx, cy = i, j
-    else
-        mat_size = size(plot.image[])
-        nx, ny = Makie.image_rect_cells(orientation, mat_size...)
-        cx, cy = Makie.image_matrix_to_cell_index(orientation, mat_size...)(i, j)
-    end
+    nx, ny = Makie.image_rect_cells(orientation, mat_size...)
+    cx, cy = Makie.image_matrix_to_cell_index(orientation, mat_size...)(i, j)
     x = p00[1] + (p11[1] - p00[1]) * (cx - 0.5) / nx
     y = p00[2] + (p11[2] - p00[2]) * (cy - 0.5) / ny
     return Point2f(x, y)
@@ -745,8 +740,8 @@ function update_indicator!(di::DataInspector, element::PlotElement{<:Union{Image
         end
         # For Image, accessor index is in user-matrix space; convert to rect-cell
         # coords before drawing the bbox so the orientation transform is applied.
-        orientation = plot isa Image ? plot.orientation[] : nothing
-        bbox = if !isnothing(orientation)
+        bbox = if plot isa Image
+            orientation = plot.orientation[]
             mat_size = size(plot.image[])
             cx, cy = Makie.image_matrix_to_cell_index(orientation, mat_size...)(i, j)
             nx, ny = Makie.image_rect_cells(orientation, mat_size...)

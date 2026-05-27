@@ -454,35 +454,45 @@ function convert_arguments(
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
+# The recipe default. `orientation` reaches backends as `nothing` when the user
+# didn't set it explicitly (it rides as a convert kwarg via `used_attributes`,
+# which doesn't carry the recipe default), so all helpers normalize `nothing`
+# to this.
+const DEFAULT_IMAGE_ORIENTATION = (:down, :right)
+_image_orientation(::Nothing) = DEFAULT_IMAGE_ORIENTATION
+_image_orientation(o) = o
+
 """
     Makie.image_orientation_swap(orientation) -> Bool
 
 `true` if `orientation`'s first array dim runs along y (so the second array
 dim runs along x — a logical transpose from the legacy `(:right, :down)`
-layout). Errors on invalid input.
+layout). `nothing` is treated as the default `(:down, :right)`. Errors on
+invalid input.
 """
 function image_orientation_swap(orientation)
+    o = _image_orientation(orientation)
     vertical = (:up, :down)
     horizontal = (:left, :right)
-    if !(orientation isa Tuple{Symbol, Symbol}) || !(
-            (orientation[1] in vertical && orientation[2] in horizontal) ||
-                (orientation[1] in horizontal && orientation[2] in vertical)
+    if !(o isa Tuple{Symbol, Symbol}) || !(
+            (o[1] in vertical && o[2] in horizontal) ||
+                (o[1] in horizontal && o[2] in vertical)
         )
-        error("`orientation` must be a tuple of one vertical (`:up`/`:down`) and one horizontal (`:left`/`:right`) direction, got `$(repr(orientation))`.")
+        error("`orientation` must be a tuple of one vertical (`:up`/`:down`) and one horizontal (`:left`/`:right`) direction, got `$(repr(o))`.")
     end
-    return orientation[1] in vertical
+    return o[1] in vertical
 end
 
 """
     Makie.image_orientation_flips(orientation) -> (flip_x::Bool, flip_y::Bool)
 
 The flips a backend must apply (after any axis swap) so the user matrix's
-`(1, 1)` cell lands at the corner `orientation` names. Errors on invalid
-input.
+`(1, 1)` cell lands at the corner `orientation` names. `nothing` is treated as
+the default `(:down, :right)`. Errors on invalid input.
 """
 function image_orientation_flips(orientation)
     swap = image_orientation_swap(orientation)
-    d1, d2 = orientation
+    d1, d2 = _image_orientation(orientation)
     flip_x = (swap ? d2 : d1) === :left
     flip_y = (swap ? d1 : d2) === :up
     return (flip_x, flip_y)
