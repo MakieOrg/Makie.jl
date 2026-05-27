@@ -1425,9 +1425,6 @@ end
 ```
 
 ## Attributes
-
-$(ATTRIBUTE_DEFAULTS)
-$(ATTRIBUTE_DESCRIPTIONS)
 """
 @Block Table begin
     @attributes begin

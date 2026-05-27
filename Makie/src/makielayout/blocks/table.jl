@@ -1,15 +1,6 @@
 # ===== TABLE PLOT RECIPE =====
 # A recipe that renders tabular data efficiently with one poly, one text, and one linesegments plot
 
-# Convert any tabular data to Dict{Symbol, Any} for type stability
-function convert_arguments(::Type{<:TablePlot}, data::NamedTuple)
-    return (Dict{Symbol, Any}(pairs(data)),)
-end
-
-function convert_arguments(::Type{<:TablePlot}, data::Dict{Symbol})
-    return (Dict{Symbol, Any}(data),)
-end
-
 @recipe TablePlot (data::Dict{Symbol, Any},) begin
     # Data
     column_names = automatic
@@ -55,6 +46,15 @@ end
     show_horizontal_lines = true
 
     mixin_generic_plot_attributes()...
+end
+
+# Convert any tabular data to Dict{Symbol, Any} for type stability
+function convert_arguments(::Type{<:TablePlot}, data::NamedTuple)
+    return (Dict{Symbol, Any}(pairs(data)),)
+end
+
+function convert_arguments(::Type{<:TablePlot}, data::Dict{Symbol})
+    return (Dict{Symbol, Any}(data),)
 end
 
 function plot!(p::TablePlot)
