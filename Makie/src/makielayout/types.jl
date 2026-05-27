@@ -144,6 +144,31 @@ struct LogTicks{T}
 end
 
 """
+    PseudologTicks(n_ideal::Int = 5)
+
+Tick finder for axes using `Makie.pseudolog10`. Picks decade ticks (`±10ᵏ`) with a step
+chosen so that roughly `n_ideal` ticks are produced overall, anchors zero when it is in the
+visible range, and falls back to `WilkinsonTicks` when no decade fits the window.
+"""
+struct PseudologTicks
+    n_ideal::Int
+end
+PseudologTicks() = PseudologTicks(5)
+
+"""
+    SymlogTicks(n_ideal::Int = 5)
+
+Tick finder for axes using `Makie.Symlog10`. Picks decade ticks (`±10ᵏ`) outside the scale's
+linear region, anchors zero when it is in the visible range, and falls back to
+`WilkinsonTicks` inside the linear region. The `n_ideal` parameter is a soft target for the
+total number of ticks produced.
+"""
+struct SymlogTicks
+    n_ideal::Int
+end
+SymlogTicks() = SymlogTicks(5)
+
+"""
     IntervalsBetween(n::Int, mirror::Bool = true)
 
 Indicates to create n-1 minor ticks between every pair of adjacent major ticks.
@@ -304,21 +329,17 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         """
         Formatter for the xlabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         xlabel_suffix = "[{}]"
         """
         Formatter for the ylabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         ylabel_suffix = "[{}]"
-        "Switches between short and long x units, e.g. \"s\" vs \"Second\""
-        use_short_x_units::Bool = true
-        "Switches between short and long y units, e.g. \"s\" vs \"Second\""
-        use_short_y_units::Bool = true
 
         """
         The content of the x axis label.
@@ -1695,8 +1716,9 @@ end
 end
 
 @Block Textbox begin
-    cursorindex::Observable{Int}
-    cursoranimtask
+    # `editor` exposes the embedded `EditableText` recipe so tests / advanced
+    # consumers can drive cursor and selection state directly. Internal.
+    editor::Any
     @attributes begin
         "The height setting of the textbox."
         height = Auto()
@@ -1716,8 +1738,6 @@ end
         placeholder = "Click to edit..."
         "The currently stored string."
         stored_string = nothing
-        "The currently displayed string (for internal use)."
-        displayed_string = nothing
         "Controls if the displayed text is reset to the stored text when defocusing the textbox without submitting."
         reset_on_defocus = false
         "Controls if the textbox is defocused when a string is submitted."
@@ -1761,7 +1781,7 @@ end
         "Restricts the allowed unicode input via is_allowed(char, restriction)."
         restriction = nothing
         "The color of the cursor."
-        cursorcolor = :transparent
+        cursorcolor = COLOR_ACCENT[]
     end
 end
 
@@ -1803,30 +1823,24 @@ end
         """
         Formatter for the xlabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         xlabel_suffix = "[{}]"
         """
         Formatter for the ylabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         ylabel_suffix = "[{}]"
         """
         Formatter for the zlabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         zlabel_suffix = "[{}]"
-        "Switches between short and long x units, e.g. \"s\" vs \"Second\""
-        use_short_x_units::Bool = true
-        "Switches between short and long y units, e.g. \"s\" vs \"Second\""
-        use_short_y_units::Bool = true
-        "Switches between short and long z units, e.g. \"s\" vs \"Second\""
-        use_short_z_units::Bool = true
 
         "The height setting of the scene."
         height = nothing

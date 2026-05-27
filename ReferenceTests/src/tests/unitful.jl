@@ -70,18 +70,18 @@ end
     ax = Axis(
         fig[1, 1],
         x_unit_in_label = true, x_unit_in_ticklabel = false,
-        xlabel_suffix = "unit: {}", use_short_x_units = true,
+        xlabel_suffix = "unit: {}",
         y_unit_in_label = true, y_unit_in_ticklabel = true,
-        ylabel_suffix = "{}", use_short_y_units = false
+        ylabel_suffix = "{}", ylabel = rich("rich:", color = :red)
     )
     scatterlines!(ax, Point2.((1:10) .* u"s", sin.(1:10) .* u"m"))
 
     ax = Axis3(
         fig[2, 1],
         x_unit_in_label = true, x_unit_in_ticklabel = false,
-        xlabel_suffix = "unit: {}", use_short_x_units = true,
+        xlabel_suffix = "unit: {}",
         y_unit_in_label = true, y_unit_in_ticklabel = true,
-        ylabel_suffix = "{}", use_short_y_units = false,
+        ylabel_suffix = "{}", ylabel = L"\mathrm{latex}",
         z_unit_in_label = false, z_unit_in_ticklabel = true,
     )
     scatterlines!(ax, Point3.((1:10) .* u"s", sin.(1:10) .* u"m", cos.(1:10) .* u"m"))

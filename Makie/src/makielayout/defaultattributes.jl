@@ -73,7 +73,6 @@ function generic_plot_attributes(::Type{LineAxis})
         unit_in_ticklabel = true,
         suffix_formatter = "",
         unit_in_label = false,
-        use_short_unit = true,
     )
 end
 

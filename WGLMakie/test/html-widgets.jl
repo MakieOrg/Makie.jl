@@ -257,15 +257,17 @@ using Electron, WGLMakie, Bonito, Test
                 return {
                     exists: node !== null,
                     type: node ? node.type : "",
-                    value: node ? node.value : ""
+                    value: node ? node.value : "",
+                    placeholder: node ? node.placeholder : ""
                 }
             })()"""
         )
 
         @test textbox_props["exists"] == true
         @test textbox_props["type"] == "text"
-        # Initial value is the placeholder text
-        @test textbox_props["value"] == "Enter text..."
+        # Empty input shows the placeholder via the native HTML attribute
+        @test textbox_props["value"] == ""
+        @test textbox_props["placeholder"] == "Enter text..."
 
         # Test entering text
         evaljs_value(
@@ -277,7 +279,7 @@ using Electron, WGLMakie, Bonito, Test
             })()"""
         )
 
-        @test textbox.displayed_string[] == "Hello World"
+        @test textbox.editor.arg1[] == "Hello World"
         @test textbox.stored_string[] == "Hello World"
     end
 
@@ -312,7 +314,7 @@ using Electron, WGLMakie, Bonito, Test
                 node.dispatchEvent(new Event('change', { bubbles: true }));
             })()"""
         )
-        @test textbox.displayed_string[] == "2.71"
+        @test textbox.editor.arg1[] == "2.71"
         @test textbox.stored_string[] == "2.71"
     end
 

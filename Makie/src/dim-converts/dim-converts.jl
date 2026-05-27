@@ -82,11 +82,63 @@ show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}) = false
 show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}, option::Bool) = option
 
 # Should this trigger an error or just return ""?
-get_label_suffix(dc, format, use_short) = apply_format(get_label_suffix(dc, use_short), format)
-get_label_suffix(dc, format) = apply_format(get_label_suffix(dc), format)
-get_label_suffix(dc, ::Bool) = get_label_suffix(dc)
+"""
+    add_label_suffix(label, dim_convert, format)
+
+Adds a suffix to `label` based on the given `dim_convert` and formatter `format`.
+
+## Extension
+
+This function is meant to be extended by dim converts. It should generate a
+suffix, e.g. a unit like "m", apply the formatter which default adds brackets
+"[m]" and then merge it with `label` "\$label [m]".
+
+The `label` is the `x/y/zlabel` set by the user in the parent axis. The `format`
+is also set in the parent axis via `x/y/zlabel_suffix`. It may be a function,
+formatting string or a string replacing the suffix. It can be applied with
+`Makie.apply_format(str, format)` for strings and RichText.
+
+Alternatively you can also implement:
+- `get_label_suffix(label, dim_convert, format)` which should return just the suffix in
+    as a type that can be merged with `label`. The merging then happens in Makie.
+- `get_label_suffix(label, dim_convert)` which leaves the format application to Makie.
+- `get_label_suffix(dim_convert)` which avoids specialization on label types. This
+    should only ever return a plain String.
+"""
+function add_label_suffix(label, dc, format)
+    return add_label_suffix(label, get_label_suffix(label, dc, format))
+end
+
+"""
+    get_label_suffix(label, dim_convert, format)
+    get_label_suffix(label, dim_convert)
+    get_label_suffix(dim_convert)
+
+Returns a label suffix based on the given `dim_convert`.
+
+## Extension
+
+This function or `add_label_suffix` is meant to be extended for new dim converts.
+Methods that include `label` should use it to return a label-compatible string
+type. I.e. RichText or String for RichText, LaTeXString or String for LaTeXString.
+Methods with `format` should apply its formatting, either with `Makie.apply_format`
+or manually.
+"""
+get_label_suffix(label, dc, format) = apply_format(get_label_suffix(label, dc), format)
+get_label_suffix(label, dc) = get_label_suffix(dc)::String
 get_label_suffix(dc) = error("No axis label suffix defined for conversion $dc.")
 get_label_suffix(dc::Union{Nothing, NoDimConversion}) = ""
+
+function add_label_suffix(label::Union{String, LaTeXString}, formatted::Union{String, LaTeXString})
+    return isempty(label) ? formatted : latexstring(label, " ", formatted)
+end
+function add_label_suffix(label::Union{String, RichText}, formatted::Union{String, RichText})
+    return isempty(label) ? formatted : rich(label, " ", formatted)
+end
+function add_label_suffix(label::String, formatted::String)
+    return isempty(label) ? formatted : label * ' ' * formatted
+end
+# TODO: Can we merge RichText + LaTeXString?
 
 # Don't default to generating a suffix for no dim conversion.
 # TODO: Maybe allow option cases to go through though so `suffix` can be used w/o dimconverts?

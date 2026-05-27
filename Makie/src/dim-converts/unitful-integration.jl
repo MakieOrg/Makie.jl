@@ -1,6 +1,7 @@
 using Dates, Observables
 import Unitful
 using Unitful: Quantity, LogScaled, @u_str, uconvert, ustrip
+using Latexify
 
 const SupportedUnits = Union{Period, Unitful.Quantity, Unitful.LogScaled, Unitful.Units}
 
@@ -25,11 +26,6 @@ unit_string(unit::Unitful.Unit) = string(unit)
 unit_string(::Union{Number, Nothing}) = ""
 unit_string(unit::T) where {T <: Unitful.MixedUnits} = string(unit)
 unit_string(unit::Unitful.LogScaled) = ""
-
-unit_string_long(unit) = unit_string_long(base_unit(unit))
-unit_string_long(::Unitful.Unit{Sym, D}) where {Sym, D} = string(Sym)
-unit_string_long(unit::Unitful.LogScaled) = string(unit)
-
 
 to_free_unit(unit::Unitful.FreeUnits, _) = unit
 to_free_unit(unit::Unitful.FreeUnits, ::Quantity) = unit
@@ -147,12 +143,18 @@ function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin,
     return tick_vals, labels
 end
 
-function get_label_suffix(conversion::UnitfulConversion, format, use_short_units)
+function get_label_suffix(::Union{RichText, String}, conversion::UnitfulConversion, format)
     unit = conversion.unit[]
-    unit isa Automatic && return rich("")
-    ustr = use_short_units ? unit_string(unit) : unit_string_long(unit)
+    unit isa Automatic && return ""
+    ustr = unit_string(unit)
     str = unit_string_to_rich(ustr)
     return apply_format(str, format)
+end
+
+function get_label_suffix(::LaTeXString, conversion::UnitfulConversion, format)
+    unit = conversion.unit[]
+    unit isa Automatic && return ""
+    return apply_format(latexify(unit), format)
 end
 
 function convert_dim_value(conversion::UnitfulConversion, attr, values, last_values)

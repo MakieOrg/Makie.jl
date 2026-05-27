@@ -61,10 +61,15 @@ function _argument_dims(
         direction::Symbol = :y, orientation::Symbol = :vertical
     ) where {N}
 
-    dims = ntuple(identity, N)
     if N == 2
-        dims = ifelse(direction === :y, dims, (dims[2], dims[1]))
-        dims = ifelse(orientation === :vertical, dims, (dims[2], dims[1]))
+        # This becomes Core.Box if the names match
+        __dims = (1, 2)
+        _dims = ifelse(direction === :y, __dims, (__dims[2], __dims[1]))
+        dims = ifelse(orientation === :vertical, _dims, (_dims[2], _dims[1]))
+    elseif N == 3
+        dims = (1, 2, 3)
+    else
+        dims = ntuple(identity, Val{N}())
     end
     return ntuple(i -> dims, length(t))
 end

@@ -50,11 +50,17 @@
 
 ## Unreleased
 
+- Reworked `Textbox` with selections, multi-cursor, copy / cut / paste, and word / line navigation [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
+- A trailing `'\n'` in a `text!` string now contributes a full empty line to the layout and bounding box (previously `"abc\n"` was laid out identically to `"abc"`) [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
+- Added decade-aware automatic ticks for `pseudolog10` and `Symlog10` axes via new `PseudologTicks` and `SymlogTicks` types. `LogTicks` is no longer accepted with these scales (it placed ticks at wrong positions). `Symlog10` is now a callable struct exposing its `lower`/`upper`/`linscale` parameters. Closes [#5270](https://github.com/MakieOrg/Makie.jl/issues/5270) [#5625](https://github.com/MakieOrg/Makie.jl/pull/5625)
+- Default linear tick labels now render scientific notation (e.g. `1×10⁻⁵`) as `RichText` with a real superscript span, the same way log tick labels are constructed. Previously the exponent used unicode superscript glyphs which Makie's default font does not fully cover, causing missing-glyph boxes for some exponents. The fractional `.0` padding is stripped only when every base reduces to a whole number; mixed-precision tick sets keep the padding for alignment. The small subset of `Showoff.jl` Makie used has been vendored into Makie and the `Showoff` dependency has been dropped. [#5626](https://github.com/MakieOrg/Makie.jl/pull/5626)
+- Fixed `lines` rendering a phantom segment between the first and last point on macOS for line plots above ~2.4M points [#5622](https://github.com/MakieOrg/Makie.jl/pull/5622)
+- Fixed `Legend` not reflecting `linecap` and `joinstyle` set on `lines!`/`linesegments!` plots [#5621](https://github.com/MakieOrg/Makie.jl/pull/5621)
+- Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
+- GLMakie no longer shows a dock icon on macOS when only used for file export; the icon appears with the Makie logo when an interactive window is opened [#5223](https://github.com/MakieOrg/Makie.jl/pull/5223)
 - Added dim convert support for the value/color argument of grid-based plots (`heatmap`, `image`, `contour`, `contourf`, `surface`). For `Unitful` and `DynamicQuantities` quantities this allows e.g. `heatmap(rand(3, 4)u"m")` and propagates the unit to a `Colorbar` constructed from the plot via the new `dim_convert`, `unit_in_label`, `unit_in_ticklabel`, `label_suffix` and `use_short_unit` Colorbar attributes. Passing a `dim_convert` whose unit differs from the plot's rescales the colorbar's tick values into the requested unit.
   - **minor breaking** `argument_dims(::CellGrid|::ImageLike|::VertexGrid, x, y, z)` now returns `(1, 2, 3)` instead of `(1, 2)`. Code that asserts on this return value (or on `plot.arg_dims[]` for heatmap/image/contour/contourf) needs to be updated. Recipes that override `argument_dims` for their own plot type are unaffected.
   - **minor breaking** `Colorbar(fig, plot)` for a `surface` (or any plot) whose z values carry units now displays the unit on the colorbar axis. Reference snapshots that include such colorbars will diff.
-- Fixed `Legend` not reflecting `linecap` and `joinstyle` set on `lines!`/`linesegments!` plots [#5621](https://github.com/MakieOrg/Makie.jl/pull/5621)
-- Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
 
 ## [0.24.10] - 2026-04-27
 
@@ -69,6 +75,7 @@
 - CairoMakie now batches glyphs from the same text string into a single PDF/SVG text object, so that text can be selected and edited as a unit in vector editors like Inkscape and Illustrator [#5561](https://github.com/MakieOrg/Makie.jl/pull/5561)
 - Fixed `annotation` not showing lines/arrows when `text` is blank [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
 - Fixed error/nan offsets in `annotation!()` when an annotation is perfectly centered [#5568](https://github.com/MakieOrg/Makie.jl/pull/5568)
+- Added `preferred_axis_attributes(AxisType, [plot], [args...])` as an interface function for specifying default axis attributes when creating an axis with the non-mutating `plot()` functions. Also refactored `preferred_axis_type()` to have a clear hierarchy of methods. [#5375](https://github.com/MakieOrg/Makie.jl/pull/5375)
 
 ## [0.24.9] - 2026-03-04
 
