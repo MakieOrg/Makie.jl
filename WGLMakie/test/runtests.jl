@@ -6,7 +6,7 @@ using FileIO
 using WGLMakie, Makie, Test
 using WGLMakie.Bonito
 using ReferenceTests
-import Electron
+import ElectronCall
 
 @testset "mimes" begin
     Makie.inline!(true)
