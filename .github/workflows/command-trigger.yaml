@@ -34,8 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       actions: write         # dispatch the router workflow
-      issues: write          # react to the triggering comment
-      pull-requests: read
+      # Reacting to a PR-conversation comment requires pull-requests: write even
+      # though the API path is /issues/comments/{id}/reactions — GitHub gates
+      # this on the comment's parent (a PR), not the URL surface.
+      pull-requests: write
     steps:
       - name: Check write access
         id: perm
