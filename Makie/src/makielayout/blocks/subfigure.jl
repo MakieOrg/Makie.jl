@@ -211,6 +211,15 @@ end
 
 content_scene(sf::Subfigure) = sf.scene
 
+# `unhide!` force-sets `b.scene.visible[] = true` (intended for blocks like Axis
+# that initialise it `false`), which would override the reactive binding from
+# `active`. Subfigure's scene visibility is driven by `active`, so don't touch
+# `sf.scene.visible` here — just unhide the blockscene like the default would.
+function unhide!(sf::Subfigure)
+    sf.blockscene.visible[] || (sf.blockscene.visible[] = true)
+    return
+end
+
 # Recurse into the subfigure's layout so blocks placed inside get their
 # pre-display updates (auto axis limits etc.).
 function update_state_before_display!(sf::Subfigure)
