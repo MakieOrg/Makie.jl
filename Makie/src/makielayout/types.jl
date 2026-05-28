@@ -1429,9 +1429,9 @@ A clipped, optionally event-isolated, scrollable region with its own
 to a sub-region. Place blocks via `Axis(subfig[1, 1])` etc., or plot
 directly into `content_scene(subfig)` (in viewport-local pixel coords).
 
-The `active::Observable{Bool}` attribute controls whether the subfigure is
+The `visible::Observable{Bool}` attribute controls whether the subfigure is
 shown and, when constructed with `isolate_events = true`, whether it
-receives mouse and keyboard input. When inactive, the subfigure renders
+receives mouse and keyboard input. When hidden, the subfigure renders
 nothing and (if isolated) sees no input events.
 
 Content larger than the subfigure scrolls vertically and horizontally;
@@ -1440,7 +1440,7 @@ from the inner `GridLayout`'s determinable size, so setting fixed row /
 column sizes makes the subfigure overflow and scroll.
 
 `Tabs` is built on `Subfigure` — one per tab, with `isolate_events = true`
-and `active = (tabs.active == i)`. Use `Subfigure` directly for scrollable
+and `visible = (tabs.active == i)`. Use `Subfigure` directly for scrollable
 scientific-figure panels, sidebars, dialog regions, etc.
 """
 @Block Subfigure begin
@@ -1449,7 +1449,7 @@ scientific-figure panels, sidebars, dialog regions, etc.
     contentsize::Observable{Vec2f}
     @attributes begin
         "Whether the subfigure is shown. When `false` it renders nothing and (if `isolate_events = true`) receives no input."
-        active = true
+        visible = true
         "Padding (in pixels) around the content, as a number or a (left, right, bottom, top) tuple."
         contentpadding = 10
         "Background color of the content area."

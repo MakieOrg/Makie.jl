@@ -29,7 +29,7 @@ function initialize_block!(t::Tabs)
     end
 
     function recompute_layout!()
-        n = length(t.subfigures)
+        n = length(t.labels[])
         n == 0 && return
         pad = t.tabpadding[]
         gap = t.tabgap[]
@@ -91,7 +91,7 @@ function initialize_block!(t::Tabs)
             blockscene;
             bbox = content_area,
             isolate_events = true,
-            active = is_active,
+            visible = is_active,
             contentpadding = t.contentpadding,
         )
         push!(t.subfigures, sf)
@@ -123,9 +123,22 @@ function initialize_block!(t::Tabs)
     end
 
     on(blockscene, t.labels; update = true) do labels
-        while length(t.subfigures) < length(labels)
+        n = length(labels)
+        # grow if more labels
+        while length(t.subfigures) < n
             add_subfigure!(length(t.subfigures) + 1)
             add_header!(length(t.subfigures))
+        end
+        # clamp active onto the new range so it doesn't point at a removed tab
+        if !isempty(labels) && t.active[] > n
+            t.active[] = clamp(t.active[], 1, n)
+        end
+        # extra subfigures stay around (their `visible` is bound to
+        # `active == i` so they're already hidden), but their headers shouldn't
+        # render. Move the leftover tab rects off-screen and the labels are
+        # already empty strings via `get(ls, i, "")`.
+        for i in (n + 1):length(t.subfigures)
+            tab_rects[i][] = Rect2f(0, 0, 0, 0)
         end
         recompute_layout!()
         return
@@ -168,6 +181,21 @@ function initialize_block!(t::Tabs)
 end
 
 Base.getindex(t::Tabs, i::Integer) = t.subfigures[i]
+
+# Generic `Block` indexing would lazy-init a fresh, disconnected `GridLayout`
+# on `t.layout` — a silent foot-gun: `Axis(tabs[1, 1])` would create an
+# orphan that never displays. Force users to specify which tab.
+function Base.getindex(
+        ::Tabs,
+        ::Union{Integer, Colon, AbstractRange},
+        ::Union{Integer, Colon, AbstractRange},
+        side = GridLayoutBase.Inner()
+    )
+    error(
+        "`Tabs` doesn't have a top-level grid layout — index into a specific " *
+            "tab first: `tabs[i][row, col]` (or `tabs[i].layout[row, col]`)."
+    )
+end
 
 """
     content_scene(tabs::Tabs, i::Integer)
