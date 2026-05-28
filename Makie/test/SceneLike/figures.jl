@@ -42,9 +42,6 @@ end
     @test fig2 === fig
     @test ax2 === ax
 end
-
-
-
 @testset "Argument-level axis hints" begin
     # Data types can define preferred_axis_attributes(AxisType, args...)
     # to provide axis defaults when used as plot arguments.
