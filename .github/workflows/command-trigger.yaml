@@ -85,6 +85,7 @@ jobs:
             exit 1
           fi
           gh workflow run command-router.yaml \
+            --repo "${{ github.repository }}" \
             --ref "$(echo "$data" | jq -r .head.ref)" \
             -f comment_body="$COMMENT_BODY" \
             -f comment_id="$COMMENT_ID" \
