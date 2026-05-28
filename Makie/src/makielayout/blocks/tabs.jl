@@ -134,34 +134,33 @@ function initialize_block!(t::Tabs)
 
     function add_tab!(i)
         is_active = lift(a -> a == i, blockscene, t.active)
-        # `clip` clips to the visible content area and isolates input events
-        # for this tab. Direct content_scene(t, i) plotting goes here, so users
-        # plot in tab-local pixel coordinates (origin at content-area corner).
-        clip = Scene(
+        # One scene per tab. `cam_window_pixel!` (used by Block blockscenes
+        # via `_block`) takes care of the viewport-offset mapping, so blocks
+        # placed into this scene's layout render correctly even though the
+        # scene's viewport doesn't start at the window origin. The scene
+        # itself uses `campixel!` so direct `content_scene(t, i)` plotting
+        # stays in tab-local pixel coords (origin at the content-area corner).
+        scene = Scene(
             blockscene; events = Events(), camera = campixel!,
             viewport = content_area, visible = is_active, clear = false
         )
-        forward_events!(clip, blockscene; active = is_active)
-        # Inner scene uses the root figure's viewport so that Blocks placed via
-        # the GridLayout — whose decoration code positions things in absolute
-        # window pixels — render at the right place. The clipping comes from
-        # `clip` being an ancestor via the effective-viewport scissor.
-        root_viewport = root(blockscene).viewport
-        inner = Scene(clip; viewport = root_viewport, camera = campixel!, clear = false)
+        forward_events!(scene, blockscene; active = is_active)
 
         scroll = Observable(Vec2f(0, 0); ignore_equal_values = true)
         contentsize = Observable(Vec2f(0, 0); ignore_equal_values = true)
         layout_bbox = Observable(Rect2f(0, 0, 1, 1); ignore_equal_values = true)
         layout = GridLayout(; bbox = layout_bbox)
-        layout.parent = inner
+        layout.parent = scene
 
-        push!(t.scenes, clip)
+        push!(t.scenes, scene)
         push!(t.layouts, layout)
         push!(t.scrolls, scroll)
         push!(t.contentsizes, contentsize)
 
-        # Offset the layout's bbox by the scroll, sizing it to fit at least the
-        # viewport and stretching to content size if it's larger.
+        # Layout bbox is in absolute window coords; inner block decorations
+        # placed via the layout end up at those absolute coords, which is what
+        # local campixel expects when the scene's viewport is at the figure
+        # origin (here: `inner`'s viewport).
         onany(blockscene, content_area, scroll, contentsize) do ca, sc, cs
             vw, vh = Float32.(widths(ca))
             cw, ch = max(cs[1], vw), max(cs[2], vh)
@@ -205,9 +204,9 @@ function initialize_block!(t::Tabs)
         # Container scrolling runs at a priority below the default so inner
         # blocks (e.g. an Axis zoom-on-scroll handler at priority 0) get the
         # event first; we only scroll the container if nothing consumed it.
-        on(blockscene, clip.events.scroll; priority = -1) do (dx, dy)
+        on(blockscene, scene.events.scroll; priority = -1) do (dx, dy)
             cs = contentsize[]
-            ca = clip.viewport[]
+            ca = scene.viewport[]
             vw, vh = Float32.(widths(ca))
             cw, ch = max(cs[1], vw), max(cs[2], vh)
             (cw <= vw && ch <= vh) && return Consume(false)

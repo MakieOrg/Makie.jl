@@ -53,8 +53,9 @@ function initialize_block!(tbox::Textbox)
     realtextcolor = Observable(to_color(:red))
 
     # Position the editor at the top-left of the inner area, accounting for textpadding.
+    # The inner text plot uses `space = :pixel` which is viewport-local (see
+    # `Camera.pixel_space`), so the anchor is in scenearea-local coords.
     text_origin = lift(topscene, scenearea, tbox.textpadding) do area, padding
-        # padding = (left, right, bottom, top); text uses (:left, :top) align so we anchor at the top-left
         l, _r, _b, t = padding
         return Point2f(l, widths(area)[2] - t)
     end
