@@ -1458,10 +1458,10 @@ scientific-figure panels, sidebars, dialog regions, etc.
         scrollable = true
         "Speed of wheel/trackpad scrolling."
         scroll_speed = 15.0
-        "Thickness in pixels of the scrollbar tracks shown when content overflows."
-        scrollbar_size = 8
-        "Background color of a scrollbar track."
-        scrollbar_color = RGBAf(0, 0, 0, 0.05)
+        "Thickness in pixels of the scrollbar thumbs shown when content overflows."
+        scrollbar_size = 6
+        "Background color of the scrollbar track (default transparent — only the thumb is drawn)."
+        scrollbar_color = RGBAf(0, 0, 0, 0)
         "Color of the scrollbar thumb (the draggable handle)."
         scrollbar_thumb_color = RGBAf(0, 0, 0, 0.3)
         "Color of the scrollbar thumb when hovered or dragged."

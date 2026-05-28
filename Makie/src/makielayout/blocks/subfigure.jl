@@ -50,10 +50,19 @@ function initialize_block!(sf::Subfigure; isolate_events::Bool = false)
     hthumb_rect = Observable(Rect2f(0, 0, 0, 0))
     hthumb_color = Observable(to_color(sf.scrollbar_thumb_color[]))
     hvis = Observable(false; ignore_equal_values = true)
+    # Rounded thumbs (capsule-shaped) computed from the bar rects. The track
+    # rectangles aren't drawn — `sf.scrollbar_color` is exposed for users who
+    # want a track, but the default is transparent.
     poly!(blockscene, vbar_rect; color = sf.scrollbar_color, visible = lift(&, active, vvis), inspectable = false)
-    poly!(blockscene, vthumb_rect; color = vthumb_color, visible = lift(&, active, vvis), inspectable = false)
     poly!(blockscene, hbar_rect; color = sf.scrollbar_color, visible = lift(&, active, hvis), inspectable = false)
-    poly!(blockscene, hthumb_rect; color = hthumb_color, visible = lift(&, active, hvis), inspectable = false)
+    vthumb_poly = lift(blockscene, vthumb_rect) do r
+        roundedrectvertices(r, min(widths(r)...) / 2, 8)
+    end
+    hthumb_poly = lift(blockscene, hthumb_rect) do r
+        roundedrectvertices(r, min(widths(r)...) / 2, 8)
+    end
+    poly!(blockscene, vthumb_poly; color = vthumb_color, visible = lift(&, active, vvis), inspectable = false)
+    poly!(blockscene, hthumb_poly; color = hthumb_color, visible = lift(&, active, hvis), inspectable = false)
 
     function update_scrollbars!()
         ca = scene.viewport[]
