@@ -1421,6 +1421,89 @@ end
 end
 
 
+"""
+Tabs(fig_or_scene; labels = ["Tab 1", "Tab 2"], kwargs...)
+
+A tabbed container. Each tab owns its own content `Scene` paired with a
+`GridLayout`, so it behaves like a miniature `Figure`: place `Block`s with
+`tabs[i][row, col] = Axis(...)` or plot directly into `tabs[i]` / `content_scene(tabs, i)`.
+
+Only the active tab (selected via the `active` attribute or by clicking its
+header) is visible. Each content `Scene` is event-isolated: it owns its own
+`Events` object and receives mouse and keyboard input only while active, so
+hidden tabs and their plots never react to input (see [`forward_events!`](@ref)).
+Content larger than the visible area can be scrolled vertically and horizontally.
+"""
+@Block Tabs begin
+    scenes::Vector{Scene}
+    layouts::Vector{GridLayout}
+    scrolls::Vector{Observable{Vec2f}}
+    contentsizes::Vector{Observable{Vec2f}}
+    @attributes begin
+        "The labels of the tabs. The number of labels determines the number of tabs."
+        labels = ["Tab 1", "Tab 2"]
+        "Index of the active (visible) tab."
+        active = 1
+        "Height of the tab header strip in pixels, or `automatic` to derive it from the label size."
+        tabheight = automatic
+        "Font size of the tab labels."
+        fontsize = @inherit(:fontsize, 16.0f0)
+        "Font of the tab labels."
+        font = :regular
+        "Padding (left, right, bottom, top) around each tab label in pixels."
+        tabpadding = (12, 12, 8, 8)
+        "Corner radius of the tab header backgrounds."
+        cornerradius = 0
+        "Number of vertices used to render rounded tab corners."
+        cornersegments = 10
+        "Background color of the active tab header. Should match the content area background for the cmux-style 'connected' look."
+        tabcolor_active = :white
+        "Background color of inactive tab headers."
+        tabcolor_inactive = :white
+        "Background color of a hovered, inactive tab header (brief gray feedback while pointing/clicking)."
+        tabcolor_hover = RGBf(0.92, 0.92, 0.92)
+        "Color of the active tab label."
+        labelcolor_active = :black
+        "Color of inactive tab labels."
+        labelcolor_inactive = RGBf(0.4, 0.4, 0.4)
+        "Background color of the content area."
+        backgroundcolor = :transparent
+        "Gap in pixels between adjacent tab headers."
+        tabgap = 0
+        "Color of the thin separator line drawn under the header strip (broken under the active tab)."
+        separator_color = RGBf(0.82, 0.82, 0.82)
+        "Thickness in pixels of the header bottom separator."
+        separator_thickness = 1
+        "Padding (in pixels) around the content of each tab, as a number or a (left, right, bottom, top) tuple."
+        contentpadding = 10
+        "Speed of scrolling the content area."
+        scroll_speed = 15.0
+        "Thickness in pixels of the scrollbar tracks shown when content overflows."
+        scrollbar_size = 8
+        "Background color of a scrollbar track."
+        scrollbar_color = RGBAf(0, 0, 0, 0.05)
+        "Color of the scrollbar thumb (the draggable handle)."
+        scrollbar_thumb_color = RGBAf(0, 0, 0, 0.3)
+        "Color of the scrollbar thumb when hovered or dragged."
+        scrollbar_thumb_color_active = RGBAf(0, 0, 0, 0.5)
+        "The height setting of the tabs block."
+        height = nothing
+        "The width setting of the tabs block."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = false
+        "The horizontal alignment of the block in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the block in its suggested bounding box."
+        valign = :center
+        "The alignment of the block in its suggested bounding box."
+        alignmode = Inside()
+    end
+end
+
+
 abstract type LegendElement end
 
 struct LineElement <: LegendElement
