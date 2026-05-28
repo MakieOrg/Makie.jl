@@ -34,6 +34,7 @@ include("blocks/scene.jl")
 include("blocks/menu.jl")
 include("blocks/textbox.jl")
 include("blocks/container.jl")
+include("blocks/subfigure.jl")
 include("blocks/tabs.jl")
 
 export @Block, Block
