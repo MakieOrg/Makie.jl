@@ -93,10 +93,12 @@ function prepare_for_scene(screen::Screen, scene::Scene)
     # get the root area to correct for its size when translating
     root_area_height = widths(Makie.root(scene))[2]
 
-    # Clip to the effective viewport (intersection with every ancestor's
-    # viewport) so a scene whose content extends past an ancestor — e.g. a
-    # scrollable container's children — is cut off at the ancestor's edge.
-    clip_area = Makie.effective_viewport(scene)
+    # Clip to the intersection of all ancestor viewports — `effective_clip`
+    # — so the scene only renders within the bounds its parents share.
+    # The scene's own viewport is excluded from the intersection, so e.g.
+    # axis markers near a spine extend past the plot scene into the axis's
+    # decoration area (which is clipped at the figure / container edge).
+    clip_area = Makie.effective_clip(scene)
     clip_x, clip_y_makie = origin(clip_area)
     clip_w, clip_h = widths(clip_area)
     clip_top = root_area_height - clip_y_makie - clip_h

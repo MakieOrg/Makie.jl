@@ -454,47 +454,27 @@ function scene_visible(scene::Scene)
 end
 
 """
-    effective_viewport(scene::Scene)::Rect2i
+    effective_clip(scene::Scene)::Rect2i
 
-The intersection of `scene`'s viewport with every ancestor's viewport. Backends
-should use this — not `viewport(scene)` — to set the scissor rectangle for
-rendering, so a scene whose content extends past an ancestor's viewport gets
-clipped at the ancestor (e.g. a scrollable container clipping its overflowing
-contents). Returns a `Rect2i`; the rect may be empty when there is no overlap.
+Intersection of every ancestor's viewport (not including `scene`'s own).
+Backends use this as the scissor rectangle, so a scene is rendered only within
+the bounds shared by every one of its parents. The scene's own viewport is
+not part of the intersection — that lets plots near a scene's edge (e.g. axis
+markers near the spines) extend past the scene's own viewport, while still
+being clipped at the smallest enclosing ancestor.
+
+For the root scene the intersection is empty; the root's own viewport is
+returned so the scissor matches the window.
 """
-function effective_viewport(scene::Scene)
-    rect = viewport(scene)[]
-    s = scene
+function effective_clip(scene::Scene)
+    isroot(scene) && return viewport(scene)[]
+    s = parent(scene)
+    rect = viewport(s)[]
     while !isroot(s)
         s = parent(s)
         rect = intersect(rect, viewport(s)[])
     end
     return rect
-end
-
-"""
-    needs_ancestor_clip(scene::Scene)::Bool
-
-`true` when an ancestor's viewport actually clips this scene's viewport — i.e.
-`effective_viewport(scene)` is strictly smaller than `viewport(scene)`. Backends
-can use this to skip scissor setup for scenes that fit within all their
-ancestors, preserving the existing "no-scissor" rendering for those scenes
-(markers that extend beyond axis edges, etc.).
-"""
-function needs_ancestor_clip(scene::Scene)
-    own = viewport(scene)[]
-    own_min, own_max = minimum(own), maximum(own)
-    s = scene
-    while !isroot(s)
-        s = parent(s)
-        pa = viewport(s)[]
-        # element-wise containment: `<=`/`>=` on `Vec` is lexicographic, not
-        # per-component, so we need `all(.<=)` / `all(.>=)` here
-        if !(all(minimum(pa) .<= own_min) && all(maximum(pa) .>= own_max))
-            return true
-        end
-    end
-    return false
 end
 
 GeometryBasics.widths(scene::Scene) = widths(to_value(viewport(scene)))
