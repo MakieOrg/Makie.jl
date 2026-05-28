@@ -1522,6 +1522,12 @@ area scrolls vertically and horizontally.
         labelcolor_active = :black
         "Color of inactive tab labels."
         labelcolor_inactive = RGBf(0.4, 0.4, 0.4)
+        "Whether a close (×) button is drawn on each tab. Clicking it removes that tab from `labels`."
+        closable = true
+        "Color of the close (×) icon when idle."
+        closecolor = RGBf(0.5, 0.5, 0.5)
+        "Color of the close (×) icon when hovered."
+        closecolor_hover = RGBf(0, 0, 0)
         "Gap in pixels between adjacent tab headers."
         tabgap = 0
         "Color of the thin separator line drawn under the header strip (broken under the active tab)."
