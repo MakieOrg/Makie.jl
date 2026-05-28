@@ -436,6 +436,67 @@ function root(scene::Scene)
 end
 parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
 
+"""
+    scene_visible(scene::Scene)
+
+Effective visibility of `scene`: `true` only if `scene` and all of its ancestors
+are visible. Unlike `scene.visible[]`, this cascades down the scene tree, so a
+scene nested under an invisible ancestor counts as hidden even when its own
+`visible[]` is `true` (as happens when a `Block` force-shows its own scene).
+"""
+function scene_visible(scene::Scene)
+    while true
+        scene.visible[] || return false
+        isroot(scene) && return true
+        scene = parent(scene)
+    end
+    return
+end
+
+"""
+    effective_viewport(scene::Scene)::Rect2i
+
+The intersection of `scene`'s viewport with every ancestor's viewport. Backends
+should use this — not `viewport(scene)` — to set the scissor rectangle for
+rendering, so a scene whose content extends past an ancestor's viewport gets
+clipped at the ancestor (e.g. a scrollable container clipping its overflowing
+contents). Returns a `Rect2i`; the rect may be empty when there is no overlap.
+"""
+function effective_viewport(scene::Scene)
+    rect = viewport(scene)[]
+    s = scene
+    while !isroot(s)
+        s = parent(s)
+        rect = intersect(rect, viewport(s)[])
+    end
+    return rect
+end
+
+"""
+    needs_ancestor_clip(scene::Scene)::Bool
+
+`true` when an ancestor's viewport actually clips this scene's viewport — i.e.
+`effective_viewport(scene)` is strictly smaller than `viewport(scene)`. Backends
+can use this to skip scissor setup for scenes that fit within all their
+ancestors, preserving the existing "no-scissor" rendering for those scenes
+(markers that extend beyond axis edges, etc.).
+"""
+function needs_ancestor_clip(scene::Scene)
+    own = viewport(scene)[]
+    own_min, own_max = minimum(own), maximum(own)
+    s = scene
+    while !isroot(s)
+        s = parent(s)
+        pa = viewport(s)[]
+        # element-wise containment: `<=`/`>=` on `Vec` is lexicographic, not
+        # per-component, so we need `all(.<=)` / `all(.>=)` here
+        if !(all(minimum(pa) .<= own_min) && all(maximum(pa) .>= own_max))
+            return true
+        end
+    end
+    return false
+end
+
 GeometryBasics.widths(scene::Scene) = widths(to_value(viewport(scene)))
 
 Base.size(scene::Scene) = Tuple(widths(scene))

@@ -305,19 +305,30 @@ function run_stage(screen, glscene, stage::RenderPlots)
             elem.visible && haskey(elem.variants, stage.target) || continue
 
             found, scene = id2scene(screen, screenid)
-            (found && scene.visible[]) || continue
+            (found && Makie.scene_visible(scene)) || continue
 
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
 
             require_context(screen.glscreen)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            # Only scissor when an ancestor's viewport actually clips this
+            # scene — otherwise the original GL behaviour is preserved (no
+            # scissor), so e.g. axis markers can extend past the plot area.
+            if Makie.needs_ancestor_clip(scene)
+                sa = Makie.effective_viewport(scene)
+                glScissor(round.(Int, ppu .* minimum(sa))..., round.(Int, ppu .* widths(sa))...)
+                glEnable(GL_SCISSOR_TEST)
+            else
+                glDisable(GL_SCISSOR_TEST)
+            end
             elem[:px_per_unit] = ppu
 
             stage.prerender(elem[:overdraw]::UInt8)
 
             render(elem, elem.variants[stage.target])
         end
+        glDisable(GL_SCISSOR_TEST)
     catch e
         @error "Error while rendering!" exception = e
         rethrow(e)
