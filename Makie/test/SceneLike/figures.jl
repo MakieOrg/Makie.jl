@@ -25,6 +25,26 @@ end
     @test p2 isa Scatter
 end
 
+@testset "FigureAxis" begin
+    fap = scatter(rand(100, 2))
+    @test fap isa Makie.FigureAxisPlot
+    fig, ax, p = scatter(rand(100, 2))
+    @test fig isa Figure
+    @test ax isa Axis
+    @test p isa Scatter
+
+    # Now create just a
+    fa = Makie.FigureAxis(fig, ax)
+    @test fa isa Makie.FigureAxis
+    # Test iterate here as well
+    fig2, ax2 = fa
+    # and they are still the exact same
+    @test fig2 === fig
+    @test ax2 === ax
+end
+
+
+
 @testset "Argument-level axis hints" begin
     # Data types can define preferred_axis_attributes(AxisType, args...)
     # to provide axis defaults when used as plot arguments.
