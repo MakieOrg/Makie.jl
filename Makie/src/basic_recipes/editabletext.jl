@@ -601,7 +601,7 @@ function plot!(plot::EditableText)
         # Hide selections when the editor isn't focused — matches typical
         # text-input UX where the highlight disappears on click-away.
         visible = plot.focused,
-        space = :pixel, transformation = :nothing, inspectable = false,
+        space = plot.space, transformation = :nothing, inspectable = false,
     )
     # The selection rects need to render *behind* the text. Plot order in
     # `plot.plots` is rendering order, and the text plot was created first
@@ -656,7 +656,7 @@ function plot!(plot::EditableText)
         plot, cursor_segments_obs;
         color = plot.cursor_color, linewidth = plot.cursor_width,
         visible = cursor_visible_obs,
-        space = :pixel, transformation = :nothing, inspectable = false,
+        space = plot.space, transformation = :nothing, inspectable = false,
     )
 
     # ── Event handling ───────────────────────────────────────────────────────
@@ -716,7 +716,7 @@ function attach_editabletext_events!(
             event.button == Mouse.left || return Consume(false)
 
             if event.action == Mouse.press
-                mpos = mouseposition_px(parent)
+                mpos = Point2f(events(parent).mouseposition[])
                 if plot.manage_focus[]
                     # Auto-focus on clicks within the text bbox; auto-defocus
                     # on clicks outside.
@@ -787,8 +787,8 @@ function attach_editabletext_events!(
             anchor = drag_anchor[]
             anchor === nothing && return Consume(false)
             Mouse.left in events(parent).mousebuttonstate || return Consume(false)
-            mpos = mouseposition_px(parent)
-            head = _mouse_to_offset(Point2f(mpos))
+            mpos = Point2f(events(parent).mouseposition[])
+            head = _mouse_to_offset(mpos)
             cursors = plot.cursors[]
             # Only rewrite the last cursor (the one created by the press) so prior
             # multi-cursors stay intact. Skip if its head hasn't moved — mouseposition

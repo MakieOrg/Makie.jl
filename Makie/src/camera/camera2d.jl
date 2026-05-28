@@ -329,8 +329,13 @@ struct UpdatePixelCam
 end
 
 function (cam::UpdatePixelCam)(window_size)
+    # Project absolute window pixels (not viewport-local) to NDC so a coord
+    # `(X, Y)` in a campixel scene renders at window pixel `(X, Y)` regardless
+    # of where the scene sits in its parent. For a scene whose viewport is at
+    # the window origin this is identical to the old `(0..w, 0..h)` projection.
+    vx, vy = Float64.(minimum(window_size))
     w, h = Float64.(widths(window_size))
-    projection = orthographicprojection(0.0, w, 0.0, h, cam.near, cam.far)
+    projection = orthographicprojection(vx, vx + w, vy, vy + h, cam.near, cam.far)
     return set_proj_view!(cam.camera, projection, Mat4d(I))
 end
 
@@ -355,48 +360,6 @@ function campixel!(scene::Scene; nearclip = -10_000.0, farclip = 10_000.0)
     return cam
 end
 
-struct UpdateWindowPixelCam
-    camera::Camera
-    near::Float64
-    far::Float64
-end
-
-function (cam::UpdateWindowPixelCam)(window_area)
-    # Project absolute window pixels to NDC, accounting for the viewport's
-    # position. With this, coord (X, Y) in the scene renders at window pixel
-    # (X, Y) regardless of where the scene sits in its parent — needed for
-    # hosting blocks whose decoration code is in absolute window coords.
-    vx, vy = Float64.(minimum(window_area))
-    w, h = Float64.(widths(window_area))
-    projection = orthographicprojection(vx, vx + w, vy, vy + h, cam.near, cam.far)
-    return set_proj_view!(cam.camera, projection, Mat4d(I))
-end
-
-"""
-    cam_window_pixel!(scene; nearclip = -10_000.0, farclip = 10_000.0)
-
-Like [`campixel!`](@ref), but with a projection that interprets positions in
-*absolute window pixel coordinates* rather than viewport-local pixel
-coordinates: a coordinate `(X, Y)` in the scene always renders at window pixel
-`(X, Y)`, regardless of where the scene's viewport sits in its parent.
-
-For a scene whose viewport is at the window origin (e.g. a `Figure`'s root
-scene) this is identical to `campixel!`. It only differs when the viewport
-starts at a non-zero origin, which is the case for any scene hosted as a child
-of a parent that occupies a sub-region (e.g. a `Tabs` tab). This is the camera
-used by `Block`s' blockscenes, because the block decoration code positions
-things in absolute window coords from the layout `cbb`.
-"""
-function cam_window_pixel!(scene::Scene; nearclip = -10_000.0, farclip = 10_000.0)
-    disconnect!(camera(scene))
-    camera(scene).view_direction[] = Vec3f(0, 0, -1)
-    closure = UpdateWindowPixelCam(camera(scene), nearclip, farclip)
-    on(closure, camera(scene), viewport(scene))
-    cam = PixelCamera()
-    closure(viewport(scene)[])
-    cameracontrols!(scene, cam)
-    return cam
-end
 
 struct RelativeCamera <: AbstractCamera end
 get_space(::RelativeCamera) = :relative
