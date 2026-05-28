@@ -474,6 +474,14 @@ function effective_clip(scene::Scene)
         s = parent(s)
         rect = intersect(rect, viewport(s)[])
     end
+    # `intersect` on `Rect2i` returns negative widths for disjoint rects, which
+    # turns `glScissor` into `GL_INVALID_VALUE` (and Cairo's clip into a no-op).
+    # Clamp to an empty rect at the intersection origin so callers get a sane
+    # "draw nothing" instead.
+    w = widths(rect)
+    if w[1] < 0 || w[2] < 0
+        return Rect2i(minimum(rect), Vec2i(0, 0))
+    end
     return rect
 end
 
