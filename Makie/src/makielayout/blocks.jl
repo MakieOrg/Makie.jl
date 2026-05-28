@@ -694,7 +694,14 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, graph)
 
-    b.blockscene = Scene(topscene, clear = false, camera = campixel!)
+    # `cam_window_pixel!` (rather than `campixel!`) maps absolute window
+    # coordinates to NDC, accounting for the viewport's position. Block
+    # decoration code positions things in absolute coords from the layout
+    # `cbb`; with this camera that works regardless of where the topscene's
+    # viewport sits in its parent (e.g. when a block is placed inside a
+    # `Tabs` tab). For a topscene at the window origin the projection is
+    # identical to `campixel!`.
+    b.blockscene = Scene(topscene, clear = false, camera = cam_window_pixel!)
 
     if has_forwarded_layout(T)
         init_layout!(b)
