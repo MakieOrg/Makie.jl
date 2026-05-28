@@ -413,6 +413,18 @@ function update_state_before_display!(f::Figure)
     return
 end
 
+# Recurse into nested layouts so blocks placed inside another block's
+# `GridLayout` — e.g. an `Axis` inside a `Tabs` tab — also get their
+# pre-display state updates (auto limits etc.). The default fallback for
+# non-axis content stays a no-op, so this only adds work for things that
+# care.
+function update_state_before_display!(layout::GridLayout)
+    for gc in layout.content
+        update_state_before_display!(gc.content)
+    end
+    return
+end
+
 @inline plot_args(args...) = (nothing, args)
 @inline function plot_args(
         a::Union{Figure, AbstractAxis, Scene, Plot, GridSubposition, GridPosition},
