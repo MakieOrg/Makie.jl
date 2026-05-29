@@ -1522,7 +1522,7 @@ area scrolls vertically and horizontally.
         labelcolor_active = :black
         "Color of inactive tab labels."
         labelcolor_inactive = RGBf(0.4, 0.4, 0.4)
-        "Whether a close (×) button is drawn on each tab. Clicking it removes that tab from `labels`."
+        "Whether a close (×) button is drawn on each tab. Clicking it removes that tab from `labels`. Either a single `Bool` for all tabs, or a `Vector{Bool}` with one entry per tab (tabs beyond the vector's length are not closable)."
         closable = true
         "Color of the close (×) icon when idle."
         closecolor = RGBf(0.5, 0.5, 0.5)

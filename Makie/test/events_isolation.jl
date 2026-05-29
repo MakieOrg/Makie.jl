@@ -89,3 +89,35 @@ end
     @test counts[1] == before[1]
     @test counts[2] == before[2] + 1
 end
+
+@testset "Tabs closable" begin
+    @test Makie._tab_closable(true, 1)
+    @test !Makie._tab_closable(false, 2)
+    @test Makie._tab_closable([true, false], 1)
+    @test !Makie._tab_closable([true, false], 2)
+    @test !Makie._tab_closable([true, false], 3)   # out of range -> not closable
+
+    f = Figure()
+    t = Tabs(f[1, 1]; labels = ["A", "B", "C"], closable = [true, false, true])
+    scenes0 = [content_scene(t, i) for i in 1:3]
+
+    # click the center of tab `slot`'s close glyph (the LineSegments plots are
+    # the close ×s, in tab order; the separator is a `Lines`, not LineSegments)
+    function click_close(slot)
+        cps = filter(p -> p isa Makie.LineSegments, t.blockscene.plots)
+        seg = cps[slot].positions[]
+        cx = sum(p -> p[1], seg) / length(seg)
+        cy = sum(p -> p[2], seg) / length(seg)
+        e = t.blockscene.events
+        e.mouseposition[] = (Float64(cx), Float64(cy))
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        return e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+    end
+
+    click_close(1)   # close "A"
+    @test t.labels[] == ["B", "C"]
+    @test t.closable[] == [false, true]          # vector stays aligned
+    # reindex: remaining tabs map to their original content scenes
+    @test content_scene(t, 1) === scenes0[2]
+    @test content_scene(t, 2) === scenes0[3]
+end
