@@ -44,12 +44,37 @@ end
     end
 end
 
+using StatsBase
+
 @testset "StatsBase.Histogram" begin
-    using StatsBase
-    h = fit(Histogram, rand(100), 0:0.1:1)
-    @test_nowarn plot(h)
-    h = fit(Histogram, rand(100), [0, 0.1, 1.0])
-    @test_nowarn plot(h)
-    h = fit(Histogram, (rand(100), rand(100)), ([0, 0.1, 1.0], [0, 0.9, 1.0]))
-    @test_nowarn plot(h)
+    h = fit(Histogram, sin.(1:100), -1:0.5:1)
+    f, a, p = plot(h)
+    @test p.plots[1] isa BarPlot
+    @test p.plots[1].positions[] ≈ Point2.(-0.75:0.5:0.75, h.weights)
+    @test p.plots[1].width[] ≈ fill(0.5, 4)
+    @test p.plots[1].gap[] == 0
+
+    h = fit(Histogram, sin.(1:100), [-1, 0.2, 1])
+    f, a, p = plot(h)
+    @test p.plots[1] isa BarPlot
+    @test p.plots[1].positions[] ≈ Point2.([-0.4, 0.6], h.weights)
+    @test p.plots[1].width[] ≈ [1.2, 0.8]
+    @test p.plots[1].gap[] == 0
+
+    h = fit(Histogram, (sin.(1:100), cos.(1:100)), ([-1, 0.2, 1.0], [-1, 0.0, 1.0]))
+    f, a, p = plot(h)
+    @test p.plots[1] isa Heatmap
+    @test p.plots[1].x[] ≈ h.edges[1]
+    @test p.plots[1].y[] ≈ h.edges[2]
+    @test p.plots[1].image[] ≈ h.weights
+
+    h = fit(Histogram, (sin.(1:100), cos.(1:100), sin.(1:100)), ([-1, 0.2, 1.0], [-1, 0.0, 1.0], [-1, 0, 1]))
+    @test_throws ErrorException plot(h)
+    h = fit(Histogram, (sin.(1:100), cos.(1:100), sin.(1:100)), ([-1, -0.5, 0, 0.5, 1.0], [-1, 0.0, 1.0], [-1, 1]))
+    f, a, p = plot(h)
+    @test p.plots[1] isa Voxels
+    @test all(p.plots[1].x[].data .≈ extrema(h.edges[1]))
+    @test all(p.plots[1].y[].data .≈ extrema(h.edges[2]))
+    @test all(p.plots[1].z[].data .≈ extrema(h.edges[3]))
+    @test p.plots[1].chunk[] ≈ h.weights
 end
