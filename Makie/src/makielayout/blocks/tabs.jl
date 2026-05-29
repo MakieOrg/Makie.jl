@@ -72,7 +72,7 @@ function initialize_block!(t::Tabs, labels::AbstractVector = ["Tab 1", "Tab 2"];
 end
 
 """
-    add_tab!(tabs::Tabs, label = "Tab N"; closable = true, activate = false) -> Subfigure
+    add_tab!(tabs::Tabs, label = "Tab N"; activate = false, kwargs...) -> Subfigure
 
 Append a tab to `tabs` and return its [`Subfigure`](@ref). Plot into it via
 `tabs[end][row, col] = Axis(...)` or `content_scene(tabs, length(tabs))`. Pass
@@ -80,11 +80,13 @@ Append a tab to `tabs` and return its [`Subfigure`](@ref). Plot into it via
 empty `Tabs` becomes active automatically.
 
 `label` accepts anything `text!` does — a plain `String`, a `rich(...)` for
-colored / styled spans, or a `LaTeXString` (`L"..."`).
+colored / styled spans, or a `LaTeXString` (`L"..."`). Any further keywords
+(e.g. `closable`) are forwarded to [`set_tab!`](@ref) to set the new tab's
+properties.
 """
 function add_tab!(
         t::Tabs, label = "Tab $(length(t.tabs) + 1)";
-        closable::Bool = true, activate::Bool = false
+        activate::Bool = false, kwargs...
     )
     blockscene = t.blockscene
 
@@ -96,7 +98,7 @@ function add_tab!(
     )
 
     label_obs = Observable{Any}(label)
-    closable_obs = Observable(closable)
+    closable_obs = Observable(true)
     rect = Observable(Rect2f(0, 0, 0, 0))
     bgcolor = Observable(to_color(t.tabcolor_inactive[]))
     labelpos = Observable(Point2f(0, 0))
@@ -153,6 +155,8 @@ function add_tab!(
             return
         end
     end
+
+    isempty(kwargs) || set_tab!(t, length(t.tabs); kwargs...)
 
     if activate || t.active[] < 1
         t.active[] = length(t.tabs)

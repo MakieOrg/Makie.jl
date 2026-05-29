@@ -125,13 +125,14 @@ end
     @test length(t) == 2
     @test t.active[] == 1
 
-    sf = add_tab!(t, "C"; activate = true)
+    sf = add_tab!(t, "C"; activate = true, closable = false)   # closable forwarded to set_tab!
     @test length(t) == 3
     @test labels_of(t) == ["A", "B", "C"]
     @test t.active[] == 3
     @test content_scene(t, 3) === sf.scene
+    @test closable_of(t) == [true, true, false]
 
-    set_tab!(t, 3; label = "Z")
+    set_tab!(t, 3; label = "Z", closable = true)
     @test labels_of(t) == ["A", "B", "Z"]
 
     set_tab!(t, 1; closable = false)
