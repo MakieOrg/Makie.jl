@@ -1,14 +1,6 @@
 name: CI
+# TEMP: triggers disabled while iterating on the Check Runs experiment.
 on:
-  pull_request:
-    branches:
-      - master
-  push:
-    tags:
-      - '*'
-    branches:
-      - master
-      - 'release-*'
   workflow_dispatch:
 
 concurrency:

@@ -54,7 +54,7 @@ jobs:
     if: needs.parse.outputs.command == '/benchmark'
     permissions:
       contents: read
-      statuses: write
+      checks: write
     uses: ./.github/workflows/benchmark.yaml
     with:
       comment_body: ${{ inputs.comment_body }}

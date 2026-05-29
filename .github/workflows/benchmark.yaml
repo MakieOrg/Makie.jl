@@ -1,15 +1,7 @@
-# /benchmark slash command — TTFP benchmark.
-#
-# Called via workflow_call from command-router.yaml on the PR's head ref, so
-# this file is editable and testable within a PR. The router has already
-# verified the commenter has write access; forks are blocked upstream in
-# command-trigger.yaml.
-#
-# Usage: comment `/benchmark` on a PR (default 50 samples), or `/benchmark 100`
-# to override. More samples means less noise but a longer run.
-#
-# The matrix jobs run with no secrets — the gist/comment/status steps that hold
-# BENCHMARK_KEY are isolated in post-gist.
+# EXPERIMENT: /benchmark stubbed out for fast iteration on the Check Runs UI.
+# Generates placeholder SVGs instead of running the real TTFP benchmark, then
+# publishes them as a check run on the PR head SHA with output.images. No PR
+# comment. Restore the real benchmark before merging.
 name: Benchmark
 on:
   workflow_call:
@@ -31,79 +23,53 @@ on:
         required: false
 
 jobs:
-  parse:
+  start:
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
     outputs:
-      samples: ${{ steps.args.outputs.samples }}
+      check_id: ${{ steps.create.outputs.check_id }}
     steps:
-      - name: Mark benchmark in-progress
+      - name: Create in-progress check run
+        id: create
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ inputs.head_sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          gh api --method POST \
+          id=$(gh api --method POST \
             -H "Accept: application/vnd.github+json" \
-            "/repos/${{ github.repository }}/statuses/$HEAD_SHA" \
-            -f "state=pending" \
-            -f "context=Benchmark" \
-            -f "description=Running" \
-            -f "target_url=$RUN_URL"
+            "/repos/${{ github.repository }}/check-runs" \
+            -f "name=Benchmark" \
+            -f "head_sha=$HEAD_SHA" \
+            -f "status=in_progress" \
+            -f "details_url=$RUN_URL" \
+            -f "output[title]=Benchmark" \
+            -f "output[summary]=Running…" \
+            --jq '.id')
+          echo "check_id=$id" >> "$GITHUB_OUTPUT"
 
-      - name: Parse sample count
-        id: args
-        env:
-          COMMENT_BODY: ${{ inputs.comment_body }}
-        run: |
-          set -euo pipefail
-          # `/benchmark` defaults to 50 samples; `/benchmark 100` overrides it.
-          num=$(printf '%s' "$COMMENT_BODY" | grep -oE '/benchmark[[:space:]]+[0-9]+' | grep -oE '[0-9]+' | head -1 || true)
-          echo "samples=${num:-50}" >> "$GITHUB_OUTPUT"
-
-  benchmark:
-    name: ${{ matrix.package }}
-    needs: parse
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package:
-          - CairoMakie
-          - GLMakie
-          - WGLMakie
-    steps:
-      - name: Checkout PR head
-        uses: actions/checkout@v6
-        with:
-          # Immutable SHA captured at trigger time so a post-trigger force-push
-          # can't swap in code the maintainer didn't intend to run.
-          ref: ${{ inputs.head_sha }}
-      - name: Install xvfb
-        run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: '1.11'
-          arch: x64
-      - uses: julia-actions/cache@v3
-      - name: Benchmark
-        env:
-          PR_NUMBER: ${{ inputs.pr_number }}
-        run: >
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }} ${{ needs.parse.outputs.samples }} ${{ inputs.base_ref }}
-      - name: Upload plots as artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ matrix.package }}
-          path: ./benchmark_results
-
-  post-gist:
-    name: Post Benchmark Gist
-    needs: [parse, benchmark]
+  fake-bench:
+    needs: start
     runs-on: ubuntu-latest
     permissions:
-      statuses: write
+      checks: write
     steps:
+      - name: Generate placeholder SVGs
+        run: |
+          set -euo pipefail
+          mkdir -p ./images
+          for pkg in CairoMakie GLMakie WGLMakie; do
+            cat > "./images/$pkg.svg" <<EOF
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400">
+            <rect width="800" height="400" fill="#f5f5f5"/>
+            <text x="400" y="180" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#222">$pkg placeholder</text>
+            <text x="400" y="220" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#666">SHA ${{ inputs.head_sha }}</text>
+          </svg>
+          EOF
+          done
+
       - name: Check token validity
         id: check_token
         env:
@@ -111,86 +77,58 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$BENCHMARK_KEY" ]; then
-            echo "Benchmark key missing — skipping benchmark upload."
             echo "has_token=false" >> "$GITHUB_OUTPUT"
           else
             echo "has_token=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Download artifacts
-        if: steps.check_token.outputs.has_token == 'true'
-        uses: actions/download-artifact@v8
-        with:
-          path: ./images
-          merge-multiple: true
-
-      - name: Create Gist with images
+      - name: Create gist with images
         if: steps.check_token.outputs.has_token == 'true'
         env:
           GH_TOKEN: ${{ secrets.BENCHMARK_KEY }}
         run: |
           set -euo pipefail
           gist_url=$(gh gist create ./images/CairoMakie.svg ./images/GLMakie.svg ./images/WGLMakie.svg | grep -Eo 'https://gist.github.com[/a-zA-Z0-9]+')
-          echo "Gist created: $gist_url"
           echo "GIST_URL=$gist_url" >> "$GITHUB_ENV"
-          echo "GIST_URL_USERCONTENT=$(echo "$gist_url" | sed 's|github|githubusercontent|')" >> "$GITHUB_ENV"
+          echo "GIST_RAW=$(echo "$gist_url" | sed 's|github|githubusercontent|')/raw" >> "$GITHUB_ENV"
 
-      - name: Post workflow success status
+      - name: Publish results as check run
         if: steps.check_token.outputs.has_token == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          CHECK_ID: ${{ needs.start.outputs.check_id }}
           HEAD_SHA: ${{ inputs.head_sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          gh api \
-            --method POST \
+          summary=$(printf '%s' "**SHA** [\`${HEAD_SHA:0:7}\`](https://github.com/${{ github.repository }}/commit/${HEAD_SHA}) · placeholder run\n\n> [!WARNING]\n> CI runners are noisy; treat results with caution.")
+          gh api --method PATCH \
             -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/repos/${{ github.repository }}/statuses/$HEAD_SHA" \
-            -f "state=success" \
-            -f "context=Benchmark" \
-            -f "description=Plots posted as a PR comment" \
-            -f "target_url=$RUN_URL"
-
-      - name: Post comment
-        if: steps.check_token.outputs.has_token == 'true'
-        uses: thollander/actions-comment-pull-request@v3
-        with:
-          github-token: ${{ secrets.BENCHMARK_KEY }}
-          pr-number: ${{ inputs.pr_number }}
-          comment-tag: benchmark
-          message: |
-            # Benchmark Results
-
-            SHA: [${{ inputs.head_sha }}](https://github.com/${{ github.repository }}/commit/${{ inputs.head_sha }}) · ${{ needs.parse.outputs.samples }} samples
-
-            > [!WARNING]
-            > These results are subject to substantial noise because GitHub's CI runs on shared machines that are not ideally suited for benchmarking.
-
-            ![GLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/GLMakie.svg)
-            ![CairoMakie](${{ env.GIST_URL_USERCONTENT }}/raw/CairoMakie.svg)
-            ![WGLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/WGLMakie.svg)
+            "/repos/${{ github.repository }}/check-runs/$CHECK_ID" \
+            -f "status=completed" \
+            -f "conclusion=success" \
+            -f "output[title]=Benchmark Results" \
+            -f "output[summary]=$summary" \
+            -f "output[images][][alt]=CairoMakie" -f "output[images][][image_url]=$GIST_RAW/CairoMakie.svg" -f "output[images][][caption]=CairoMakie" \
+            -f "output[images][][alt]=GLMakie"    -f "output[images][][image_url]=$GIST_RAW/GLMakie.svg"    -f "output[images][][caption]=GLMakie" \
+            -f "output[images][][alt]=WGLMakie"   -f "output[images][][image_url]=$GIST_RAW/WGLMakie.svg"   -f "output[images][][caption]=WGLMakie"
 
   finalize:
-    name: Mark benchmark failed
-    needs: [parse, benchmark, post-gist]
+    needs: [start, fake-bench]
     if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
     runs-on: ubuntu-latest
     permissions:
-      statuses: write
+      checks: write
     steps:
-      - name: Post failure status
+      - name: Mark check run failed
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ inputs.head_sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CHECK_ID: ${{ needs.start.outputs.check_id }}
         run: |
           set -euo pipefail
-          gh api --method POST \
+          gh api --method PATCH \
             -H "Accept: application/vnd.github+json" \
-            "/repos/${{ github.repository }}/statuses/$HEAD_SHA" \
-            -f "state=failure" \
-            -f "context=Benchmark" \
-            -f "description=Run failed" \
-            -f "target_url=$RUN_URL"
+            "/repos/${{ github.repository }}/check-runs/$CHECK_ID" \
+            -f "status=completed" \
+            -f "conclusion=failure" \
+            -f "output[title]=Benchmark failed" \
+            -f "output[summary]=See the Actions run for details."

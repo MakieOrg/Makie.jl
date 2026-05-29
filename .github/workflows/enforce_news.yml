@@ -1,7 +1,7 @@
 name: Enforce changelog
+# TEMP: triggers disabled while iterating on the Check Runs experiment.
 on:
-  pull_request:
-      types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  workflow_dispatch:
 
 jobs:
   changelog:
