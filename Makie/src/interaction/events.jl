@@ -54,6 +54,104 @@ function disconnect_screen(scene::Scene, screen)
     return
 end
 
+# Window/rendering context events. They describe the environment rather than
+# user input directed at a particular scene, so an isolated subtree needs them
+# forwarded unconditionally (e.g. `tick` drives animations and rendering).
+const CONTEXT_EVENT_FIELDS = (:window_area, :window_dpi, :window_open, :hasfocus, :entered_window, :tick)
+# User input events. These are gated on activity when forwarding so that an
+# inactive subtree receives no mouse or keyboard input at all.
+const INPUT_EVENT_FIELDS = (:mousebutton, :mouseposition, :scroll, :keyboardbutton, :unicode_input, :dropped_files)
+
+"""
+    release_inputs!(events::Events)
+
+Synthesize release events for every currently-pressed mouse button and keyboard
+key in `events`. Used when an event-isolated subtree is deactivated mid-press so
+it does not retain stuck-down input state (e.g. an axis left mid-drag).
+"""
+function release_inputs!(events::Events)
+    for button in copy(events.mousebuttonstate)
+        events.mousebutton[] = MouseButtonEvent(button, Mouse.release)
+    end
+    for key in copy(events.keyboardstate)
+        events.keyboardbutton[] = KeyEvent(key, Keyboard.release)
+    end
+    return
+end
+
+"""
+    forward_events!(target::Scene, source::Scene; active = Observable(true), priority = 0)
+
+Forward window and input events from `source` into `target`, where `target` owns
+an `Events` object distinct from `source` (create it with `Scene(parent; events = Events())`).
+
+This is the mechanism for event-isolating a subtree: by default every child scene
+shares its parent's `Events`, so listeners on a hidden subtree still fire. Giving a
+subtree its own `Events` and feeding it through `forward_events!` makes its input
+gated by `active`:
+
+- Context events (`$(join(CONTEXT_EVENT_FIELDS, ", "))`) are always forwarded so
+  rendering and layout keep working regardless of `active`.
+- Input events (`$(join(INPUT_EVENT_FIELDS, ", "))`) are forwarded only while
+  `active[]` is `true`. `Consume` returned by `target`'s listeners is propagated
+  back to `source`, so an active subtree consuming an event still blocks lower
+  priority listeners on `source`.
+
+When `active` flips to `false`, held buttons/keys are released in `target` (see
+[`release_inputs!`](@ref)); when it flips to `true`, `target`'s mouse position is
+synced from `source` so hit-testing is immediately correct.
+
+Returns the `Vector{ObserverFunction}` of registered listeners for later `off`-ing.
+"""
+function forward_events!(
+        target::Scene, source::Scene;
+        active::Observable{Bool} = Observable(true), priority::Int = 0
+    )
+    src = events(source)
+    dst = events(target)
+    src === dst && error(
+        "`target` must own an `Events` object distinct from `source`. " *
+            "Create it with `Scene(parent; events = Events())`."
+    )
+
+    obsfuncs = Observables.ObserverFunction[]
+
+    for field in CONTEXT_EVENT_FIELDS
+        s = getfield(src, field)
+        d = getfield(dst, field)
+        push!(
+            obsfuncs, on(s; priority = priority) do value
+                d[] = value
+                return Consume(false)
+            end
+        )
+    end
+
+    for field in INPUT_EVENT_FIELDS
+        s = getfield(src, field)
+        d = getfield(dst, field)
+        push!(
+            obsfuncs, on(s; priority = priority) do value
+                active[] || return Consume(false)
+                return Consume(setindex!(d, value) === true)
+            end
+        )
+    end
+
+    push!(
+        obsfuncs, on(active) do isactive
+            if isactive
+                dst.mouseposition[] = src.mouseposition[]
+            else
+                release_inputs!(dst)
+            end
+            return
+        end
+    )
+
+    return obsfuncs
+end
+
 """
 Picks a mouse position. Implemented by the backend.
 """

@@ -436,6 +436,55 @@ function root(scene::Scene)
 end
 parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
 
+"""
+    scene_visible(scene::Scene)
+
+Effective visibility of `scene`: `true` only if `scene` and all of its ancestors
+are visible. Unlike `scene.visible[]`, this cascades down the scene tree, so a
+scene nested under an invisible ancestor counts as hidden even when its own
+`visible[]` is `true` (as happens when a `Block` force-shows its own scene).
+"""
+function scene_visible(scene::Scene)
+    while true
+        scene.visible[] || return false
+        isroot(scene) && return true
+        scene = parent(scene)
+    end
+    return
+end
+
+"""
+    effective_clip(scene::Scene)::Rect2i
+
+Intersection of every ancestor's viewport (not including `scene`'s own).
+Backends use this as the scissor rectangle, so a scene is rendered only within
+the bounds shared by every one of its parents. The scene's own viewport is
+not part of the intersection — that lets plots near a scene's edge (e.g. axis
+markers near the spines) extend past the scene's own viewport, while still
+being clipped at the smallest enclosing ancestor.
+
+For the root scene the intersection is empty; the root's own viewport is
+returned so the scissor matches the window.
+"""
+function effective_clip(scene::Scene)
+    isroot(scene) && return viewport(scene)[]
+    s = parent(scene)
+    rect = viewport(s)[]
+    while !isroot(s)
+        s = parent(s)
+        rect = intersect(rect, viewport(s)[])
+    end
+    # `intersect` on `Rect2i` returns negative widths for disjoint rects, which
+    # turns `glScissor` into `GL_INVALID_VALUE` (and Cairo's clip into a no-op).
+    # Clamp to an empty rect at the intersection origin so callers get a sane
+    # "draw nothing" instead.
+    w = widths(rect)
+    if w[1] < 0 || w[2] < 0
+        return Rect2i(minimum(rect), Vec2i(0, 0))
+    end
+    return rect
+end
+
 GeometryBasics.widths(scene::Scene) = widths(to_value(viewport(scene)))
 
 Base.size(scene::Scene) = Tuple(widths(scene))

@@ -55,6 +55,7 @@ end
         include("SceneLike/figures.jl")
         include("SceneLike/makielayout.jl")
         include("SceneLike/PolarAxis.jl")
+        include("events_isolation.jl")
     end
 
     @testset "Conversion & Projection Pipeline" begin

@@ -531,6 +531,8 @@ function attribute_names(::Type{T}) where {T <: Block}
     T <: Legend && (attrs[:entrygroups] = "")
     T <: Menu && (attrs[:default] = "")
     T <: LScene && (attrs[:scenekw] = "")
+    T <: Subfigure && (attrs[:isolate_events] = "")
+    T <: Tabs && (attrs[:closable] = "")
     return keys(attrs)
 end
 

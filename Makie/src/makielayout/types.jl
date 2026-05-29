@@ -1421,6 +1421,183 @@ end
 end
 
 
+"""
+    Subfigure(fig_or_scene; kwargs...)
+
+A clipped, optionally event-isolated, scrollable region with its own
+`Scene` paired with a `GridLayout` — the same shape as a `Figure`, scoped
+to a sub-region. Place blocks via `Axis(subfig[1, 1])` etc., or plot
+directly into `content_scene(subfig)` (in viewport-local pixel coords).
+
+The `visible::Observable{Bool}` attribute controls whether the subfigure is
+shown and, when constructed with `isolate_events = true`, whether it
+receives mouse and keyboard input. When hidden, the subfigure renders
+nothing and (if isolated) sees no input events.
+
+Content larger than the subfigure scrolls vertically and horizontally;
+scrollbars appear only when there is overflow. Content size is derived
+from the inner `GridLayout`'s determinable size, so setting fixed row /
+column sizes makes the subfigure overflow and scroll.
+
+`Tabs` is built on `Subfigure` — one per tab, with `isolate_events = true`
+and `visible = (tabs.active == i)`. Use `Subfigure` directly for scrollable
+scientific-figure panels, sidebars, dialog regions, etc.
+"""
+@Block Subfigure begin
+    scene::Scene
+    scroll::Observable{Vec2f}
+    contentsize::Observable{Vec2f}
+    @attributes begin
+        "Whether the subfigure is shown. When `false` it renders nothing and (if `isolate_events = true`) receives no input."
+        visible = true
+        "Padding (in pixels) around the content, as a number or a (left, right, bottom, top) tuple."
+        contentpadding = 10
+        "Background color of the content area."
+        backgroundcolor = :transparent
+        "Whether wheel/trackpad scroll inside the subfigure scrolls its content."
+        scrollable = true
+        "Speed of wheel/trackpad scrolling."
+        scroll_speed = 15.0
+        "Thickness in pixels of the scrollbar thumbs shown when content overflows."
+        scrollbar_size = 6
+        "Background color of the scrollbar track (default transparent — only the thumb is drawn)."
+        scrollbar_color = RGBAf(0, 0, 0, 0)
+        "Color of the scrollbar thumb (the draggable handle)."
+        scrollbar_thumb_color = RGBAf(0, 0, 0, 0.3)
+        "Color of the scrollbar thumb when hovered or dragged."
+        scrollbar_thumb_color_active = RGBAf(0, 0, 0, 0.5)
+        "The height setting of the subfigure."
+        height = nothing
+        "The width setting of the subfigure."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = false
+        "The horizontal alignment of the subfigure in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the subfigure in its suggested bounding box."
+        valign = :center
+        "The alignment of the subfigure in its suggested bounding box."
+        alignmode = Inside()
+    end
+end
+
+
+"""
+Resolved metrics of a tab label's font, in EM units (multiply by fontsize for
+pixels). Used to size and baseline-align the close `×`.
+"""
+struct TabFontMetrics
+    ascent::Float32
+    descent::Float32
+    x_height::Float32
+end
+
+"""
+Per-tab state for [`Tabs`](@ref): the tab's [`Subfigure`](@ref), its label and
+closability, and the observables backing its header rendering. One `TabData`
+exists per live tab, so closing a tab in the middle is a single `deleteat!` with
+nothing to keep in sync. Mutate via [`add_tab!`](@ref), [`remove_tab!`](@ref),
+[`set_tab!`](@ref) rather than directly.
+"""
+struct TabData
+    subfigure::Subfigure
+    label::Observable{Any}
+    closable::Observable{Bool}
+    visible::Observable{Bool}
+    rect::Observable{Rect2f}
+    bgcolor::Observable{RGBAf}
+    labelpos::Observable{Point2f}
+    labelcolor::Observable{RGBAf}
+    labelboundingboxes::Observable
+    close_segments::Observable{Vector{Point2f}}
+    close_color::Observable{RGBAf}
+    close_rect::Observable{Rect2f}
+    close_visible::Observable{Bool}
+    plots::Tuple{Any, Any, Any}  # (poly, label, close) for deletion
+end
+
+"""
+    Tabs(fig_or_scene, labels = ["Tab 1", "Tab 2"]; closable = true, kwargs...)
+
+A tabbed container. Each tab is backed by a [`Subfigure`](@ref) with isolated
+events: place blocks with `tabs[i][row, col] = Axis(...)` or plot directly
+into `content_scene(tabs, i)`. Only the active tab is visible and only the
+active tab receives mouse / keyboard events. Content larger than the visible
+area scrolls vertically and horizontally.
+
+`labels` (a positional argument) and the `closable` keyword seed the initial
+tabs; they are not reactive attributes. Change the set of tabs afterwards with
+the setter functions [`add_tab!`](@ref), [`remove_tab!`](@ref) and
+[`set_tab!`](@ref). `closable` may be a single `Bool` (applied to every initial
+tab) or a `Vector{Bool}` (one entry per tab; tabs beyond its length are not
+closable). The active tab is the scalar `active` attribute.
+"""
+@Block Tabs begin
+    tabs::Vector{TabData}
+    content_area::Observable{Rect2i}
+    headerheight::Observable{Float64}
+    separator_path::Observable{Vector{Point2f}}
+    hovered::Observable{Int}
+    close_hovered::Observable{Int}
+    font_metrics::Observable{TabFontMetrics}
+    font_metrics_captured::Bool
+    @attributes begin
+        "Index of the active (visible) tab, or `0` when there are no tabs."
+        active = 1
+        "Height of the tab header strip in pixels, or `automatic` to derive it from the label size."
+        tabheight = automatic
+        "Font size of the tab labels."
+        fontsize = @inherit(:fontsize, 16.0f0)
+        "Font of the tab labels."
+        font = :regular
+        "Padding (left, right, bottom, top) around each tab label in pixels."
+        tabpadding = (12, 12, 8, 8)
+        "Corner radius of the tab header backgrounds."
+        cornerradius = 0
+        "Number of vertices used to render rounded tab corners."
+        cornersegments = 10
+        "Background color of the active tab header."
+        tabcolor_active = :white
+        "Background color of inactive tab headers."
+        tabcolor_inactive = :white
+        "Background color of a hovered, inactive tab header (brief gray feedback while pointing/clicking)."
+        tabcolor_hover = RGBf(0.92, 0.92, 0.92)
+        "Color of the active tab label."
+        labelcolor_active = :black
+        "Color of inactive tab labels."
+        labelcolor_inactive = RGBf(0.4, 0.4, 0.4)
+        "Color of the close (×) icon when idle."
+        closecolor = RGBf(0.5, 0.5, 0.5)
+        "Color of the close (×) icon when hovered."
+        closecolor_hover = RGBf(0, 0, 0)
+        "Gap in pixels between adjacent tab headers."
+        tabgap = 0
+        "Color of the thin separator line drawn under the header strip (broken under the active tab)."
+        separator_color = RGBf(0.82, 0.82, 0.82)
+        "Thickness in pixels of the header bottom separator."
+        separator_thickness = 1
+        "Padding (in pixels) forwarded to each tab's content area."
+        contentpadding = 10
+        "The height setting of the tabs block."
+        height = nothing
+        "The width setting of the tabs block."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = false
+        "The horizontal alignment of the block in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the block in its suggested bounding box."
+        valign = :center
+        "The alignment of the block in its suggested bounding box."
+        alignmode = Inside()
+    end
+end
+
+
 abstract type LegendElement end
 
 struct LineElement <: LegendElement

@@ -301,23 +301,31 @@ function run_stage(screen, glscene, stage::RenderPlots)
 
         set_draw_buffers(stage.framebuffer)
 
+        glEnable(GL_SCISSOR_TEST)
         for (zindex, screenid, elem) in screen.renderlist
             elem.visible && haskey(elem.variants, stage.target) || continue
 
             found, scene = id2scene(screen, screenid)
-            (found && scene.visible[]) || continue
+            (found && Makie.scene_visible(scene)) || continue
 
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
+            # Scissor to the intersection of all ancestor viewports (excluding
+            # the scene's own) so each scene draws only within the bounds its
+            # parents share; lets markers near a scene edge extend past it
+            # while still being cut off at the enclosing container / window.
+            sa = Makie.effective_clip(scene)
 
             require_context(screen.glscreen)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            glScissor(round.(Int, ppu .* minimum(sa))..., round.(Int, ppu .* widths(sa))...)
             elem[:px_per_unit] = ppu
 
             stage.prerender(elem[:overdraw]::UInt8)
 
             render(elem, elem.variants[stage.target])
         end
+        glDisable(GL_SCISSOR_TEST)
     catch e
         @error "Error while rendering!" exception = e
         rethrow(e)
