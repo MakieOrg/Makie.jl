@@ -100,17 +100,31 @@ jobs:
           HEAD_SHA: ${{ inputs.head_sha }}
         run: |
           set -euo pipefail
-          summary=$(printf '%s' "**SHA** [\`${HEAD_SHA:0:7}\`](https://github.com/${{ github.repository }}/commit/${HEAD_SHA}) · placeholder run\n\n> [!WARNING]\n> CI runners are noisy; treat results with caution.")
-          gh api --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/${{ github.repository }}/check-runs/$CHECK_ID" \
-            -f "status=completed" \
-            -f "conclusion=success" \
-            -f "output[title]=Benchmark Results" \
-            -f "output[summary]=$summary" \
-            -f "output[images][][alt]=CairoMakie" -f "output[images][][image_url]=$GIST_RAW/CairoMakie.svg" -f "output[images][][caption]=CairoMakie" \
-            -f "output[images][][alt]=GLMakie"    -f "output[images][][image_url]=$GIST_RAW/GLMakie.svg"    -f "output[images][][caption]=GLMakie" \
-            -f "output[images][][alt]=WGLMakie"   -f "output[images][][image_url]=$GIST_RAW/WGLMakie.svg"   -f "output[images][][caption]=WGLMakie"
+          summary="**SHA** [\`${HEAD_SHA:0:7}\`](https://github.com/${{ github.repository }}/commit/${HEAD_SHA}) · placeholder run
+
+          > [!WARNING]
+          > CI runners are noisy; treat results with caution."
+          jq -n \
+            --arg summary "$summary" \
+            --arg cairo "$GIST_RAW/CairoMakie.svg" \
+            --arg gl    "$GIST_RAW/GLMakie.svg" \
+            --arg wgl   "$GIST_RAW/WGLMakie.svg" \
+            '{
+              status: "completed",
+              conclusion: "success",
+              output: {
+                title: "Benchmark Results",
+                summary: $summary,
+                images: [
+                  {alt: "CairoMakie", image_url: $cairo, caption: "CairoMakie"},
+                  {alt: "GLMakie",    image_url: $gl,    caption: "GLMakie"},
+                  {alt: "WGLMakie",   image_url: $wgl,   caption: "WGLMakie"}
+                ]
+              }
+            }' | gh api --method PATCH \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/${{ github.repository }}/check-runs/$CHECK_ID" \
+              --input -
 
   finalize:
     needs: [start, fake-bench]
