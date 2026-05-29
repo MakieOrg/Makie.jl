@@ -118,6 +118,42 @@ interaction_record(fig, "tabs_example.mp4", events)
 ```
 
 
+## Modifying tabs at runtime
+
+Change the set of tabs with `add_tab!`, `remove_tab!` and `set_tab!`, and switch
+the visible tab with the `active` attribute.
+
+```@example tabs_runtime
+using GLMakie
+GLMakie.activate!() # hide
+
+fig = Figure(size = (700, 300))
+tabs = Tabs(fig[1, 1], ["First"])
+lines(tabs[1][1, 1], cumsum(randn(100)))
+
+# `add_tab!` returns the new tab's Subfigure, so you can plot into it directly.
+sf = add_tab!(tabs, "Second"; activate = true)
+scatter(sf[1, 1], randn(50), randn(50))
+
+# A third tab, populated via the `tabs[i]` accessor instead.
+add_tab!(tabs, "Third")
+heatmap(tabs[3][1, 1], randn(20, 20))
+
+# Change properties of an existing tab; omitted keywords are left unchanged.
+set_tab!(tabs, 1; label = "Renamed", closable = false)
+
+# Remove a tab; `active` reindexes to a neighbour automatically.
+remove_tab!(tabs, 2)
+
+tabs.active[] = 1
+fig
+```
+
+In an interactive window these are typically wired to widgets — e.g. an "add
+view" `Button` whose callback calls `add_tab!` — or driven by your application
+logic. Closing a tab through its `×` button calls `remove_tab!` for you.
+
+
 ## Attributes
 
 ```@attrdocs
