@@ -36,6 +36,21 @@ jobs:
     outputs:
       samples: ${{ steps.args.outputs.samples }}
     steps:
+      - name: Mark benchmark in-progress
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/statuses/$HEAD_SHA" \
+            -f "state=pending" \
+            -f "context=Benchmark" \
+            -f "description=Running" \
+            -f "target_url=$RUN_URL"
+
       - name: Parse sample count
         id: args
         env:
@@ -120,11 +135,12 @@ jobs:
           echo "GIST_URL=$gist_url" >> "$GITHUB_ENV"
           echo "GIST_URL_USERCONTENT=$(echo "$gist_url" | sed 's|github|githubusercontent|')" >> "$GITHUB_ENV"
 
-      - name: Post workflow status with gist link
+      - name: Post workflow success status
         if: steps.check_token.outputs.has_token == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ inputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
           gh api \
@@ -133,9 +149,9 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "/repos/${{ github.repository }}/statuses/$HEAD_SHA" \
             -f "state=success" \
-            -f "context=Benchmark Results" \
-            -f "description=Plots are available under Details" \
-            -f "target_url=$GIST_URL"
+            -f "context=Benchmark" \
+            -f "description=Plots posted as a PR comment" \
+            -f "target_url=$RUN_URL"
 
       - name: Post comment
         if: steps.check_token.outputs.has_token == 'true'
@@ -155,3 +171,26 @@ jobs:
             ![GLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/GLMakie.svg)
             ![CairoMakie](${{ env.GIST_URL_USERCONTENT }}/raw/CairoMakie.svg)
             ![WGLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/WGLMakie.svg)
+
+  finalize:
+    name: Mark benchmark failed
+    needs: [parse, benchmark, post-gist]
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Post failure status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/statuses/$HEAD_SHA" \
+            -f "state=failure" \
+            -f "context=Benchmark" \
+            -f "description=Run failed" \
+            -f "target_url=$RUN_URL"
