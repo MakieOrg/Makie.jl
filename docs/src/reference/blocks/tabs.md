@@ -47,6 +47,20 @@ nothing # hide
 ```@setup tabs
 using ..FakeInteraction
 
+# Find a tab's label center and close-button center by inspecting the plots
+# that `Tabs` adds to its blockscene (one `Text` per label, one `LineSegments`
+# per close ×, in tab order). This stays in sync with the actual rendered
+# layout without poking new fields into `Tabs`.
+function tab_label_center(tabs, i)
+    plots = filter(p -> p isa Makie.Text, tabs.blockscene.plots)
+    return Point2f(plots[i].positions[][1])
+end
+function tab_close_center(tabs, i)
+    plots = filter(p -> p isa Makie.LineSegments, tabs.blockscene.plots)
+    seg = plots[i].positions[]
+    return Point2f(sum(p -> p[1], seg) / length(seg), sum(p -> p[2], seg) / length(seg))
+end
+
 function vbar_thumb_center(sf)
     ca = sf.scene.viewport[]
     cs = sf.contentsize[][2]
@@ -62,20 +76,14 @@ end
 
 events = [
     Wait(1.0),
-    Lazy() do fig
-        MouseTo(relative_pos(tabs, (0.18, 0.94)))  # over tab 2 header
-    end,
+    Lazy() do fig MouseTo(tab_label_center(tabs, 2)) end,    # over tab 2 ("Wide")
     LeftClick(),
     Wait(1.0),
-    Lazy() do fig
-        MouseTo(relative_pos(tabs, (0.28, 0.94)))  # over tab 3 header
-    end,
+    Lazy() do fig MouseTo(tab_label_center(tabs, 3)) end,    # over tab 3 ("Tall")
     LeftClick(),
     Wait(0.4),
-    # grab the vertical scrollbar thumb and drag down
-    Lazy() do fig
-        MouseTo(vbar_thumb_center(tabs.subfigures[3]))
-    end,
+    # Grab the vertical scrollbar thumb and drag it down.
+    Lazy() do fig MouseTo(vbar_thumb_center(tabs.subfigures[3])) end,
     LeftDown(),
     Lazy() do fig
         sf = tabs.subfigures[3]
@@ -83,19 +91,23 @@ events = [
         MouseTo(Point2f(right(ca) - 4, bottom(ca) + 60), 1.5)
     end,
     LeftUp(),
-    Wait(0.3),
-    # grab the thumb at its new lower position and drag back up
-    Lazy() do fig
-        MouseTo(vbar_thumb_center(tabs.subfigures[3]))
-    end,
-    LeftDown(),
+    Wait(0.5),
+    # Move into the (now-visible) bottom row's axis and zoom it with the
+    # wheel — Tabs lets the axis consume scroll first when the cursor is
+    # inside, so this demonstrates per-tab interactivity.
     Lazy() do fig
         sf = tabs.subfigures[3]
         ca = sf.scene.viewport[]
-        MouseTo(Point2f(right(ca) - 4, top(ca) - 12), 1.2)
+        MouseTo(Point2f(left(ca) + 0.45 * widths(ca)[1], bottom(ca) + 0.2 * widths(ca)[2]))
     end,
-    LeftUp(),
-    Wait(0.6),
+    Scroll((0.0, -3.0); duration = 0.5),             # zoom in
+    Wait(0.5),
+    # Close the "Wide" tab via its × button. Small pause after landing so
+    # the click doesn't feel instantaneous.
+    Lazy() do fig MouseTo(tab_close_center(tabs, 2)) end,
+    Wait(0.3),
+    LeftClick(),
+    Wait(1.5),
 ]
 
 interaction_record(fig, "tabs_example.mp4", events)
