@@ -6,8 +6,6 @@
 
 using Pkg
 Pkg.activate(@__DIR__)
-Pkg.instantiate()
-pkg"registry up"
 Pkg.update()
 
 using JSON, AlgebraOfGraphics, CairoMakie, DataFrames, Bootstrap
