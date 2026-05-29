@@ -15,8 +15,7 @@ function convert_arguments(P::Type{Stairs}, h::StatsBase.Histogram{<:Any, 1})
     end
     pushfirst!(ys, eps())
     push!(ys, eps())
-    kwargs = NamedTuple()
-    return to_plotspec(P, convert_arguments(P, xs, ys); kwargs...)
+    return convert_arguments(P, xs, ys)
 end
 
 function _hist_center_weights(values, edges, normalization, scale_to, wgts)

@@ -44,8 +44,11 @@ end
     end
 end
 
+using Makie.StatsBase
 @testset "StatsBase.Histogram recipes" begin
-    using StatsBase
-    h = fit(Histogram, rand(100), [0, 0.1, 0.9, 1])
-    f, a, p = @test_nowarn stairs(h)
+    edges = [-1, -0.5, 0, 0.1, 0.9, 1]
+    h = fit(Histogram, sin.(1:100), edges)
+    counts = [eps(); h.weights; eps()]
+    f, a, p = stairs(h)
+    @test p.converted_1[] ≈ Point2.([edges; 1], counts)
 end
