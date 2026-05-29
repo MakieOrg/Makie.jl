@@ -159,7 +159,6 @@ jobs:
         with:
           github-token: ${{ secrets.BENCHMARK_KEY }}
           pr-number: ${{ inputs.pr_number }}
-          comment-tag: benchmark
           message: |
             # Benchmark Results
 
