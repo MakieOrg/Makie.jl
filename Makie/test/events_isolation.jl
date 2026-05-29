@@ -70,7 +70,7 @@ end
 
 @testset "Tabs event isolation" begin
     f = Figure()
-    t = Tabs(f[1, 1]; labels = ["A", "B"])
+    t = Tabs(f[1, 1], ["A", "B"])
     s1, s2 = content_scene(t, 1), content_scene(t, 2)
     @test events(s1) !== events(f.scene)
     @test events(s2) !== events(s1)
@@ -90,15 +90,12 @@ end
     @test counts[2] == before[2] + 1
 end
 
-@testset "Tabs closable" begin
-    @test Makie._tab_closable(true, 1)
-    @test !Makie._tab_closable(false, 2)
-    @test Makie._tab_closable([true, false], 1)
-    @test !Makie._tab_closable([true, false], 2)
-    @test !Makie._tab_closable([true, false], 3)   # out of range -> not closable
+labels_of(t) = [td.label[] for td in t.tabs]
+closable_of(t) = [td.closable[] for td in t.tabs]
 
+@testset "Tabs closable" begin
     f = Figure()
-    t = Tabs(f[1, 1]; labels = ["A", "B", "C"], closable = [true, false, true])
+    t = Tabs(f[1, 1], ["A", "B", "C"]; closable = [true, false, true])
     scenes0 = [content_scene(t, i) for i in 1:3]
 
     # click the center of tab `slot`'s close glyph (the LineSegments plots are
@@ -115,9 +112,40 @@ end
     end
 
     click_close(1)   # close "A"
-    @test t.labels[] == ["B", "C"]
-    @test t.closable[] == [false, true]          # vector stays aligned
+    @test labels_of(t) == ["B", "C"]
+    @test closable_of(t) == [false, true]        # per-tab state stays aligned
     # reindex: remaining tabs map to their original content scenes
     @test content_scene(t, 1) === scenes0[2]
     @test content_scene(t, 2) === scenes0[3]
+end
+
+@testset "Tabs setter API" begin
+    f = Figure()
+    t = Tabs(f[1, 1], ["A", "B"])
+    @test length(t) == 2
+    @test t.active[] == 1
+
+    sf = add_tab!(t, "C"; activate = true)
+    @test length(t) == 3
+    @test labels_of(t) == ["A", "B", "C"]
+    @test t.active[] == 3
+    @test content_scene(t, 3) === sf.scene
+
+    set_tab!(t, 3; label = "Z")
+    @test labels_of(t) == ["A", "B", "Z"]
+
+    set_tab!(t, 1; closable = false)
+    @test closable_of(t) == [false, true, true]
+
+    remove_tab!(t, 3)
+    @test length(t) == 2
+    @test t.active[] == 2                         # clamped down from removed tab
+
+    remove_tab!(t, 1)
+    remove_tab!(t, 1)
+    @test length(t) == 0
+    @test t.active[] == 0                         # no tabs -> no active tab
+
+    add_tab!(t, "back")
+    @test t.active[] == 1                         # first tab on empty becomes active
 end

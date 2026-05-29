@@ -1485,20 +1485,66 @@ end
 
 
 """
-    Tabs(fig_or_scene; labels = ["Tab 1", "Tab 2"], kwargs...)
+Resolved metrics of a tab label's font, in EM units (multiply by fontsize for
+pixels). Used to size and baseline-align the close `×`.
+"""
+struct TabFontMetrics
+    ascent::Float32
+    descent::Float32
+    x_height::Float32
+end
+
+"""
+Per-tab state for [`Tabs`](@ref): the tab's [`Subfigure`](@ref), its label and
+closability, and the observables backing its header rendering. One `TabData`
+exists per live tab, so closing a tab in the middle is a single `deleteat!` with
+nothing to keep in sync. Mutate via [`add_tab!`](@ref), [`remove_tab!`](@ref),
+[`set_tab!`](@ref) rather than directly.
+"""
+struct TabData
+    subfigure::Subfigure
+    label::Observable{Any}
+    closable::Observable{Bool}
+    visible::Observable{Bool}
+    rect::Observable{Rect2f}
+    bgcolor::Observable{RGBAf}
+    labelpos::Observable{Point2f}
+    labelcolor::Observable{RGBAf}
+    labelboundingboxes::Observable
+    close_segments::Observable{Vector{Point2f}}
+    close_color::Observable{RGBAf}
+    close_rect::Observable{Rect2f}
+    close_visible::Observable{Bool}
+    plots::Tuple{Any, Any, Any}  # (poly, label, close) for deletion
+end
+
+"""
+    Tabs(fig_or_scene, labels = ["Tab 1", "Tab 2"]; closable = true, kwargs...)
 
 A tabbed container. Each tab is backed by a [`Subfigure`](@ref) with isolated
 events: place blocks with `tabs[i][row, col] = Axis(...)` or plot directly
 into `content_scene(tabs, i)`. Only the active tab is visible and only the
 active tab receives mouse / keyboard events. Content larger than the visible
 area scrolls vertically and horizontally.
+
+`labels` (a positional argument) and the `closable` keyword seed the initial
+tabs; they are not reactive attributes. Change the set of tabs afterwards with
+the setter functions [`add_tab!`](@ref), [`remove_tab!`](@ref) and
+[`set_tab!`](@ref). `closable` may be a single `Bool` (applied to every initial
+tab) or a `Vector{Bool}` (one entry per tab; tabs beyond its length are not
+closable). The active tab is the scalar `active` attribute.
 """
 @Block Tabs begin
-    subfigures::Vector{Subfigure}
+    tabs::Vector{TabData}
+    content_area::Observable{Rect2i}
+    headerheight::Observable{Float64}
+    separator_path::Observable{Vector{Point2f}}
+    hovered::Observable{Int}
+    close_hovered::Observable{Int}
+    font_metrics::Observable{TabFontMetrics}
+    font_metrics_captured::Bool
     @attributes begin
-        "The labels of the tabs. The number of labels determines the number of tabs."
-        labels = ["Tab 1", "Tab 2"]
-        "Index of the active (visible) tab."
+        "Index of the active (visible) tab, or `0` when there are no tabs."
         active = 1
         "Height of the tab header strip in pixels, or `automatic` to derive it from the label size."
         tabheight = automatic
@@ -1522,8 +1568,6 @@ area scrolls vertically and horizontally.
         labelcolor_active = :black
         "Color of inactive tab labels."
         labelcolor_inactive = RGBf(0.4, 0.4, 0.4)
-        "Whether a close (×) button is drawn on each tab. Clicking it removes that tab from `labels`. Either a single `Bool` for all tabs, or a `Vector{Bool}` with one entry per tab (tabs beyond the vector's length are not closable)."
-        closable = true
         "Color of the close (×) icon when idle."
         closecolor = RGBf(0.5, 0.5, 0.5)
         "Color of the close (×) icon when hovered."

@@ -14,7 +14,7 @@ GLMakie.activate!() # hide
 
 fig = Figure(size = (700, 450))
 
-tabs = Tabs(fig[1, 1]; labels = ["Single axis", "Wide", "Tall"])
+tabs = Tabs(fig[1, 1], ["Single axis", "Wide", "Tall"])
 
 # Tab 1 — a single axis
 scatter!(
@@ -83,10 +83,10 @@ events = [
     LeftClick(),
     Wait(0.4),
     # Grab the vertical scrollbar thumb and drag it down.
-    Lazy() do fig MouseTo(vbar_thumb_center(tabs.subfigures[3])) end,
+    Lazy() do fig MouseTo(vbar_thumb_center(tabs[3])) end,
     LeftDown(),
     Lazy() do fig
-        sf = tabs.subfigures[3]
+        sf = tabs[3]
         ca = sf.scene.viewport[]
         MouseTo(Point2f(right(ca) - 4, bottom(ca) + 60), 1.5)
     end,
@@ -96,7 +96,7 @@ events = [
     # wheel — Tabs lets the axis consume scroll first when the cursor is
     # inside, so this demonstrates per-tab interactivity.
     Lazy() do fig
-        sf = tabs.subfigures[3]
+        sf = tabs[3]
         ca = sf.scene.viewport[]
         MouseTo(Point2f(left(ca) + 0.45 * widths(ca)[1], bottom(ca) + 0.2 * widths(ca)[2]))
     end,
