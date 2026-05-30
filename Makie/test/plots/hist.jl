@@ -47,6 +47,12 @@ end
 using StatsBase
 
 @testset "StatsBase.Histogram" begin
+    edges = [-1, -0.5, 0, 0.1, 0.9, 1]
+    h = fit(Histogram, sin.(1:100), edges)
+    counts = [eps(); h.weights; eps()]
+    f, a, p = stairs(h)
+    @test p.converted_1[] ≈ Point2.([edges; 1], counts)
+
     h = fit(Histogram, sin.(1:100), -1:0.5:1)
     f, a, p = plot(h)
     @test p.plots[1] isa BarPlot

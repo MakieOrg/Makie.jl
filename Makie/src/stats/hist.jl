@@ -20,6 +20,17 @@ function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any
         return to_plotspec(ptype, (map(extrema, h.edges)..., h.weights))
     end
 end
+function convert_arguments(P::Type{Stairs}, h::StatsBase.Histogram{<:Any, 1})
+    # Adding phantomedges, mapping 0 to eps() (for log-scale)
+    xs = Float64.(h.edges[1])
+    push!(xs, xs[end])
+    ys = map(h.weights) do y
+        y == 0 ? eps(Float64) : Float64(y)
+    end
+    pushfirst!(ys, eps())
+    push!(ys, eps())
+    return convert_arguments(P, xs, ys)
+end
 
 function _hist_center_weights(values, edges, normalization, scale_to, wgts)
     isempty(edges) && return Float64[], Float64[]
