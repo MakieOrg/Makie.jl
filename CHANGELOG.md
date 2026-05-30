@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.24.11] - 2026-05-30
 
 - Menu and Toggle now immediately changed their color when updated via an Observable [5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
 - Added `convert_arguments` method for one dimensional `StatsBase.Histogram` for `Stairs` [#5631](https://github.com/MakieOrg/Makie.jl/pull/5631)
