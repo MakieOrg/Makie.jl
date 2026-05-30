@@ -49,18 +49,17 @@ jobs:
           echo "command=$command" >> "$GITHUB_OUTPUT"
           echo "Parsed command: $command"
 
-  # Per-command workflows are wired in here in follow-up PRs, e.g.:
-  #
-  # benchmark:
-  #   needs: parse
-  #   if: needs.parse.outputs.command == '/benchmark'
-  #   uses: ./.github/workflows/benchmark.yaml
-  #   with:
-  #     comment_body: ${{ inputs.comment_body }}
-  #     comment_id: ${{ inputs.comment_id }}
-  #     pr_number: ${{ inputs.pr_number }}
-  #     head_sha: ${{ inputs.head_sha }}
-  #     base_ref: ${{ inputs.base_ref }}
-  #   # Forward only the secrets a command actually needs, never `secrets: inherit`.
-  #   secrets:
-  #     BENCHMARK_KEY: ${{ secrets.BENCHMARK_KEY }}
+  benchmark:
+    needs: parse
+    if: needs.parse.outputs.command == '/benchmark'
+    permissions:
+      contents: read
+      statuses: write
+    uses: ./.github/workflows/benchmark.yaml
+    with:
+      comment_body: ${{ inputs.comment_body }}
+      pr_number: ${{ inputs.pr_number }}
+      head_sha: ${{ inputs.head_sha }}
+      base_ref: ${{ inputs.base_ref }}
+    secrets:
+      BENCHMARK_KEY: ${{ secrets.BENCHMARK_KEY }}

@@ -1,0 +1,195 @@
+# /benchmark slash command — TTFP benchmark.
+#
+# Called via workflow_call from command-router.yaml on the PR's head ref, so
+# this file is editable and testable within a PR. The router has already
+# verified the commenter has write access; forks are blocked upstream in
+# command-trigger.yaml.
+#
+# Usage: comment `/benchmark` on a PR (default 50 samples), or `/benchmark 100`
+# to override. More samples means less noise but a longer run.
+#
+# The matrix jobs run with no secrets — the gist/comment/status steps that hold
+# BENCHMARK_KEY are isolated in post-gist.
+name: Benchmark
+on:
+  workflow_call:
+    inputs:
+      comment_body:
+        required: true
+        type: string
+      pr_number:
+        required: true
+        type: string
+      head_sha:
+        required: true
+        type: string
+      base_ref:
+        required: true
+        type: string
+    secrets:
+      BENCHMARK_KEY:
+        required: false
+
+jobs:
+  parse:
+    runs-on: ubuntu-latest
+    outputs:
+      samples: ${{ steps.args.outputs.samples }}
+    steps:
+      - name: Mark benchmark in-progress
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/statuses/$HEAD_SHA" \
+            -f "state=pending" \
+            -f "context=Benchmark" \
+            -f "description=Running" \
+            -f "target_url=$RUN_URL"
+
+      - name: Parse sample count
+        id: args
+        env:
+          COMMENT_BODY: ${{ inputs.comment_body }}
+        run: |
+          set -euo pipefail
+          # `/benchmark` defaults to 50 samples; `/benchmark 100` overrides it.
+          num=$(printf '%s' "$COMMENT_BODY" | grep -oE '/benchmark[[:space:]]+[0-9]+' | grep -oE '[0-9]+' | head -1 || true)
+          echo "samples=${num:-50}" >> "$GITHUB_OUTPUT"
+
+  benchmark:
+    name: ${{ matrix.package }}
+    needs: parse
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - CairoMakie
+          - GLMakie
+          - WGLMakie
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          # Immutable SHA captured at trigger time so a post-trigger force-push
+          # can't swap in code the maintainer didn't intend to run.
+          ref: ${{ inputs.head_sha }}
+      - name: Install xvfb
+        run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+          arch: x64
+      - uses: julia-actions/cache@v3
+      - name: Benchmark
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: >
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }} ${{ needs.parse.outputs.samples }} ${{ inputs.base_ref }}
+      - name: Upload plots as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.package }}
+          path: ./benchmark_results
+
+  post-gist:
+    name: Post Benchmark Gist
+    needs: [parse, benchmark]
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Check token validity
+        id: check_token
+        env:
+          BENCHMARK_KEY: ${{ secrets.BENCHMARK_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BENCHMARK_KEY" ]; then
+            echo "Benchmark key missing — skipping benchmark upload."
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download artifacts
+        if: steps.check_token.outputs.has_token == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          path: ./images
+          merge-multiple: true
+
+      - name: Create Gist with images
+        if: steps.check_token.outputs.has_token == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.BENCHMARK_KEY }}
+        run: |
+          set -euo pipefail
+          gist_url=$(gh gist create ./images/CairoMakie.svg ./images/GLMakie.svg ./images/WGLMakie.svg | grep -Eo 'https://gist.github.com[/a-zA-Z0-9]+')
+          echo "Gist created: $gist_url"
+          echo "GIST_URL=$gist_url" >> "$GITHUB_ENV"
+          echo "GIST_URL_USERCONTENT=$(echo "$gist_url" | sed 's|github|githubusercontent|')" >> "$GITHUB_ENV"
+
+      - name: Post workflow success status
+        if: steps.check_token.outputs.has_token == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${{ github.repository }}/statuses/$HEAD_SHA" \
+            -f "state=success" \
+            -f "context=Benchmark" \
+            -f "description=Plots posted as a PR comment" \
+            -f "target_url=$RUN_URL"
+
+      - name: Post comment
+        if: steps.check_token.outputs.has_token == 'true'
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          github-token: ${{ secrets.BENCHMARK_KEY }}
+          pr-number: ${{ inputs.pr_number }}
+          message: |
+            # Benchmark Results
+
+            SHA: [${{ inputs.head_sha }}](https://github.com/${{ github.repository }}/commit/${{ inputs.head_sha }}) · ${{ needs.parse.outputs.samples }} samples
+
+            > [!WARNING]
+            > These results are subject to substantial noise because GitHub's CI runs on shared machines that are not ideally suited for benchmarking.
+
+            ![GLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/GLMakie.svg)
+            ![CairoMakie](${{ env.GIST_URL_USERCONTENT }}/raw/CairoMakie.svg)
+            ![WGLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/WGLMakie.svg)
+
+  finalize:
+    name: Mark benchmark failed
+    needs: [parse, benchmark, post-gist]
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Post failure status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/statuses/$HEAD_SHA" \
+            -f "state=failure" \
+            -f "context=Benchmark" \
+            -f "description=Run failed" \
+            -f "target_url=$RUN_URL"
