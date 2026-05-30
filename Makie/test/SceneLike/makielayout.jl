@@ -867,3 +867,28 @@ end
         end
     end
 end
+
+# issue 2415
+@testset "themeable axislegend" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    lines!(ax, 1:10, label = "A line")
+    leg = @test_nowarn axislegend(ax)
+    @test leg.margin[] == (6, 6, 6, 6)
+    with_theme(Theme(Legend = (; margin = (1, 2, 3, 4)))) do
+        leg = @test_nowarn axislegend(ax)
+        @test leg.margin[] == (1, 2, 3, 4)
+
+        # Kwargs override theme
+        leg = @test_nowarn axislegend(ax; margin = (4, 3, 2, 1))
+        @test leg.margin[] == (4, 3, 2, 1)
+    end
+    with_theme(Theme(Legend = (;))) do
+        leg = @test_nowarn axislegend(ax)
+        @test leg.margin[] == (6, 6, 6, 6)
+
+        # Kwargs override theme
+        leg = @test_nowarn axislegend(ax; margin = (4, 3, 2, 1))
+        @test leg.margin[] == (4, 3, 2, 1)
+    end
+end
