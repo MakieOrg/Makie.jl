@@ -45,7 +45,7 @@ end
 end
 
 using StatsBase
-        
+
 @testset "StatsBase.Histogram" begin
     edges = [-1, -0.5, 0, 0.1, 0.9, 1]
     h = fit(Histogram, sin.(1:100), edges)
