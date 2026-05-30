@@ -150,7 +150,8 @@ end
 
 import Makie:
     InvalidAttributeError,
-    attribute_names
+    attribute_names,
+    is_attribute
 import Makie: _attribute_docs
 
 @testset "validated attributes" begin
@@ -232,6 +233,22 @@ end
     @test :default in attribute_names(Menu)
     @test :entrygroups in attribute_names(Legend)
     @test :palette in attribute_names(PolarAxis)
+end
+
+@testset "validated attributes for figures" begin
+    err = InvalidAttributeError(Figure, Set{Symbol}())
+    @test err.object_name == "figure"
+
+    @test :figure_padding in attribute_names(Figure)
+    @test :size in attribute_names(Figure)
+    @test :backgroundcolor in attribute_names(Figure)
+    @test is_attribute(Figure, :Legend)
+
+    @test Figure(size = (100, 100), backgroundcolor = :white, figure_padding = 0) isa Figure
+    @test Figure(Legend = (; margin = (1, 2, 3, 4))) isa Figure
+    @test_throws InvalidAttributeError Figure(does_not_exist = 123)
+    @test_throws InvalidAttributeError Figure(title = "not a figure attribute")
+    @test_throws InvalidAttributeError lines(1:10, figure = (does_not_exist = 123,))
 end
 
 @testset "func2string" begin
