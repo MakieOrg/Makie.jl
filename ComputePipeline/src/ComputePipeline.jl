@@ -338,7 +338,7 @@ function ComputeGraph()
             # anything updated in-place
             if !(key in graph.should_deepcopy)
                 obs.val = val
-            elseif val != obs[] # treat in-place updates
+            elseif !isequal(val, obs[]) # treat in-place updates (use isequal to handle NaN correctly)
 
                 obs.val = deepcopy(val)
             else # same value (with deepcopy), skip update
@@ -612,6 +612,12 @@ function is_same(a::T, b::T) where {T}
         same_object = a === b
         return same_object ? false : isequal(a, b)
     end
+end
+function is_same(old::Array, new::Array)
+    # same pointer means memory aliased (which does not require old === new)
+    # and same memory means we can't compare before and after => assume not same
+    is_distinct = pointer(old) !== pointer(new)
+    return is_distinct && isequal(old, new)
 end
 
 # do we want this type stable?

@@ -440,7 +440,8 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
     lin = lines!(
         scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
         colormap = attrs.linecolormap, colorrange = attrs.linecolorrange,
-        linestyle = attrs.linestyle, inspectable = false, alpha = attrs.alpha
+        linestyle = attrs.linestyle, linecap = attrs.linecap, joinstyle = attrs.joinstyle,
+        inspectable = false, alpha = attrs.alpha
     )
 
     return [lin]
@@ -576,7 +577,7 @@ end
 
 function apply_legend_override!(le::LineElement, override::LegendOverride)
     renamed_attrs = _rename_attributes!(LineElement, copy(override.overrides))
-    for sym in (:linepoints, :linewidth, :linecolor, :linecolormap, :linecolorrange, :linestyle, :alpha)
+    for sym in (:linepoints, :linewidth, :linecolor, :linecolormap, :linecolorrange, :linestyle, :linecap, :joinstyle, :alpha)
         if haskey(renamed_attrs, sym)
             le.attributes[sym] = renamed_attrs[sym]
         end
@@ -727,6 +728,8 @@ function legendelements(plot::Union{Lines, LineSegments}, legend)
             color = extract_color(plot, legend[:linecolor]),
             linestyle = choose_scalar(ls isa Vector ? Linestyle(ls) : ls, legend[:linestyle]),
             linewidth = choose_scalar(plot.linewidth, legend[:linewidth]),
+            linecap = choose_scalar(plot.linecap, legend[:linecap]),
+            joinstyle = choose_scalar(get(plot, :joinstyle, legend[:joinstyle]), legend[:joinstyle]),
             colormap = plot.colormap,
             colorrange = plot.colorrange,
             alpha = plot.alpha
@@ -998,22 +1001,29 @@ end
 
 
 """
-    Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+    Legend(fig_or_scene, axis, title = nothing; merge = false, unique = false, kwargs...)
 
-Create a single-group legend with all plots from `axis` that have the
-attribute `label` set.
+Create a single-group legend with all plots from `axis` that have the attribute
+`label` set. `axis` can be any `AbstractAxis`, `AbstractScene` or `Vector`
+of the former.
 
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
+
+To create a joint legend for multiple axes it is also possible to pass a `Vector` of axis objects.
 """
-function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+function Legend(
+        fig_or_scene,
+        axis::Union{AbstractAxis, AbstractScene, AbstractArray{<:Union{AbstractAxis, AbstractScene}}},
+        title = nothing; merge = false, unique = false, kwargs...
+    )
     plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
     return Legend(fig_or_scene, plots, labels, title; kwargs...)
 end
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)
-    lplots_init = filter(get_plots(ax)) do plot
+    lplots_init = filter(reduce(vcat, get_plots.(ax), init = AbstractPlot[])) do plot
         haskey(plot.attributes, :label) ||
             plot isa PlotList && any(x -> haskey(x.attributes, :label), plot.plots)
     end
@@ -1118,7 +1128,11 @@ function axislegend(ax, args...; position = :rt, kwargs...)
     return Legend(
         ax.parent, args...;
         bbox = ax.scene.viewport,
-        margin = (6, 6, 6, 6),
+        margin = get(
+            kwargs,
+            :margin,
+            get(something(theme(:Legend), NamedTuple()), :margin, (6, 6, 6, 6))
+        ),
         legend_position_to_aligns(position)...,
         kwargs...
     )

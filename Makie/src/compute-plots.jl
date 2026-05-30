@@ -99,18 +99,6 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     return plot
 end
 
-# temp fix axis selection
-args_preferred_axis(::Type{<:Voxels}, attr::ComputeGraph) = LScene
-function args_preferred_axis(::Type{<:Surface}, attr::ComputeGraph)
-    lims = attr[:data_limits][]
-    return widths(lims)[3] == 0 ? Axis : LScene
-end
-function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
-    result = args_preferred_axis(PT, attr[:positions][])
-    isnothing(result) && return Axis
-    return result
-end
-
 # This is data_limits(), not boundingbox()
 # TODO: Should data_limits() be simplified to be purely based on converted arguments?
 function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation, marker_offset)
@@ -243,6 +231,10 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
             return nothing
         elseif colorrange === automatic
             return autorange
+        elseif first(colorrange) == automatic
+            return Vec2f((first(autorange), last(colorrange)))
+        elseif last(colorrange) == automatic
+            return Vec2f((first(colorrange), last(autorange)))
         else
             return Vec2f(apply_scale(colorscale, colorrange))
         end
@@ -1070,6 +1062,10 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     map!(attr, [:colorrange, :raw_color], :unscaled_colorrange) do colorrange, color
         if colorrange === automatic
             return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
+        elseif first(colorrange) == automatic
+            return Vec2f(first(distinct_extrema_nan(color)), last(colorrange))
+        elseif last(colorrange) == automatic
+            return Vec2f(first(colorrange), last(distinct_extrema_nan(color)))
         else
             return Vec2f(colorrange)
         end

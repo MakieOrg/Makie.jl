@@ -39,12 +39,39 @@ baremodule Ann # bare for cleanest tab-completion behavior
         using Base
 
         using ..Arrows: Arrows
+        using ...Makie: Makie
 
         struct Line end
 
         Base.@kwdef struct LineArrow
             head = Arrows.Line()
             tail = nothing
+        end
+
+        """
+            Ann.Styles.WithText(style; text, ...)
+
+        Wraps another annotation `style` and additionally draws `text` along the
+        connection path using `pathtext`. The inner `style` is rendered first,
+        then the text is layered on top so it follows the same curve.
+        """
+        struct WithText
+            style::Any
+            text::Any
+            fontsize::Float64
+            align::Any
+            offset::Float64
+            color::Any
+        end
+        function WithText(
+                style;
+                text = "",
+                fontsize = 12.0,
+                align = (:center, :bottom),
+                offset = 4.0,
+                color = Makie.automatic,
+            )
+            return WithText(style, text, Float64(fontsize), align, Float64(offset), color)
         end
 
     end
@@ -201,6 +228,10 @@ function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2:
     return Vec2d.(v1, v2), Point2d.(v3, v4)
 end
 
+# still without offset
+# Empty strings produce non-finite Rect3d() bounding boxes, replace with zero-size rects
+_guard_nonfinite(bb) = isfinite_rect(bb) ? bb : Rect2d(0, 0, 0, 0)
+
 function plot!(p::Annotation)
     map!(default_automatic, p, [:textcolor, :color], :computed_textcolor)
 
@@ -229,9 +260,6 @@ function plot!(p::Annotation)
         output_name = :screenpoints_target, output_space = :pixel
     )
 
-    # still without offset
-    # Empty strings produce non-finite Rect3d() bounding boxes, replace with zero-size rects
-    _guard_nonfinite(bb) = isfinite_rect(bb) ? bb : Rect2d(0, 0, 0, 0)
     map!(p, [txt.raw_string_boundingboxes, p.screenpoints_target], :text_bbs) do bboxes, px_pos
         return _guard_nonfinite.(Rect2d.(bboxes)) .+ px_pos
     end
@@ -442,8 +470,9 @@ function calculate_best_offsets!(
         center = minimum(bbox) .+ 0.5 .* widths(bbox)
         for i in eachindex(offset_bbs)
             bb_center = minimum(offset_bbs[i]) .+ 0.5 .* widths(offset_bbs[i])
-            v = normalize(center - bb_center)
-            offsets[i] = 0.1 * algorithm.repel * v
+            v = center - bb_center
+            n = norm(v)
+            offsets[i] = n > 0 ? (0.1 * algorithm.repel / n * v) : zero(eltype(offsets))
         end
     end
 
@@ -1021,6 +1050,20 @@ function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2;
     ]
 end
 
+function annotation_style_plotspecs(s::Ann.Styles.WithText, path::BezierPath, p1, p2; color, linewidth)
+    specs = annotation_style_plotspecs(s.style, path, p1, p2; color, linewidth)
+    textcolor = s.color === automatic ? color : s.color
+    push!(
+        specs,
+        PlotSpec(
+            :PathText, path;
+            text = s.text, fontsize = s.fontsize, align = s.align,
+            offset = s.offset, color = textcolor, space = :pixel,
+        ),
+    )
+    return specs
+end
+
 _auto(x::Automatic, default) = default
 _auto(x, default) = x
 
@@ -1082,6 +1125,23 @@ function attribute_examples(::Type{Annotation})
                 annotation!(-200, 0, 0, -1, style = Ann.Styles.LineArrow())
                 annotation!(-200, 0, 0, -2, style = Ann.Styles.LineArrow(head = Ann.Arrows.Head()))
                 annotation!(-200, 0, 0, -3, style = Ann.Styles.LineArrow(tail = Ann.Arrows.Line(length = 20)))
+                fig
+                """
+            ),
+            Example(
+                code = raw"""
+                fig = Figure()
+                ax = Axis(fig[1, 1])
+                A, B = Point2f(1, 2), Point2f(5, 5)
+                scatter!(ax, [A, B], markersize = 10, color = :black)
+                text!(ax, [A, B], text = ["A", "B"],
+                    align = (:right, :top), offset = (-6, -4))
+                annotation!(ax, [A], [B];
+                    text = [""],
+                    path = Ann.Paths.Arc(height = 0.4),
+                    style = Ann.Styles.WithText(Ann.Styles.LineArrow();
+                        text = "from A to B", fontsize = 14),
+                    color = :steelblue, labelspace = :data, shrink = (5.0, 5.0))
                 fig
                 """
             ),
