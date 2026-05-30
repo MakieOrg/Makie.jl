@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fixed `contourf` not rendering non-closed contours [#5651](https://github.com/MakieOrg/Makie.jl/issues/5651).
+- Added an `Base.iterate` for `FigureAxis` so that can be splashed in code as well [#5646](https://github.com/MakieOrg/Makie.jl/pull/5646).
 - Fixed `center!` (and therefore `reset_limits!` in `LScene`) crashing with empty, NaN or zero-width content [#5634](https://github.com/MakieOrg/Makie.jl/pull/5634).
 - Fixed `FastPixel` scatter crash when markers are clipped in GLMakie [#5634](https://github.com/MakieOrg/Makie.jl/pull/5634).
 - Fixed WGLMakie scatter/sprite markers disappearing in 3D scenes when camera distances produce uniform values outside `mediump` (f16) range. WGLMakie now forces `highp` precision for all vertex/fragment uniforms.
@@ -14,6 +15,7 @@
 - Fixed `Legend` not reflecting `linecap` and `joinstyle` set on `lines!`/`linesegments!` plots [#5621](https://github.com/MakieOrg/Makie.jl/pull/5621)
 - Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
 - GLMakie no longer shows a dock icon on macOS when only used for file export; the icon appears with the Makie logo when an interactive window is opened [#5223](https://github.com/MakieOrg/Makie.jl/pull/5223)
+- Make `margin` in `axislegend` themable [#5624](https://github.com/MakieOrg/Makie.jl/pull/5624)
 
 ## [0.24.10] - 2026-04-27
 
