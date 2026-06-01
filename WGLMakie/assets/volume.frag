@@ -132,66 +132,72 @@ vec4 volume(vec3 front, vec3 dir)
     // If our voxels are not isotropic, then the distance that we trace through
     // depends on the direction.
     vec3  pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0;
+    vec3 color_sum = vec3(0.0);
     int i = 0;
     for (i; i < num_samples; ++i) {
         float intensity = texture(uniform_color, pos).x;
-        vec4 density = color_lookup(intensity, uniform_colormap, uniform_colorrange);
-        float opacity = step_size * density.a * absorption;
-        T *= 1.0 - opacity;
-        if (T <= 0.01)
+        vec4 color_sample = color_lookup(intensity, uniform_colormap, uniform_colorrange);
+
+        float opacity = clamp(step_size * color_sample.a * absorption, 0.0, 1.0);
+        color_sum += (opacity * transmittance) * color_sample.rgb;
+        transmittance *= 1.0 - opacity;
+
+        if (transmittance <= 0.01)
             break;
 
-        Lo += (T*opacity)*density.rgb;
         pos += dir;
     }
-    return vec4(Lo, 1.0 - T);
+    return vec4(color_sum / (1.0 - transmittance), 1.0 - transmittance);
 }
 
 
 vec4 absorptionrgba(vec3 front, vec3 dir)
 {
     vec3  pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0;
+    vec3 color_sum = vec3(0.0);
     int i = 0;
     for (i; i < num_samples ; ++i) {
-        vec4 density = texture(uniform_color, pos);
-        float opacity = step_size * density.a * absorption;
-        T *= 1.0 - opacity;
-        if (T <= 0.01)
+        vec4 color_sample = texture(uniform_color, pos);
+
+        float opacity = clamp(step_size * color_sample.a * absorption, 0.0, 1.0);
+        color_sum += (transmittance * opacity) * color_sample.rgb;
+        transmittance *= 1.0 - opacity;
+
+        if (transmittance <= 0.01)
             break;
 
-        Lo += (T*opacity)*density.rgb;
         pos += dir;
     }
-    return vec4(Lo, 1.0 - T);
+    return vec4(color_sum / (1.0 - transmittance), 1.0 - transmittance);
 }
 
 vec4 contours(vec3 front, vec3 dir)
 {
     vec3 pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0;
+    vec3 color_sum = vec3(0.0);
     int i = 0;
     vec3 camdir = normalize(dir);
     for (i; i < num_samples; ++i) {
         float intensity = texture(uniform_color, pos).x;
-        vec4 density = color_lookup(intensity, uniform_colormap, uniform_colorrange);
-        float opacity = density.a;
+        vec4 color_sample = color_lookup(intensity, uniform_colormap, uniform_colorrange);
+
+        float opacity = color_sample.a;
         if(opacity > 0.0){
             vec3 N = gennormal(pos, step_size);
             vec3 L = light_direction;
-            vec3 opaque = blinnphong(N, camdir, L, density.rgb);
-            Lo += (T * opacity) * opaque;
-            T *= 1.0 - opacity;
-            if (T <= 0.01)
+            vec3 opaque = blinnphong(N, camdir, L, color_sample.rgb);
+            color_sum += (transmittance * opacity) * opaque;
+            transmittance *= 1.0 - opacity;
+
+            if (transmittance <= 0.01)
                 break;
         }
         pos += dir;
     }
-    return vec4(Lo, 1.0 - T);
+    return vec4(color_sum / (1.0 - transmittance), 1.0 - transmittance);
 }
 
 vec4 isosurface(vec3 front, vec3 dir)
@@ -246,20 +252,22 @@ vec4 additivergba(vec3 front, vec3 dir)
 vec4 volumeindexedrgba(vec3 front, vec3 dir)
 {
     vec3 pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0;
+    vec3 color_sum = vec3(0.0);
     int i = 0;
     for (i; i < num_samples; ++i) {
         int index = int(texture(uniform_color, pos).x) - 1;
-        vec4 density = color_lookup(uniform_colormap, index);
-        float opacity = step_size * density.a * absorption;
-        Lo += (T*opacity)*density.rgb;
-        T *= 1.0 - opacity;
-        if (T <= 0.01)
+        vec4 color_sample = color_lookup(uniform_colormap, index);
+
+        float opacity = clamp(step_size * color_sample.a * absorption, 0.0, 1.0);
+        color_sum += (transmittance * opacity) * color_sample.rgb;
+        transmittance *= 1.0 - opacity;
+
+        if (transmittance <= 0.01)
             break;
         pos += dir;
     }
-    return vec4(Lo, 1.0 - T);
+    return vec4(color_sum / (1.0 - transmittance), 1.0 - transmittance);
 }
 
 uniform uint objectid;
@@ -337,7 +345,7 @@ void main()
 {
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
-    vec3 back_position = frag_vert;
+    vec3 back_position = frag_vert; // frag_vert is different from GLMakie here
     vec3 dir = normalize(eye_unit - back_position);
 
     bool is_outside_box = (eye_unit.x < 0.0 || eye_unit.y < 0.0 || eye_unit.z < 0.0

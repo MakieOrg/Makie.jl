@@ -165,22 +165,44 @@ vec4 volume(vec3 front, vec3 dir)
     // The per-voxel alpha channel is specified in units of opacity/length.
     // If our voxels are not isotropic, then the distance that we trace through
     // depends on the direction.
+    // Color:
+    // We treat samples as layers of semi-transparent colors mixed by OVER
+    // operators on top of an opaque background (scene background + other plots).
+    // Colors are mixed here and the background is later handled by blend operations.
+    //      (c3, a3) over [(c2, a2) over [(c1, a1) over (bg, 1)]]
+    //      = (c3*a3 + (c2*a2 + c1*a1*(1-a2) + bg*(1-a1)*(1-a2)) * (1-a3), 1)
+    //      = (c3*a3 + c2*a2*(1-a3) + c1*a1*(1-a2)*(1-a3) + bg*(1-a1)*(1-a2)*(1-a3), 1)
+    // We mix colors front to back, i.e. c3 is added first, then c2, then 1.
+    // Iteratively we have:
+    //      color = sample_rgb * sample_alpha * 1                       # c3*a3
+    //      transmittance = 1 * (1 - sample_alpha)                      # (1-a3)
+    //      color = color + sample_rgb * sample_alpha * transmittance   # [c3*a3] + c2*a2*[(1-a3)]
+    //      transmittance = transmittance * (1 - sample_alpha)          # [(1-a3)] * (1-a2)
+    //      color = color + sample_rgb * sample_alpha * transmittance   # [c3*a3 + c2*a2*(1-a3)] + c1*a1*[(1-a3)*(1-a2)]
+    //      transmittance = transmittance * (1 - sample_alpha)          # [(1-a3)*(1-a2)] * (1-a1)
+    // At the end of the iteration/sampling we need to reconstruct and (c, a) color
+    // that blends correctly with the background
+    //      final_color = c * a + bg * (1 - a)
+    //      => a = 1 - (prod_i (1 - alpha_i))   = 1 - transmittance
+    //      => c = new_rgb / a                  = color / (1 - transmittance)
     vec3  pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0; // transmittance
+    vec3 color_sum = vec3(0.0);
     int i = 0;
     for (i; i < num_samples; ++i) {
         float intensity = texture(volumedata, pos).x;
-        vec4 density = color_lookup(intensity, color_map, color_norm, color);
-        float opacity = step_size * density.a * absorption;
-        T *= 1.0-opacity;
-        if (T <= 0.01)
+        vec4 color_sample = color_lookup(intensity, color_map, color_norm, color);
+
+        float opacity = clamp(step_size * color_sample.a * absorption, 0.0, 1.0);
+        color_sum += (opacity * transmittance) * color_sample.rgb;
+        transmittance *= 1.0 - opacity;
+
+        if (transmittance <= 0.01)
             break;
 
-        Lo += (T*opacity)*density.rgb;
         pos += dir;
     }
-    return vec4(Lo, 1-T);
+    return vec4(color_sum / (1.0 - transmittance), 1.0 - transmittance);
 }
 
 vec4 additivergba(vec3 front, vec3 dir)
@@ -199,46 +221,51 @@ vec4 additivergba(vec3 front, vec3 dir)
 vec4 absorptionrgba(vec3 front, vec3 dir)
 {
     vec3  pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0;
+    vec3 color_sum = vec3(0.0);
     int i = 0;
     for (i; i < num_samples ; ++i) {
-        vec4 density = texture(volumedata, pos);
-        float opacity = step_size * density.a * absorption;
-        T *= 1.0-opacity;
-        if (T <= 0.01)
+        vec4 color_sample = texture(volumedata, pos);
+
+        float opacity = step_size * color_sample.a * absorption;
+        color_sum += (transmittance * opacity) * color_sample.rgb;
+        transmittance *= 1.0 - opacity;
+
+        if (transmittance <= 0.01)
             break;
 
-        Lo += (T*opacity)*density.rgb;
         pos += dir;
     }
-    return vec4(Lo, 1-T);
+    return vec4(color_sum / (1 - transmittance), 1 - transmittance);
 }
 
 vec4 volumeindexedrgba(vec3 front, vec3 dir)
 {
     vec3 pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0;
+    vec3 color_sum = vec3(0.0);
     int i = 0;
     for (i; i < num_samples; ++i) {
         int index = int(texture(volumedata, pos).x) - 1;
-        vec4 density = color_lookup(color_map, index);
-        float opacity = step_size*density.a * absorption;
-        Lo += (T*opacity)*density.rgb;
-        T *= 1.0 - opacity;
-        if (T <= 0.01)
+        vec4 color_sample = color_lookup(color_map, index);
+
+        float opacity = step_size * color_sample.a * absorption;
+        color_sum += (transmittance * opacity) * color_sample.rgb;
+        transmittance *= 1.0 - opacity;
+
+        if (transmittance <= 0.01)
             break;
+
         pos += dir;
     }
-    return vec4(Lo, 1-T);
+    return vec4(color_sum / (1.0 - transmittance), 1.0 - transmittance);
 }
 
 vec4 contours(vec3 front, vec3 dir)
 {
     vec3 pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0;
+    vec3 color_sum = vec3(0.0);
     int i = 0;
     vec3 camdir = normalize(dir);
     vec3 edge_gap = 0.5 / textureSize(volumedata, 0); // see gennormal
@@ -266,9 +293,9 @@ vec4 contours(vec3 front, vec3 dir)
             vec3 N = gennormal(pos, step_size, edge_gap);
             vec4 world_pos = model * vec4(pos, 1);
             vec3 opaque = illuminate(world_pos.xyz / world_pos.w, camdir, N, density.rgb);
-            Lo += (T * opacity) * opaque;
-            T *= 1.0 - opacity;
-            if (T <= 0.01)
+            color_sum += (transmittance * opacity) * opaque;
+            transmittance *= 1.0 - opacity;
+            if (transmittance <= 0.01)
                 break;
         }
         pos += dir;
@@ -276,7 +303,7 @@ vec4 contours(vec3 front, vec3 dir)
 #ifdef ENABLE_DEPTH
     clip_depth = depth == 100000.0 ? clip_depth : depth;
 #endif
-    return vec4(Lo, 1-T);
+    return vec4(color_sum / (1.0 - transmittance), 1.0 - transmittance);
 }
 
 vec4 isosurface(vec3 front, vec3 dir)
