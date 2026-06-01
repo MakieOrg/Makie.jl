@@ -46,7 +46,6 @@ uniform float depth_shift;
 const float max_distance = 1.3;
 
 const int num_samples = 200;
-const float step_size = max_distance / float(num_samples);
 
 float _normalize(float val, float from, float to) { return (val-from) / (to - from);}
 
@@ -189,6 +188,8 @@ vec4 volume(vec3 front, vec3 dir)
     float transmittance = 1.0; // transmittance
     vec3 color_sum = vec3(0.0);
     int i = 0;
+    float step_size = length(dir);
+
     for (i; i < num_samples; ++i) {
         float intensity = texture(volumedata, pos).x;
         vec4 color_sample = color_lookup(intensity, color_map, color_norm, color);
@@ -224,6 +225,8 @@ vec4 absorptionrgba(vec3 front, vec3 dir)
     float transmittance = 1.0;
     vec3 color_sum = vec3(0.0);
     int i = 0;
+    float step_size = length(dir);
+
     for (i; i < num_samples ; ++i) {
         vec4 color_sample = texture(volumedata, pos);
 
@@ -245,6 +248,8 @@ vec4 volumeindexedrgba(vec3 front, vec3 dir)
     float transmittance = 1.0;
     vec3 color_sum = vec3(0.0);
     int i = 0;
+    float step_size = length(dir);
+
     for (i; i < num_samples; ++i) {
         int index = int(texture(volumedata, pos).x) - 1;
         vec4 color_sample = color_lookup(color_map, index);
@@ -272,6 +277,8 @@ vec4 contours(vec3 front, vec3 dir)
 #ifdef ENABLE_DEPTH
     float depth = 100000.0;
 #endif
+    float step_size = length(dir);
+
     for (i; i < num_samples; ++i) {
         float intensity = texture(volumedata, pos).x;
         vec4 density = color_lookup(intensity, color_map, color_norm, color);
@@ -317,6 +324,8 @@ vec4 isosurface(vec3 front, vec3 dir)
 #ifdef ENABLE_DEPTH
     float depth = 100000.0;
 #endif
+    float step_size = length(dir);
+
     for (i; i < num_samples; ++i){
         float density = texture(volumedata, pos).x;
         if(abs(density - isovalue) < isorange)

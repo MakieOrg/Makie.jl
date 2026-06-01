@@ -9,7 +9,6 @@ in vec3 frag_vert;
 const float max_distance = 1.3;
 
 const int num_samples = 200;
-const float step_size = max_distance / float(num_samples);
 
 uniform vec4 uniform_clip_planes[8];
 uniform int uniform_num_clip_planes;
@@ -135,6 +134,8 @@ vec4 volume(vec3 front, vec3 dir)
     float transmittance = 1.0;
     vec3 color_sum = vec3(0.0);
     int i = 0;
+    float step_size = length(dir);
+
     for (i; i < num_samples; ++i) {
         float intensity = texture(uniform_color, pos).x;
         vec4 color_sample = color_lookup(intensity, uniform_colormap, uniform_colorrange);
@@ -158,6 +159,8 @@ vec4 absorptionrgba(vec3 front, vec3 dir)
     float transmittance = 1.0;
     vec3 color_sum = vec3(0.0);
     int i = 0;
+    float step_size = length(dir);
+
     for (i; i < num_samples ; ++i) {
         vec4 color_sample = texture(uniform_color, pos);
 
@@ -180,6 +183,8 @@ vec4 contours(vec3 front, vec3 dir)
     vec3 color_sum = vec3(0.0);
     int i = 0;
     vec3 camdir = normalize(dir);
+    float step_size = length(dir);
+
     for (i; i < num_samples; ++i) {
         float intensity = texture(uniform_color, pos).x;
         vec4 color_sample = color_lookup(intensity, uniform_colormap, uniform_colorrange);
@@ -207,6 +212,8 @@ vec4 isosurface(vec3 front, vec3 dir)
     int i = 0;
     vec4 diffuse_color = color_lookup(isovalue, uniform_colormap, uniform_colorrange);
     vec3 camdir = normalize(dir);
+    float step_size = length(dir);
+
     for (i; i < num_samples; ++i){
         float density = texture(uniform_color, pos).x;
         if(abs(density - isovalue) < isorange){
@@ -255,6 +262,8 @@ vec4 volumeindexedrgba(vec3 front, vec3 dir)
     float transmittance = 1.0;
     vec3 color_sum = vec3(0.0);
     int i = 0;
+    float step_size = length(dir);
+
     for (i; i < num_samples; ++i) {
         int index = int(texture(uniform_color, pos).x) - 1;
         vec4 color_sample = color_lookup(uniform_colormap, index);
