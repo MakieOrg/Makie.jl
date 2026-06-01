@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Fixed WGLMakie flickering while continuously resizing a canvas by re-rendering right after the resize.
+- Fixed WGLMakie crashing on a `null` WebGL context; it now shows the WebGL error message and requests the context with `failIfMajorPerformanceCaveat: false`.
+
 ## [0.24.11] - 2026-05-30
 
 - Menu and Toggle now immediately changed their color when updated via an Observable [5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
