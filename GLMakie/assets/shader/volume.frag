@@ -43,9 +43,7 @@ uniform int _num_clip_planes;
 uniform vec4 clip_planes[8];
 uniform float depth_shift;
 
-const float max_distance = 1.3;
-
-const int num_samples = 200;
+uniform int samples = 200;
 
 float _normalize(float val, float from, float to) { return (val-from) / (to - from);}
 
@@ -190,7 +188,7 @@ vec4 volume(vec3 front, vec3 dir)
     int i = 0;
     float step_size = length(dir);
 
-    for (i; i < num_samples; ++i) {
+    for (i; i < samples; ++i) {
         float intensity = texture(volumedata, pos).x;
         vec4 color_sample = color_lookup(intensity, color_map, color_norm, color);
 
@@ -211,7 +209,7 @@ vec4 additivergba(vec3 front, vec3 dir)
     vec3 pos = front;
     vec4 integrated_color = vec4(0., 0., 0., 0.);
     int i = 0;
-    for (i; i < num_samples ; ++i) {
+    for (i; i < samples ; ++i) {
         vec4 density = texture(volumedata, pos);
         integrated_color = 1.0 - (1.0 - integrated_color) * (1.0 - density);
         pos += dir;
@@ -227,7 +225,7 @@ vec4 absorptionrgba(vec3 front, vec3 dir)
     int i = 0;
     float step_size = length(dir);
 
-    for (i; i < num_samples ; ++i) {
+    for (i; i < samples ; ++i) {
         vec4 color_sample = texture(volumedata, pos);
 
         float opacity = step_size * color_sample.a * absorption;
@@ -250,7 +248,7 @@ vec4 volumeindexedrgba(vec3 front, vec3 dir)
     int i = 0;
     float step_size = length(dir);
 
-    for (i; i < num_samples; ++i) {
+    for (i; i < samples; ++i) {
         int index = int(texture(volumedata, pos).x) - 1;
         vec4 color_sample = color_lookup(color_map, index);
 
@@ -279,7 +277,7 @@ vec4 contours(vec3 front, vec3 dir)
 #endif
     float step_size = length(dir);
 
-    for (i; i < num_samples; ++i) {
+    for (i; i < samples; ++i) {
         float intensity = texture(volumedata, pos).x;
         vec4 density = color_lookup(intensity, color_map, color_norm, color);
         float opacity = density.a;
@@ -326,7 +324,7 @@ vec4 isosurface(vec3 front, vec3 dir)
 #endif
     float step_size = length(dir);
 
-    for (i; i < num_samples; ++i){
+    for (i; i < samples; ++i){
         float density = texture(volumedata, pos).x;
         if(abs(density - isovalue) < isorange)
         {
@@ -363,7 +361,7 @@ vec4 mip(vec3 front, vec3 dir)
     vec3 pos = front + dir;
     int i = 1;
     float maximum = texture(volumedata, front).x;
-    for (i; i < num_samples; ++i, pos += dir){
+    for (i; i < samples; ++i, pos += dir){
         float density = texture(volumedata, pos).x;
         if(maximum < density)
             maximum = density;
@@ -477,7 +475,7 @@ void main()
     if (process_clip_planes(start, stop))
         discard;
 
-    vec3 step_in_dir = (stop - start) / num_samples;
+    vec3 step_in_dir = (stop - start) / samples;
 
     // the algorithm numbers correspond to the order in the
     // RaymarchAlgorithm enum defined in Makie types.jl

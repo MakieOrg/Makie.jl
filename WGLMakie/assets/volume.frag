@@ -6,10 +6,6 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 };
 in vec3 frag_vert;
 
-const float max_distance = 1.3;
-
-const int num_samples = 200;
-
 uniform vec4 uniform_clip_planes[8];
 uniform int uniform_num_clip_planes;
 uniform vec3 light_color;
@@ -136,7 +132,7 @@ vec4 volume(vec3 front, vec3 dir)
     int i = 0;
     float step_size = length(dir);
 
-    for (i; i < num_samples; ++i) {
+    for (i; i < samples; ++i) {
         float intensity = texture(uniform_color, pos).x;
         vec4 color_sample = color_lookup(intensity, uniform_colormap, uniform_colorrange);
 
@@ -161,7 +157,7 @@ vec4 absorptionrgba(vec3 front, vec3 dir)
     int i = 0;
     float step_size = length(dir);
 
-    for (i; i < num_samples ; ++i) {
+    for (i; i < samples ; ++i) {
         vec4 color_sample = texture(uniform_color, pos);
 
         float opacity = clamp(step_size * color_sample.a * absorption, 0.0, 1.0);
@@ -185,7 +181,7 @@ vec4 contours(vec3 front, vec3 dir)
     vec3 camdir = normalize(dir);
     float step_size = length(dir);
 
-    for (i; i < num_samples; ++i) {
+    for (i; i < samples; ++i) {
         float intensity = texture(uniform_color, pos).x;
         vec4 color_sample = color_lookup(intensity, uniform_colormap, uniform_colorrange);
 
@@ -214,7 +210,7 @@ vec4 isosurface(vec3 front, vec3 dir)
     vec3 camdir = normalize(dir);
     float step_size = length(dir);
 
-    for (i; i < num_samples; ++i){
+    for (i; i < samples; ++i){
         float density = texture(uniform_color, pos).x;
         if(abs(density - isovalue) < isorange){
             vec3 N = gennormal(pos, step_size);
@@ -235,7 +231,7 @@ vec4 mip(vec3 front, vec3 dir)
     vec3 pos = front + dir;
     int i = 1;
     float maximum = texture(uniform_color, front).x;
-    for (i; i < num_samples; ++i, pos += dir){
+    for (i; i < samples; ++i, pos += dir){
         float density = texture(uniform_color, pos).x;
         if(maximum < density)
             maximum = density;
@@ -248,7 +244,7 @@ vec4 additivergba(vec3 front, vec3 dir)
     vec3 pos = front;
     vec4 integrated_color = vec4(0., 0., 0., 0.);
     int i = 0;
-    for (i; i < num_samples ; ++i) {
+    for (i; i < samples ; ++i) {
         vec4 density = texture(uniform_color, pos);
         integrated_color = 1.0 - (1.0 - integrated_color) * (1.0 - density);
         pos += dir;
@@ -264,7 +260,7 @@ vec4 volumeindexedrgba(vec3 front, vec3 dir)
     int i = 0;
     float step_size = length(dir);
 
-    for (i; i < num_samples; ++i) {
+    for (i; i < samples; ++i) {
         int index = int(texture(uniform_color, pos).x) - 1;
         vec4 color_sample = color_lookup(uniform_colormap, index);
 
@@ -378,7 +374,7 @@ void main()
     if (process_clip_planes(start, stop))
         discard;
 
-    vec3 step_in_dir = (stop - start) / float(num_samples);
+    vec3 step_in_dir = (stop - start) / float(samples);
 
     if(algorithm == 0)
         color = isosurface(start, step_in_dir);

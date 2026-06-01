@@ -1211,7 +1211,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         :scaled_color, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight,
         :lowclip_color, :highclip_color, :nan_color,
-        :uniform_model,
+        :uniform_model, :samples
     ]
 
     input2glname = Dict{Symbol, Symbol}(
