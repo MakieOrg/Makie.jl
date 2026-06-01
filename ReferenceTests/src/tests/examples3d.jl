@@ -889,3 +889,34 @@ end
 
     f
 end
+
+@reference_test "Volume lowclip highclip" begin
+    data = [(x*x + y*y - z*z) for x in 0:10, y in 10:-1:0, z in 0:10]
+    f = Figure()
+
+    # mip is a bit special because colorrange affects value sampling
+    volume(
+        f[1, 1], data, algorithm = :mip,
+        colorrange = (10, 30), lowclip = :transparent, highclip = :transparent,
+    )
+    volume(
+        f[1, 2], data, algorithm = :mip,
+        colorrange = (10, 30), lowclip = :red, highclip = :transparent,
+    )
+    volume(
+        f[1, 3], data, algorithm = :mip,
+        colorrange = (10, 30), lowclip = :transparent, highclip = :red,
+    )
+
+    volume(
+        f[2, 1], data, algorithm = :absorption,
+        colorrange = (10, 30), lowclip = :transparent, highclip = :transparent,
+        absorption = 10, transparency = true
+    )
+    contour(
+        f[2, 2], data,
+        colorrange = (-30, 50), lowclip = :transparent, highclip = :transparent,
+    )
+
+    f
+end
