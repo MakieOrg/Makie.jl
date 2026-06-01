@@ -408,7 +408,7 @@ end
         symlog = Makie.Symlog10(lo, hi; linscale)
         reverse_symlog = Makie.inverse_transform(symlog)
 
-        @test symlog.name == :Symlog10
+        @test symlog isa Makie.Symlog10
 
         # Check that forward and inverse are consistent
         x = [range(lo, hi; length = 5); [lo - 5, lo - 2, hi + 2, hi + 5]]
@@ -417,7 +417,7 @@ end
         @test isapprox(x, x2; atol)
 
         # Check that forward(hi) - forward(lo) == 2*linscale
-        @test isapprox(symlog.forward(hi) - symlog.forward(lo), 2 * linscale; atol)
+        @test isapprox(symlog(hi) - symlog(lo), 2 * linscale; atol)
 
         # Check that forward is linear inside region
         @test is_linear(symlog, lo, hi; atol)
@@ -430,13 +430,13 @@ end
         # Check continuity at boundaries
         ε = 1.0e-10
         @test isapprox(
-            symlog.forward(lo + ε),
-            symlog.forward(lo - ε);
+            symlog(lo + ε),
+            symlog(lo - ε);
             atol = 1.0e-8,
         )
         @test isapprox(
-            symlog.forward(hi + ε),
-            symlog.forward(hi - ε);
+            symlog(hi + ε),
+            symlog(hi - ε);
             atol = 1.0e-8,
         )
     end
@@ -446,4 +446,19 @@ end
         @test_throws ArgumentError Makie.Symlog10(-2.0, 2.0; linscale = 0.0)
     end
 
+end
+
+@testset "Passthrough" begin
+    # transformations should not be passed through via attributes with
+    # `plot!(parent, parent.attributes, ...)` since that applies transformations
+    # multiple times (child.model = parent.mdeol[] * model(child.transformation))
+    M = Makie.Mat4d([0.0 0.0 1.0 1.0; 1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 0.0 1.0])
+    f, a, p = scatterlines(rand(Point2f, 10), transformation = (:yz, 1))
+    @test p.transformation.model[] == M
+    @test p.model[] == M
+    for plt in p.plots
+        @test plt.transformation.parent_model[] == M
+        @test plt.transformation.model[] == M
+        @test plt.model[] == M
+    end
 end

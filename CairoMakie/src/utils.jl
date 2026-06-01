@@ -419,30 +419,30 @@ end
 function per_face_colors(_color, matcap, faces, normals, uv)
     color = to_color(_color)
     if !isnothing(matcap)
-        wsize = reverse(size(matcap))
-        wh = wsize .- 1
+        wsize1 = reverse(size(matcap::Matrix{RGBAf}))
+        wh1 = wsize1 .- 1
         cvec = map(normals) do n
             muv = 0.5n[Vec(1, 2)] .+ Vec2f(0.5)
-            x, y = clamp.(round.(Int, Tuple(muv) .* wh) .+ 1, 1, wh)
+            x, y = clamp.(round.(Int, Tuple(muv) .* wh1) .+ 1, 1, wh1)
             return matcap[end - (y - 1), x]
         end
         return FaceIterator(cvec, faces)
     elseif color isa Colorant
-        return FaceIterator{:Const}(color, faces)
+        return FaceIterator{:Const}(color::RGBAf, faces)
     elseif color isa AbstractVector{<:Colorant}
-        return FaceIterator{:PerVert}(color, faces)
+        return FaceIterator{:PerVert}(color::Vector{RGBAf}, faces)
     elseif color isa Makie.AbstractPattern
         return Cairo.CairoPattern(color)
     elseif color isa Makie.ShaderAbstractions.Sampler # currently target for AbstractPattern
         @assert color.repeat === (:repeat, :repeat)
         return Cairo.CairoPattern(Makie.ImagePattern(color.data))
     elseif color isa AbstractMatrix{<:Colorant} && !isnothing(uv)
-        wsize = size(color)
-        wh = wsize .- 1
+        wsize2 = size(color::Matrix{RGBAf})
+        wh2 = wsize2 .- 1
         # nearest
-        cvec = map(uv) do uv
-            x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wsize)
-            return color[x, y]
+        cvec = map(uv::Vector{Vec2f}) do uv
+            x, y = clamp.(round.(Int, uv .* wh2) .+ 1, 1, wsize2)
+            return color[x, y]::RGBAf
         end
         # TODO This is wrong and doesn't actually interpolate
         # Inside the triangle sampling the color image

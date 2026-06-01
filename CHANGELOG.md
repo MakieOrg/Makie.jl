@@ -1,6 +1,51 @@
 # Changelog
 
-## Unreleased
+## [0.24.11] - 2026-05-30
+
+- Menu and Toggle now immediately changed their color when updated via an Observable [5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
+- Added `convert_arguments` method for one dimensional `StatsBase.Histogram` for `Stairs` [#5631](https://github.com/MakieOrg/Makie.jl/pull/5631)
+- Added an `Base.iterate` for `FigureAxis` so that can be splashed in code as well [#5646](https://github.com/MakieOrg/Makie.jl/pull/5646).
+- Fixed `center!` (and therefore `reset_limits!` in `LScene`) crashing with empty, NaN or zero-width content [#5634](https://github.com/MakieOrg/Makie.jl/pull/5634).
+- Fixed `FastPixel` scatter crash when markers are clipped in GLMakie [#5634](https://github.com/MakieOrg/Makie.jl/pull/5634).
+- Fixed WGLMakie scatter/sprite markers disappearing in 3D scenes when camera distances produce uniform values outside `mediump` (f16) range. WGLMakie now forces `highp` precision for all vertex/fragment uniforms. [#5640](https://github.com/MakieOrg/Makie.jl/pull/5640)
+- Reworked `Textbox` with selections, multi-cursor, copy / cut / paste, and word / line navigation [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
+- A trailing `'\n'` in a `text!` string now contributes a full empty line to the layout and bounding box (previously `"abc\n"` was laid out identically to `"abc"`) [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
+- Added decade-aware automatic ticks for `pseudolog10` and `Symlog10` axes via new `PseudologTicks` and `SymlogTicks` types. `LogTicks` is no longer accepted with these scales (it placed ticks at wrong positions). `Symlog10` is now a callable struct exposing its `lower`/`upper`/`linscale` parameters. Closes [#5270](https://github.com/MakieOrg/Makie.jl/issues/5270) [#5625](https://github.com/MakieOrg/Makie.jl/pull/5625)
+- Adjusted linear ticks with scientific notation to skip unnecessary `.0` padding and render more consistently using rich text. Also removed `Showoff.jl` dependency. [#5626](https://github.com/MakieOrg/Makie.jl/pull/5626)
+- Fixed `lines` rendering a phantom segment between the first and last point on macOS for line plots above ~2.4M points [#5622](https://github.com/MakieOrg/Makie.jl/pull/5622)
+- Fixed `Legend` not reflecting `linecap` and `joinstyle` set on `lines!`/`linesegments!` plots [#5621](https://github.com/MakieOrg/Makie.jl/pull/5621)
+- Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
+- GLMakie no longer shows a dock icon on macOS when only used for file export; the icon appears with the Makie logo when an interactive window is opened [#5223](https://github.com/MakieOrg/Makie.jl/pull/5223)
+- Fixed `plot(StatsBase.Histogram(...))` not working with `Vector` edges, incorrect alignment for 2D histograms and switches the 3D representation from `volume` to `voxels`. [#5630](https://github.com/MakieOrg/Makie.jl/pull/5630)
+- Make `margin` in `axislegend` themable [#5624](https://github.com/MakieOrg/Makie.jl/pull/5624)
+- Added `preferred_axis_attributes(AxisType, [plot], [args...])` as an interface function for specifying default axis attributes when creating an axis with the non-mutating `plot()` functions. Also refactored `preferred_axis_type()` to have a clear hierarchy of methods. [#5375](https://github.com/MakieOrg/Makie.jl/pull/5375)
+
+## [0.24.10] - 2026-04-27
+
+- Added `pathtext` recipe for placing text along a path, plus `Ann.Styles.WithText` to layer path text onto any existing `annotation` style [#5596](https://github.com/MakieOrg/Makie.jl/pull/5596).
+- Fixed shared precompile file path not being relocatable by using `RelocatableFolders.@path` [#5597](https://github.com/MakieOrg/Makie.jl/pull/5597)
+- Added possibility to gather legend entries from multiple axes [#5551](https://github.com/MakieOrg/Makie.jl/pull/5551)
+- Added complete inverse transformation support to `register_projected_positions!` with `apply_inverse_transform`, `apply_inverse_transform_func`, `apply_inverse_float32convert`, and `apply_inverse_model` kwargs. These enable correct projection from non-data spaces back to data space. Includes early-exit optimization to skip redundant transform/inverse pairs when `input_space === output_space`. [#5485](https://github.com/MakieOrg/Makie.jl/pull/5485)
+- Fixed `bracket` not supporting `LaTeXString` text, which would render with dollar signs instead of mathematical notation [#5536](https://github.com/MakieOrg/Makie.jl/pull/5536)
+- Added text glow to CairoMakie [#5542](https://github.com/MakieOrg/Makie.jl/pull/5542)
+- Allow to set low or high bound of the colorrange and let the other side stay adaptive [#5555](https://github.com/MakieOrg/Makie.jl/pull/5555)
+- Barplot `bar_labels` now support `RichText` (e.g. subscript/superscript) both directly and via `label_formatter` [#5578](https://github.com/MakieOrg/Makie.jl/pull/5578)
+- CairoMakie now batches glyphs from the same text string into a single PDF/SVG text object, so that text can be selected and edited as a unit in vector editors like Inkscape and Illustrator [#5561](https://github.com/MakieOrg/Makie.jl/pull/5561)
+- Fixed `annotation` not showing lines/arrows when `text` is blank [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
+- Fixed error/nan offsets in `annotation!()` when an annotation is perfectly centered [#5568](https://github.com/MakieOrg/Makie.jl/pull/5568)
+
+## [0.24.9] - 2026-03-04
+
+- Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
+- Fixed cycling not working in `PlotList`s [#5541](https://github.com/MakieOrg/Makie.jl/pull/5541)
+- Moved decoration plots in `Axis3` to `ax.blockscene` so they no longer show up as user plots in the Axis3 [#5463](https://github.com/MakieOrg/Makie.jl/pull/5463)
+- Fixed issue with `transformation` being applied multiple times when set by a user in a recipe that passes applicable attributes to child plots [#5464](https://github.com/MakieOrg/Makie.jl/pull/5464)
+- Reduced file size of PDF and SVG files from CairoMakie containing mesh-based plots [#5446](https://github.com/MakieOrg/Makie.jl/pull/5446)
+- Fixed `arrows2d[!]` plot elements causing CairoMakie SVGs to be rasterized. [#5459](https://github.com/MakieOrg/Makie.jl/pull/#5459)
+- Fixed plotting order of multi-arrow `arrows2d[!]` to respect z-coordinates. [#5459](https://github.com/MakieOrg/Makie.jl/pull/#5459)
+- Fixed `meshscatter` objects rendering with incorrect color when scaled to 0 [#5478](https://github.com/MakieOrg/Makie.jl/pull/5478)
+- Added stack and dodge handling to `hist` [#5340](https://github.com/MakieOrg/Makie.jl/pull/5340)
+- Fixed edge-like `hist` bins not working [#5493](https://github.com/MakieOrg/Makie.jl/pull/5493)
 
 ## [0.24.8] - 2025-12-04
 
@@ -978,7 +1023,10 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.8...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...HEAD
+[0.24.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.10...v0.24.11
+[0.24.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.9...v0.24.10
+[0.24.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.8...v0.24.9
 [0.24.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.7...v0.24.8
 [0.24.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.6...v0.24.7
 [0.24.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.5...v0.24.6

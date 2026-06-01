@@ -544,6 +544,17 @@ end
 ### Axis visualization - grid lines, clip, ticks
 ################################################################################
 
+function _default_rtickangle(rtickangle, direction, thetalims, rmirror)
+    if rtickangle === automatic
+        if xor(direction == -1, rmirror)
+            return thetalims[2]
+        else
+            return thetalims[1]
+        end
+    else
+        return rtickangle
+    end
+end
 
 # generates large square with circle sector cutout
 function _polar_clip_polygon(
@@ -556,6 +567,10 @@ function _polar_clip_polygon(
     return [Polygon(exterior, [interior])]
 end
 
+
+function _tick_angle(theta_0, dir, ps, mirror)
+    return dir * (last.(ps) .+ (theta_0 + ifelse(mirror, -pi, 0)))
+end
 
 function draw_axis!(po::PolarAxis)
     _, sample_labels = get_ticks(po.rticks[], identity, po.rtickformat[], po.target_rlims[]...)
@@ -589,18 +604,6 @@ function draw_axis!(po::PolarAxis)
         visible = po.rticklabelsvisible
     )
 
-    function default_rtickangle(rtickangle, direction, thetalims, rmirror)
-        if rtickangle === automatic
-            if xor(direction == -1, rmirror)
-                return thetalims[2]
-            else
-                return thetalims[1]
-            end
-        else
-            return rtickangle
-        end
-    end
-
     onany(
         po.blockscene,
         po.rticks, po.rminorticks, po.rtickformat, po.rtickangle,
@@ -613,7 +616,7 @@ function draw_axis!(po::PolarAxis)
         rmaxinv = 1.0 / (rlims[2] - target_r0)
         _rtickvalues, _rticklabels = get_ticks(rticks, identity, rtickformat, rlims...)
         _rtickradius = (_rtickvalues .- target_r0) .* rmaxinv
-        _rtickangle = default_rtickangle(rtickangle, dir, thetalims, rmirror)
+        _rtickangle = _default_rtickangle(rtickangle, dir, thetalims, rmirror)
         rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickradius, _rtickangle))
 
         # For grid lines
@@ -635,7 +638,7 @@ function draw_axis!(po::PolarAxis)
         po.rticksvisible, po.rtickalign, po.rticksize
     ) do dir, theta_0, rtickangle, thetalims, pad, rot, rmirror, tvis, talign, tlength
 
-        default_angle = default_rtickangle(rtickangle, dir, thetalims, rmirror)
+        default_angle = _default_rtickangle(rtickangle, dir, thetalims, rmirror)
         post_transform_angle = mod(dir * (default_angle + theta_0), 0 .. 2pi)
         angle = post_transform_angle + ifelse(rmirror, pi / 2, -pi / 2)
 
@@ -873,13 +876,10 @@ function draw_axis!(po::PolarAxis)
         return [rotmatrix2d(angle) * shift for angle in angles]
     end
 
-    function tick_angle(theta_0, dir, ps, mirror)
-        return dir * (last.(ps) .+ (theta_0 + ifelse(mirror, -pi, 0)))
-    end
 
     # ((r, theta), lbl) -> (r, theta) -> theta
     rtickpos = map(ps -> last.(ps), po.blockscene, rtick_pos_lbl)
-    rtickrotation = map(tick_angle, po.blockscene, po.target_theta_0, po.direction, rtickpos, po.rticksmirrored)
+    rtickrotation = map(_tick_angle, po.blockscene, po.target_theta_0, po.direction, rtickpos, po.rticksmirrored)
     rtickplot = scatter!(
         po.overlay, rtickpos,
         marker = Rect,
@@ -892,7 +892,7 @@ function draw_axis!(po::PolarAxis)
 
     thetatickpos = map(ps -> last.(ps), po.blockscene, thetatick_pos_lbl)
     thetatickrotation = map(po.blockscene, po.target_theta_0, po.direction, thetatickpos, po.thetaticksmirrored) do t0, d, p, m
-        return tick_angle(t0 + d * pi / 2, d, p, m)
+        return _tick_angle(t0 + d * pi / 2, d, p, m)
     end
 
     thetatickplot = scatter!(
@@ -911,7 +911,7 @@ function draw_axis!(po::PolarAxis)
         swap = xor(mirror, dir == -1)
         return swap ? last.(coordinates.(ls)) : first.(coordinates.(ls))
     end
-    rminortickrotation = map(tick_angle, po.blockscene, po.target_theta_0, po.direction, rminortickpos, po.rticksmirrored)
+    rminortickrotation = map(_tick_angle, po.blockscene, po.target_theta_0, po.direction, rminortickpos, po.rticksmirrored)
     rminortickplot = scatter!(
         po.overlay, rminortickpos,
         marker = Rect,
@@ -926,7 +926,7 @@ function draw_axis!(po::PolarAxis)
         return ps[ifelse(mirror, 1:2:end, 2:2:end)]
     end
     thetaminortickrotation = map(po.blockscene, po.target_theta_0, po.direction, thetaminortickpos, po.thetaticksmirrored) do t0, d, p, m
-        return tick_angle(t0 + d * pi / 2, d, p, m)
+        return _tick_angle(t0 + d * pi / 2, d, p, m)
     end
     thetaminortickplot = scatter!(
         po.overlay, thetaminortickpos,
