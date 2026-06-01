@@ -226,7 +226,7 @@ vec4 isosurface(vec3 front, vec3 dir)
     return c;
 }
 
-bool less_than_max(float val, Nothing range) { return true; }
+bool less_than_max(float val, bool range) { return true; }
 bool less_than_max(float val, vec2 range) { return (val < range.y); }
 
 vec4 mip(vec3 front, vec3 dir)
