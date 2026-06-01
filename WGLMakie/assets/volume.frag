@@ -226,16 +226,24 @@ vec4 isosurface(vec3 front, vec3 dir)
     return c;
 }
 
+bool less_than_max(float val, Nothing range) { return true; }
+bool less_than_max(float val, vec2 range) { return (val < range.y); }
+
 vec4 mip(vec3 front, vec3 dir)
 {
     vec3 pos = front + dir;
-    int i = 1;
-    float maximum = texture(uniform_color, front).x;
+    int i = 0;
+    float maximum = -10000000000000000.0;
+    bool highclip_visible = get_highclip_color().a > 0.0;
+
     for (i; i < samples; ++i, pos += dir){
         float density = texture(uniform_color, pos).x;
-        if(maximum < density)
+        bool consider_sample = less_than_max(density, uniform_colorrange) || highclip_visible;
+        if (consider_sample && (maximum < density))
             maximum = density;
     }
+    if (maximum == -10000000000000000.0)
+        maximum = 10000000000000000.0;
     return color_lookup(maximum, uniform_colormap, uniform_colorrange);
 }
 

@@ -356,16 +356,31 @@ vec4 isosurface(vec3 front, vec3 dir)
     return c;
 }
 
+bool less_than_max(float val, Nothing range) { return true; }
+bool less_than_max(float val, vec2 range) { return (val < range.y); }
+
 vec4 mip(vec3 front, vec3 dir)
 {
     vec3 pos = front + dir;
-    int i = 1;
-    float maximum = texture(volumedata, front).x;
+    int i = 0;
+    float maximum = -10000000000000000.0;
+    bool highclip_visible = highclip.a > 0.0;
+
     for (i; i < samples; ++i, pos += dir){
         float density = texture(volumedata, pos).x;
-        if(maximum < density)
+        // If highclip is transparent we exclude any values beyond the color
+        // range so that the largest (probably) visible value is preserved.
+        // We don't need this for lowclip because it will naturally get overwritten
+        // by larger values.
+        bool consider_sample = less_than_max(density, color_norm) || highclip_visible;
+        if (consider_sample && (maximum < density))
             maximum = density;
     }
+    // If we still have the initial value then no value < color range maximum
+    // was found. In this case we should use highclip.
+    if (maximum == -10000000000000000.0)
+        maximum = 10000000000000000.0;
+
     return color_lookup(maximum, color_map, color_norm, color);
 }
 
