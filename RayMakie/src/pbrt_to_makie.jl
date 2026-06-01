@@ -83,7 +83,9 @@ function pbrt_to_makie(filename::AbstractString)
             is_mix = lowercase(entity.type) == "mix"
             is_mix == pass || continue
             haskey(mat_cache, name) && continue
-            mat_cache[name] = Hikari.build_pbrt_material(entity, pbrt, hikari_textures, mat_cache)
+            mat_cache[name] = Hikari._wrap_with_bump(
+                Hikari.build_pbrt_material(entity, pbrt, hikari_textures, mat_cache),
+                entity, hikari_textures)
         end
     end
 
