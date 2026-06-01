@@ -87,7 +87,7 @@ end
     f = Figure(size = (600, 300))
     r = range(-5, 5, length = 31)
     data = [cos(x * x + y * y + z * z)^2 for x in r, y in r, z in r]
-    absorption = 5.0
+    absorption = 2.0
     volume(f[1, 1], data, algorithm = :absorption; absorption)
     volume(f[1, 2], 128 .+ 120 .* data, algorithm = :indexedabsorption; absorption)
     volume(f[1, 3], HSV.(180 .* data, 0.8, 0.9), algorithm = :absorptionrgba; absorption)
@@ -107,13 +107,13 @@ end
         f[1, 1], -10 .. 10, -10 .. 10, -10 .. 10, data;
         algorithm = :iso, isovalue = 0.5, isorange = 0.1
     )
-    volume(f[2, 1], -10 .. 10, -10 .. 10, -10 .. 10, data, algorithm = :absorption)
+    volume(f[2, 1], -10 .. 10, -10 .. 10, -10 .. 10, data, algorithm = :absorption, absorption = 2)
     volume(f[1, 2], -10 .. 10, -10 .. 10, -10 .. 10, data; algorithm = :mip)
-    volume(f[2, 2], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data; algorithm = :absorptionrgba)
+    volume(f[2, 2], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data; algorithm = :absorptionrgba, absorption = 2)
     volume(f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, add_data; algorithm = :additive, alpha = 0.05)
     volume(
         f[2, 3], -10 .. 10, -10 .. 10, -10 .. 10, index_data;
-        algorithm = :indexedabsorption, colormap = Makie.resample(to_colormap(:viridis), N)
+        algorithm = :indexedabsorption, colormap = Makie.resample(to_colormap(:viridis), N), absorption = 2
     )
 
     for ls in f.content
@@ -773,7 +773,7 @@ end
     rgba_data = [RGBAf(cos(x^2)^2, cos(y^2)^2, cos(z^2)^2, 0.5 + 0.5 * sin(x^2 + y^2 + z^2)) for x in r, y in r, z in r]
 
     clip_planes = [Plane3f(Vec3f(-1), 0.0)]
-    attr = (clip_planes = clip_planes, axis = (show_axis = false,))
+    attr = (clip_planes = clip_planes, axis = (show_axis = false,), absorption = 5.0)
 
     volume(
         f[1, 1], -10 .. 10, -10 .. 10, -10 .. 10, data; attr...,
