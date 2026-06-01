@@ -26,6 +26,9 @@ in vec3 frag_vert;
 {{color_map_type}} color_map;
 {{color_type}} color;
 {{color_norm_type}} color_norm;
+uniform vec4 highclip;
+uniform vec4 lowclip;
+uniform vec4 nan_color;
 
 uniform float absorption = 1.0;
 uniform vec3 eyeposition;
@@ -47,6 +50,28 @@ const float step_size = max_distance / float(num_samples);
 
 float _normalize(float val, float from, float to) { return (val-from) / (to - from);}
 
+vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
+    float cmin = colorrange.x;
+    float cmax = colorrange.y;
+    if (value <= cmax && value >= cmin) {
+        // in value range, continue!
+    } else if (value < cmin) {
+        return lowclip;
+    } else if (value > cmax) {
+        return highclip;
+    } else {
+        // isnan CAN be broken (of course) -.-
+        // so if outside value range and not smaller/bigger min/max we assume NaN
+        return nan_color;
+    }
+    float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+    // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+    // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+    float stepsize = 1.0 / float(textureSize(color_map, 0));
+    i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+    return texture(color_map, i01);
+}
+
 vec4 color_lookup(float intensity, Nothing color_map, Nothing norm, vec4 color) {
     return color;
 }
@@ -57,7 +82,7 @@ vec4 color_lookup(float intensity, samplerBuffer color_ramp, Nothing norm, Nothi
     return vec4(0);  // stub method
 }
 vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm, Nothing color) {
-    return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
+    return get_color_from_cmap(intensity, color_ramp, norm);
 }
 vec4 color_lookup(vec4 data_color, Nothing color_ramp, Nothing norm, Nothing color) {
     return data_color;  // stub method
