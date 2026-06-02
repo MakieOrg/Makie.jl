@@ -868,3 +868,121 @@ end
         end
     end
 end
+
+# See Makie#5588
+@testset "Color Updates of interactive elements" begin
+    f = Figure()
+    m = Menu(f[1, 1], options = ['a', 'b'], selection_cell_color_inactive = :red, cell_color_hover = :orange)
+    t = Toggle(f[2, 1], framecolor_inactive = to_color(:red), framecolor_active = to_color(:orange))
+    s = Slider(
+        f[3, 1], range = -100:100,
+        color_inactive = :red, color_active_dimmed = :orange, color_active = :black,
+    )
+    set_close_to!(s, 0)
+    c = Checkbox(
+        f[4, 1],
+        checkboxcolor_unchecked = :red, checkboxcolor_checked = :orange,
+        checkboxstrokecolor_unchecked = :blue, checkboxstrokecolor_checked = :cyan,
+        checkmarkcolor_unchecked = :white, checkmarkcolor_checked = :black,
+    )
+    f
+    Makie.update_state_before_display!(f)
+
+    @testset "Menu" begin
+        p = m.blockscene.plots[1]::Poly
+        @test to_color(p.color[]) == to_color(:red)
+        m.selection_cell_color_inactive = :blue
+        @test to_color(p.color[]) == to_color(:blue)
+
+        events(f).mouseposition[] = (300.0, 275.0)
+        @test to_color(p.color[]) == to_color(:orange)
+        m.cell_color_hover = :green
+        @test to_color(p.color[]) == to_color(:green)
+    end
+
+    @testset "Toggle" begin
+        p = t.blockscene.plots[1]::Poly
+        @test to_color(p.color[]) == to_color(:red)
+        t.framecolor_inactive = to_color(:blue)
+        @test to_color(p.color[]) == to_color(:blue)
+
+        events(f).mouseposition[] = (300.0, 225.0)
+        events(f).mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+        events(f).mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+        events(f).tick[] = Makie.Tick(Makie.SkippedRenderTick, 1, 0.1, 0.1)
+        events(f).tick[] = Makie.Tick(Makie.SkippedRenderTick, 2, 0.2, 0.1)
+        @test to_color(p.color[]) == to_color(:orange)
+        t.framecolor_active = to_color(:green)
+        @test to_color(p.color[]) == to_color(:green)
+    end
+
+    @testset "Slider" begin
+        p1 = s.blockscene.plots[1]::LineSegments
+        p2 = s.blockscene.plots[2]::Scatter
+        @test to_color(p1.color[]) == to_color([:orange, :red])
+        @test to_color(p2.color[]) == to_color(:black)
+        s.color_inactive = :blue
+        s.color_active_dimmed = :green
+        s.color_active = :cyan
+        @test to_color(p1.color[]) == to_color([:green, :blue])
+        @test to_color(p2.color[]) == to_color(:cyan)
+    end
+
+    @testset "Checkbox" begin
+        p1 = c.blockscene.plots[1]::Poly
+        p2 = c.blockscene.plots[2]::Scatter
+        events(f).mouseposition[] = (300.0, 165.0)
+        @test to_color(p1.color[]) == to_color(:red)
+        @test to_color(p1.strokecolor[]) == to_color(:blue)
+        @test to_color(p2.color[]) == to_color(:white)
+
+        c.checked = true
+
+        @test to_color(p1.color[]) == to_color(:orange)
+        @test to_color(p1.strokecolor[]) == to_color(:cyan)
+        @test to_color(p2.color[]) == to_color(:black)
+
+        c.checkboxcolor_unchecked = :green
+        c.checkboxcolor_checked = :purple
+        c.checkboxstrokecolor_unchecked = :yellow
+        c.checkboxstrokecolor_checked = :gray
+        c.checkmarkcolor_unchecked = :lightgreen
+        c.checkmarkcolor_checked = :pink
+
+        # still checked
+        @test to_color(p1.color[]) == to_color(:purple)
+        @test to_color(p1.strokecolor[]) == to_color(:gray)
+        @test to_color(p2.color[]) == to_color(:pink)
+
+        c.checked = false
+
+        @test to_color(p1.color[]) == to_color(:green)
+        @test to_color(p1.strokecolor[]) == to_color(:yellow)
+        @test to_color(p2.color[]) == to_color(:lightgreen)
+    end
+end
+
+# issue 2415
+@testset "themeable axislegend" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    lines!(ax, 1:10, label = "A line")
+    leg = @test_nowarn axislegend(ax)
+    @test leg.margin[] == (6, 6, 6, 6)
+    with_theme(Theme(Legend = (; margin = (1, 2, 3, 4)))) do
+        leg = @test_nowarn axislegend(ax)
+        @test leg.margin[] == (1, 2, 3, 4)
+
+        # Kwargs override theme
+        leg = @test_nowarn axislegend(ax; margin = (4, 3, 2, 1))
+        @test leg.margin[] == (4, 3, 2, 1)
+    end
+    with_theme(Theme(Legend = (;))) do
+        leg = @test_nowarn axislegend(ax)
+        @test leg.margin[] == (6, 6, 6, 6)
+
+        # Kwargs override theme
+        leg = @test_nowarn axislegend(ax; margin = (4, 3, 2, 1))
+        @test leg.margin[] == (4, 3, 2, 1)
+    end
+end

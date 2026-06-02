@@ -111,8 +111,15 @@ function initialize_block!(m::Menu; default = 1)
 
     selectionarea = Observable(Rect2d(0, 0, 0, 0); ignore_equal_values = true)
 
+    button_hovered = Observable(false)
+    selectionpoly_color = lift(
+        blockscene, button_hovered, m.selection_cell_color_inactive,
+        m.cell_color_hover
+    ) do hovered, inactive, hover
+        hovered ? to_color(hover) : to_color(inactive)
+    end
     selectionpoly = poly!(
-        blockscene, selectionarea, color = m.selection_cell_color_inactive[];
+        blockscene, selectionarea, color = selectionpoly_color;
         inspectable = false
     )
     selectiontextpos = Observable(Point2f(0, 0); ignore_equal_values = true)
@@ -206,10 +213,6 @@ function initialize_block!(m::Menu; default = 1)
     was_pressed_options = Ref(false)
     was_pressed_button = Ref(false)
 
-    SELECT_INACTIVE_COLOR = 1
-    SELECT_HOVER_COLOR = 2
-    color_selector = Observable(SELECT_INACTIVE_COLOR)
-
     onany(blockscene, e.mouseposition, e.mousebutton; priority = 64) do position, butt
         mp = screen_relative(menuscene, position)
         # track if we have been inside menu/options to clean up if we haven't been
@@ -251,7 +254,7 @@ function initialize_block!(m::Menu; default = 1)
                     end
                     return Consume(true)
                 else # HOVER
-                    color_selector[] = SELECT_HOVER_COLOR
+                    button_hovered[] = true
                 end
             else
                 # If not inside anymore, invalidate was_pressed
@@ -271,18 +274,13 @@ function initialize_block!(m::Menu; default = 1)
         end
         if !is_over_button && was_inside_button[]
             was_inside_button[] = false
-            color_selector[] = SELECT_INACTIVE_COLOR
+            button_hovered[] = false
         end
         # if mouse got over anything else, we close the menu
         if !is_over_button && !is_over_options && butt.button == Mouse.left && butt.action == Mouse.press
             m.is_open[] = false
         end
         return Consume(false)
-    end
-
-    onany(color_selector, m.selection_cell_color_inactive, m.cell_color_hover) do idx, colors...
-        selectionpoly.color = colors[idx]
-        return
     end
 
     on(blockscene, menuscene.events.scroll; priority = 61) do (x, y)
