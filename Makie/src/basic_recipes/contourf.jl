@@ -264,12 +264,7 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
     )
 end
 
-# Whether ring `inner` is contained in ring `outer`. Since marching-squares
-# rings never intersect, containment holds iff any representative point of
-# `inner` is strictly inside `outer`. We test all vertices first (cheap, with
-# early exit) and fall back to edge midpoints to cover the degenerate case
-# where every vertex of `inner` lies exactly on a shared boundary vertex of
-# `outer`. See `_group_polys` and issue #5651.
+# `inner` ⊆ `outer` iff any vertex or edge-midpoint is strictly inside (midpoints catch vertices shared on `outer`'s boundary, #5651)
 function _is_ring_contained(inner, outer)
     any(p -> PolygonOps.inpolygon(p, outer) == 1, inner) && return true
     @inbounds for i in firstindex(inner):(lastindex(inner) - 1)
@@ -293,17 +288,7 @@ function _group_polys(points, ids)
 
     polys_lastdouble = [push!(p, first(p)) for p in polys]
 
-    # this matrix stores whether poly i is contained in j
-    # because the marching squares algorithm won't give us any
-    # intersecting or overlapping polys, poly i is contained in poly j
-    # as soon as a single representative point of i lies strictly inside j.
-    # We can't rely on a single fixed vertex (e.g. `first(p1)`): marching
-    # squares rings frequently share vertices at grid-edge crossings, and a
-    # shared vertex lies *on* the other ring's boundary, where
-    # `PolygonOps.inpolygon` returns -1 ("on") rather than 1 ("in"). That made
-    # holes get misclassified as outer polygons and produced solid (non-hollow)
-    # bands that overdrew lower levels (issue #5651). Testing every vertex (and
-    # falling back to edge midpoints) reliably finds a strictly-interior point.
+    # whether poly i is contained in j (marching squares yields no intersecting polys)
     containment_matrix = [
         p1 !== p2 && _is_ring_contained(p1, p2)
             for p1 in polys_lastdouble, p2 in polys_lastdouble

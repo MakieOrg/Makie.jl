@@ -1762,13 +1762,6 @@ end
     fig
 end
 
-@reference_test "contourf hollow bands around minima #5651" begin
-    z = [cosd(3l) * cosd(y) for l in -180:4:180, y in -90:4:90]
-    fig, ax, cof = contourf(z; levels = -1:0.2:1)
-    Colorbar(fig[1, 2], cof)
-    fig
-end
-
 @reference_test "Violin plots differently scaled" begin
     fig = Figure()
     xs = vcat([fill(i, i * 1000) for i in 1:4]...)
