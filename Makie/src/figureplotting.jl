@@ -13,6 +13,7 @@ Base.show(io::IO, fap::FigureAxisPlot) = show(io, fap.figure)
 Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAxisPlot()")
 
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
+Base.iterate(fap::FigureAxis, args...) = iterate((fap.figure, fap.axis), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
 get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
