@@ -139,14 +139,14 @@ function initialize_block!(m::Menu; default = 1)
     # State tracking for the in-place editor
     displayed_string = Observable("")
     selection_focused = Observable(false)
- 
+
     # Sync displayed text to current selection when closed
     on(blockscene, selected_text; update = true) do st
         if !m.is_open[]
             displayed_string[] = st
         end
     end
- 
+
     # Handle menu open/close transitions
     on(blockscene, m.is_open) do open
         if open
@@ -162,14 +162,14 @@ function initialize_block!(m::Menu; default = 1)
             displayed_string[] = selected_text[]
         end
     end
- 
+
     # Pipe user keystrokes into search query
     on(blockscene, displayed_string) do s
         if m.is_open[] && is_searchable
             search_text[] = s
         end
     end
- 
+
     # The in-place editable text plot
     selectiontext = editabletext!(
         blockscene, displayed_string;
@@ -192,12 +192,12 @@ function initialize_block!(m::Menu; default = 1)
             displayed_string[] = t
         end
     end
- 
+
     # A nice in-place placeholder for the search query
     placeholder_visible = lift(blockscene, m.is_open, displayed_string) do open, s
         return open && is_searchable && isempty(s)
     end
- 
+
     placeholder_text = text!(
         blockscene, selectiontextpos, text = m.search_placeholder, align = (:left, :center),
         fontsize = m.fontsize,
