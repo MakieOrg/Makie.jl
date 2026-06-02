@@ -1131,7 +1131,7 @@ function axislegend(ax, args...; position = :rt, kwargs...)
         margin = get(
             kwargs,
             :margin,
-            something(theme(:Legend), (; margin = (6, 6, 6, 6))).margin
+            get(something(theme(:Legend), NamedTuple()), :margin, (6, 6, 6, 6))
         ),
         legend_position_to_aligns(position)...,
         kwargs...
