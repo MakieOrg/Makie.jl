@@ -49,23 +49,19 @@ function initialize_block!(m::Menu; default = 1)
 
     is_searchable = m.searchable[]
     search_text = Observable("")
-    tbox_height_obs = is_searchable ?
-        lift(blockscene, m.fontsize, m.textpadding) do fs, pad
-            Float32(fs + pad[3] + pad[4])
-    end : Observable(0.0f0; ignore_equal_values = true)
 
     listheight = Observable(0.0; ignore_equal_values = true)
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
     _direction = Observable{Symbol}(:none; ignore_equal_values = true)
 
-    map!(blockscene, _direction, m.layoutobservables.computedbbox, m.direction, tbox_height_obs) do bb, dir, tbh
+    map!(blockscene, _direction, m.layoutobservables.computedbbox, m.direction) do bb, dir
         if dir == Makie.automatic
             pxa = viewport(blockscene)[]
             bottomspace = abs(bottom(pxa) - bottom(bb))
             topspace = abs(top(pxa) - top(bb))
             # slight preference for down
-            if bottomspace >= listheight[] + tbh || bottomspace > topspace
+            if bottomspace >= listheight[] || bottomspace > topspace
                 return :down
             else
                 return :up
@@ -77,16 +73,16 @@ function initialize_block!(m::Menu; default = 1)
 
     scenearea = Observable(Rect2i(0, 0, 0, 0), ignore_equal_values = true)
     map!(
-        blockscene, scenearea, m.layoutobservables.computedbbox, listheight, _direction, m.is_open, tbox_height_obs;
+        blockscene, scenearea, m.layoutobservables.computedbbox, listheight, _direction, m.is_open;
         update = true
-    ) do bbox, h, d, open, tbh
+    ) do bbox, h, d, open
         if open
             return round_to_IRect2D(
                 BBox(
                     left(bbox),
                     right(bbox),
-                    d === :down ? max(0, bottom(bbox) - tbh - h) : top(bbox) + tbh,
-                    d === :down ? bottom(bbox) - tbh : min(top(bbox) + tbh + h, top(blockscene.viewport[]))
+                    d === :down ? max(0, bottom(bbox) - h) : top(bbox),
+                    d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.viewport[]))
                 )
             )
         else
@@ -117,56 +113,6 @@ function initialize_block!(m::Menu; default = 1)
         strings[idx]
     end
 
-    textbox_area = lift(blockscene, m.layoutobservables.computedbbox, _direction, m.is_open, tbox_height_obs) do bbox, d, open, tbh
-        if !(open && tbh > 0)
-            return BBox(0, 0, 0, 0)
-        end
-        if d === :down
-            return BBox(left(bbox), right(bbox), bottom(bbox) - tbh, bottom(bbox))
-        else
-            return BBox(left(bbox), right(bbox), top(bbox), top(bbox) + tbh)
-        end
-    end
-
-    if is_searchable
-        _plots_before = length(blockscene.plots)
-        _scenes_before = length(blockscene.children)
-        tbox = Textbox(
-            blockscene;
-            placeholder = m.search_placeholder,
-            fontsize = m.fontsize,
-            textpadding = m.textpadding,
-            boxcolor = m.cell_color_inactive_even,
-            boxcolor_focused = m.cell_color_inactive_even,
-            boxcolor_hover = m.cell_color_inactive_even,
-            bordercolor_focused = m.cell_color_active,
-            tellwidth = false, tellheight = false,
-            width = lift(a -> Float32(widths(a)[1]), blockscene, textbox_area),
-        )
-        # Push the textbox above other figure-level content.
-        for p in @view blockscene.plots[(_plots_before + 1):end]
-            translate!(p, 0, 0, 250)
-        end
-        for s in @view blockscene.children[(_scenes_before + 1):end]
-            translate!(s, 0, 0, 250)
-        end
-        on(blockscene, textbox_area) do area
-            tbox.layoutobservables.suggestedbbox[] = area
-        end
-        on(blockscene, tbox.displayed_string) do s
-            search_text[] = s === nothing ? "" : String(s)
-        end
-        on(blockscene, m.is_open) do open
-            if open
-                focus!(tbox)
-            else
-                tbox.displayed_string[] = ""
-                search_text[] = ""
-                defocus!(tbox)
-            end
-        end
-    end
-
     selected_text = lift(blockscene, m.prompt, m.i_selected; ignore_equal_values = true) do prompt, i_selected
         if i_selected == 0 || i_selected > length(optionstrings_all[])
             prompt
@@ -182,10 +128,76 @@ function initialize_block!(m::Menu; default = 1)
         inspectable = false
     )
     selectiontextpos = Observable(Point2f(0, 0); ignore_equal_values = true)
-    selectiontext = text!(
-        blockscene, selectiontextpos, text = selected_text, align = (:left, :center),
-        fontsize = m.fontsize, color = m.textcolor, markerspace = :data, inspectable = false
+
+    # State tracking for the in-place editor
+    displayed_string = Observable("")
+    selection_focused = Observable(false)
+ 
+    # Sync displayed text to current selection when closed
+    on(blockscene, selected_text; update = true) do st
+        if !m.is_open[]
+            displayed_string[] = st
+        end
+    end
+ 
+    # Handle menu open/close transitions
+    on(blockscene, m.is_open) do open
+        if open
+            if is_searchable
+                displayed_string[] = "" # Clear text so we start fresh with filtering
+                selection_focused[] = true
+            end
+        else
+            if is_searchable
+                selection_focused[] = false
+                search_text[] = ""
+            end
+            displayed_string[] = selected_text[]
+        end
+    end
+ 
+    # Pipe user keystrokes into search query
+    on(blockscene, displayed_string) do s
+        if m.is_open[] && is_searchable
+            search_text[] = s
+        end
+    end
+ 
+    # The in-place editable text plot
+    selectiontext = editabletext!(
+        blockscene, displayed_string;
+        position = selectiontextpos,
+        align = (:left, :center),
+        focused = selection_focused,
+        color = m.textcolor,
+        fontsize = m.fontsize,
+        cursor_color = m.textcolor,
+        space = :pixel,
+        multiline = false,
+        manage_focus = false,
+        on_submit = (text) -> begin
+            m.is_open[] = false
+        end,
     )
+    # Sync typing edits back to displayed_string
+    on(blockscene, selectiontext[1]) do t
+        if displayed_string[] != t
+            displayed_string[] = t
+        end
+    end
+ 
+    # A nice in-place placeholder for the search query
+    placeholder_visible = lift(blockscene, m.is_open, displayed_string) do open, s
+        return open && is_searchable && isempty(s)
+    end
+ 
+    placeholder_text = text!(
+        blockscene, selectiontextpos, text = m.search_placeholder, align = (:left, :center),
+        fontsize = m.fontsize,
+        color = lift(c -> to_color((c, 0.4f0)), blockscene, m.textcolor),
+        visible = placeholder_visible, inspectable = false
+    )
+    translate!(placeholder_text, 0, 0, 1)
 
     onany(blockscene, selected_text, m.fontsize, m.textpadding) do _, _, (l, r, b, t)
         bb = boundingbox(selectiontext, :data)
@@ -277,7 +289,6 @@ function initialize_block!(m::Menu; default = 1)
         # track if we have been inside menu/options to clean up if we haven't been
         is_over_options = false
         is_over_button = false
-        is_over_textbox = is_searchable && m.is_open[] && position in textbox_area[]
 
         if Makie.is_mouseinside(menuscene) # the whole scene containing all options
             # Is inside the expanded menu selection (the polys cover the whole
@@ -306,8 +317,14 @@ function initialize_block!(m::Menu; default = 1)
                 is_over_button = true
                 was_inside_button[] = true
                 if _mouse_up(butt, was_pressed_button) # PRESSED
-                    m.is_open[] = !m.is_open[]
                     if m.is_open[]
+                        # If searchable, clicking inside the box shouldn't close the menu,
+                        # so that the user can click to reposition the cursor/select text.
+                        if !is_searchable
+                            m.is_open[] = false
+                        end
+                    else
+                        m.is_open[] = true
                         t = translation(menuscene)[]
                         y_for_top_align = height(menuscene.viewport[]) - listheight[]
                         translate!(menuscene, t[1], y_for_top_align, t[3])
@@ -328,18 +345,10 @@ function initialize_block!(m::Menu; default = 1)
         end
 
         # clean up hovers if we're outside
-        if !is_over_options && was_inside_options[] # going from being inside to outside
-            was_inside_options[] = false
-            _update_option_colors!(0, optionstrings, optionpolycolors, m, filtered_indices)
-        end
-        if !is_over_button && was_inside_button[]
-            was_inside_button[] = false
-            selectionpoly.color = m.selection_cell_color_inactive[]
-        end
-        # if mouse got over anything else, we close the menu
-        if !is_over_button && !is_over_options && !is_over_textbox && butt.button == Mouse.left && butt.action == Mouse.press
+        if !is_over_button && !is_over_options && butt.button == Mouse.left && butt.action == Mouse.press
             m.is_open[] = false
         end
+
         return Consume(false)
     end
 
