@@ -121,6 +121,7 @@ function compute_protrusions(
     return GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
 end
 
+block_kwargs(::Type{Axis}) = Set([:palette])
 function initialize_block!(ax::Axis; palette = nothing)
     blockscene = ax.blockscene
     elements = Dict{Symbol, Any}()
@@ -531,11 +532,11 @@ end
 ################################################################################
 # Limits
 
-function add_attributes!(T::Type{<:Axis}, graph, attributes)
-    limits = pop!(attributes, :limits)
-    add_input!(convert_limit_attribute, graph, :limits, limits)
+function add_attributes!(::Type{<:Axis}, graph, flattened_defaults)
+    attr = documented_attributes(Axis)
+    _, default = get_typed_default(attr, flattened_defaults, :limits)
+    add_input!(convert_limit_attribute, graph, :limits, default)
     ComputePipeline.set_type!(graph.limits, Any)
-    _add_attributes!(T, graph, attributes)
     return
 end
 

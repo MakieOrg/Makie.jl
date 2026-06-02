@@ -183,6 +183,8 @@ struct IntervalsBetween
 end
 IntervalsBetween(n) = IntervalsBetween(n, true)
 
+include("ticklocators/linear.jl")
+include("ticklocators/wilkinson.jl")
 
 mutable struct LineAxis
     parent::Scene
@@ -1447,6 +1449,10 @@ struct MeshScatterElement <: LegendElement
     attributes::Attributes
 end
 
+struct SurfaceElement <: LegendElement
+    attributes::Attributes
+end
+
 struct LegendEntry
     plots::Vector{AbstractPlot}
     elements::Vector{LegendElement}
@@ -2270,7 +2276,7 @@ end
         "The fontsize of the `r` tick labels."
         rticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `r` tick labels."
-        rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, "default"))
         "The color of the `r` tick labels."
         rticklabelcolor = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
         "The width of the outline of `r` ticks. Setting this to 0 will remove the outline."
@@ -2332,7 +2338,7 @@ end
         "The fontsize of the `theta` tick labels."
         thetaticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `theta` tick labels."
-        thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, "default"))
         "The color of the `theta` tick labels."
         thetaticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
         "Padding of the `theta` ticks label."
@@ -2401,7 +2407,7 @@ end
         "The fontsize of the title."
         titlesize::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> 1.2x, inherit(scene, :fontsize, 16)))
         "The font of the title."
-        titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, Makie.defaultfont()))
+        titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, "default"))
         "The color of the title."
         titlecolor = inherit(scene, (:Axis, :titlecolor), inherit(scene, :textcolor, :black))
         "Controls if the title is visible."

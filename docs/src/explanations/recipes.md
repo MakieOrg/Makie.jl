@@ -207,7 +207,7 @@ end
 end
 ```
 
-All the attributes defined in `@recipe` are eventually collected in `default_theme(scene, ::Type{<:MyPlot})`.
+All the attributes defined in `@recipe` are eventually collected in `documented_attributes(::Type{<:MyPlot})`.
 The function resolves the inherited attributes and returns the final set of default attributes.
 
 #### Axis Utilities
@@ -776,8 +776,7 @@ import SomePackage: someplot, someplot!
 
 Makie.convert_single_argument(v::SomeVector) = v.v
 
-@recipe(SomePlot) do scene
-    Theme()
+@recipe SomePlot begin
 end
 
 function Makie.plot!(p::SomePlot)

@@ -148,10 +148,7 @@ end
     @test all(x -> x isa Volume, plots)
 end
 
-import Makie:
-    InvalidAttributeError,
-    attribute_names
-import Makie: _attribute_docs
+import Makie: InvalidAttributeError
 
 @testset "validated attributes" begin
     @test_throws InvalidAttributeError heatmap(zeros(10, 10); does_not_exist = 123)
@@ -166,11 +163,11 @@ import Makie: _attribute_docs
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
 end
 
-import Makie: find_nearby_attributes, attribute_names, textdiff
+import Makie: find_nearby_attributes, flattened_keys, documented_attributes, textdiff
 
 @testset "attribute suggestions" begin
-    @test find_nearby_attributes(Set([:clr]), sort(string.(collect(attribute_names(Lines))))) == ([("color", true)], true)
-    triplot_attrs = sort(string.(collect(attribute_names(Triplot))))
+    @test find_nearby_attributes(Set([:clr]), sort(string.(flattened_keys(documented_attributes(Lines))))) == ([("color", true)], true)
+    triplot_attrs = sort(string.(flattened_keys(documented_attributes(Triplot))))
     attrs = [:recompute_centres, :clr, :strokecolour, :blahblahblahblahblah]
     suggestions = find_nearby_attributes(attrs, triplot_attrs)
     @test suggestions == ([("recompute_centers", 1), ("marker", 0), ("strokecolor", 1), ("convex_hull_color", 0)], true)
@@ -193,9 +190,9 @@ end
 
 @testset "recipe attribute checking" begin
     # TODO, this has become harder since attributes(p) contains now more than just the attributes
-    # And if p.colour isn't explicitly part of the attribute, it won't get passed
-    # @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour=:red)
-    @test testrecipe(1:4, 1:4, color = :red) isa Makie.FigureAxisPlot
+    # And if p.color isn't explicitly part of the attribute, it won't get passed
+    @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour = :red)
+    # @test testrecipe(1:4, 1:4, color = :red) isa Makie.FigureAxisPlot
 end
 
 @testset "validated attributes for blocks" begin
@@ -204,7 +201,6 @@ end
 
     err = InvalidAttributeError(Axis, Set{Symbol}())
     @test err.object_name == "block"
-    @test attribute_names(Axis3) == keys(_attribute_docs(Axis3))
 
     fig = Figure()
     @test_throws InvalidAttributeError Axis(fig[1, 1], does_not_exist = 123)
@@ -228,10 +224,10 @@ end
     @test Menu(fig[1, 2], default = nothing) isa Menu
     @test Legend(fig[1, 3], entrygroups = []) isa Legend
     @test PolarAxis(fig[1, 4], palette = nothing) isa PolarAxis
-    @test :palette in attribute_names(Axis)
-    @test :default in attribute_names(Menu)
-    @test :entrygroups in attribute_names(Legend)
-    @test :palette in attribute_names(PolarAxis)
+    @test :palette in Makie.block_kwargs(Axis)
+    @test :default in Makie.block_kwargs(Menu)
+    @test :entrygroups in Makie.block_kwargs(Legend)
+    @test :palette in Makie.block_kwargs(PolarAxis)
 end
 
 @testset "func2string" begin

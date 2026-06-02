@@ -23,46 +23,6 @@ function ComputePipeline.add_input!(
     return x
 end
 
-function ComputePipeline.add_input!(
-        attr::ComputeGraph, key::Symbol, values::Attributes
-    )
-    if key === :fonts
-        return ComputePipeline._add_input!(identity, attr, key, values)
-    else
-        return add_input!(attr, (key,), values)
-    end
-end
-
-function ComputePipeline.add_input!(
-        attr::ComputeGraph, keys::Tuple, values::Attributes
-    )
-    for (child_key, child_value) in values
-        add_input!(attr, (keys..., child_key), child_value)
-    end
-    return attr[first(keys)]
-end
-
-function ComputePipeline.add_input!(
-        conversion_func, attr::ComputePipeline.ComputeGraph,
-        key::Symbol, values::Attributes
-    )
-    if key === :fonts
-        return ComputePipeline._add_input!(conversion_func, attr, key, values)
-    else
-        return add_input!(conversion_func, attr, (key,), values)
-    end
-end
-
-function ComputePipeline.add_input!(
-        conversion_func, attr::ComputePipeline.ComputeGraph,
-        keys::Tuple, values::Attributes
-    )
-    for (child_key, child_value) in values
-        add_input!(conversion_func, attr, (keys..., child_key), child_value)
-    end
-    return attr[first(keys)]
-end
-
 ComputePipeline.add_input!(f, p::Plot, args...; kwargs...) = add_input!(f, p.attributes, args...; kwargs...)
 ComputePipeline.add_input!(p::Plot, args...; kwargs...) = add_input!(p.attributes, args...; kwargs...)
 
@@ -132,6 +92,8 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     attr = plot.attributes
     if haskey(attr.inputs, key)
         setproperty!(attr, key, val)
+    elseif ComputePipeline.has_nested_key(attr, key)
+        nested_update!(plot, key, val)
     else
         add_input!(attr, key, val)
         # maybe best to not make assumptions about user attributes?
@@ -139,6 +101,27 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
         ComputePipeline.set_type!(attr[key], Any)
     end
     return plot
+end
+
+function nested_update!(plot::P, key::Symbol, val) where {P}
+    doc_attr = documented_attributes(P)
+    updates = Pair{Symbol, Any}[]
+    prepare_nested_update!(updates, doc_attr, doc_attr.nesting.keytables[1][key], val)
+    update!(plot.attributes, updates)
+    return
+end
+
+function prepare_nested_update!(updates, attr, layer, val)
+    @assert layer > 0 # Should be given since we check `has_nested_key` in setproperty
+    for (key, idx) in attr.nesting.keytables[layer]
+        haskey(val, key) || continue
+        if idx > 0
+            prepare_nested_update!(updates, attr, idx, to_value(val[key]))
+        else
+            push!(updates, attr.merged_keys[-idx] => to_value(val[key]))
+        end
+    end
+    return
 end
 
 # This is data_limits(), not boundingbox()
@@ -455,20 +438,22 @@ function _filter(f, xs::NamedTuple)
     return NamedTuple{fkeys}(map(k -> xs[k], fkeys))
 end
 
-function add_convert_kwargs!(attr, user_kw, P, args)
+function add_convert_kwargs!(graph, user_kw, P, args)
     conv_attributes = used_attributes(P, args...)
-    intrinsics = default_theme(nothing)
     conv_attr_input = Symbol[]
     for key in conv_attributes
-        if !haskey(attr.inputs, key) && !haskey(intrinsics, key) # can be added from plot attributes
-            default = key === :space ? :data : nothing
-            add_input!(attr, key, pop!(user_kw, key, default))
+        if !haskey(graph.inputs, key)
+            default = pop!(user_kw, key, key === :space ? :data : nothing)
+            add_input!(graph, key, default)
+            ComputePipeline.set_type!(graph[key], Any)
             push!(conv_attr_input, key)
         end
     end
-    return register_computation!(attr, conv_attr_input, [:convert_kwargs]) do inputs, changed, last
+    register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, changed, last
         return (_filter(!isnothing, inputs),)
     end
+    ComputePipeline.set_type!(graph[:convert_kwargs], Any)
+    return
 end
 
 function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, args_converted, user_kw) where {P}
@@ -477,11 +462,12 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     kwarg_names = argument_dim_kwargs(P)
 
     # initialize the necessary attributes early
-    defaults = default_theme(nothing, P)
     for key in kwarg_names
         if !haskey(attr.inputs, key)
-            haskey(defaults, key) || error("Cannot use `argument_dim_kwargs(::$P) = (:$key, ...)` as it is not a valid recipe Attribute.")
-            add_input!(attr, key, pop!(user_kw, key, defaults[key]))
+            default = lookup_default(P, nothing, user_kw, key)
+            default isa Inherit && error("$key must be initialized without `@inherit` to be used as a argument_dims kwarg.")
+            # haskey(defaults, key) || error("Cannot use `argument_dim_kwargs(::$P) = (:$key, ...)` as it is not a valid recipe Attribute.")
+            add_input!(attr, key, default)
         end
     end
 
@@ -597,6 +583,7 @@ end
 
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw, args) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))::DimConversions
+    add_input!(attr, :dim_conversions, dim_converts)
 
     add_convert_kwargs!(attr, user_kw, P, args)
     kw = attr.convert_kwargs[]
@@ -608,8 +595,13 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw,
     # use plain data in a dim_convert scene. Typically true for plots to scenes
     # and false for plots to other plots
     force_dimconverts = pop!(user_kw, :force_dimconverts)::Bool
-    defaults = default_theme(nothing, P)
-    space = to_value(get(user_kw, :space, get(defaults, :space, :data)))::Symbol
+    doc_attr = documented_attributes(P)
+    space::Symbol = if haskey(user_kw, :space)
+        to_value(user_kw[:space])
+    else
+        default = get_flat_default(doc_attr, :space, :data)
+        default isa Symbol ? default : :data
+    end
 
     # TODO: Can't infer types here because dim_conversions[i] are of unknown type
     dim_converted = if !is_data_space(space)
@@ -685,316 +677,36 @@ function Base.map!(f, p::Plot, inputs::Union{Vector, ComputePipeline.InputNodeTy
     return map!(f, p.attributes, inputs, outputs)
 end
 
-# from DocumentedAttributes
-function default_attribute(user_attributes, kv::Pair{Symbol, AttributeMetadata})
-    return default_attribute(user_attributes, kv[1], kv[2].default_value)
-end
-
-# from Attributes
-function default_attribute(user_attributes, kv::Pair)
-    return default_attribute(user_attributes, kv...)
-end
-
-function default_attribute(user_attributes, key::Symbol, value)
-    if haskey(user_attributes, key)
-        if value isa Attributes
-            # The back and forth casting from Attributes -> Dict -> Attributes
-            # is to prevent overwriting values in the default plot attributes
-            # (and the observables it contains)
-            output = Dict{Symbol, Any}(value)
-            recursive_attr_merge!(output, user_attributes[key])
-            return Attributes(output)
-        else
-            val = user_attributes[key]
-            val isa NamedTuple && return Attributes(val)
-            return val
-        end
-    elseif value isa Inherit
-        return value.fallback
-    else
-        return to_value(value)
-    end
-end
-
-function recursive_attr_merge!(target::Dict{Symbol, Any}, user_attr)
-    for (k, v) in pairs(user_attr)
-        if v isa Union{ComputePipeline.ComputeGraphView, Attributes}
-            inner = if haskey(target, k)
-                Dict{Symbol, Any}(target[k])
-            else
-                Dict{Symbol, Any}()
-            end
-            recursive_attr_merge!(inner, user_attr[k])
-            target[k] = Attributes(inner)
-        else
-            target[k] = v
-        end
-    end
-    return target
-end
-
-struct AttributeConvert{Key, Plot} end
+struct AttributeConvert{Key, Plot} <: Function end
 @inline AttributeConvert(key, plot) = AttributeConvert{key, plot}()
 Base.nameof(::AttributeConvert{Key, Plot}) where {Key, Plot} = "AttributeConvert{$(Key), $(Plot)}"
 function (::AttributeConvert{key, plot})(value) where {key, plot}
     return convert_attribute(value, Key{key}(), Key{plot}())
 end
+function (::AttributeConvert{key, plot})(value, @nospecialize(changed), @nospecialize(cached)) where {key, plot}
+    return (convert_attribute(value[1], Key{key}(), Key{plot}()),)
+end
 function ComputePipeline.get_callback_info(::AttributeConvert{key, plot}, value) where {key, plot}
     return ComputePipeline.get_callback_info(convert_attribute, value, Key{key}(), Key{plot}())
 end
 
-to_recipe_attribute(x) = Ref{Any}(x) # Make sure it can change type
-to_recipe_attribute(attr::Attributes) = attr
-function to_recipe_attribute(value::NamedTuple)
-    return Attributes(value)
-end
-
-function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
-    documented_attr = plot_attributes(nothing, T)
-    name = plotkey(T)
-    is_primitive = T <: PrimitivePlotTypes
-    inputs = Dict((kv[1] => default_attribute(kwargs, kv) for kv in documented_attr))
-
-    delete!(inputs, :cycle)
-    if !haskey(attr.inputs, :cycle)
-        _cycle = to_value(
-            get(kwargs, :cycle) do
-                lookup_default(T, nothing, :cycle)
-            end
-        )
-        add_input!(AttributeConvert(:cycle, name), attr, :cycle, _cycle)
-    end
-    # Cycle attributes are get set to plot, and then set in connect_plot!
-    add_input!(attr, :cycle_index, 0)
-    add_input!(attr, :palettes, nothing)
-
-    cycle = attr.cycle[]
-    if !isnothing(cycle)
-        asc = attrsyms(cycle)
-        ps = palettesyms(cycle)
-        # flatten to attribute -> palette
-        lookup = Dict([sym => p for (syms, p) in zip(asc, ps) for sym in syms])
-        add_input!(attr, :palette_lookup, lookup)
-        for (k, p) in lookup
-            # If user explicitly passes values, we should not do anything
-            let plotcycle = cycle
-                add_input!(attr, k, get(kwargs, k, nothing)) do value
-                    palettes = attr.palettes[]
-                    if value isa Cycled
-                        value = get_cycle_attribute(palettes, k, value.i, plotcycle)
-                    end
-                    if !isnothing(value)
-                        if is_primitive
-                            return convert_attribute(value, Key{k}(), Key{name}())
-                        else
-                            return to_recipe_attribute(value)
-                        end
-                    end
-                    pos = attr.cycle_index[]
-                    cyc = get_cycle_attribute(palettes, k, pos, plotcycle)
-                    return convert_attribute(cyc, Key{k}(), Key{name}())
-                end
-                delete!(inputs, k)
-            end
-        end
-    end
-
-    # this is handled through plot.kw, not plot.attributes. Keeping it in the
-    # compute graph may cause double application of user set transformations,
-    # e.g. #4789
-    delete!(inputs, :transformation)
-
-    for (k, v) in inputs
-        # primitives use convert_attributes, recipe plots don't
-        if !haskey(attr.outputs, k)
-            if is_primitive
-                add_input!(AttributeConvert(k, name), attr, k, v)
-            elseif v isa Union{Attributes, NamedTuple}
-                add_input!(to_recipe_attribute, attr, k, v)
-            else
-                # Probably better for performance because this more or less
-                # skips the callback
-                add_input!(attr, k, v)
-                ComputePipeline.set_type!(attr[k], Any)
-            end
-        end
-    end
-    if !haskey(attr, :model)
-        add_input!(attr, :model, Mat4d(I))
-    end
-    return
-end
-
-# TODO: This implies the recipe has, e.g. `kwargs = Attributes(a = 1)` but the user
-# supplied `; kwargs = Attributes(a = Attributes(...))`
-function contains_nested_attr(user_kw::Dict, keytuple::Tuple{})
-    @warn "User keywords contains Attributes more deeply nested than expected."
-    return true
-end
-
-# reached end of nested Attributes before resolving key -> not found
-contains_nested_attr(user_kw, keytuple::Tuple{Symbol, Vararg{Symbol}}) = false
-# reached end and resolve key -> found
-contains_nested_attr(user_kw, keytuple::Tuple{}) = true
-
-function contains_nested_attr(user_kw::Dict, keytuple::Tuple{Symbol, Vararg{Symbol}})
-    if haskey(user_kw, first(keytuple))
-        return contains_nested_attr(user_kw[first(keytuple)], Base.tail(keytuple))
-    else
-        return false
-    end
-end
-
-function add_or_update_nested_attribute!(graph, updates, keytuple, attr::Attributes, user_kw)
-    for (k, v) in attr
-        add_or_update_nested_attribute!(graph, updates, (keytuple..., k), v, user_kw)
-    end
-    return
-end
-
-function add_or_update_nested_attribute!(graph, updates, keytuple, value, user_kw)
-    if haskey(graph, keytuple)
-        if contains_nested_attr(user_kw, keytuple)
-            # user set, nothing to do
-        else
-            # defaulted, update from theme
-            combined = ComputePipeline.merged_key(keytuple)
-            push!(updates, combined => value)
-        end
-    else
-        # value comes from the scene theme which can't have an @inherit
-        add_input!(graph, keytuple, value)
-    end
-    return
-end
-
-function add_theme_inner!(updates, key, inherit::Inherit, user_kw, graph, scene_theme)
-    # dont set theme values for cycled attributes
-    if haskey(graph, :palette_lookup) && haskey(graph.palette_lookup[], key)
-        return
-    end
-
-    value = if haskey(scene_theme, inherit.key)
-        to_value(scene_theme[inherit.key])
-    elseif !isnothing(inherit.fallback)
-        default.fallback
-    else
-        error("No fallback + theme for $(key)")
-    end
-
-    if key === :fonts
-        # want to merge regardless of user_kw if :fonts is an Input
-        # if it's a passthrough (i.e. no Input) this should happen at a higher layer
-        if haskey(graph.inputs, :fonts)
-            given = graph.inputs[:fonts].value # avoid resolve
-            new = isnothing(given) ? value : merge(given, value) # TODO: wrong order
-            push!(updates, :fonts => new)
-        end
-    else
-        add_or_update_nested_attribute!(graph, updates, (key,), value, user_kw)
-    end
-
-    return
-end
-
-# This method should be hit for the generic case where attributes are set by
-# solely by the plot. This should have been handled by add_attributes!() already
-# so we should not need to do anything here.
-function add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
-    if !haskey(graph, key)
-        error(":$key should have already been added to the plot.")
-    end
-    return
-end
-
-function inherit_theme_from_scene!(updates, plot_attr::Dict{Symbol, AttributeMetadata}, user_kw, graph, scene_theme)
-    for (key, meta) in plot_attr
-        if key in (:transformation, :model, :transform_func)
-            continue
-        end
-        value = meta.default_value
-        add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
-    end
-    return
-end
-
-function inherit_theme_from_scene!(updates, plot_attr::Attributes, user_kw, graph, scene_theme)
-    for (key, value) in plot_attr
-        if key in (:transformation, :model, :transform_func)
-            continue
-        end
-        add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
-    end
-    return
-end
-
-
-# User set keyword case, don't update. (Reached when the keys in plot_scene_theme
-# continue to appear in user_kw)
-overwrite_plot_defaults!(updates, graph, user_kw, plot_scene_theme) = nothing
-
-# We stopped finding nested keys in user passed kwargs, so we will update.
-# Here we have not reached the end of nesting yet
-function overwrite_plot_defaults!(updates, graph::ComputeGraphView, plot_scene_theme::Attributes)
-    for (k, v) in plot_scene_theme
-        if haskey(graph, key)
-            overwrite_plot_defaults!(updates, graph[k], v)
-        end
-    end
-    return
-end
-
-# reached end
-function overwrite_plot_defaults!(updates, node::Computed, value)
-    push!(updates, node.name => to_value(value))
-    return
-end
-
-# nesting mismatch
-function overwrite_plot_defaults!(updates, graph::ComputeGraphView, value)
-    error("Could not use theme default $value for $graph due to inconsistent nesting")
-end
-function overwrite_plot_defaults!(updates, node::Computed, value::Attributes)
-    error("Could not use theme default $value for $(node.name) due to inconsistent nesting")
-end
-
-function overwrite_plot_defaults!(
-        updates, graph::AbstractComputeGraph,
-        user_kw::Union{Dict, Attributes, NamedTuple},
-        plot_scene_theme::Attributes
-    )
-    for (k, v) in plot_scene_theme
-        if haskey(graph, k)
-            if k === :fonts
-                push!(updates, :fonts => merge(v, graph.fonts[]))
-            elseif haskey(user_kw, k)
-                overwrite_plot_defaults!(updates, graph[k], user_kw[k], v)
-            else
-                # maybe nested, do update
-                overwrite_plot_defaults!(updates, graph[k], v)
-            end
-        end
-    end
-    return
-end
-
 function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where {T <: Plot}
-    plot_attr = plot_attributes(scene, T)
-    scene_theme = theme(scene)
-    updates = Pair{Symbol, Any}[]
+    # So far we have set attributes based on the plot defaults and keyword
+    # arguments. In this function we now resolve `@inherit`ed attributes and
+    # apply `theme[plotsym(T)]` if it exists.
 
-    # Go through all @recipe attributes again. If the attribute is an @inherit
-    # and it is not set by the user (and it exists in the scenes theme) replace
-    # it with the theme value.
-    # If inherited attribute is nested, merge every nested layer.
-    inherit_theme_from_scene!(updates, plot_attr, user_kw, graph, scene_theme)
+    exclude = Set{Symbol}([:transformation, :model, :transform_func])
+    haskey(graph, :palette_lookup) && union!(exclude, keys(graph.palette_lookup[]))
 
-    # Overwrite defaults from the plot @recipe with defaults set in the scenes
-    # theme specifically for the plot, i.e. `:Scatter => Attributes(...)`
-    plot_scene_theme = get(scene_theme, plotsym(T), Attributes())
-    overwrite_plot_defaults!(updates, graph, user_kw, plot_scene_theme)
+    # TODO: Should add_theme!() be allowed to set used_attributes?
+    # That would require add_convert_kwargs!() to not delete them from kwargs
+    # so that user input doesn't get overwritten here
+    conv_attributes = used_attributes(T, graph.args[]...)
+    union!(exclude, conv_attributes)
 
-    update!(graph, updates)
+    attr = documented_attributes(T)
+    add_theme!(graph, attr, T, scene, exclude, user_kw)
+
     return
 end
 
@@ -1020,8 +732,7 @@ function argument_error(PTrait, P, attr, user_kw, converted)
         prevent early conversions.
         """
     else
-        defaults = default_theme(nothing, P)
-        space = to_value(get(user_kw, :space, get(defaults, :space, :data)))
+        space = haskey(attr, :space) ? attr[:space][] : :data
         """
         (Dim converts were not applied. This happens if `space = $space` \
         is not in data space or if the target type of the conversion is reachable \
@@ -1047,59 +758,159 @@ function argument_error(PTrait, P, attr, user_kw, converted)
     )
 end
 
-function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
+function Plot{Func}(user_args::Tuple, user_attributes::Union{Dict, NamedTuple}) where {Func}
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
-
-    # Handle plot!(plot, attributes::Attributes, args...) here
-    if !isempty(user_args) && first(user_args) isa Attributes
-        # This should keep user_args[1] unchanged, in case they get reused.
-        attr = convert(Dict{Symbol, Any}, attributes(first(user_args)))
-        foreach(p -> get!(user_attributes, p[1], p[2]), pairs(attr))
-        return Plot{Func}(Base.tail(user_args), user_attributes)
-    end
 
     P = Plot{Func}
 
-    # And also plot!(plot, ::ComputeGraph, args...)
-    if !isempty(user_args) && first(user_args) isa ComputePipeline.AbstractComputeGraph
-        # shallow copy user_attributes to isolate user Dict from changes
-        merged_attr = copy(user_attributes)
+    if first(user_args) isa Attributes
+        # This should keep user_args[1] unchanged, in case they get reused.
+        attr = convert(Dict{Symbol, Any}, attributes(first(user_args)))
+        foreach(p -> get!(user_attributes, p[1], p[2]), pairs(attr))
+        return build_plot(P, nothing, Base.tail(user_args), user_attributes)
+    elseif first(user_args) isa AbstractComputeGraph
+        return build_plot(P, user_args[1], Base.tail(user_args), user_attributes)
+    else
+        return build_plot(P, nothing, user_args, user_attributes)
+    end
+end
 
-        # Add all keys that are valid for this plot.
-        # Iterating through passthrough_attr is inconvenient with nested attributes,
-        # as those are saved with keys like `Symbol("outer.inner")`. These would
-        # need to be split and checked against valid_keys. Going the other way
-        # and checking if a key from valid_keys is in passthrough_attr doesn't
-        # require this
-        valid_keys = keys(plot_attributes(nothing, P))
-        passthrough_attr = first(user_args)
-        for key in valid_keys
-            # existing attributes (from kwargs) take priority
-            if haskey(passthrough_attr, key) && !haskey(merged_attr, key)
-                merged_attr[key] = passthrough_attr[key]
-            end
+struct AttributeCallbackBuilder{T}
+    lookup::Dict{Symbol, Symbol}
+    cycle::T
+    graph::ComputeGraph
+    is_primitive::Bool
+    plotsym::Symbol
+end
+
+struct CycleConvert{F, T} <: Function
+    callback::F
+    cycle::T
+    graph::ComputeGraph
+    key::Symbol
+end
+
+(cc::CycleConvert)(val, @nospecialize(changed), @nospecialize(cached)) = (cc(val[1]),)
+function (cc::CycleConvert)(value)
+    palettes = cc.graph.palettes[]
+    if value isa Cycled
+        value = get_cycle_attribute(palettes, cc.key, value.i, cc.cycle)
+    end
+    isnothing(value) || return cc.callback(value)
+    pos = cc.graph.cycle_index[]
+    cyc = get_cycle_attribute(palettes, cc.key, pos, cc.cycle)
+    return cc.callback(cyc)
+end
+
+function (b::AttributeCallbackBuilder)(key::Symbol)
+    inner = if b.is_primitive
+        AttributeConvert(key, b.plotsym)
+    else
+        ComputePipeline.compute_identity
+    end
+
+    if haskey(b.lookup, key)
+        return CycleConvert(inner, b.cycle, b.graph, key)
+    else
+        return inner
+    end
+end
+
+function init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent)
+    exclude = (:transformation, :transform_func)
+    prepare_graph_for_attributes!(graph, attr, exclude, is_primitive = is_primitive)
+    add_from_kwargs!(build_callback, graph, attr, kwargs, exclude)
+    if !isnothing(parent)
+        exclude_from_parent = (:model, :transformation, :transform_func, :model_f32c)
+        connect_parent!(build_callback, graph, parent, attr, exclude_from_parent)
+    end
+    add_remaining_inputs!(build_callback, graph, attr, exclude)
+    return
+end
+
+function init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent, lookup)
+    exclude = (:transformation, :transform_func)
+    prepare_graph_for_attributes!(graph, attr, exclude, is_primitive = is_primitive)
+    add_from_kwargs!(build_callback, graph, attr, kwargs, exclude)
+    if !isnothing(parent)
+        exclude_from_parent = (:model, :transformation, :transform_func, :model_f32c)
+        connect_parent!(build_callback, graph, parent, attr, exclude_from_parent)
+    end
+    # cycled attributes don't inherit defaults from theme, they are initialized
+    # with cycling instead
+    for (key, p) in lookup
+        if haskey(graph.outputs, key) && !isconnected(graph, key)
+            output = graph[key]
+            add_prepared_input!(build_callback(key), graph, key, nothing, output)
         end
+    end
+    add_remaining_inputs!(build_callback, graph, attr, exclude)
+    return
+end
 
-        # these are handled by TRansformations()
-        filter!(kv -> !in(kv[1], [:model, :transform_func]), merged_attr)
+function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
+    attr = documented_attributes(P)
+    name = Makie.plotkey(P)
+    is_primitive = P <: PrimitivePlotTypes
 
-        return Plot{Func}(Base.tail(user_args), merged_attr)
+    # Maybe added by convert_kwargs?
+    if !haskey(graph, :cycle)
+        _cycle = if !isnothing(parent) && haskey(parent, :cycle)
+            parent.cycle
+        elseif haskey(kwargs, :cycle)
+            kwargs[:cycle]
+        elseif has_flat_key(attr, :cycle)
+            lookup_default(P, nothing, :cycle)
+        else
+            nothing
+        end
+        _cycle = _cycle === NoFallback() ? nothing : _cycle # probably unnecessary
+        add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
     end
 
-    attr = ComputeGraph()
+    # Cycle attributes are get set to plot, and then set in connect_plot!
+    add_input!(graph, :cycle_index, 0)
+    add_input!(graph, :palettes, nothing)
 
-    register_arguments!(P, attr, user_attributes, user_args)
-    converted = attr.converted[]
-    PTrait = conversion_trait(P, attr.args[]...)
+    cycle = graph.cycle[]
+    if !isnothing(cycle)
+        asc = attrsyms(cycle)
+        ps = palettesyms(cycle)
+        # flatten to attribute -> palette
+        lookup = Dict([sym => p for (syms, p) in zip(asc, ps) for sym in syms])
+        add_input!(graph, :palette_lookup, lookup)
+        build_callback = AttributeCallbackBuilder(lookup, cycle, graph, is_primitive, name)
+        init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent, lookup)
+    elseif is_primitive
+        init_graph!(key -> AttributeConvert(key, name), graph, attr, true, kwargs, parent)
+    else
+        init_graph!(key -> compute_identity, graph, attr, false, kwargs, parent)
+    end
+
+    if !haskey(graph, :model)
+        add_input!(graph, :model, Mat4d(I))
+    end
+
+    return
+end
+
+function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
+    graph = ComputeGraph()
+
+    register_arguments!(P, graph, user_attributes, user_args)
+    converted = graph.converted[]
+    PTrait = conversion_trait(P, graph.args[]...)
     if got_converted(P, PTrait, converted) == false
-        argument_error(PTrait, P, attr, user_attributes, converted)
+        argument_error(PTrait, P, graph, user_attributes, converted)
     end
+
+    # compiler can't infer this, but FinalPlotFunc may differ (e.g. qqnorm -> qqplot)
     ArgTyp = typeof(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
 
-    add_attributes!(Plot{FinalPlotFunc}, attr, user_attributes)
+    add_attributes!(Plot{FinalPlotFunc}, graph, parent, user_attributes)
 
-    return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
+    return Plot{FinalPlotFunc, ArgTyp}(user_attributes, graph)
 end
 
 # Count cycling position of `plot` among the top-level plots in `plot_iter`.
@@ -1166,15 +977,10 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
 
     plot!(plot)
 
-
-    documented_attr = plot_attributes(scene, Plot{Func})
+    # Used to add things like `label` for Legend
     for (k, v) in plot.kw
         if !haskey(plot.attributes, k)
-            if haskey(documented_attr, k)
-                error("User Attribute $k did not get registered.")
-            else
-                add_input!(plot.attributes, k, v)
-            end
+            add_input!(plot.attributes, k, v)
         end
     end
 

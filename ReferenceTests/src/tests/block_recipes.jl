@@ -71,7 +71,7 @@ BLOCK_UPDATES = let
         # println(T)
         attr = Dict{Symbol, Any}()
 
-        for (name, maybe_obs) in Makie.default_attribute_values(T, scene)
+        for (name, maybe_obs) in Makie.default_theme(scene, T)
             if Pair(T, name) in exclude
                 # @info "Skip $T => $name"
                 continue

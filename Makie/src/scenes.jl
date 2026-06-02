@@ -718,6 +718,7 @@ end
 
 parent_scene(x) = parent_scene(get_scene(x))
 parent_scene(x::Plot) = parent_scene(parent(x))::Scene
+parent_scene(x::Block) = parent_scene(x.blockscene)::Scene
 parent_scene(x::Scene) = x
 parent_scene(::Nothing) = nothing
 

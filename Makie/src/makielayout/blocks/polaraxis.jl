@@ -1,15 +1,15 @@
-function add_attributes!(T::Type{<:PolarAxis}, graph, attributes)
-    rlimits = pop!(attributes, :rlimits)
+function add_attributes!(T::Type{<:PolarAxis}, graph, flattened_defaults)
+    attr = documented_attributes(PolarAxis)
+
+    _, rlimits = get_typed_default(attr, flattened_defaults, :rlimits)
     add_input!(graph, :rlimits, rlimits)
     ComputePipeline.set_type!(graph.rlimits, Any)
     graph.inputs[:rlimits].force_update = true
 
-    thetalimits = pop!(attributes, :thetalimits)
+    _, thetalimits = get_typed_default(attr, flattened_defaults, :thetalimits)
     add_input!(graph, :thetalimits, thetalimits)
     ComputePipeline.set_type!(graph.thetalimits, Any)
     graph.inputs[:thetalimits].force_update = true
-
-    _add_attributes!(T, graph, attributes)
     return
 end
 
@@ -17,6 +17,7 @@ end
 ### Main Block Initialization
 ################################################################################
 
+block_kwargs(::Type{PolarAxis}) = Set([:palette])
 function initialize_block!(po::PolarAxis; palette = nothing)
     # Setup Scenes
     cb = po.layoutobservables.computedbbox
