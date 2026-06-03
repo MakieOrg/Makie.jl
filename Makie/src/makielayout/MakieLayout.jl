@@ -2,7 +2,6 @@ import Format
 import Animations
 using GridLayoutBase
 using GridLayoutBase: GridSubposition
-import Showoff
 
 const FPS = Observable(30)
 const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))
