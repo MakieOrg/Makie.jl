@@ -36,6 +36,9 @@ end
 function argument_dims(::Type{<:Band}, lower::VecTypesVector{N}, upper::VecTypesVector{N}; direction) where {N}
     return direction === :x ? ((1, 2), (1, 2)) : ((2, 1), (2, 1))
 end
+function argument_dims(::Type{<:Band}, lower::AbstractVector, upper::AbstractVector; direction)
+    return direction === :x ? (1, 2) : (2, 1)
+end
 
 function convert_arguments(::Type{<:Band}, x::RealVector, ylower::RealVector, yupper::RealVector)
     return (Point2{float_type(x, ylower)}.(x, ylower), Point2{float_type(x, yupper)}.(x, yupper))
