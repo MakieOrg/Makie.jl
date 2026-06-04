@@ -4,7 +4,6 @@ on:
     branches:
       - master
       - ff/breaking-0.25
-      - ff/nested-attributes
   push:
     tags:
       - '*'

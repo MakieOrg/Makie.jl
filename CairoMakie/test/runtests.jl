@@ -170,8 +170,8 @@ end
     # are modified in which case the numbers should just be updated
     f, a, p = scatter(rand(10))
     colorbuffer(f)
-    @test length(p.attributes.inputs) == 40
-    @test length(p.attributes.outputs) == 85
+    @test length(p.attributes.inputs) == 37
+    @test length(p.attributes.outputs) == 83
 end
 
 excludes = Set(
