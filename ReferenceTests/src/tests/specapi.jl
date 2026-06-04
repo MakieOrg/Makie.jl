@@ -451,3 +451,41 @@ end
 
     fig
 end
+
+@reference_test "SpecApi cycling" begin
+    inputs = [
+        [S.Scatter(fill(i+1, 5), 1:5) for i in 1:3],
+        [S.Scatter(fill(i+1, 5), 1:5) for i in 1:7],
+        [S.Scatter(fill(i+1, 5), 1:5) for i in 1:3],
+        [S.Scatter(fill(i+1, 5), 1:5) for i in 1:2],
+        [S.Scatter(fill(i+1, 5), 1:5) for i in 1:3],
+    ]
+
+    f = Figure(size = (500, 1000))
+    Label(f[0, 1], "update", tellwidth = false)
+    Label(f[0, 2], "init", tellwidth = false)
+
+    pls = []
+
+    for j in 1:5
+        scatter(f[j, 1], fill(1, 5), (1:5), marker = Rect)
+        p = plotlist!(inputs[1])
+        push!(pls, p)
+        scatter!(fill(9, 5), (1:5), marker = Rect)
+
+        scatter(f[j, 2], fill(1, 5), (1:5), marker = Rect)
+        plotlist!(inputs[j])
+        scatter!(fill(9, 5), (1:5), marker = Rect)
+    end
+
+    # force cycle resolution
+    colorbuffer(f)
+
+    for i in 1:5
+        for j in i:5
+            pls[j].arg1 = inputs[i]
+        end
+    end
+
+    f
+end
