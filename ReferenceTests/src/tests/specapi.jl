@@ -454,11 +454,11 @@ end
 
 @reference_test "SpecApi cycling" begin
     inputs = [
-        [S.Scatter(fill(i+1, 5), 1:5) for i in 1:3],
-        [S.Scatter(fill(i+1, 5), 1:5) for i in 1:7],
-        [S.Scatter(fill(i+1, 5), 1:5) for i in 1:3],
-        [S.Scatter(fill(i+1, 5), 1:5) for i in 1:2],
-        [S.Scatter(fill(i+1, 5), 1:5) for i in 1:3],
+        [S.Scatter(fill(i + 1, 5), 1:5) for i in 1:3],
+        [S.Scatter(fill(i + 1, 5), 1:5) for i in 1:7],
+        [S.Scatter(fill(i + 1, 5), 1:5) for i in 1:3],
+        [S.Scatter(fill(i + 1, 5), 1:5) for i in 1:2],
+        [S.Scatter(fill(i + 1, 5), 1:5) for i in 1:3],
     ]
 
     f = Figure(size = (500, 1000))
