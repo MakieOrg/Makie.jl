@@ -398,7 +398,7 @@ end
 
     # update column
     for i in 1:5
-        indices = collect_cycle_indices(f.content[2i-1].scene.plots)
+        indices = collect_cycle_indices(f.content[2i - 1].scene.plots)
         @test indices == [1, 2, 3, 4, 5]
     end
 
