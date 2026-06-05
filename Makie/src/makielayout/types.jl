@@ -29,20 +29,28 @@ function Cycle(cycle, covary)
 end
 
 # convert input to internal format
+function unique_push!(vec, val)
+    idx = findfirst(vec, val)
+    if isnothing(idx)
+        push!(vec, val)
+        return length(vec)
+    else
+        return idx
+    end
+end
+
 flatten_cycle!(lookup, keys, ::Nothing) = nothing
 function flatten_cycle!(lookup, keys, s::Symbol)
-    push!(keys, s)
-    lookup[s] = length(keys)
+    lookup[s] = unique_push!(keys, s)
     return
 end
 function flatten_cycle!(lookup, keys, p::Pair{Symbol, Symbol})
-    push!(keys, p[2])
-    lookup[p[1]] = length(keys)
+    lookup[p[1]] = unique_push!(keys, p[2])
     return
 end
 function flatten_cycle!(lookup, keys, p::Pair{Vector{Symbol}, Symbol})
-    push!(keys, p[2])
-    foreach(k -> lookup[k] = length(keys), first(p))
+    idx = unique_push!(keys, p[2])
+    foreach(k -> lookup[k] = idx, first(p))
     return
 end
 flatten_cycle!(lookup, keys, v::Vector) = foreach(x -> flatten_cycle!(lookup, keys, x), v)
