@@ -1415,17 +1415,19 @@ function add_remaining_inputs!(get_callback, graph, attr, exclude = tuple())
 end
 
 """
-    add_theme!(graph::ComputeGraph, attr::DocumentedAttributes, T, scene, exclude, kwargs)
+    add_theme!(graph::ComputeGraph, attr::DocumentedAttributes, T, scene, exclude, kwargs, cycle)
 
 Resolves the theme (`theme(scene)[:Plot]` overwrites, inheriting from
 `theme(scene)` and fallbacks) for each attribute defined in `attributes` that
 is an `Input` not defined by `kwargs`. After this attributes are fully initialized.
 """
-function add_theme!(graph, attr, T, scene, exclude, kwargs)
+function add_theme!(graph, attr, T, scene, exclude, kwargs, cycle)
     # add merged keys from kwargs to exclusion list
     collect_merged_keys!(exclude, attr, kwargs)
     # fill out an array with resolved defaults from theme + plot
-    defaults = resolve_defaults(attr, scene, plotsym(T), NamedTuple(), exclude)
+    defaults = resolve_defaults(
+        attr, scene, plotsym(T), NamedTuple(), exclude, false, cycle
+    )
     # update anything that's an input and not excluded
     for (i, key) in enumerate(attr.merged_keys)
         if !(key in exclude) && haskey(graph.inputs, key)
@@ -1457,29 +1459,40 @@ function collect_merged_keys!(output, attr, kwargs, level = 1)
 end
 
 """
-    resolve_defaults(attr::DocumentedAttributes, scene, name::Symbol, kwargs, skip = tuple(), remove_kw = false)
+    resolve_defaults(
+        attr::DocumentedAttributes, scene, name::Symbol, user_kw,
+        skip = tuple(), remove_kw = false, cycle = nothing
+    )
 
 Creates a `Vector` of default attribute values in the same order as
 `attr.merged_keys`, as derived from themes and `attr`. This follows the
 standard priorities of attribute inheritance:
 
-1. `kwargs`
+1. `user_kw`
 2. `theme(scene)[name]` overwrites
 3. `attr.defaults` (if it is a value)
 4. `theme(scene)` if `attr.defaults` inherits
 5. inherit fallback
 
-`skip` can be used to skip resolving attributes based on their merged name.
+## Keyword Arguments
 
-`remove_kw` can be used to remove any kwarg that is used while generating the
-defaults vector.
+- `skip` can be used to skip resolving attributes based on their merged name.
+- `remove_kw` can be used to remove any user_kw that is used while generating the defaults vector.
+- `cycle` can be passed as an optional step 2.5 in default resolution. It resolves all
+    remaining defaults that are cycled to `nothing`.
 """
-function resolve_defaults(attr, scene, name::Symbol, kwargs, skip = tuple(), remove_kw = false)
+function resolve_defaults(
+        attr, scene, name::Symbol, kwargs,
+        skip = tuple(), remove_kw = false, cycle = nothing
+    )
     flattened = Vector{Any}(undef, length(attr.defaults))
     resolve_overwrites!(flattened, attr, kwargs, skip, remove_kw)
     default_theme = theme(scene)
     if haskey(default_theme, name)
         resolve_overwrites!(flattened, attr, default_theme[name], skip)
+    end
+    if !isnothing(cycle)
+        resolve_cylce!(flattened, attr, cycle, skip)
     end
     resolve_defaults!(flattened, attr, default_theme, skip)
     return flattened
@@ -1499,6 +1512,17 @@ function resolve_overwrites!(flattened, attr, kwargs, skip, remove = false, leve
     end
     if remove
         filter!(p -> !(p[1] in keys(attr.nesting.keytables[level])), kwargs)
+    end
+    return
+end
+
+function resolve_cylce!(flattened, attr, cycle, skip)
+    cycled_names = attrsyms(cycle)
+    for i in eachindex(flattened)
+        key = attr.merged_keys[i]
+        if in(key, cycled_names) && !isassigned(flattened, i) && !in(attr.merged_keys[i], skip)
+            flattened[i] = nothing
+        end
     end
     return
 end
