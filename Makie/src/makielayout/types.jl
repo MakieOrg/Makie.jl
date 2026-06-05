@@ -30,7 +30,7 @@ end
 
 # convert input to internal format
 function unique_push!(vec, val)
-    idx = findfirst(vec, val)
+    idx = findfirst(==(val), vec)
     if isnothing(idx)
         push!(vec, val)
         return length(vec)
