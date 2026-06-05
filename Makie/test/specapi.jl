@@ -356,7 +356,7 @@ function collect_cycle_indices(plots, indices = Int[])
         else
             # Pulling plot.cycle_index is what initializes cycling and increments
             # the scenes cycle counter(s). If we do it here we will not catch
-            # incorrect intiialization.
+            # incorrect initialization.
             cycle = p.cycle[]
             for key in Makie.attrsyms(cycle)
                 p.attributes[key][]
