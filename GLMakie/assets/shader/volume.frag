@@ -159,30 +159,88 @@ float rand(){
 
 vec4 volume(vec3 front, vec3 dir)
 {
-    // The per-voxel alpha channel is specified in units of opacity/length.
-    // If our voxels are not isotropic, then the distance that we trace through
-    // depends on the direction.
-    // Color:
-    // We treat samples as layers of semi-transparent colors mixed by OVER
-    // operators on top of an opaque background (scene background + other plots).
-    // Colors are mixed here and the background is later handled by blend operations.
-    //      (c3, a3) over [(c2, a2) over [(c1, a1) over (bg, 1)]]
-    //      = (c3*a3 + (c2*a2 + c1*a1*(1-a2) + bg*(1-a1)*(1-a2)) * (1-a3), 1)
-    //      = (c3*a3 + c2*a2*(1-a3) + c1*a1*(1-a2)*(1-a3) + bg*(1-a1)*(1-a2)*(1-a3), 1)
-    // We mix colors front to back, i.e. c3 is added first, then c2, then 1.
-    // Iteratively we have:
-    //      color = sample_rgb * sample_alpha * 1                       # c3*a3
-    //      transmittance = 1 * (1 - sample_alpha)                      # (1-a3)
-    //      color = color + sample_rgb * sample_alpha * transmittance   # [c3*a3] + c2*a2*[(1-a3)]
-    //      transmittance = transmittance * (1 - sample_alpha)          # [(1-a3)] * (1-a2)
-    //      color = color + sample_rgb * sample_alpha * transmittance   # [c3*a3 + c2*a2*(1-a3)] + c1*a1*[(1-a3)*(1-a2)]
-    //      transmittance = transmittance * (1 - sample_alpha)          # [(1-a3)*(1-a2)] * (1-a1)
-    // At the end of the iteration/sampling we need to reconstruct and (c, a) color
-    // that blends correctly with the background
-    //      final_color = c * a + bg * (1 - a)
-    //      => a = 1 - (prod_i (1 - alpha_i))   = 1 - transmittance
-    //      => c = new_rgb / a                  = color / (1 - transmittance)
-    vec3  pos = front;
+    /*
+    The per-voxel alpha channel is specified in units of opacity/length.
+    If our voxels are not isotropic, then the distance that we trace through
+    depends on the direction.
+
+    // Color Accumulation
+
+    1. As multiple over-blended layers
+
+    Let's consider that at each step we sample an RGBA color that then gets
+    blended by over operators in order (front over back). The general A over B
+    is given by:
+        a = A.a + B.a * (1 - A.a)
+        rgb = (A.rgb * A.a + B.rgb * B.a * (1 - A.a)) / a
+    With pre-multiplied alphas this simplifies to:
+        rgba = A + B * (1 - A.a)
+
+    We iterate through the volume front to back. This means we have A and add B
+    in each iteration. The alpha value of B is the sample alpha weighted by the
+    thickness of the sample:
+        B_alpha = step_size * sample.a
+    and the premultiplied color is:
+        B_color = B_alpha * sample.rgb
+    with blending we get:
+        A_color = A_color + B_color * (1 - A_alpha)
+        A_alpha = A_alpha + B_alpha * (1 - A_alpha)
+
+    When using transmittance = 1 - alpha instead of alpha for A:
+        A_color = A_color + B_color * A_trans
+        (1 - A_trans) = (1 - A_trans) + B_alpha * A_trans    | -1, * -1
+        <=> A_trans = A_trans - B_alpha * A_trans = A_trans * (1 - B_trans)
+
+    In total we get:
+    color = vec3(0)     // initial color has alpha = 0, which is premultiplied
+    transmittance = 1
+    for t = 0 .. N
+        rgb, density = sample(front + t * dir)
+        B_alpha = density * length(dir)
+        B_color = B_alpha * rgb
+        color += transmittance * B_color
+        transmittance *= 1 - B_alpha
+
+
+    2. More physical perspective
+
+    The light intensity decays in a medium following the Beer-Lambert law:
+        I(d) = I_0 * exp(-\int_0^d \sigma(t) dt)
+    where
+    - I is the light intensity
+    - d is the distance into the medium (i.e. d = length(n * dir))
+    - \sigma(t) is the particle density at some depth (i.e. at front + t * dir)
+
+    We can discretize this (\int -> \sum), pull the sum out of the exp
+    (\sum -> \prod) and Taylor expand exp (e^-x ≈ 1 - x) to get:
+        I(d) ≈ I_0 * \prod_0^d (1 - sigma(t) * delta_t)
+    in code terms:
+        transmittance(d) = 1 * \prod_0^d (1 - sample_density(front + t * dir) * length(dir))
+    which can be written iteratively as:
+        new_transmittance = prev_transmittance * (1 - new_sample_density * step_size)
+
+    We assume that the light intensity that is removed at each step is fully
+    reflected towards the viewer. Together with the sample color, we get:
+        reflected = prev_transmittance * new_sample_density * step_size * sample_rgb
+    To get the total color of the reflection, these terms needs to be summed
+
+    In total we get:
+        color = vec3(0)
+        transmittance = 1
+        for t = 0 .. N
+            rgb, density = sample(front + t * dir)
+            absorption = density * length(dir)
+            color += transmittance * absorption * rgb
+            transmittance *= 1 - absorption
+
+    3. Blending with scene/colorbuffer
+
+    Both versions output (premultiplied color, transmittance). Blending in Makie
+    (currently) assumes (color, alpha), so we need to reformat the output:
+        alpha = 1 - transmittance
+        color = premultiplied / alpha
+    */
+    vec3 pos = front;
     float transmittance = 1.0; // transmittance
     vec3 color_sum = vec3(0.0);
     int i = 0;
