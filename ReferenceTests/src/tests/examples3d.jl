@@ -891,7 +891,7 @@ end
 end
 
 @reference_test "Volume lowclip highclip" begin
-    data = [(x*x + y*y - z*z) for x in 0:10, y in 10:-1:0, z in 0:10]
+    data = [(x * x + y * y - z * z) for x in 0:10, y in 10:-1:0, z in 0:10]
     f = Figure()
 
     # mip is a bit special because colorrange affects value sampling
