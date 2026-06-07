@@ -264,6 +264,16 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
     )
 end
 
+# `inner` ⊆ `outer` iff any vertex or edge-midpoint is strictly inside (midpoints catch vertices shared on `outer`'s boundary, #5651)
+function _is_ring_contained(inner, outer)
+    any(p -> PolygonOps.inpolygon(p, outer) == 1, inner) && return true
+    @inbounds for i in firstindex(inner):(lastindex(inner) - 1)
+        mid = (inner[i] .+ inner[i + 1]) ./ 2
+        PolygonOps.inpolygon(mid, outer) == 1 && return true
+    end
+    return false
+end
+
 """
     _group_polys(points, ids)
 
@@ -278,13 +288,9 @@ function _group_polys(points, ids)
 
     polys_lastdouble = [push!(p, first(p)) for p in polys]
 
-    # this matrix stores whether poly i is contained in j
-    # because the marching squares algorithm won't give us any
-    # intersecting or overlapping polys, it should be enough to
-    # check if a single point is contained, saving some computation time
+    # whether poly i is contained in j (marching squares yields no intersecting polys)
     containment_matrix = [
-        p1 != p2 &&
-            PolygonOps.inpolygon(first(p1), p2) == 1
+        p1 !== p2 && _is_ring_contained(p1, p2)
             for p1 in polys_lastdouble, p2 in polys_lastdouble
     ]
 
