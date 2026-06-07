@@ -110,7 +110,7 @@ end
     volume(f[2, 1], -10 .. 10, -10 .. 10, -10 .. 10, data, algorithm = :absorption, absorption = 2)
     volume(f[1, 2], -10 .. 10, -10 .. 10, -10 .. 10, data; algorithm = :mip)
     volume(f[2, 2], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data; algorithm = :absorptionrgba, absorption = 2)
-    volume(f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, add_data; algorithm = :additive, alpha = 0.05)
+    volume(f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, add_data; algorithm = :additive, absorption = 0.05)
     volume(
         f[2, 3], -10 .. 10, -10 .. 10, -10 .. 10, index_data;
         algorithm = :indexedabsorption, colormap = Makie.resample(to_colormap(:viridis), N), absorption = 2
@@ -793,10 +793,10 @@ end
         algorithm = :absorptionrgba
     )
 
-    # TODO: doesn't work as intended anymore?
     volume(
-        f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data; attr...,
-        algorithm = :additive, alpha = 0.01
+        f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data;
+        clip_planes = attr.clip_planes, axis = attr.axis,
+        algorithm = :additive, absorption = 0.01
     )
     volume(
         f[2, 3], -10 .. 10, -10 .. 10, -10 .. 10, index_data; attr...,
