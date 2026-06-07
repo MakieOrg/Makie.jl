@@ -346,7 +346,7 @@ colormap. How exactly the color is derived depends on the algorithm used.
     More specifically, the algorithm does the following. For each pixel a light ray is generated from
     the viewer/camera, which samples the volume front to back. Each sample acquires a color (RGB) and
     particle density (alpha) as explained above. The particle density is weighted by the ray step size
-    and `absoprtion` to define the fraction of light that is reflected. A proportional amount of the
+    and `absorption` to define the fraction of light that is reflected. A proportional amount of the
     sampled color is then added to the pixels color and the light intensity is reduced accordingly.
 
     Note that this is very simplified compared to reality. The algorithm does not consider the
@@ -356,7 +356,7 @@ colormap. How exactly the color is derived depends on the algorithm used.
 
     This algorithm skips the colormapping and instead directly samples colors (RGB) and particle
     densities (alpha) from RGBA `volume` data. Beyond that, the algorithm behaves the same as
-    `:absoption`.
+    `:absorption`.
 
     #### `algorithm = :indexedabsorption`
 
