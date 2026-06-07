@@ -253,7 +253,7 @@ f
 using FileIO
 
 # Load a mesh with material information. This will produce a GeometryBasics.MetaMesh
-sponza = load(assetpath("sponza/sponza.obj"))
+sponza = load(assetpath("sponza/sponza.obj"), uvtype = Vec2f)
 
 # The MetaMesh contains a standard GeometryBasics.Mesh in `sponza.mesh` with
 # `mesh.views` defining the different sub-meshes, and material metadata in the
