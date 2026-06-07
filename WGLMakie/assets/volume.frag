@@ -253,7 +253,7 @@ vec4 additivergba(vec3 front, vec3 dir)
     vec4 integrated_color = vec4(0., 0., 0., 0.);
     int i = 0;
     for (i; i < samples ; ++i) {
-        vec4 density = texture(uniform_color, pos);
+        vec4 density = absorption * texture(uniform_color, pos);
         integrated_color = 1.0 - (1.0 - integrated_color) * (1.0 - density);
         pos += dir;
     }
