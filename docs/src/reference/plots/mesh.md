@@ -254,6 +254,7 @@ using FileIO
 
 # Load a mesh with material information. This will produce a GeometryBasics.MetaMesh
 sponza = load(assetpath("sponza/sponza.obj"), uvtype = Vec2f)
+sponza[:material_names][4] = "sp_01_stub_baza" # seems to be incorrect in the file
 
 # The MetaMesh contains a standard GeometryBasics.Mesh in `sponza.mesh` with
 # `mesh.views` defining the different sub-meshes, and material metadata in the
