@@ -401,6 +401,47 @@ App() do session
 end
 ```
 
+Or use the bundled `DATAINSPECTOR_CSS` to match GLMakie's `DataInspector` exactly,
+with no custom CSS:
+
+```julia
+App() do session
+    f, ax, pl = scatter(1:4, markersize=20, color=Float32[0.3, 0.4, 0.5, 0.6])
+    cb = js"""(plot, index) => {
+        const a = plot.geometry.attributes.wgl_positions;
+        const i = index * a.itemSize;
+        let s = `x: ${a.array[i].toFixed(3)}\ny: ${a.array[i+1].toFixed(3)}`;
+        if (a.itemSize > 2) s += `\nz: ${a.array[i+2].toFixed(3)}`;
+        return s;
+    }"""
+    tooltip = WGLMakie.ToolTip(f, cb; plots=pl,
+                               class="datainspector-popup", css=WGLMakie.DATAINSPECTOR_CSS)
+    return DOM.div(f, tooltip)
+end
+```
+
+The popup's appearance can be customized by passing your own CSS class and stylesheet via
+class and css. The default look comes from the bundled popup.css; here we use a plain
+square white box instead (your stylesheet must style both the class and its .show state):
+
+```@example wglmakie
+App() do session
+    f, ax, pl = scatter(1:4, markersize=20, color=Float32[0.3, 0.4, 0.5, 0.6])
+    style = DOM.style("""
+        .mytip {
+            position: absolute; display: none;
+            background: white; color: black;
+            border: 1px solid black; border-radius: 0;
+            padding: 2px 6px; font-family: sans-serif;
+        }
+        .mytip.show { display: block; }
+    """)
+    cb = js"""(plot, index) => "point " + index"""
+    tooltip = WGLMakie.ToolTip(f, cb; plots=pl, class="mytip", css=style)
+    return DOM.div(f, tooltip)
+end
+```
+
 ## Styling
 
 Bonito allows loading arbitrary CSS, and `DOM.xxx` wraps all existing HTML tags.

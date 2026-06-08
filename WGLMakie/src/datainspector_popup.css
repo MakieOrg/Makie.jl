@@ -1,0 +1,51 @@
+/* Opt-in style for WGLMakie.ToolTip that mimics the GLMakie DataInspector popup:
+   a square white box with a black outline and a downward tail at the data point.
+   Use with:  ToolTip(...; class="datainspector-popup", css=DATAINSPECTOR_CSS)      */
+
+.datainspector-popup {
+    position: absolute;
+    display: none;
+    z-index: 10000;
+    pointer-events: none;
+    /* sit centered above the picked point, leaving room for the tail */
+    transform: translate(-50%, calc(-100% - 8px));
+    background: white;
+    color: black;
+    border: 2px solid black;
+    border-radius: 0;
+    padding: 2px 6px;
+    white-space: pre;
+    font-family: "TeXGyreHerosMakie", sans-serif;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.datainspector-popup.show {
+    display: block;
+}
+
+/* downward tail: black outline (::before) + white fill (::after), 1px smaller */
+.datainspector-popup::before,
+.datainspector-popup::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-style: solid;
+}
+
+.datainspector-popup::before {
+    top: 100%;
+    transform: translateX(-50%);
+    border-width: 8px 7px 0 7px;
+    border-color: black transparent transparent transparent;
+}
+
+.datainspector-popup::after {
+    top: calc(100% - 1px);
+    transform: translateX(-50%);
+    border-width: 6px 5px 0 5px;
+    border-color: white transparent transparent transparent;
+}
