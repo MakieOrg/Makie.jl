@@ -3,7 +3,7 @@
 ## Unreleased
 
 - `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
-  `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#PR](https://github.com/MakieOrg/Makie.jl/pull/PR).
+  `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
 - `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).
 - Fixed `contourf` not rendering non-closed contours [#5651](https://github.com/MakieOrg/Makie.jl/issues/5651).
 - Fixed WGLMakie flickering while continuously resizing a canvas by re-rendering right after the resize.
