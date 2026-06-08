@@ -382,7 +382,8 @@ App() do session
         // the plot object is currently just the raw THREEJS mesh
         console.log(plot)
         // Which can be used to extract e.g. position or color:
-        const {pos, color} = plot.geometry.attributes
+        const pos = plot.geometry.attributes.wgl_positions
+        const color = plot.geometry.attributes.vertex_color
         console.log(pos)
         console.log(color)
         const x = pos.array[index*2] // everything is a flat array in JS
