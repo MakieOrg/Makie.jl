@@ -312,7 +312,19 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
     if old_int !== new_int
         close(old_int)
         for ss in screen.scene_states
-            ss.integrator_state = nothing
+            # Proactively release the old integrator's GPU buffers (work
+            # queues + pixel buffers are the bulk of GPU memory).  Just
+            # nulling the field defers reclamation to Julia's GC, which
+            # the next-render's VolPathState construction races and loses:
+            # peak memory becomes 2× state and OOMs on big scenes like
+            # Crown at 1400×1000. Hikari.free! requires GPU idle — the
+            # screen lock is held and the previous render's render! has
+            # already returned (synchronous download in colorbuffer), so
+            # the GPU is quiesced here.
+            if ss.integrator_state !== nothing
+                Hikari.free!(ss.integrator_state)
+                ss.integrator_state = nothing
+            end
             ss.needs_film_clear = true
         end
     end
