@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added an `absolute` attribute to `dendrogram` that keeps the input leaf positions instead of translating the root to `origin`, making it easy to align leaves to e.g. heatmap rows or columns [#5666](https://github.com/MakieOrg/Makie.jl/pull/5666).
 - `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).
 - Fixed `contourf` not rendering non-closed contours [#5651](https://github.com/MakieOrg/Makie.jl/issues/5651).
 - Fixed WGLMakie flickering while continuously resizing a canvas by re-rendering right after the resize.
