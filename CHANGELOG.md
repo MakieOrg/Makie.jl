@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ComputePipeline: the first resolve of a compute edge now runs the callback through a generic, compile-once path; the specialized `TypedEdge` resolve chain is only built when an edge resolves a second time (i.e. on its first update). Plots that are displayed but never updated skip that inference entirely, reducing first-plot compilation of not-precompiled plot types by 30-75% in the backend serialization stage, with no change to warm update performance.
 - Sped up `Axis` creation by ~25%: `text` plots only create their TeX-linesegments child plot when the text can actually produce line elements (LaTeXStrings), and the `RectangleZoom` selection mesh is created lazily on the first zoom drag.
 - Fixed WGLMakie scatter/sprite markers disappearing in 3D scenes when camera distances produce uniform values outside `mediump` (f16) range. WGLMakie now forces `highp` precision for all vertex/fragment uniforms.
 - Reworked `Textbox` with selections, multi-cursor, copy / cut / paste, and word / line navigation [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
