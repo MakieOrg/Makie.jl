@@ -48,14 +48,16 @@ export function execute_in_order(order, f) {
     orderedExecutor.insert(f, order);
 }
 
-export function dispose_screen(screen) {
+export function dispose_screen(screen, notify_close = true) {
     if (Object.keys(screen).length === 0) {
         return;
     }
     const { renderer, picking_target, root_scene, comm } = screen;
-    // this usually doesn't get through, since the session may already be closed
-    // in that case, window_open gets set from session.on_close
-    comm.notify({ window_open: false });
+    if (notify_close) {
+        // this usually doesn't get through, since the session may already be closed
+        // in that case, window_open gets set from session.on_close
+        comm.notify({ window_open: false });
+    }
     if (renderer) {
         const canvas = renderer.domElement;
         if (canvas.parentNode) {
@@ -134,7 +136,7 @@ function start_renderloop(three_scene) {
     // make sure we immediately render the first frame and dont wait 30ms
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
-        if (!check_screen(three_scene.screen)) {
+        if (three_scene.disposed || !check_screen(three_scene.screen)) {
             return false;
         }
         if (timestamp - last_time_stamp > time_per_frame) {
@@ -617,21 +619,41 @@ export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_p
         real_size.notify([final_width, final_height]);
 
         const init_scene = (scene_data) => {
+            // The julia side treats the JS scene as a cache of its state:
+            // every snapshot arriving on `scene_serialized` (re)builds the
+            // scene - the first one initializes, later ones (sent after a
+            // reconnect with stale state) swap the scene graph in place,
+            // keeping renderer, canvas and texture atlas alive.
+            const screen = canvas.wglmakie_screen;
+            const is_resync = !!(screen && screen.renderer);
             try {
-                const renderer = create_scene(
-                    wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height,
-                    framerate, resize_to, px_per_unit, scalefactor
-                );
-                // Remove spinner after successful initialization
-                done_init.notify(true);
-                spinner?.remove();
+                if (is_resync) {
+                    const old_scene = screen.root_scene;
+                    if (old_scene) {
+                        old_scene.disposed = true; // terminates its renderloop
+                        delete_three_scene(old_scene);
+                    }
+                    const three_scene = deserialize_scene(scene_data, screen);
+                    screen.root_scene = three_scene;
+                    start_renderloop(three_scene);
+                } else {
+                    const renderer = create_scene(
+                        wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height,
+                        framerate, resize_to, px_per_unit, scalefactor
+                    );
+                    // Remove spinner after successful initialization
+                    done_init.notify(true);
+                    spinner?.remove();
+                }
             } catch (e) {
                 Bonito.Connection.send_error("error initializing scene", e);
-                done_init.notify(e);
-                spinner?.remove();
+                if (!is_resync) {
+                    done_init.notify(e);
+                    spinner?.remove();
+                }
                 return;
             }
-            return false; // Deregister callback after first successful run
+            // stays registered: `scene_serialized` delivers resync snapshots
         };
         if (scene_serialized.value) {
             // If scene is already serialized, initialize immediately

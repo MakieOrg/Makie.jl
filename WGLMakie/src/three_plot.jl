@@ -88,12 +88,29 @@ function three_display(screen::Screen, session::Session, scene::Scene)
                         # We dont need to serialize again!
                         resize!(scene, size_tuple...)
                     end
+                    if screen.needs_resync
+                        # plots were inserted/deleted after the eager
+                        # serialization started - take a fresh snapshot
+                        screen.needs_resync = false
+                        serialized = serialize_scene(scene)
+                    end
                     # Now serialize with the correct size
                     scene_serialized[] = serialized
                 catch e
                     @warn "Error resizing/serializing scene" exception = (e, catch_backtrace())
                     done_init[] = e
                 end
+            end
+            return
+        end
+        # The websocket (re)connected while the JS scene state is stale
+        # (mutations while disconnected, see `Base.insert!`): rebuild from a
+        # fresh snapshot. On the first connect plot_initialized isn't ready
+        # and the real_size flow above owns the snapshot.
+        on(session, session.on_open) do _
+            if screen.needs_resync && isready(screen.plot_initialized)
+                screen.needs_resync = false
+                scene_serialized[] = serialize_scene(scene)
             end
             return
         end
@@ -152,5 +169,9 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         window_open[] = true
     end
     connect_scene_events!(screen, scene, comm)
-    return wrapper, done_init
+    # used by render_with_init to take a fresh snapshot when a mutation raced
+    # JS scene construction (flag checked after plot_initialized is set, so
+    # there is no window in which a set flag can be missed)
+    request_resync() = (scene_serialized[] = serialize_scene(scene))
+    return wrapper, done_init, request_resync
 end

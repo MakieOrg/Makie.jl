@@ -27,27 +27,8 @@ export function add_plot(scene, plot_data) {
     next_insert.forEach((f) => f());
 }
 
-// Operations (plot inserts/deletes) sent while the websocket wasn't
-// connected get delivered fused with the init messages on connect - which
-// can be before the target scene finished initializing (scene creation
-// needs a julia round trip for the canvas size). Defer such operations and
-// re-apply them whenever a new scene registers.
-const pending_plot_ops = [];
-
-function flush_pending_plot_ops() {
-    const remaining = [];
-    pending_plot_ops.forEach((op) => {
-        if (!op()) {
-            remaining.push(op);
-        }
-    });
-    pending_plot_ops.length = 0;
-    pending_plot_ops.push(...remaining);
-}
-
 export function add_scene(scene_id, three_scene) {
     scene_cache[scene_id] = three_scene;
-    flush_pending_plot_ops();
 }
 
 export function find_scene(scene_id) {
@@ -78,55 +59,27 @@ export function find_plots(plot_uuids) {
 }
 
 export function delete_scenes(scene_uuids, plot_uuids) {
-    const apply = () => {
-        plot_uuids.forEach((plot_id) => {
-            const plot = plot_cache[plot_id];
-            if (plot) {
-                delete_plot(plot);
-            }
-        });
-        // if a target scene hasn't initialized yet (operation queued while
-        // disconnected), retry once it registers
-        if (!scene_uuids.every((scene_id) => scene_cache[scene_id])) {
-            return false;
+    plot_uuids.forEach((plot_id) => {
+        const plot = plot_cache[plot_id];
+        if (plot) {
+            delete_plot(plot);
         }
-        scene_uuids.forEach((scene_id) => {
-            delete_scene(scene_id);
-        });
-        return true;
-    };
-    if (!apply()) {
-        pending_plot_ops.push(apply);
-    }
+    });
+    scene_uuids.forEach((scene_id) => {
+        delete_scene(scene_id);
+    });
 }
 
 export function insert_plot(scene_id, plot_data) {
-    const apply = () => {
-        const scene = find_scene(scene_id);
-        if (!scene) {
-            return false;
-        }
-        plot_data.forEach((plot) => {
-            add_plot(scene, plot);
-        });
-        return true;
-    };
-    if (!apply()) {
-        pending_plot_ops.push(apply);
-    }
+    const scene = find_scene(scene_id);
+    plot_data.forEach((plot) => {
+        add_plot(scene, plot);
+    });
 }
 
 export function delete_plots(plot_uuids) {
-    const apply = () => {
-        const plots = find_plots(plot_uuids);
-        plots.forEach(delete_plot);
-        // fully applied only if all uuids were found; otherwise re-try when
-        // a scene (with the pending plots) registers
-        return plots.length === plot_uuids.length;
-    };
-    if (!apply()) {
-        pending_plot_ops.push(apply);
-    }
+    const plots = find_plots(plot_uuids);
+    plots.forEach(delete_plot);
 }
 
 function convert_texture(scene, data) {

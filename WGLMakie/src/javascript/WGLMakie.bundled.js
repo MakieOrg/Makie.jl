@@ -22864,20 +22864,8 @@ function add_plot(scene, plot_data) {
     const next_insert = new Set(ON_NEXT_INSERT);
     next_insert.forEach((f)=>f());
 }
-const pending_plot_ops = [];
-function flush_pending_plot_ops() {
-    const remaining = [];
-    pending_plot_ops.forEach((op)=>{
-        if (!op()) {
-            remaining.push(op);
-        }
-    });
-    pending_plot_ops.length = 0;
-    pending_plot_ops.push(...remaining);
-}
 function add_scene(scene_id, three_scene) {
     scene_cache[scene_id] = three_scene;
-    flush_pending_plot_ops();
 }
 function find_scene(scene_id) {
     return scene_cache[scene_id];
@@ -22904,49 +22892,25 @@ function find_plots(plot_uuids) {
     return plots;
 }
 function delete_scenes(scene_uuids, plot_uuids) {
-    const apply = ()=>{
-        plot_uuids.forEach((plot_id)=>{
-            const plot = plot_cache[plot_id];
-            if (plot) {
-                delete_plot(plot);
-            }
-        });
-        if (!scene_uuids.every((scene_id)=>scene_cache[scene_id])) {
-            return false;
+    plot_uuids.forEach((plot_id)=>{
+        const plot = plot_cache[plot_id];
+        if (plot) {
+            delete_plot(plot);
         }
-        scene_uuids.forEach((scene_id)=>{
-            delete_scene(scene_id);
-        });
-        return true;
-    };
-    if (!apply()) {
-        pending_plot_ops.push(apply);
-    }
+    });
+    scene_uuids.forEach((scene_id)=>{
+        delete_scene(scene_id);
+    });
 }
 function insert_plot(scene_id, plot_data) {
-    const apply = ()=>{
-        const scene = find_scene(scene_id);
-        if (!scene) {
-            return false;
-        }
-        plot_data.forEach((plot)=>{
-            add_plot(scene, plot);
-        });
-        return true;
-    };
-    if (!apply()) {
-        pending_plot_ops.push(apply);
-    }
+    const scene = find_scene(scene_id);
+    plot_data.forEach((plot)=>{
+        add_plot(scene, plot);
+    });
 }
 function delete_plots(plot_uuids) {
-    const apply = ()=>{
-        const plots = find_plots(plot_uuids);
-        plots.forEach(delete_plot);
-        return plots.length === plot_uuids.length;
-    };
-    if (!apply()) {
-        pending_plot_ops.push(apply);
-    }
+    const plots = find_plots(plot_uuids);
+    plots.forEach(delete_plot);
 }
 function convert_texture(scene, data) {
     const tex = create_texture(scene, data);
@@ -24633,14 +24597,16 @@ function execute_in_order(order, f) {
     }
     orderedExecutor.insert(f, order);
 }
-function dispose_screen(screen) {
+function dispose_screen(screen, notify_close = true) {
     if (Object.keys(screen).length === 0) {
         return;
     }
     const { renderer , picking_target , root_scene , comm  } = screen;
-    comm.notify({
-        window_open: false
-    });
+    if (notify_close) {
+        comm.notify({
+            window_open: false
+        });
+    }
     if (renderer) {
         const canvas = renderer.domElement;
         if (canvas.parentNode) {
@@ -24712,7 +24678,7 @@ function start_renderloop(three_scene) {
     const time_per_frame = 1 / fps * 1000;
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
-        if (!check_screen(three_scene.screen)) {
+        if (three_scene.disposed || !check_screen(three_scene.screen)) {
             return false;
         }
         if (timestamp - last_time_stamp > time_per_frame) {
@@ -25044,17 +25010,31 @@ function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit
             final_height
         ]);
         const init_scene = (scene_data)=>{
+            const screen = canvas.wglmakie_screen;
+            const is_resync = !!(screen && screen.renderer);
             try {
-                create_scene(wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height, framerate, resize_to, px_per_unit, scalefactor);
-                done_init.notify(true);
-                spinner?.remove();
+                if (is_resync) {
+                    const old_scene = screen.root_scene;
+                    if (old_scene) {
+                        old_scene.disposed = true;
+                        delete_three_scene(old_scene);
+                    }
+                    const three_scene = deserialize_scene(scene_data, screen);
+                    screen.root_scene = three_scene;
+                    start_renderloop(three_scene);
+                } else {
+                    create_scene(wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height, framerate, resize_to, px_per_unit, scalefactor);
+                    done_init.notify(true);
+                    spinner?.remove();
+                }
             } catch (e) {
                 Bonito.Connection.send_error("error initializing scene", e);
-                done_init.notify(e);
-                spinner?.remove();
+                if (!is_resync) {
+                    done_init.notify(e);
+                    spinner?.remove();
+                }
                 return;
             }
-            return false;
         };
         if (scene_serialized.value) {
             init_scene(scene_serialized.value);
