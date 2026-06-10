@@ -157,6 +157,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     end
 
     if event.type === MouseEventTypes.leftdragstart
+        initialize_selection_mesh!(r, ax)
         data = Makie.apply_transform(inv_transf, event.data)
         prev_data = Makie.apply_transform(inv_transf, event.prev_data)
 

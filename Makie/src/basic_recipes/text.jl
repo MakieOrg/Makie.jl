@@ -422,7 +422,34 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     return tex_linesegments!(plot)
 end
 
+# Only LaTeXStrings produce TeX line elements (fraction bars, sqrt rules, ...);
+# plain strings and RichText never push anything into :linesegments.
+has_tex_lineelements(x::LaTeXString) = true
+has_tex_lineelements(x::AbstractVector) = any(has_tex_lineelements, x)
+has_tex_lineelements(x) = false
+
 function tex_linesegments!(plot)
+    # Creating the linesegments child plot is a significant part of text!'s
+    # cost (compute graph + backend setup) and most text never draws TeX line
+    # elements, so only create it when the text can actually produce segments.
+    if has_tex_lineelements(plot.input_text[])
+        create_tex_linesegments!(plot)
+        return plot
+    end
+    # Text inputs can be updated to LaTeXStrings later; watch for that (rare)
+    # transition and create the child plot when it happens.
+    obsfunc = Ref{Observables.ObserverFunction}()
+    obsfunc[] = on(plot.attributes[:input_text]) do texts
+        if has_tex_lineelements(texts)
+            create_tex_linesegments!(plot)
+            Observables.off(obsfunc[])
+        end
+        return
+    end
+    return plot
+end
+
+function create_tex_linesegments!(plot)
     register_model_clip_planes!(plot.attributes)
 
     # Don't user register_markerspace_positions() here so we skip calculating them
