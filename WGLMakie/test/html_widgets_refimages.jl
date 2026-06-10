@@ -256,7 +256,7 @@ function create_test_figure()
 end
 
 # Makie.inline!(Makie.automatic)
-edisplay = Bonito.use_electron_display(; devtools = false, options = Dict{String,Any}("show" => false))
+edisplay = Bonito.use_electron_display(; devtools = false, options = Dict{String, Any}("show" => false))
 # ReferenceTests.RECORDING_DIR[] = joinpath(pwd(), "WidgetTests")
 # ReferenceTests.REGISTERED_TESTS |> empty!
 
@@ -264,8 +264,10 @@ edisplay = Bonito.use_electron_display(; devtools = false, options = Dict{String
 let dpr = run(edisplay.window, "window.devicePixelRatio")
     if dpr != 1.0
         @info "Correcting devicePixelRatio from $dpr to 1.0"
-        run(edisplay.window.app,
-            "electron.BrowserWindow.fromId($(edisplay.window.window.id)).webContents.setZoomFactor($(1.0 / dpr))")
+        run(
+            edisplay.window.app,
+            "electron.BrowserWindow.fromId($(edisplay.window.window.id)).webContents.setZoomFactor($(1.0 / dpr))"
+        )
     end
 end
 
