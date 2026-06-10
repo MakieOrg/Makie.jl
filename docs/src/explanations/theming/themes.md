@@ -5,11 +5,9 @@ You can set attributes whenever you create an object, or you define a general st
 
 There are three functions you can use for that purpose:
 
-```julia
-set_theme!
-update_theme!
-with_theme
-```
+- [`set_theme!`](@ref)
+- [`update_theme!`](@ref)
+- [`with_theme`](@ref)
 
 There are also [Predefined themes](@ref) that may form a useful starting point.
 

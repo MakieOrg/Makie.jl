@@ -1,12 +1,7 @@
 name: Formatting
 on:
-  push:
-    branches:
-      - 'master'
-      - 'release-'
-    tags:
-      - '*'
-  pull_request:
+  workflow_call:
+
 jobs:
   runic:
     name: Runic formatting
