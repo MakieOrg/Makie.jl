@@ -33,14 +33,12 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
-          # HTTP@2 stack: matches the dev setup these branches are developed
-          # and tested against (HTTP 2.0 is unregistered, Bonito sd/http2
-          # requires the matching websocket stack, Reseau/MsgPack carry
-          # not-yet-released fixes)
+          # HTTP@2 stack: Bonito sd/http2 also allows HTTP 1.x, so pin HTTP 2
+          # explicitly; MsgPack/ElectronCall branches carry not-yet-released
+          # fixes
           Pkg.add([
               PackageSpec(url="https://github.com/SimonDanisch/Bonito.jl.git", rev="sd/http2"),
-              PackageSpec(url="https://github.com/SimonDanisch/HTTP.jl.git", rev="sd/ws-receive-perf"),
-              PackageSpec(url="https://github.com/SimonDanisch/Reseau.jl.git", rev="sd/iopoll-sticky-wake"),
+              PackageSpec(name="HTTP", version="2.1.1"),
               PackageSpec(url="https://github.com/JuliaIO/MsgPack.jl.git", rev="perf/write-be"),
               PackageSpec(url="https://github.com/IanButterworth/ElectronCall.jl.git", rev="sd/fixes"),
           ])
