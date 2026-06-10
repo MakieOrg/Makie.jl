@@ -40,6 +40,10 @@ let
             figlike.plot.color = rand(4)
             figlike.plot.markersize = 20.0f0
             Makie.xlims!(figlike.axis, 0, 5)
+            # every real display triggers a resize (browser reports the actual
+            # canvas size), which re-resolves the whole graph - cover it so the
+            # typed resolve chains built on that path are precompiled
+            resize!(Makie.get_scene(figlike), 850, 650)
             Makie.second_resolve(figlike, :wgl_renderobject)
             close(session)
             # scalar color update + limits change (the zoom/pan path) on a
