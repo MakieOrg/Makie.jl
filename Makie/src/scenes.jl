@@ -686,6 +686,12 @@ not_in_data_space(p) = !is_data_space(p)
 function center!(scene::Scene, padding = 0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
     w = widths(bb)
+    # An empty scene (or one whose data hasn't laid out yet) has an undefined
+    # bounding box - boundingbox falls back to a zero-width / Inf-width Rect.
+    # Re-centering off that produces an Inf near/far plane and crashes
+    # perspectiveprojection. Skip silently; once the scene has data a later
+    # camera/limit update will recenter properly.
+    (any(!isfinite, w) || any(!isfinite, minimum(bb)) || iszero(w)) && return scene
     pad = w .* padding
     bb = Rect3d(minimum(bb) .- pad, w .+ 2pad)
     update_cam!(scene, bb)

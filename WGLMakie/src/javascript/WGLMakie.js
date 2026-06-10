@@ -490,17 +490,19 @@ function add_canvas_events(screen, comm, resize_to) {
 }
 
 function threejs_module(canvas) {
-
-    let context = canvas.getContext("webgl2", {
+    // `failIfMajorPerformanceCaveat: false` keeps the browser from returning a
+    // null context when it would otherwise refuse the hardware path (e.g. a missconfigured GPU) — it falls back to
+    // a software context instead of handing us `null`.
+    const context_options = {
         preserveDrawingBuffer: true,
-    });
+        failIfMajorPerformanceCaveat: false,
+    };
+    let context = canvas.getContext("webgl2", context_options);
     if (!context) {
         console.warn(
             "WebGL 2.0 not supported by browser, falling back to WebGL 1.0 (Volume plots will not work)"
         );
-        context = canvas.getContext("webgl", {
-            preserveDrawingBuffer: true,
-        });
+        context = canvas.getContext("webgl", context_options);
     }
     if (!context) {
         // Sigh, safari or something
@@ -721,9 +723,14 @@ function create_scene(
     const renderer = threejs_module(canvas);
 
     if (!renderer) {
+        // The browser refused a WebGL context (returns `null`). Show the
+        // WebGL-error message and bail — continuing with an undefined renderer
+        // throws `Cannot set properties of undefined (setting '_width')` in
+        // set_render_size and takes down the whole page init.
         const warning = getWebGLErrorMessage();
         // wrapper.removeChild(canvas)
         wrapper.appendChild(warning);
+        return;
     }
 
     const camera = new THREE.PerspectiveCamera(45, 1, 0, 100);
@@ -755,6 +762,20 @@ function create_scene(
     canvas_width.on((w_h) => {
         // `renderer.setSize` correctly updates `canvas` dimensions
         set_render_size(screen, ...w_h);
+        // Setting `canvas.width/height` clears the drawing buffer. Without an
+        // immediate redraw the canvas stays blank until the next renderloop
+        // tick (up to ~1/fps later), which shows up as flicker / black frames
+        // while continuously resizing (e.g. dragging a split-pane divider).
+        // Re-render right after the resize. Deferred to a microtask so sibling
+        // observable updates from the same message (notably the scene viewport,
+        // which `resize!` updates alongside the canvas size) are applied first;
+        // the microtask still runs before the browser paints, so no blank frame
+        // reaches the screen.
+        queueMicrotask(() => {
+            if (screen.root_scene) {
+                render_scene(screen.root_scene);
+            }
+        });
     });
     const gl = renderer.getContext();
     const err = gl.getError();
