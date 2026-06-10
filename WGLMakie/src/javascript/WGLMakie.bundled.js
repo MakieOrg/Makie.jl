@@ -22864,8 +22864,20 @@ function add_plot(scene, plot_data) {
     const next_insert = new Set(ON_NEXT_INSERT);
     next_insert.forEach((f)=>f());
 }
+const pending_plot_ops = [];
+function flush_pending_plot_ops() {
+    const remaining = [];
+    pending_plot_ops.forEach((op)=>{
+        if (!op()) {
+            remaining.push(op);
+        }
+    });
+    pending_plot_ops.length = 0;
+    pending_plot_ops.push(...remaining);
+}
 function add_scene(scene_id, three_scene) {
     scene_cache[scene_id] = three_scene;
+    flush_pending_plot_ops();
 }
 function find_scene(scene_id) {
     return scene_cache[scene_id];
@@ -22892,25 +22904,49 @@ function find_plots(plot_uuids) {
     return plots;
 }
 function delete_scenes(scene_uuids, plot_uuids) {
-    plot_uuids.forEach((plot_id)=>{
-        const plot = plot_cache[plot_id];
-        if (plot) {
-            delete_plot(plot);
+    const apply = ()=>{
+        plot_uuids.forEach((plot_id)=>{
+            const plot = plot_cache[plot_id];
+            if (plot) {
+                delete_plot(plot);
+            }
+        });
+        if (!scene_uuids.every((scene_id)=>scene_cache[scene_id])) {
+            return false;
         }
-    });
-    scene_uuids.forEach((scene_id)=>{
-        delete_scene(scene_id);
-    });
+        scene_uuids.forEach((scene_id)=>{
+            delete_scene(scene_id);
+        });
+        return true;
+    };
+    if (!apply()) {
+        pending_plot_ops.push(apply);
+    }
 }
 function insert_plot(scene_id, plot_data) {
-    const scene = find_scene(scene_id);
-    plot_data.forEach((plot)=>{
-        add_plot(scene, plot);
-    });
+    const apply = ()=>{
+        const scene = find_scene(scene_id);
+        if (!scene) {
+            return false;
+        }
+        plot_data.forEach((plot)=>{
+            add_plot(scene, plot);
+        });
+        return true;
+    };
+    if (!apply()) {
+        pending_plot_ops.push(apply);
+    }
 }
 function delete_plots(plot_uuids) {
-    const plots = find_plots(plot_uuids);
-    plots.forEach(delete_plot);
+    const apply = ()=>{
+        const plots = find_plots(plot_uuids);
+        plots.forEach(delete_plot);
+        return plots.length === plot_uuids.length;
+    };
+    if (!apply()) {
+        pending_plot_ops.push(apply);
+    }
 }
 function convert_texture(scene, data) {
     const tex = create_texture(scene, data);
