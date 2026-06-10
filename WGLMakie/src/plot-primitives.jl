@@ -645,6 +645,7 @@ function create_volume_shader(attr)
         :shininess => attr.shininess,
         :model => attr.uniform_model,
         :depth_shift => attr.depth_shift,
+        :samples => attr.samples,
 
         # these get filled in later by serialization, but we need them
         # as dummy values here, so that the correct uniforms are emitted
@@ -676,6 +677,7 @@ function create_shader(scene::Scene, plot::Volume)
         :diffuse, :specular, :shininess, :backlight, :depth_shift,
         :lowclip_color, :highclip_color, :nan_color,
         :uniform_model, :uniform_num_clip_planes, :uniform_clip_planes, :visible,
+        :samples,
     ]
     return create_wgl_renderobject(create_volume_shader, attr, inputs)
 end

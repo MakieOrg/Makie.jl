@@ -11,7 +11,27 @@ conversion_trait(::Type{<:Text}, args...) = PointBased()
 convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
 # text also allows :baseline and resolves it later
-convert_attribute(align, ::key"align", ::key"text") = Ref{Any}(align)
+function convert_attribute(align, ::key"align", ::key"text")
+    validate_text_align(align)
+    return Ref{Any}(align)
+end
+
+function validate_text_align(al::Union{Tuple, StaticVector})
+    if length(al) != 2
+        error("Text align must be a two-element tuple, got $(repr(al))")
+    end
+    if !(al[1] isa Real || al[1] in (:left, :right, :center))
+        error("Horizontal text align must be a Real or :left, :right, :center. Got $(repr(al[1]))")
+    end
+    if !(al[2] isa Real || al[2] in (:top, :bottom, :center, :baseline))
+        error("Vertical text align must be a Real or :top, :bottom, :center, :baseline. Got $(repr(al[2]))")
+    end
+    return
+end
+
+validate_text_align(als::AbstractVector) = foreach(validate_text_align, als)
+
+validate_text_align(al) = error("Text align must be a two-element tuple, got $(repr(al))")
 
 # Positions are always vectors so text should be too
 convert_attribute(str::AbstractString, ::key"text", ::key"text") = Ref{Any}([str]) # don't fix string type
