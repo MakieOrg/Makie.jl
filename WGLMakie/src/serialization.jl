@@ -76,7 +76,7 @@ Base.size(x::NoDataTextureAtlas) = x.dims
 Base.show(io::IO, ::NoDataTextureAtlas) = print(io, "NoDataTextureAtlas()")
 
 function serialize_three(fta::NoDataTextureAtlas)
-    tex = Dict(
+    tex = Dict{Symbol, Any}(
         :type => "Sampler", :data => "texture_atlas",
         :size => [fta.dims...], :three_format => three_format(Float16),
         :three_type => three_type(Float16),
@@ -90,7 +90,7 @@ function serialize_three(fta::NoDataTextureAtlas)
 end
 
 function serialize_three(color::Sampler{T, N}) where {T, N}
-    tex = Dict(
+    tex = Dict{Symbol, Any}(
         :type => "Sampler",
         :data => serialize_three(color.data),
         :size => Int32[size(color.data)...],
@@ -171,7 +171,7 @@ function ShaderAbstractions.convert_uniform(
 end
 
 function serialize_buffer_attribute(buffer::AbstractVector{T}) where {T}
-    return Dict(:flat => serialize_three(buffer), :type_length => tlength(T))
+    return Dict{Symbol, Any}(:flat => serialize_three(buffer), :type_length => tlength(T))
 end
 
 
@@ -188,7 +188,7 @@ function serialize_scene(scene::Scene)
     cam_controls = cameracontrols(scene)
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
-        dict = Dict((f => lift(x -> serialize_three(Float32.(x)), scene, getfield(cam_controls, f)) for f in fields))
+        dict = Dict{Symbol, Any}((f => lift(x -> serialize_three(Float32.(x)), scene, getfield(cam_controls, f)) for f in fields))
         dict[:resolution] = lift(res -> Int32[res...], scene, scene.camera.resolution; ignore_equal_values = true)
         dict
     else
@@ -210,7 +210,7 @@ function serialize_scene(scene::Scene)
         return
     end
 
-    serialized = Dict(
+    serialized = Dict{Symbol, Any}(
         :viewport => pixel_area,
         :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor; ignore_equal_values = true),
         :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor; ignore_equal_values = true),

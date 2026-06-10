@@ -24,6 +24,18 @@ let
     @compile_workload begin
         WGLMakie.activate!()
         include(Makie.SHARED_PRECOMPILE_PATH)
+        # The binary websocket message path: packing a serialized scene is
+        # what a live browser connection compiles on first display.
+        let
+            figlike = Makie.scatter(1:4; color = rand(4))
+            session = Session()
+            app = App(() -> DOM.div(figlike))
+            dom = Bonito.session_dom(session, app)
+            show(IOBuffer(), dom)
+            data = WGLMakie.serialize_scene(Makie.get_scene(figlike))
+            Bonito.serialize_binary(session, data)
+            close(session)
+        end
         # Cleanup globals to avoid serializing stale state (servers, sessions, fonts, figures, tasks)
         # Note: __init__ doesn't run during precompilation, so we must always clean up here
         Bonito.cleanup_globals()
