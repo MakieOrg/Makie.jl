@@ -454,7 +454,29 @@ end
 
 export cleanup_globals
 
+import PrecompileTools
+
 const SHARED_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile.jl")
+const SHARED_PRECOMPILE_FULL_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile-full.jl")
+
+"""
+    shared_precompile_paths()
+
+Returns the workload files Makie and the backends include during
+precompilation. Controlled by the Makie preference
+`precompile_workload_level`:
+
+- `"default"`: the standard workload (`shared-precompile.jl`)
+- `"full"`: additionally covers the long tail of common recipes
+  (`shared-precompile-full.jl`) for a near compile-free first plot of most
+  plot types, at the cost of longer package precompilation.
+"""
+function shared_precompile_paths()
+    level = PrecompileTools.Preferences.@load_preference("precompile_workload_level", "default")
+    paths = String[SHARED_PRECOMPILE_PATH]
+    level == "full" && push!(paths, SHARED_PRECOMPILE_FULL_PATH)
+    return paths
+end
 
 include("precompiles.jl")
 
