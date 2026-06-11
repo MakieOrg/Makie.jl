@@ -1708,6 +1708,8 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     )
 end
 
+convert_attribute(value, ::key"samples", ::key"volume") = Int32(value)
+
 #=
 The below is the output from:
 ```julia
