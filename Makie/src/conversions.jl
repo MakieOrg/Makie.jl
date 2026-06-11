@@ -814,8 +814,8 @@ smallfloat_convert(x::N0f8) = x
 smallfloat_convert(x::Float16) = x
 smallfloat_convert(x::Real) = Float32(x)
 smallfloat_convert(x::VecTypes) = smallfloat_convert.(x)
-smallfloat_convert(x::RGB) = RGB(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)))
-smallfloat_convert(x::RGBA) = RGB(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)), smallfloat_convert(alpha(x)))
+smallfloat_convert(x::Color) = RGB(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)))
+smallfloat_convert(x::TransparentColor) = RGBA(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)), smallfloat_convert(alpha(x)))
 
 """
     to_triangles(indices)

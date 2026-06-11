@@ -121,6 +121,24 @@ edisplay = Bonito.use_electron_display(devtools = true)
         end
     end
 
+    @testset "small float passthrough" begin
+        scene = Scene()
+        p1 = volume!(scene, rand(N0f8, 4,4,4))
+        p2 = volume!(scene, rand(Float16, 4,4,4))
+        p3 = volume!(scene, rand(RGBA{N0f8}, 4,4,4), algorithm = :absorptionrgba)
+        p4 = volume!(scene, rand(RGBA{Float16}, 4,4,4), algorithm = :absorptionrgba)
+        # p5 = mesh!(scene, Rect2f(0,0,1,1), color = rand(RGBA{N0f8}, 4, 4))
+        # p6 = scatter!(scene, 1:4, color = rand(N0f8, 4))
+        screen = display(scene, visible = false)
+        sleep(2)
+
+        @test eltype(p1.wgl_renderobject[][:uniforms][:uniform_color][:data]) === N0f8
+        @test eltype(p2.wgl_renderobject[][:uniforms][:uniform_color][:data]) === Float16
+        @test eltype(p3.wgl_renderobject[][:uniforms][:uniform_color][:data]) === UInt8 # RGBA gets splatted
+        @test_broken eltype(p4.wgl_renderobject[][:uniforms][:uniform_color][:data]) === Float16 # can we allow Float16 to pass to js?
+        # @test eltype(p5.gl_renderobject[][:image]) === RGBA{N0f8}
+        # @test eltype(p6.gl_renderobject[].vertexarray.buffers["intensity"]) === N0f8
+    end
 
     @testset "Tick Events" begin
         function check_tick(tick, state, count)

@@ -509,3 +509,21 @@ end
     end
     @test real_bytesize[] == sizeof(eltype(indexbuffer))
 end
+
+@testset "small float passthrough" begin
+    scene = Scene()
+    p1 = volume!(scene, rand(N0f8, 4,4,4))
+    p2 = volume!(scene, rand(Float16, 4,4,4))
+    p3 = volume!(scene, rand(RGBA{N0f8}, 4,4,4), algorithm = :absorptionrgba)
+    p4 = volume!(scene, rand(RGBA{Float16}, 4,4,4), algorithm = :absorptionrgba)
+    # p5 = mesh!(scene, Rect2f(0,0,1,1), color = rand(RGBA{N0f8}, 4, 4))
+    # p6 = scatter!(scene, 1:4, color = rand(N0f8, 4))
+    screen = display(scene, visible = false)
+
+    @test eltype(p1.gl_renderobject[][:volumedata]) === N0f8
+    @test eltype(p2.gl_renderobject[][:volumedata]) === Float16
+    @test eltype(p3.gl_renderobject[][:volumedata]) === RGBA{N0f8}
+    @test eltype(p4.gl_renderobject[][:volumedata]) === RGBA{Float16}
+    # @test eltype(p5.gl_renderobject[][:image]) === RGBA{N0f8}
+    # @test eltype(p6.gl_renderobject[].vertexarray.buffers["intensity"]) === N0f8
+end
