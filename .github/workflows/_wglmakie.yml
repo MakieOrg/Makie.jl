@@ -33,14 +33,17 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
-          # HTTP@2 stack: Bonito sd/http2 also allows HTTP 1.x, so pin HTTP 2
-          # explicitly; MsgPack/ElectronCall branches carry not-yet-released
-          # fixes. The Reseau branch carries the gc-safe epoll fix - registry
-          # Reseau 1.2.x runs an eager poller that doubles GC pauses and slows
-          # every post-HTTP package load ~3x; drop the pin once released.
+          # HTTP@2 stack with not-yet-released fixes (drop the branch pins as
+          # they get released):
+          # - HTTP sd/write-invalidations: 2.1.1 + invalidation-free write/
+          #   websocket paths (registry 2.1.1 loses ~13k method instances in
+          #   other packages' pkgimages at load)
+          # - Reseau sd/load-time-improvements: gc-safe epoll fix (registry
+          #   1.2.x runs an eager poller that doubles GC pauses and slows
+          #   every post-HTTP package load ~3x)
           Pkg.add([
               PackageSpec(url="https://github.com/SimonDanisch/Bonito.jl.git", rev="sd/http2"),
-              PackageSpec(name="HTTP", version="2.1.1"),
+              PackageSpec(url="https://github.com/SimonDanisch/HTTP.jl.git", rev="sd/write-invalidations"),
               PackageSpec(url="https://github.com/SimonDanisch/Reseau.jl.git", rev="sd/load-time-improvements"),
               PackageSpec(url="https://github.com/JuliaIO/MsgPack.jl.git", rev="perf/write-be"),
               PackageSpec(url="https://github.com/IanButterworth/ElectronCall.jl.git", rev="sd/fixes"),

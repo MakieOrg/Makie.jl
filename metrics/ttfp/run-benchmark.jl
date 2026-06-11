@@ -60,7 +60,8 @@ if Package == "WGLMakie"
     # registered Bonito + Electron.
     Pkg.add([
         (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/http2"),
-        (; name = "HTTP", version = "2.1.1"),
+        # 2.1.1 + invalidation-free write/websocket paths; drop once released
+        (; url = "https://github.com/SimonDanisch/HTTP.jl.git", rev = "sd/write-invalidations"),
         # gc-safe epoll fix: registry Reseau 1.2.x slows every post-HTTP
         # package load ~3x (eager poller doubles GC pauses), which would
         # dominate the `using` benchmark; drop the pin once released
