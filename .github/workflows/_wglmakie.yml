@@ -35,10 +35,13 @@ jobs:
           pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
           # HTTP@2 stack: Bonito sd/http2 also allows HTTP 1.x, so pin HTTP 2
           # explicitly; MsgPack/ElectronCall branches carry not-yet-released
-          # fixes
+          # fixes. The Reseau branch carries the gc-safe epoll fix - registry
+          # Reseau 1.2.x runs an eager poller that doubles GC pauses and slows
+          # every post-HTTP package load ~3x; drop the pin once released.
           Pkg.add([
               PackageSpec(url="https://github.com/SimonDanisch/Bonito.jl.git", rev="sd/http2"),
               PackageSpec(name="HTTP", version="2.1.1"),
+              PackageSpec(url="https://github.com/SimonDanisch/Reseau.jl.git", rev="sd/load-time-improvements"),
               PackageSpec(url="https://github.com/JuliaIO/MsgPack.jl.git", rev="perf/write-be"),
               PackageSpec(url="https://github.com/IanButterworth/ElectronCall.jl.git", rev="sd/fixes"),
           ])

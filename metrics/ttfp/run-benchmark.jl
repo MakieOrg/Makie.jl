@@ -61,6 +61,10 @@ if Package == "WGLMakie"
     Pkg.add([
         (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/http2"),
         (; name = "HTTP", version = "2.1.1"),
+        # gc-safe epoll fix: registry Reseau 1.2.x slows every post-HTTP
+        # package load ~3x (eager poller doubles GC pauses), which would
+        # dominate the `using` benchmark; drop the pin once released
+        (; url = "https://github.com/SimonDanisch/Reseau.jl.git", rev = "sd/load-time-improvements"),
         (; url = "https://github.com/JuliaIO/MsgPack.jl.git", rev = "perf/write-be"),
         (; url = "https://github.com/IanButterworth/ElectronCall.jl.git", rev = "sd/fixes"),
     ])
