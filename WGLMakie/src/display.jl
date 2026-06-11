@@ -128,22 +128,30 @@ function poll_all_plots(scene)
     end
 end
 
+# Body of the polling task in `start_polling_loop!`. A named function so the
+# precompile directive in precompiles.jl can cover it - as an anonymous task
+# body it cost ~80ms of first-display inference.
+function run_polling_loop(screen::Screen, scene::Scene, isrunning::Threads.Atomic{Bool})
+    while !Makie.isclosed(scene) && isrunning[]
+        try
+            poll_all_plots(scene)
+        catch e
+            @error "Error in polling loop" exception = (e, catch_backtrace())
+        end
+        sleep(1 / 100)
+    end
+    try
+        close(screen; from_close = true)
+    catch e
+        @error "Error closing screen in polling loop" exception = (e, catch_backtrace())
+    end
+    return
+end
+
 function start_polling_loop!(screen, scene)
     scene.isclosed = false
     return Makie.async_tracked() do isrunning
-        while !Makie.isclosed(scene) && isrunning[]
-            try
-                poll_all_plots(scene)
-            catch e
-                @error "Error in polling loop" exception = (e, catch_backtrace())
-            end
-            sleep(1 / 100)
-        end
-        try
-            close(screen; from_close = true)
-        catch e
-            @error "Error closing screen in polling loop" exception = (e, catch_backtrace())
-        end
+        run_polling_loop(screen, scene, isrunning)
     end
 end
 
