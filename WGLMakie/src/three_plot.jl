@@ -173,6 +173,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
                     $(scene_serialized),
                     $comm,
                     $(config.framerate),
+                    $(config.render_on_demand),
                     $(done_init)
                 )
             })

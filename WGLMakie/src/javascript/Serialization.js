@@ -187,6 +187,10 @@ export function deserialize_scene_recursive(data, screen) {
     scene.visible = data.visible;
 
     const camera = new Camera.MakieCamera();
+    // Give the camera a back-ref to the screen so update_matrices can request a
+    // redraw under on-demand rendering. One camera per scene, all sharing this
+    // screen, so the ref is unambiguous.
+    camera.screen = screen;
 
     scene.wgl_camera = camera;
 

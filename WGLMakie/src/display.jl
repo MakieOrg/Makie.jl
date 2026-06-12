@@ -1,5 +1,6 @@
 """
 * `framerate = 30`: Set framerate (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
+* `render_on_demand = true`: If `true`, the scene is only re-rendered when something actually changed (a plot attribute or the camera). This keeps idle scenes from consuming GPU/CPU, which matters a lot with many plots on a page. Set to `false` for a classic continuous render loop.
 * `resize_to = nothing`: Resize the canvas to the parent element with `resize_to=:parent`, or to the body if `resize_to = :body`. The default `nothing`, will resize nothing.
     A tuple is allowed too, with the same values just for width/height.
 * `use_html_widgets = false`: Whether to replace the Makie Block widgets with HTML native widgets.
@@ -7,6 +8,7 @@
 """
 struct ScreenConfig
     framerate::Float64 # =30.0
+    render_on_demand::Bool # =true
     resize_to::Any # nothing
     # We use nothing, since that serializes correctly to nothing in JS, which is important since that's where we calculate the defaults!
     # For the theming, we need to use Automatic though, since that's the Makie meaning for gets calculated somewhere else
@@ -16,7 +18,7 @@ struct ScreenConfig
     use_html_widgets::Bool
     spinner::Any # The spinner component to show while loading
     function ScreenConfig(
-            framerate::Number, resize_to::Any, px_per_unit::Union{Number, Automatic, Nothing},
+            framerate::Number, render_on_demand::Bool, resize_to::Any, px_per_unit::Union{Number, Automatic, Nothing},
             scalefactor::Union{Number, Automatic, Nothing}, resize_to_body::Union{Nothing, Bool},
             use_html_widgets::Bool, spinner::Any
         )
@@ -42,7 +44,7 @@ struct ScreenConfig
         if !(resize_to isa Union{ResizeType, Tuple{ResizeType, ResizeType}})
             error("Only nothing, :parent, or :body allowed, or a tuple of those for width/height.")
         end
-        return new(framerate, resize_to, px_per_unit, scalefactor, false, use_html_widgets, spinner)
+        return new(framerate, render_on_demand, resize_to, px_per_unit, scalefactor, false, use_html_widgets, spinner)
     end
 end
 """
@@ -263,6 +265,7 @@ function Base.show(io::IO, screen::Screen)
     return print(
         io, """WGLMakie.Screen(
             framerate = $(c.framerate),
+            render_on_demand = $(c.render_on_demand),
             resize_to = $(c.resize_to),
             px_per_unit = $(isnothing(ppu) ? :automatic : ppu),
             scalefactor = $(isnothing(sf) ? :automatic : sf),
