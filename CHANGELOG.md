@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed `Legend` showing the wrong linestyle for plots that explicitly set `linestyle = :solid` when a `Cycle([:linestyle])` theme is active [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267).
 - `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).
 - Fixed `contourf` not rendering non-closed contours [#5651](https://github.com/MakieOrg/Makie.jl/issues/5651).
 - Fixed WGLMakie flickering while continuously resizing a canvas by re-rendering right after the resize.
