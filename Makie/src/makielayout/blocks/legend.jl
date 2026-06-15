@@ -418,6 +418,9 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Re
     attrs = element.attributes
     fracpoints = attrs.markerpoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
+    # We need to explicitly pass `cycle = nothing` to avoid issues with cycles, see
+    # the comment in
+    # legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     scat = scatter!(
         scene, points, color = attrs.markercolor, marker = attrs.marker,
         markersize = attrs.markersize,
@@ -426,6 +429,7 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Re
         colormap = attrs.markercolormap,
         colorrange = attrs.markercolorrange,
         alpha = attrs.alpha,
+        cycle = nothing,
     )
 
     return [scat]
@@ -437,11 +441,22 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
 
     fracpoints = attrs.linepoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
+    # We need to explicitly pass `cycle = nothing` to avoid issues with cycles changing
+    # the linestyle when also passing a linestyle explicitly to some plot, see
+    # https://github.com/MakieOrg/Makie.jl/issues/5267
+    # The problem is that `line_diff_pattern(ls::Symbol, gaps::GapType = :normal)` and
+    # thus `line_pattern(linestyle::Symbol, gaps::GapType)` use the value `nothing`
+    # to indicate a solid line. However, `nothing` is also used as default value to
+    # specify that users did not request anything special. Thus, the cycle checks
+    # whether the linestyle is `nothing` to decide whether to apply the pattern or not,
+    # which leads to issues when users explicitly set the linestyle to solid when a
+    # cycle is used.
     lin = lines!(
         scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
         colormap = attrs.linecolormap, colorrange = attrs.linecolorrange,
         linestyle = attrs.linestyle, linecap = attrs.linecap, joinstyle = attrs.joinstyle,
-        inspectable = false, alpha = attrs.alpha
+        inspectable = false, alpha = attrs.alpha,
+        cycle = nothing
     )
 
     return [lin]
@@ -452,11 +467,15 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
     attrs = element.attributes
     fracpoints = attrs.polypoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
+    # We need to explicitly pass `cycle = nothing` to avoid issues with cycles, see
+    # the comment in
+    # legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     pol = poly!(
         scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
         strokecolor = attrs.polystrokecolor, inspectable = false,
         colormap = attrs.polycolormap, colorrange = attrs.polycolorrange,
-        linestyle = attrs.linestyle, alpha = attrs.alpha
+        linestyle = attrs.linestyle, alpha = attrs.alpha,
+        cycle = nothing
     )
 
     return [pol]
@@ -484,12 +503,16 @@ end
 function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attr = element.attributes
+    # We need to explicitly pass `cycle = nothing` to avoid issues with cycles, see
+    # the comment in
+    # legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     plt = meshscatter!(
         scene, attr.position,
         marker = attr.marker, markersize = attr.markersize, rotation = attr.rotation,
         colormap = attr.colormap, colorrange = attr.colorrange,
         color = attr.color, alpha = attr.alpha,
-        inspectable = false
+        inspectable = false,
+        cycle = nothing
     )
 
     # from Makie.decompose_translation_scale_rotation_matrix(Makie.lookat_basis(Vec3f(1), Vec3f(0), Vec3f(0,0,1)))
@@ -510,11 +533,15 @@ end
 function legendelement_plots!(scene, element::MeshElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attr = element.attributes
+    # We need to explicitly pass `cycle = nothing` to avoid issues with cycles, see
+    # the comment in
+    # legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     plt = mesh!(
         scene, attr.mesh,
         colormap = attr.colormap, colorrange = attr.colorrange,
         color = attr.color, alpha = attr.alpha,
-        inspectable = false, uv_transform = attr.uv_transform
+        inspectable = false, uv_transform = attr.uv_transform,
+        cycle = nothing
     )
 
     # from Makie.decompose_translation_scale_rotation_matrix(Makie.lookat_basis(Vec3f(1), Vec3f(0), Vec3f(0,0,1)))
