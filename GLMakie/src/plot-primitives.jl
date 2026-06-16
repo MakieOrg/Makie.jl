@@ -1242,14 +1242,15 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     uniforms = [
         :scaled_color, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight,
-        # :lowclip_color, :highclip_color, :nan_color,
-        :uniform_model,
+        :lowclip_color, :highclip_color, :nan_color,
+        :uniform_model, :samples,
     ]
 
     input2glname = Dict{Symbol, Symbol}(
         :scaled_color => :volumedata, :uniform_model => :model,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :uniform_num_clip_planes => :_num_clip_planes
+        :uniform_num_clip_planes => :_num_clip_planes,
+        :lowclip_color => :lowclip, :highclip_color => :highclip,
     )
 
     robj = register_robj!(assemble_volume_robj!, screen, scene, plot, inputs, uniforms, input2glname)
