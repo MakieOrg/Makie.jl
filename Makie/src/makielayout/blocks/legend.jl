@@ -61,14 +61,44 @@ function initialize_block!(
     return initialize_block!(leg; entrygroups)
 end
 
+connect_sources!(l::Legend, ax::AbstractAxis) = on(p -> notify(l.sources), ax.onplot)
+connect_sources!(::Legend, ::AbstractScene) = nothing
+connect_sources!(l::Legend, axs::AbstractArray) = foreach(ax -> connect_sources!(l, ax), axs)
+
 function initialize_block!(
         leg::Legend,
         axis::Union{AbstractAxis, AbstractScene, AbstractArray{<:Union{AbstractAxis, AbstractScene}}},
         title = nothing; merge = false, unique = false
     )
-    plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
-    isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
-    return initialize_block!(leg, plots, labels, title)
+    # sources from which to collect plots
+    # should this be (more) accessible as an input?
+    add_constant!(leg.attributes, :sources, axis)
+    ComputePipeline.set_type!(leg.sources, Any) # maybe useful to allow adding more axes?
+    connect_sources!(leg, axis)
+
+    # Should these be accessible as inputs?
+    add_input!(leg, :merge, merge)
+    add_input!(leg, :unique, unique)
+    map!(leg, [:sources, :merge, :unique], [:plots, :labels]) do axs, _merge, _unique
+        return get_labeled_plots(axs, merge = _merge, unique = _unique)
+    end
+    ComputePipeline.set_type!(leg.plots, Any) # not type stable
+    ComputePipeline.set_type!(leg.labels, Any) # not type stable?
+
+    # Should this be an input?
+    add_input!(leg, :title, title)
+    ComputePipeline.set_type!(leg.title, Any)
+    # TODO: Clean this up when fully porting Legend to compute graph
+    map!(leg, [:plots, :labels, :title], :_entrygroups) do plots, labels, title
+        return to_entry_group(leg.attributes, plots, labels, title)
+    end
+    ComputePipeline.set_type!(leg._entrygroups, Any)
+
+    # isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
+    entrygroups = Observable{Vector{Tuple{Any, Vector{LegendEntry}}}}()
+    ComputePipeline.get_observable!(leg.attributes, :_entrygroups, use_deepcopy = false)
+    connect!(entrygroups, leg._entrygroups)
+    return initialize_block!(leg, entrygroups = entrygroups)
 end
 
 function initialize_block!(leg::Legend; entrygroups)
@@ -230,8 +260,8 @@ function initialize_block!(leg::Legend; entrygroups)
         if manipulating_grid[]
             return
         end
-        w = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col()), NaN32)
-        h = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row()), NaN32)
+        w = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col()), 0f0)
+        h = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row()), 0f0)
         return w, h
     end
     on(blockscene, determinedsize, update = true) do (w, h)

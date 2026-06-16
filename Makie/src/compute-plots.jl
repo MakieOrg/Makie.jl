@@ -942,16 +942,6 @@ function collect_all_connected_nodes(computed::ComputePipeline.Computed, tracked
 end
 
 Observables.to_value(computed::ComputePipeline.Computed) = computed[]
-function Base.notify(computed::ComputePipeline.Computed)
-    nodes = collect_all_connected_nodes(computed)
-    graph = computed.parent.graph
-    to_notify = intersect(nodes, keys(graph.observables))
-    foreach(to_notify) do key
-        notify(graph.observables[key])
-    end
-    return
-end
-
 
 function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
     return map!(attr, [attribute, :positions], output_name) do vec, positions

@@ -342,6 +342,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     xaxis::LineAxis
     yaxis::LineAxis
     elements::Dict{Symbol, Any}
+    onplot::Observable{Plot}
     @attributes begin
         """
         Global state for the x dimension conversion.
@@ -1700,6 +1701,7 @@ end
 
 @Block LScene <: AbstractAxis begin
     scene::Scene
+    onplot::Observable{Plot}
     @attributes begin
         """
         Global state for the x dimension conversion.
@@ -1812,6 +1814,7 @@ end
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     axis_offset::Observable{Vec2d} # center of scene -> center of Axis3
     zoom_mult::Observable{Float64}
+    onplot::Observable{Plot}
     @attributes begin
         """
         Global state for the x dimension conversion.
@@ -2201,6 +2204,7 @@ end
     target_thetalims::Observable{Tuple{Float64, Float64}}
     target_theta_0::Observable{Float32}
     target_r0::Observable{Float32}
+    onplot::Observable{Plot}
     @attributes begin
         # Generic
         """

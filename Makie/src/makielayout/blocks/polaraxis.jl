@@ -166,6 +166,8 @@ function initialize_block!(po::PolarAxis; palette = nothing)
 
     connect!(po.layoutobservables.protrusions, protrusions)
 
+    ax.onplot = Observable{Plot}()
+
     return
 end
 
