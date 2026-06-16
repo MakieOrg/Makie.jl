@@ -260,8 +260,8 @@ function initialize_block!(leg::Legend; entrygroups)
         if manipulating_grid[]
             return
         end
-        w = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col()), 0f0)
-        h = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row()), 0f0)
+        w = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col()), 0.0f0)
+        h = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row()), 0.0f0)
         return w, h
     end
     on(blockscene, determinedsize, update = true) do (w, h)

@@ -43,7 +43,7 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
         end
     end
 
-    ax.onplot = Observable{Plot}()
+    ls.onplot = Observable{Plot}()
 
     return
 end
