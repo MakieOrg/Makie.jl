@@ -186,7 +186,6 @@ function meshscatter_boundingbox(_positions, model, transform_marker, marker_bb,
     end
 end
 
-
 add_alpha(color, alpha) = add_alpha(Colors.color(color), Colors.alpha(color), alpha)
 add_alpha(rgb, a::T, alpha) where {T} = RGBA(rgb, a * T(alpha))
 
@@ -223,12 +222,43 @@ function register_colormapping_without_color!(attr::ComputeGraph)
     return
 end
 
+function add_color_dim_convert!(attr::ComputeGraph, color)
+    # may also be initialized by build_plot!() from kwargs
+    if !haskey(attr, :dim_convert_4)
+        init = dim_conversion_from_args(color)
+        add_constant!(attr, :dim_convert_4, init)
+    end
+
+    return
+end
+
+function process_color_value(dim_convert, scale, value, auto)
+    if value === automatic
+        return auto
+    elseif value isa Real
+        return apply_scale(scale, value)
+    else
+        return apply_scale(scale, convert_dim_value(dim_convert, value))
+    end
+end
+
 function register_colormapping!(attr::ComputeGraph, colorname = :color)
     register_colormapping_without_color!(attr)
 
+    color = attr[colorname][]
+    add_color_dim_convert!(attr, color)
+    if !isa(dim_conversion_from_args(color), Union{Nothing, NoDimConversion})
+        map!(attr, [:dim_convert_4, colorname], :dc_color) do dc, color
+            converted = convert_dim_value(dc, attr, color, nothing)
+            return to_color(converted)
+        end
+    else
+        ComputePipeline.map!(to_color, attr, colorname, :dc_color)
+    end
+
     map!(
         attr,
-        [colorname, :colorscale, :alpha],
+        [:dc_color, :colorscale, :alpha],
         [:raw_color, :scaled_color, :fetch_pixel, :auto_colorrange]
     ) do color, colorscale, alpha
         auto_colorrange = nothing
@@ -249,22 +279,22 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         return (color, val, color isa AbstractPattern, auto_colorrange)
     end
 
-    return map!(
+    map!(
         attr,
-        [:colorrange, :colorscale, :auto_colorrange], :scaled_colorrange
-    ) do colorrange, colorscale, autorange
+        [:dim_convert_4, :colorrange, :colorscale, :auto_colorrange], :scaled_colorrange
+    ) do dc, colorrange, colorscale, autorange
         if isnothing(autorange) # colors are actual colors, so no colormapping
             return nothing
         elseif colorrange === automatic
             return autorange
-        elseif first(colorrange) == automatic
-            return Vec2f((first(autorange), last(colorrange)))
-        elseif last(colorrange) == automatic
-            return Vec2f((first(colorrange), last(autorange)))
         else
-            return Vec2f(apply_scale(colorscale, colorrange))
+            low = process_color_value(dc, colorscale, first(colorrange), first(autorange))
+            high = process_color_value(dc, colorscale, last(colorrange), last(autorange))
+            return Vec2f(low, high)
         end
     end
+
+    return
 end
 
 """
@@ -510,11 +540,19 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     for (i, dim) in enumerate(dim_tuple)
         dim == 0 && continue
         if dim isa Integer
-            update_dim_conversion!(dim_converts, dim, args_converted[i])
+            if dim == 4
+                add_color_dim_convert!(attr, args_converted[i])
+            else
+                update_dim_conversion!(dim_converts, dim, args_converted[i])
+            end
             maxdim = max(maxdim, dim)
         else
             for (j, d) in enumerate(dim)
-                update_dim_conversion!(dim_converts, d, args_converted[i], j)
+                if d == 4
+                    add_color_dim_convert!(attr, getindex.(args_converted[i], j))
+                else
+                    update_dim_conversion!(dim_converts, d, args_converted[i], j)
+                end
                 maxdim = max(maxdim, d)
             end
         end
@@ -525,10 +563,12 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # Note that the order in dim_convert_names is important
     dim_convert_names = Symbol[]
     for i in 1:maxdim
-        obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
-        converts_updated = map!(x -> dim_converts[i], Observable{Any}(), obs)
-        add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
         push!(dim_convert_names, Symbol(:dim_convert_, i))
+        if i < 4 # 4 already got added if maxdim == 4
+            obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
+            converts_updated = map!(x -> dim_converts[i], Observable{Any}(), obs)
+            add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
+        end
     end
 
     # Apply dim_convert
@@ -876,6 +916,10 @@ end
 
 function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
     graph = ComputeGraph()
+
+    if haskey(user_attributes, :dim_convert_4)
+        add_constant!(graph, :dim_convert_4, pop!(user_attributes, :dim_convert_4))
+    end
 
     register_arguments!(P, graph, user_attributes, user_args)
     converted = graph.converted[]

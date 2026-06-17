@@ -957,7 +957,7 @@ convert_attribute(cycle, ::key"cycle") = Cycle(cycle)
 convert_attribute(font, ::key"font") = to_font(font)
 
 convert_attribute(x::Automatic, ::key"color") = x
-convert_attribute(color, ::key"color") = to_color(color)
+convert_attribute(color, ::key"color") = color
 
 convert_attribute(colormap, ::key"colormap") = Ref{Any}(colormap)
 
