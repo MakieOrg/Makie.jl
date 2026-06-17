@@ -61,8 +61,8 @@ Plots a filled tricontour of height information.
     mixin_generic_plot_attributes()...
 end
 
-argument_dims(::Type{<:Tricontourf}, x, y, z) = (1, 2)
-argument_dims(::Type{<:Tricontourf}, triangulation, z) = nothing
+argument_dims(::Type{<:Tricontourf}, x, y, z) = (1, 2, 4)
+argument_dims(::Type{<:Tricontourf}, triangulation, z) = (0, 4)
 
 function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
     return (:triangulation,)
