@@ -227,6 +227,15 @@ function add_color_dim_convert!(attr::ComputeGraph, color)
     if !haskey(attr, :dim_convert_4)
         init = dim_conversion_from_args(color)
         add_constant!(attr, :dim_convert_4, init)
+        if !isa(init, Union{Nothing, NoDimConversion})
+            on(needs_tick_update_observable(init)) do _
+                ComputePipeline.mark_dirty!(attr.dim_convert_4)
+                ComputePipeline.update_observables!(attr.dim_convert_4)
+                return
+            end
+        end
+    else
+
     end
 
     return
@@ -918,7 +927,15 @@ function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
     graph = ComputeGraph()
 
     if haskey(user_attributes, :dim_convert_4)
-        add_constant!(graph, :dim_convert_4, pop!(user_attributes, :dim_convert_4))
+        init = to_value(pop!(user_attributes, :dim_convert_4))
+        add_constant!(graph, :dim_convert_4, init)
+        if !isa(init, Union{Nothing, NoDimConversion})
+            on(needs_tick_update_observable(init)) do _
+                ComputePipeline.mark_dirty!(graph.dim_convert_4)
+                ComputePipeline.update_observables!(graph.dim_convert_4)
+                return
+            end
+        end
     end
 
     register_arguments!(P, graph, user_attributes, user_args)
