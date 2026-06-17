@@ -973,7 +973,7 @@ convert_attribute(x::Automatic, ::key"colorrange") = Ref{Any}(x)
 convert_attribute(x::Tuple{<:Any, Automatic}, ::key"colorrange") = Ref{Any}(x)
 convert_attribute(x::Tuple{Automatic, <:Any}, ::key"colorrange") = Ref{Any}(x)
 convert_attribute(x::Tuple{Automatic, Automatic}, ::key"colorrange") = Ref{Any}(first(x))
-convert_attribute(x, ::key"colorrange") = Ref{Any}(to_colorrange(x))
+convert_attribute(x, ::key"colorrange") = Ref{Any}(x)
 to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
 convert_attribute(p, ::key"nan_color") = to_color(p)
@@ -1679,6 +1679,7 @@ end
 
 """
     to_colormapping_type(colormap)
+
 Returns `continuous`, `categorical` or `banded` according to the type of the
 colormap passed.
 Note: Currently recognizes all named colormaps as continuous. To recognize them
