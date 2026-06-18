@@ -338,7 +338,7 @@ Base.empty!(::Screen) = nothing
 # Rendering
 # =============================================================================
 
-function render!(screen::Screen)
+function render!(screen::Screen; finalize_framebuffer::Bool=true)
     state = screen.state
     isnothing(state) && error("Screen not set up - call display first")
 
@@ -380,7 +380,8 @@ function render!(screen::Screen)
 
     # Render: VolPath uses render!() for one sample, SamplerIntegrators use functor call
     if integrator isa Hikari.VolPath
-        Hikari.render!(integrator, state.hikari_scene, state.film, camera)
+        Hikari.render!(integrator, state.hikari_scene, state.film, camera;
+                       finalize_framebuffer=finalize_framebuffer)
         # Save back integrator state (may have been newly created)
         state.integrator_state = integrator.state
     else
@@ -610,8 +611,21 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         if clear
             scene_state.needs_film_clear = true
         end
+        # Batched render: skip `vp_finalize_film_kernel!` on intermediate
+        # samples — the framebuffer is only observed after the loop ends, so
+        # finalizing it 32× when 31 of those will be overwritten is pure
+        # waste (~17 % of captured GPU on killeroo).  We finalize once at
+        # the end via the integrator's `finalize_film!`.  The last sample
+        # still finalizes normally so callers without explicit finalize
+        # support keep working.
+        integ = screen.config.integrator
+        supports_skip = integ isa Hikari.VolPath
         for i in 1:samples
-            render!(screen)
+            if supports_skip && i < samples
+                render!(screen; finalize_framebuffer=false)
+            else
+                render!(screen)
+            end
             # Synchronize every sample to prevent command buffer overflow.
             # Heavy scenes (volumetrics, many materials) can generate thousands of
             # dispatches per sample. Without sync, these accumulate and cause DEVICE_LOST.

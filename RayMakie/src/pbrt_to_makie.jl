@@ -72,7 +72,17 @@ function pbrt_to_makie(filename::AbstractString)
     scene = Scene(size=(xres, yres); lights=Makie.AbstractLight[], ambient=RGBf(0, 0, 0))
     cam3d!(scene)
     update_cam!(scene, eye, target, up)
-    scene.camera_controls.fov[] = Float64(fov)
+    # pbrt-v4 cameras.cpp: fov refers to the *shorter* image dimension. Makie's
+    # cam3d uses vertical FOV unconditionally. For tall images (width<height,
+    # like Crown's 1000×1400) we must convert horizontal→vertical so the scene
+    # is framed identically: scene reads as zoomed-in otherwise.
+    aspect = Float32(xres) / Float32(yres)
+    makie_fov = if aspect >= 1f0
+        fov  # pbrt fov = vertical; matches Makie
+    else
+        rad2deg(2 * atan(tan(deg2rad(fov) / 2) / aspect))
+    end
+    scene.camera_controls.fov[] = Float64(makie_fov)
 
     # --- Build Hikari textures and materials from pbrt data ---
     hikari_textures = Hikari.build_pbrt_textures(pbrt)
