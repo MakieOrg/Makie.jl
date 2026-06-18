@@ -7,97 +7,125 @@ function colorbar_check(keys, kwargs_keys)
     return
 end
 
-function extract_colorrange(@nospecialize(plot::AbstractPlot))::Vec2{Float64}
-    if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMapping
-        return plot.calculated_colors[].colorrange[]
-    elseif haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
-        return plot.colorrange[]
-    else
-        error("colorrange not found and calculated_colors for the plot is missing or is not a proper color map. Heatmaps and images should always contain calculated_colors[].colorrange")
+function extract_colormap(@nospecialize(plot::AbstractPlot))
+    minimal_keys = (:color, :colormap, :colorrange)
+
+    if all(key -> haskey(plot, key), minimal_keys)
+        # TODO: maybe we should check that all or none of the outputs of
+        # register_colormapping!() are available?
+
+        if plot.color[] isa Union{AbstractArray{<:Colorant}, ShaderAbstractions.Sampler, AbstractPattern, Colorant}
+            return nothing
+        end
+
+        haskey(plot, :alpha) || add_constant!(plot, :alpha, 1.0)
+        haskey(plot, :lowclip) || add_constant!(plot, :lowclip, automatic)
+        haskey(plot, :highclip) || add_constant!(plot, :highclip, automatic)
+        haskey(plot, :nan_color) || add_constant!(plot, :nan_color, RGBAf(0, 0, 0, 0))
+        haskey(plot, :colorscale) || add_constant!(plot, :colorscale, identity)
+
+        if !haskey(plot, :scaled_colorrange)
+            register_colormapping!(plot.attributes)
+        end
+
+        isnothing(plot.scaled_colorrange[]) && return nothing
+
+        return (
+            color = plot.color,
+            colormap = plot.alpha_colormap,
+            colorscale = plot.colorscale,
+            mapping = plot.color_mapping,
+            colorrange = plot.scaled_colorrange,
+            lowclip = plot.lowclip,
+            highclip = plot.highclip,
+            color_mapping_type = plot.color_mapping_type
+        )
     end
 end
 
-
-function extract_colormap(plot::Arrows2D)
-    return ColorMapping(
-        plot.color[], plot.color, plot.colormap, plot.scaled_colorrange,
-        get(plot, :colorscale, Observable(identity)),
-        get(plot, :alpha, Observable(1.0)),
-        get(plot, :highclip, Observable(automatic)),
-        get(plot, :lowclip, Observable(automatic)),
-        get(plot, :nan_color, Observable(RGBAf(0, 0, 0, 0))),
+function extract_colormap(plot::ComputePlots)
+    return (
+        color = plot.scaled_color,
+        colormap = plot.alpha_colormap,
+        colorscale = plot.colorscale,
+        mapping = plot.color_mapping,
+        colorrange = plot.scaled_colorrange,
+        lowclip = plot.lowclip,
+        highclip = plot.highclip,
+        color_mapping_type = plot.color_mapping_type
     )
 end
 
-function extract_colormap(plot::Union{Arrows3D, StreamPlot})
-    return extract_colormap(plot.plots[1])
-end
-
-function extract_colormap(@nospecialize(plot::AbstractPlot))
-    has_colorrange = haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
-    if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMapping
-        return plot.calculated_colors[]
-    elseif has_colorrange && all(x -> haskey(plot, x), [:colormap, :colorrange, :color]) && plot.color[] isa AbstractVector{<:Colorant}
-        return ColorMapping(
-            plot.color[], plot.color, plot.colormap, plot.colorrange,
-            get(plot, :colorscale, Observable(identity)),
-            get(plot, :alpha, Observable(1.0)),
-            get(plot, :highclip, Observable(automatic)),
-            get(plot, :lowclip, Observable(automatic)),
-            get(plot, :nan_color, Observable(RGBAf(0, 0, 0, 0))),
-        )
-    else
-        return nothing
+function extract_colormap(plot::Arrows2D)
+    map!(plot, [:scaled_tailcolor, :scaled_shaftcolor, :scaled_tipcolor], :scaled_merged_color) do a, b, c
+        return [a; b; c]
     end
+    return (
+        color = plot.scaled_merged_color,
+        colormap = plot.alpha_colormap,
+        colorscale = plot.colorscale,
+        mapping = plot.color_mapping,
+        colorrange = plot.scaled_colorrange,
+        lowclip = plot.lowclip,
+        highclip = plot.highclip,
+        color_mapping_type = plot.color_mapping_type
+    )
 end
-extract_colormap(@nospecialize(plot::ComputePlots)) = get_colormapping(plot)
 
-function extract_colormap(plot::Plot{volumeslices})
-    return extract_colormap(plot.plots[1])
+function extract_colormap(plot::Voxels)
+    return (
+        color = plot.chunk,
+        colormap = plot.alpha_colormap,
+        colorscale = plot.colorscale,
+        mapping = nothing, # not supported
+        colorrange = plot.value_limits,
+        lowclip = plot.lowclip,
+        highclip = plot.highclip,
+        color_mapping_type = plot.color_mapping_type
+    )
 end
 
+extract_colormap(plot::StreamPlot) = extract_colormap(plot.plots[1])
+extract_colormap(plot::VolumeSlices) = extract_colormap(plot.plots[1])
+
+_normalize_clipcolor(x) = x in (nothing, :auto, automatic) ? automatic : x
 function extract_colormap(plot::Union{Contourf, Tricontourf})
-    levels = ComputePipeline.get_observable!(plot.computed_levels)
-    limits = lift(l -> (l[1], l[end]), levels)
-    function extend_color(color, computed)
-        color === nothing && return automatic
-        color == :auto || color == automatic && return computed
-        return computed
+    map!(plot, :computed_colormap, [:alpha_colormap, :color_mapping]) do cm
+        return to_colormap(cm), cm.values
     end
-    elow = lift(extend_color, plot.extendlow, plot.computed_lowcolor)
-    ehigh = lift(extend_color, plot.extendhigh, plot.computed_highcolor)
-    return ColorMapping(
-        levels[], levels, plot.computed_colormap, limits,
-        plot.colorscale, Observable(1.0), elow, ehigh, plot.nan_color
+    map!(_normalize_clipcolor, plot, :extendlow, :cb_lowclip)
+    map!(_normalize_clipcolor, plot, :extendhigh, :cb_highclip)
+    return (
+        color = plot.computed_levels,
+        colormap = plot.alpha_colormap,
+        colorscale = plot.colorscale,
+        mapping = plot.color_mapping,
+        colorrange = plot.computed_colorrange, # missing colorscale?
+        lowclip = plot.cb_lowclip,
+        highclip = plot.cb_highclip,
+        color_mapping_type = banded
     )
 end
 
 function extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
-    levels = ComputePipeline.get_observable!(plot.value_levels)
     # Users may use transparency to make layered isosurfaces visible. Because
     # 3D contours often accumulate the color of an isosurface over multiple
     # samples one typically needs very low alpha values for this, which would
     # make the colors in the colormap very faint. To keep the Colorbar useful,
     # we remove user alpha here. (The recipe also uses `alpha = 0` to remove
     # samples outside of isosurfaces. This is preserved here)
-    colormap = map(cm -> RGBAf.(Colors.color.(cm), Colors.alpha.(cm) .> 0.0f0), plot.computed_colormap)
-    return ColorMapping(
-        levels[], levels, colormap, plot.padded_colorrange, plot.colorscale,
-        Observable(1.0), Observable(automatic), Observable(automatic), plot.nan_color
+    map!(cm -> RGBAf.(Colors.color.(cm), Colors.alpha.(cm) .> 0.0f0), plot, :computed_colormap, :opaque_colormap)
+    return (
+        color = plot.value_levels,
+        colormap = plot.opaque_colormap,
+        colorscale = plot.colorscale,
+        mapping = nothing,
+        colorrange = plot.padded_colorrange, # missing colorscale?
+        lowclip = automatic,
+        highclip = automatic,
+        color_mapping_type = continuous
     )
 end
-
-function extract_colormap(plot::Voxels)
-    limits = plot.value_limits
-    # TODO: does this need padding for lowclip and highclip?
-    discretized_values = map(lims -> range(lims[1], lims[2], length = 253), plot, limits)
-
-    return ColorMapping(
-        discretized_values[], discretized_values, plot.colormap, limits, plot.colorscale,
-        plot.alpha, plot.lowclip, plot.highclip, Observable(:transparent)
-    )
-end
-
 
 function extract_colormap_recursive(@nospecialize(plot::T)) where {T <: AbstractPlot}
     cmap = extract_colormap(plot)
@@ -110,9 +138,6 @@ function extract_colormap_recursive(@nospecialize(plot::T)) where {T <: Abstract
         elseif isempty(colormaps)
             return nothing
         else
-            # Prefer ColorMapping if in doubt!
-            cmaps = filter(x -> x isa ColorMapping, colormaps)
-            length(cmaps) == 1 && return cmaps[1]
             error("Multiple colormaps found for plot $(plot), please specify which one to use manually. Please overload `Makie.extract_colormap(::$(T))` to allow for the automatic creation of a Colorbar.")
         end
     end
@@ -120,14 +145,12 @@ end
 
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
+
     cmap = extract_colormap_recursive(plot)
     func = plotfunc(plot)
     if isnothing(cmap)
         error("Neither $(func) nor any of its children use a colormap. Cannot create a Colorbar from this plot, please create it manually.
         If this is a recipe, one needs to overload `Makie.extract_colormap(::$(Plot{func}))` to allow for the automatic creation of a Colorbar.")
-    end
-    if !(cmap isa ColorMapping)
-        error("extract_colormap(::$(Plot{func})) returned an invalid value: $cmap. Needs to return either a `Makie.ColorMapping`.")
     end
 
     if to_value(cmap.color) isa Union{AbstractVector{<:Colorant}, Colorant}
@@ -140,108 +163,104 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
     return Colorbar(
         fig_or_scene;
-        colormap = cmap,
+        plot_data = cmap,
         kwargs...
     )
 end
 
-function initialize_block!(cb::Colorbar)
+block_kwargs(::Type{Colorbar}) = Set([:plot_data])
+
+function initialize_block!(cb::Colorbar; plot_data = nothing)
     blockscene = cb.blockscene
 
-    onany(blockscene, cb.size, cb.vertical) do sz, vertical
-        if vertical
-            cb.layoutobservables.autosize[] = (sz, nothing)
-        else
-            cb.layoutobservables.autosize[] = (nothing, sz)
-        end
+    map!(cb, [:size, :vertical], :autosize) do sz, vertical
+        return vertical ? (sz, nothing) : (nothing, sz)
     end
+    map!(identity, blockscene, cb.layoutobservables.autosize, cb.autosize)
 
-    framebox = lift(round_to_IRect2D, blockscene, cb.layoutobservables.computedbbox)
+    add_input!(cb, :computedbbox, cb.layoutobservables.computedbbox)
+    map!(round_to_IRect2D, cb, :computedbbox, :framebox)
 
-    # TODO, always convert to ColorMapping!
-    if cb.colormap[] isa ColorMapping
-        cmap = cb.colormap[]
+    cmap = ComputePipeline.ComputeGraphView(cb.attributes, :color_mapping)
+    if plot_data isa NamedTuple
+        add_input!(cmap, :color, plot_data.color)
+        add_input!(cmap, :colormap, plot_data.colormap)
+        add_input!(cmap, :scale, plot_data.colorscale)
+        add_input!(cmap, :mapping, plot_data.mapping)
+        add_input!(cmap, :colorrange, plot_data.colorrange)
+        add_input!(cmap, :lowclip, plot_data.lowclip)
+        add_input!(cmap, :highclip, plot_data.highclip)
+        add_input!(cmap, :color_mapping_type, plot_data.color_mapping_type)
     else
         # Old way without Colormapping. We keep it, to be able to create a colormap directly
-        limits = lift(blockscene, cb.limits, cb.colorrange) do limits, colorrange
+        map!(cmap, [cb.limits, cb.colorrange], :colorrange) do limits, colorrange
             if all(!isnothing, (limits, colorrange))
                 error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
             end
-            return something(limits, colorrange, (0, 1))
+            return something(limits, colorrange, (0.0, 1.0))
         end
-        alpha = Observable(1.0) # dont have these as fields in Colorbar
-        nan_color = Observable(RGBAf(0, 0, 0, 0))
-        cmap = ColorMapping(
-            Float64[], Observable(Float64[]), cb.colormap, limits,
-            cb.scale, alpha, cb.lowclip, cb.highclip, nan_color
-        )
+        add_constant!(cmap, :color, Float64[])
+        map!(c -> c isa Union{Nothing, Automatic} ? automatic : to_color(c), cmap, cb.lowclip, :lowclip)
+        map!(c -> c isa Union{Nothing, Automatic} ? automatic : to_color(c), cmap, cb.highclip, :highclip)
+        map!(to_colormap, cmap, cb.colormap, :colormap)
+        map!(identity, cmap, cb.scale, :scale)
+        map!(cm -> cm isa PlotUtils.ColorGradient ? cm.values : nothing, cmap, cb.colormap, :mapping)
+        map!(colormapping_type, cmap, cb.colormap, :color_mapping_type)
     end
 
-    colormap = lift(cmap.raw_colormap, cmap.colormap, cmap.mapping) do rcm, cm, mapping
-        if isnothing(mapping)
-            return rcm
-        else
-            # if there is a mapping, we want to apply it to the colormap, which is already done for cmap.colormap (by calling to_colormap(cgrad(...)))
-            # In the future, we may want to use cmap.mapping to do this ourselves
-            return cm
-        end
-    end
-    limits = cmap.colorrange
-    colors = lift(
-        blockscene, cmap.mapping, cmap.color_mapping_type, cmap.color, cb.nsteps, limits;
-        ignore_equal_values = true
+    map!(
+        cb,
+        [cmap.mapping, cmap.color_mapping_type, cmap.color, :nsteps, cmap.colorrange],
+        :cb_colors
     ) do mapping, mapping_type, values, n, limits
-        if mapping === nothing
-            if mapping_type === Makie.banded
+        if mapping_type === Makie.continuous
+            return convert(Vector{Float64}, LinRange(limits..., n))
+        elseif mapping_type === Makie.banded
+            if isnothing(mapping)
                 error("Banded without a mapping is invalid. Please use colormap=cgrad(...; categorical=true)")
-            elseif mapping_type === Makie.categorical
+            else # PlotUtils.ColorGradient
+                # Mapping is always 0..1, but color should be scaled
+                return limits[1] .+ (mapping .* (limits[2] - limits[1]))
+            end
+        elseif mapping_type === Makie.categorical
+            if isnothing(mapping)
                 # First we find all unique values,
                 # then we throw out NaNs that are rendered independently anyway
                 # then we clamp the remaining values to the limits,
                 # remove remaining duplicates and sort
                 vals = sort(unique(clamp.(filter(!isnan, unique(values)), limits...)))
                 return convert(Vector{Float64}, vals)
-            else
-                return convert(Vector{Float64}, LinRange(limits..., n))
+            else # PlotUtils.ColorGradient
+                error("PlotUtils.ColorGradient should not be used for categorical colormaps")
             end
         else
-            if mapping_type === Makie.categorical
-                # This is because cmap.mapping comes from cgrad.values, which doesn't encode categorical colormapping correctly
-                error("Mapping should not be used for categorical colormaps")
-            end
-            if mapping_type === Makie.continuous
-                # we need at least nsteps, to correctly sample from the colormap (which has the mapping applied already)
-                return convert(Vector{Float64}, LinRange(limits..., n))
-            else
-                # Mapping is always 0..1, but color should be scaled
-                return limits[1] .+ (mapping .* (limits[2] - limits[1]))
-            end
-            return
+            # unreachable
+            error("Unknown mapping type $mapping_type")
         end
     end
 
-    lowclip_tri_visible = lift(x -> !(x isa Automatic), blockscene, cmap.lowclip; ignore_equal_values = true)
-    highclip_tri_visible = lift(x -> !(x isa Automatic), blockscene, cmap.highclip; ignore_equal_values = true)
-    tri_heights = lift(blockscene, highclip_tri_visible, lowclip_tri_visible, framebox; ignore_equal_values = true) do hv, lv, box
-        if cb.vertical[]
-            return (lv * width(box), hv * width(box))
-        else
-            return (lv * height(box), hv * height(box))
-        end .* sin(pi / 3)
+    map!(x -> x !== automatic, cb, cmap.lowclip, :lowclip_tri_visible)
+    map!(x -> x !== automatic, cb, cmap.highclip, :highclip_tri_visible)
+
+    map!(
+        cb, [:highclip_tri_visible, :lowclip_tri_visible, :framebox, :vertical], :tri_heights
+    ) do hv, lv, box, vertical
+        return (lv, hv) .* ifelse(vertical, width(box), height(box)) .* sin(pi/3)
     end
 
-    barbox = lift(blockscene, framebox; ignore_equal_values = true) do fbox
-        if cb.vertical[]
-            return BBox(left(fbox), right(fbox), bottom(fbox) + tri_heights[][1], top(fbox) - tri_heights[][2])
+    map!(cb, [:framebox, :vertical, :tri_heights], :barbox) do fbox, vertical, tri_heights
+        if vertical
+            return BBox(left(fbox), right(fbox), bottom(fbox) + tri_heights[1], top(fbox) - tri_heights[2])
         else
-            return BBox(left(fbox) + tri_heights[][1], right(fbox) - tri_heights[][2], bottom(fbox), top(fbox))
+            return BBox(left(fbox) + tri_heights[1], right(fbox) - tri_heights[2], bottom(fbox), top(fbox))
         end
     end
 
-    xrange = Observable(Float32[]; ignore_equal_values = true)
-    yrange = Observable(Float32[]; ignore_equal_values = true)
-
-    function update_xyrange(bb, v, colors, scale, mapping_type)
+    map!(
+        cb,
+        [:barbox, :vertical, :cb_colors, cmap.scale, cmap.color_mapping_type],
+        [:xrange, :yrange]
+    ) do bb, vertical, colors, scale, mapping_type
         xmin, ymin = minimum(bb)
         xmax, ymax = maximum(bb)
         if mapping_type == Makie.categorical
@@ -250,175 +269,151 @@ function initialize_block!(cb::Colorbar)
         s_scaled = scale.(colors)
         mini, maxi = extrema(s_scaled)
         s_scaled = (s_scaled .- mini) ./ (maxi - mini)
-        if v
-            xrange[] = LinRange(xmin, xmax, 2)
-            yrange[] = s_scaled .* (ymax - ymin) .+ ymin
+        if vertical
+            xrange = LinRange(xmin, xmax, 2)
+            yrange = s_scaled .* (ymax - ymin) .+ ymin
         else
-            xrange[] = s_scaled .* (xmax - xmin) .+ xmin
-            yrange[] = LinRange(ymin, ymax, 2)
+            xrange = s_scaled .* (xmax - xmin) .+ xmin
+            yrange = LinRange(ymin, ymax, 2)
         end
-        return
+        return xrange, yrange
     end
 
-    update_xyrange(barbox[], cb.vertical[], colors[], cmap.scale[], cmap.color_mapping_type[])
-    onany(update_xyrange, blockscene, barbox, cb.vertical, colors, cmap.scale, cmap.color_mapping_type)
 
     # for continuous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
-    continuous_pixels = lift(
-        blockscene, cb.vertical, colors,
-        cmap.color_mapping_type
-    ) do v, colors, mapping_type
+    map!(
+        cb, [:vertical, :cb_colors, cmap.color_mapping_type], :continuous_pixels
+    ) do vertical, colors, mapping_type
         if mapping_type !== Makie.categorical
             colors = (colors[1:(end - 1)] .+ colors[2:end]) ./ 2
         end
         n = length(colors)
-        return v ? reshape((colors), 1, n) : reshape((colors), n, 1)
+        return vertical ? reshape((colors), 1, n) : reshape((colors), n, 1)
     end
-    # TODO, implement interpolate = true for irregular grics in CairoMakie
+
+    # TODO, implement interpolate = true for irregular grids in CairoMakie
     # Then, we can just use heatmap! and don't need the image plot!
-    show_cats = Observable(false; ignore_equal_values = true)
-    show_continuous = Observable(false; ignore_equal_values = true)
-    on(blockscene, cmap.color_mapping_type; update = true) do type
-        if type === continuous
-            show_continuous[] = true
-            show_cats[] = false
-        else
-            show_continuous[] = false
-            show_cats[] = true
-        end
+    map!(cb, cmap.color_mapping_type, [:show_cats, :show_continuous]) do type
+        return (type !== continuous, type === continuous)
     end
+
     heatmap!(
         blockscene,
-        xrange, yrange, continuous_pixels;
-        colormap = colormap,
-        colorrange = limits,
-        visible = show_cats,
+        cb.xrange, cb.yrange, cb.continuous_pixels;
+        colormap = cmap.colormap,
+        colorrange = cmap.colorrange,
+        visible = cb.show_cats,
         inspectable = false
     )
+
+    map!(extrema, cb, :xrange, :xlims)
+    map!(extrema, cb, :yrange, :ylims)
+
     image!(
         blockscene,
-        lift(extrema, xrange), lift(extrema, yrange), continuous_pixels;
-        colormap = colormap,
-        colorrange = limits,
-        visible = show_continuous,
+        cb.xlims, cb.ylims, cb.continuous_pixels;
+        colormap = cmap.colormap,
+        colorrange = cmap.colorrange,
+        visible = cb.show_continuous,
         inspectable = false
     )
 
-    highclip_tri = lift(blockscene, barbox, cb.spinewidth) do box, spinewidth
-        if cb.vertical[]
-            lb, rb = topline(box)
-            l = lb
-            r = rb
-            t = ((l .+ r) ./ 2) .+ Point2f(0, sqrt(sum((r .- l) .^ 2)) * sin(pi / 3))
-            [l, r, t]
-        else
-            b, t = rightline(box)
-            r = ((b .+ t) ./ 2) .+ Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi / 3), 0)
-            [t, b, r]
-        end
-    end
-
-    highclip_tri_color = lift(blockscene, cmap.highclip) do hc
-        to_color(hc isa Automatic || isnothing(hc) ? :transparent : hc)
-    end
-
-    poly!(
-        blockscene, highclip_tri, color = highclip_tri_color,
-        strokecolor = :transparent,
-        visible = highclip_tri_visible, inspectable = false
-    )
-
-    lowclip_tri = lift(blockscene, barbox, cb.spinewidth) do box, spinewidth
-        if cb.vertical[]
+    map!(cb, [:barbox, :vertical], :clip_tris) do box, vertical
+        if vertical
+            lt, rt = topline(box)
+            et = ((lt .+ rt) ./ 2) .+ Point2f(0, sqrt(sum((rt .- lt) .^ 2)) * sin(pi / 3))
             lb, rb = bottomline(box)
-            l = lb
-            r = rb
-            t = ((l .+ r) ./ 2) .- Point2f(0, sqrt(sum((r .- l) .^ 2)) * sin(pi / 3))
-            [l, r, t]
+            eb = ((lb .+ rb) ./ 2) .- Point2f(0, sqrt(sum((rb .- lb) .^ 2)) * sin(pi / 3))
+            return [Polygon([lt, rt, et]), Polygon([lb, rb, eb])]
         else
-            b, t = leftline(box)
-            l = ((b .+ t) ./ 2) .- Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi / 3), 0)
-            [b, t, l]
+            br, tr = rightline(box)
+            er = ((b .+ t) ./ 2) .+ Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi / 3), 0)
+            bl, tl = leftline(box)
+            el = ((b .+ t) ./ 2) .- Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi / 3), 0)
+            return [Polygon([br, tr, er]), Polygon([bl, tl, el])]
         end
     end
 
-    lowclip_tri_color = lift(blockscene, cmap.lowclip) do lc
-        to_color(lc isa Automatic || isnothing(lc) ? :transparent : lc)
+    map!(cb, [cmap.highclip, cmap.lowclip], :clip_tri_colors) do hc, lc
+        return [
+            to_color(hc isa Automatic || isnothing(hc) ? :transparent : hc),
+            to_color(lc isa Automatic || isnothing(lc) ? :transparent : lc)
+        ]
     end
 
     poly!(
-        blockscene, lowclip_tri, color = lowclip_tri_color,
-        strokecolor = :transparent,
-        visible = lowclip_tri_visible, inspectable = false
+        blockscene, cb.clip_tris, color = cb.clip_tri_colors,
+        strokecolor = :transparent, inspectable = false
     )
 
-    borderpoints = lift(blockscene, barbox, highclip_tri_visible, lowclip_tri_visible) do bb, hcv, lcv
-        if cb.vertical[]
+    map!(
+        cb,
+        [:barbox, :highclip_tri_visible, :lowclip_tri_visible, :vertical, :clip_tris],
+        :borderpoints
+    ) do bb, hcv, lcv, vertical, clip_tris
+        if vertical
             points = [bottomright(bb), topright(bb)]
             if hcv
-                push!(points, highclip_tri[][3])
+                push!(points, clip_tris[1].exterior[3])
             end
             append!(points, [topleft(bb), bottomleft(bb)])
             if lcv
-                push!(points, lowclip_tri[][3])
+                push!(points, clip_tris[2].exterior[3])
             end
             push!(points, bottomright(bb))
-            points
+            return points
         else
             points = [bottomleft(bb), bottomright(bb)]
             if hcv
-                push!(points, highclip_tri[][3])
+                push!(points, clip_tris[1].exterior[3])
             end
             append!(points, [topright(bb), topleft(bb)])
             if lcv
-                push!(points, lowclip_tri[][3])
+                push!(points, clip_tris[2].exterior[3])
             end
             push!(points, bottomleft(bb))
-            points
+            return points
         end
     end
 
-    lines!(blockscene, borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor, inspectable = false)
+    lines!(blockscene, cb.borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor, inspectable = false)
 
-    axispoints = lift(blockscene, barbox, cb.vertical, cb.flipaxis) do scenearea,
-            vertical, flipaxis
-
+    map!(cb, [:barbox, :vertical, :flipaxis], :axispoints) do scenearea, vertical, flipaxis
         if vertical
             if flipaxis
-                (bottomright(scenearea), topright(scenearea))
+                return (bottomright(scenearea), topright(scenearea))
             else
-                (bottomleft(scenearea), topleft(scenearea))
+                return (bottomleft(scenearea), topleft(scenearea))
             end
         else
             if flipaxis
-                (topleft(scenearea), topright(scenearea))
+                return (topleft(scenearea), topright(scenearea))
             else
-                (bottomleft(scenearea), bottomright(scenearea))
+                return (bottomleft(scenearea), bottomright(scenearea))
             end
         end
-
     end
 
     ticks = Observable{Any}()
-    map!(ticks, colors, cmap.color_mapping_type, cb.ticks) do cs, type, ticks
+    map!(cb, [:cb_colors, cmap.color_mapping_type, :ticks], :finalticks) do cs, type, ticks
         # For categorical we just enumerate
-        type === Makie.categorical ? (1:length(cs), string.(cs)) : ticks
+        return type === Makie.categorical ? (1:length(cs), string.(cs)) : ticks
     end
 
-    lims = lift(colors, cmap.color_mapping_type, limits) do cs, type, limits
+    map!(cb, [:cb_colors, cmap.color_mapping_type, cmap.colorrange], :ticklimits) do cs, type, limits
         return type === Makie.categorical ? (0.5, length(cs) + 0.5) : limits
     end
 
     axis = LineAxis(
         blockscene, ComputePipeline.ComputeGraphView(cb.attributes, :axis),
-        endpoints = axispoints, flipped = cb.flipaxis,
-        limits = lims, ticklabelalign = cb.ticklabelalign, label = cb.label,
+        endpoints = cb.axispoints, flipped = cb.flipaxis,
+        limits = cb.ticklimits, ticklabelalign = cb.ticklabelalign, label = cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
         labelfont = cb.labelfont, ticklabelfont = cb.ticklabelfont,
         dim_convert = nothing, # TODO, we should also have a dim convert for Colorbar
-        ticks = ticks, tickformat = cb.tickformat,
+        ticks = cb.finalticks, tickformat = cb.tickformat,
         ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
         ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,
         ticklabelrotation = cb.ticklabelrotation,
@@ -432,9 +427,9 @@ function initialize_block!(cb::Colorbar)
 
     cb.axis = axis
 
-    onany(blockscene, cb.attributes.axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
-            vertical, flipaxis
-
+    map!(
+        cb, [cb.attributes.axis.protrusion, :vertical, :flipaxis], :protrusions
+    ) do axprotrusion, vertical, flipaxis
         left, right, top, bottom = 0.0f0, 0.0f0, 0.0f0, 0.0f0
 
         if vertical
@@ -451,25 +446,12 @@ function initialize_block!(cb::Colorbar)
             end
         end
 
-        rs = GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
-        if rs != cb.layoutobservables.protrusions[]
-            cb.layoutobservables.protrusions[] = rs
-        end
+        return GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
     end
+    map!(identity, cb.layoutobservables.protrusions, cb.protrusions)
 
-    # trigger protrusions with one of the attributes
-    notify(ComputePipeline.get_observable!(cb.vertical))
-    # We set everything via the ColorMapping now. To be backwards compatible, we always set those fields:
-    if (cb.colormap[] isa ColorMapping)
-        on(x -> cb.limits = x, cb.blockscene, convert(Observable{Any}, limits), update = true)
-        on(x -> cb.colormap = x, cb.blockscene, convert(Observable{Any}, cmap.colormap), update = true)
-        on(x -> cb.highclip = x, cb.blockscene, convert(Observable{Any}, cmap.highclip), update = true)
-        on(x -> cb.lowclip = x, cb.blockscene, convert(Observable{Any}, cmap.lowclip), update = true)
-        on(x -> cb.scale = x, cb.blockscene, convert(Observable{Any}, cmap.scale), update = true)
-    end
     # trigger bbox
     notify(cb.layoutobservables.suggestedbbox)
-    notify(barbox)
 
     return
 end
