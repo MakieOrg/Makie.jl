@@ -19,8 +19,9 @@ Raycore = "afc56b53-c9a9-482a-a956-d1d800e05559"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [sources]
+Lava = {url = "https://github.com/SimonDanisch/Lava.jl", rev = "sd/nvidia"}
 Hikari = {url = "https://github.com/JuliaGraphics/Hikari.jl", rev = "sd/vk-hw-accel"}
-Raycore = {url = "https://github.com/JuliaGeometry/Raycore.jl", rev = "sd/multitype-vec"}
+Raycore = {url = "https://github.com/JuliaGeometry/Raycore.jl", rev = "master"}
 
 [compat]
 Adapt = "4.4.0"
