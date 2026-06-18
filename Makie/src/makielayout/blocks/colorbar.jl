@@ -7,107 +7,30 @@ function colorbar_check(keys, kwargs_keys)
     return
 end
 
-function extract_colormap(@nospecialize(plot::AbstractPlot))
-    minimal_keys = (:color, :colormap, :colorrange)
-
-    if all(key -> haskey(plot, key), minimal_keys)
-        # TODO: maybe we should check that all or none of the outputs of
-        # register_colormapping!() are available?
-
-        if plot.color[] isa Union{AbstractArray{<:Colorant}, ShaderAbstractions.Sampler, AbstractPattern, Colorant}
-            return nothing
-        end
-
-        haskey(plot, :alpha) || add_constant!(plot, :alpha, 1.0)
-        haskey(plot, :lowclip) || add_constant!(plot, :lowclip, automatic)
-        haskey(plot, :highclip) || add_constant!(plot, :highclip, automatic)
-        haskey(plot, :nan_color) || add_constant!(plot, :nan_color, RGBAf(0, 0, 0, 0))
-        haskey(plot, :colorscale) || add_constant!(plot, :colorscale, identity)
-
-        if !haskey(plot, :scaled_colorrange)
-            register_colormapping!(plot.attributes)
-        end
-
-        isnothing(plot.scaled_colorrange[]) && return nothing
-
-        return (
-            color = plot.color,
-            colormap = plot.alpha_colormap,
-            colorscale = plot.colorscale,
-            mapping = plot.color_mapping,
-            colorrange = plot.scaled_colorrange,
-            lowclip = plot.lowclip,
-            highclip = plot.highclip,
-            color_mapping_type = plot.color_mapping_type
-        )
+function extract_colorbar_attributes(plot::Arrows2D)
+    map!(plot, [:tailcolor, :shaftcolor, :tipcolor, :color], :raw_merged_color) do a, b, c, d
+        return [default_automatic(a, d); default_automatic(b, d); default_automatic(c, d)]
     end
+    return (; color = plot.raw_merged_color)
 end
 
-function extract_colormap(plot::ComputePlots)
-    return (
-        color = plot.scaled_color,
-        colormap = plot.alpha_colormap,
-        colorscale = plot.colorscale,
-        mapping = plot.color_mapping,
-        colorrange = plot.scaled_colorrange,
-        lowclip = plot.lowclip,
-        highclip = plot.highclip,
-        color_mapping_type = plot.color_mapping_type
-    )
-end
-
-function extract_colormap(plot::Arrows2D)
-    map!(plot, [:scaled_tailcolor, :scaled_shaftcolor, :scaled_tipcolor], :scaled_merged_color) do a, b, c
-        return [a; b; c]
-    end
-    return (
-        color = plot.scaled_merged_color,
-        colormap = plot.alpha_colormap,
-        colorscale = plot.colorscale,
-        mapping = plot.color_mapping,
-        colorrange = plot.scaled_colorrange,
-        lowclip = plot.lowclip,
-        highclip = plot.highclip,
-        color_mapping_type = plot.color_mapping_type
-    )
-end
-
-function extract_colormap(plot::Voxels)
-    return (
-        color = plot.chunk,
-        colormap = plot.alpha_colormap,
-        colorscale = plot.colorscale,
-        mapping = nothing, # not supported
-        colorrange = plot.value_limits,
-        lowclip = plot.lowclip,
-        highclip = plot.highclip,
-        color_mapping_type = plot.color_mapping_type
-    )
-end
-
-extract_colormap(plot::StreamPlot) = extract_colormap(plot.plots[1])
-extract_colormap(plot::VolumeSlices) = extract_colormap(plot.plots[1])
+extract_colorbar_attributes(plot::Voxels) = (color = plot.chunk, colorrange = plot.value_limits)
+extract_colorbar_attributes(plot::StreamPlot) = extract_colorbar_attributes_with_defaults(plot.plots[1])
+extract_colorbar_attributes(plot::VolumeSlices) = (color = plot[4],)
 
 _normalize_clipcolor(x) = x in (nothing, :auto, automatic) ? automatic : x
-function extract_colormap(plot::Union{Contourf, Tricontourf})
-    map!(plot, :computed_colormap, [:alpha_colormap, :color_mapping]) do cm
-        return to_colormap(cm), cm.values
-    end
+function extract_colorbar_attributes(plot::Union{Contourf, Tricontourf})
     map!(_normalize_clipcolor, plot, :extendlow, :cb_lowclip)
     map!(_normalize_clipcolor, plot, :extendhigh, :cb_highclip)
     return (
         color = plot.computed_levels,
-        colormap = plot.alpha_colormap,
-        colorscale = plot.colorscale,
-        mapping = plot.color_mapping,
-        colorrange = plot.computed_colorrange, # missing colorscale?
+        colorrange = plot.computed_colorrange,
         lowclip = plot.cb_lowclip,
         highclip = plot.cb_highclip,
-        color_mapping_type = banded
     )
 end
 
-function extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
+function extract_colorbar_attributes(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     # Users may use transparency to make layered isosurfaces visible. Because
     # 3D contours often accumulate the color of an isosurface over multiple
     # samples one typically needs very low alpha values for this, which would
@@ -118,42 +41,70 @@ function extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, 
     return (
         color = plot.value_levels,
         colormap = plot.opaque_colormap,
-        colorscale = plot.colorscale,
-        mapping = nothing,
-        colorrange = plot.padded_colorrange, # missing colorscale?
-        lowclip = automatic,
-        highclip = automatic,
-        color_mapping_type = continuous
+        colorrange = plot.padded_colorrange,
     )
 end
 
-function extract_colormap_recursive(@nospecialize(plot::T)) where {T <: AbstractPlot}
-    cmap = extract_colormap(plot)
-    if !isnothing(cmap)
-        return cmap
-    else
-        colormaps = [extract_colormap_recursive(child) for child in plot.plots]
-        if length(colormaps) == 1
-            return colormaps[1]
-        elseif isempty(colormaps)
-            return nothing
-        else
-            error("Multiple colormaps found for plot $(plot), please specify which one to use manually. Please overload `Makie.extract_colormap(::$(T))` to allow for the automatic creation of a Colorbar.")
+# TODO: compat for ColorMapping
+
+"""
+    extract_colorbar_attributes(plot)
+
+This function extract plot attributes relevant for constructing a `Colorbar`.
+It is meant to be extended for recipes that do not use the default names.
+
+The function should return a dict-like object (one implementing `getindex` and `haskey`)
+containing `name => attribute` pairs. It may contain any of the following names:
+- `:colormap`: The colormap of the plot.
+- `:color`: The color values that the colormap applies to.
+- `:colorrange`: The colorrange of the plot, i.e. the extrema of `color`.
+- `:colorscale`: The colorscale of plot.
+- `:lowclip`: The lowclip of the plot.
+- `:highclip`: The highclip of the plot.
+
+Any missing `name` will default to the appropriate `plot[name]` attribute if it
+exists, or to the default defined by `Colorbar`.
+
+Note that you can use `extract_colorbar_attributes_with_defaults(plot)` to
+extract attributes with defaults from a child plot.
+"""
+extract_colorbar_attributes(::AbstractPlot) = NamedTuple()
+
+function extract_colorbar_attributes_with_defaults(plot::AbstractPlot)
+    _cmap = extract_colorbar_attributes(plot)
+    cmap = Dict{Symbol, Any}()
+    for name in [:color, :colormap, :colorrange, :colorscale, :lowclip, :highclip]
+        if haskey(_cmap, name)
+            cmap[name] = _cmap[name]
+        elseif haskey(plot, name)
+            push!(cmap, name => plot[name])
         end
     end
+    return cmap
 end
 
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
-    colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
-
-    cmap = extract_colormap_recursive(plot)
-    func = plotfunc(plot)
-    if isnothing(cmap)
-        error("Neither $(func) nor any of its children use a colormap. Cannot create a Colorbar from this plot, please create it manually.
-        If this is a recipe, one needs to overload `Makie.extract_colormap(::$(Plot{func}))` to allow for the automatic creation of a Colorbar.")
+    _cmap = extract_colorbar_attributes(plot)
+    cmap = Dict{Symbol, Any}()
+    for name in [:color, :colormap, :colorrange, :colorscale, :lowclip, :highclip]
+        if haskey(_cmap, name)
+            cmap[name] = _cmap[name]
+        elseif haskey(plot, name)
+            push!(cmap, name => plot[name])
+        end
     end
+    haskey(cmap, :colorscale) && (cmap[:scale] = pop!(cmap, :colorscale))
+    haskey(cmap, :color) && (cmap[:values] = pop!(cmap, :color))
 
-    if to_value(cmap.color) isa Union{AbstractVector{<:Colorant}, Colorant}
+    colorbar_check(keys(cmap), keys(kwargs))
+
+    func = plotfunc(plot)
+    # if isnothing(cmap)
+    #     error("Neither $(func) nor any of its children use a colormap. Cannot create a Colorbar from this plot, please create it manually.
+    #     If this is a recipe, one needs to overload `Makie.extract_colormap(::$(Plot{func}))` to allow for the automatic creation of a Colorbar.")
+    # end
+
+    if haskey(cmap, :values) && to_value(cmap[:values]) isa Union{AbstractArray{<:Colorant}, Colorant, ShaderAbstractions.Sampler, AbstractPattern}
         error(
             """Plot $(func)'s color attribute uses colors directly, so it can't be used to create a Colorbar, since no numbers are mapped to a color via the colormap.
                  Please create the colorbar manually e.g. via `Colorbar(f[1, 2], colorrange=the_range, colormap=the_colormap)`..
@@ -161,11 +112,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
         )
     end
 
-    return Colorbar(
-        fig_or_scene;
-        plot_data = cmap,
-        kwargs...
-    )
+    return Colorbar(fig_or_scene; cmap..., kwargs...)
 end
 
 block_kwargs(::Type{Colorbar}) = Set([:plot_data])
@@ -181,36 +128,14 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
     add_input!(cb, :computedbbox, cb.layoutobservables.computedbbox)
     map!(round_to_IRect2D, cb, :computedbbox, :framebox)
 
-    cmap = ComputePipeline.ComputeGraphView(cb.attributes, :color_mapping)
-    if plot_data isa NamedTuple
-        add_input!(cmap, :color, plot_data.color)
-        add_input!(cmap, :colormap, plot_data.colormap)
-        add_input!(cmap, :scale, plot_data.colorscale)
-        add_input!(cmap, :mapping, plot_data.mapping)
-        add_input!(cmap, :colorrange, plot_data.colorrange)
-        add_input!(cmap, :lowclip, plot_data.lowclip)
-        add_input!(cmap, :highclip, plot_data.highclip)
-        add_input!(cmap, :color_mapping_type, plot_data.color_mapping_type)
-    else
-        # Old way without Colormapping. We keep it, to be able to create a colormap directly
-        map!(cmap, [cb.limits, cb.colorrange], :colorrange) do limits, colorrange
-            if all(!isnothing, (limits, colorrange))
-                error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
-            end
-            return something(limits, colorrange, (0.0, 1.0))
-        end
-        add_constant!(cmap, :color, Float64[])
-        map!(c -> c isa Union{Nothing, Automatic} ? automatic : to_color(c), cmap, cb.lowclip, :lowclip)
-        map!(c -> c isa Union{Nothing, Automatic} ? automatic : to_color(c), cmap, cb.highclip, :highclip)
-        map!(to_colormap, cmap, cb.colormap, :colormap)
-        map!(identity, cmap, cb.scale, :scale)
-        map!(cm -> cm isa PlotUtils.ColorGradient ? cm.values : nothing, cmap, cb.colormap, :mapping)
-        map!(colormapping_type, cmap, cb.colormap, :color_mapping_type)
-    end
+    # Run the normal color(map) processing. This either uses the inputs given
+    # to `Colorbar()` explicitly, or the inputs extracted from a plot.
+    ComputePipeline.alias!(cb.attributes, :scale, :colorscale)
+    register_colormapping!(cb.attributes, :values)
 
     map!(
         cb,
-        [cmap.mapping, cmap.color_mapping_type, cmap.color, :nsteps, cmap.colorrange],
+        [:color_mapping, :color_mapping_type, :scaled_color, :nsteps, :scaled_colorrange],
         :cb_colors
     ) do mapping, mapping_type, values, n, limits
         if mapping_type === Makie.continuous
@@ -239,8 +164,8 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
         end
     end
 
-    map!(x -> x !== automatic, cb, cmap.lowclip, :lowclip_tri_visible)
-    map!(x -> x !== automatic, cb, cmap.highclip, :highclip_tri_visible)
+    map!(x -> x !== automatic, cb, :lowclip, :lowclip_tri_visible)
+    map!(x -> x !== automatic, cb, :highclip, :highclip_tri_visible)
 
     map!(
         cb, [:highclip_tri_visible, :lowclip_tri_visible, :framebox, :vertical], :tri_heights
@@ -258,7 +183,7 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
 
     map!(
         cb,
-        [:barbox, :vertical, :cb_colors, cmap.scale, cmap.color_mapping_type],
+        [:barbox, :vertical, :cb_colors, :colorscale, :color_mapping_type],
         [:xrange, :yrange]
     ) do bb, vertical, colors, scale, mapping_type
         xmin, ymin = minimum(bb)
@@ -279,11 +204,10 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
         return xrange, yrange
     end
 
-
     # for continuous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
     map!(
-        cb, [:vertical, :cb_colors, cmap.color_mapping_type], :continuous_pixels
+        cb, [:vertical, :cb_colors, :color_mapping_type], :continuous_pixels
     ) do vertical, colors, mapping_type
         if mapping_type !== Makie.categorical
             colors = (colors[1:(end - 1)] .+ colors[2:end]) ./ 2
@@ -294,15 +218,15 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
 
     # TODO, implement interpolate = true for irregular grids in CairoMakie
     # Then, we can just use heatmap! and don't need the image plot!
-    map!(cb, cmap.color_mapping_type, [:show_cats, :show_continuous]) do type
+    map!(cb, :color_mapping_type, [:show_cats, :show_continuous]) do type
         return (type !== continuous, type === continuous)
     end
 
     heatmap!(
         blockscene,
         cb.xrange, cb.yrange, cb.continuous_pixels;
-        colormap = cmap.colormap,
-        colorrange = cmap.colorrange,
+        colormap = cb.alpha_colormap,
+        colorrange = cb.scaled_colorrange,
         visible = cb.show_cats,
         inspectable = false
     )
@@ -313,8 +237,8 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
     image!(
         blockscene,
         cb.xlims, cb.ylims, cb.continuous_pixels;
-        colormap = cmap.colormap,
-        colorrange = cmap.colorrange,
+        colormap = cb.alpha_colormap,
+        colorrange = cb.scaled_colorrange,
         visible = cb.show_continuous,
         inspectable = false
     )
@@ -335,7 +259,7 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
         end
     end
 
-    map!(cb, [cmap.highclip, cmap.lowclip], :clip_tri_colors) do hc, lc
+    map!(cb, [:highclip, :lowclip], :clip_tri_colors) do hc, lc
         return [
             to_color(hc isa Automatic || isnothing(hc) ? :transparent : hc),
             to_color(lc isa Automatic || isnothing(lc) ? :transparent : lc)
@@ -396,12 +320,12 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
     end
 
     ticks = Observable{Any}()
-    map!(cb, [:cb_colors, cmap.color_mapping_type, :ticks], :finalticks) do cs, type, ticks
+    map!(cb, [:cb_colors, :color_mapping_type, :ticks], :finalticks) do cs, type, ticks
         # For categorical we just enumerate
         return type === Makie.categorical ? (1:length(cs), string.(cs)) : ticks
     end
 
-    map!(cb, [:cb_colors, cmap.color_mapping_type, cmap.colorrange], :ticklimits) do cs, type, limits
+    map!(cb, [:cb_colors, :color_mapping_type, :scaled_colorrange], :ticklimits) do cs, type, limits
         return type === Makie.categorical ? (0.5, length(cs) + 0.5) : limits
     end
 
@@ -422,7 +346,7 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
         spinecolor = :transparent, spinevisible = false, flip_vertical_label = cb.flip_vertical_label,
         minorticksvisible = cb.minorticksvisible, minortickalign = cb.minortickalign,
         minorticksize = cb.minorticksize, minortickwidth = cb.minortickwidth,
-        minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cmap.scale
+        minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cb.colorscale
     )
 
     cb.axis = axis

@@ -943,15 +943,21 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "The colormap that the colorbar uses."
         colormap = @inherit(:colormap, :viridis)
         "The range of values depicted in the colorbar."
-        limits = nothing
-        "The range of values depicted in the colorbar."
-        colorrange = nothing
+        colorrange = automatic
+        """
+        Sets the color values of the Colorbar. The number of unique color values will set the number
+        of categories for a categorical colormap. If `colorrange` is not given, this will set a
+        default colorrange.
+        """
+        values = [0, 1]
         "The color of the high clip triangle."
-        highclip = nothing
+        highclip = automatic
         "The color of the low clip triangle."
-        lowclip = nothing
+        lowclip = automatic
         "The axis scale"
         scale = identity
+        "Sets the alpha value of the colormap."
+        alpha = 1.0
 
 
         "The align mode of the colorbar in its parent GridLayout."
@@ -974,6 +980,13 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
         size = 12
     end
+end
+
+# TODO: not used
+function deprecated_attributes(::Type{Colorbar})
+    return (
+        (; attribute = :limits, message = "`limits` has been removed in favor of `colorrange` in Makie v0.25.", error = true),
+    )
 end
 
 @Block Label begin

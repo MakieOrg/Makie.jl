@@ -213,7 +213,7 @@ function register_colormapping_without_color!(attr::ComputeGraph)
     for key in (:lowclip, :highclip)
         sym = Symbol(key, :_color)
         map!(attr, [key, :alpha_colormap], sym) do input, cmap
-            if input === automatic
+            if input === automatic || input === nothing
                 return ifelse(key == :lowclip, first(cmap), last(cmap))
             else
                 return to_color(input)
