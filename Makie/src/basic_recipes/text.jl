@@ -439,6 +439,12 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
 
     register_colormapping!(attr)
     register_text_computations!(attr)
+    # Force the align conversion to run at construction so invalid align values
+    # error eagerly. This used to happen as a side effect of always building
+    # the TeX-linesegments child; that child is lazy now (see tex_linesegments!),
+    # so resolve align explicitly here - it's a cheap input conversion, not the
+    # expensive glyph/linesegments computation.
+    attr[:align][]
     return tex_linesegments!(plot)
 end
 
