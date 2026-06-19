@@ -58,17 +58,19 @@ if Package == "WGLMakie"
     # ElectronCall for the electron display - keep in sync with
     # .github/workflows/_wglmakie.yml. The master side below keeps using the
     # registered Bonito + Electron.
-    Pkg.add([
-        (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/http2"),
-        # 2.1.1 + invalidation-free write/websocket paths; drop once released
-        (; url = "https://github.com/SimonDanisch/HTTP.jl.git", rev = "sd/write-invalidations"),
-        # gc-safe epoll fix: registry Reseau 1.2.x slows every post-HTTP
-        # package load ~3x (eager poller doubles GC pauses), which would
-        # dominate the `using` benchmark; drop the pin once released
-        (; url = "https://github.com/SimonDanisch/Reseau.jl.git", rev = "sd/load-time-improvements"),
-        (; url = "https://github.com/JuliaIO/MsgPack.jl.git", rev = "perf/write-be"),
-        (; url = "https://github.com/IanButterworth/ElectronCall.jl.git", rev = "sd/fixes"),
-    ])
+    Pkg.add(
+        [
+            (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/http2"),
+            # 2.1.1 + invalidation-free write/websocket paths; drop once released
+            (; url = "https://github.com/SimonDanisch/HTTP.jl.git", rev = "sd/write-invalidations"),
+            # gc-safe epoll fix: registry Reseau 1.2.x slows every post-HTTP
+            # package load ~3x (eager poller doubles GC pauses), which would
+            # dominate the `using` benchmark; drop the pin once released
+            (; url = "https://github.com/SimonDanisch/Reseau.jl.git", rev = "sd/load-time-improvements"),
+            (; url = "https://github.com/JuliaIO/MsgPack.jl.git", rev = "perf/write-be"),
+            (; url = "https://github.com/IanButterworth/ElectronCall.jl.git", rev = "sd/fixes"),
+        ]
+    )
 end
 pkgs = map(["ComputePipeline", "Makie", Package]) do name
     path = joinpath(@__DIR__, "..", "..", name)
