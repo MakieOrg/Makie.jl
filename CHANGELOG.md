@@ -2,12 +2,10 @@
 
 ## Unreleased
 
-- Removed the `FilePaths` dependency: it was only imported to pre-empt invalidations from Electron.jl loading it later, but the electron display now uses ElectronCall (no FilePaths dependency), so every Makie user was paying its load time and ~700 invalidated method instances for nothing.
-- WGLMakie's first display is ~10x faster (5.5s -> ~0.6s for a scatter on the HTTP@2 Bonito stack): loading Makie invalidates the HTTP/Bonito serve path Bonito precompiled (~3.5s of recompilation on the first `colorbuffer`), so WGLMakie's workload now re-exercises it via `Bonito.serve_workload` — serving a figure app over a real loopback request plus a websocket exchange that speaks the frontend protocol — and the display tasks that only run once a browser responds (resize/serialize, renderobject polling, tick clock) are named, directive-precompiled functions instead of anonymous task bodies.
-- WGLMakie now treats the browser as a cache of the julia-side scene state: incremental plot insertions/deletions are only sent over a live, initialized connection (where `insert!` still round trips, so the plot is guaranteed to exist in the browser when it returns); in every other state — browser still loading, websocket disconnected, static HTML export, precompile workload — the operation marks the JS-bound state as stale and the next full snapshot picks it up: the first-connect serialization, or an in-place scene rebuild on websocket reconnect. `insert!`/`delete!` therefore never block (previously up to 100s waiting for a connection that might never come) and never throw into user code when a connection dies mid-operation.
-- Fixed child plots added to an already-displayed parent plot (e.g. dynamically created recipe internals) never reaching the backends: `push!(plot, subplot)` now notifies the screens like scene-level plot insertion does.
-- ComputePipeline: the first resolve of a compute edge now runs the callback through a generic, compile-once path; the specialized `TypedEdge` resolve chain is only built when an edge resolves a second time (i.e. on its first update). Plots that are displayed but never updated skip that inference entirely, reducing first-plot compilation of not-precompiled plot types by 30-75% in the backend serialization stage, with no change to warm update performance.
-- Sped up `Axis` creation by ~25%: `text` plots only create their TeX-linesegments child plot when the text can actually produce line elements (LaTeXStrings), and the `RectangleZoom` selection mesh is created lazily on the first zoom drag.
+- WGLMakie improvements: ~10x faster first display, ElectronCall, non-blocking `insert!`/`delete!`, faster `Axis` creation and lazy `TypedEdge` specialization [#5584](https://github.com/MakieOrg/Makie.jl/pull/5584).
+
+## [0.24.12] - 2026-06-18
+
 - `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).
 - Fixed `contourf` not rendering non-closed contours [#5651](https://github.com/MakieOrg/Makie.jl/issues/5651).
 - Fixed WGLMakie flickering while continuously resizing a canvas by re-rendering right after the resize.
@@ -15,6 +13,8 @@
 - Updated `volume` colormapping to include `lowclip`, `highclip` and `nancolor`. This affects `:absorption`, `:mip` and `:iso` algorithms as well as 3D `contour` plots. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
 - Fixed some errors with the color accumulation of `:absorption`, `:absorptionrgba` and `:indexedabsorption` algorithms in `volume` plots. Renders should no longer over sample thin regions (corners and edges of the volume bounding box) and otherwise be brighter. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
 - Added `samples` as a `volume` attribute for controlling the number of ray samples and added `absorption` as a multiplier for sampled colors with `:additive`. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
+- Adjusted `volume` conversions to preserve `N0f8` and `Float16` types (numbers and color eltypes). This allows users to reduce (v)ram usage by choosing smaller types. [#5660](https://github.com/MakieOrg/Makie.jl/pull/5660)
+- Adjusted volume `algorithm = :additive` to include the ray step size as a weight. This should allow additive volumes to render without downscaling volume data [#5662](https://github.com/MakieOrg/Makie.jl/pull/5662)
 
 ## [0.24.11] - 2026-05-30
 
@@ -1038,7 +1038,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.12...HEAD
+[0.24.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...v0.24.12
 [0.24.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.10...v0.24.11
 [0.24.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.9...v0.24.10
 [0.24.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.8...v0.24.9
