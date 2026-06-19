@@ -9,8 +9,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Bonito 5 (the HTTP@2 stack below) requires Julia 1.11+, so the v5
+        # WGLMakie stack can't be tested on 1.10.
         version:
-          - '1.10'
+          - '1.11'
           - '1'
         os:
           - ubuntu-latest
@@ -40,7 +42,7 @@ jobs:
               PackageSpec(url="https://github.com/JuliaWeb/HTTP.jl.git", rev="master"),
               PackageSpec(url="https://github.com/JuliaServices/Reseau.jl.git", rev="main"),
               PackageSpec(url="https://github.com/JuliaIO/MsgPack.jl.git", rev="master"),
-              PackageSpec(url="https://github.com/IanButterworth/ElectronCall.jl.git", rev="master"),
+              PackageSpec(url="https://github.com/IanButterworth/ElectronCall.jl.git", rev="main"),
           ])
       - name: Run the tests
         continue-on-error: true
