@@ -94,19 +94,27 @@ function BudgetedTimer(callback, delta_time::AbstractFloat, start = true; min_sl
     return timer
 end
 
+# Named task body so it can be covered by a precompile directive (as an
+# anonymous task body it compiles on the first display at runtime).
+function run_timer_loop(timer::BudgetedTimer, isrunning::Threads.Atomic{Bool})
+    while timer.running && isrunning[]
+        sleep(timer)
+        timer.callback(timer)
+    end
+    return
+end
+
 function start!(timer::BudgetedTimer)
     timer.budget = 0.0
     timer.last_time = time_ns()
     timer.running = true
     timer.callback(timer) # error check
     timer.task = async_tracked() do isrunning
-        while timer.running && isrunning[]
-            sleep(timer)
-            timer.callback(timer)
-        end
+        run_timer_loop(timer, isrunning)
     end
     return
 end
+precompile(run_timer_loop, (BudgetedTimer, Threads.Atomic{Bool}))
 
 function start!(callback, timer::BudgetedTimer)
     timer.callback = callback

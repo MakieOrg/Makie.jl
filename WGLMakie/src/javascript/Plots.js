@@ -172,6 +172,10 @@ export class Plot {
         });
         // For e.g. when we need to re-create the geometry
         this.apply_updates();
+        // On-demand rendering: every plot data change funnels through here
+        // (subclasses super.update() into it), so this is the one place to
+        // request a redraw. `parent` is the scene, which carries the screen ref.
+        this.parent?.screen?.request_render?.();
     }
 
     update_uniform(name, new_data) {

@@ -9,8 +9,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Bonito 5 (the HTTP@2 stack below) requires Julia 1.11+, so the v5
+        # WGLMakie stack can't be tested on 1.10.
         version:
-          - '1.10'
+          - '1.11'
           - '1'
         os:
           - ubuntu-latest
@@ -33,6 +35,15 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
+          # HTTP@2 stack: the fixes are merged upstream but not yet released,
+          # so pin the dev branches until the registered versions catch up.
+          Pkg.add([
+              PackageSpec(url="https://github.com/SimonDanisch/Bonito.jl.git", rev="sd/v5"),
+              PackageSpec(url="https://github.com/JuliaWeb/HTTP.jl.git", rev="master"),
+              PackageSpec(url="https://github.com/JuliaServices/Reseau.jl.git", rev="main"),
+              PackageSpec(url="https://github.com/JuliaIO/MsgPack.jl.git", rev="master"),
+              PackageSpec(url="https://github.com/IanButterworth/ElectronCall.jl.git", rev="main"),
+          ])
       - name: Run the tests
         continue-on-error: true
         run: >

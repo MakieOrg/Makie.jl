@@ -1,5 +1,6 @@
 """
 * `framerate = 30`: Set framerate (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
+* `render_on_demand = true`: If `true`, the scene is only re-rendered when something actually changed (a plot attribute or the camera). This keeps idle scenes from consuming GPU/CPU, which matters a lot with many plots on a page. Set to `false` for a classic continuous render loop.
 * `resize_to = nothing`: Resize the canvas to the parent element with `resize_to=:parent`, or to the body if `resize_to = :body`. The default `nothing`, will resize nothing.
     A tuple is allowed too, with the same values just for width/height.
 * `use_html_widgets = false`: Whether to replace the Makie Block widgets with HTML native widgets.
@@ -7,6 +8,7 @@
 """
 struct ScreenConfig
     framerate::Float64 # =30.0
+    render_on_demand::Bool # =true
     resize_to::Any # nothing
     # We use nothing, since that serializes correctly to nothing in JS, which is important since that's where we calculate the defaults!
     # For the theming, we need to use Automatic though, since that's the Makie meaning for gets calculated somewhere else
@@ -16,7 +18,7 @@ struct ScreenConfig
     use_html_widgets::Bool
     spinner::Any # The spinner component to show while loading
     function ScreenConfig(
-            framerate::Number, resize_to::Any, px_per_unit::Union{Number, Automatic, Nothing},
+            framerate::Number, render_on_demand::Bool, resize_to::Any, px_per_unit::Union{Number, Automatic, Nothing},
             scalefactor::Union{Number, Automatic, Nothing}, resize_to_body::Union{Nothing, Bool},
             use_html_widgets::Bool, spinner::Any
         )
@@ -42,7 +44,7 @@ struct ScreenConfig
         if !(resize_to isa Union{ResizeType, Tuple{ResizeType, ResizeType}})
             error("Only nothing, :parent, or :body allowed, or a tuple of those for width/height.")
         end
-        return new(framerate, resize_to, px_per_unit, scalefactor, false, use_html_widgets, spinner)
+        return new(framerate, render_on_demand, resize_to, px_per_unit, scalefactor, false, use_html_widgets, spinner)
     end
 end
 """
@@ -65,9 +67,17 @@ mutable struct Screen <: Makie.MakieScreen
     canvas::Union{Nothing, Bonito.HTMLElement}
     tick_clock::Makie.BudgetedTimer
     lock::ReentrantLock
+    # The JS side is treated as a cache of the julia-side scene state, built
+    # exclusively from snapshots sent over the `scene_serialized` observable.
+    # Whenever a change cannot be sent incrementally (no live, initialized
+    # connection), this flag marks the JS state (or the eagerly serialized
+    # initial snapshot) as stale. It is consumed by the next snapshot
+    # opportunity: the first-connect serialization, the moment JS reports
+    # initialization, or a websocket reconnect (`session.on_open`).
+    needs_resync::Bool
     function Screen(scene::Union{Nothing, Scene}, config::ScreenConfig)
         timer = Makie.BudgetedTimer(1.0 / 30.0)
-        return new(Channel{Any}(1), nothing, scene, Set{String}(), config, nothing, timer, Base.ReentrantLock())
+        return new(Channel{Any}(1), nothing, scene, Set{String}(), config, nothing, timer, Base.ReentrantLock(), false)
     end
 end
 
@@ -120,22 +130,30 @@ function poll_all_plots(scene)
     end
 end
 
+# Body of the polling task in `start_polling_loop!`. A named function so the
+# precompile directive in precompiles.jl can cover it - as an anonymous task
+# body it cost ~80ms of first-display inference.
+function run_polling_loop(screen::Screen, scene::Scene, isrunning::Threads.Atomic{Bool})
+    while !Makie.isclosed(scene) && isrunning[]
+        try
+            poll_all_plots(scene)
+        catch e
+            @error "Error in polling loop" exception = (e, catch_backtrace())
+        end
+        sleep(1 / 100)
+    end
+    try
+        close(screen; from_close = true)
+    catch e
+        @error "Error closing screen in polling loop" exception = (e, catch_backtrace())
+    end
+    return
+end
+
 function start_polling_loop!(screen, scene)
     scene.isclosed = false
     return Makie.async_tracked() do isrunning
-        while !Makie.isclosed(scene) && isrunning[]
-            try
-                poll_all_plots(scene)
-            catch e
-                @error "Error in polling loop" exception = (e, catch_backtrace())
-            end
-            sleep(1 / 100)
-        end
-        try
-            close(screen; from_close = true)
-        catch e
-            @error "Error closing screen in polling loop" exception = (e, catch_backtrace())
-        end
+        run_polling_loop(screen, scene, isrunning)
     end
 end
 
@@ -143,10 +161,11 @@ function render_with_init(screen::Screen, session::Session, scene::Scene, figure
     # Reference to three object which gets set once we serve this to a browser
     # Make sure it's a new Channel, since we may reuse the screen.
     screen.plot_initialized = Channel{Any}(1)
+    screen.needs_resync = false
     screen.session = session
     Makie.push_screen!(scene, screen)
     try
-        wrapper, on_init = three_display(screen, session, scene)
+        wrapper, on_init, request_resync = three_display(screen, session, scene)
         screen.canvas = wrapper
         if !isnothing(figure) && screen.config.use_html_widgets
             widgets = WGLMakie.replace_widget!(figure)
@@ -163,6 +182,12 @@ function render_with_init(screen::Screen, session::Session, scene::Scene, figure
                 mark_as_displayed!(screen, scene)
                 start_polling_loop!(screen, scene)
                 connect_post_init_events(screen, scene)
+                if screen.needs_resync
+                    # a mutation raced the JS scene construction: the snapshot
+                    # it was built from is stale, send a fresh one
+                    screen.needs_resync = false
+                    request_resync()
+                end
             else
                 # Will be an error from WGLMakie.js
                 put!(screen.plot_initialized, initialized)
@@ -240,6 +265,7 @@ function Base.show(io::IO, screen::Screen)
     return print(
         io, """WGLMakie.Screen(
             framerate = $(c.framerate),
+            render_on_demand = $(c.render_on_demand),
             resize_to = $(c.resize_to),
             px_per_unit = $(isnothing(ppu) ? :automatic : ppu),
             scalefactor = $(isnothing(sf) ? :automatic : sf),
@@ -486,27 +512,61 @@ function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
     return
 end
 
+# The screen session is usually a sub-session whose `isopen` flag is
+# independent of the actual websocket; the root session reflects the real
+# connection state.
+function connection_live(screen::Screen)
+    session = screen.session
+    isnothing(session) && return false
+    Bonito.isready(session; throw = false) || return false
+    return Bonito.isready(Bonito.root_session(session); throw = false)
+end
+
 function Base.insert!(::Screen, ::Scene, @nospecialize(plot::PlotList))
     return nothing
 end
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
-    session = get_screen_session(screen; error = "Plot needs to be displayed to insert additional plots")
-    if js_uuid(scene) in screen.displayed_scenes
-        insert_plot!(session, scene, plot)
-    else
-        # Newly created scene gets inserted!
-        # This must be a child plot of some parent, otherwise a plot wouldn't be inserted via `insert!(screen, ...)`
-        parent = scene.parent
-        @assert parent !== scene
-        if isnothing(parent)
-            # This shouldn't happen, since insert! only gets called for scenes, that already got displayed on a screen
-            error("Scene has no parent, but hasn't been displayed yet")
+    session = screen.session
+    # Not displayed: the upcoming display serializes the whole scene.
+    isnothing(session) && return
+    Bonito.isclosed(session) && return
+    if isready(screen.plot_initialized) && connection_live(screen)
+        # Live: send incrementally and round trip, so the plot is guaranteed
+        # to exist in the browser when we return (tests and screenshots rely
+        # on this).
+        try
+            live = get_screen_session(screen; error = "Plot needs to be displayed to insert additional plots")
+            if js_uuid(scene) in screen.displayed_scenes
+                insert_plot!(live, scene, plot)
+            else
+                # Newly created scene gets inserted!
+                # This must be a child plot of some parent, otherwise a plot wouldn't be inserted via `insert!(screen, ...)`
+                parent = scene.parent
+                @assert parent !== scene
+                if isnothing(parent)
+                    # This shouldn't happen, since insert! only gets called for scenes, that already got displayed on a screen
+                    error("Scene has no parent, but hasn't been displayed yet")
+                end
+                # We serialize the whole scene (containing `plot` as well),
+                # since, we should only get here if scene is newly created and this is the first plot we insert!
+                @assert scene.plots[1] == plot
+                insert_scene!(live, screen, scene)
+            end
+        catch e
+            # the connection may die mid round trip - never throw into user
+            # code, the next snapshot (reconnect resync) repairs the JS state
+            @debug "insert! failed on live connection, scheduling resync" exception = (e, catch_backtrace())
+            screen.needs_resync = true
         end
-        # We serialize the whole scene (containing `plot` as well),
-        # since, we should only get here if scene is newly created and this is the first plot we insert!
-        @assert scene.plots[1] == plot
-        insert_scene!(session, screen, scene)
+    else
+        # No live, initialized connection (browser still loading, websocket
+        # disconnected, static export, precompile workload, ...). Never
+        # block: mark the JS-bound state as stale - the change is picked up
+        # by the next full snapshot (first-connect serialization or the
+        # reconnect resync), and connections that never come online never
+        # need it.
+        screen.needs_resync = true
     end
     return
 end
@@ -542,41 +602,51 @@ end
 function Base.delete!(screen::Screen, ::Scene, plot::Plot)
     # # only queue atomics to actually delete on js
     atomics = Makie.collect_atomic_plots(plot)
-    session = get_screen_session(screen)
+    session = screen.session
     for plot in atomics
         delete_wgl_robj!(session, plot)
     end
-    plot_uuids = map(js_uuid, atomics)
     isnothing(session) && return # if no session we haven't displayed and dont need to delete
-    # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
-    root = Bonito.root_session(session)
-    isready(root) || return nothing
-    Bonito.evaljs(
-        root, js"""
-        $(WGL).then(WGL=> {
-            WGL.delete_plots($(plot_uuids));
-        })"""
-    )
+    Bonito.isclosed(session) && return
+    if isready(screen.plot_initialized) && connection_live(screen)
+        plot_uuids = map(js_uuid, atomics)
+        # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
+        root = Bonito.root_session(session)
+        Bonito.evaljs(
+            root, js"""
+            $(WGL).then(WGL=> {
+                WGL.delete_plots($(plot_uuids));
+            })"""
+        )
+    else
+        # no live, initialized connection: the next snapshot won't contain
+        # the plot (see insert!)
+        screen.needs_resync = true
+    end
     return
 end
 
 
 function Base.delete!(screen::Screen, scene::Scene)
     delete!(screen.displayed_scenes, js_uuid(scene))
-    session = get_screen_session(screen)
+    session = screen.session
     isnothing(session) && return # if no session we haven't displayed and dont need to delete
-    # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
-    root = Bonito.root_session(session)
-    isready(root) || return nothing
+    Bonito.isclosed(session) && return
     scene_uuids, plots = all_plots_scenes(scene)
+    root = Bonito.root_session(session)
     for plot in plots
         delete_wgl_robj!(root, plot)
     end
-    Bonito.evaljs_value(
-        root, js"""
-        $(WGL).then(WGL=> {
-            WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
-        })"""
-    )
+    if isready(screen.plot_initialized) && connection_live(screen)
+        # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
+        Bonito.evaljs(
+            root, js"""
+            $(WGL).then(WGL=> {
+                WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
+            })"""
+        )
+    else
+        screen.needs_resync = true
+    end
     return
 end

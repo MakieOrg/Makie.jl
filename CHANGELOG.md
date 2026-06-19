@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- WGLMakie improvements: ~10x faster first display, ElectronCall, non-blocking `insert!`/`delete!`, faster `Axis` creation and lazy `TypedEdge` specialization [#5584](https://github.com/MakieOrg/Makie.jl/pull/5584).
+
 ## [0.24.12] - 2026-06-18
 
 - `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).

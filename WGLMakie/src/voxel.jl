@@ -93,7 +93,7 @@ end
 
 
 function voxel_program(attr)
-    uniforms = Dict(
+    uniforms = Dict{Symbol, Any}(
         :diffuse => attr.diffuse,
         :specular => attr.specular,
         :shininess => attr.shininess,
@@ -114,7 +114,7 @@ function voxel_program(attr)
     )
 
     # TODO: this is a waste, should just be "make N instances with no data"
-    per_instance = Dict(:dummy_data => attr.dummy_data)
+    per_instance = Dict{Symbol, Any}(:dummy_data => attr.dummy_data)
     instance = GeometryBasics.mesh(Rect2f(0, 0, 1, 1)) # dont need uv, normals
 
     data = create_instanced_shader(

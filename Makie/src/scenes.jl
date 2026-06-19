@@ -507,7 +507,23 @@ end
 function Base.push!(plot::Plot, subplot)
     validate_attribute_keys(subplot)
     subplot.parent = plot
-    return push!(plot.plots, subplot)
+    push!(plot.plots, subplot)
+    # If the parent plot is already connected to a displayed scene, the child
+    # must be sent to the screens (the parent's insert! only serialized the
+    # children that existed at that time). During normal recipe construction
+    # the parent is not yet in scene.plots, so this is a no-op there and the
+    # child is picked up by the parent's own insert!.
+    root = plot
+    while root.parent isa Plot
+        root = root.parent
+    end
+    scene = root.parent
+    if scene isa Scene && any(p -> p === root, scene.plots)
+        for screen in scene.current_screens
+            Base.invokelatest(insert!, screen, scene, subplot)
+        end
+    end
+    return plot.plots
 end
 
 function Base.push!(scene::Scene, @nospecialize(plot::Plot))

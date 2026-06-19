@@ -54,6 +54,38 @@ function get_order!(session::Session)
     return order
 end
 
+# Body of the real_size handler task in `three_display`. A named function so
+# the precompile directive in precompiles.jl can cover it - as an anonymous
+# task body it cost ~0.4s of inference on the first display.
+function apply_real_size!(
+        screen::Screen, scene::Scene, scene_serialized_task::Makie.TrackedTask,
+        scene_serialized::Observable{Union{Nothing, Dict{Symbol, Any}}},
+        done_init::Observable{Any}, initial_size::Tuple{Int, Int}, size_arr
+    )
+    try
+        size_tuple = (round.(Int, (size_arr))...,)
+        # Resize the scene to the actual canvas size before serialization
+        serialized = fetch(scene_serialized_task)
+        if size_tuple != initial_size
+            # resize before sending - since all changes should be captured in the serialized observables
+            # We dont need to serialize again!
+            resize!(scene, size_tuple...)
+        end
+        if screen.needs_resync
+            # plots were inserted/deleted after the eager serialization
+            # started - take a fresh snapshot
+            screen.needs_resync = false
+            serialized = serialize_scene(scene)
+        end
+        # Now serialize with the correct size
+        scene_serialized[] = serialized
+    catch e
+        @warn "Error resizing/serializing scene" exception = (e, catch_backtrace())
+        done_init[] = e
+    end
+    return
+end
+
 function three_display(screen::Screen, session::Session, scene::Scene)
     config = screen.config
     order = get_order!(session)
@@ -79,21 +111,21 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         # Wait for real size to be determined, then resize scene and serialize
         on(session, real_size) do size_arr
             Makie.async_tracked() do should_close
-                try
-                    size_tuple = (round.(Int, (size_arr))...,)
-                    # Resize the scene to the actual canvas size before serialization
-                    serialized = fetch(scene_serialized_task)
-                    if size_tuple != initial_size
-                        # resize before sending - since all changes should be captured in the serialized observables
-                        # We dont need to serialize again!
-                        resize!(scene, size_tuple...)
-                    end
-                    # Now serialize with the correct size
-                    scene_serialized[] = serialized
-                catch e
-                    @warn "Error resizing/serializing scene" exception = (e, catch_backtrace())
-                    done_init[] = e
-                end
+                apply_real_size!(
+                    screen, scene, scene_serialized_task, scene_serialized,
+                    done_init, initial_size, size_arr
+                )
+            end
+            return
+        end
+        # The websocket (re)connected while the JS scene state is stale
+        # (mutations while disconnected, see `Base.insert!`): rebuild from a
+        # fresh snapshot. On the first connect plot_initialized isn't ready
+        # and the real_size flow above owns the snapshot.
+        on(session, session.on_open) do _
+            if screen.needs_resync && isready(screen.plot_initialized)
+                screen.needs_resync = false
+                scene_serialized[] = serialize_scene(scene)
             end
             return
         end
@@ -141,6 +173,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
                     $(scene_serialized),
                     $comm,
                     $(config.framerate),
+                    $(config.render_on_demand),
                     $(done_init)
                 )
             })
@@ -152,5 +185,9 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         window_open[] = true
     end
     connect_scene_events!(screen, scene, comm)
-    return wrapper, done_init
+    # used by render_with_init to take a fresh snapshot when a mutation raced
+    # JS scene construction (flag checked after plot_initialized is set, so
+    # there is no window in which a set flag can be missed)
+    request_resync() = (scene_serialized[] = serialize_scene(scene))
+    return wrapper, done_init, request_resync
 end

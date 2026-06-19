@@ -135,6 +135,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
 
     WGLMakie = Attributes(
         framerate = 30.0,
+        render_on_demand = true,
         resize_to = nothing,
         # DEPRECATED in favor of resize_to
         # still needs to be here to gracefully deprecate it

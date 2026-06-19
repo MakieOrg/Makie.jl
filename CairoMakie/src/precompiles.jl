@@ -10,7 +10,7 @@ end
 let
     @compile_workload begin
         CairoMakie.activate!()
-        include(Makie.SHARED_PRECOMPILE_PATH)
+        foreach(include, Makie.shared_precompile_paths())
         # Cleanup globals to avoid serializing stale state (fonts, figures, tasks)
         # Note: __init__ doesn't run during precompilation, so we must always clean up here
         Makie.cleanup_globals()

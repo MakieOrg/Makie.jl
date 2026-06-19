@@ -207,12 +207,15 @@ mutable struct RectangleZoom
     to::Union{Nothing, Point2d}
     rectnode::Observable{Rect2d}
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
+    # The selection rectangle mesh is created lazily on the first drag:
+    # it costs a Scene + mesh plot per Axis but is rarely ever used.
+    mesh_initialized::Bool
 end
 
 function RectangleZoom(callback::Function; restrict_x = false, restrict_y = false, modifier = true)
     return RectangleZoom(
         callback, Observable(false), restrict_x, restrict_y,
-        nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier
+        nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier, false
     )
 end
 
@@ -759,8 +762,11 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     end
 end
 
-function RectangleZoom(f::Function, ax::Axis; kw...)
-    r = RectangleZoom(f; kw...)
+RectangleZoom(f::Function, ax::Axis; kw...) = RectangleZoom(f; kw...)
+
+function initialize_selection_mesh!(r::RectangleZoom, ax::Axis)
+    r.mesh_initialized && return r
+    r.mesh_initialized = true
     rect_scene = Scene(ax.scene)
     selection_vertices = lift(
         _selection_vertices, rect_scene, Observable(ax.scene), ax.finallimits,

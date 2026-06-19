@@ -102,7 +102,7 @@ function plot_updates(args, changed)
                 # Check if value is an array with all identical elements
                 if Makie.is_vector_attribute(value) && length(value) > 1 && all(x -> x == value[1], value)
                     # Use compressed format for arrays with identical elements
-                    Dict("value" => serialize_three(value[1]), "length" => length(value))
+                    Dict{String, Any}("value" => serialize_three(value[1]), "length" => length(value))
                 else
                     serialize_three(value)
                 end
@@ -212,7 +212,7 @@ function scatter_program(attr)
     dfield = attr.sdf_marker_shape === Cint(Makie.DISTANCEFIELD)
     atlas = attr.atlas
     distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : false
-    data = Dict(
+    data = Dict{Symbol, Any}(
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),
@@ -262,7 +262,7 @@ function create_shader(scene::Scene, plot::Scatter)
     register_computation!(attr, [:sdf_marker_shape, :marker, :font], [:glyph_data]) do (shape, markers, fonts), changed, last
         shape != 3 && return nothing
         data = get_scatter_data(scene, markers, fonts)
-        dict = Dict(:atlas_updates => data)
+        dict = Dict{Symbol, Any}(:atlas_updates => data)
         return (dict,)
     end
 
@@ -339,7 +339,7 @@ function register_text_computation!(attr, scene)
     end
     return register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs, fonts, glyph_scales), changed, last
         hashes, updates = get_glyph_data(scene, glyphs, fonts)
-        dict = Dict(
+        dict = Dict{Symbol, Any}(
             :glyph_hashes => hashes,
             :atlas_updates => updates,
             :scales => serialize_three(glyph_scales)
@@ -383,7 +383,7 @@ to_3x3(M::Mat{2, 3}) = Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
 to_3x3(xs::Vector{Vec2f}) = Sampler(xs) # already has appropriate format
 
 function meshscatter_program(args)
-    instance = Dict(
+    instance = Dict{Symbol, Any}(
         :vertex_position => args.vertex_position,
         :faces => args.faces,
         :normal => args.normal,
@@ -496,7 +496,7 @@ end
 
 function mesh_program(attr)
 
-    data = Dict(
+    data = Dict{Symbol, Any}(
         :shading => attr.primitive_shading,
         :diffuse => attr.diffuse,
         :specular => attr.specular,
@@ -684,7 +684,7 @@ end
 
 
 function create_lines_data(islines, attr)
-    uniforms = Dict(
+    uniforms = Dict{Symbol, Any}(
         :model_f32c => attr.model_f32c,
         :depth_shift => attr.depth_shift,
         :picking => false,
@@ -715,7 +715,7 @@ function create_lines_data(islines, attr)
         end
     end
 
-    return Dict(
+    return Dict{Symbol, Any}(
         :plot_type => "Lines",
         :visible => attr.visible,
         :is_segments => !islines,

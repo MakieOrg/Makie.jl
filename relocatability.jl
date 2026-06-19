@@ -35,7 +35,7 @@ Pkg.activate("MakieApp")
 # Speed up compilation and dont make the CI OOM.
 # This should still precompile anything in the APP and backe that to the image.
 write(
-    joinpath(tmpdir, "LocalPreferences.toml"), """
+    joinpath(tmpdir, "MakieApp", "LocalPreferences.toml"), """
     [CairoMakie]
     precompile_workload = false
     [GLMakie]
@@ -55,7 +55,16 @@ paths = ["Makie", "ComputePipeline", BACKEND]
 Pkg.develop(map(x -> (; path = joinpath(makie_dir, x)), paths))
 
 if BACKEND == "WGLMakie"
-    pkg"add Electron@5.1"
+    # v5 WGLMakie needs the unreleased HTTP@2 Bonito stack + ElectronCall
+    # (keep in sync with .github/workflows/_wglmakie.yml); drop the pins once
+    # the registered versions catch up.
+    Pkg.add([
+        (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/v5"),
+        (; url = "https://github.com/JuliaWeb/HTTP.jl.git", rev = "master"),
+        (; url = "https://github.com/JuliaServices/Reseau.jl.git", rev = "main"),
+        (; url = "https://github.com/JuliaIO/MsgPack.jl.git", rev = "master"),
+        (; url = "https://github.com/IanButterworth/ElectronCall.jl.git", rev = "main"),
+    ])
 end
 
 open("MakieApp/src/MakieApp.jl", "w") do io

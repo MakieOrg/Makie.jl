@@ -14,16 +14,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-        backend:
-          - GLMakie
-          - WGLMakie
-          - CairoMakie
+        # WGLMakie's v5 stack (Bonito 5) needs Julia 1.11+; the others stay on
+        # the LTS. Fully explicit so each backend pins its own Julia version.
+        include:
+          - {os: ubuntu-latest, arch: x64, backend: GLMakie, version: '1.10'}
+          - {os: ubuntu-latest, arch: x64, backend: WGLMakie, version: '1.11'}
+          - {os: ubuntu-latest, arch: x64, backend: CairoMakie, version: '1.10'}
     steps:
       - name: Checkout
         uses: actions/checkout@v6

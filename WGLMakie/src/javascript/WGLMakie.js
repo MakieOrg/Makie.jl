@@ -48,14 +48,16 @@ export function execute_in_order(order, f) {
     orderedExecutor.insert(f, order);
 }
 
-export function dispose_screen(screen) {
+export function dispose_screen(screen, notify_close = true) {
     if (Object.keys(screen).length === 0) {
         return;
     }
     const { renderer, picking_target, root_scene, comm } = screen;
-    // this usually doesn't get through, since the session may already be closed
-    // in that case, window_open gets set from session.on_close
-    comm.notify({ window_open: false });
+    if (notify_close) {
+        // this usually doesn't get through, since the session may already be closed
+        // in that case, window_open gets set from session.on_close
+        comm.notify({ window_open: false });
+    }
     if (renderer) {
         const canvas = renderer.domElement;
         if (canvas.parentNode) {
@@ -128,16 +130,38 @@ export function render_scene(scene, picking = false) {
 }
 
 function start_renderloop(three_scene) {
-    // extract the first scene for screen, which should be shared by all scenes!
-    const { fps } = three_scene.screen;
+    const screen = three_scene.screen;
+    const { fps } = screen;
     const time_per_frame = (1 / fps) * 1000; // default is 30 fps
     // make sure we immediately render the first frame and dont wait 30ms
     let last_time_stamp = performance.now();
-    function renderloop(timestamp) {
-        if (!check_screen(three_scene.screen)) {
-            return false;
+    // Per-loop flag: is an rAF for *this* loop pending? Kept local (not on the
+    // shared screen) so that after a resync the old, disposed loop and the new
+    // loop can't clobber each other's scheduling state.
+    let scheduled = false;
+
+    function schedule() {
+        if (scheduled || three_scene.disposed || !check_screen(screen)) {
+            return;
         }
-        if (timestamp - last_time_stamp > time_per_frame) {
+        scheduled = true;
+        requestAnimationFrame(renderloop);
+    }
+
+    function renderloop(timestamp) {
+        scheduled = false;
+        if (three_scene.disposed || !check_screen(screen)) {
+            return;
+        }
+        // With render_on_demand we only render when something marked the screen
+        // dirty via request_render (Plot.update / camera.update_matrices / resize /
+        // resync); otherwise we render every frame like a classic rAF loop.
+        const due = timestamp - last_time_stamp > time_per_frame;
+        if (due && (!screen.render_on_demand || screen.requires_update)) {
+            // consume the flag *before* rendering, so an update triggered during
+            // render_scene (re-)arms it and we render again next frame.
+            screen.requires_update = false;
+            screen.frame_count++;
             const all_rendered = render_scene(three_scene);
             if (!all_rendered) {
                 // if scenes don't render it means they're not displayed anymore
@@ -146,11 +170,24 @@ function start_renderloop(three_scene) {
             }
             last_time_stamp = performance.now();
         }
-        requestAnimationFrame(renderloop);
+        if (!screen.render_on_demand || screen.requires_update) {
+            // not on-demand: keep spinning; on-demand & still dirty: keep going
+            schedule();
+        }
+        // on-demand & idle: park the loop. request_render() wakes it.
     }
+
+    // The single "something changed, please redraw" entry point. Reassigned on
+    // every (re)start, so it always drives the current scene's loop; a stale
+    // disposed loop is unreachable through it.
+    screen.request_render = () => {
+        screen.requires_update = true;
+        schedule();
+    };
+
     function _check_screen() {
         // make sure we delete the screen if the canvas is not in the DOM anymore
-        if (!check_screen(three_scene.screen)){
+        if (!check_screen(screen)){
             return;
         }
         // this can't happen via requestAnimationFrame
@@ -159,10 +196,19 @@ function start_renderloop(three_scene) {
         setTimeout(_check_screen, 1000);
     }
 
-    // render one time before starting loop, so that we don't wait 30ms before first render
+    // render one time before starting loop, so that we don't wait 30ms before
+    // first render. This also covers resync: a fresh snapshot swaps in a new
+    // scene and calls start_renderloop, so the new scene draws immediately even
+    // when the loop is otherwise parked.
+    screen.frame_count++;
     render_scene(three_scene);
+    screen.requires_update = false;
     _check_screen();
-    renderloop();
+    if (!screen.render_on_demand) {
+        // classic continuous loop
+        schedule();
+    }
+    // on-demand: leave the loop parked; request_render() starts it on the first change.
 }
 
 /**
@@ -543,6 +589,10 @@ function set_render_size(screen, width, height) {
 
     renderer.setViewport(0, 0, real_pixel_width, real_pixel_height);
     add_picking_target(screen);
+    // A resize changes the framebuffer, so we need to redraw. Guarded because
+    // set_render_size also runs once during setup, before the loop (and thus
+    // request_render) exists; that initial frame is covered by start_renderloop.
+    screen.request_render?.();
     return;
 }
 
@@ -593,7 +643,7 @@ export function initialize_canvas_size(canvas, resize_to, width, height, px_per_
     return [initial_width, initial_height];
 }
 
-export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, done_init) {
+export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, render_on_demand, done_init) {
     const spinner = wrapper.querySelector('.wglmakie-spinner');
     try {
         // Calculate and apply the correct canvas size based on resize_to setting
@@ -619,21 +669,41 @@ export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_p
         real_size.notify([final_width, final_height]);
 
         const init_scene = (scene_data) => {
+            // The julia side treats the JS scene as a cache of its state:
+            // every snapshot arriving on `scene_serialized` (re)builds the
+            // scene - the first one initializes, later ones (sent after a
+            // reconnect with stale state) swap the scene graph in place,
+            // keeping renderer, canvas and texture atlas alive.
+            const screen = canvas.wglmakie_screen;
+            const is_resync = !!(screen && screen.renderer);
             try {
-                const renderer = create_scene(
-                    wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height,
-                    framerate, resize_to, px_per_unit, scalefactor
-                );
-                // Remove spinner after successful initialization
-                done_init.notify(true);
-                spinner?.remove();
+                if (is_resync) {
+                    const old_scene = screen.root_scene;
+                    if (old_scene) {
+                        old_scene.disposed = true; // terminates its renderloop
+                        delete_three_scene(old_scene);
+                    }
+                    const three_scene = deserialize_scene(scene_data, screen);
+                    screen.root_scene = three_scene;
+                    start_renderloop(three_scene);
+                } else {
+                    const renderer = create_scene(
+                        wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height,
+                        framerate, render_on_demand, resize_to, px_per_unit, scalefactor
+                    );
+                    // Remove spinner after successful initialization
+                    done_init.notify(true);
+                    spinner?.remove();
+                }
             } catch (e) {
                 Bonito.Connection.send_error("error initializing scene", e);
-                done_init.notify(e);
-                spinner?.remove();
+                if (!is_resync) {
+                    done_init.notify(e);
+                    spinner?.remove();
+                }
                 return;
             }
-            return false; // Deregister callback after first successful run
+            // stays registered: `scene_serialized` delivers resync snapshots
         };
         if (scene_serialized.value) {
             // If scene is already serialized, initialize immediately
@@ -687,6 +757,7 @@ function create_scene(
     width,
     height,
     fps,
+    render_on_demand,
     resize_to,
     px_per_unit,
     scalefactor
@@ -726,6 +797,18 @@ function create_scene(
         winscale,
         comm,
         texture_atlas: undefined,
+        // On-demand rendering: only render a frame when something changed.
+        // `requires_update` is set via `screen.request_render()` from the dirty
+        // sources (Plot.update, camera.update_matrices, set_render_size) and the
+        // initial/resync render in start_renderloop. When the scene goes idle the
+        // rAF loop parks itself and request_render() wakes it back up. The screen
+        // outlives scene swaps (resync), so these flags persist across them.
+        // frame_count is for diagnostics/tests. `render_on_demand` defaults to
+        // true; pass false (WGLMakie.activate!(; render_on_demand=false)) for a
+        // continuous render loop.
+        render_on_demand: render_on_demand !== false,
+        requires_update: true,
+        frame_count: 0,
     };
     canvas.wglmakie_screen = screen;
 

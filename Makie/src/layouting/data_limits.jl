@@ -150,7 +150,10 @@ end
 
 function for_each_atomic_plot(f, plot::Text)
     f(plot)
-    return f(plot.plots[1]) # linesegments for latex
+    # the linesegments child for latex texts exists only when the text can
+    # produce TeX line elements (see tex_linesegments!)
+    isempty(plot.plots) || f(plot.plots[1])
+    return
 end
 
 function for_each_atomic_plot(f, plot::Plot)
