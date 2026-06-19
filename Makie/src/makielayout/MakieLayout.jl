@@ -32,6 +32,7 @@ include("blocks/toggle.jl")
 include("blocks/legend.jl")
 include("blocks/scene.jl")
 include("blocks/menu.jl")
+include("blocks/table.jl")
 include("blocks/textbox.jl")
 
 export Axis
@@ -50,6 +51,7 @@ export Legend, axislegend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export LScene
 export Menu
+export Table
 export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect

@@ -64,6 +64,28 @@ end
     fig
 end
 
+@reference_test "table" begin
+    fig = Figure(size = (600, 400))
+
+    data = (
+        name = ["Alice", "Bob", "Charlie", "Diana", "Eve"],
+        age = [28, 35, 42, 31, 25],
+        city = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"]
+    )
+
+    t = Table(fig[1, 1];
+        data = data,
+        header_color = RGBf(0.2, 0.4, 0.6),
+        header_textcolor = :white,
+        cell_color_even = RGBf(0.95, 0.95, 1.0),
+        cell_color_odd = RGBf(0.9, 0.9, 0.95),
+        cell_color_selected = RGBf(0.7, 0.85, 1.0),
+        i_selected = 3
+    )
+
+    fig
+end
+
 @reference_test "Label with text wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     fig = Figure(size = (1000, 660))
