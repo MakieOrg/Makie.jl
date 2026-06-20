@@ -2360,7 +2360,7 @@ end
         "The title of the plot"
         title = ""
         "The gap between the title and the top of the axis"
-        titlegap::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> x / 2, inherit(scene, :fontsize, 16)))
+        titlegap::Float32 = inherit(scene, (:Axis, :titlegap), 4)
         "The alignment of the title.  Can be any of `:center`, `:left`, or `:right`."
         titlealign = :center
         "The fontsize of the title."
