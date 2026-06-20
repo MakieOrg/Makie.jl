@@ -942,6 +942,8 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
         "The colormap that the colorbar uses."
         colormap = @inherit(:colormap, :viridis)
+        "Deprecated in favor of `colorrange`. (The range of values depicted in the colorbar.)"
+        limits = automatic
         "The range of values depicted in the colorbar."
         colorrange = automatic
         """

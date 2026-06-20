@@ -7,6 +7,19 @@ function colorbar_check(keys, kwargs_keys)
     return
 end
 
+# compat
+extract_colormap(::AbstractPlot) = nothing
+function extract_colormap_recursive(plot::AbstractPlot)
+    result = extract_colormap(plot)
+    if isnothing(result)
+        for child in plot.plots
+            child_result = extract_colormap_recursive(child)
+            isnothing(child_result) || return child_result
+        end
+    end
+    return result
+end
+
 function extract_colorbar_attributes(plot::Arrows2D)
     map!(plot, [:tailcolor, :shaftcolor, :tipcolor, :color], :raw_merged_color) do a, b, c, d
         return [default_automatic(a, d); default_automatic(b, d); default_automatic(c, d)]
@@ -17,6 +30,7 @@ end
 extract_colorbar_attributes(plot::Voxels) = (color = plot.chunk, colorrange = plot.value_limits)
 extract_colorbar_attributes(plot::StreamPlot) = extract_colorbar_attributes_with_defaults(plot.plots[1])
 extract_colorbar_attributes(plot::VolumeSlices) = (color = plot[4],)
+extract_colorbar_attributes(plot::Hexbin) = (color = plot.count_hex,)
 
 _normalize_clipcolor(x) = x in (nothing, :auto, automatic) ? automatic : x
 function extract_colorbar_attributes(plot::Union{Contourf, Tricontourf})
@@ -24,6 +38,7 @@ function extract_colorbar_attributes(plot::Union{Contourf, Tricontourf})
     map!(_normalize_clipcolor, plot, :extendhigh, :cb_highclip)
     return (
         color = plot.computed_levels,
+        colormap = plot.computed_colormap,
         colorrange = plot.computed_colorrange,
         lowclip = plot.cb_lowclip,
         highclip = plot.cb_highclip,
@@ -84,20 +99,37 @@ function extract_colorbar_attributes_with_defaults(plot::AbstractPlot)
 end
 
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
-    _cmap = extract_colorbar_attributes(plot)
     cmap = Dict{Symbol, Any}()
-    for name in [:color, :colormap, :colorrange, :colorscale, :lowclip, :highclip]
-        if haskey(_cmap, name)
-            cmap[name] = _cmap[name]
-        elseif haskey(plot, name)
-            push!(cmap, name => plot[name])
+
+    dep_cmap = extract_colormap_recursive(plot)
+    if !isnothing(dep_cmap)
+        @warn "`extract_colormap` is deprecated in favor of `extract_colorbar_attributes`"
+        cmap[:values] = dep_cmap.color
+        cmap[:colormap] = dep_cmap.raw_colormap
+        cmap[:colorrange] = dep_cmap.colorrange
+        cmap[:scale] = dep_cmap.scale
+        cmap[:lowclip] = dep_cmap.lowclip
+        cmap[:highclip] = dep_cmap.highclip
+    else
+        _cmap = extract_colorbar_attributes(plot)
+        for name in [:color, :colormap, :colorrange, :colorscale, :lowclip, :highclip]
+            if haskey(_cmap, name)
+                cmap[name] = _cmap[name]
+            elseif haskey(plot, name)
+                push!(cmap, name => plot[name])
+            end
+        end
+        if !haskey(cmap, :color) && haskey(plot, :raw_color)
+            cmap[:values] = plot.raw_color
         end
     end
+
     haskey(cmap, :colorscale) && (cmap[:scale] = pop!(cmap, :colorscale))
     haskey(cmap, :color) && (cmap[:values] = pop!(cmap, :color))
 
-    colorbar_check(keys(cmap), keys(kwargs))
-
+    cmap_keys = collect(keys(cmap))
+    haskey(cmap, :colorrange) && push!(cmap_keys, :limits)
+    colorbar_check(cmap_keys, keys(kwargs))
     func = plotfunc(plot)
     # if isnothing(cmap)
     #     error("Neither $(func) nor any of its children use a colormap. Cannot create a Colorbar from this plot, please create it manually.
@@ -123,6 +155,7 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
     map!(cb, [:size, :vertical], :autosize) do sz, vertical
         return vertical ? (sz, nothing) : (nothing, sz)
     end
+    ComputePipeline.set_type!(cb.autosize, Any)
     map!(identity, blockscene, cb.layoutobservables.autosize, cb.autosize)
 
     add_input!(cb, :computedbbox, cb.layoutobservables.computedbbox)
@@ -130,12 +163,28 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
 
     # Run the normal color(map) processing. This either uses the inputs given
     # to `Colorbar()` explicitly, or the inputs extracted from a plot.
-    ComputePipeline.alias!(cb.attributes, :scale, :colorscale)
-    register_colormapping!(cb.attributes, :values)
+    register_colormapping_without_color!(cb.attributes)
+    register_computation!(
+        cb.attributes, [:values, :colorrange, :limits], [:resolved_colorrange]
+    ) do (values, _colorrange, limits), changed, @nospecialize(cached)
+        colorrange = if changed.limits && (limits !== automatic)
+            @warn("Colorbar :limits has been deprecated in favor of :colorrange.")
+            limits
+        else
+            _colorrange
+        end
+        if colorrange === automatic || colorrange === nothing
+            return (Vec2d(distinct_extrema_nan(values)...),)
+        else
+            low = colorrange[1] in (automatic, nothing) ? minimum(values) : colorrange[1]
+            high = colorrange[2] in (automatic, nothing) ? maximum(values) : colorrange[2]
+            return (Vec2d(low, high),)
+        end
+    end
 
     map!(
         cb,
-        [:color_mapping, :color_mapping_type, :scaled_color, :nsteps, :scaled_colorrange],
+        [:color_mapping, :color_mapping_type, :values, :nsteps, :resolved_colorrange],
         :cb_colors
     ) do mapping, mapping_type, values, n, limits
         if mapping_type === Makie.continuous
@@ -183,7 +232,7 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
 
     map!(
         cb,
-        [:barbox, :vertical, :cb_colors, :colorscale, :color_mapping_type],
+        [:barbox, :vertical, :cb_colors, :scale, :color_mapping_type],
         [:xrange, :yrange]
     ) do bb, vertical, colors, scale, mapping_type
         xmin, ymin = minimum(bb)
@@ -195,11 +244,11 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
         mini, maxi = extrema(s_scaled)
         s_scaled = (s_scaled .- mini) ./ (maxi - mini)
         if vertical
-            xrange = LinRange(xmin, xmax, 2)
+            xrange = collect(LinRange(xmin, xmax, 2))
             yrange = s_scaled .* (ymax - ymin) .+ ymin
         else
             xrange = s_scaled .* (xmax - xmin) .+ xmin
-            yrange = LinRange(ymin, ymax, 2)
+            yrange = collect(LinRange(ymin, ymax, 2))
         end
         return xrange, yrange
     end
@@ -226,7 +275,7 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
         blockscene,
         cb.xrange, cb.yrange, cb.continuous_pixels;
         colormap = cb.alpha_colormap,
-        colorrange = cb.scaled_colorrange,
+        colorrange = cb.colorrange,
         visible = cb.show_cats,
         inspectable = false
     )
@@ -238,7 +287,7 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
         blockscene,
         cb.xlims, cb.ylims, cb.continuous_pixels;
         colormap = cb.alpha_colormap,
-        colorrange = cb.scaled_colorrange,
+        colorrange = cb.colorrange,
         visible = cb.show_continuous,
         inspectable = false
     )
@@ -252,9 +301,9 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
             return [Polygon([lt, rt, et]), Polygon([lb, rb, eb])]
         else
             br, tr = rightline(box)
-            er = ((b .+ t) ./ 2) .+ Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi / 3), 0)
+            er = ((br .+ tr) ./ 2) .+ Point2f(sqrt(sum((tr .- br) .^ 2)) * sin(pi / 3), 0)
             bl, tl = leftline(box)
-            el = ((b .+ t) ./ 2) .- Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi / 3), 0)
+            el = ((bl .+ tl) ./ 2) .- Point2f(sqrt(sum((tl .- bl) .^ 2)) * sin(pi / 3), 0)
             return [Polygon([br, tr, er]), Polygon([bl, tl, el])]
         end
     end
@@ -319,13 +368,13 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
         end
     end
 
-    ticks = Observable{Any}()
     map!(cb, [:cb_colors, :color_mapping_type, :ticks], :finalticks) do cs, type, ticks
         # For categorical we just enumerate
         return type === Makie.categorical ? (1:length(cs), string.(cs)) : ticks
     end
+    ComputePipeline.set_type!(cb.finalticks, Any)
 
-    map!(cb, [:cb_colors, :color_mapping_type, :scaled_colorrange], :ticklimits) do cs, type, limits
+    map!(cb, [:cb_colors, :color_mapping_type, :resolved_colorrange], :ticklimits) do cs, type, limits
         return type === Makie.categorical ? (0.5, length(cs) + 0.5) : limits
     end
 
@@ -346,7 +395,7 @@ function initialize_block!(cb::Colorbar; plot_data = nothing)
         spinecolor = :transparent, spinevisible = false, flip_vertical_label = cb.flip_vertical_label,
         minorticksvisible = cb.minorticksvisible, minortickalign = cb.minortickalign,
         minorticksize = cb.minorticksize, minortickwidth = cb.minortickwidth,
-        minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cb.colorscale
+        minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cb.scale
     )
 
     cb.axis = axis
