@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed cycled attributes overriding values that the user set explicitly to a value that happened to coincide with the internal "derive from cycle" default, most notably a `Legend` showing a non-solid linestyle for plots whose linestyle was explicitly `nothing`/`:solid` while a `Cycle([:linestyle])` was active [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267).
+
 ## [0.24.12] - 2026-06-18
 
 - `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).
