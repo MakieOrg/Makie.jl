@@ -111,8 +111,8 @@ end
 function add_default_colorbar_attributes(cm::ColorMapping, @nospecialize(plot))
     Base.depwarn(
         "`extract_colormap(plot::$(typeof(plot)))` should no longer return a `Makie.ColorMapping`." *
-        "Instead it should return a `Dict{Symbol, Any}()` containing colormap related attributes. " *
-        "See `?Makie.extract_colormap`", :extract_colormap
+            "Instead it should return a `Dict{Symbol, Any}()` containing colormap related attributes. " *
+            "See `?Makie.extract_colormap`", :extract_colormap
     )
     cmap = Dict{Symbol, Any}()
     cmap[:values] = cm.color
@@ -217,7 +217,7 @@ function initialize_block!(cb::Colorbar)
     map!(
         cb, [:highclip_tri_visible, :lowclip_tri_visible, :framebox, :vertical], :tri_heights
     ) do hv, lv, box, vertical
-        return (lv, hv) .* ifelse(vertical, width(box), height(box)) .* sin(pi/3)
+        return (lv, hv) .* ifelse(vertical, width(box), height(box)) .* sin(pi / 3)
     end
 
     map!(cb, [:framebox, :vertical, :tri_heights], :barbox) do fbox, vertical, tri_heights
@@ -309,7 +309,7 @@ function initialize_block!(cb::Colorbar)
     map!(cb, [:highclip, :lowclip], :clip_tri_colors) do hc, lc
         return [
             to_color(hc isa Automatic || isnothing(hc) ? :transparent : hc),
-            to_color(lc isa Automatic || isnothing(lc) ? :transparent : lc)
+            to_color(lc isa Automatic || isnothing(lc) ? :transparent : lc),
         ]
     end
 
