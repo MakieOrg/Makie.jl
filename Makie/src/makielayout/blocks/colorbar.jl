@@ -7,8 +7,35 @@ function colorbar_check(keys, kwargs_keys)
     return
 end
 
-# compat
-extract_colormap(::AbstractPlot) = nothing
+"""
+    extract_colormap(plot)
+
+This function extracts plot attributes relevant for constructing a `Colorbar`.
+It is meant to be extended for recipes that do not use the default names for
+the respective attributes.
+
+The function should return a `Dict{Symbol, Any}` containing `name => attribute`
+pairs. It should contain:
+- `:colormap`: The colormap of the plot.
+- `:color`: The color values that the colormap applies to.
+- `:colorrange`: The colorrange of the plot, i.e. the extrema of `color`.
+- `:colorscale`: The colorscale of plot.
+- `:lowclip`: The lowclip of the plot.
+- `:highclip`: The highclip of the plot.
+
+`Makie.add_default_colorbar_attributes!(dict, plot)` can be used to fill out
+attributes that use the default names. (I.e. the names listed as keys above.)
+Alternatively `Makie._extract_colormap(plot)` can be implemented with an
+incomplete set of attributes instead. The default `Makie.extract_colormap`
+method will then add the remaining defaults. If the returned dict is incomplete
+the `Colorbar` constructor will also attempt to add the missing attributes.
+"""
+function extract_colormap(@nospecialize(plot::AbstractPlot))
+    return add_default_colorbar_attributes(_extract_colormap(plot), plot)
+end
+
+_extract_colormap(@nospecialize(::AbstractPlot)) = Dict{Symbol, Any}()
+
 function extract_colormap_recursive(plot::AbstractPlot)
     result = extract_colormap(plot)
     if isnothing(result)
@@ -20,32 +47,33 @@ function extract_colormap_recursive(plot::AbstractPlot)
     return result
 end
 
-function extract_colorbar_attributes(plot::Arrows2D)
+function _extract_colormap(plot::Arrows2D)
     map!(plot, [:tailcolor, :shaftcolor, :tipcolor, :color], :raw_merged_color) do a, b, c, d
         return [default_automatic(a, d); default_automatic(b, d); default_automatic(c, d)]
     end
-    return (; color = plot.raw_merged_color)
+    return Dict{Symbol, Any}(:color => plot.raw_merged_color)
 end
 
-extract_colorbar_attributes(plot::Voxels) = (color = plot.chunk, colorrange = plot.value_limits)
-extract_colorbar_attributes(plot::StreamPlot) = extract_colorbar_attributes_with_defaults(plot.plots[1])
-extract_colorbar_attributes(plot::VolumeSlices) = (color = plot[4],)
-extract_colorbar_attributes(plot::Hexbin) = (color = plot.count_hex,)
+_extract_colormap(plot::Voxels) = Dict{Symbol, Any}(:color => plot.chunk, :colorrange => plot.value_limits)
+_extract_colormap(plot::VolumeSlices) = Dict{Symbol, Any}(:color => plot[4])
+_extract_colormap(plot::Hexbin) = Dict{Symbol, Any}(:color => plot.count_hex)
+
+extract_colormap(plot::StreamPlot) = extract_colormap(plot.plots[1])
 
 _normalize_clipcolor(x) = x in (nothing, :auto, automatic) ? automatic : x
-function extract_colorbar_attributes(plot::Union{Contourf, Tricontourf})
+function _extract_colormap(plot::Union{Contourf, Tricontourf})
     map!(_normalize_clipcolor, plot, :extendlow, :cb_lowclip)
     map!(_normalize_clipcolor, plot, :extendhigh, :cb_highclip)
-    return (
-        color = plot.computed_levels,
-        colormap = plot.computed_colormap,
-        colorrange = plot.computed_colorrange,
-        lowclip = plot.cb_lowclip,
-        highclip = plot.cb_highclip,
+    return Dict{Symbol, Any}(
+        :color => plot.computed_levels,
+        :colormap => plot.computed_colormap,
+        :colorrange => plot.computed_colorrange,
+        :lowclip => plot.cb_lowclip,
+        :highclip => plot.cb_highclip,
     )
 end
 
-function extract_colorbar_attributes(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
+function _extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     # Users may use transparency to make layered isosurfaces visible. Because
     # 3D contours often accumulate the color of an isosurface over multiple
     # samples one typically needs very low alpha values for this, which would
@@ -53,76 +81,52 @@ function extract_colorbar_attributes(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where
     # we remove user alpha here. (The recipe also uses `alpha = 0` to remove
     # samples outside of isosurfaces. This is preserved here)
     map!(cm -> RGBAf.(Colors.color.(cm), Colors.alpha.(cm) .> 0.0f0), plot, :computed_colormap, :opaque_colormap)
-    return (
-        color = plot.value_levels,
-        colormap = plot.opaque_colormap,
-        colorrange = plot.padded_colorrange,
+    return Dict{Symbol, Any}(
+        :color => plot.value_levels,
+        :colormap => plot.opaque_colormap,
+        :colorrange => plot.padded_colorrange,
     )
 end
 
-# TODO: compat for ColorMapping
-
-"""
-    extract_colorbar_attributes(plot)
-
-This function extract plot attributes relevant for constructing a `Colorbar`.
-It is meant to be extended for recipes that do not use the default names.
-
-The function should return a dict-like object (one implementing `getindex` and `haskey`)
-containing `name => attribute` pairs. It may contain any of the following names:
-- `:colormap`: The colormap of the plot.
-- `:color`: The color values that the colormap applies to.
-- `:colorrange`: The colorrange of the plot, i.e. the extrema of `color`.
-- `:colorscale`: The colorscale of plot.
-- `:lowclip`: The lowclip of the plot.
-- `:highclip`: The highclip of the plot.
-
-Any missing `name` will default to the appropriate `plot[name]` attribute if it
-exists, or to the default defined by `Colorbar`.
-
-Note that you can use `extract_colorbar_attributes_with_defaults(plot)` to
-extract attributes with defaults from a child plot.
-"""
-extract_colorbar_attributes(::AbstractPlot) = NamedTuple()
-
-function extract_colorbar_attributes_with_defaults(plot::AbstractPlot)
-    _cmap = extract_colorbar_attributes(plot)
-    cmap = Dict{Symbol, Any}()
+function add_default_colorbar_attributes(attr::Dict{Symbol, Any}, @nospecialize(plot))
+    return add_default_colorbar_attributes(attr, attr, plot)
+end
+function add_default_colorbar_attributes(attr, @nospecialize(plot))
+    return add_default_colorbar_attributes(Dict{Symbol, Any}(), attr, plot)
+end
+function add_default_colorbar_attributes(output, overwrites, @nospecialize(plot))
     for name in [:color, :colormap, :colorrange, :colorscale, :lowclip, :highclip]
-        if haskey(_cmap, name)
-            cmap[name] = _cmap[name]
+        if haskey(overwrites, name)
+            output[name] = overwrites[name]
         elseif haskey(plot, name)
-            push!(cmap, name => plot[name])
+            push!(output, name => plot[name])
         end
     end
+    if !haskey(output, :color) && haskey(plot, :raw_color)
+        output[:values] = plot.raw_color
+    end
+    return output
+end
+
+function add_default_colorbar_attributes(cm::ColorMapping, @nospecialize(plot))
+    Base.depwarn(
+        "`extract_colormap(plot::$(typeof(plot)))` should no longer return a `Makie.ColorMapping`." *
+        "Instead it should return a `Dict{Symbol, Any}()` containing colormap related attributes. " *
+        "See `?Makie.extract_colormap`", :extract_colormap
+    )
+    cmap = Dict{Symbol, Any}()
+    cmap[:values] = cm.color
+    cmap[:colormap] = cm.raw_colormap
+    cmap[:colorrange] = cm.colorrange
+    cmap[:scale] = cm.scale
+    cmap[:lowclip] = cm.lowclip
+    cmap[:highclip] = cm.highclip
     return cmap
 end
 
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
-    cmap = Dict{Symbol, Any}()
-
-    dep_cmap = extract_colormap_recursive(plot)
-    if !isnothing(dep_cmap)
-        @warn "`extract_colormap` is deprecated in favor of `extract_colorbar_attributes`"
-        cmap[:values] = dep_cmap.color
-        cmap[:colormap] = dep_cmap.raw_colormap
-        cmap[:colorrange] = dep_cmap.colorrange
-        cmap[:scale] = dep_cmap.scale
-        cmap[:lowclip] = dep_cmap.lowclip
-        cmap[:highclip] = dep_cmap.highclip
-    else
-        _cmap = extract_colorbar_attributes(plot)
-        for name in [:color, :colormap, :colorrange, :colorscale, :lowclip, :highclip]
-            if haskey(_cmap, name)
-                cmap[name] = _cmap[name]
-            elseif haskey(plot, name)
-                push!(cmap, name => plot[name])
-            end
-        end
-        if !haskey(cmap, :color) && haskey(plot, :raw_color)
-            cmap[:values] = plot.raw_color
-        end
-    end
+    _cmap = extract_colormap_recursive(plot)
+    cmap = add_default_colorbar_attributes(_cmap, plot)
 
     haskey(cmap, :colorscale) && (cmap[:scale] = pop!(cmap, :colorscale))
     haskey(cmap, :color) && (cmap[:values] = pop!(cmap, :color))
@@ -131,10 +135,6 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     haskey(cmap, :colorrange) && push!(cmap_keys, :limits)
     colorbar_check(cmap_keys, keys(kwargs))
     func = plotfunc(plot)
-    # if isnothing(cmap)
-    #     error("Neither $(func) nor any of its children use a colormap. Cannot create a Colorbar from this plot, please create it manually.
-    #     If this is a recipe, one needs to overload `Makie.extract_colormap(::$(Plot{func}))` to allow for the automatic creation of a Colorbar.")
-    # end
 
     if haskey(cmap, :values) && to_value(cmap[:values]) isa Union{AbstractArray{<:Colorant}, Colorant, ShaderAbstractions.Sampler, AbstractPattern}
         error(
@@ -147,9 +147,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     return Colorbar(fig_or_scene; cmap..., kwargs...)
 end
 
-block_kwargs(::Type{Colorbar}) = Set([:plot_data])
-
-function initialize_block!(cb::Colorbar; plot_data = nothing)
+function initialize_block!(cb::Colorbar)
     blockscene = cb.blockscene
 
     map!(cb, [:size, :vertical], :autosize) do sz, vertical
