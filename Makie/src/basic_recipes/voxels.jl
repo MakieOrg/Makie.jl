@@ -109,19 +109,17 @@ function register_voxel_colormapping!(attr)
     add_constant!(attr, :fetch_pixel, false) # for CairoMakie
     if isnothing(attr[:color][])
         map!(
-            attr, [:colormap, :alpha, :lowclip, :highclip],
-            [:alpha_colormap, :voxel_colormap, :color_mapping_type]
+            attr, [:colormap, :alpha, :lowclip, :highclip], :voxel_colormap
         ) do cmap, alpha, lowclip, highclip
             N = 253 + (lowclip === automatic) + (highclip === automatic)
-            acm = add_alpha.(resample_cmap(cmap, N), alpha)
-            vcm = acm
+            cm = add_alpha.(resample_cmap(cmap, N), alpha)
             if lowclip !== automatic
-                vcm = [to_color(lowclip); vcm]
+                cm = [to_color(lowclip); cm]
             end
             if highclip !== automatic
-                vcm = [vcm; to_color(highclip)]
+                cm = [cm; to_color(highclip)]
             end
-            return acm, vcm, colormapping_type(colormap)
+            return cm
         end
     else
         register_computation!(attr, [:color, :alpha], [:voxel_color]) do (color, alpha), changed, cached
