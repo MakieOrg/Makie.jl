@@ -34,14 +34,34 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
     return add_default_colorbar_attributes(_extract_colormap(plot), plot)
 end
 
-_extract_colormap(@nospecialize(::AbstractPlot)) = Dict{Symbol, Any}()
+_extract_colormap(@nospecialize(::AbstractPlot)) = Dict{Symbol, Any}(:defaulted => true)
+
+function colorbar_attributes_complete(dictlike)
+    # TODO: Should this be less strict?
+    # Technically colorrange can be derived from colors, and colors are
+    # unnecessary with colorrange unless the colormap is categorical.
+    # lowclip, highclip and colorscale are generally more niche
+    full = (:colormap, :color, :colorrange, :colorscale, :lowclip, :highclip)
+    return issubset(full, keys(dictlike))
+end
 
 function extract_colormap_recursive(plot::AbstractPlot)
     result = extract_colormap(plot)
-    if isnothing(result)
-        for child in plot.plots
-            child_result = extract_colormap_recursive(child)
-            isnothing(child_result) || return child_result
+    # don't jump to child plots if the user provided a method (not defaulted)
+    if result isa ColorMapping || colorbar_attributes_complete(result) || !haskey(plot, :defaulted)
+        return result
+    else
+        child_results = extract_colormap_recursive.(plot.plots)
+        if length(child_results) == 0
+            return Dict{Symbol, Any}()
+        elseif length(child_results) == 1
+            return only(child_results)
+        else
+            error(
+                "Multiple colormaps found for plot $(plot), please specify which one to use " *
+                    "manually. Please overload `Makie.extract_colormap(::$(T))` to allow for " *
+                    "the automatic creation of a Colorbar."
+            )
         end
     end
     return result
@@ -130,6 +150,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
     haskey(cmap, :colorscale) && (cmap[:scale] = pop!(cmap, :colorscale))
     haskey(cmap, :color) && (cmap[:values] = pop!(cmap, :color))
+    pop!(cmap, :defaulted, nothing)
 
     cmap_keys = collect(keys(cmap))
     haskey(cmap, :colorrange) && push!(cmap_keys, :limits)
