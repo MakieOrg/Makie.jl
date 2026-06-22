@@ -75,10 +75,22 @@ function _extract_colormap(plot::Arrows2D)
 end
 
 _extract_colormap(plot::Voxels) = Dict{Symbol, Any}(:color => plot.chunk, :colorrange => plot.value_limits)
+_extract_colormap(plot::Surface) = Dict{Symbol, Any}(:color => plot.raw_color)
 _extract_colormap(plot::VolumeSlices) = Dict{Symbol, Any}(:color => plot[4])
-_extract_colormap(plot::Hexbin) = Dict{Symbol, Any}(:color => plot.count_hex)
 
+# These could also use _extract_colormap
 extract_colormap(plot::StreamPlot) = extract_colormap(plot.plots[1])
+extract_colormap(plot::Spy) = extract_colormap(plot.plots[1])
+extract_colormap(plot::Dendrogram) = extract_colormap(plot.plots[1])
+extract_colormap(plot::Density) = extract_colormap(plot.plots[1])
+
+function _extract_colormap(plot::Voronoiplot)
+    if plot.plots[1] isa Voronoiplot
+        return extract_colormap(plot.plots[1])
+    else
+        return Dict{Symbol, Any}(:color => plot.color)
+    end
+end
 
 _normalize_clipcolor(x) = x in (nothing, :auto, automatic) ? automatic : x
 function _extract_colormap(plot::Union{Contourf, Tricontourf})
@@ -91,6 +103,11 @@ function _extract_colormap(plot::Union{Contourf, Tricontourf})
         :lowclip => plot.cb_lowclip,
         :highclip => plot.cb_highclip,
     )
+end
+
+# TODO: plot missing lowclip, highclip handling?
+function _extract_colormap(plot::Union{Contour, Contour3d})
+    return Dict{Symbol, Any}(:color => plot.zlevels, :colorrange => plot.computed_colorrange)
 end
 
 function _extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
