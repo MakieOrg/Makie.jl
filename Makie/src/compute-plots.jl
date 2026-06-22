@@ -161,9 +161,8 @@ function meshscatter_boundingbox(_positions, model, transform_marker, marker_bb,
 end
 
 
-function add_alpha(color, alpha)
-    return RGBAf(Colors.color(color), alpha * Colors.alpha(color))
-end
+add_alpha(color, alpha) = add_alpha(Colors.color(color), Colors.alpha(color), alpha)
+add_alpha(rgb, a::T, alpha) where {T} = RGBA(rgb, a * T(alpha))
 
 function register_colormapping_without_color!(attr::ComputeGraph)
     map!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]) do icm, a
@@ -208,9 +207,10 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     ) do color, colorscale, alpha
         auto_colorrange = nothing
         if color isa Union{AbstractArray{<:Real}, Real}
-            scaled = el32convert(apply_scale(colorscale, color))
+            scaled = smallfloat_convert.(apply_scale(colorscale, color))
             auto_colorrange = Vec2f(distinct_extrema_nan(scaled))
-            val = clamp.(scaled, -floatmax(Float32), floatmax(Float32))
+            T = eltype(scaled)
+            val = clamp.(scaled, -floatmax(T), floatmax(T))
         elseif color isa AbstractPattern
             val = ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
