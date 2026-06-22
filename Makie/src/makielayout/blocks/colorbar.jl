@@ -140,7 +140,7 @@ function add_default_colorbar_attributes(output, overwrites, @nospecialize(plot)
         end
     end
     if !haskey(output, :color) && haskey(plot, :raw_color)
-        output[:values] = plot.raw_color
+        output[:color] = plot.raw_color
     end
     return output
 end
@@ -152,10 +152,10 @@ function add_default_colorbar_attributes(cm::ColorMapping, @nospecialize(plot))
             "See `?Makie.extract_colormap`", :extract_colormap
     )
     cmap = Dict{Symbol, Any}()
-    cmap[:values] = cm.color
+    cmap[:color] = cm.color
     cmap[:colormap] = cm.raw_colormap
     cmap[:colorrange] = cm.colorrange
-    cmap[:scale] = cm.scale
+    cmap[:colorscale] = cm.scale
     cmap[:lowclip] = cm.lowclip
     cmap[:highclip] = cm.highclip
     return cmap
@@ -164,15 +164,24 @@ end
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     _cmap = extract_colormap_recursive(plot)
     cmap = add_default_colorbar_attributes(_cmap, plot)
+    pop!(cmap, :defaulted, nothing)
+
+    func = plotfunc(plot)
+    if !colorbar_attributes_complete(cmap)
+        error(
+            "Could not extract a complete set of colormapping attributes from $func. \
+            `extract_colormap(plot)` should produce: \n   \
+            (:color, :colormap, :colorrange, :colorscale, :lowclip, :highclip). \n\
+            Produced = $(keys(cmap))"
+        )
+    end
 
     haskey(cmap, :colorscale) && (cmap[:scale] = pop!(cmap, :colorscale))
     haskey(cmap, :color) && (cmap[:values] = pop!(cmap, :color))
-    pop!(cmap, :defaulted, nothing)
 
     cmap_keys = collect(keys(cmap))
     haskey(cmap, :colorrange) && push!(cmap_keys, :limits)
     colorbar_check(cmap_keys, keys(kwargs))
-    func = plotfunc(plot)
 
     if haskey(cmap, :values) && to_value(cmap[:values]) isa Union{AbstractArray{<:Colorant}, Colorant, ShaderAbstractions.Sampler, AbstractPattern}
         error(
