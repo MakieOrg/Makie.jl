@@ -528,6 +528,12 @@ function Base.delete!(block::Block)
 end
 
 function unhide!(block::Block)
+    # Only unhide if the parent scene is visible — otherwise we'd
+    # override the parent → child visibility cascade and leave the
+    # blockscene rendering inside a hidden parent (e.g. a popup that
+    # hasn't been opened yet).
+    pv = parent(block.blockscene)
+    pv === nothing || pv.visible[] || return
     if !block.blockscene.visible[]
         block.blockscene.visible[] = true
     end

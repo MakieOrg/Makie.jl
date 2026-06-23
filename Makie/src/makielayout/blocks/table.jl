@@ -568,6 +568,8 @@ function initialize_block!(t::Table)
 
     # Mouse position + button handler (priority to consume events)
     onany(scene, e.mouseposition, e.mousebutton; priority = 63) do position, butt
+        # Inert when hidden or when another scene covers the pointer.
+        Makie.receives_events(scene) || return Consume(false)
         mp = screen_relative(scene, position)
 
         if !is_inside_table(plot, mp)
@@ -650,6 +652,7 @@ function initialize_block!(t::Table)
 
     # Scroll handling
     on(scene, e.scroll; priority = 62) do (x, y)
+        Makie.receives_events(scene) || return Consume(false)
         mp = screen_relative(scene, e.mouseposition[])
 
         if is_inside_table(plot, mp)

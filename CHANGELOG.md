@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added pointer-event routing based on visual scene stacking: `receives_events(scene)` returns `false` when a scene that visually covers the mouse position lives in a different subtree. A scene counts as "covering" when it is visible AND either: (a) was constructed with the new `captures_mouse=true` keyword (explicit opt-in for overlays that paint a semi-transparent backdrop via plots rather than via `clear=true`), or (b) has both a positive local z-translation (`translate!(scene, 0, 0, z>0)`) AND `clear[] == true`. A `z>0` translation alone — e.g. a Legend translated to z=10 to layer above plot content — does not claim pointer input. `is_mouseinside(scene)` honors the routing automatically, so any block using `addmouseevents!` gains the behavior without code changes. Use case: popups, dropdowns, and Menu overlays no longer leak pointer events to widgets underneath.
 - `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).
 - Fixed `contourf` not rendering non-closed contours [#5651](https://github.com/MakieOrg/Makie.jl/issues/5651).
 - Fixed WGLMakie flickering while continuously resizing a canvas by re-rendering right after the resize.

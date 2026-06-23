@@ -359,6 +359,7 @@ function initialize_block!(leg::Legend; entrygroups)
     # Process hide/show events
     sevents = events(blockscene)
     on(scene, sevents.mousebutton, priority = 1) do event
+        Makie.receives_events(blockscene) || return Consume(false)
         mpos = sevents.mouseposition[]
         if (event.action == Mouse.release) && in(mpos, legend_area[])
             if event.button == Mouse.left

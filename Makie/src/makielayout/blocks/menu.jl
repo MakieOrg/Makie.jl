@@ -214,6 +214,8 @@ function initialize_block!(m::Menu; default = 1)
     was_pressed_button = Ref(false)
 
     onany(blockscene, e.mouseposition, e.mousebutton; priority = 64) do position, butt
+        # Inert when hidden or when another scene covers the pointer.
+        Makie.receives_events(blockscene) || return Consume(false)
         mp = screen_relative(menuscene, position)
         # track if we have been inside menu/options to clean up if we haven't been
         is_over_options = false
@@ -284,6 +286,7 @@ function initialize_block!(m::Menu; default = 1)
     end
 
     on(blockscene, menuscene.events.scroll; priority = 61) do (x, y)
+        Makie.receives_events(blockscene) || return Consume(false)
         if is_mouseinside(menuscene)
             t = translation(menuscene)[]
             # Hack to differentiate mousewheel and trackpad scrolling
