@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-- Added `tricontour` recipe for plotting isolines on unstructured/scattered data, analogous to `tricontourf`. Supports `Colorbar(fig[1,2], tr)` [#TODO]().
-- Added `Colorbar(fig[1,2], plt)` support for 2D `contour` plots [#TODO]().
-- Fixed crashes when plotting constant scalar fields: `contourf`/`tricontourf` now produce evenly-spaced bands around the constant value; `contour` produces no lines; `heatmap` and all colormapped plots no longer error on `colorrange=(c,c)` [#TODO]().
+- Added `tricontour` recipe for plotting isolines on unstructured/scattered data, analogous to `tricontourf`. Supports `Colorbar(fig[1,2], tr)` [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Added `Colorbar(fig[1,2], plt)` support for 2D `contour` plots [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Fixed crashes when plotting constant scalar fields: `contourf`/`tricontourf` now produce evenly-spaced bands around the constant value; `contour` produces no lines; `heatmap` and all colormapped plots no longer error on `colorrange=(c,c)` [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
 
 ## [0.24.12] - 2026-06-18
 
