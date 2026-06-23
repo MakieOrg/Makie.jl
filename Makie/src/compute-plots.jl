@@ -236,7 +236,10 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         elseif last(colorrange) == automatic
             return Vec2f((first(colorrange), last(autorange)))
         else
-            return Vec2f(apply_scale(colorscale, colorrange))
+            lo, hi = apply_scale(colorscale, colorrange)
+            lo == hi || return Vec2f(lo, hi)
+            delta = max(0.5f0, abs(Float32(lo)))
+            return Vec2f(lo - delta, hi + delta)
         end
     end
 end
@@ -1067,7 +1070,10 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
         elseif last(colorrange) == automatic
             return Vec2f(first(colorrange), last(distinct_extrema_nan(color)))
         else
-            return Vec2f(colorrange)
+            lo, hi = Vec2f(colorrange)
+            lo == hi || return Vec2f(lo, hi)
+            delta = max(0.5f0, abs(lo))
+            return Vec2f(lo - delta, hi + delta)
         end
     end
 
