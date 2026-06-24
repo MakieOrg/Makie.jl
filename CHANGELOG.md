@@ -44,7 +44,7 @@
 - Refactored `Axis` to use the compute graph [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
   - **minor breaking** Custom interactions that manipulated `ax.targetlimits` should now update `ax.localxlimits` and `ax.localylimits` instead and read from either `ax.targetlimits` or `sharedxlimits` and `sharedylimits`. Otherwise they will not correctly update linked axes.
   - Redisplaying a figure after emptying an axis now resets its limits if they aren't set to specific values.
-- Refactored `Colorbar` to use the comptue graph [#5678](https://github.com/MakieOrg/Makie.jl/pull/5678)
+- Refactored `Colorbar` to use the compute graph [#5678](https://github.com/MakieOrg/Makie.jl/pull/5678)
   - **minor breaking** `extract_colormap(plot)` is now expected to return a `Dict` containing the `color`, `colormap`, `colorrange`, `colorscale`, `lowclip` and `highclip` attributes of the given plot. Returning a `Makie.ColorMapping` still works but is considered deprecated.
   - **minor breaking** The `limits` attribute has been deprecated in favor of `colorrange`
 - Fixed an issue where Observable outputs of compute nodes that cycle back into the compute graph could discard updates of other Observable outputs. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
