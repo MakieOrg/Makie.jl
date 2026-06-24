@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Fixed cycled attributes overriding values that the user set explicitly to a value that happened to coincide with the internal "derive from cycle" default, most notably a `Legend` showing a non-solid linestyle for plots whose linestyle was explicitly `nothing`/`:solid` while a `Cycle([:linestyle])` was active [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267).
+- Adjusted cycled attributes to be marked as `:cycled` instead of `nothing` so that `nothing` doesn't get overridden. This allows e.g. `linestyle = nothing` to be set when `linestyle` is cycled. [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267)
 
 ## [0.24.12] - 2026-06-18
 
