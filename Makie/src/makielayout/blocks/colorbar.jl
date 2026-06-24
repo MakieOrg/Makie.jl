@@ -48,7 +48,7 @@ end
 function extract_colormap_recursive(plot::AbstractPlot)
     result = extract_colormap(plot)
     # don't jump to child plots if the user provided a method (not defaulted)
-    if result isa ColorMapping || colorbar_attributes_complete(result) || !haskey(plot, :defaulted)
+    if result isa ColorMapping || colorbar_attributes_complete(result) || !haskey(result, :defaulted)
         return add_default_colorbar_attributes(result, plot)
     else
         child_results = extract_colormap_recursive.(plot.plots)
