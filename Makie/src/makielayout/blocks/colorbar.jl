@@ -49,7 +49,7 @@ function extract_colormap_recursive(plot::AbstractPlot)
     result = extract_colormap(plot)
     # don't jump to child plots if the user provided a method (not defaulted)
     if result isa ColorMapping || colorbar_attributes_complete(result) || !haskey(plot, :defaulted)
-        return result
+        return add_default_colorbar_attributes(result, plot)
     else
         child_results = extract_colormap_recursive.(plot.plots)
         if length(child_results) == 0
@@ -162,8 +162,7 @@ function add_default_colorbar_attributes(cm::ColorMapping, @nospecialize(plot))
 end
 
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
-    _cmap = extract_colormap_recursive(plot)
-    cmap = add_default_colorbar_attributes(_cmap, plot)
+    cmap = extract_colormap_recursive(plot)
     pop!(cmap, :defaulted, nothing)
 
     func = plotfunc(plot)
