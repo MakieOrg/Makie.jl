@@ -146,7 +146,7 @@ end
 
     _, _, p = contourf(xs, ys, zs_const; levels = 6)
     computed = p.computed_levels[]
-    @test length(computed) == 7 # levels + 1 
+    @test length(computed) == 7 # levels + 1
     @test issorted(computed)
     @test computed[1] < 2.0f0 < computed[end]
 end

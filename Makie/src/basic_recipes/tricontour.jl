@@ -126,7 +126,8 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         isnothing(col) ? lc : col
     end
 
-    lines!(c, c.line_xs, c.line_ys;
+    lines!(
+        c, c.line_xs, c.line_ys;
         color = final_color,
         colormap = c.colormap,
         colorscale = c.colorscale,
@@ -134,7 +135,8 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         linewidth = c.linewidth,
         linestyle = c.linestyle,
         inspectable = c.inspectable,
-        transparency = c.transparency)
+        transparency = c.transparency
+    )
 
     return c
 end
