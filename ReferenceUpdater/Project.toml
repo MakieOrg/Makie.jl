@@ -21,7 +21,7 @@ ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
 ghr_jll = "07c12ed4-43bc-5495-8a2a-d5838ef8d533"
 
 [compat]
-Bonito = "3, 4"
+Bonito = "3, 4, 5"
 Colors = "0.12, 0.13.0"
 DelimitedFiles = "1.9.1"
 FFMPEG_jll = "6.1.2, 7, 8"

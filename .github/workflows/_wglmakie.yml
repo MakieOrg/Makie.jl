@@ -10,8 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.10'
-          - '1'
+          - '1.11'
+          - '1.12'
         os:
           - ubuntu-latest
         arch:
@@ -33,6 +33,8 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
+          # Test against Bonito's master branch (WGLMakie + Bonito v5 work)
+          Pkg.add(PackageSpec(url="https://github.com/SimonDanisch/Bonito.jl", rev="master"))
       - name: Run the tests
         continue-on-error: true
         run: >
