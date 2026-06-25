@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Adjusted cycled attributes to be marked as `:cycled` instead of `nothing` so that `nothing` doesn't get overridden. This allows e.g. `linestyle = nothing` to be set when `linestyle` is cycled. [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267)
+
 ## [0.24.12] - 2026-06-18
 
 - `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).
