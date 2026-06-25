@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `ablines` now works under non-identity axis scales (e.g. log), drawing a subdivided curve instead of erroring [#5685](https://github.com/MakieOrg/Makie.jl/pull/5685).
+
 ## [0.24.12] - 2026-06-18
 
 - `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).
