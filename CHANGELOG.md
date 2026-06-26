@@ -3,6 +3,7 @@
 ## Unreleased
 
 - `ablines` now works under non-identity axis scales (e.g. log), drawing a subdivided curve instead of erroring [#5685](https://github.com/MakieOrg/Makie.jl/pull/5685).
+- Adjusted cycled attributes to be marked as `:cycled` instead of `nothing` so that `nothing` doesn't get overridden. This allows e.g. `linestyle = nothing` to be set when `linestyle` is cycled. [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267)
 
 ## [0.24.12] - 2026-06-18
 
