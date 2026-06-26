@@ -290,7 +290,20 @@ edisplay = Bonito.use_electron_display(devtools = true)
         @test isempty(wgl_plots)
 
         session = edisplay.browserdisplay.handler.session
-        session_size = Base.summarysize(session) / 10^6
+        # Measure Bonito's own session state, NOT the transport layer underneath it.
+        # `session.connection.handler.socket` is an HTTP.jl WebSocket whose send
+        # buffer (`WSConn.outgoing`) retains the capacity of the largest frame ever
+        # sent (by design: zero-alloc steady-state writes) and is freed only when the
+        # connection closes. This is the *hot* page session, kept open for the whole
+        # run, so a plain `summarysize` would charge it tens of MB of HTTP send-buffer
+        # capacity that isn't session state. Stop the walk at the HTTP WebSocket
+        # boundary; everything Bonito owns is still counted (verified: stashing an
+        # array in `session_objects` still grows this number).
+        http_socket_type = typeof(session.connection.handler.socket).name.wrapper
+        session_size = Base.summarysize(
+            session;
+            exclude = Union{DataType, Core.TypeName, Core.MethodInstance, http_socket_type},
+        ) / 10^6
 
         @test length(session.session_objects) == 0
         # getproperty, not getfield: in Bonito v5 `inbox` lives on the shared
@@ -308,12 +321,11 @@ edisplay = Bonito.use_electron_display(devtools = true)
         @test server.routes.table[1][1] == "/browser-display"
         @test server.routes.table[2][2] isa HTTPAssetServer
 
-        # TODO, this went up from 6 to 11mb, likely because of a session not getting freed
-        # It could be related to the error in the console:
-        # " Trying to send to a closed session"
-        # So maybe a subsession closes and doesn't get freed?
+        # With the HTTP transport excluded, the hot session's own footprint is ~1.3 MB
+        # (almost all of it the retained JS import bundle). Keep headroom for env
+        # differences, but tight enough to catch a real multi-MB session leak.
         @show session_size
-        @test session_size < 13
+        @test session_size < 5
 
         js_sessions = run(edisplay.window, "Bonito.Sessions.SESSIONS")
         js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")
