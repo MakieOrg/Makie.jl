@@ -222,8 +222,7 @@ edisplay = Bonito.use_electron_display(devtools = true)
             sleep(1)
 
             # Calibrate against the tick clock's own runtime, not wall-clock:
-            # `colorbuffer`/`close` add dead-time where no ticks fire (and a loaded
-            # CI host inflates it), but `last(...).time` is exactly the ticking window.
+            # `colorbuffer`/`close` add dead-time where no ticks fire.
             tick_runtime = last(tick_record).time
             @test round(Int, 30 * tick_runtime) - 10 <= length(tick_record) <= round(Int, 30 * tick_runtime) + 10
             t = 0.0
