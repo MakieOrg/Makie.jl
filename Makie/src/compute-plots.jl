@@ -634,12 +634,26 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         for (k, p) in lookup
             # If user explicitly passes values, we should not do anything
             let plotcycle = cycle
-                add_input!(attr, k, get(kwargs, k, nothing)) do key, value
+                # We use the sentinel value `:cycled` (instead of `nothing`) to mark
+                # cycled attributes that the user did *not* set explicitly and which
+                # should therefore be derived from the cycle below. This is important
+                # because `nothing` is itself a valid, user-providable value for some
+                # cycled attributes -- most notably `linestyle = nothing` (and `:solid`,
+                # which `convert_attribute` turns into `nothing`) means "draw a solid
+                # line". If we used `nothing` as the sentinel, such an explicitly
+                # requested solid linestyle would be indistinguishable from "not set"
+                # and would incorrectly be overridden by the cycle. This happens e.g.
+                # for the line plots that `Legend` creates with `linestyle = nothing`,
+                # see https://github.com/MakieOrg/Makie.jl/issues/5267
+                add_input!(attr, k, get(kwargs, k, :cycled)) do key, value
                     palettes = attr.palettes[]
                     if value isa Cycled
                         value = get_cycle_attribute(palettes, key, value.i, plotcycle)
                     end
-                    if !isnothing(value)
+                    # Anything the user set explicitly (including `nothing`) is kept as
+                    # is; only the `:cycled` sentinel triggers deriving the value from
+                    # the cycle.
+                    if value !== :cycled
                         if is_primitive
                             return convert_attribute(value, Key{key}(), Key{name}())
                         else
@@ -794,7 +808,13 @@ function _cycle_position(plot::Plot, plot_iter)
             cp === plot && return pos
             if haskey(cp, :cycle) && !isnothing(cp.cycle[]) && plotfunc(cp) === plotfunc(plot)
                 is_cycling = any(syms) do x
-                    return haskey(cp.attributes.inputs, x) && isnothing(cp.attributes.inputs[x].value)
+                    # A plot only participates in cycling for attribute `x` if the
+                    # user did not set `x` explicitly. We detect this via the
+                    # `:cycled` sentinel that `add_attributes!` stores as the input
+                    # value for unset cycled attributes (see there for why we cannot
+                    # use `nothing` here -- an explicit `linestyle = nothing` must
+                    # count as "set by user", not as "cycling").
+                    return haskey(cp.attributes.inputs, x) && cp.attributes.inputs[x].value === :cycled
                 end
                 if is_cycling
                     pos += 1
