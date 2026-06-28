@@ -992,28 +992,19 @@ end
     y = RNG.randn(50)
     z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
 
-    f, ax, tr = tricontour(x, y, z; levels = 8)
-    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
-    Colorbar(f[1, 2], tr)
-    f
-end
+    x2 = RNG.rand(30)
+    y2 = RNG.rand(30)
+    z2 = sin.(2π .* x2) .* cos.(2π .* y2)
 
-@reference_test "tricontour single color" begin
-    x = RNG.randn(50)
-    y = RNG.randn(50)
-    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
+    f = Figure(size = (900, 300))
+    ax1, tr1 = tricontour(f[1, 1], x, y, z; levels = 8)
+    scatter!(ax1, x, y; color = z, strokewidth = 1, strokecolor = :black)
+    Colorbar(f[1, 2], tr1)
 
-    f, ax, tr = tricontour(x, y, z; levels = 8, color = :black, linewidth = 2)
-    f
-end
+    ax2, tr2 = tricontour(f[1, 3], x, y, z; levels = 8, color = :black, linewidth = 2)
 
-@reference_test "tricontour with provided triangulation" begin
-    x = RNG.rand(30)
-    y = RNG.rand(30)
-    z = sin.(2π .* x) .* cos.(2π .* y)
-
-    f, ax, tr = tricontour(x, y, z; levels = 6, colormap = :RdBu)
-    Colorbar(f[1, 2], tr)
+    ax3, tr3 = tricontour(f[1, 4], x2, y2, z2; levels = 6, colormap = :RdBu)
+    Colorbar(f[1, 5], tr3)
     f
 end
 
