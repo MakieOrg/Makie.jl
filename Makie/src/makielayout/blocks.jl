@@ -753,8 +753,10 @@ function tooltip!(b::Block, str::AbstractString; enabled = true, delay = 0, dept
     on(_enabled) do e
         if e && isnothing(obsfun)
             obsfun = onany(b.blockscene.events.mouseposition, b.layoutobservables.computedbbox) do mp, bbox
-                empty_channel!(channel)
-                put!(channel, (mp, bbox))
+                if isopen(channel)
+                    empty_channel!(channel)
+                    put!(channel, (mp, bbox))
+                end
             end
         elseif !e && !isnothing(obsfun)
             foreach(off, obsfun)
