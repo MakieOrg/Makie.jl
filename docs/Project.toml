@@ -34,10 +34,11 @@ WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 [sources]
 CairoMakie = {path = "../CairoMakie"}
 ComputePipeline = {path = "../ComputePipeline"}
+DocumenterVitepress = {url = "https://github.com/LuxDL/DocumenterVitepress.jl", rev = "as/wglmakie-vitepress-script-execution"}
 GLMakie = {path = "../GLMakie"}
 Makie = {path = "../Makie"}
 RPRMakie = {path = "../RPRMakie"}
 WGLMakie = {path = "../WGLMakie"}
 
 [compat]
-DocumenterVitepress = "0.2.4"
+DocumenterVitepress = "0.2.4, 0.3"
