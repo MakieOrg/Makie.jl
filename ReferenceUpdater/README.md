@@ -10,6 +10,13 @@ ReferenceUpdater.serve_update_page(commit = "a1b2c3")
 ReferenceUpdater.serve_update_page(pr = 1234)
 ```
 
+You can also install ReferenceUpdater as an app in Julia 1.12 and up using `]app dev path/to/ReferenceUpdater`. Then you can access the functionality directly from the command line (given that the Julia app binary folder is on your path) via:
+
+```
+reference_updater commit a1b2c3
+reference_updater pr 1234
+```
+
 Locally, tests are recorded inside the backends test folder, which can also be used to server a reference page.
 E.g., to see the results after running `]test WGLMakie` you can run:
 

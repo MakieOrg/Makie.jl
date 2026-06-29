@@ -5,23 +5,22 @@ function free(sg::SliderGrid)
     return
 end
 
+_default_format(x) = string(x)
+_default_format(x::AbstractFloat) = string(round(x, sigdigits = 3))
+
+extract_label_range_format(pair::Pair) = pair[1], _extract_range_format(pair[2])...
+_extract_range_format(p::Pair) = (p...,)
+_extract_range_format(x) = (x, _default_format)
+
 function initialize_block!(sg::SliderGrid, nts::NamedTuple...)
-
-    default_format(x) = string(x)
-    default_format(x::AbstractFloat) = string(round(x, sigdigits = 3))
-
     sg.sliders = Slider[]
     sg.valuelabels = Label[]
     sg.labels = Label[]
 
-    extract_label_range_format(pair::Pair) = pair[1], extract_range_format(pair[2])...
-    extract_range_format(p::Pair) = (p...,)
-    extract_range_format(x) = (x, default_format)
-
     for (i, nt) in enumerate(nts)
         label = haskey(nt, :label) ? nt.label : ""
         range = nt.range
-        format = haskey(nt, :format) ? nt.format : default_format
+        format = haskey(nt, :format) ? nt.format : _default_format
         remaining_pairs = filter(pair -> pair[1] ∉ (:label, :range, :format), pairs(nt))
         l = Label(sg.layout[i, 1], label, halign = :left)
         slider = Slider(sg.layout[i, 2]; range = range, remaining_pairs...)

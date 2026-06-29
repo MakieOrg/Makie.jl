@@ -9,9 +9,11 @@ function glGetShaderiv(shaderID::GLuint, variable::GLenum)
     return result[]
 end
 function glShaderSource(shaderID::GLuint, shadercode::Vector{UInt8})
-    shader_code_ptrs = Ptr{UInt8}[pointer(shadercode)]
-    len = Ref{GLint}(length(shadercode))
-    return glShaderSource(shaderID, 1, shader_code_ptrs, len)
+    GC.@preserve shadercode begin
+        shader_code_ptrs = Ptr{UInt8}[pointer(shadercode)]
+        len = Ref{GLint}(length(shadercode))
+        return glShaderSource(shaderID, 1, shader_code_ptrs, len)
+    end
 end
 glShaderSource(shaderID::GLuint, shadercode::String) = glShaderSource(shaderID, Vector{UInt8}(shadercode))
 function glGetAttachedShaders(program::GLuint)

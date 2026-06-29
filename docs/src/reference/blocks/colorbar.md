@@ -1,4 +1,4 @@
-# Colorbar
+# [Colorbar](@id Colorbar_page)
 
 A Colorbar needs a colormap and a tuple of low/high limits.
 The colormap's axis will then span from low to high along the visual representation of the colormap.

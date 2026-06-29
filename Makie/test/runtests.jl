@@ -12,6 +12,14 @@ using Makie.IntervalSets
 using GeometryBasics: Pyramid
 using Makie.ComputePipeline: ResolveException
 using Makie: volume
+
+# for texting bounding boxes
+function Base.isapprox(r1::Rect{D}, r2::Rect{D}; kwargs...) where {D}
+    left = vcat(minimum(r1), widths(r1))
+    right = vcat(minimum(r2), widths(r2))
+    return all((isnan.(left) .& isnan.(right)) .| (left .≈ right))
+end
+
 # COV_EXCL_STOP
 
 @testset "Unit tests" begin
@@ -26,6 +34,7 @@ using Makie: volume
         include("isolated/Plane.jl")
         include("isolated/texture_atlas.jl")
         include("isolated/datetime_ticks.jl")
+        include("isolated/showoff.jl")
     end
 
     @testset "Plots" begin
@@ -33,8 +42,10 @@ using Makie: volume
         include("plots/generic_attributes.jl")
         include("plots/text.jl")
         include("plots/barplot.jl")
+        include("plots/bracket.jl")
         include("plots/hist.jl")
         include("plots/poly.jl")
+        include("plots/contourf.jl")
         include("plots/voronoiplot.jl")
     end
 
@@ -68,6 +79,7 @@ using Makie: volume
         include("interactivity/Axis.jl")
         include("interactivity/Axis3.jl")
         include("interactivity/DataInspector.jl")
+        include("interactivity/EditableText.jl")
     end
 
     include("boundingboxes.jl")

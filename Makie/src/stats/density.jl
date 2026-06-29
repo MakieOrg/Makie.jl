@@ -22,19 +22,23 @@ end
 Plot a kernel density estimate of `values`.
 """
 @recipe Density begin
+    mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
     """
-    Usually set to a single color, but can also be set to `:x` or
-    `:y` to color with a gradient. If you use `:y` when `direction = :x` (or vice versa),
-    note that only 2-element colormaps can work correctly.
+    Sets the color of the density plot. This is usually a single color, but can
+    also be `:x` or `:y` to color with a gradient.
     """
     color = @inherit patchcolor
-    colormap = @inherit colormap
-    colorscale = identity
-    colorrange = Makie.automatic
+
+    "Sets the color of the density outline. This requires `strokewidth > 0`."
     strokecolor = @inherit patchstrokecolor
+    "Sets the linewidth of the density outline."
     strokewidth = @inherit patchstrokewidth
+    "Sets the line pattern of the density outline."
     linestyle = nothing
+    "Controls whether the outline only draws around the complete density (true) or just the maximum values (false)."
     strokearound = false
+
     "The resolution of the estimated curve along the dimension set in `direction`."
     npoints = 200
     "Shift the density baseline, for layering multiple densities on top of each other."
@@ -47,22 +51,21 @@ Plot a kernel density estimate of `values`.
     bandwidth = automatic
     "Assign a vector of statistical weights to `values`."
     weights = automatic
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color => :patchcolor]
-    inspectable = @inherit inspectable
-    """
-    The alpha value of the colormap or color attribute. Multiple alphas like
-    in plot(alpha=0.2, color=(:red, 0.5), will get multiplied.
-    """
-    alpha = 1.0
-    visible = true
 end
 
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
-    x = plot[1]
-
-    lowerupper = lift(
-        plot, x, plot.direction, plot.boundary, plot.offset,
-        plot.npoints, plot.bandwidth, plot.weights
+    map!(
+        plot, [:converted_1, :direction, :boundary, :offset, :npoints, :bandwidth, :weights],
+        [:lower, :upper]
     ) do x, dir, bound, offs, n, bw, weights
 
         k = KernelDensity.kde(
@@ -82,50 +85,43 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         else
             error("Invalid direction $dir, only :x or :y allowed")
         end
-        (lowerv, upperv)
+        return lowerv, upperv
     end
 
-    linepoints = lift(plot, lowerupper, plot.strokearound) do lu, sa
-        if sa
-            ps = copy(lu[2])
-            push!(ps, lu[1][end])
-            push!(ps, lu[1][1])
-            push!(ps, lu[1][2])
-            ps
+    map!(plot, [:lower, :upper, :strokearound], :linepoints) do lower, upper, strokearound
+        if strokearound
+            ps = copy(upper)
+            push!(ps, lower[end])
+            push!(ps, lower[1])
+            push!(ps, lower[2])
+            return ps
         else
-            lu[2]
+            return upper
         end
     end
 
-    lower = Observable(Point2f[])
-    upper = Observable(Point2f[])
-
-    on(plot, lowerupper) do (l, u)
-        lower.val = l
-        upper[] = u
-    end
-    notify(lowerupper)
-
-    colorobs = Observable{Any}()
-    map!(plot, colorobs, plot.color, lowerupper, plot.direction) do c, lu, dir
-        if (dir === :x && c === :x) || (dir === :y && c === :y)
+    map!(
+        plot,
+        [:color, :lower, :upper, :direction, :offset],
+        :computed_color
+    ) do color, lower, upper, dir, o
+        if (dir === :x && color === :x) || (dir === :y && color === :y)
             dim = dir === :x ? 1 : 2
-            return Float32[l[dim] for l in lu[1]]
-        elseif (dir === :y && c === :x) || (dir === :x && c === :y)
-            o = Float32(plot.offset[])
+            return getindex.(lower, dim)
+        elseif (dir === :y && color === :x) || (dir === :x && color === :y)
             dim = dir === :x ? 2 : 1
-            return vcat(Float32[l[dim] - o for l in lu[1]], Float32[l[dim] - o for l in lu[2]])::Vector{Float32}
+            return vcat(getindex.(lower, dim), getindex.(upper, dim)) .- o
         else
-            return c
+            return color
         end
     end
 
     band!(
-        plot, lower, upper, color = colorobs, colormap = plot.colormap, colorscale = plot.colorscale,
+        plot, plot.lower, plot.upper, color = plot.computed_color, colormap = plot.colormap, colorscale = plot.colorscale,
         colorrange = plot.colorrange, inspectable = plot.inspectable, alpha = plot.alpha, visible = plot.visible
     )
     l = lines!(
-        plot, linepoints, color = plot.strokecolor,
+        plot, plot.linepoints, color = plot.strokecolor,
         linestyle = plot.linestyle, linewidth = plot.strokewidth,
         inspectable = plot.inspectable, alpha = plot.alpha, visible = plot.visible
     )

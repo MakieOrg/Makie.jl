@@ -99,18 +99,6 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     return plot
 end
 
-# temp fix axis selection
-args_preferred_axis(::Type{<:Voxels}, attr::ComputeGraph) = LScene
-function args_preferred_axis(::Type{<:Surface}, attr::ComputeGraph)
-    lims = attr[:data_limits][]
-    return widths(lims)[3] == 0 ? Axis : LScene
-end
-function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
-    result = args_preferred_axis(PT, attr[:positions][])
-    isnothing(result) && return Axis
-    return result
-end
-
 # This is data_limits(), not boundingbox()
 # TODO: Should data_limits() be simplified to be purely based on converted arguments?
 function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation, marker_offset)
@@ -173,9 +161,8 @@ function meshscatter_boundingbox(_positions, model, transform_marker, marker_bb,
 end
 
 
-function add_alpha(color, alpha)
-    return RGBAf(Colors.color(color), alpha * Colors.alpha(color))
-end
+add_alpha(color, alpha) = add_alpha(Colors.color(color), Colors.alpha(color), alpha)
+add_alpha(rgb, a::T, alpha) where {T} = RGBA(rgb, a * T(alpha))
 
 function register_colormapping_without_color!(attr::ComputeGraph)
     map!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]) do icm, a
@@ -216,29 +203,38 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     map!(
         attr,
         [colorname, :colorscale, :alpha],
-        [:raw_color, :scaled_color, :fetch_pixel]
+        [:raw_color, :scaled_color, :fetch_pixel, :auto_colorrange]
     ) do color, colorscale, alpha
-        val = if color isa Union{AbstractArray{<:Real}, Real}
-            clamp.(el32convert(apply_scale(colorscale, color)), -floatmax(Float32), floatmax(Float32))
+        auto_colorrange = nothing
+        if color isa Union{AbstractArray{<:Real}, Real}
+            scaled = smallfloat_convert.(apply_scale(colorscale, color))
+            auto_colorrange = Vec2f(distinct_extrema_nan(scaled))
+            T = eltype(scaled)
+            val = clamp.(scaled, -floatmax(T), floatmax(T))
         elseif color isa AbstractPattern
-            ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
+            val = ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
-            color
+            val = color
         elseif color isa AbstractArray
-            add_alpha.(color, alpha)
+            val = add_alpha.(color, alpha)
         else
-            add_alpha(color, alpha)
+            val = add_alpha(color, alpha)
         end
-        return (color, val, color isa AbstractPattern)
+        return (color, val, color isa AbstractPattern, auto_colorrange)
     end
 
     return map!(
         attr,
-        [:colorrange, :colorscale, :scaled_color], :scaled_colorrange
-    ) do colorrange, colorscale, color
-        (color isa AbstractArray{<:Real} || color isa Real) || return nothing
-        if colorrange === automatic
-            return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
+        [:colorrange, :colorscale, :auto_colorrange], :scaled_colorrange
+    ) do colorrange, colorscale, autorange
+        if isnothing(autorange) # colors are actual colors, so no colormapping
+            return nothing
+        elseif colorrange === automatic
+            return autorange
+        elseif first(colorrange) == automatic
+            return Vec2f((first(autorange), last(colorrange)))
+        elseif last(colorrange) == automatic
+            return Vec2f((first(colorrange), last(autorange)))
         else
             return Vec2f(apply_scale(colorscale, colorrange))
         end
@@ -466,12 +462,31 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input = :args
     end
 end
 
+function error_check_convert_arguments(P, args, user_kw, args_converted)
+    if args_converted isa Tuple
+        return :Tuple
+    elseif args_converted isa Union{PlotSpec, AbstractVector{PlotSpec}, GridLayoutSpec}
+        return :SpecApi
+    else
+        _join(a, b) = "$a, $b"
+        args_splatted = mapreduce(x -> "::$(typeof(x))", _join, args)
+        kwargs_splatted = mapreduce(kv -> "$(kv[1])", _join, user_kw)
+        if isempty(kwargs_splatted)
+            call = "convert_arguments($P, $args_splatted)"
+        else
+            call = "convert_arguments($P, $args_splatted; $kwargs_splatted)"
+        end
+        error("Result of `$call` needs to be a Tuple or SpecApi object, but is `$args_converted`.")
+    end
+end
+
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
     args = attr.args[]
     add_convert_kwargs!(attr, user_kw, P, args)
     kw = attr.convert_kwargs[]
     args_converted = convert_arguments(P, args...; kw...)
+    error_check_convert_arguments(P, args, user_kw, args_converted)
     status = got_converted(P, conversion_trait(P, args...), args_converted)
     force_dimconverts = needs_dimconvert(dim_converts)
     if force_dimconverts
@@ -499,15 +514,19 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
 
     map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
-        x = convert_arguments(P, dim_converted...; convert_kwargs...)
-        if x isa Tuple
-            return x
-        elseif x isa Union{PlotSpec, AbstractVector{PlotSpec}, GridLayoutSpec}
-            return (x,)
-        else
-            error("Result needs to be Tuple or SpecApi")
-        end
+        val = convert_arguments(P, dim_converted...; convert_kwargs...)
+        rtype = error_check_convert_arguments(P, dim_converted, convert_kwargs, val)
+        return rtype === :Tuple ? val : (val,)
     end
+
+    # If dim converts didn't do anything we can use the previous result of
+    # `convert_arguments()` to init the node
+    if attr.dim_converted[] === args
+        result_type = error_check_convert_arguments(P, args, user_kw, args_converted)
+        x = result_type === :Tuple ? args_converted : (args_converted,)
+        ComputePipeline.unsafe_init!(attr.converted, x)
+    end
+
     converted = attr[:converted][]
     n_args = length(converted)
     map!(attr, :converted, [argument_names(P, n_args)...]) do converted
@@ -589,6 +608,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
     inputs = Dict((kv[1] => default_attribute(kwargs, kv) for kv in documented_attr))
+
     delete!(inputs, :cycle)
     if !haskey(attr.inputs, :cycle)
         _cycle = to_value(
@@ -611,12 +631,26 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         for (k, p) in lookup
             # If user explicitly passes values, we should not do anything
             let plotcycle = cycle
-                add_input!(attr, k, get(kwargs, k, nothing)) do key, value
+                # We use the sentinel value `:cycled` (instead of `nothing`) to mark
+                # cycled attributes that the user did *not* set explicitly and which
+                # should therefore be derived from the cycle below. This is important
+                # because `nothing` is itself a valid, user-providable value for some
+                # cycled attributes -- most notably `linestyle = nothing` (and `:solid`,
+                # which `convert_attribute` turns into `nothing`) means "draw a solid
+                # line". If we used `nothing` as the sentinel, such an explicitly
+                # requested solid linestyle would be indistinguishable from "not set"
+                # and would incorrectly be overridden by the cycle. This happens e.g.
+                # for the line plots that `Legend` creates with `linestyle = nothing`,
+                # see https://github.com/MakieOrg/Makie.jl/issues/5267
+                add_input!(attr, k, get(kwargs, k, :cycled)) do key, value
                     palettes = attr.palettes[]
                     if value isa Cycled
                         value = get_cycle_attribute(palettes, key, value.i, plotcycle)
                     end
-                    if !isnothing(value)
+                    # Anything the user set explicitly (including `nothing`) is kept as
+                    # is; only the `:cycled` sentinel triggers deriving the value from
+                    # the cycle.
+                    if value !== :cycled
                         if is_primitive
                             return convert_attribute(value, Key{key}(), Key{name}())
                         else
@@ -631,6 +665,12 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
             end
         end
     end
+
+    # this is handled through plot.kw, not plot.attributes. Keeping it in the
+    # compute graph may cause double application of user set transformations,
+    # e.g. #4789
+    delete!(inputs, :transformation)
+
     for (k, v) in inputs
         # primitives use convert_attributes, recipe plots don't
         if !haskey(attr.outputs, k)
@@ -711,12 +751,13 @@ end
 
 function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
+
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(user_args) && first(user_args) isa Attributes
-        # TODO: Should this copy to keep user_args[1] unchanged?
+        # This should keep user_args[1] unchanged, in case they get reused.
         attr = convert(Dict{Symbol, Any}, attributes(first(user_args)))
-        merge!(attr, user_attributes)
-        return Plot{Func}(Base.tail(user_args), attr)
+        foreach(p -> get!(user_attributes, p[1], p[2]), pairs(attr))
+        return Plot{Func}(Base.tail(user_args), user_attributes)
     end
 
     P = Plot{Func}
@@ -751,24 +792,39 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
 
-function plot_cycle_index(scene::Scene, plot::Plot)
+# Count cycling position of `plot` among the top-level plots in `plot_iter`.
+# PlotList entries are expanded into their children so they participate in cycling.
+function _cycle_position(plot::Plot, plot_iter)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
     pos = 1
-    for p in scene.plots
-        p === plot && return pos
-        if haskey(p, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(plot)
-            is_cycling = any(syms) do x
-                return haskey(p.attributes.inputs, x) && isnothing(p.attributes.inputs[x].value)
-            end
-            if is_cycling
-                pos += 1
+    for p in plot_iter
+        children = p isa PlotList ? p.plots : (p,)
+        for cp in children
+            cp === plot && return pos
+            if haskey(cp, :cycle) && !isnothing(cp.cycle[]) && plotfunc(cp) === plotfunc(plot)
+                is_cycling = any(syms) do x
+                    # A plot only participates in cycling for attribute `x` if the
+                    # user did not set `x` explicitly. We detect this via the
+                    # `:cycled` sentinel that `add_attributes!` stores as the input
+                    # value for unset cycled attributes (see there for why we cannot
+                    # use `nothing` here -- an explicit `linestyle = nothing` must
+                    # count as "set by user", not as "cycling").
+                    return haskey(cp.attributes.inputs, x) && cp.attributes.inputs[x].value === :cycled
+                end
+                if is_cycling
+                    pos += 1
+                end
             end
         end
     end
     # not inserted yet
     return pos
+end
+
+function plot_cycle_index(scene::Scene, plot::Plot)
+    return _cycle_position(plot, scene.plots)
 end
 
 # For recipes we use the recipes position?
@@ -1026,6 +1082,10 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     map!(attr, [:colorrange, :raw_color], :unscaled_colorrange) do colorrange, color
         if colorrange === automatic
             return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
+        elseif first(colorrange) == automatic
+            return Vec2f(first(distinct_extrema_nan(color)), last(colorrange))
+        elseif last(colorrange) == automatic
+            return Vec2f(first(colorrange), last(distinct_extrema_nan(color)))
         else
             return Vec2f(colorrange)
         end

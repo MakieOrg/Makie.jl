@@ -21,14 +21,11 @@ let
             close(screen)
             destroy!(screen)
 
-            base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
-            shared_precompile = joinpath(base_path, "shared-precompile.jl")
-            include(shared_precompile)
+            include(Makie.SHARED_PRECOMPILE_PATH)
             try
                 display(plot(x); visible = false)
             catch
             end
-            Makie.CURRENT_FIGURE[] = nothing
 
             screen = Screen(Scene())
             refresh_func = refreshwindowcb(screen)
@@ -52,6 +49,9 @@ let
             @assert isempty(SCREEN_REUSE_POOL)
             @assert isempty(ALL_SCREENS)
             @assert isempty(SINGLETON_SCREEN)
+            # Cleanup globals to avoid serializing stale state (fonts, figures, tasks)
+            # Note: __init__ doesn't run during precompilation, so we must always clean up here
+            Makie.cleanup_globals()
         end
     end
     nothing

@@ -14,7 +14,6 @@ Both bounds can be passed together as an interval `ys_lowhigh`.
     "The end of the bands in relative axis units (0 to 1) along the x dimension."
     xmax = 1
     documented_attributes(Poly)...
-    cycle = [:color => :patchcolor]
 end
 
 """
@@ -33,7 +32,6 @@ Both bounds can be passed together as an interval `xs_lowhigh`.
     "The end of the bands in relative axis units (0 to 1) along the y dimension."
     ymax = 1
     documented_attributes(Poly)...
-    cycle = [:color => :patchcolor]
 end
 
 function Makie.plot!(p::Union{HSpan, VSpan})

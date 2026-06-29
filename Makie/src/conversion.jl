@@ -43,8 +43,9 @@ conversion_trait(::Type{<:XYBased}) = PointBased()
 GridBased is an abstract conversion trait for data that exists on a grid.
 
 Child types: [`VertexGrid`](@ref), [`CellGrid`](@ref)
+
+Used for: Scatter, Lines \\
 See also: [`ImageLike`](@ref)
-Used for: Scatter, Lines
 """
 abstract type GridBased <: ConversionTrait end
 
@@ -57,8 +58,8 @@ Plots with the `VertexGrid` trait convert their input data to
 `(xs::Matrix{Float32}, ys::Matrix{Float32}, zs::Matrix{Float32})` such that
 `size(xs) == size(ys) == size(zs)`.
 
+Used for: Surface \\
 See also: [`CellGrid`](@ref), [`ImageLike`](@ref)
-Used for: Surface
 """
 struct VertexGrid <: GridBased end
 conversion_trait(::Type{<:Surface}) = VertexGrid()
@@ -71,8 +72,8 @@ Plots with the `CellGrid` trait convert their input data to
 `(length(xs), length(ys)) == size(zs) .+ 1`. After the conversion the x and y
 values represent the edges of cells corresponding to z values.
 
+Used for: Heatmap \\
 See also: [`VertexGrid`](@ref), [`ImageLike`](@ref)
-Used for: Heatmap
 """
 struct CellGrid <: GridBased end
 conversion_trait(::Type{<:Heatmap}) = CellGrid()
@@ -84,8 +85,8 @@ Plots with the `ImageLike` trait convert their input data to
 `(xs::Interval, ys::Interval, zs::Matrix{Float32})` where xs and ys mark the
 limits of a quad containing zs.
 
+Used for: Image \\
 See also: [`CellGrid`](@ref), [`VertexGrid`](@ref)
-Used for: Image
 """
 struct ImageLike <: ConversionTrait end
 conversion_trait(::Type{<:Image}) = ImageLike()

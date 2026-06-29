@@ -490,10 +490,14 @@ end
 #                                  VolumeLike                                  #
 ################################################################################
 
-function convert_arguments(
-        ::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
-        data::RealArray{3}
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::VolumeDataType)
+    return (
+        to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+        to_endpoints(z, "z", VolumeLike), data,
     )
+end
+
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::RealArray{3})
     return (
         to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
         to_endpoints(z, "z", VolumeLike), el32convert(data),
@@ -502,7 +506,10 @@ end
 
 # TODO: Consider using RGB(A){N0f8} for all of these
 # RGBA/Vec4 is the native data type for :absorptionrgba, :additive
-function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<:Union{VecTypes{3}, VecTypes{4}, RGB, RGBA}, 3})
+function convert_arguments(
+        ::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
+        data::Array{<:Union{VecTypes{3}, VecTypes{4}, RGB, RGBA}, 3}
+    )
     return (
         to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
         to_endpoints(z, "z", VolumeLike), el32convert(data),
@@ -701,7 +708,7 @@ function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVe
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
 
-    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., el32convert.(f.(_x, _y, _z)))
+    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., smallfloat_convert.(f.(_x, _y, _z)))
 end
 
 function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
@@ -803,6 +810,12 @@ el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 el32convert(x::Mat{X, Y, T}) where {X, Y, T} = Mat{X, Y, Float32}(x)
 
+smallfloat_convert(x::N0f8) = x
+smallfloat_convert(x::Float16) = x
+smallfloat_convert(x::Real) = Float32(x)
+smallfloat_convert(x::VecTypes) = smallfloat_convert.(x)
+smallfloat_convert(x::Color) = RGB(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)))
+smallfloat_convert(x::TransparentColor) = RGBA(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)), smallfloat_convert(alpha(x)))
 
 """
     to_triangles(indices)
@@ -943,6 +956,9 @@ convert_attribute(x, ::key"colorscale") = Ref{Any}(x)
 
 # TODO: is it worth typing this as Ref{Union{Automatic, VecTypes{2}, Tuple{<: Real, <: Real}}} ?
 convert_attribute(x::Automatic, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{<:Any, Automatic}, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{Automatic, <:Any}, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{Automatic, Automatic}, ::key"colorrange") = Ref{Any}(first(x))
 convert_attribute(x, ::key"colorrange") = Ref{Any}(to_colorrange(x))
 to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
@@ -969,6 +985,7 @@ to_color(c::VecTypes{4}) = RGBAf(c[1], c[2], c[3], c[4])
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
 to_color(c::AbstractArray) = to_color.(c)
+#to_color(c::Observable) = lift(to_color, c)
 to_color(c::AbstractArray{<:Colorant, N}) where {N} = convert(Array{RGBAf, N}, c)
 to_color(p::AbstractPattern) = p
 function to_color(c::Tuple{<:Any, <:Number})
@@ -1691,6 +1708,8 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     )
 end
 
+convert_attribute(value, ::key"samples", ::key"volume") = Int32(value)
+
 #=
 The below is the output from:
 ```julia
@@ -2344,6 +2363,7 @@ end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
+convert_attribute(value, ::key"shininess") = Float32(value)
 
 convert_attribute(value, ::key"backlight") = Float32(value)
 

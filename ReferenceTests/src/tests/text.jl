@@ -520,3 +520,149 @@ end
     Makie.step!(st)
     st
 end
+
+@reference_test "pathtext align" begin
+    bp = BezierPath(
+        [
+            MoveTo(Point2(0, 0)),
+            CurveTo(Point2(1, 3), Point2(3, 3), Point2(4, 0)),
+        ]
+    )
+    f = Figure(size = (600, 400))
+    for (i, ha) in enumerate((:left, :center, :right))
+        ax = Axis(f[1, i]; title = "halign = $(repr(ha))", limits = ((-0.2, 4.2), (-0.2, 3)))
+        hidedecorations!(ax); hidespines!(ax)
+        lines!(ax, bp; color = (:gray, 0.4), linewidth = 2)
+        pathtext!(ax, bp; text = "Text along a path", fontsize = 14, align = (ha, :baseline))
+    end
+    for (i, va) in enumerate((:top, :center, :bottom))
+        ax = Axis(f[2, i]; title = "valign = $(repr(va))", limits = ((-0.2, 4.2), (-0.2, 3)))
+        hidedecorations!(ax); hidespines!(ax)
+        lines!(ax, bp; color = (:gray, 0.4), linewidth = 2)
+        pathtext!(ax, bp; text = "Text along a path", fontsize = 14, align = (:center, va))
+    end
+    f
+end
+
+@reference_test "pathtext richtext and offset" begin
+    bp = BezierPath(
+        [
+            MoveTo(Point2(0, 0)),
+            CurveTo(Point2(1, 3), Point2(3, 3), Point2(4, 0)),
+        ]
+    )
+    f = Figure(size = (500, 350))
+    ax = Axis(f[1, 1]; limits = ((-0.2, 4.2), (-0.2, 3)))
+    hidedecorations!(ax); hidespines!(ax)
+    lines!(ax, bp; color = (:gray, 0.4), linewidth = 2)
+    # Plain string with per-char color vector, offset above the curve.
+    cols = resample_cmap(:viridis, 17)
+    pathtext!(
+        ax, bp; text = "Text along a path", fontsize = 14,
+        align = (:center, :bottom), offset = 8, color = cols,
+    )
+    # RichText with bold, color, sub/superscript, offset below the curve.
+    rt = rich(
+        "H", subscript("2"), "O → H", superscript("+"),
+        " + ", rich("OH"; font = :bold, color = :crimson), superscript("−"),
+    )
+    pathtext!(ax, bp; text = rt, fontsize = 14, align = (:center, :top), offset = -8)
+    f
+end
+
+@reference_test "pathtext polyline vs BezierPath" begin
+    f = Figure(size = (500, 400))
+
+    ax1 = Axis(f[1, 1]; title = "polyline with NaN sub-path gap")
+    hidedecorations!(ax1); hidespines!(ax1)
+    poly_path = Point2f[(0, 0), (1.5, 1), (3, 0), (NaN, NaN), (4, 1), (6, 0)]
+    lines!(ax1, poly_path; color = (:gray, 0.4), linewidth = 2)
+    pathtext!(
+        ax1, poly_path;
+        text = "up the first hill and down, across the NaN gap to the second, up and down again until the end of the polyline",
+        fontsize = 11,
+    )
+
+    ax2 = Axis(
+        f[2, 1]; aspect = DataAspect(), title = "LineTo, CurveTo, EllipticalArc",
+        limits = (nothing, (-0.7, 1.3)),
+    )
+    hidedecorations!(ax2); hidespines!(ax2)
+    bp = BezierPath(
+        [
+            MoveTo(Point2(0.0, 0.0)),
+            LineTo(Point2(1.5, 0.0)),
+            CurveTo(Point2(2.5, 1.5), Point2(3.5, -1.5), Point2(4.5, 0.0)),
+            Makie.EllipticalArc(Point2(5.5, 0.0), 1.0, 0.6, 0.0, π, 0.0),
+        ]
+    )
+    pts = Makie.convert_arguments(Makie.PointBased(), bp)[1]
+    lines!(ax2, pts; color = (:gray, 0.4), linewidth = 2)
+    pathtext!(
+        ax2, bp;
+        text = "a straight LineTo, a curving CurveTo with inflection, and an EllipticalArc",
+        fontsize = 11, align = (:center, :bottom),
+    )
+    f
+end
+
+@reference_test "pathtext as annotation style" begin
+    f = Figure(size = (500, 300))
+    ax = Axis(f[1, 1]; limits = ((0, 6), (1, 6)))
+    hidedecorations!(ax); hidespines!(ax)
+    scatter!(ax, [1, 5], [2, 5]; markersize = 10, color = :black)
+    annotation!(
+        ax, [Point2f(1, 2)], [Point2f(5, 5)];
+        text = [""],
+        path = Ann.Paths.Arc(height = 0.4),
+        style = Ann.Styles.WithText(
+            Ann.Styles.LineArrow();
+            text = rich(
+                "H", subscript("2"), "O → ",
+                rich("products"; color = :crimson),
+            ),
+            fontsize = 14,
+        ),
+        color = :steelblue, linewidth = 1.5,
+        labelspace = :data, shrink = (5.0, 5.0),
+    )
+    f
+end
+
+@reference_test "pathtext data vs pixel space" begin
+    f = Figure(size = (500, 250))
+
+    ax1 = Axis(
+        f[1, 1]; aspect = DataAspect(), title = "space = :data",
+        limits = (nothing, (-0.3, 2)),
+    )
+    hidedecorations!(ax1); hidespines!(ax1)
+    bp_data = BezierPath(
+        [
+            MoveTo(Point2(0.0, 0.0)),
+            CurveTo(Point2(1.0, 1.5), Point2(3.0, 1.5), Point2(4.0, 0.0)),
+        ]
+    )
+    pts_data = Makie.convert_arguments(Makie.PointBased(), bp_data)[1]
+    lines!(ax1, pts_data; color = (:gray, 0.4))
+    pathtext!(
+        ax1, bp_data; text = "data space", fontsize = 12,
+        align = (:center, :bottom), space = :data,
+    )
+
+    ax2 = Axis(f[1, 2]; title = "space = :pixel", limits = ((0, 1), (0, 1)))
+    hidedecorations!(ax2); hidespines!(ax2)
+    bp_pixel = BezierPath(
+        [
+            MoveTo(Point2(20.0, 20.0)),
+            CurveTo(Point2(60.0, 150.0), Point2(120.0, 150.0), Point2(170.0, 20.0)),
+        ]
+    )
+    pts_pixel = Makie.convert_arguments(Makie.PointBased(), bp_pixel)[1]
+    lines!(ax2, pts_pixel; color = (:gray, 0.4), space = :pixel)
+    pathtext!(
+        ax2, bp_pixel; text = "pixel space", fontsize = 12,
+        align = (:center, :bottom), space = :pixel, color = :crimson,
+    )
+    f
+end

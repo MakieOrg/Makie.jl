@@ -832,7 +832,6 @@ function getlimits(la::Axis, dim)
         try
             bb = apply_transform(itf, bb)
         catch e
-            # TODO: Is this necessary?
             @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
             bb = data_limits(la.scene, exclude)
         end
@@ -1223,21 +1222,6 @@ function tight_ticklabel_spacing!(ax::Axis = current_axis())
     return
 end
 
-function Base.show(io::IO, ::MIME"text/plain", ax::Axis)
-    nplots = length(ax.scene.plots)
-    println(io, "Axis with $nplots plots:")
-
-    for (i, p) in enumerate(ax.scene.plots)
-        println(io, (i == nplots ? " ┗━ " : " ┣━ ") * string(typeof(p)))
-    end
-    return
-end
-
-function Base.show(io::IO, ax::Axis)
-    nplots = length(ax.scene.plots)
-    return print(io, "Axis ($nplots plots)")
-end
-
 Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
 Makie.ylims!(ax::Axis, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
 
@@ -1256,6 +1240,13 @@ function Makie.xlims!(ax::Axis, xlims)
 
     mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (xlims, mlims[2])
+
+    # update xlims for linked axes
+    for xlink in ax.xaxislinks
+        xlink_mlims = convert_limit_attribute(xlink.limits[])
+        xlink.limits.val = (xlims, xlink_mlims[2])
+    end
+
     reset_limits!(ax, yauto = false)
     return nothing
 end
@@ -1274,6 +1265,13 @@ function Makie.ylims!(ax::Axis, ylims)
     end
     mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (mlims[1], ylims)
+
+    # update ylims for linked axes
+    for ylink in ax.yaxislinks
+        ylink_mlims = convert_limit_attribute(ylink.limits[])
+        ylink.limits.val = (ylink_mlims[1], ylims)
+    end
+
     reset_limits!(ax, xauto = false)
     return nothing
 end
@@ -1430,6 +1428,7 @@ defaultlimits(limits::Tuple{Nothing, Real}, scale) = (defaultlimits(scale)[1], l
 defaultlimits(limits::Tuple{Nothing, Nothing}, scale) = defaultlimits(scale)
 
 defaultlimits(scale::ReversibleScale) = inverse_transform(scale).(scale.limits)
+defaultlimits(scale::Makie.Symlog10) = defaultlimits(scale.scale)
 defaultlimits(scale::LogFunctions) = let inv_scale = inverse_transform(scale)
     (inv_scale(0.0), inv_scale(3.0))
 end
@@ -1438,6 +1437,7 @@ defaultlimits(::typeof(sqrt)) = (0.0, 100.0)
 defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
 
 defined_interval(scale::ReversibleScale) = scale.interval
+defined_interval(scale::Makie.Symlog10) = defined_interval(scale.scale)
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
 defined_interval(::LogFunctions) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed, :open}(0, Inf)
@@ -1829,7 +1829,12 @@ function attribute_examples(::Type{Axis})
                     yticks = [-100, -10, 0, 10, 100]
                 )
 
-                for ax in [ax1, ax2]
+                ax3 = Axis(f[3, 1],
+                    yscale = Makie.pseudolog10,
+                    title = "Pseudolog scale with automatic decade ticks"
+                )
+
+                for ax in [ax1, ax2, ax3]
                     lines!(ax, -100:0.1:100)
                 end
 

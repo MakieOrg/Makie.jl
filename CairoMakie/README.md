@@ -11,7 +11,7 @@ Please file all issues in [Makie.jl](https://github.com/MakieOrg/Makie.jl/issues
 
 ## Limitations
 
-CairoMakie is intended as a backend for static vector graphics at publication quality. Therefore, it does not support the interactive features of GLMakie and is slower when visualizing large amounts data. 3D plots are currently not available because of the inherent limitations of 2D vector graphics.
+CairoMakie is intended as a backend for static vector graphics at publication quality. Therefore, it does not support the interactive features of GLMakie and is slower when visualizing large amounts data. 3D plots are available, but may be lacking in visual fidelity due to the inherent limitations of 2D vector graphics.
 
 ## Saving
 

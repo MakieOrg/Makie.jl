@@ -37,9 +37,14 @@ jobs:
       - name: "Run CompatHelper"
         run: |
           import CompatHelper
-          CompatHelper.main(subdirs=["", "GLMakie", "WGLMakie", "CairoMakie", "RPRMakie"])
+          CompatHelper.main(subdirs=["Makie", "GLMakie", "WGLMakie", "CairoMakie", "RPRMakie", "ComputePipeline"])
         shell: julia --color=yes {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This repo uses Documenter, so we can reuse our [Documenter SSH key](https://documenter.juliadocs.org/stable/man/hosting/walkthrough/).
+          # If we didn't have one of those setup, we could configure a dedicated ssh deploy key `COMPATHELPER_PRIV` following https://juliaregistries.github.io/CompatHelper.jl/dev/#Creating-SSH-Key.
+          # Either way, we need an SSH key if we want the PRs that CompatHelper creates to be able to trigger CI workflows themselves.
+          # That is because GITHUB_TOKEN's can't trigger other workflows (see https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow).
+          # Check if you have a deploy key setup using these docs: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/reviewing-your-deploy-keys.
           COMPATHELPER_PRIV: ${{ secrets.DOCUMENTER_KEY }}
           # COMPATHELPER_PRIV: ${{ secrets.COMPATHELPER_PRIV }}

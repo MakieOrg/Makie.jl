@@ -50,7 +50,7 @@ function with_context(f, context)
         error("Context is not alive anymore!")
     end
     old_ctx = nothing
-    lock(CONTEXT_LOCK1) do
+    @lock CONTEXT_LOCK1 begin
         CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
         old_ctx = isassigned(CTX) ? CTX[] : nothing
         ShaderAbstractions.switch_context!(context)

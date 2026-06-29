@@ -205,7 +205,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
             postprocessors::Vector{PostProcessor},
             cache::Dict{UInt64, RenderObject},
-            cache2plot::Dict{UInt32, AbstractPlot},
+            cache2plot::Dict{UInt32, Plot},
             reuse::Bool
         ) where {GLWindow}
 
@@ -327,7 +327,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
         Tuple{ZIndex, ScreenID, RenderObject}[],
         postprocessors,
         Dict{UInt64, RenderObject}(),
-        Dict{UInt32, AbstractPlot}(),
+        Dict{UInt32, Plot}(),
         reuse,
     )
 
@@ -478,7 +478,18 @@ function set_screen_visibility!(screen::Screen, visible::Bool)
         error(unimplemented_error)
     end
 
-    return set_screen_visibility!(screen.glscreen, visible)
+    set_screen_visibility!(screen.glscreen, visible)
+    if visible
+        macos_set_dock_visible(true)
+    else
+        any_visible = any(ALL_SCREENS) do s
+            s !== screen && s.owns_glscreen &&
+                GLAbstraction.context_alive(s.glscreen) &&
+                GLFW.GetWindowAttrib(s.glscreen, GLFW.VISIBLE) != 0
+        end
+        any_visible || macos_set_dock_visible(false)
+    end
+    return
 end
 
 function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
@@ -623,8 +634,8 @@ function Base.delete!(screen::Screen, scene::Scene)
                     key, max_id = p
                 end
             end
-
-            i = findfirst(id_scene -> id_scene[1] == max_id, screen.screens)::Int
+            current_max_id = max_id
+            i = findfirst(id_scene -> id_scene[1] == current_max_id, screen.screens)::Int
             screen.screens[i] = (deleted_id, screen.screens[i][2])
 
             screen.screen2scene[key] = deleted_id
@@ -884,7 +895,7 @@ function depthbuffer(screen::Screen)
     return depth
 end
 
-function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative)
+function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative; figure = nothing)
     if !isopen(screen)
         error("Screen not open!")
     end
@@ -995,7 +1006,8 @@ refreshwindowcb(screen) = window -> refreshwindowcb(screen, window)
 
 function scalechangecb(screen, window, xscale, yscale)
     sf = min(xscale, yscale)
-    if isnothing(screen.config.px_per_unit) && screen.scalefactor[] == screen.px_per_unit[]
+    # Some window managers may trigger this before the screen config is set and the window becomes visible
+    if !isnothing(screen.config) && isnothing(screen.config.px_per_unit) && screen.scalefactor[] == screen.px_per_unit[]
         screen.px_per_unit[] = sf
     end
     screen.scalefactor[] = sf
@@ -1084,19 +1096,19 @@ function poll_updates(screen)
 end
 
 function on_demand_renderloop(screen::Screen)
-    tick_state = Makie.UnknownTickState
+    tick_state = Ref(Makie.UnknownTickState)
     # last_time = time_ns()
     reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop[]
         with_context(screen.glscreen) do
-            pollevents(screen, tick_state) # GLFW poll
+            pollevents(screen, tick_state[]) # GLFW poll
             poll_updates(screen)
             if !screen.config.pause_renderloop && requires_update(screen)
-                tick_state = Makie.RegularRenderTick
+                tick_state[] = Makie.RegularRenderTick
                 render_frame(screen)
                 GLFW.SwapBuffers(to_native(screen))
             else
-                tick_state = ifelse(screen.config.pause_renderloop, Makie.PausedRenderTick, Makie.SkippedRenderTick)
+                tick_state[] = ifelse(screen.config.pause_renderloop, Makie.PausedRenderTick, Makie.SkippedRenderTick)
             end
             GC.safepoint()
             sleep(screen.timer)

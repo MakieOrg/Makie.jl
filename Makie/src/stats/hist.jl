@@ -1,15 +1,41 @@
-const histogram_plot_types = (BarPlot, Heatmap, Volume)
+const histogram_plot_types = (BarPlot, Heatmap, Voxels)
 
 function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any, N}) where {N}
     ptype = plottype(P, histogram_plot_types[N])
-    f(edges) = edges[1:(end - 1)] .+ diff(edges) ./ 2
-    kwargs = N == 1 ? (; width = step(h.edges[1]), gap = 0, dodge_gap = 0) : NamedTuple()
-    return to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
+
+    if N == 1
+        widths = diff(h.edges[1])
+        xs = h.edges[1][1:(end - 1)] .+ 0.5 .* widths
+        return to_plotspec(ptype, (xs, h.weights); width = widths, gap = 0)
+    elseif N == 2
+        return to_plotspec(ptype, (h.edges..., h.weights))
+    else # N == 3
+        for i in 1:3
+            length(h.edges[i]) > 1 || error("Dimension $(('x', 'y', 'z')[i]) needs at least 2 edges.")
+            width = h.edges[i][2] - h.edges[i][1]
+            if !all(≈(width), diff(h.edges[i]))
+                error("3D Histograms must currently use uniform bin sizes for each dimension. Found sizes: $(diff(h.edges[i])) for $(('x', 'y', 'z')[i]).")
+            end
+        end
+        return to_plotspec(ptype, (map(extrema, h.edges)..., h.weights))
+    end
+end
+function convert_arguments(P::Type{Stairs}, h::StatsBase.Histogram{<:Any, 1})
+    # Adding phantomedges, mapping 0 to eps() (for log-scale)
+    xs = Float64.(h.edges[1])
+    push!(xs, xs[end])
+    ys = map(h.weights) do y
+        y == 0 ? eps(Float64) : Float64(y)
+    end
+    pushfirst!(ys, eps())
+    push!(ys, eps())
+    return convert_arguments(P, xs, ys)
 end
 
 function _hist_center_weights(values, edges, normalization, scale_to, wgts)
+    isempty(edges) && return Float64[], Float64[]
     w = wgts === automatic ? () : (StatsBase.weights(wgts),)
-    h = StatsBase.fit(StatsBase.Histogram, values[], w..., edges)
+    h = StatsBase.fit(StatsBase.Histogram, values, w..., edges)
     h_norm = StatsBase.normalize(h; mode = normalization)
     weights = h_norm.weights
     centers = edges[1:(end - 1)] .+ (diff(edges) ./ 2)
@@ -28,13 +54,18 @@ end
 Plot a step histogram of `values`.
 """
 @recipe StepHist (values,) begin
-    "Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges."
+    documented_attributes(Stairs)...
+
+    """
+    Sets the number of bins if set to an integer or the edges of bins if set to
+    an sorted collection of real numbers.
+    """
     bins = 15 # Int or iterable of edges
-    """Allows to apply a normalization to the histogram.
-    Possible values are:
+    """
+    Sets the normalization applied to the histogram. Possible values are:
 
     * `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
-      has norm 1 and represents a PDF.
+      has norm 1 and represents a probability density function.
     * `:density`: Normalize by bin sizes only. Resulting histogram represents
       count density of input and does not have norm 1. Will not modify the
       histogram if it already represents a density (`h.isdensity == 1`).
@@ -44,25 +75,18 @@ Plot a step histogram of `values`.
     * `:none`: Do not normalize.
     """
     normalization = :none
-    "Allows to provide statistical weights."
+    "Sets optional statistical weights."
     weights = automatic
-    cycle = [:color => :patchcolor]
-    color = @inherit patchcolor
-    linewidth = @inherit linewidth
-    linestyle = :solid
-    "Allows to scale all values to a certain height."
+    "Scales the histogram by a common factor such that the largest bin reaches the given value."
     scale_to = nothing
 end
 
-function Makie.plot!(plot::StepHist)
+function plot!(plot::StepHist)
 
-    values = plot.values
-    edges = lift(pick_hist_edges, plot, values, plot.bins)
+    map!(pick_hist_edges, plot, [:values, :bins], :edges)
 
-    points = lift(
-        plot, edges, plot.normalization, plot.scale_to,
-        plot.weights
-    ) do edges, normalization, scale_to, wgts
+    map!(plot, [:values, :edges, :normalization, :scale_to, :weights], :points) do values, edges, normalization, scale_to, wgts
+        isempty(edges) && return Point2d[]
         _, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
         phantomedge = edges[end] # to bring step back to baseline
         edges = vcat(edges, phantomedge)
@@ -70,14 +94,12 @@ function Makie.plot!(plot::StepHist)
         heights = vcat(z, weights, z)
         return Point2.(edges, heights)
     end
-    color = lift(plot, plot.color) do color
-        if color === :values
-            return last.(points[])
-        else
-            return color
-        end
+
+    map!(plot, [:points, :color], :computed_colors) do points, color
+        return color === :values ? last.(points) : color
     end
-    stairs!(plot, Attributes(plot), points; color = color)
+
+    stairs!(plot, Attributes(plot), plot.points; color = plot.computed_colors)
     return plot
 end
 
@@ -88,14 +110,15 @@ Plot a histogram of `values`.
 """
 @recipe Hist (values,) begin
     """
-    Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges.
+    Sets the number of bins if set to an integer or the edges of bins if set to
+    an sorted collection of real numbers.
     """
     bins = 15
     """
-    Allows to normalize the histogram. Possible values are:
+    Sets the normalization applied to the histogram. Possible values are:
 
     *  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
-       has norm 1 and represents a PDF.
+       has norm 1 and represents a probability density function.
     * `:density`: Normalize by bin sizes only. Resulting histogram represents
        count density of input and does not have norm 1. Will not modify the
        histogram if it already represents a density (`h.isdensity == 1`).
@@ -105,46 +128,40 @@ Plot a histogram of `values`.
     *  `:none`: Do not normalize.
     """
     normalization = :none
-    "Allows to statistically weight the observations."
+    "Sets optional statistical weights."
     weights = automatic
-    cycle = [:color => :patchcolor]
     """
-    Color can either be:
-    * a vector of `bins` colors
-    * a single color
-    * `:values`, to color the bars with the values from the histogram
-    """
-    color = @inherit patchcolor
-    strokewidth = @inherit patchstrokewidth
-    strokecolor = @inherit patchstrokecolor
-    "Adds an offset to every value."
-    offset = 0.0
-    "Defines where the bars start."
-    fillto = automatic
-    """
-    Allows to scale all values to a certain height. This can also be set to
-    `:flip` to flip the direction of histogram bars without scaling them to a
-    common height.
+    Scales the histogram by a common factor such that the largest bin reaches the
+    given value. This can also be set to `:flip` to flip the direction of histogram
+    bars without scaling them.
     """
     scale_to = nothing
-    bar_labels = nothing
-    flip_labels_at = Inf
-    label_color = @inherit textcolor
-    over_background_color = automatic
-    over_bar_color = automatic
-    label_offset = 5
-    label_font = @inherit font
-    label_size = 20
-    label_formatter = bar_label_formatter
-    "Set the direction of the bars."
-    direction = :y
-    "Gap between the bars (see barplot)."
+
+    filtered_attributes(
+        BarPlot, exclude = (
+            :width,
+            :color_over_background, :color_over_bar, # renamed here :(
+        )
+    )...
+    "Sets the gap between bars relative to their width. The new width is `w * (1 - gap)`."
     gap = 0
+    "Sets the color of labels that are drawn outside of bars. Defaults to `label_color`"
+    over_background_color = automatic
+    "Sets the color of labels that are drawn inside of/over bars. Defaults to `label_color`"
+    over_bar_color = automatic
+    """
+    Sets the color of histogram bars.
+    Can be a single color, `:values` to use the bar heights as values for colormapping,
+    `:stack` or `:dodge` to use the stack/dodge integers as values for colormapping,
+    or a vector of colors indexed by stack or dodge (whichever is defined).
+    """
+    color = @inherit patchcolor
 end
 
 function pick_hist_edges(vals, bins)
     if bins isa Int
-        mi, ma = float.(extrema(vals))
+        isempty(vals) && return 1.0:0.0
+        mi, ma = float.(extrema(Iterators.flatten(vals)))
         if mi == ma
             return (mi - 0.5):(ma + 0.5)
         end
@@ -159,39 +176,125 @@ function pick_hist_edges(vals, bins)
     end
 end
 
-function Makie.plot!(plot::Hist)
+function plot!(plot::Hist)
 
-    values = plot.values
-    edges = lift(pick_hist_edges, plot, values, plot.bins)
+    map!(pick_hist_edges, plot, [:values, :bins], :edges)
 
-    points = lift(
-        plot, edges, plot.normalization, plot.scale_to,
-        plot.weights
-    ) do edges, normalization, scale_to, wgts
-        centers, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
-        return Point2.(centers, weights)
+    map!(plot, [:stack, :dodge], [:groupmap, :groups]) do stack, dodge
+        if (stack === automatic) && (dodge === automatic)
+            return nothing, nothing
+        else
+            stack = stack === automatic ? fill(1, length(dodge)) : stack
+            dodge = dodge === automatic ? fill(1, length(stack)) : dodge
+
+            groupmap = Dict{Tuple{Int, Int}, Int}()
+            groups = Vector{UInt32}[]
+            for (i, stack_dodge) in enumerate(zip(stack, dodge))
+                if haskey(groupmap, stack_dodge)
+                    group = groupmap[stack_dodge]
+                else
+                    group = length(groupmap) + 1
+                    groupmap[stack_dodge] = group
+                    push!(groups, UInt32[])
+                end
+                push!(groups[group], i)
+            end
+            inv_groupmap = Vector{Tuple{Int, Int}}(undef, length(groupmap))
+            foreach(kv -> inv_groupmap[kv[2]] = kv[1], groupmap)
+            return inv_groupmap, groups
+        end
     end
-    widths = lift(diff, plot, edges)
-    color = lift(plot, plot.color) do color
+
+    map!(
+        plot,
+        [:values, :edges, :normalization, :scale_to, :weights, :groups],
+        [:points, :grouplengths]
+    ) do values, edges, normalization, scale_to, wgts, groups
+        get_group(x, idx, range) = x
+        get_group(x::AbstractVector{<:AbstractVector}, group, indices) = x[group]
+        get_group(x::AbstractVector, group, indices) = view(x, indices)
+
+        if isnothing(groups) # ungrouped data
+            centers, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
+            return Point2.(centers, weights), nothing
+        else
+            points = Point2d[]
+            grouplengths = Vector{Int}(undef, length(groups))
+            for (group, indices) in enumerate(groups)
+                vals = get_group(values, group, indices)
+                ws = get_group(wgts, group, indices)
+                centers, weights = _hist_center_weights(vals, edges, normalization, scale_to, ws)
+                # Without filtering 0-height bars draw outlines when stroke is set
+                # With filtering we can't set color per bin
+                # ps = [Point2d(x, y) for (x, y) in zip(centers, weights) if y > 0]
+                ps = [Point2d(x, y) for (x, y) in zip(centers, weights)]
+                append!(points, ps)
+                grouplengths[group] = length(ps)
+            end
+            return points, grouplengths
+        end
+    end
+
+    map!(plot, [:groupmap, :grouplengths], [:bar_stack, :bar_dodge]) do groupmap, lengths
+        if isnothing(groupmap)
+            return automatic, automatic
+        else
+            stack = Int[]
+            dodge = Int[]
+            for (N, (stack_val, dodge_val)) in zip(lengths, groupmap)
+                append!(stack, fill(stack_val, N))
+                append!(dodge, fill(dodge_val, N))
+            end
+            return stack, dodge
+        end
+    end
+
+    map!(plot, [:grouplengths, :edges], :widths) do grouplengths, edges
+        widths = diff(edges)
+
+        # empty input compat || no stacking/dodging
+        if isempty(widths) || isnothing(grouplengths)
+            return widths
+        end
+
+        # Without filtering each group is the same size, with one element/position
+        # per bin. To allow widths to work with stack/dodge groups, we just need
+        # to copy the widths for each group.
+        # With filtering we'd need to match the correct widths and positions
+        N = first(grouplengths)
+        resize!(widths, length(grouplengths) * N)
+        for i in 1:(length(grouplengths) - 1)
+            @views copyto!(widths[(N * i + 1):(N * (i + 1))], widths[1:N])
+        end
+        return widths
+    end
+
+    map!(plot, [:points, :color, :groupmap, :grouplengths], :computed_colors) do points, color, groupmap, lengths
         if color === :values
-            return last.(points[])
+            return last.(points)
+        elseif color === :stack
+            return [stack for (i, (stack, dodge)) in enumerate(groupmap) for _ in 1:lengths[i]]
+        elseif color === :dodge
+            return [dodge for (i, (stack, dodge)) in enumerate(groupmap) for _ in 1:lengths[i]]
+        elseif (color isa AbstractVector) && !isnothing(lengths) && (length(color) == length(groupmap))
+            # assume either stack or dodge is given and there is one color per stack/dodge index
+            groups = [max(stack, dodge) for (stack, dodge) in groupmap]
+            return [color[group] for (i, group) in enumerate(groups) for _ in 1:lengths[i]]
         else
             return color
         end
     end
 
-    bar_labels = lift(plot, plot.bar_labels) do x
-        x === :values ? :y : x
+    map!(plot, :bar_labels, :computed_bar_labels) do x
+        return x === :values ? :y : x
     end
 
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(
-        plot, Attributes(plot), points; width = widths, fillto = plot.fillto,
-        offset = plot.offset, bar_labels = bar_labels, color = color
+    barplot!(
+        plot, Attributes(plot), plot.points; width = plot.widths,
+        bar_labels = plot.computed_bar_labels, color = plot.computed_colors,
+        stack = plot.bar_stack, dodge = plot.bar_dodge
     )
 
-    onany(plot, plot.normalization, plot.scale_to, plot.weights) do _, _, _
-        bp[1][] = points[]
-    end
     return plot
 end
