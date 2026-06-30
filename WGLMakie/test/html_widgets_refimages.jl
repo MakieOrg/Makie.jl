@@ -10,90 +10,12 @@ struct EScreenshot
     display
     app::Bonito.App
     capture_full_page::Bool
-    # `resize_to` figures resize asynchronously after the window is resized; pass
-    # them here so the screenshot waits for that round-trip to land (see
-    # `wait_for_resize`). Empty for non-resizing tests.
-    wait_figures::Vector{Any}
 end
 
-EScreenshot(display, fig::Makie.FigureLike; capture_full_page = false) = EScreenshot(display, App(fig), capture_full_page, Any[])
-# Default to full page for App tests. Pass `wait_figures` for `resize_to` apps.
-EScreenshot(display, app::Bonito.App; wait_figures = Any[]) = EScreenshot(display, app, true, wait_figures)
+EScreenshot(display, fig::Makie.FigureLike; capture_full_page = false) = EScreenshot(display, App(fig), capture_full_page)
+EScreenshot(display, app::Bonito.App) = EScreenshot(display, app, true)  # Default to full page for App tests
 
-# Wait until every WGLMakie figure in `figs` has actually been resized to match
-# its on-page canvas — i.e. the window-resize -> JS `real_size` -> Julia `resize!`
-# round-trip has landed. `viewport(scene)` is the authoritative Julia-side signal
-# (it is set by that `resize!` in `three_plot.jl`), so we wait until every figure's
-# scene width equals a canvas width on the page. That round-trip can take >1s, and
-# the half-resized state is static, so neither a fixed sleep nor pixel-stability
-# alone is reliable here; this is.
-function wait_for_resize(edisplay, win, figs; timeout = 20, poll = 0.1, tol = 2)
-    isempty(figs) && return true
-    canvas_widths() = round.(
-        Int, Float64.(
-            run(
-                win,
-                "[...document.querySelectorAll('canvas')].map(c => c.getBoundingClientRect().width)"
-            )
-        )
-    )
-    scene_width(f) = round(Int, Makie.widths(Makie.viewport(Makie.get_scene(f))[])[1])
-    deadline = time() + timeout
-    while time() < deadline
-        cw = canvas_widths()
-        if all(f -> any(c -> abs(c - scene_width(f)) <= tol, cw), figs)
-            return true
-        end
-        sleep(poll)
-    end
-    @warn "wait_for_resize: figures did not reach their canvas size within $(timeout)s"
-    return false
-end
-
-# Capture the Electron window to `path`, retrying until the rendered output stops
-# changing (two consecutive frames within `tol`) or `timeout` is reached.
-# `resize_to` figures finish re-laying-out only after a JS<->Julia round-trip, so a
-# single capture can land mid-resize; waiting for the frame to stop changing is the
-# robust, backend-agnostic way to know it is final (same idea as Playwright's
-# screenshot stabilization). Frames are compared on decoded pixels via the same
-# `compare_media` the reference tests use (PNG bytes aren't stable across captures);
-# `tol` is well below the reference threshold so a settled frame (diff ~0) matches
-# while the resize transition (a large diff / size mismatch) does not. Returns
-# whether it stabilized before the timeout.
-function capture_until_stable(edisplay, winid, path; interval = 0.25, timeout = 20, tol = 1.0e-3)
-    capture!(dest) = begin
-        rm(dest; force = true)
-        js_dest = replace(dest, '\\' => '/')
-        run(
-            edisplay.window.app, """
-                const win = BrowserWindow.fromId($winid)
-                win.webContents.capturePage()
-                    .then(image => require('fs').writeFileSync('$(js_dest)', image.toPNG()))
-                    .catch(err => console.error('Screenshot error:', err));
-            """
-        )
-        Bonito.wait_for(() -> isfile(dest); timeout = 30)
-        return dest
-    end
-    prev_path = path * ".prev.png"
-    capture!(path)
-    settled = false
-    deadline = time() + timeout
-    while time() < deadline
-        sleep(interval)
-        cp(path, prev_path; force = true)
-        capture!(path)
-        if ReferenceTests.compare_media(prev_path, path) < tol
-            settled = true
-            break
-        end
-    end
-    rm(prev_path; force = true)
-    settled || @warn "capture_until_stable: render did not stabilize within $(timeout)s, using last frame" path
-    return settled
-end
-
-function snapshot_figure(edisplay, app, path; capture_full_page = false, wait_figures = Any[])
+function snapshot_figure(edisplay, app, path; capture_full_page = false)
     rm(path; force = true)
     display(edisplay, app)
     win = edisplay.window.window
@@ -154,20 +76,30 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false, wait_fi
     )
     Electron.ElectronAPI.setContentSize(win, win_size...)
     winid = win.id
-    # `setContentSize` starts an async resize: the canvas resizes immediately, but
-    # `resize_to` figures finish re-laying-out only after a JS<->Julia round-trip
-    # (JS reports the size -> scene `resize!` + re-serialize -> re-render). First
-    # wait for that round-trip to land on the Julia side (`wait_for_resize`), then
-    # for the resulting render to flush to the browser (`capture_until_stable`).
-    wait_for_resize(edisplay, win, wait_figures)
-    capture_until_stable(edisplay, winid, path)
+    sleep(1) # let the resize round-trip + relayout land before capturing
+    # Normalize path for JavaScript (replace backslashes with forward slashes on Windows)
+    js_path = replace(path, '\\' => '/')
+    run(
+        edisplay.window.app,
+        """
+        const win = BrowserWindow.fromId($winid)
+        win.webContents.capturePage().then(image => {
+            const screenshotPath = '$(js_path)';
+            require('fs').writeFileSync(screenshotPath, image.toPNG());
+            console.log('Screenshot saved to', screenshotPath);
+        }).catch(err => {
+            console.error('Screenshot error:', err);
+        });
+        """,
+    )
+    Bonito.wait_for(() -> isfile(path); timeout = 30)
     return path
 end
 
 # YAY we can just overload save_results for our own EScreenshot type :)
 function ReferenceTests.save_result(path::String, es::EScreenshot)
     isfile(path * ".png") && rm(path * ".png"; force = true)
-    snapshot_figure(es.display, es.app, path * ".png"; capture_full_page = es.capture_full_page, wait_figures = es.wait_figures)
+    snapshot_figure(es.display, es.app, path * ".png"; capture_full_page = es.capture_full_page)
     return true
 end
 
@@ -364,8 +296,8 @@ end
 end
 
 @reference_test "resize_to parent with fixed size div" begin
-    fig = create_test_figure()
     app = App() do
+        fig = create_test_figure()
         DOM.div(
             DOM.h2("resize_to=:parent Test"; style = "text-align: center; color: #666;"),
             DOM.div(
@@ -374,24 +306,24 @@ end
             ),
         )
     end
-    EScreenshot(edisplay, app; wait_figures = [fig])
+    EScreenshot(edisplay, app)
 end
 
 @reference_test "resize_to parent with ResizableCard" begin
-    fig = create_test_figure()
     app = App() do
+        fig = create_test_figure()
         card = TestResizableCard(WGLMakie.WithConfig(fig; use_html_widgets = true, resize_to = :parent))
         DOM.div(
             DOM.h2("ResizableCard Test"; style = "text-align: center; color: #666;"),
             DOM.div(card; style = "width: 900px; height: 700px; margin: 10px;"),
         )
     end
-    EScreenshot(edisplay, app; wait_figures = [fig])
+    EScreenshot(edisplay, app)
 end
 
 @reference_test "resize_to parent nested in styled container" begin
-    fig = create_test_figure()
     app = App() do
+        fig = create_test_figure()
         DOM.div(
             DOM.h2("Nested Container Test"; style = "text-align: center; color: #666;"),
             DOM.div(
@@ -403,21 +335,21 @@ end
             ),
         )
     end
-    EScreenshot(edisplay, app; wait_figures = [fig])
+    EScreenshot(edisplay, app)
 end
 
 @reference_test "resize_to parent with multiple figures side by side" begin
-    fig1 = Figure(; size = (600, 400))
-    ax1 = Axis(fig1[1, 1]; title = "Left Plot")
-    sl1 = Makie.Slider(fig1[2, 1]; range = 0:0.1:10, startvalue = 5)
-    lines!(ax1, 0:0.1:10, lift(v -> sin.((0:0.1:10) .+ v), sl1.value))
-
-    fig2 = Figure(; size = (600, 400))
-    ax2 = Axis(fig2[1, 1]; title = "Right Plot")
-    sl2 = Makie.Slider(fig2[2, 1]; range = 0:0.1:10, startvalue = 3)
-    lines!(ax2, 0:0.1:10, lift(v -> cos.((0:0.1:10) .+ v), sl2.value))
-
     app = App() do
+        fig1 = Figure(; size = (600, 400))
+        ax1 = Axis(fig1[1, 1]; title = "Left Plot")
+        sl1 = Makie.Slider(fig1[2, 1]; range = 0:0.1:10, startvalue = 5)
+        lines!(ax1, 0:0.1:10, lift(v -> sin.((0:0.1:10) .+ v), sl1.value))
+
+        fig2 = Figure(; size = (600, 400))
+        ax2 = Axis(fig2[1, 1]; title = "Right Plot")
+        sl2 = Makie.Slider(fig2[2, 1]; range = 0:0.1:10, startvalue = 3)
+        lines!(ax2, 0:0.1:10, lift(v -> cos.((0:0.1:10) .+ v), sl2.value))
+
         DOM.div(
             DOM.h2("Side by Side Test"; style = "text-align: center; color: #666;"),
             DOM.div(
@@ -433,18 +365,18 @@ end
             ),
         )
     end
-    EScreenshot(edisplay, app; wait_figures = [fig1, fig2])
+    EScreenshot(edisplay, app)
 end
 
 @reference_test "resize_to body baseline" begin
-    fig = create_test_figure()
     app = Bonito.App() do
+        fig = create_test_figure()
         DOM.div(
             WGLMakie.WithConfig(fig; use_html_widgets = true, resize_to = :body);
             style = "margin: 0; padding: 0;",
         )
     end
-    EScreenshot(edisplay, app; wait_figures = [fig])
+    EScreenshot(edisplay, app)
 end
 
 # Reset to default
