@@ -29,8 +29,14 @@ EScreenshot(display, app::Bonito.App; wait_figures = Any[]) = EScreenshot(displa
 # alone is reliable here; this is.
 function wait_for_resize(edisplay, win, figs; timeout = 20, poll = 0.1, tol = 2)
     isempty(figs) && return true
-    canvas_widths() = round.(Int, Float64.(run(win,
-        "[...document.querySelectorAll('canvas')].map(c => c.getBoundingClientRect().width)")))
+    canvas_widths() = round.(
+        Int, Float64.(
+            run(
+                win,
+                "[...document.querySelectorAll('canvas')].map(c => c.getBoundingClientRect().width)"
+            )
+        )
+    )
     scene_width(f) = round(Int, Makie.widths(Makie.viewport(Makie.get_scene(f))[])[1])
     deadline = time() + timeout
     while time() < deadline
@@ -58,12 +64,14 @@ function capture_until_stable(edisplay, winid, path; interval = 0.25, timeout = 
     capture!(dest) = begin
         rm(dest; force = true)
         js_dest = replace(dest, '\\' => '/')
-        run(edisplay.window.app, """
-            const win = BrowserWindow.fromId($winid)
-            win.webContents.capturePage()
-                .then(image => require('fs').writeFileSync('$(js_dest)', image.toPNG()))
-                .catch(err => console.error('Screenshot error:', err));
-        """)
+        run(
+            edisplay.window.app, """
+                const win = BrowserWindow.fromId($winid)
+                win.webContents.capturePage()
+                    .then(image => require('fs').writeFileSync('$(js_dest)', image.toPNG()))
+                    .catch(err => console.error('Screenshot error:', err));
+            """
+        )
         Bonito.wait_for(() -> isfile(dest); timeout = 30)
         return dest
     end
