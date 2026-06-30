@@ -74,7 +74,7 @@ jobs:
           - WGLMakie
     steps:
       - name: Checkout PR head
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Immutable SHA captured at trigger time so a post-trigger force-push
           # can't swap in code the maintainer didn't intend to run.
