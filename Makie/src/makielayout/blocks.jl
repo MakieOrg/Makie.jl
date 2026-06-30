@@ -713,31 +713,24 @@ function tooltip!(b::Block, str::AbstractString; enabled = true, delay = 0, dept
     tt = tooltip!(b.blockscene, position, str; visible = false, kwargs...)
     on(z -> translate!(tt, 0, 0, z), _depth)
 
-    function update_viz0(mp, bbox)
-        if mp in bbox
-            position[] = mp
-            tt.visible[] = true
-        else
-            tt.visible[] = false
-        end
-        return
-    end
-
-    if _delay[] > 0
-        t0, last_mp = time(), b.blockscene.events.mouseposition[]
-    end
+    t0, last_mp = time(), b.blockscene.events.mouseposition[]
+    tt_timer = nothing
 
     function update_viz(mp, bbox)
         if mp in bbox
-            last_mp in bbox || (t0 = time())
+            if !(last_mp in bbox)
+                isnothing(tt_timer) || close(tt_timer)
+                tt_timer = Timer(_delay[]) do _
+                    last_mp in b.layoutobservables.computedbbox[] && (tt.visible[] = true)
+                end
+            end
             last_mp = mp
             position[] = mp
-            tt.visible[] = time() > t0 + _delay[]
         else
             last_mp = mp
+            isnothing(tt_timer) || (close(tt_timer); tt_timer = nothing)
             tt.visible[] = false
         end
-        return
     end
 
     was_open = false
@@ -745,7 +738,7 @@ function tooltip!(b::Block, str::AbstractString; enabled = true, delay = 0, dept
         for (mp, bbox) in ch
             if isopen(b.blockscene)
                 was_open = true
-                _delay[] == 0 ? update_viz0(mp, bbox) : update_viz(mp, bbox)
+                update_viz(mp, bbox)
             end
             !isopen(b.blockscene) && was_open && break
         end
