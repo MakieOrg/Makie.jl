@@ -705,21 +705,22 @@ julia> e[] = true
 ```
 """
 function tooltip!(b::Block, str::AbstractString; enabled = true, delay = 0, depth = 9.0e3, kwargs...)
-    _enabled = typeof(enabled) <: Observable ? enabled : Observable(enabled)
-    _delay = typeof(delay) <: Observable ? delay : Observable(delay)
-    _depth = typeof(depth) <: Observable ? depth : Observable(depth)
+    _enabled = convert(Observable, enabled)
+    _delay = convert(Observable, delay)
+    _depth = convert(Observable, depth)
 
     position = Observable(Point2f(0))
     tt = tooltip!(b.blockscene, position, str; visible = false, kwargs...)
     on(z -> translate!(tt, 0, 0, z), _depth)
 
     function update_viz0(mp, bbox)
-        return if mp in bbox
+        if mp in bbox
             position[] = mp
             tt.visible[] = true
         else
             tt.visible[] = false
         end
+        return
     end
 
     if _delay[] > 0
@@ -727,7 +728,7 @@ function tooltip!(b::Block, str::AbstractString; enabled = true, delay = 0, dept
     end
 
     function update_viz(mp, bbox)
-        return if mp in bbox
+        if mp in bbox
             last_mp in bbox || (t0 = time())
             last_mp = mp
             position[] = mp
@@ -736,6 +737,7 @@ function tooltip!(b::Block, str::AbstractString; enabled = true, delay = 0, dept
             last_mp = mp
             tt.visible[] = false
         end
+        return
     end
 
     was_open = false
@@ -766,9 +768,7 @@ function tooltip!(b::Block, str::AbstractString; enabled = true, delay = 0, dept
     end
 
     notify(_enabled)
-    notify(_delay)
     notify(_depth)
-    notify(b.blockscene.events.mouseposition)
     return tt
 end
 
