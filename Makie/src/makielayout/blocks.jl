@@ -731,6 +731,7 @@ function tooltip!(b::Block, str::AbstractString; enabled = true, delay = 0, dept
             isnothing(tt_timer) || (close(tt_timer); tt_timer = nothing)
             tt.visible[] = false
         end
+        return
     end
 
     was_open = false
