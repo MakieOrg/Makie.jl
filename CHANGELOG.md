@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- WGLMakie: `resize_to` figures now serialize the scene *after* applying the browser-reported size, so the first render (and `done_init`/`wait_for_display`) is at the final size instead of the initial `Figure` size — a screenshot taken right after display no longer catches a half-resized layout.
 - WGLMakie: fixed a `Cannot destructure property 'geometry' of 'mesh'` JS error when a plot received an attribute update after it was disposed (e.g. during re-display or resize); the update is now skipped instead of throwing.
 - Adjusted cycled attributes to be marked as `:cycled` instead of `nothing` so that `nothing` doesn't get overridden. This allows e.g. `linestyle = nothing` to be set when `linestyle` is cycled. [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267)
 
