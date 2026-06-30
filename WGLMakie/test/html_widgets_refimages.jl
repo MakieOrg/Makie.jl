@@ -10,8 +10,9 @@ struct EScreenshot
     display
     app::Bonito.App
     capture_full_page::Bool
-    # Figures to block on (via `Makie.wait_for_display`) before capturing, so we
-    # don't screenshot before they've rendered/resized. Empty = legacy sleep path.
+    # `resize_to` figures resize asynchronously after the window is resized; pass
+    # them here so the screenshot waits for that round-trip to land (see
+    # `wait_for_resize`). Empty for non-resizing tests.
     wait_figures::Vector{Any}
 end
 
@@ -19,44 +20,85 @@ EScreenshot(display, fig::Makie.FigureLike; capture_full_page = false) = EScreen
 # Default to full page for App tests. Pass `wait_figures` for `resize_to` apps.
 EScreenshot(display, app::Bonito.App; wait_figures = Any[]) = EScreenshot(display, app, true, wait_figures)
 
-# Block until each figure has rendered+resized in the browser. `wait_for_display`
-# returns once `done_init` fires (loaded + resized + painted); `wait_for_ready`
-# alone only waits for the connection, so the screenshot could catch the spinner
-# or a half-resized layout.
-function wait_for_figures(figs)
-    for fig in figs
-        Makie.wait_for_display(Makie.getscreen(Makie.get_scene(fig)))
+# Wait until every WGLMakie figure in `figs` has actually been resized to match
+# its on-page canvas — i.e. the window-resize -> JS `real_size` -> Julia `resize!`
+# round-trip has landed. `viewport(scene)` is the authoritative Julia-side signal
+# (it is set by that `resize!` in `three_plot.jl`), so we wait until every figure's
+# scene width equals a canvas width on the page. That round-trip can take >1s, and
+# the half-resized state is static, so neither a fixed sleep nor pixel-stability
+# alone is reliable here; this is.
+function wait_for_resize(edisplay, win, figs; timeout = 20, poll = 0.1, tol = 2)
+    isempty(figs) && return true
+    canvas_widths() = round.(
+        Int, Float64.(
+            run(
+                win,
+                "[...document.querySelectorAll('canvas')].map(c => c.getBoundingClientRect().width)"
+            )
+        )
+    )
+    scene_width(f) = round(Int, Makie.widths(Makie.viewport(Makie.get_scene(f))[])[1])
+    deadline = time() + timeout
+    while time() < deadline
+        cw = canvas_widths()
+        if all(f -> any(c -> abs(c - scene_width(f)) <= tol, cw), figs)
+            return true
+        end
+        sleep(poll)
     end
-    return
+    @warn "wait_for_resize: figures did not reach their canvas size within $(timeout)s"
+    return false
 end
 
-# Capture the Electron window to `path`. The render is settled by the time this runs
-# (see `wait_for_figures`), so a single capture is enough.
-function capture_window(edisplay, winid, path)
-    rm(path; force = true)
-    js_path = replace(path, '\\' => '/')
-    run(
-        edisplay.window.app, """
-            const win = BrowserWindow.fromId($winid)
-            win.webContents.capturePage()
-                .then(image => require('fs').writeFileSync('$(js_path)', image.toPNG()))
-                .catch(err => console.error('Screenshot error:', err));
-        """
-    )
-    Bonito.wait_for(() -> isfile(path); timeout = 30)
-    return path
+# Capture the Electron window to `path`, retrying until the rendered output stops
+# changing (two consecutive frames within `tol`) or `timeout` is reached.
+# `resize_to` figures finish re-laying-out only after a JS<->Julia round-trip, so a
+# single capture can land mid-resize; waiting for the frame to stop changing is the
+# robust, backend-agnostic way to know it is final (same idea as Playwright's
+# screenshot stabilization). Frames are compared on decoded pixels via the same
+# `compare_media` the reference tests use (PNG bytes aren't stable across captures);
+# `tol` is well below the reference threshold so a settled frame (diff ~0) matches
+# while the resize transition (a large diff / size mismatch) does not. Returns
+# whether it stabilized before the timeout.
+function capture_until_stable(edisplay, winid, path; interval = 0.25, timeout = 20, tol = 1.0e-3)
+    capture!(dest) = begin
+        rm(dest; force = true)
+        js_dest = replace(dest, '\\' => '/')
+        run(
+            edisplay.window.app, """
+                const win = BrowserWindow.fromId($winid)
+                win.webContents.capturePage()
+                    .then(image => require('fs').writeFileSync('$(js_dest)', image.toPNG()))
+                    .catch(err => console.error('Screenshot error:', err));
+            """
+        )
+        Bonito.wait_for(() -> isfile(dest); timeout = 30)
+        return dest
+    end
+    prev_path = path * ".prev.png"
+    capture!(path)
+    settled = false
+    deadline = time() + timeout
+    while time() < deadline
+        sleep(interval)
+        cp(path, prev_path; force = true)
+        capture!(path)
+        if ReferenceTests.compare_media(prev_path, path) < tol
+            settled = true
+            break
+        end
+    end
+    rm(prev_path; force = true)
+    settled || @warn "capture_until_stable: render did not stabilize within $(timeout)s, using last frame" path
+    return settled
 end
 
 function snapshot_figure(edisplay, app, path; capture_full_page = false, wait_figures = Any[])
     rm(path; force = true)
     display(edisplay, app)
     win = edisplay.window.window
-    if isempty(wait_figures)
-        Bonito.wait_for_ready(app)
-        sleep(1)
-    else
-        wait_for_figures(wait_figures)
-    end
+    Bonito.wait_for_ready(app)
+    sleep(1)
     win_size = run(
         win, """(()=>{
             document.body.style.margin = '0';
@@ -110,9 +152,15 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false, wait_fi
         })();
         """
     )
-    # Trim the window to the measured content (figures already rendered above).
     Electron.ElectronAPI.setContentSize(win, win_size...)
-    capture_window(edisplay, win.id, path)
+    winid = win.id
+    # `setContentSize` starts an async resize: the canvas resizes immediately, but
+    # `resize_to` figures finish re-laying-out only after a JS<->Julia round-trip
+    # (JS reports the size -> scene `resize!` + re-serialize -> re-render). First
+    # wait for that round-trip to land on the Julia side (`wait_for_resize`), then
+    # for the resulting render to flush to the browser (`capture_until_stable`).
+    wait_for_resize(edisplay, win, wait_figures)
+    capture_until_stable(edisplay, winid, path)
     return path
 end
 
