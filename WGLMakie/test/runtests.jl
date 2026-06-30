@@ -307,9 +307,14 @@ edisplay = Bonito.use_electron_display(devtools = true)
         @test length(session.session_objects) == 0
         # getproperty, not getfield: in Bonito v5 `inbox` lives on the shared
         # RootSession and getfield would throw a FieldError (works via the shim on both).
-        @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :message_queue, :deregister_callbacks, :inbox]
+        @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :message_queue, :deregister_callbacks]
             @test isempty(getproperty(session, field))
         end
+        # `inbox` is the live WS receive channel on the still-connected display
+        # root, so a message can be mid-flight when we check — asserting it empty
+        # instantly is racy. Give the reader task a moment to drain it; a genuinely
+        # stuck reader (a real leak/hang) would still fail via the timeout.
+        @test Bonito.wait_for(() -> isempty(getproperty(session, :inbox)); timeout = 10) == :success
         # imports isn't emptied on v5: the root keeps each sub's imports for the
         # page lifetime (Bonito `push_dependencies!`). Bound it instead of requiring empty.
         @test length(session.imports) <= 8
