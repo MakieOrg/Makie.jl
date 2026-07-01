@@ -1,11 +1,35 @@
 @testset "ablines" begin
     # Test ablines with 0 dim arrays
+    finite(points) = filter(p -> all(isfinite, p), points)
+
     f, ax, pl = ablines(fill(0), fill(1))
     reset_limits!(ax)
     points = pl.plots[1][1]
-    @test Point2f.(points[]) == [Point2f(0), Point2f(10)]
+    @test finite(Point2f.(points[])) == [Point2f(0), Point2f(10)]
     limits!(ax, 5, 15, 6, 17)
-    @test Point2f.(points[]) == [Point2f(5), Point2f(15)]
+    @test finite(Point2f.(points[])) == [Point2f(5), Point2f(15)]
+
+    @testset "non-identity transform" begin
+        f = Figure()
+        ax = Axis(f[1, 1], xscale = log10, yscale = log10)
+        scatter!(ax, [1, 10, 100], [1, 10, 100])
+        pl = ablines!(ax, 0.0, 2.0)
+        reset_limits!(ax)
+        points = finite(pl.plots[1][1][])
+        @test length(points) > 2
+        @test all(p -> p[2] - p[1] ≈ log10(2.0), points)
+    end
+
+    @testset "NaN for points outside the scale domain" begin
+        f = Figure()
+        ax = Axis(f[1, 1], yscale = log10)
+        scatter!(ax, [1, 2, 3, 4], [1, 10, 100, 1000])
+        pl = ablines!(ax, -50.0, 50.0)
+        reset_limits!(ax)
+        points = pl.plots[1][1][]
+        @test count(p -> any(isnan, p), points) > 0
+        @test count(p -> all(isfinite, p), points) > 0
+    end
 end
 
 @testset "arrows" begin

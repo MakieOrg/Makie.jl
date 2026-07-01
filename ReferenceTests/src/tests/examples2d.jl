@@ -2147,6 +2147,48 @@ end
     f
 end
 
+@reference_test "ablines with transform_func" begin
+    f = Figure(size = (600, 500))
+
+    ax = Axis(f[1, 1], title = "identity")
+    ablines!(ax, [0.0, 1.0, 2.0], [1.0, -0.5, 0.25], color = [:orange, :red, :purple], linewidth = 3)
+    limits!(ax, 0, 10, -2, 6)
+
+    ax = Axis(f[1, 2], xscale = log10, title = "log x")
+    ablines!(ax, 0.0, 0.002, color = :orange, linewidth = 3)
+    limits!(ax, 1, 1000, 0, 3)
+
+    ax = Axis(f[1, 3], yscale = log10, title = "log y, crosses zero")
+    ablines!(ax, -50.0, 50.0, color = :orange, linewidth = 3)
+    limits!(ax, 1, 4, 1, 200)
+
+    ax = Axis(f[2, 1], xscale = log10, yscale = log10, title = "log-log, zero intercept")
+    ablines!(ax, [0.0, 0.0, 0.0], [1.0, 3.0, 0.3], color = [:orange, :red, :purple], linewidth = [2, 4, 6])
+    limits!(ax, 1, 100, 0.1, 1000)
+
+    ax = Axis(f[2, 2], xscale = log10, yscale = log10, title = "log-log, nonzero intercept")
+    ablines!(ax, 5.0, 1.0, color = :teal, linewidth = 3)
+    limits!(ax, 1, 100, 1, 1000)
+
+    ax = Axis(f[2, 3], xscale = log10, title = "log x, negative slope")
+    ablines!(ax, 5.0, -0.001, color = :red, linewidth = 3)
+    limits!(ax, 1, 1000, 0, 6)
+
+    ax = Axis(f[3, 1], xscale = sqrt, title = "sqrt x")
+    ablines!(ax, 0.0, 1.0, color = :orange, linewidth = 3)
+    limits!(ax, 0, 100, 0, 100)
+
+    ax = Axis(f[3, 2], yscale = sqrt, title = "sqrt y")
+    ablines!(ax, 0.0, 1.0, color = :orange, linewidth = 3)
+    limits!(ax, 0, 100, 0, 100)
+
+    ax = Axis(f[3, 3], xscale = log10, yscale = log10, title = "log-log, multiple intercepts")
+    ablines!(ax, [1.0, 10.0, 100.0], 1.0, color = [:orange, :red, :purple], linewidth = 3)
+    limits!(ax, 1, 100, 1, 1000)
+
+    f
+end
+
 @reference_test "Color Patterns" begin
     f = Figure()
     a = Axis(f[1, 1], aspect = DataAspect()) #autolimitaspect = 1)
