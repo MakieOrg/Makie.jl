@@ -315,9 +315,12 @@ edisplay = Bonito.use_electron_display(devtools = true)
         # instantly is racy. Give the reader task a moment to drain it; a genuinely
         # stuck reader (a real leak/hang) would still fail via the timeout.
         @test Bonito.wait_for(() -> isempty(getproperty(session, :inbox)); timeout = 10) == :success
-        # imports isn't emptied on v5: the root keeps each sub's imports for the
-        # page lifetime (Bonito `push_dependencies!`). Bound it instead of requiring empty.
-        @test length(session.imports) <= 8
+        # Figure/widget assets are emitted into their sub-session's own fragment
+        # and freed from the root when that sub closes, so after `App(nothing)`
+        # the page root retains only its own connection shell (Bonito's
+        # Websocket.js), not the WGLMakie/widget bundles. A count above this small
+        # page-shell surface means sub imports are leaking onto the root again.
+        @test length(session.imports) <= 2
         server = session.connection.server
         @test length(server.websocket_routes.table) == 1
         @test server.websocket_routes.table[1][2] == session.connection
