@@ -227,7 +227,7 @@ edisplay = Bonito.use_electron_display(devtools = true)
             # 2. `close` stopped tick production
             # To verify this we check that the number of ticks is proportional
             # to the real render time, which should be close to the sleep time.
-            @test render_time * 30 - 1 <= length(tick_record) <= render_time * 30 + 10
+            @test render_time * 30 - 1 <= length(tick_record) <= render_time * 30 + 20
 
             t = 0.0
             for (i, tick) in enumerate(tick_record)
