@@ -20,6 +20,7 @@ using Documenter: Documenter
 using Documenter.MarkdownAST
 using Documenter.MarkdownAST: @ast
 using DocumenterVitepress
+using Bonito
 using Markdown
 
 
@@ -232,6 +233,7 @@ function make_docs(; pages)
         expandfirst = unnest(nested_filter(pages, r"reference/(plots|blocks)/(?!overview)")),
         warnonly = get(ENV, "CI", "false") != "true",
         pagesonly = true,
+        plugins = [DocumenterVitepress.BonitoPlugin()],
     )
 end
 

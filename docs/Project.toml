@@ -34,7 +34,7 @@ WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 [sources]
 CairoMakie = {path = "../CairoMakie"}
 ComputePipeline = {path = "../ComputePipeline"}
-DocumenterVitepress = {url = "https://github.com/LuxDL/DocumenterVitepress.jl", rev = "d3dd92302124f74a5b7ad0d8ad719785433525eb"}
+DocumenterVitepress = {url = "https://github.com/LuxDL/DocumenterVitepress.jl", rev = "as/bonito-plugin"}
 GLMakie = {path = "../GLMakie"}
 Makie = {path = "../Makie"}
 RPRMakie = {path = "../RPRMakie"}

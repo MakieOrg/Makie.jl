@@ -201,10 +201,11 @@ Here is an example of how to use this in Franklin:
 ```@example wglmakie
 using WGLMakie
 using Bonito, Markdown
-# `exportable=true, offline=true` inlines all JS/data into each figure so the page
-# is self-contained. DocumenterVitepress does not (yet) propagate Bonito's external
-# `DocumenterAssets` bundle, so inline mode is required for figures to load.
-Page(exportable=true, offline=true)
+# The docs build registers `DocumenterVitepress.BonitoPlugin()`, which ships
+# Bonito's JS/CSS bundle once through the site's `public/` folder, so the
+# default `Page()` (Bonito's `DocumenterAssets` mode) works without inlining
+# a copy of the bundle into every figure.
+Page()
 WGLMakie.activate!()
 Makie.inline!(true) # Make sure to inline plots into Documenter output!
 scatter(1:4, color=1:4)
