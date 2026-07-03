@@ -509,10 +509,11 @@ void main()
     gl_FragDepth = gl_FragCoord.z;
 #endif
 
+
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
     vec3 back_position = vec3(modelinv * vec4(frag_vert, 1));
-    vec3 dir = normalize(eye_unit - back_position);
+    vec3 dir = normalize(back_position - eye_unit);
 
     // In model space (pre model application) the volume is defined in a const
     // 0..1 box. If the camera is inside the box we start our rays from the
@@ -522,22 +523,21 @@ void main()
     bool is_outside_box = (eye_unit.x < 0.0 || eye_unit.y < 0.0 || eye_unit.z < 0.0
             || eye_unit.x > 1.0 || eye_unit.y > 1.0 || eye_unit.z > 1.0);
 
-    vec3 start = eye_unit;
-    vec3 stop = back_position;
+    // Find the true ray interval through the unit box. The rasterized cube
+    // face only provides screen coverage; the exit point must not depend on
+    // front/back face classification.
+    vec3 solution_1 = (1.0 - eye_unit) / dir;
+    vec3 solution_0 = (0.0 - eye_unit) / dir;
+    vec3 solutions_min = min(solution_0, solution_1);
+    vec3 solutions_max = max(solution_0, solution_1);
+    float start_solution = max(max(solutions_min.x, solutions_min.y), solutions_min.z);
+    float stop_solution = min(min(solutions_max.x, solutions_max.y), solutions_max.z);
 
-    // Otherwise we find the box - ray intersection so we can skip the empty
-    // space between the camera and the volume
+    if (stop_solution < max(start_solution, 0.0))
+        discard;
 
-    if (is_outside_box) {
-        // only trace inside the box:
-        // solve back_position + distance * dir == 1
-        // solve back_position + distance * dir == 0
-        // to see where it first hits unit cube!
-        vec3 solution_1 = (1.0 - back_position) / dir;
-        vec3 solution_0 = (0.0 - back_position) / dir;
-        float solution = min_bigger_0(solution_1, solution_0);
-        start = back_position + solution * dir;
-    }
+    vec3 start = eye_unit + (is_outside_box ? start_solution : 0.0) * dir;
+    vec3 stop = eye_unit + stop_solution * dir;
 
 #ifdef ENABLE_DEPTH
     vec4 frag_coord = projectionview * model * vec4(start, 1);
