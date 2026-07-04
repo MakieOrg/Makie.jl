@@ -360,24 +360,26 @@ void main()
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
     vec3 back_position = frag_vert; // frag_vert is different from GLMakie here
-    vec3 dir = normalize(eye_unit - back_position);
+    vec3 dir = normalize(back_position - eye_unit);
 
     bool is_outside_box = (eye_unit.x < 0.0 || eye_unit.y < 0.0 || eye_unit.z < 0.0
             || eye_unit.x > 1.0 || eye_unit.y > 1.0 || eye_unit.z > 1.0);
 
-    vec3 start = eye_unit;
-    vec3 stop = back_position;
+    // Find the true ray interval through the unit box. The rasterized cube
+    // face only provides screen coverage; the exit point must not depend on
+    // front/back face classification.
+    vec3 solution_1 = (1.0 - eye_unit) / dir;
+    vec3 solution_0 = (0.0 - eye_unit) / dir;
+    vec3 solutions_min = min(solution_0, solution_1);
+    vec3 solutions_max = max(solution_0, solution_1);
+    float start_solution = max(max(solutions_min.x, solutions_min.y), solutions_min.z);
+    float stop_solution = min(min(solutions_max.x, solutions_max.y), solutions_max.z);
 
-    if (is_outside_box) {
-        // only trace inside the box:
-        // solve back_position + distance * dir == 1
-        // solve back_position + distance * dir == 0
-        // to see where it first hits unit cube!
-        vec3 solution_1 = (1.0 - back_position) / dir;
-        vec3 solution_0 = (0.0 - back_position) / dir;
-        float solution = min_bigger_0(solution_1, solution_0);
-        start = back_position + solution * dir;
-    }
+    if (stop_solution < max(start_solution, 0.0))
+        discard;
+
+    vec3 start = eye_unit + (is_outside_box ? start_solution : 0.0) * dir;
+    vec3 stop = eye_unit + stop_solution * dir;
 
     // if completely clipped discard this ray tracing attempt
     if (process_clip_planes(start, stop))
