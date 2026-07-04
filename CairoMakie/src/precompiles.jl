@@ -2,8 +2,16 @@ using PrecompileTools
 
 macro compile(block)
     return quote
-        figlike = $(esc(block))
-        Makie.colorbuffer(figlike)
+        # Run the workload inside a `let` body, matching GLMakie and WGLMakie:
+        # at top level, both the result binding and any assignments made by
+        # the block itself (`f, ax, pl = ...`) would otherwise become hidden
+        # module-level globals, each permanently rooting its Figure, Scene
+        # graph, and rendered Screen (with its multi-megabyte pixel buffer)
+        # into the serialized package image.
+        let
+            figlike = $(esc(block))
+            Makie.colorbuffer(figlike)
+        end
     end
 end
 
