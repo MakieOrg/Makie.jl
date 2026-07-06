@@ -52,10 +52,10 @@ end
     cb = Colorbar(fig[1, 2], hm)
 
     @test hm.scaled_colorrange[] == Vec(-0.5, 0.5)
-    @test cb.limits[] == Vec(-0.5, 0.5)
+    @test cb.resolved_colorrange[] == Vec(-0.5, 0.5)
 
     hm.colorrange = Float32.((-1, 1))
-    @test cb.limits[] == Vec(-1, 1)
+    @test cb.resolved_colorrange[] == Vec(-1, 1)
 
     # TODO: This doesn't work anymore because colorbar doesn't use the same observable
     # cb.limits[] = Float32.((-2, 2))
@@ -183,13 +183,13 @@ end
 end
 
 @testset "Colorbar plot object kwarg clash" begin
-    for attr in (:colormap, :limits)
+    for attr in (:colormap, :colorrange, :limits)
         f, ax, p = scatter(1:10, 1:10, color = 1:10, colorrange = (1, 10))
         Colorbar(f[2, 1], p)
         @test_throws ErrorException Colorbar(f[2, 1], p; Dict(attr => nothing)...)
     end
 
-    for attr in (:colormap, :limits, :highclip, :lowclip)
+    for attr in (:colormap, :colorrange, :limits, :highclip, :lowclip)
         for F in (heatmap, contourf)
             f, ax, p = F(1:10, 1:10, randn(10, 10))
             Colorbar(f[1, 2], p)
@@ -460,13 +460,13 @@ end
     @testset "Recipes" begin
         f, ax, pl = barplot(1:3; color = 1:3)
         cbar = Colorbar(f[1, 2], pl)
-        @test cbar.limits[] == Vec(1.0, 3.0)
+        @test cbar.resolved_colorrange[] == Vec(1.0, 3.0)
 
         let data = fill(1.0, 2, 2, 2)
             data[1] = 3.0
             f, ax, pl = volumeslices(1:2, 1:2, 1:2, data)
             cbar = Colorbar(f[1, 2], pl)
-            @test cbar.limits[] == Vec(1.0, 3.0)
+            @test cbar.resolved_colorrange[] == Vec(1.0, 3.0)
         end
     end
 end

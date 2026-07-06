@@ -120,6 +120,34 @@ end
     @test pl2.scaled_color[] == cpalette[1]
 end
 
+@testset "explicit attributes override the cycle (#5267)" begin
+    # When a cycle is active for an attribute, an explicitly set value must always
+    # win over the cycle -- even when that value happens to equal the "derive from
+    # cycle" default. The tricky case is `linestyle`: a solid line is represented
+    # by `nothing`, which used to double as the "not set, derive from cycle" marker.
+    # `Legend` runs into this because it creates its line elements with an explicit
+    # `linestyle = nothing` (solid). See
+    # https://github.com/MakieOrg/Makie.jl/issues/5267
+    f = Figure()
+    ax = Axis(f[1, 1])
+    # The default linestyle palette is [nothing, :dash, :dot, :dashdot, :dashdotdot],
+    # so without an explicit value the second cycling line would get `:dash`.
+    pl1 = lines!(ax, 1:4; cycle = [:linestyle])
+    pl2 = lines!(ax, 1:4; cycle = [:linestyle], linestyle = nothing)
+    pl3 = lines!(ax, 1:4; cycle = [:linestyle], linestyle = :solid)
+    pl4 = lines!(ax, 1:4; cycle = [:linestyle])
+    # The first line cycles and stays solid (palette index 1 is `nothing`).
+    @test pl1.linestyle[] === nothing
+    # The explicitly set solid linestyles must not be overridden by the cycle.
+    @test pl2.linestyle[] === nothing
+    @test pl3.linestyle[] === nothing
+    # Because `pl2` and `pl3` set `linestyle` explicitly, they must not count as
+    # cycling and thus must not advance the cycle. `pl4` is therefore only the
+    # second *cycling* line and gets palette index 2, i.e. `:dash`.
+    expected_dash = Makie.convert_attribute(:dash, Makie.Key{:linestyle}(), Makie.Key{:lines}())
+    @test pl4.linestyle[] == expected_dash
+end
+
 function test_default(arg)
     _, _, pl1 = plot(arg)
 

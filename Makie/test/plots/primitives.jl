@@ -16,9 +16,9 @@ end
     color = range(0, 1, length = length(directions))
     fig, ax, pl = arrows2d(points, directions; color = color)
     cbar = Colorbar(fig[1, 2], pl)
-    @test cbar.limits[] == Vec2f(0, 1)
+    @test cbar.resolved_colorrange[] == Vec2d(0, 1)
     pl.colorrange = (0.5, 0.6)
-    @test cbar.limits[] ≈ Vec2f(0.5, 0.6)
+    @test cbar.resolved_colorrange[] ≈ Vec2d(0.5, 0.6)
 end
 
 @testset "voxels" begin

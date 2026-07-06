@@ -212,7 +212,7 @@ function register_colormapping_without_color!(attr::ComputeGraph)
     for key in (:lowclip, :highclip)
         sym = Symbol(key, :_color)
         map!(attr, [key, :alpha_colormap], sym) do input, cmap
-            if input === automatic
+            if input === automatic || input === nothing
                 return ifelse(key == :lowclip, first(cmap), last(cmap))
             else
                 return to_color(input)
@@ -752,7 +752,7 @@ function (cc::CycleConvert)(value)
         cycle = cc.graph.cycle[]::Cycle
         x = get_cycle_attribute(cc.palettes, cc.key, value.i, cycle)
         return cc.callback(x)
-    elseif isnothing(value)
+    elseif value === :cycled
         cycle = cc.graph.cycle[]::Cycle
         cycle_index = cc.graph.cycle_index[]::Int
         x = get_cycle_attribute(cc.palettes, cc.key, cycle_index, cycle)

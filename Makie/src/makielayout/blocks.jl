@@ -719,12 +719,21 @@ function initialize_block_arguments!(
     end
 
     if length(converted_names) != length(attr.converted[])
-        error(
-            "Failed to construct Block: Expected $(length(converted_names)) converted \
-            argument(s) to map to `$converted_names` but got $(length(attr.converted[])): \
-            $(attr.converted[]). This means that `$T` did not correctly convert the given \
-            arguments."
-        )
+        if length(converted_names) == 0
+            error(
+                "Failed to construct Block: Expected no arguments but got: $(attr.converted[]). \
+                If $T is a primitive block, a workaround method $T(fig_or_scene, args...) maybe \
+                missing or failed to be called. If $T is a Complex/Block recipe, it is likely not \
+                declaring its arguments in `@Block Name (args...)."
+            )
+        else
+            error(
+                "Failed to construct Block: Expected $(length(converted_names)) converted \
+                argument(s) to map to `$converted_names` but got $(length(attr.converted[])): \
+                $(attr.converted[]). This means that `$T` did not correctly convert the given \
+                arguments."
+            )
+        end
     end
 
     # splat to defined names
