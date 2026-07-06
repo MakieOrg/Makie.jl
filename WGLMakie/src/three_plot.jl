@@ -76,25 +76,18 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         # Since we cant do any round trip communication
         scene_serialized[] = serialize_scene(scene)
     else
-        scene_serialized_task = Makie.async_tracked() do alive
-            alive[] || return nothing
-            ser = serialize_scene(scene)
-            return ser
-        end
-        # Wait for real size to be determined, then resize scene and serialize
+        # Query the real canvas size (resize_to) from JS first, resize the scene to
+        # it, THEN serialize — so the browser renders at the final size directly
+        # instead of rendering at `initial_size` and re-laying-out via observable
+        # updates afterwards (which caused a visible resize + a race on capture).
         on(session, real_size) do size_arr
             Makie.async_tracked() do should_close
                 try
                     size_tuple = (round.(Int, (size_arr))...,)
-                    # Resize the scene to the actual canvas size before serialization
-                    serialized = fetch(scene_serialized_task)
                     if size_tuple != initial_size
-                        # resize before sending - since all changes should be captured in the serialized observables
-                        # We dont need to serialize again!
                         resize!(scene, size_tuple...)
                     end
-                    # Now serialize with the correct size
-                    scene_serialized[] = serialized
+                    scene_serialized[] = serialize_scene(scene)
                 catch e
                     @warn "Error resizing/serializing scene" exception = (e, catch_backtrace())
                     done_init[] = e
