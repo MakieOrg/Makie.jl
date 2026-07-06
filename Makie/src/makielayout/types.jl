@@ -1015,67 +1015,6 @@ end
     end
 end
 
-"""
-A grid of one or more horizontal `Slider`s, where each slider has a
-name label on the left and a value label on the right.
-
-Each `NamedTuple` you pass specifies one `Slider`. You always have to pass `range`
-and `label`, and optionally a `format` for the value label. Beyond that, you can set
-any keyword that `Slider` takes, such as `startvalue`.
-
-The `format` keyword can be a `String` with Format.jl style, such as "{:.2f}Hz", or
-a function.
-
-## Constructors
-
-```julia
-SliderGrid(fig_or_scene, nts::NamedTuple...; kwargs...)
-```
-
-## Examples
-
-```julia
-sg = SliderGrid(fig[1, 1],
-    (label = "Amplitude", range = 0:0.1:10, startvalue = 5),
-    (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
-    (label = "Phase", range = 0:0.01:2pi,
-        format = x -> string(round(x/pi, digits = 2), "π"))
-)
-```
-
-Working with slider values:
-
-```julia
-on(sg.sliders[1].value) do val
-    # do something with `val`
-end
-```
-"""
-@Block SliderGrid begin
-    @forwarded_layout
-    sliders::Vector{Slider}
-    valuelabels::Vector{Label}
-    labels::Vector{Label}
-    @attributes begin
-        "The horizontal alignment of the block in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the block in its suggested bounding box."
-        valign = :center
-        "The width setting of the block."
-        width = Auto()
-        "The height setting of the block."
-        height = Auto()
-        "Controls if the parent layout can adjust to this block's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this block's height"
-        tellheight::Bool = true
-        "The align mode of the block in its parent GridLayout."
-        alignmode = Inside()
-        "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
-        value_column_width = automatic
-    end
-end
-
 @Block IntervalSlider begin
     selected_indices::Observable{Tuple{Int, Int}}
     displayed_sliderfractions::Observable{Tuple{Float64, Float64}}
@@ -1112,6 +1051,72 @@ end
         alignmode = Inside()
         "Controls if the buttons snap to valid positions or move freely"
         snap::Bool = true
+    end
+end
+
+"""
+A grid of one or more horizontal `Slider`s or `IntervalSlider`s, where each slider has a
+name label on the left and a value label on the right.
+
+Each `NamedTuple` you pass specifies one slider. You always have to pass `range`
+and `label`, and optionally a `format` for the value label. By default, a `Slider` is
+created. Pass `type = IntervalSlider` to create an `IntervalSlider` instead. Beyond that,
+you can set any keyword that the chosen slider type takes, such as `startvalue` for
+`Slider` or `startvalues` for `IntervalSlider`.
+
+The `format` keyword can be a `String` with Format.jl style, such as "{:.2f}Hz", or
+a function.
+
+## Constructors
+
+```julia
+SliderGrid(fig_or_scene, nts::NamedTuple...; kwargs...)
+```
+
+## Examples
+
+```julia
+sg = SliderGrid(fig[1, 1],
+    (label = "Amplitude", range = 0:0.1:10, startvalue = 5.0),
+    (label = "Band", type = IntervalSlider, range = 0:0.1:10, startvalues = (2.0, 8.0)),
+    (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10.0),
+)
+```
+
+Working with slider values:
+
+```julia
+on(sg.sliders[1].value) do val
+    # do something with `val`
+end
+
+on(sg.sliders[2].interval) do interval
+    # do something with `interval`
+end
+```
+"""
+@Block SliderGrid begin
+    @forwarded_layout
+    sliders::Vector{Union{Slider, IntervalSlider}}
+    valuelabels::Vector{Label}
+    labels::Vector{Label}
+    @attributes begin
+        "The horizontal alignment of the block in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the block in its suggested bounding box."
+        valign = :center
+        "The width setting of the block."
+        width = Auto()
+        "The height setting of the block."
+        height = Auto()
+        "Controls if the parent layout can adjust to this block's width"
+        tellwidth::Bool = true
+        "Controls if the parent layout can adjust to this block's height"
+        tellheight::Bool = true
+        "The align mode of the block in its parent GridLayout."
+        alignmode = Inside()
+        "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
+        value_column_width = automatic
     end
 end
 
