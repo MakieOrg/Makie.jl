@@ -703,7 +703,7 @@ function (cc::CycleConvert)(value)
         cycle = cc.graph.cycle[]::Cycle
         x = get_cycle_attribute(cc.palettes, cc.key, value.i, cycle)
         return cc.callback(x)
-    elseif isnothing(value)
+    elseif value === :cycled
         cycle = cc.graph.cycle[]::Cycle
         cycle_index = cc.graph.cycle_index[]::Int
         x = get_cycle_attribute(cc.palettes, cc.key, cycle_index, cycle)

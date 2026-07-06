@@ -1492,7 +1492,7 @@ function resolve_defaults(
         resolve_overwrites!(flattened, attr, default_theme[name], skip)
     end
     if !isnothing(cycle)
-        resolve_cylce!(flattened, attr, cycle, skip)
+        resolve_cycled!(flattened, attr, cycle, skip)
     end
     resolve_defaults!(flattened, attr, default_theme, skip)
     return flattened
@@ -1516,12 +1516,12 @@ function resolve_overwrites!(flattened, attr, kwargs, skip, remove = false, leve
     return
 end
 
-function resolve_cylce!(flattened, attr, cycle, skip)
+function resolve_cycled!(flattened, attr, cycle, skip)
     cycled_names = attrsyms(cycle)
     for i in eachindex(flattened)
         key = attr.merged_keys[i]
         if in(key, cycled_names) && !isassigned(flattened, i) && !in(attr.merged_keys[i], skip)
-            flattened[i] = nothing
+            flattened[i] = :cycled
         end
     end
     return

@@ -23122,7 +23122,7 @@ class Plot {
     update(data) {
         const { mesh  } = this;
         if (!mesh) {
-            console.log(`Updating plot ${this.name} (${this.uuid}) with data:`);
+            return;
         }
         const { geometry  } = mesh;
         const { attributes , interleaved_attributes  } = geometry;

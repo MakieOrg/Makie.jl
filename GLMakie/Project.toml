@@ -21,9 +21,6 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 ShaderAbstractions = "65257c39-d410-5151-9873-9b3e5be5013e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
-[sources]
-Makie = {path = "../Makie"}
-
 [compat]
 ColorTypes = "0.9, 0.10, 0.11, 0.12"
 Colors = "0.11, 0.12, 0.13"
@@ -43,3 +40,6 @@ Printf = "1.0, 1.6"
 ShaderAbstractions = "0.5"
 StaticArrays = "0.12, 1.0"
 julia = "1"
+
+[sources.Makie]
+path = "../Makie"
