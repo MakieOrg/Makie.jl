@@ -99,18 +99,6 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     return plot
 end
 
-# temp fix axis selection
-args_preferred_axis(::Type{<:Voxels}, attr::ComputeGraph) = LScene
-function args_preferred_axis(::Type{<:Surface}, attr::ComputeGraph)
-    lims = attr[:data_limits][]
-    return widths(lims)[3] == 0 ? Axis : LScene
-end
-function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
-    result = args_preferred_axis(PT, attr[:positions][])
-    isnothing(result) && return Axis
-    return result
-end
-
 # This is data_limits(), not boundingbox()
 # TODO: Should data_limits() be simplified to be purely based on converted arguments?
 function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation, marker_offset)
@@ -173,9 +161,8 @@ function meshscatter_boundingbox(_positions, model, transform_marker, marker_bb,
 end
 
 
-function add_alpha(color, alpha)
-    return RGBAf(Colors.color(color), alpha * Colors.alpha(color))
-end
+add_alpha(color, alpha) = add_alpha(Colors.color(color), Colors.alpha(color), alpha)
+add_alpha(rgb, a::T, alpha) where {T} = RGBA(rgb, a * T(alpha))
 
 function register_colormapping_without_color!(attr::ComputeGraph)
     map!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]) do icm, a
@@ -220,9 +207,10 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     ) do color, colorscale, alpha
         auto_colorrange = nothing
         if color isa Union{AbstractArray{<:Real}, Real}
-            scaled = el32convert(apply_scale(colorscale, color))
+            scaled = smallfloat_convert.(apply_scale(colorscale, color))
             auto_colorrange = Vec2f(distinct_extrema_nan(scaled))
-            val = clamp.(scaled, -floatmax(Float32), floatmax(Float32))
+            T = eltype(scaled)
+            val = clamp.(scaled, -floatmax(T), floatmax(T))
         elseif color isa AbstractPattern
             val = ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
@@ -643,12 +631,26 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         for (k, p) in lookup
             # If user explicitly passes values, we should not do anything
             let plotcycle = cycle
-                add_input!(attr, k, get(kwargs, k, nothing)) do key, value
+                # We use the sentinel value `:cycled` (instead of `nothing`) to mark
+                # cycled attributes that the user did *not* set explicitly and which
+                # should therefore be derived from the cycle below. This is important
+                # because `nothing` is itself a valid, user-providable value for some
+                # cycled attributes -- most notably `linestyle = nothing` (and `:solid`,
+                # which `convert_attribute` turns into `nothing`) means "draw a solid
+                # line". If we used `nothing` as the sentinel, such an explicitly
+                # requested solid linestyle would be indistinguishable from "not set"
+                # and would incorrectly be overridden by the cycle. This happens e.g.
+                # for the line plots that `Legend` creates with `linestyle = nothing`,
+                # see https://github.com/MakieOrg/Makie.jl/issues/5267
+                add_input!(attr, k, get(kwargs, k, :cycled)) do key, value
                     palettes = attr.palettes[]
                     if value isa Cycled
                         value = get_cycle_attribute(palettes, key, value.i, plotcycle)
                     end
-                    if !isnothing(value)
+                    # Anything the user set explicitly (including `nothing`) is kept as
+                    # is; only the `:cycled` sentinel triggers deriving the value from
+                    # the cycle.
+                    if value !== :cycled
                         if is_primitive
                             return convert_attribute(value, Key{key}(), Key{name}())
                         else
@@ -803,7 +805,13 @@ function _cycle_position(plot::Plot, plot_iter)
             cp === plot && return pos
             if haskey(cp, :cycle) && !isnothing(cp.cycle[]) && plotfunc(cp) === plotfunc(plot)
                 is_cycling = any(syms) do x
-                    return haskey(cp.attributes.inputs, x) && isnothing(cp.attributes.inputs[x].value)
+                    # A plot only participates in cycling for attribute `x` if the
+                    # user did not set `x` explicitly. We detect this via the
+                    # `:cycled` sentinel that `add_attributes!` stores as the input
+                    # value for unset cycled attributes (see there for why we cannot
+                    # use `nothing` here -- an explicit `linestyle = nothing` must
+                    # count as "set by user", not as "cycling").
+                    return haskey(cp.attributes.inputs, x) && cp.attributes.inputs[x].value === :cycled
                 end
                 if is_cycling
                     pos += 1

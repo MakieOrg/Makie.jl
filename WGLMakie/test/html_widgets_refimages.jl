@@ -30,23 +30,36 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false)
             document.body.style.overflow = 'hidden'; // Prevent scrollbars
 
             if ($capture_full_page) {
-                // Capture the full body content for testing HTML layouts
-                // Measure actual content, not viewport dimensions
-                const body = document.body;
-
-                // Get bounding box of all body children to find actual content size
+                // Capture the full body content for testing HTML layouts.
+                // Measure the bounding box of the actual content, not viewport
+                // dimensions.
+                //
+                // Bonito wraps the app in `display:contents` fragment divs
+                // (`bonito-fragment`). Such elements generate no layout box, so
+                // `getBoundingClientRect()` on them is all-zero - iterating
+                // `body.children` directly would collapse the measured content
+                // height to the body margins. Descend through any
+                // `display:contents` wrapper to reach the real content boxes
+                // (this reproduces the measurement from before Bonito inserted
+                // the fragment wrappers).
                 let maxRight = 0;
                 let maxBottom = 0;
+                const measure = (el) => {
+                    for (const child of el.children) {
+                        if (getComputedStyle(child).display === "contents") {
+                            measure(child);
+                        } else {
+                            const rect = child.getBoundingClientRect();
+                            maxRight = Math.max(maxRight, rect.right);
+                            maxBottom = Math.max(maxBottom, rect.bottom);
+                        }
+                    }
+                };
+                measure(document.body);
 
-                for (const child of body.children) {
-                    const rect = child.getBoundingClientRect();
-                    maxRight = Math.max(maxRight, rect.right);
-                    maxBottom = Math.max(maxBottom, rect.bottom);
-                }
-
-                // If no children, fall back to scrollWidth/Height
-                const width = maxRight > 0 ? maxRight : body.scrollWidth;
-                const height = maxBottom > 0 ? maxBottom : body.scrollHeight;
+                // If nothing measurable was found, fall back to scrollWidth/Height
+                const width = maxRight > 0 ? maxRight : document.body.scrollWidth;
+                const height = maxBottom > 0 ? maxBottom : document.body.scrollHeight;
 
                 return [Math.ceil(width), Math.ceil(height)];
             } else {
@@ -63,7 +76,7 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false)
     )
     Electron.ElectronAPI.setContentSize(win, win_size...)
     winid = win.id
-    sleep(1) # do we need time for resize and relayouting? And is there an event we could wait for?
+    sleep(1) # let the resize round-trip + relayout land before capturing
     # Normalize path for JavaScript (replace backslashes with forward slashes on Windows)
     js_path = replace(path, '\\' => '/')
     run(

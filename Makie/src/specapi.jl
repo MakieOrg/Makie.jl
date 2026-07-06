@@ -1071,7 +1071,7 @@ function update_fig!(fig::Union{Figure, GridPosition, GridSubposition}, layout_o
     return fig
 end
 
-args_preferred_axis(::GridLayoutSpec) = FigureOnly
+preferred_axis_type(::GridLayoutSpec) = FigureOnly
 
 plot!(plot::Plot{plot, Tuple{GridLayoutSpec}}) = plot
 

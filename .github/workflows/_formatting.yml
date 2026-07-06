@@ -1,18 +1,13 @@
 name: Formatting
 on:
-  push:
-    branches:
-      - 'master'
-      - 'release-'
-    tags:
-      - '*'
-  pull_request:
+  workflow_call:
+
 jobs:
   runic:
     name: Runic formatting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'

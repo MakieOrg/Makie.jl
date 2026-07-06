@@ -3,6 +3,45 @@
 ## Unreleased
 
 - Added support for `IntervalSlider`s in `SliderGrid` via the `type` keyword
+- WGLMakie: fixed a `Cannot destructure property 'geometry' of 'mesh'` JS error and allow `Bonito@v5` [#5683](https://github.com/MakieOrg/Makie.jl/pull/5683)
+- Adjusted cycled attributes to be marked as `:cycled` instead of `nothing` so that `nothing` doesn't get overridden. This allows e.g. `linestyle = nothing` to be set when `linestyle` is cycled. [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267)
+
+## [0.24.12] - 2026-06-18
+
+- `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).
+- Fixed `contourf` not rendering non-closed contours [#5651](https://github.com/MakieOrg/Makie.jl/issues/5651).
+- Fixed WGLMakie flickering while continuously resizing a canvas by re-rendering right after the resize.
+- Fixed WGLMakie crashing on a `null` WebGL context; it now shows the WebGL error message and requests the context with `failIfMajorPerformanceCaveat: false`.
+- Updated `volume` colormapping to include `lowclip`, `highclip` and `nancolor`. This affects `:absorption`, `:mip` and `:iso` algorithms as well as 3D `contour` plots. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
+- Fixed some errors with the color accumulation of `:absorption`, `:absorptionrgba` and `:indexedabsorption` algorithms in `volume` plots. Renders should no longer over sample thin regions (corners and edges of the volume bounding box) and otherwise be brighter. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
+- Added `samples` as a `volume` attribute for controlling the number of ray samples and added `absorption` as a multiplier for sampled colors with `:additive`. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
+- Adjusted `volume` conversions to preserve `N0f8` and `Float16` types (numbers and color eltypes). This allows users to reduce (v)ram usage by choosing smaller types. [#5660](https://github.com/MakieOrg/Makie.jl/pull/5660)
+- Adjusted volume `algorithm = :additive` to include the ray step size as a weight. This should allow additive volumes to render without downscaling volume data [#5662](https://github.com/MakieOrg/Makie.jl/pull/5662)
+
+## [0.24.11] - 2026-05-30
+
+- Menu and Toggle now immediately changed their color when updated via an Observable [5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
+- Added `convert_arguments` method for one dimensional `StatsBase.Histogram` for `Stairs` [#5631](https://github.com/MakieOrg/Makie.jl/pull/5631)
+- Added an `Base.iterate` for `FigureAxis` so that can be splashed in code as well [#5646](https://github.com/MakieOrg/Makie.jl/pull/5646).
+- Fixed `center!` (and therefore `reset_limits!` in `LScene`) crashing with empty, NaN or zero-width content [#5634](https://github.com/MakieOrg/Makie.jl/pull/5634).
+- Fixed `FastPixel` scatter crash when markers are clipped in GLMakie [#5634](https://github.com/MakieOrg/Makie.jl/pull/5634).
+- Fixed WGLMakie scatter/sprite markers disappearing in 3D scenes when camera distances produce uniform values outside `mediump` (f16) range. WGLMakie now forces `highp` precision for all vertex/fragment uniforms. [#5640](https://github.com/MakieOrg/Makie.jl/pull/5640)
+- Reworked `Textbox` with selections, multi-cursor, copy / cut / paste, and word / line navigation [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
+- A trailing `'\n'` in a `text!` string now contributes a full empty line to the layout and bounding box (previously `"abc\n"` was laid out identically to `"abc"`) [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
+- Added decade-aware automatic ticks for `pseudolog10` and `Symlog10` axes via new `PseudologTicks` and `SymlogTicks` types. `LogTicks` is no longer accepted with these scales (it placed ticks at wrong positions). `Symlog10` is now a callable struct exposing its `lower`/`upper`/`linscale` parameters. Closes [#5270](https://github.com/MakieOrg/Makie.jl/issues/5270) [#5625](https://github.com/MakieOrg/Makie.jl/pull/5625)
+- Adjusted linear ticks with scientific notation to skip unnecessary `.0` padding and render more consistently using rich text. Also removed `Showoff.jl` dependency. [#5626](https://github.com/MakieOrg/Makie.jl/pull/5626)
+- Fixed `lines` rendering a phantom segment between the first and last point on macOS for line plots above ~2.4M points [#5622](https://github.com/MakieOrg/Makie.jl/pull/5622)
+- Fixed `Legend` not reflecting `linecap` and `joinstyle` set on `lines!`/`linesegments!` plots [#5621](https://github.com/MakieOrg/Makie.jl/pull/5621)
+- Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
+- GLMakie no longer shows a dock icon on macOS when only used for file export; the icon appears with the Makie logo when an interactive window is opened [#5223](https://github.com/MakieOrg/Makie.jl/pull/5223)
+- Fixed `plot(StatsBase.Histogram(...))` not working with `Vector` edges, incorrect alignment for 2D histograms and switches the 3D representation from `volume` to `voxels`. [#5630](https://github.com/MakieOrg/Makie.jl/pull/5630)
+- Make `margin` in `axislegend` themable [#5624](https://github.com/MakieOrg/Makie.jl/pull/5624)
+- Added `preferred_axis_attributes(AxisType, [plot], [args...])` as an interface function for specifying default axis attributes when creating an axis with the non-mutating `plot()` functions. Also refactored `preferred_axis_type()` to have a clear hierarchy of methods. [#5375](https://github.com/MakieOrg/Makie.jl/pull/5375)
+
+## [0.24.10] - 2026-04-27
+
+- Added `pathtext` recipe for placing text along a path, plus `Ann.Styles.WithText` to layer path text onto any existing `annotation` style [#5596](https://github.com/MakieOrg/Makie.jl/pull/5596).
+- Fixed shared precompile file path not being relocatable by using `RelocatableFolders.@path` [#5597](https://github.com/MakieOrg/Makie.jl/pull/5597)
 - Added possibility to gather legend entries from multiple axes [#5551](https://github.com/MakieOrg/Makie.jl/pull/5551)
 - Added complete inverse transformation support to `register_projected_positions!` with `apply_inverse_transform`, `apply_inverse_transform_func`, `apply_inverse_float32convert`, and `apply_inverse_model` kwargs. These enable correct projection from non-data spaces back to data space. Includes early-exit optimization to skip redundant transform/inverse pairs when `input_space === output_space`. [#5485](https://github.com/MakieOrg/Makie.jl/pull/5485)
 - Fixed `bracket` not supporting `LaTeXString` text, which would render with dollar signs instead of mathematical notation [#5536](https://github.com/MakieOrg/Makie.jl/pull/5536)
@@ -1001,7 +1040,10 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.9...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.12...HEAD
+[0.24.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...v0.24.12
+[0.24.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.10...v0.24.11
+[0.24.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.9...v0.24.10
 [0.24.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.8...v0.24.9
 [0.24.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.7...v0.24.8
 [0.24.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.6...v0.24.7
