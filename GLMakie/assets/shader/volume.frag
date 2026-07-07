@@ -526,8 +526,29 @@ void main()
     // Find the true ray interval through the unit box. The rasterized cube
     // face only provides screen coverage; the exit point must not depend on
     // front/back face classification.
+    if ((dir.x == 0.0 && dir.y == 0.0 && dir.z == 0.0) || isnan(dir.x) || isnan(dir.y) || isnan(dir.z))
+        discard;
+
     vec3 solution_1 = (1.0 - eye_unit) / dir;
     vec3 solution_0 = (0.0 - eye_unit) / dir;
+    if (no_solution(solution_0.x) && no_solution(solution_1.x)) {
+        if (eye_unit.x < 0.0 || eye_unit.x > 1.0)
+            discard;
+        solution_0.x = -typemax;
+        solution_1.x = typemax;
+    }
+    if (no_solution(solution_0.y) && no_solution(solution_1.y)) {
+        if (eye_unit.y < 0.0 || eye_unit.y > 1.0)
+            discard;
+        solution_0.y = -typemax;
+        solution_1.y = typemax;
+    }
+    if (no_solution(solution_0.z) && no_solution(solution_1.z)) {
+        if (eye_unit.z < 0.0 || eye_unit.z > 1.0)
+            discard;
+        solution_0.z = -typemax;
+        solution_1.z = typemax;
+    }
     vec3 solutions_min = min(solution_0, solution_1);
     vec3 solutions_max = max(solution_0, solution_1);
     float start_solution = max(max(solutions_min.x, solutions_min.y), solutions_min.z);
