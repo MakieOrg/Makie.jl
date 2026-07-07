@@ -30,7 +30,9 @@ incomplete set of attributes instead. The default `Makie.extract_colormap`
 method will then add the remaining defaults. If the returned dict is incomplete
 the `Colorbar` constructor will also attempt to add the missing attributes.
 """
-function extract_colormap(@nospecialize(plot::AbstractPlot))
+extract_colormap(@nospecialize(::AbstractPlot)) = nothing # default to recursion
+
+function extract_colormap(@nospecialize(plot::ComputePlots))
     return add_default_colorbar_attributes(_extract_colormap(plot), plot)
 end
 
@@ -48,7 +50,7 @@ end
 function extract_colormap_recursive(plot::AbstractPlot)
     result = extract_colormap(plot)
     # don't jump to child plots if the user provided a method (not defaulted)
-    if result isa ColorMapping || colorbar_attributes_complete(result) || !haskey(result, :defaulted)
+    if !isnothing(result) && (result isa ColorMapping || colorbar_attributes_complete(result) || !haskey(result, :defaulted))
         return add_default_colorbar_attributes(result, plot)
     else
         child_results = extract_colormap_recursive.(plot.plots)
@@ -59,7 +61,7 @@ function extract_colormap_recursive(plot::AbstractPlot)
         else
             error(
                 "Multiple colormaps found for plot $(plot), please specify which one to use " *
-                    "manually. Please overload `Makie.extract_colormap(::$(T))` to allow for " *
+                    "manually. Please overload `Makie.extract_colormap(::$(typeof(plot)))` to allow for " *
                     "the automatic creation of a Colorbar."
             )
         end
@@ -132,7 +134,7 @@ function add_default_colorbar_attributes(attr, @nospecialize(plot))
     return add_default_colorbar_attributes(Dict{Symbol, Any}(), attr, plot)
 end
 function add_default_colorbar_attributes(output, overwrites, @nospecialize(plot))
-    for name in [:color, :colormap, :colorrange, :colorscale, :lowclip, :highclip]
+    for name in [:color, :colormap, :colorrange, :colorscale, :lowclip, :highclip, :dim_convert_4]
         if haskey(overwrites, name)
             output[name] = overwrites[name]
         elseif haskey(plot, name)
@@ -177,6 +179,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
     haskey(cmap, :colorscale) && (cmap[:scale] = pop!(cmap, :colorscale))
     haskey(cmap, :color) && (cmap[:values] = pop!(cmap, :color))
+    haskey(cmap, :dim_convert_4) && (cmap[:dim_conversion] = pop!(cmap, :dim_convert_4))
 
     cmap_keys = collect(keys(cmap))
     haskey(cmap, :colorrange) && push!(cmap_keys, :limits)
@@ -208,20 +211,44 @@ function initialize_block!(cb::Colorbar)
     # Run the normal color(map) processing. This either uses the inputs given
     # to `Colorbar()` explicitly, or the inputs extracted from a plot.
     register_colormapping_without_color!(cb.attributes)
+
+    # Auto dim conversion
+    if hasinput(cb.attributes, :dim_conversion) # not managed externally
+        init = dim_conversion_from_args(color)
+        cb.dim_conversion = init
+    end
+
+    if !isa(cb.dim_conversion[], Union{Nothing, NoDimConversion})
+        map!(cb, [:dim_conversion, :values], :dc_values) do dc, color
+            converted = convert_dim_value(dc, cb.attributes, color, nothing)
+            return to_color(converted)
+        end
+    else
+        ComputePipeline.map!(to_color, cb, :values, :dc_values)
+    end
+
+    map!(cb, :dc_values, :_derived_colorrange) do values
+        return Vec2d(distinct_extrema_nan(values)...)
+    end
+
     register_computation!(
-        cb.attributes, [:values, :colorrange, :limits], [:resolved_colorrange]
-    ) do (values, _colorrange, limits), changed, @nospecialize(cached)
+        cb.attributes,
+        [:dim_conversion, :colorrange, :limits, :_derived_colorrange],
+        [:resolved_colorrange]
+    ) do (dc, _colorrange, limits, autorange), changed, @nospecialize(cached)
         colorrange = if changed.limits && (limits !== automatic)
             @warn("Colorbar :limits has been deprecated in favor of :colorrange.")
             limits
         else
             _colorrange
         end
+
         if colorrange === automatic || colorrange === nothing
-            return (Vec2d(distinct_extrema_nan(values)...),)
+            return (autorange,)
         else
-            low = colorrange[1] in (automatic, nothing) ? minimum(values) : colorrange[1]
-            high = colorrange[2] in (automatic, nothing) ? maximum(values) : colorrange[2]
+            # colorscale is processed later
+            low = process_color_value(dc, identity, first(colorrange), first(autorange))
+            high = process_color_value(dc, identity, last(colorrange), last(autorange))
             return (Vec2d(low, high),)
         end
     end
@@ -429,7 +456,7 @@ function initialize_block!(cb::Colorbar)
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
         labelfont = cb.labelfont, ticklabelfont = cb.ticklabelfont,
-        dim_convert = nothing, # TODO, we should also have a dim convert for Colorbar
+        dim_convert = cb.dim_conversion,
         ticks = cb.finalticks, tickformat = cb.tickformat,
         ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
         ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,
@@ -439,7 +466,9 @@ function initialize_block!(cb::Colorbar)
         spinecolor = :transparent, spinevisible = false, flip_vertical_label = cb.flip_vertical_label,
         minorticksvisible = cb.minorticksvisible, minortickalign = cb.minortickalign,
         minorticksize = cb.minorticksize, minortickwidth = cb.minortickwidth,
-        minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cb.scale
+        minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cb.scale,
+        unit_in_ticklabel = cb.unit_in_ticklabel, unit_in_label = cb.unit_in_label,
+        suffix_formatter = cb.label_suffix
     )
 
     cb.axis = axis

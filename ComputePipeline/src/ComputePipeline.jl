@@ -643,6 +643,10 @@ Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.outputs, key) || hask
 Base.haskey(graph::ComputeGraph, key::Symbol, keys::Symbol...) = haskey(graph.nesting, key, keys...)
 Base.haskey(graph::ComputeGraph, keys::Tuple{Vararg{Symbol}}) = haskey(graph, keys...)
 
+hasinput(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key)
+hasinput(graph::ComputeGraph, key::Symbol, keys::Symbol...) = hasinput(graph, merged_key(key, keys...))
+hasinput(graph::ComputeGraph, keys::Tuple{Vararg{Symbol}}) = hasinput(graph, merged_key(keys...))
+
 has_nested_key(graph::ComputeGraph, key::Symbol) = haskey(graph.nesting, key)
 has_leaf_key(graph::ComputeGraph, key::Symbol) = haskey(graph.outputs, key)
 
@@ -749,6 +753,10 @@ merged_key(view::ComputeGraphView) = merged_key(view.nested_trace)
 
 Base.haskey(view::ComputeGraphView, keys::Symbol...) = haskey(view.nested_trace, keys...)
 Base.haskey(view::ComputeGraphView, keys::Tuple{Vararg{Symbol}}) = haskey(view.nested_trace, keys...)
+
+hasinput(view::ComputeGraphView, keys::Symbol...) = hasinput(view.parent, merged_key(view.nested_trace, key, keys...))
+hasinput(view::ComputeGraphView, keys::Tuple{Vararg{Symbol}}) = hasinput(view.parent, merged_key(view.nested_trace, keys...))
+
 
 has_leaf_key(view::ComputeGraphView, key::Symbol) = isfinal(view.nested_trace[key])
 
@@ -2054,5 +2062,6 @@ export ComputeGraph
 export register_computation!, map_latest!
 export add_input!, add_inputs!, add_constant!, add_constants!
 export update!
+export hasinput
 
 end

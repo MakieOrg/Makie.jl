@@ -961,6 +961,20 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "Sets the alpha value of the colormap."
         alpha = 1.0
 
+        "Sets the color dim conversion."
+        dim_conversion = nothing
+        "Controls whether the dim conversion is shown in ticklabels."
+        unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the dim conversion is shown in the Colorbar label."
+        unit_in_label::Union{Bool, Automatic} = automatic
+        """
+        Formatter for the label suffix generated from dim conversions. Can be a
+        Format.jl format string or a callback function acting acting on the
+        label suffix generated from the dim convert.
+        Can also be a plain String replacing an active dim conversion label.
+        """
+        label_suffix = "[{}]"
+
 
         "The align mode of the colorbar in its parent GridLayout."
         alignmode = Inside()
