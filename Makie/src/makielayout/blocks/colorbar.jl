@@ -11,84 +11,108 @@ end
     extract_colormap(plot)
 
 This function extracts plot attributes relevant for constructing a `Colorbar`.
-It is meant to be extended for recipes that do not use the default names for
-the respective attributes.
+It is meant to be extended for recipes with multiple child plots and when the
+recipe handles colormapping by itself.
 
-The function should return a `Dict{Symbol, Any}` containing `name => attribute`
-pairs. It should contain:
+In the first case
+`Makie.extract_colormap(plot::MyPlot) = Makie.extract_colormap(plot.plots[...])`
+should simply select a child plot that contains the relevant colormapping
+information.
+
+For the second case a `Dict{Symbol, Any}` containing the relevant colormapping
+attributes. These may include:
 - `:colormap`: The colormap of the plot.
 - `:color`: The color values that the colormap applies to.
 - `:colorrange`: The colorrange of the plot, i.e. the extrema of `color`.
 - `:colorscale`: The colorscale of plot.
 - `:lowclip`: The lowclip of the plot.
 - `:highclip`: The highclip of the plot.
+- `:dim_convert_4`: The color dim convert of the plot.
 
-`Makie.add_default_colorbar_attributes!(dict, plot)` can be used to fill out
-attributes that use the default names. (I.e. the names listed as keys above.)
-Alternatively `Makie._extract_colormap(plot)` can be implemented with an
-incomplete set of attributes instead. The default `Makie.extract_colormap`
-method will then add the remaining defaults. If the returned dict is incomplete
-the `Colorbar` constructor will also attempt to add the missing attributes.
+If the returned dict is incomplete a parent plot may add missing attributes to
+it. This may lead to Colorbar attributes not being synchronized with the
+visuals of the plot, so a complete set of attributes is preferred. Note that
+this is not relevant for `dim_convert_4` as it only appears when it is used.
+
+To simplify this `Makie.add_default_colorbar_attributes!(dict, plot)` can be
+used to fill out attributes that use the default names. (I.e. the names listed
+as keys above.) Alternatively `Makie._extract_colormap(plot)` can be implemented
+with an incomplete set of attributes instead of `extract_colormap()`. The default
+`Makie.extract_colormap` method will then add the remaining defaults.
+
+Note that attributes can also be set to constant values (as opposed to compute
+nodes from `plot.attribute`). For example, adding `attr[:colorscale] = identity`
+will prevent parent plot attributes getting connected. `Colorbar.colorscale`
+will then be initialized with `identity` and remain as a changeable input.
 """
-extract_colormap(@nospecialize(::AbstractPlot)) = nothing # default to recursion
+extract_colormap
 
-function extract_colormap(@nospecialize(plot::ComputePlots))
+# Example stairs:
+# extract_colormap(plot)                     # 1. dispatch to _extract_colormap
+#   _extract_colormap(plot)                  # 2. check and do step down to child plots
+#       extract_colormap(plot.plots[1])      # 3. dispatch to _extract_colormap()
+#           _extract_colormap(plot.plots[1]) # 4. add specialized inputs (none for lines)
+#       extract_colormap(plot.plots[1])      # 5. Add missing default attributes (all)
+# extract_colormap(plot)                     # 6. Add missing default attributes (none)
+function extract_colormap(@nospecialize(plot::AbstractPlot))
     return add_default_colorbar_attributes(_extract_colormap(plot), plot)
 end
 
-_extract_colormap(@nospecialize(::AbstractPlot)) = Dict{Symbol, Any}(:defaulted => true)
-
-function colorbar_attributes_complete(dictlike)
-    # TODO: Should this be less strict?
-    # Technically colorrange can be derived from colors, and colors are
-    # unnecessary with colorrange unless the colormap is categorical.
-    # lowclip, highclip and colorscale are generally more niche
-    full = (:colormap, :color, :colorrange, :colorscale, :lowclip, :highclip)
-    return issubset(full, keys(dictlike))
-end
-
-function extract_colormap_recursive(plot::AbstractPlot)
-    result = extract_colormap(plot)
-    # don't jump to child plots if the user provided a method (not defaulted)
-    if !isnothing(result) && (result isa ColorMapping || colorbar_attributes_complete(result) || !haskey(result, :defaulted))
-        return add_default_colorbar_attributes(result, plot)
-    else
-        child_results = extract_colormap_recursive.(plot.plots)
-        if length(child_results) == 0
-            return Dict{Symbol, Any}()
-        elseif length(child_results) == 1
-            return only(child_results)
-        else
-            error(
-                "Multiple colormaps found for plot $(plot), please specify which one to use " *
-                    "manually. Please overload `Makie.extract_colormap(::$(typeof(plot)))` to allow for " *
-                    "the automatic creation of a Colorbar."
-            )
-        end
+function _extract_colormap(@nospecialize(plot::AbstractPlot))
+    if isempty(plot.plots)
+        error(
+            "$plot seems to be a native plot (no children) but does not " *
+            "implement an `extract_colormap` method."
+        )
+    elseif length(plot.plots) != 1
+       error(
+            "Plots with multiple child plots must implement a method " *
+            "`extract_colormap(plot::$(plotsym(typeof(plot)))) = extract_colormap(plot.plots[...])`" *
+            " to identify the sub plot from which colormap information should be extracted."
+        )
     end
-    return result
+    return extract_colormap(only(plot.plots))
 end
 
-function _extract_colormap(plot::Arrows2D)
+# Primitive Plots (recursion endpoints)
+_extract_colormap(@nospecialize(::ComputePlots)) = Dict{Symbol, Any}()
+_extract_colormap(@nospecialize(plot::Voxels)) = Dict{Symbol, Any}(:color => plot.chunk, :colorrange => plot.value_limits)
+_extract_colormap(@nospecialize(plot::Surface)) = Dict{Symbol, Any}(:color => plot.raw_color)
+
+# Recipe Overwrites
+
+# Use _extract_colormap to autocomplete attributes
+function _extract_colormap(@nospecialize(plot::Arrows2D))
     map!(plot, [:tailcolor, :shaftcolor, :tipcolor, :color], :raw_merged_color) do a, b, c, d
         return [default_automatic(a, d); default_automatic(b, d); default_automatic(c, d)]
     end
     return Dict{Symbol, Any}(:color => plot.raw_merged_color)
 end
 
-_extract_colormap(plot::Voxels) = Dict{Symbol, Any}(:color => plot.chunk, :colorrange => plot.value_limits)
-_extract_colormap(plot::Surface) = Dict{Symbol, Any}(:color => plot.raw_color)
-_extract_colormap(plot::VolumeSlices) = Dict{Symbol, Any}(:color => plot[4])
-
-# These could also use _extract_colormap
+# Step downs can be either method
+function extract_colormap(@nospecialize(plot::VolumeSlices))
+    attr = extract_colormap(plot.plots[1]) # complete set
+    attr[:color] = plot[4] # replace view with full data
+    return attr
+end
 extract_colormap(plot::StreamPlot) = extract_colormap(plot.plots[1])
 extract_colormap(plot::Spy) = extract_colormap(plot.plots[1])
 extract_colormap(plot::Dendrogram) = extract_colormap(plot.plots[1])
 extract_colormap(plot::Density) = extract_colormap(plot.plots[1])
+extract_colormap(plot::ScatterLines) = extract_colormap(plot.plots[1])
+extract_colormap(plot::Band) = extract_colormap(plot.plots[1])
+extract_colormap(plot::BarPlot) = extract_colormap(plot.plots[1])
+extract_colormap(plot::Poly) = extract_colormap(plot.plots[1])
+extract_colormap(plot::Errorbars) = extract_colormap(plot.plots[1])
+extract_colormap(plot::Rangebars) = extract_colormap(plot.plots[1])
+extract_colormap(plot::BoxPlot) = extract_colormap(plot.plots[3])
+extract_colormap(plot::CrossBar) = extract_colormap(plot.plots[1])
+extract_colormap(plot::Density) = extract_colormap(plot.plots[1])
 
+# Autocomplete the result of this
 function _extract_colormap(plot::Voronoiplot)
     if plot.plots[1] isa Voronoiplot
-        return extract_colormap(plot.plots[1])
+        return extract_colormap(plot.plots[1]) # child should be completed
     else
         return Dict{Symbol, Any}(:color => plot.color)
     end
@@ -107,7 +131,6 @@ function _extract_colormap(plot::Union{Contourf, Tricontourf})
     )
 end
 
-# TODO: plot missing lowclip, highclip handling?
 function _extract_colormap(plot::Union{Contour, Contour3d})
     return Dict{Symbol, Any}(:color => plot.zlevels, :colorrange => plot.computed_colorrange)
 end
@@ -148,6 +171,11 @@ function add_default_colorbar_attributes(output, overwrites, @nospecialize(plot)
 end
 
 function add_default_colorbar_attributes(cm::ColorMapping, @nospecialize(plot))
+    return handle_colormapping_deprecation(cm, plot)
+end
+
+handle_colormapping_deprecation(cm::Dict, @nospecialize(plot)) = cm
+function handle_colormapping_deprecation(cm::ColorMapping, @nospecialize(plot))
     Base.depwarn(
         "`extract_colormap(plot::$(typeof(plot)))` should no longer return a `Makie.ColorMapping`." *
             "Instead it should return a `Dict{Symbol, Any}()` containing colormap related attributes. " *
@@ -163,9 +191,24 @@ function add_default_colorbar_attributes(cm::ColorMapping, @nospecialize(plot))
     return cmap
 end
 
+function colorbar_attributes_complete(dictlike)
+    # TODO: Should this be less strict?
+    # Technically colorrange can be derived from colors, and colors are
+    # unnecessary with colorrange unless the colormap is categorical.
+    # lowclip, highclip and colorscale are generally more niche
+    full = (:colormap, :color, :colorrange, :colorscale, :lowclip, :highclip)
+    return issubset(full, keys(dictlike))
+end
+
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
-    cmap = extract_colormap_recursive(plot)
-    pop!(cmap, :defaulted, nothing)
+    cmap = try
+        temp = extract_colormap(plot)
+        # Autocomplete + ColorMapping deprecation
+        add_default_colorbar_attributes(temp, plot)
+    catch e
+        @error("Failed to extract colormap from $(plotsym(typeof(plot))):")
+        rethrow(e)
+    end
 
     func = plotfunc(plot)
     if !colorbar_attributes_complete(cmap)
