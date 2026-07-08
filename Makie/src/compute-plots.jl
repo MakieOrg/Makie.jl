@@ -1057,10 +1057,9 @@ function register_mesh_decomposition!(attr)
     return map!(
         attr, [:arg1, :mesh, :color], [:mesh_color, :interpolate_in_fragment_shader]
     ) do meshes, merged, color
-
         if hasproperty(merged, :color)
             return (merged.color, true)
-        elseif meshes isa Vector{<:AbstractGeometry} && color isa Vector && length(color) == length(meshes)
+        elseif meshes isa Vector{<:AbstractGeometry} && color isa AbstractVector && length(color) == length(meshes)
             _color = color_per_mesh(color, map(x -> length(coordinates(x)), meshes))
             return (_color, false)
         else
