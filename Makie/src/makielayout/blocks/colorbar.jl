@@ -107,7 +107,6 @@ extract_colormap(plot::Errorbars) = extract_colormap(plot.plots[1])
 extract_colormap(plot::Rangebars) = extract_colormap(plot.plots[1])
 extract_colormap(plot::BoxPlot) = extract_colormap(plot.plots[3])
 extract_colormap(plot::CrossBar) = extract_colormap(plot.plots[1])
-extract_colormap(plot::Density) = extract_colormap(plot.plots[1])
 
 # Autocomplete the result of this
 function _extract_colormap(plot::Voronoiplot)
