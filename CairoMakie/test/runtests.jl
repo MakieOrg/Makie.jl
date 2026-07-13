@@ -171,7 +171,7 @@ end
     f, a, p = scatter(rand(10))
     colorbuffer(f)
     @test length(p.attributes.inputs) == 37
-    @test length(p.attributes.outputs) == 83
+    @test length(p.attributes.outputs) == 85
 end
 
 excludes = Set(

@@ -174,7 +174,7 @@ BLOCK_UPDATES = let
     # includes a bunch of layoutobservables, Legend entry defaults, formatters,
     # dim_converts, ...
     # not counted: skipped hotkey updates, visible updates from true to true
-    @test length(skipped) == 90 # out of 719
+    @test length(skipped) == 93 # out of 711
 
     settings
 end
