@@ -956,8 +956,15 @@ convert_attribute(cycle, ::key"cycle") = Cycle(cycle)
 
 convert_attribute(font, ::key"font") = to_font(font)
 
-convert_attribute(x::Automatic, ::key"color") = x
-convert_attribute(color, ::key"color") = color
+convert_attribute(color, ::key"color") = Ref{Any}(color)
+# dim convertable data needs to be preserved
+for T in (Symbol, String, Colorant, VecTypes, Real)
+    @eval begin
+        convert_attribute(color::$T, ::key"color") = Ref{Any}(to_color(color))
+        convert_attribute(color::AbstractArray{<:$T}, ::key"color") = Ref{Any}(to_color(color))
+    end
+end
+convert_attribute(color::AbstractPattern, ::key"color") = Ref{Any}(color)
 
 convert_attribute(colormap, ::key"colormap") = Ref{Any}(colormap)
 
@@ -974,6 +981,7 @@ convert_attribute(x::Tuple{<:Any, Automatic}, ::key"colorrange") = Ref{Any}(x)
 convert_attribute(x::Tuple{Automatic, <:Any}, ::key"colorrange") = Ref{Any}(x)
 convert_attribute(x::Tuple{Automatic, Automatic}, ::key"colorrange") = Ref{Any}(first(x))
 convert_attribute(x, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::VecTypes{N, <:Real}, ::key"colorrange") where {N} = Ref{Any}(to_colorrange(x))
 to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
 convert_attribute(p, ::key"nan_color") = to_color(p)
