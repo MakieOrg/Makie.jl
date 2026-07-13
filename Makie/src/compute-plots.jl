@@ -262,7 +262,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
             return to_color(converted)
         end
     else
-        ComputePipeline.map!(to_color, attr, colorname, :dc_color)
+        ComputePipeline.alias!(attr, colorname, :dc_color)
     end
 
     map!(
@@ -1031,9 +1031,8 @@ function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
     end
 end
 
-
 function color_per_mesh(ccolors, vertes_per_mesh)
-    result = similar(ccolors, float32type(ccolors), sum(vertes_per_mesh))
+    result = Vector{eltype(ccolors)}(undef, sum(vertes_per_mesh))
     i = 1
     for (cs, len) in zip(ccolors, vertes_per_mesh)
         for j in 1:len
@@ -1045,7 +1044,7 @@ function color_per_mesh(ccolors, vertes_per_mesh)
 end
 
 function register_mesh_decomposition!(attr)
-    # :arg1 is user input, :mesh is after convert_arguments and dim converts (?)
+    # :arg1 is user input, :mesh is after convert_arguments and dim converts
     map!(attr, :mesh, [:positions, :faces, :normals, :texturecoordinates]) do merged
         pos = coordinates(merged)
         faces = decompose(GLTriangleFace, merged)
@@ -1054,7 +1053,7 @@ function register_mesh_decomposition!(attr)
         return (pos, faces, normies, texturecoords)
     end
 
-    return map!(
+    map!(
         attr, [:arg1, :mesh, :color], [:mesh_color, :interpolate_in_fragment_shader]
     ) do meshes, merged, color
         if hasproperty(merged, :color)
@@ -1066,6 +1065,9 @@ function register_mesh_decomposition!(attr)
             return (color, true)
         end
     end
+    ComputePipeline.set_type!(attr.mesh_color, Any)
+
+    return
 end
 
 # optionally converts uv_transform to the one used with patterns (different defaults)

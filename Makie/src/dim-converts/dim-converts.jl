@@ -65,7 +65,7 @@ function convert_dim_value(conversion::AbstractDimConversion, value, deregister)
 end
 
 # Return instance of AbstractDimConversion for a given type
-create_dim_conversion(argument_eltype::DataType) = NoDimConversion()
+create_dim_conversion(argument_eltype) = NoDimConversion()
 should_dim_convert() = nothing
 function convert_dim_observable(::NoDimConversion, value::Observable, deregister)
     return value
