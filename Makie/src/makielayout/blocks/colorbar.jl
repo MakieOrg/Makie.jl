@@ -62,13 +62,13 @@ function _extract_colormap(@nospecialize(plot::AbstractPlot))
     if isempty(plot.plots)
         error(
             "$plot seems to be a native plot (no children) but does not " *
-            "implement an `extract_colormap` method."
+                "implement an `extract_colormap` method."
         )
     elseif length(plot.plots) != 1
-       error(
+        error(
             "Plots with multiple child plots must implement a method " *
-            "`extract_colormap(plot::$(plotsym(typeof(plot)))) = extract_colormap(plot.plots[...])`" *
-            " to identify the sub plot from which colormap information should be extracted."
+                "`extract_colormap(plot::$(plotsym(typeof(plot)))) = extract_colormap(plot.plots[...])`" *
+                " to identify the sub plot from which colormap information should be extracted."
         )
     end
     return extract_colormap(only(plot.plots))
