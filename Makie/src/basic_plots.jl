@@ -306,6 +306,18 @@ Note that `heatmap` is slower to render than `image` so `image` should be prefer
     mixin_colormap_attributes()...
 end
 
+# Allow lower precision than just Float32, i.e. Float16, N0f8
+const VolumeFloatTypes = Union{Float32, Float16, N0f8}
+# densities, RGB colors or RGBA colors
+const VolumeElTypes = Union{
+    VolumeFloatTypes,
+    Vec3{<:VolumeFloatTypes},
+    Vec4{<:VolumeFloatTypes},
+    RGB{<:VolumeFloatTypes},
+    RGBA{<:VolumeFloatTypes},
+}
+const VolumeDataType = Array{<:VolumeElTypes, 3}
+
 """
     volume(volume_data)
     volume(x, y, z, volume_data)
@@ -320,8 +332,7 @@ colormap. How exactly the color is derived depends on the algorithm used.
     x::EndPoints,
     y::EndPoints,
     z::EndPoints,
-    # TODO: consider using RGB{N0f8}, RGBA{N0f8} instead of Vec/RGB(A){Float32}
-    volume::AbstractArray{<:Union{Float32, Vec3f, RGB{Float32}, Vec4f, RGBA{Float32}}, 3},
+    volume::VolumeDataType,
 ) begin
     """
     Sets the volume algorithm that is used.
