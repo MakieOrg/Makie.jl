@@ -151,7 +151,12 @@ export class Plot {
     update(data) {
         const { mesh } = this;
         if (!mesh) {
-            console.log(`Updating plot ${this.name} (${this.uuid}) with data:`);
+            // The plot was disposed (`dispose()` sets `mesh = undefined`) but a
+            // late update still arrived on `data.updater` — `dispose()` does not
+            // unregister that listener (registered in the constructor). The plot
+            // is gone, so the update is moot; skip it instead of crashing on
+            // `mesh.geometry`.
+            return;
         }
         const { geometry } = mesh;
         const { attributes, interleaved_attributes } = geometry;

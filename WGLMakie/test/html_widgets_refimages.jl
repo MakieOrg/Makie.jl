@@ -10,17 +10,42 @@ struct EScreenshot
     display
     app::Bonito.App
     capture_full_page::Bool
+    # Figures whose render we block on before screenshotting (via
+    # `get_screen(fig).plot_initialized`). For `App`s that embed figures, pass them
+    # explicitly since we can't recover them from the app.
+    figures::Vector{Any}
 end
 
-EScreenshot(display, fig::Makie.FigureLike; capture_full_page = false) = EScreenshot(display, App(fig), capture_full_page)
-EScreenshot(display, app::Bonito.App) = EScreenshot(display, app, true)  # Default to full page for App tests
+EScreenshot(display, fig::Makie.FigureLike; capture_full_page = false) = EScreenshot(display, App(fig), capture_full_page, Any[fig])
+EScreenshot(display, app::Bonito.App; figures = Any[]) = EScreenshot(display, app, true, figures)  # Default to full page for App tests
 
-function snapshot_figure(edisplay, app, path; capture_full_page = false)
+# Block until every figure has finished its initial render — i.e. `done_init`
+# fired, which now means resized-to-parent and painted (see `three_plot.jl` /
+# `WGLMakie.js`). This is the source of truth, replacing a fixed sleep. The screen
+# is attached during rendering, so wait for it too.
+function wait_for_plots(figures; timeout = 60)
+    for fig in figures
+        scene = Makie.get_scene(fig)
+        ok = Bonito.wait_for(timeout = timeout) do
+            screen = Makie.getscreen(scene)
+            screen !== nothing && isready(screen.plot_initialized)
+        end
+        if ok != :success
+            @warn "figure did not report plot_initialized in time"
+            continue
+        end
+        value = fetch(Makie.getscreen(scene).plot_initialized)   # fetch peeks, leaves it in the channel
+        value === true || @warn "figure reported an init error" value
+    end
+    return
+end
+
+function snapshot_figure(edisplay, app, path; capture_full_page = false, figures = Any[])
     rm(path; force = true)
     display(edisplay, app)
     win = edisplay.window.window
     Bonito.wait_for_ready(app)
-    sleep(1)
+    wait_for_plots(figures)   # block until every figure is resized-to-parent and painted
     win_size = run(
         win, """(()=>{
             document.body.style.margin = '0';
@@ -30,23 +55,36 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false)
             document.body.style.overflow = 'hidden'; // Prevent scrollbars
 
             if ($capture_full_page) {
-                // Capture the full body content for testing HTML layouts
-                // Measure actual content, not viewport dimensions
-                const body = document.body;
-
-                // Get bounding box of all body children to find actual content size
+                // Capture the full body content for testing HTML layouts.
+                // Measure the bounding box of the actual content, not viewport
+                // dimensions.
+                //
+                // Bonito wraps the app in `display:contents` fragment divs
+                // (`bonito-fragment`). Such elements generate no layout box, so
+                // `getBoundingClientRect()` on them is all-zero - iterating
+                // `body.children` directly would collapse the measured content
+                // height to the body margins. Descend through any
+                // `display:contents` wrapper to reach the real content boxes
+                // (this reproduces the measurement from before Bonito inserted
+                // the fragment wrappers).
                 let maxRight = 0;
                 let maxBottom = 0;
+                const measure = (el) => {
+                    for (const child of el.children) {
+                        if (getComputedStyle(child).display === "contents") {
+                            measure(child);
+                        } else {
+                            const rect = child.getBoundingClientRect();
+                            maxRight = Math.max(maxRight, rect.right);
+                            maxBottom = Math.max(maxBottom, rect.bottom);
+                        }
+                    }
+                };
+                measure(document.body);
 
-                for (const child of body.children) {
-                    const rect = child.getBoundingClientRect();
-                    maxRight = Math.max(maxRight, rect.right);
-                    maxBottom = Math.max(maxBottom, rect.bottom);
-                }
-
-                // If no children, fall back to scrollWidth/Height
-                const width = maxRight > 0 ? maxRight : body.scrollWidth;
-                const height = maxBottom > 0 ? maxBottom : body.scrollHeight;
+                // If nothing measurable was found, fall back to scrollWidth/Height
+                const width = maxRight > 0 ? maxRight : document.body.scrollWidth;
+                const height = maxBottom > 0 ? maxBottom : document.body.scrollHeight;
 
                 return [Math.ceil(width), Math.ceil(height)];
             } else {
@@ -62,8 +100,9 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false)
         """
     )
     ElectronCall.ElectronAPI.setContentSize(win, win_size...)
+    sleep(1) # give the resize round-trip a chance to start
+    wait_for_render(win)
     winid = win.id
-    sleep(0.5) # allow resize + relayout
     # Normalize path for JavaScript (replace backslashes with forward slashes on Windows)
     js_path = replace(path, '\\' => '/')
     # Use DevTools Protocol Page.captureScreenshot which works on hidden windows
@@ -91,10 +130,35 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false)
     return path
 end
 
+# A `resize_to` canvas is resized only when the Julia `viewport(scene)` round-trip
+# lands (WGLMakie.js `canvas_width` -> `renderer.setSize`), and it re-renders right
+# after. So wait (via rAF, no busy Julia loop) until every canvas size holds steady
+# for a few frames, then one more frame to paint — robust even when a loaded CI
+# runner drags the round-trip out well past a fixed sleep.
+function wait_for_render(win; stable = 5, max_frames = 1800)
+    run(
+        win, """
+        new Promise((resolve) => {
+            let prev = "", steady = 0, frames = 0;
+            const dims = () => [...document.querySelectorAll('canvas')].map(c => c.width + "x" + c.height).join("|");
+            const tick = () => {
+                const d = dims();
+                steady = d === prev ? steady + 1 : 0;
+                prev = d;
+                (steady >= $stable || ++frames > $max_frames) ?
+                    requestAnimationFrame(() => resolve(true)) : requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        })
+        """
+    )
+    return
+end
+
 # YAY we can just overload save_results for our own EScreenshot type :)
 function ReferenceTests.save_result(path::String, es::EScreenshot)
     isfile(path * ".png") && rm(path * ".png"; force = true)
-    snapshot_figure(es.display, es.app, path * ".png"; capture_full_page = es.capture_full_page)
+    snapshot_figure(es.display, es.app, path * ".png"; capture_full_page = es.capture_full_page, figures = es.figures)
     return true
 end
 
@@ -296,8 +360,8 @@ end
 end
 
 @reference_test "resize_to parent with fixed size div" begin
+    fig = create_test_figure()
     app = App() do
-        fig = create_test_figure()
         DOM.div(
             DOM.h2("resize_to=:parent Test"; style = "text-align: center; color: #666;"),
             DOM.div(
@@ -306,24 +370,24 @@ end
             ),
         )
     end
-    EScreenshot(edisplay, app)
+    EScreenshot(edisplay, app; figures = [fig])
 end
 
 @reference_test "resize_to parent with ResizableCard" begin
+    fig = create_test_figure()
     app = App() do
-        fig = create_test_figure()
         card = TestResizableCard(WGLMakie.WithConfig(fig; use_html_widgets = true, resize_to = :parent))
         DOM.div(
             DOM.h2("ResizableCard Test"; style = "text-align: center; color: #666;"),
             DOM.div(card; style = "width: 900px; height: 700px; margin: 10px;"),
         )
     end
-    EScreenshot(edisplay, app)
+    EScreenshot(edisplay, app; figures = [fig])
 end
 
 @reference_test "resize_to parent nested in styled container" begin
+    fig = create_test_figure()
     app = App() do
-        fig = create_test_figure()
         DOM.div(
             DOM.h2("Nested Container Test"; style = "text-align: center; color: #666;"),
             DOM.div(
@@ -335,21 +399,21 @@ end
             ),
         )
     end
-    EScreenshot(edisplay, app)
+    EScreenshot(edisplay, app; figures = [fig])
 end
 
 @reference_test "resize_to parent with multiple figures side by side" begin
+    fig1 = Figure(; size = (600, 400))
+    ax1 = Axis(fig1[1, 1]; title = "Left Plot")
+    sl1 = Makie.Slider(fig1[2, 1]; range = 0:0.1:10, startvalue = 5)
+    lines!(ax1, 0:0.1:10, lift(v -> sin.((0:0.1:10) .+ v), sl1.value))
+
+    fig2 = Figure(; size = (600, 400))
+    ax2 = Axis(fig2[1, 1]; title = "Right Plot")
+    sl2 = Makie.Slider(fig2[2, 1]; range = 0:0.1:10, startvalue = 3)
+    lines!(ax2, 0:0.1:10, lift(v -> cos.((0:0.1:10) .+ v), sl2.value))
+
     app = App() do
-        fig1 = Figure(; size = (600, 400))
-        ax1 = Axis(fig1[1, 1]; title = "Left Plot")
-        sl1 = Makie.Slider(fig1[2, 1]; range = 0:0.1:10, startvalue = 5)
-        lines!(ax1, 0:0.1:10, lift(v -> sin.((0:0.1:10) .+ v), sl1.value))
-
-        fig2 = Figure(; size = (600, 400))
-        ax2 = Axis(fig2[1, 1]; title = "Right Plot")
-        sl2 = Makie.Slider(fig2[2, 1]; range = 0:0.1:10, startvalue = 3)
-        lines!(ax2, 0:0.1:10, lift(v -> cos.((0:0.1:10) .+ v), sl2.value))
-
         DOM.div(
             DOM.h2("Side by Side Test"; style = "text-align: center; color: #666;"),
             DOM.div(
@@ -365,18 +429,18 @@ end
             ),
         )
     end
-    EScreenshot(edisplay, app)
+    EScreenshot(edisplay, app; figures = [fig1, fig2])
 end
 
 @reference_test "resize_to body baseline" begin
+    fig = create_test_figure()
     app = Bonito.App() do
-        fig = create_test_figure()
         DOM.div(
             WGLMakie.WithConfig(fig; use_html_widgets = true, resize_to = :body);
             style = "margin: 0; padding: 0;",
         )
     end
-    EScreenshot(edisplay, app)
+    EScreenshot(edisplay, app; figures = [fig])
 end
 
 # Reset to default
