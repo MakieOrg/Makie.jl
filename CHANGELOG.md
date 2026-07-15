@@ -47,6 +47,7 @@
 - Refactored `Colorbar` to use the compute graph [#5678](https://github.com/MakieOrg/Makie.jl/pull/5678)
   - **minor breaking** `extract_colormap(plot)` is now expected to return a `Dict` containing the `color`, `colormap`, `colorrange`, `colorscale`, `lowclip` and `highclip` attributes of the given plot. Returning a `Makie.ColorMapping` still works but is considered deprecated.
   - **minor breaking** The `limits` attribute has been deprecated in favor of `colorrange`
+- Added a dim convert for colors which can be addressed in `argument_dims` as dimension 4. Also updated Colorbar to consider this dim convert when generating ticks and labels [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
 - Fixed an issue where Observable outputs of compute nodes that cycle back into the compute graph could discard updates of other Observable outputs. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
 - Added `ComputePipeline.set_type!(node, type)` for initializing the type of a compute graph node [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
 - Added `ExplicitUpdate` wrapper to control update propagation for computations in the compute graph. Also added an option for forcefully propagate updates from input nodes. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
