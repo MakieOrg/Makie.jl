@@ -150,6 +150,7 @@ pages = [
             "explanations", "theming", [
                 "themes.md",
                 "predefined_themes.md",
+                "block_colors.md",
             ]
         ),
         joinpath.(

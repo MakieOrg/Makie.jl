@@ -38,6 +38,7 @@ end
         include("isolated/argument_docs.jl")
         include("isolated/recipes.jl") # @recipe, @Block generated code
         include("isolated/showoff.jl")
+        include("isolated/derive_colors.jl")
     end
 
     @testset "Plots" begin
