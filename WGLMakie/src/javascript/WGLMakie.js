@@ -624,9 +624,13 @@ export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_p
                     wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height,
                     framerate, resize_to, px_per_unit, scalefactor
                 );
-                // Remove spinner after successful initialization
-                done_init.notify(true);
+                // The first frame is drawn — reveal it now (the spinner removal and
+                // the drawn content composite together on the next frame, so there's
+                // no blank flash).
                 spinner?.remove();
+                // Signal init-done only after the browser has actually painted that
+                // frame (two rAFs), so Julia's `wait_for_display` means "on screen".
+                requestAnimationFrame(() => requestAnimationFrame(() => done_init.notify(true)));
             } catch (e) {
                 Bonito.Connection.send_error("error initializing scene", e);
                 done_init.notify(e);
