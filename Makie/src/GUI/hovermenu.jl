@@ -23,15 +23,19 @@ function initialize_block!(g::HoverMenu)
         width = g.width,
         color = g.bar_color,
         cornerradius = g.corner_radius,
-        strokewidth = 0.5,
-        strokecolor = (:gray70, 0.5)
+        strokewidth = 1,
+        strokecolor = g.bar_strokecolor
     )
 
-    # Button styling from block attributes
+    # Button styling from block attributes (themed like every other Button,
+    # so the bar is consistent with the rest of the widgets by default).
     bstyle = (
         buttoncolor = g.button_color,
         buttoncolor_hover = g.button_color_hover,
+        buttoncolor_active = g.button_color_active,
         labelcolor = g.label_color,
+        labelcolor_hover = g.label_color,
+        labelcolor_active = g.label_color_active,
         font = g.font,
         fontsize = g.fontsize,
         cornerradius = 4,

@@ -2827,17 +2827,23 @@ SomeBlock(fig[i, j][1, 1], ...)
         "Controls if the parent layout can adjust to this element's height"
         tellheight = false
         "The background color of the bar"
-        bar_color = (:white, 0.9)
+        bar_color = @inherit((:colors, :surface))
+        "The stroke color of the bar"
+        bar_strokecolor = @inherit((:colors, :border))
         "The corner radius of the bar"
         corner_radius = 8
         "The button background color"
-        button_color = RGBf(0.35, 0.35, 0.4)
+        button_color = @inherit((:colors, :surface))
         "The button hover color"
-        button_color_hover = RGBf(0.45, 0.45, 0.5)
+        button_color_hover = @inherit((:colors, :accent_subtle))
+        "The button color while pressed"
+        button_color_active = @inherit((:colors, :accent))
         "The button label color"
-        label_color = :white
+        label_color = @inherit((:colors, :text))
+        "The button label color while pressed"
+        label_color_active = @inherit((:colors, :text_on_accent))
         "The button font"
-        font = :bold
+        font = :regular
         "The button font size"
         fontsize = 12
         "The axis to reset when clicking the reset button"
