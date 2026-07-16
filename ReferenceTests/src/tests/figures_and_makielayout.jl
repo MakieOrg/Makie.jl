@@ -70,10 +70,11 @@ end
     data = (
         name = ["Alice", "Bob", "Charlie", "Diana", "Eve"],
         age = [28, 35, 42, 31, 25],
-        city = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"]
+        city = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"],
     )
 
-    t = Table(fig[1, 1];
+    t = Table(
+        fig[1, 1];
         data = data,
         header_color = RGBf(0.2, 0.4, 0.6),
         header_textcolor = :white,

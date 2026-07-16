@@ -142,13 +142,15 @@ function plot!(p::TablePlot)
 
     # ===== GEOMETRY - single computation for all positions =====
     # Using scatter with BezierPath rectangle marker is more efficient than poly for many rects
-    map!(attr, [
-        :bbox, :data, :col_widths, :col_names, :col_keys, :sort_perm,
-        :n_cols, :n_rows, :visible_rows, :scroll_offset,
-        :row_height_vec, :header_height, :cell_padding,
-        :show_grid, :show_horizontal_lines, :show_vertical_lines,
-        :sort_column, :sort_direction, :show_sort_indicator
-    ], [:cell_positions, :cell_sizes, :text_positions, :text_strings, :line_points]) do bbox, data, cw, col_names, col_keys, perm, nc, nr, vr, offset, rhv, hh, pad, show_grid, show_h, show_v, sort_col, sort_dir, show_indicator
+    map!(
+        attr, [
+            :bbox, :data, :col_widths, :col_names, :col_keys, :sort_perm,
+            :n_cols, :n_rows, :visible_rows, :scroll_offset,
+            :row_height_vec, :header_height, :cell_padding,
+            :show_grid, :show_horizontal_lines, :show_vertical_lines,
+            :sort_column, :sort_direction, :show_sort_indicator,
+        ], [:cell_positions, :cell_sizes, :text_positions, :text_strings, :line_points]
+    ) do bbox, data, cw, col_names, col_keys, perm, nc, nr, vr, offset, rhv, hh, pad, show_grid, show_h, show_v, sort_col, sort_dir, show_indicator
 
         # Empty table
         (nc == 0 || isempty(cw)) && return (Point2f[], Vec2f[], Point2f[], String[], Point2f[])
@@ -163,7 +165,7 @@ function plot!(p::TablePlot)
 
         # Column x positions (cumulative)
         col_x = zeros(Float32, nc)
-        nc > 1 && cumsum!(@view(col_x[2:end]), @view(cw[1:end-1]))
+        nc > 1 && cumsum!(@view(col_x[2:end]), @view(cw[1:(end - 1)]))
 
         # Row y positions (cumulative from top, going down)
         row_y = zeros(Float32, vr + 1)
@@ -177,7 +179,7 @@ function plot!(p::TablePlot)
             x, w = x0 + col_x[col], cw[col]
             cell_pos[col] = Point2f(x, y_top)  # top-left
             cell_sz[col] = Vec2f(w, hh)
-            text_pos[col] = Point2f(x + pad[1], y_top - hh/2)
+            text_pos[col] = Point2f(x + pad[1], y_top - hh / 2)
             hdr = col_names[col]
             show_indicator && sort_col == col && (hdr *= sort_dir == :ascending ? " ↑" : " ↓")
             text_str[col] = hdr
@@ -193,7 +195,7 @@ function plot!(p::TablePlot)
                 x, w = x0 + col_x[col], cw[col]
                 cell_pos[idx] = Point2f(x, y_cell_top)  # top-left
                 cell_sz[idx] = Vec2f(w, rh)
-                text_pos[idx] = Point2f(x + pad[1], y_cell_top - rh/2)
+                text_pos[idx] = Point2f(x + pad[1], y_cell_top - rh / 2)
                 text_str[idx] = actual_row <= nr ? string(data[col_keys[col]][actual_row]) : ""
             end
         end
@@ -213,7 +215,7 @@ function plot!(p::TablePlot)
                 end
             end
             if show_v
-                for col in 1:nc+1
+                for col in 1:(nc + 1)
                     x = x0 + (col <= nc ? col_x[col] : total_w)
                     push!(lines, Point2f(x, y_top), Point2f(x, y_top - total_h))
                 end
@@ -225,11 +227,13 @@ function plot!(p::TablePlot)
 
     # ===== COLORS - separate from geometry for efficient hover/selection updates =====
     # Supports both row-level and cell-level selection/hover
-    map!(attr, [
-        :n_cols, :visible_rows, :scroll_offset, :sort_perm,
-        :i_selected, :i_selected_cell, :hovered_row, :hovered_cell,
-        :header_color, :cell_color, :cell_color_even, :cell_color_odd, :cell_color_hover, :cell_color_selected
-    ], :rect_colors) do nc, vr, offset, perm, selected_row, selected_cell, hovered_row, hovered_cell, hdr_c, cell_c, even_c, odd_c, hover_c, sel_c
+    map!(
+        attr, [
+            :n_cols, :visible_rows, :scroll_offset, :sort_perm,
+            :i_selected, :i_selected_cell, :hovered_row, :hovered_cell,
+            :header_color, :cell_color, :cell_color_even, :cell_color_odd, :cell_color_hover, :cell_color_selected,
+        ], :rect_colors
+    ) do nc, vr, offset, perm, selected_row, selected_cell, hovered_row, hovered_cell, hdr_c, cell_c, even_c, odd_c, hover_c, sel_c
 
         n_rects = nc + nc * vr
         colors = Vector{RGBAf}(undef, n_rects)
@@ -275,9 +279,13 @@ function plot!(p::TablePlot)
     end
 
     # Text styling - supports per-cell text colors via matrix
-    map!(attr, [:n_cols, :visible_rows, :scroll_offset, :sort_perm,
-                :header_textcolor, :cell_textcolor, :header_fontsize, :cell_fontsize],
-         [:text_colors, :text_fontsizes]) do nc, vr, offset, perm, hdr_tc, cell_tc, hdr_fs, cell_fs
+    map!(
+        attr, [
+            :n_cols, :visible_rows, :scroll_offset, :sort_perm,
+            :header_textcolor, :cell_textcolor, :header_fontsize, :cell_fontsize,
+        ],
+        [:text_colors, :text_fontsizes]
+    ) do nc, vr, offset, perm, hdr_tc, cell_tc, hdr_fs, cell_fs
 
         n = nc + nc * vr
         colors = Vector{RGBAf}(undef, n)
@@ -311,16 +319,19 @@ function plot!(p::TablePlot)
 
     # Rectangle marker: draws from (0,0) going right and down
     # Position is top-left, markersize is (width, height)
-    rect_marker = BezierPath([
-        MoveTo(0, 0),
-        LineTo(1, 0),
-        LineTo(1, -1),
-        LineTo(0, -1),
-        ClosePath()
-    ])
+    rect_marker = BezierPath(
+        [
+            MoveTo(0, 0),
+            LineTo(1, 0),
+            LineTo(1, -1),
+            LineTo(0, -1),
+            ClosePath(),
+        ]
+    )
 
     # Single scatter for all cell rectangles (more efficient than poly for many rects)
-    scatter!(p, attr[:cell_positions];
+    scatter!(
+        p, attr[:cell_positions];
         marker = rect_marker,
         markersize = attr[:cell_sizes],
         color = attr[:rect_colors],
@@ -329,7 +340,8 @@ function plot!(p::TablePlot)
     )
 
     # Single text for all labels
-    tp = text!(p, attr[:text_positions];
+    tp = text!(
+        p, attr[:text_positions];
         text = attr[:text_strings],
         color = attr[:text_colors],
         fontsize = attr[:text_fontsizes],
@@ -339,7 +351,8 @@ function plot!(p::TablePlot)
     translate!(tp, 0, 0, 1)
 
     # Single linesegments for grid
-    lp = linesegments!(p, attr[:line_points];
+    lp = linesegments!(
+        p, attr[:line_points];
         color = attr[:grid_color],
         linewidth = attr[:grid_linewidth],
         inspectable = false
@@ -364,7 +377,7 @@ function table_row_at_position(p::TablePlot, mp::Point2f)
     y_offset = y_top - hh - mp[2]
     row = floor(Int, y_offset / rh) + 1
     vr = attr[:visible_rows][]
-    (row >= 1 && row <= vr) ? row : 0
+    return (row >= 1 && row <= vr) ? row : 0
 end
 
 function table_col_at_position(p::TablePlot, mp::Point2f)
@@ -377,14 +390,14 @@ function table_col_at_position(p::TablePlot, mp::Point2f)
     for (i, cx) in enumerate(cumw)
         x_offset <= cx && return i
     end
-    0
+    return 0
 end
 
 function is_inside_table(p::TablePlot, mp::Point2f)
     attr = p.attributes
     bbox = attr[:bbox][]
     th = attr[:table_height][]
-    mp[1] >= left(bbox) && mp[1] <= right(bbox) && mp[2] <= top(bbox) && mp[2] >= top(bbox) - th
+    return mp[1] >= left(bbox) && mp[1] <= right(bbox) && mp[2] <= top(bbox) && mp[2] >= top(bbox) - th
 end
 
 # Get actual data row from visual row (accounting for sort and scroll)
@@ -393,7 +406,7 @@ function get_actual_row(p::TablePlot, visual_row::Int)
     perm = attr[:sort_perm][]
     offset = attr[:scroll_offset][]
     idx = visual_row + offset
-    idx <= length(perm) ? perm[idx] : 0
+    return idx <= length(perm) ? perm[idx] : 0
 end
 
 # Get row data as NamedTuple
@@ -402,7 +415,7 @@ function get_row_data(p::TablePlot, row_idx::Int)
     data = attr[:data][]
     nr = attr[:n_rows][]
     col_keys = attr[:col_keys][]
-    row_idx <= nr ? NamedTuple{Tuple(col_keys)}(Tuple(data[k][row_idx] for k in col_keys)) : nothing
+    return row_idx <= nr ? NamedTuple{Tuple(col_keys)}(Tuple(data[k][row_idx] for k in col_keys)) : nothing
 end
 
 # Get cell data at (row, col)
@@ -411,7 +424,7 @@ function get_cell_data(p::TablePlot, row_idx::Int, col_idx::Int)
     data = attr[:data][]
     nr = attr[:n_rows][]
     col_keys = attr[:col_keys][]
-    (row_idx <= nr && col_idx <= length(col_keys)) ? data[col_keys[col_idx]][row_idx] : nothing
+    return (row_idx <= nr && col_idx <= length(col_keys)) ? data[col_keys[col_idx]][row_idx] : nothing
 end
 
 """
@@ -639,7 +652,7 @@ function initialize_block!(t::Table)
                 return Consume(true)
             end
 
-        # Handle right clicks
+            # Handle right clicks
         elseif butt.button == Mouse.right && butt.action == Mouse.press
             if row isa Int && row > 0 && col > 0
                 actual_row = get_actual_row(plot, row)
