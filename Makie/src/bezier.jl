@@ -116,7 +116,19 @@ function bbox(commands::Vector{PathCommand})
         else
             endp = endpoint(prev)
             _bb = cleanup_bbox(bbox(endp, comm))
-            bb = bb === nothing ? _bb : union(bb, _bb)
+            # NB: don't use `union(bb, _bb)` here. GeometryBasics considers any
+            # Rect with a zero-width dimension "empty" and returns the other
+            # operand, so accumulating the bboxes of axis-aligned segments
+            # (whose segment bbox is legitimately zero-width/height, e.g. a
+            # rectangle marker) would drop earlier segments and yield a
+            # degenerate path bbox. Grow the corners directly instead.
+            if bb === nothing
+                bb = _bb
+            else
+                mini = min.(minimum(bb), minimum(_bb))
+                maxi = max.(maximum(bb), maximum(_bb))
+                bb = Rect2d(mini, maxi .- mini)
+            end
         end
         prev = comm
     end
