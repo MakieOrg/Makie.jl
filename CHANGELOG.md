@@ -7,6 +7,7 @@
 - Added `Tabs` and `Subfigure` blocks, a tabbed container and the scrollable, event-isolated sub-region it is built on. [#5650](https://github.com/MakieOrg/Makie.jl/pull/5650)
 - Added a `Table` block for displaying tabular data, with row/cell selection, column sorting and scrolling. [#5510](https://github.com/MakieOrg/Makie.jl/pull/5510)
 - Added pointer-event routing based on visual scene stacking so overlay scenes (menus, dropdowns, popups) no longer leak mouse events to widgets underneath. `receives_events(scene)` returns `false` when a scene in a different subtree visually covers the pointer, and `is_mouseinside(scene)` honors it automatically. [#5510](https://github.com/MakieOrg/Makie.jl/pull/5510)
+- Added a high-level figure GUI: a `HoverMenu` toolbar (save / copy / reset) plus opt-in automatic `Legend`/`Colorbar` insertion, controlled via `Figure(; gui, legend, colorbar)` or the theme. Also added convenience constructors `Legend(ax; ...)`, `Colorbar(ax, plot; ...)` and `axiscolorbar`. [#3491](https://github.com/MakieOrg/Makie.jl/pull/3491)
 
 ## Breaking
 

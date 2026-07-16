@@ -33,9 +33,10 @@ include("blocks/textbox.jl")
 include("blocks/container.jl")
 include("blocks/subfigure.jl")
 include("blocks/tabs.jl")
+# HoverMenu type is defined in types.jl; its implementation is in GUI/hovermenu.jl
 
 export @Block, Block
-export axislegend
+export axislegend, axiscolorbar
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
