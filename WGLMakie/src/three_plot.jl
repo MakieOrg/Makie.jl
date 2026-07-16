@@ -48,12 +48,6 @@ function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceCont
 end
 
 
-function get_order!(session::Session)
-    order = Bonito.get_metadata(session, :wglmakie_scene_order, 1)
-    Bonito.set_metadata!(session, :wglmakie_scene_order, order + 1)
-    return order
-end
-
 # Body of the real_size handler task in `three_display`. A named function so
 # the precompile directive in precompiles.jl can cover it - as an anonymous
 # task body it cost ~0.4s of inference on the first display.
@@ -88,7 +82,6 @@ end
 
 function three_display(screen::Screen, session::Session, scene::Scene)
     config = screen.config
-    order = get_order!(session)
     window_open = scene.events.window_open
     initial_size = size(scene)
     canvas_width = lift(x -> [round.(Int, widths(x))...], scene, viewport(scene))
@@ -155,28 +148,31 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     wrapper = DOM.div(canvas, config.spinner; style = "width: 100%; height: 100%; position: relative;")
     comm = Observable(Dict{String, Any}())
 
-    # Keep texture atlas in parent session, so we don't need to send it over and over again
+    # Root-owned glyph channel: batches arrive as ordered evaljs events (see
+    # `sync_glyphs!`); `request` is the JS→Julia pull for missing hashes. Wired
+    # here so EVERY figure mount (re)installs the pull target — idempotent on
+    # the JS side.
+    glyph_request = glyph_sync!(session).request
     evaljs(
         session, js"""
         $(WGL).then(WGL => {
-            WGL.execute_in_order($order, ()=> {
-                WGL.setup_scene_init(
-                    $wrapper,
-                    $canvas,
-                    $width,
-                    $height,
-                    $(config.resize_to),
-                    $(config.px_per_unit),
-                    $(config.scalefactor),
-                    $(real_size),
-                    $canvas_width,
-                    $(scene_serialized),
-                    $comm,
-                    $(config.framerate),
-                    $(config.render_on_demand),
-                    $(done_init)
-                )
-            })
+            WGL.set_glyph_request($(glyph_request));
+            WGL.setup_scene_init(
+                $wrapper,
+                $canvas,
+                $width,
+                $height,
+                $(config.resize_to),
+                $(config.px_per_unit),
+                $(config.scalefactor),
+                $(real_size),
+                $canvas_width,
+                $(scene_serialized),
+                $comm,
+                $(config.framerate),
+                $(config.render_on_demand),
+                $(done_init)
+            )
         })
         """
     )

@@ -148,28 +148,11 @@ export function on_next_insert(f) {
 }
 
 
-// the plot order is different in WGLMakie (js) compared to serialization order
-// In julia, so we need to first go through all plots and update the glyphs.
-// Example: plota brings glyphs [a,b,c] from text "abc", plotb brings [d, e] from text "abcde".
-// If plotb gets serialized first, the glyphs from plota will be missing.
-function add_glyphs_from_plots(scene_data) {
-    const atlas = get_texture_atlas();
-    scene_data.plots.forEach((plot_data) => {
-        if (plot_data.glyph_data) {
-            const glyph_data = plot_data.glyph_data;
-            const { atlas_updates } = glyph_data;
-            if (atlas_updates) {
-                atlas.insert_glyphs(atlas_updates);
-            }
-        }
-    });
-    scene_data.children.forEach((child) => {
-        add_glyphs_from_plots(child);
-    });
-}
-
+// Glyph SDFs no longer ride plot data: they arrive on the root glyph channel
+// (`WGLMakie.insert_glyphs` evaljs batches, ordered BEFORE the scene snapshot)
+// and any gap self-heals through the atlas pull (`ensure_glyphs`), so there is
+// nothing to pre-walk here anymore.
 export function deserialize_scene(data, screen) {
-    add_glyphs_from_plots(data);
     return deserialize_scene_recursive(data, screen);
 }
 

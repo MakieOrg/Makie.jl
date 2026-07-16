@@ -343,13 +343,17 @@ function per_glyph_data(glyph_hashes, scales) {
     return [uv_offset_width, markersize, quad_offsets];
 }
 
+// Plot data carries glyph HASHES only — the SDFs travel on the root glyph
+// channel (WGLMakie.insert_glyphs) and self-heal via the atlas pull. Text
+// (`scales` present) derives its per-glyph quad buffers here, with a zero-UV
+// fallback for not-yet-arrived glyphs; scatter's buffers are baked Julia-side
+// and only need the texture region, so it has no buffer path at all.
 function get_glyph_data_attributes(atlas, glyph_data) {
     if (glyph_data == null) {
         return {}
     }
-    const { glyph_hashes, atlas_updates, scales } = glyph_data;
-    atlas.insert_glyphs(atlas_updates);
-    if (glyph_hashes) {
+    const { glyph_hashes, scales } = glyph_data;
+    if (glyph_hashes && scales) {
         const [sdf_uv, quad_scale, quad_offset] = per_glyph_data(
             glyph_hashes,
             scales
@@ -364,6 +368,7 @@ export class Scatter extends Plot {
     constructor(scene, data) {
         const atlas = get_texture_atlas();
         const lengths = { sdf_uv: 4 };
+        const glyph_info = data.glyph_data ?? null;
         if ("glyph_data" in data) {
             const gdata = get_glyph_data_attributes(atlas, data.glyph_data);
             delete data.glyph_data;
@@ -379,13 +384,33 @@ export class Scatter extends Plot {
         super(scene, data);
         this.is_instanced = true;
         this.atlas = atlas;
+        this.glyph_info = glyph_info;
         this.mesh = create_instanced_mesh(this);
         this.init_mesh();
+        this.heal_missing_glyphs();
+    }
+
+    // Buffers built while glyphs were missing used the zero-UV fallback. Once
+    // the atlas receives them (channel batch or pull response), re-derive the
+    // per-glyph buffers (text; `scales` present) and request a re-render (the
+    // texture upload itself already healed scatter markers).
+    heal_missing_glyphs() {
+        const info = this.glyph_info;
+        if (!info || !info.glyph_hashes || info.glyph_hashes.length === 0) return;
+        this.atlas.ensure_glyphs(info.glyph_hashes, () => {
+            if (info.scales) {
+                this.update([["glyph_data", info]]);
+            }
+            const screen = this.parent?.screen;
+            if (screen) screen.requires_update = true;
+        });
     }
 
     update(data_key_value_array) {
         const dict = Object.fromEntries(data_key_value_array);
-        if ("glyph_data" in dict) {
+        const fresh_glyphs = "glyph_data" in dict;
+        if (fresh_glyphs) {
+            this.glyph_info = dict.glyph_data;
             const data = get_glyph_data_attributes(this.atlas, dict.glyph_data);
             delete dict.glyph_data;
             for (const [key, value] of Object.entries(data)) {
@@ -393,5 +418,8 @@ export class Scatter extends Plot {
             }
         }
         super.update(Object.entries(dict));
+        if (fresh_glyphs) {
+            this.heal_missing_glyphs();
+        }
     }
 }

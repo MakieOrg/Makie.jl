@@ -261,8 +261,10 @@ function create_shader(scene::Scene, plot::Scatter)
     Makie.all_marker_computations!(attr, markersym)
     register_computation!(attr, [:sdf_marker_shape, :marker, :font], [:glyph_data]) do (shape, markers, fonts), changed, last
         shape != 3 && return nothing
-        data = get_scatter_data(scene, markers, fonts)
-        dict = Dict{Symbol, Any}(:atlas_updates => data)
+        hashes = get_scatter_data(scene, markers, fonts)
+        # Scatter's uv/quad buffers are computed Julia-side; JS only needs the
+        # atlas TEXTURE regions present. The hashes let it await/pull them.
+        dict = Dict{Symbol, Any}(:glyph_hashes => hashes)
         return (dict,)
     end
 
@@ -300,48 +302,113 @@ function create_shader(scene::Scene, plot::Scatter)
     return create_wgl_renderobject(scatter_program, attr, inputs)
 end
 
-function get_atlas_tracker(f, scene::Scene)
-    screen = Makie.getscreen(scene, WGLMakie)
+# ── Root-owned glyph sync ────────────────────────────────────────────────────
+#
+# Glyph SDF data is NEVER shipped as part of plot data. Plots serialize only the
+# glyph HASHES they reference; the SDFs travel on a per-root-session channel:
+#
+#   * Julia → JS: each batch of new glyphs is an ordered `evaljs` on the ROOT
+#     session (ordered events — unlike an Observable value, multiple batches
+#     can't overwrite each other, which also makes `export_static` correct: the
+#     queued evaljs messages are fused into the static bundle IN ORDER, so the
+#     atlas fills before any plot script runs).
+#   * JS → Julia: `request` is the pull fail-safe. When a plot references a
+#     hash the page atlas doesn't have (lost frame, fragment mounted on a page
+#     that never saw the batch, reconnect), the atlas requests it and Julia
+#     re-extracts the SDF from the authoritative Makie atlas. Missing glyphs
+#     therefore self-heal, independent of what any other plot/page did.
+#
+# `shipped` keeps the old tracker semantics (don't re-send what this root
+# already got); `bbox` caches the marker bounding boxes, which are the only
+# per-glyph data not re-extractable from the atlas by hash alone.
+mutable struct GlyphSync
+    lock::ReentrantLock
+    shipped::Set{UInt32}
+    bbox::Dict{UInt32, Tuple{Vec2f, Vec2f}}
+    # Any: the JS notify delivers plain numbers; the responder converts.
+    request::Observable{Any}
+end
+GlyphSync() = GlyphSync(ReentrantLock(), Set{UInt32}(), Dict{UInt32, Tuple{Vec2f, Vec2f}}(),
+                        Observable{Any}(UInt32[]))
+
+function send_glyph_batch!(root::Bonito.Session, batch::Dict{UInt32, Any})
+    isempty(batch) && return
+    wire = Dict{String, Any}(string(h) => v for (h, v) in batch)
+    Bonito.evaljs(root, js"""
+        $(WGL).then(WGL => WGL.insert_glyphs($(wire)))
+    """)
+    return
+end
+
+# Get-or-create the sync for `session`'s root; wires the pull responder once.
+function glyph_sync!(session::Bonito.Session)
+    root = Bonito.root_session(session)
+    sync = Bonito.get_metadata(root, :wglmakie_glyph_sync, nothing)
+    sync isa GlyphSync && return sync
+    sync = GlyphSync()
+    Bonito.set_metadata!(root, :wglmakie_glyph_sync, sync)
+    on(root, sync.request) do hashes
+        atlas = Makie.get_texture_atlas()
+        batch = lock(sync.lock) do
+            out = Dict{UInt32, Any}()
+            for h in hashes
+                h32 = UInt32(h)
+                idx = get(atlas.mapping, h32, nothing)
+                if idx === nothing
+                    # Unknown hash: nothing to heal with — the JS side keeps its
+                    # zero-UV fallback and has already warned.
+                    @warn "glyph pull request for hash not in the atlas" hash = h32 maxlog = 5
+                    continue
+                end
+                uv = atlas.uv_rectangles[idx]
+                w, mini = get(sync.bbox, h32, (Vec2f(0), Vec2f(0)))
+                out[h32] = [uv, Makie.get_glyph_sdf(atlas, h32), w, mini]
+                push!(sync.shipped, h32)
+            end
+            return out
+        end
+        send_glyph_batch!(root, batch)
+        return
+    end
+    return sync
+end
+
+# Diff `glyphs` against the root's shipped-set; send the new SDFs on the glyph
+# channel and return only the hash list for the plot data.
+function sync_glyphs!(scene::Scene, glyphs, fonts)
+    atlas = Makie.get_texture_atlas()
+    screen = Makie.getscreen(Makie.root(scene), WGLMakie)
     if isnothing(screen) || isnothing(screen.session)
-        @warn "No session found, returning empty atlas tracker"
-        # TODO, it's not entirely clear in which case this can happen,
-        # which is why we don't just error, but just assume there isn't anything tracked
-        return f(Set{UInt32}())
+        # No live session (e.g. the precompile workload serializing without a
+        # display) — nothing to ship glyphs to; hashes still serialize.
+        @debug "No session found, glyph batches are dropped"
+        glyph_hashes, _ = Makie.get_glyph_data(atlas, Set{UInt32}(), glyphs, fonts)
+        return glyph_hashes
     end
-    session = screen.session
-    atlas = Bonito.get_metadata(session, :wglmakie_scene_atlas, nothing)
-    if isnothing(atlas)
-        atlas = Set{UInt32}()
-        Bonito.set_metadata!(session, :wglmakie_scene_atlas, atlas)
+    sync = glyph_sync!(screen.session)
+    root = Bonito.root_session(screen.session)
+    glyph_hashes, wire_batch = lock(sync.lock) do
+        hashes, new_glyphs = Makie.get_glyph_data(atlas, sync.shipped, glyphs, fonts)
+        for (h, v) in new_glyphs
+            sync.bbox[h] = (Vec2f(v[3]), Vec2f(v[4]))
+        end
+        return hashes, Dict{UInt32, Any}(new_glyphs)
     end
-    return f(atlas)
+    send_glyph_batch!(root, wire_batch)
+    return glyph_hashes
 end
 
-function get_scatter_data(scene::Scene, markers, fonts)
-    return get_atlas_tracker(Makie.root(scene)) do tracker
-        atlas = Makie.get_texture_atlas()
-        _, new_glyphs = Makie.get_glyph_data(atlas, tracker, markers, fonts)
-        return new_glyphs
-    end
-end
-
-function get_glyph_data(scene::Scene, glyphs, fonts)
-    return get_atlas_tracker(Makie.root(scene)) do tracker
-        atlas = Makie.get_texture_atlas()
-        glyph_hashes, new_glyphs = Makie.get_glyph_data(atlas, tracker, glyphs, fonts)
-        return glyph_hashes, new_glyphs
-    end
-end
+get_scatter_data(scene::Scene, markers, fonts) = sync_glyphs!(scene, markers, fonts)
+get_glyph_data(scene::Scene, glyphs, fonts) = sync_glyphs!(scene, glyphs, fonts)
 
 function register_text_computation!(attr, scene)
     map!(attr, [:text_blocks, :text_scales], :glyph_scales) do text_blocks, fontsize
         return Makie.map_per_glyph(text_blocks, Vec2f, Makie.to_2d_scale(fontsize))
     end
     return register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs, fonts, glyph_scales), changed, last
-        hashes, updates = get_glyph_data(scene, glyphs, fonts)
+        hashes = get_glyph_data(scene, glyphs, fonts)
         dict = Dict{Symbol, Any}(
             :glyph_hashes => hashes,
-            :atlas_updates => updates,
             :scales => serialize_three(glyph_scales)
         )
         return (dict,)

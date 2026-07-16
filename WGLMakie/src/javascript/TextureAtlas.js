@@ -44,6 +44,9 @@ export class TextureAtlas {
         }
         this.glyph_data = new Map(); // Map<UInt32, THREE.Vector4>
         this.textures = new Map(); // Map<WebGLContext, THREE.DataTexture>
+        this.waiters = []; // [{missing: Set<string>, on_ready}] — resolved by insert_glyphs
+        this.requested = new Set(); // hashes with an in-flight pull request
+        this.request_obs = null; // JS→Julia pull channel, wired via set_glyph_request
     }
 
     /**
@@ -76,9 +79,8 @@ export class TextureAtlas {
     insert_glyphs(glyph_data) {
         let written = false;
         Object.keys(glyph_data).forEach((hash) => {
+            this.requested.delete(hash);
             if (this.glyph_data.has(hash)) {
-                // TODO, be more careful to not update the same glyphs
-                // (e.g. in deserialize_scene and in the plots code)
                 return;
             }
             const [uv, sdf, width, minimum] = glyph_data[hash];
@@ -95,6 +97,56 @@ export class TextureAtlas {
         if (written) {
             this.upload_tex_data();
         }
+        this.resolve_waiters();
+    }
+
+    resolve_waiters() {
+        if (this.waiters.length === 0) return;
+        const still_waiting = [];
+        for (const w of this.waiters) {
+            for (const h of [...w.missing]) {
+                if (this.glyph_data.has(h)) w.missing.delete(h);
+            }
+            if (w.missing.size === 0) {
+                try { w.on_ready(); } catch (e) { console.error("glyph on_ready failed:", e); }
+            } else {
+                still_waiting.push(w);
+            }
+        }
+        this.waiters = still_waiting;
+    }
+
+    /**
+     * Fail-safe availability check: returns true if all `hashes` are present.
+     * Otherwise registers `on_ready` (fires once they all arrived), PULLS the
+     * missing ones from Julia over `request_obs`, and after a timeout gives up
+     * (plots keep their zero-UV fallback — degraded, never hanging).
+     */
+    ensure_glyphs(hashes, on_ready) {
+        // NOTE: `hashes` is usually a Uint32Array — its `.map` coerces results
+        // BACK to numbers, so `Array.from(…, toString)` is required to get
+        // string keys matching the glyph_data Map.
+        const missing = [...new Set(Array.from(hashes, (h) => h.toString()))]
+            .filter((h) => !this.glyph_data.has(h));
+        if (missing.length === 0) return true;
+        const waiter = { missing: new Set(missing), on_ready };
+        this.waiters.push(waiter);
+        const to_pull = missing.filter((h) => !this.requested.has(h));
+        if (to_pull.length > 0 && this.request_obs) {
+            to_pull.forEach((h) => this.requested.add(h));
+            this.request_obs.notify(to_pull.map(Number));
+        }
+        setTimeout(() => {
+            if (this.waiters.includes(waiter) && waiter.missing.size > 0) {
+                console.warn(
+                    "WGLMakie: glyphs never arrived (rendering without them):",
+                    [...waiter.missing].join(",")
+                );
+                waiter.missing.forEach((h) => this.requested.delete(h));
+                this.waiters = this.waiters.filter((x) => x !== waiter);
+            }
+        }, 10000);
+        return false;
     }
 
     /**

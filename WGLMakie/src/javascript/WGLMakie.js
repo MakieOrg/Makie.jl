@@ -19,33 +19,23 @@ import {get_texture_atlas} from "./TextureAtlas.js";
 
 window.THREE = THREE;
 
-const orderedExecutor = {
-    tasks: new Map(),
-    nextExpected: 1,
+// NOTE: the old `orderedExecutor` / `execute_in_order` gate is GONE. It forced
+// figure inits to run in SERIALIZATION order because glyph SDFs used to ride
+// whichever plot serialized them first. That assumption breaks fatally for
+// independently-mounted fragments (a page waiting on order N that never mounts
+// hangs every later figure). Glyphs now sync via the root glyph channel + pull
+// (`insert_glyphs` / `ensure_glyphs`), so figures init the moment they mount.
 
-    insert(f, order) {
-        if (this.tasks.has(order)) {
-            throw new Error(`Duplicate task for order ${order}`);
-        }
-        this.tasks.set(order, f);
-        this.flush();
-    },
+// ── Glyph channel entry points (see plot-primitives.jl `GlyphSync`) ─────────
+// Batches arrive as ordered evaljs events from the root session; the request
+// observable is the JS→Julia pull for hashes a plot referenced but the page
+// atlas doesn't have. Both are idempotent, so every figure mount may (re)wire.
+export function insert_glyphs(batch) {
+    get_texture_atlas().insert_glyphs(batch);
+}
 
-    flush() {
-        while (this.tasks.has(this.nextExpected)) {
-            const f = this.tasks.get(this.nextExpected);
-            f();
-            this.tasks.delete(this.nextExpected);
-            this.nextExpected += 1;
-        }
-    },
-};
-
-export function execute_in_order(order, f) {
-    if (order < 1 || !Number.isInteger(order)) {
-        throw new Error(`Invalid order: ${order}`);
-    }
-    orderedExecutor.insert(f, order);
+export function set_glyph_request(request_obs) {
+    get_texture_atlas().request_obs = request_obs;
 }
 
 export function dispose_screen(screen, notify_close = true) {
@@ -1174,7 +1164,6 @@ window.WGL = {
     convert_to_makie_size,
     initialize_canvas_size,
     setup_scene_init,
-    execute_in_order,
 };
 
 export {
