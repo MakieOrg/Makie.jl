@@ -598,9 +598,12 @@ function initialize_block!(t::Table)
                 current_col = attr[:sort_column][]
                 if current_col == col
                     new_dir = attr[:sort_direction][] == :ascending ? :descending : :ascending
-                    update!(attr; sort_direction = new_dir)
+                    # sort_column/sort_direction are inputs of the block, linked
+                    # into the plot — update them on the block so the change
+                    # propagates (updating the plot graph directly errors).
+                    update!(t.attributes; sort_direction = new_dir)
                 else
-                    update!(attr; sort_column = col, sort_direction = :ascending)
+                    update!(t.attributes; sort_column = col, sort_direction = :ascending)
                 end
 
                 cb = t.on_sort_change[]
@@ -616,8 +619,9 @@ function initialize_block!(t::Table)
                     cb = t.on_row_doubleclick[]
                     cb !== nothing && cb(t, actual_row, get_row_data(plot, actual_row))
                 else
-                    # Single click - select row and cell
-                    update!(attr; i_selected = actual_row, i_selected_cell = (actual_row, col))
+                    # Single click - select row and cell (block inputs -> update
+                    # on the block so the selection propagates into the plot)
+                    update!(t.attributes; i_selected = actual_row, i_selected_cell = (actual_row, col))
                     t.selection[] = get_row_data(plot, actual_row)
                     t.cell_selection[] = get_cell_data(plot, actual_row, col)
 
@@ -665,7 +669,7 @@ function initialize_block!(t::Table)
             new_offset = clamp(current - step, 0, max_offset)
 
             if new_offset != current
-                update!(attr; scroll_offset = new_offset)
+                update!(t.attributes; scroll_offset = new_offset)
                 return Consume(true)
             end
         end
