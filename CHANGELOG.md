@@ -5,6 +5,8 @@
 - Added a unified `colors` theme block for Block widgets, plus a `Makie.derive_colors(; accent, gray, background)` helper that produces a full scheme from a few inputs. `set_theme!(colors = Makie.derive_colors(accent = :crimson))` recolors every interactive Block consistently — see the Block colors docs. Default neutral surfaces shift very slightly from the historical literals. [#5628](https://github.com/MakieOrg/Makie.jl/pull/5628)
   - The `@inherit` macro inside `@Block` now accepts a tuple of symbols (`@inherit((:colors, :accent), default)`) to walk nested theme dicts.
 - Added `Tabs` and `Subfigure` blocks, a tabbed container and the scrollable, event-isolated sub-region it is built on. [#5650](https://github.com/MakieOrg/Makie.jl/pull/5650)
+- Added a `Table` block for displaying tabular data, with row/cell selection, column sorting and scrolling. [#5510](https://github.com/MakieOrg/Makie.jl/pull/5510)
+- Added pointer-event routing based on visual scene stacking so overlay scenes (menus, dropdowns, popups) no longer leak mouse events to widgets underneath. `receives_events(scene)` returns `false` when a scene in a different subtree visually covers the pointer, and `is_mouseinside(scene)` honors it automatically. [#5510](https://github.com/MakieOrg/Makie.jl/pull/5510)
 
 ## Breaking
 

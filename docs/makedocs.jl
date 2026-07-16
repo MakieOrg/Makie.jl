@@ -81,6 +81,7 @@ pages = [
                 "polaraxis.md",
                 "slider.md",
                 "slidergrid.md",
+                "table.md",
                 "textbox.md",
                 "toggle.md",
             ]
