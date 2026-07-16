@@ -6,9 +6,14 @@ True when `scene` is the topmost layer over its viewport: visible, with
 scene with only one signal — a Legend lifted to z=10, or an Axis whose
 theme sets `clear=true` at z=0 — is layered for rendering only and does
 not claim pointer input.
+
+Scenes that paint a translucent backdrop via plots instead of an opaque
+`clear = true` background (e.g. a modal dialog's overlay) can opt in
+explicitly with `scene.captures_mouse = true`.
 """
 function covers_pointer(scene::Scene)
     scene.visible[] || return false
+    scene.captures_mouse && return true
     return scene.clear[] && z_world(scene) > 0
 end
 
@@ -77,5 +82,5 @@ function receives_events(scene::Scene)
     active = find_topmost_cover(root(scene), scene.events.mouseposition[])
     active === nothing && return true
     return is_ancestor_or_equal(active, scene) ||
-           is_ancestor_or_equal(scene, active)
+        is_ancestor_or_equal(scene, active)
 end

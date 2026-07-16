@@ -119,6 +119,14 @@ mutable struct Scene <: AbstractScene
     # Can't type this, don't have the type yet
     data_inspector::Any
 
+    """
+    Pointer-routing opt-in: when `true`, this scene claims the pointer for its
+    subtree while visible (see `covers_pointer`/`receives_events`), regardless
+    of `clear`/z. For overlays that paint a translucent backdrop via plots
+    (e.g. a modal dialog) instead of an opaque `clear = true` background.
+    """
+    captures_mouse::Bool
+
     function Scene(
             parent::Union{Nothing, Scene},
             events::Events,
@@ -158,7 +166,8 @@ mutable struct Scene <: AbstractScene
             ComputeGraph(),
             DimConversions(),
             false,
-            nothing
+            nothing,
+            false
         )
         add_camera_computation!(scene.compute, scene)
         add_light_computation!(scene.compute, scene, lights)

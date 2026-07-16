@@ -2850,3 +2850,78 @@ SomeBlock(fig[i, j][1, 1], ...)
         target_axis = nothing
     end
 end
+
+"""
+    Modal(fig; title = "", kwargs...)
+
+A modal dialog floating above the figure: a translucent backdrop dims and
+blocks pointer input to everything underneath, while a centered body holds a
+`GridLayout` for content. Place content with `modal[row, col] = ...` (or
+`Axis(modal[1, 1])` etc.), then show it with `open!(modal)` and hide it with
+`close!(modal)` (also triggered by the × button and — unless
+`dismiss_on_backdrop_click = false` — by clicking the backdrop).
+
+The body auto-sizes to its content (floored at `min_size`); pass numbers for
+`width`/`height` to fix the body size instead, in which case overflowing
+content scrolls (the content area is a [`Subfigure`](@ref)).
+
+Pointer isolation uses the scene-stacking event router: the overlay scene is
+marked `captures_mouse = true`, so while the modal is open only its own
+subtree receives events.
+"""
+@Block Modal begin
+    overlay::Scene
+    subfigure::Subfigure
+    @attributes begin
+        "Title shown in the modal's header."
+        title = ""
+        "Whether the modal is currently shown. Use `open!`/`close!` or set directly."
+        open = false
+        "Color of the backdrop dimming the figure behind the modal."
+        backdrop_color = (:black, 0.35)
+        "Background color of the modal body."
+        color = @inherit((:colors, :background))
+        "Border color of the modal body."
+        strokecolor = @inherit((:colors, :border))
+        "Border line width of the modal body."
+        strokewidth = 1.0
+        "Corner radius of the modal body."
+        cornerradius = 8
+        "Number of vertices used per rounded corner."
+        cornersegments = 10
+        "Font size of the title."
+        titlesize = 16.0f0
+        "Font of the title."
+        titlefont = :bold
+        "Color of the title."
+        titlecolor = @inherit((:colors, :text))
+        "Color of the separator line under the header."
+        separator_color = @inherit((:colors, :border))
+        "Color of the close (×) icon when idle."
+        closecolor = @inherit((:colors, :text_muted))
+        "Color of the close (×) icon when hovered."
+        closecolor_hover = @inherit((:colors, :text))
+        "Whether clicking the backdrop (outside the body) closes the modal."
+        dismiss_on_backdrop_click = true
+        "Padding in pixels between the body border and the content layout."
+        contentpadding = 16
+        "Height in pixels of the title header strip."
+        header_height = 40
+        "Minimum body size (width, height) in pixels when auto-sizing."
+        min_size = (280, 140)
+        "Body width in pixels, or `Auto()` to size to the content."
+        width = Auto()
+        "Body height in pixels, or `Auto()` to size to the content."
+        height = Auto()
+        "The horizontal alignment of the block in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the block in its suggested bounding box."
+        valign = :center
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = false
+        "The alignment of the block in its suggested bounding box."
+        alignmode = Inside()
+    end
+end
