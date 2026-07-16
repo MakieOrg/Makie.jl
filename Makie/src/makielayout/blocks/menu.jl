@@ -186,19 +186,19 @@ function initialize_block!(m::Menu; default = 1)
         # No need to update when the scene is hidden
         widths(bbox) == Vec2i(0) && return
 
-        pad = m.textpadding[] # gc_heights triggers on padding, so we don't need to react to it
-        # listheight[] = h
-
+        pad = m.textpadding[]
+        # campixel is absolute, so anchor the list at the menuscene viewport
+        # origin. `list_y_bounds` are likewise in absolute window y.
+        ox, oy = Float32(left(bbox)), Float32(bottom(bbox))
         heights_cumsum = [zero(eltype(heights)); cumsum(heights)]
-        list_y_bounds[] = h .- heights_cumsum
+        list_y_bounds[] = oy .+ (h .- heights_cumsum)
         texts_y = @views h .- 0.5 .* (heights_cumsum[1:(end - 1)] .+ heights_cumsum[2:end])
-        textpositions[] = Point2f.(pad[1], texts_y)
+        textpositions[] = Point2f.(ox + pad[1], oy .+ texts_y)
         w_bbox = width(bbox)
-        # need to manipulate the vectors themselves, otherwise update errors when lengths change
         resize!(optionrects.val, length(heights))
 
         optionrects.val .= map(eachindex(heights)) do i
-            BBox(0, w_bbox, h - heights_cumsum[i + 1], h - heights_cumsum[i])
+            BBox(ox, ox + w_bbox, oy + h - heights_cumsum[i + 1], oy + h - heights_cumsum[i])
         end
 
         _update_option_colors!(0, optionstrings, optionpolycolors, optiontextcolors, m)
@@ -222,8 +222,10 @@ function initialize_block!(m::Menu; default = 1)
     was_pressed_button = Ref(false)
 
     onany(blockscene, e.mouseposition, e.mousebutton; priority = 64) do position, butt
-        mp = screen_relative(menuscene, position)
-        # track if we have been inside menu/options to clean up if we haven't been
+        # optionrects and list_y_bounds are in absolute window coords (campixel
+        # is absolute); offset by the menuscene's translation for the scroll
+        # state when hit-testing.
+        mp = Point2f(position) .- Vec2f(translation(menuscene)[][1], translation(menuscene)[][2])
         is_over_options = false
         is_over_button = false
 
@@ -232,19 +234,18 @@ function initialize_block!(m::Menu; default = 1)
             # by the early return, so reset the button's hover indicator here.
             if was_inside_button[]
                 was_inside_button[] = false
-                color_selector[] = SELECT_INACTIVE_COLOR
+                button_hovered[] = false
             end
-            # Is inside the expanded menu selection (the polys cover the whole
-            # selectable area and are in pixel space relative to menuscene)
+            # Is inside the expanded menu selection (optionrects cover the whole
+            # selectable area, hit-tested with the translation-adjusted `mp`)
             if any(r -> mp in r, optionpolys[1][])
                 is_over_options = true
                 was_inside_options[] = true
-                # we either clicked on an item or hover it
                 if _mouse_up(butt, was_pressed_options) # PRESSED
-                    m.i_selected[] = _pick_entry(mp[2], menuscene, list_y_bounds)
+                    m.i_selected[] = _pick_entry(position[2], menuscene, list_y_bounds)
                     m.is_open[] = false
                 else # HOVER
-                    idx_hovered = _pick_entry(mp[2], menuscene, list_y_bounds)
+                    idx_hovered = _pick_entry(position[2], menuscene, list_y_bounds)
                     _update_option_colors!(idx_hovered, optionstrings, optionpolycolors, optiontextcolors, m)
                 end
             else

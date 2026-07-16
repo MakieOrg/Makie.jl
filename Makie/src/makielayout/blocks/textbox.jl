@@ -53,10 +53,10 @@ function initialize_block!(tbox::Textbox)
     realtextcolor = Observable(to_color(:red))
 
     # Position the editor at the top-left of the inner area, accounting for textpadding.
+    # campixel is in absolute window coords, so we anchor at the window-coord top-left.
     text_origin = lift(topscene, scenearea, tbox.textpadding) do area, padding
-        # padding = (left, right, bottom, top); text uses (:left, :top) align so we anchor at the top-left
         l, _r, _b, t = padding
-        return Point2f(l, widths(area)[2] - t)
+        return Point2f(left(area) + l, top(area) - t)
     end
 
     # Placeholder is rendered as a separate text! that's visible whenever
@@ -81,7 +81,6 @@ function initialize_block!(tbox::Textbox)
         font = tbox.font,
         fontsize = tbox.fontsize,
         cursor_color = tbox.cursorcolor,
-        space = :pixel,
         multiline = false,
         manage_focus = false,            # Textbox drives focus (see below)
         input_filter = c -> is_allowed(c, tbox.restriction[]),

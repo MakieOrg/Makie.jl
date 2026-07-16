@@ -329,8 +329,13 @@ struct UpdatePixelCam
 end
 
 function (cam::UpdatePixelCam)(window_size)
+    # Project absolute window pixels (not viewport-local) to NDC so a coord
+    # `(X, Y)` in a campixel scene renders at window pixel `(X, Y)` regardless
+    # of where the scene sits in its parent. For a scene whose viewport is at
+    # the window origin this is identical to the old `(0..w, 0..h)` projection.
+    vx, vy = Float64.(minimum(window_size))
     w, h = Float64.(widths(window_size))
-    projection = orthographicprojection(0.0, w, 0.0, h, cam.near, cam.far)
+    projection = orthographicprojection(vx, vx + w, vy, vy + h, cam.near, cam.far)
     return set_proj_view!(cam.camera, projection, Mat4d(I))
 end
 
@@ -354,6 +359,7 @@ function campixel!(scene::Scene; nearclip = -10_000.0, farclip = 10_000.0)
     update_once[] = true
     return cam
 end
+
 
 struct RelativeCamera <: AbstractCamera end
 get_space(::RelativeCamera) = :relative

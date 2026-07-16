@@ -15,6 +15,7 @@ export KeyPress
 export KeyDown, KeyUp
 export Lazy
 export Wait
+export Scroll
 export relative_pos
 export textbox_offset_pos
 
@@ -187,6 +188,27 @@ duration(::KeyUp, _) = 0.0
 keyboardevents_start(k::KeyUp) = [Makie.KeyEvent(k.key, Keyboard.release)]
 
 
+"""
+    Scroll(delta; duration = 0.8)
+
+Emits `events.scroll` events over `duration` seconds so that the totals sum to
+`delta` (a `(dx, dy)` tuple in scroll units). Use to animate a wheel/trackpad
+scroll over a scrollable container.
+"""
+struct Scroll
+    delta::Tuple{Float64, Float64}
+    duration::Float64
+end
+Scroll(delta; duration = 0.8) = Scroll(Tuple(Float64.(delta)), duration)
+duration(s::Scroll, _) = s.duration
+
+function scrollevents_frame(s::Scroll, time, prev_time)
+    s.duration <= 0 && return []
+    frac = (time - prev_time) / s.duration
+    frac <= 0 && return []
+    return [Tuple(frac .* s.delta)]
+end
+
 mouseevents_start(obj) = []
 mouseevents_end(obj) = []
 mouseevents_frame(obj, t) = []
@@ -196,6 +218,7 @@ mousepositions_frame(obj, startpos, t) = []
 keyboardevents_start(obj) = []
 keyboardevents_end(obj) = []
 unicode_inputs_frame(obj, time, prev_time) = []
+scrollevents_frame(obj, time, prev_time) = []
 
 function alpha_blend(fg::Makie.RGBA, bg::Makie.RGB)
     r = (fg.r * fg.alpha + bg.r * (1 - fg.alpha))
@@ -299,6 +322,9 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
                 end
                 for c in unicode_inputs_frame(event, t_in_event, prev_t_in_event)
                     content_scene.events.unicode_input[] = c
+                end
+                for sc in scrollevents_frame(event, t_in_event, prev_t_in_event)
+                    content_scene.events.scroll[] = sc
                 end
                 prev_t_in_event = t_in_event
 
