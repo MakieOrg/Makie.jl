@@ -3,6 +3,7 @@
 ## Unreleased
 
 - GLMakie/WGLMakie: fixed `volume` and 3D `contour` plots losing parts of the interior when rendered with mirrored or left-handed transforms, such as with one or three reversed axes in `Axis3`. [#5649](https://github.com/MakieOrg/Makie.jl/issues/5649)
+- Scope the CairoMakie precompile workload's figures inside `let`, so rendered `Screen`s and their pixel buffers are no longer serialized into the package image (~150 MB smaller pkgimage) [#5692](https://github.com/MakieOrg/Makie.jl/pull/5692).
 - `tooltip` now inherits `fontsize` from the theme, sets its default outline `linewidth` to `1.0` to match axis spines, reduces its default `triangle_size` from `10` to `7`, and uses slightly wider horizontal `textpadding` [#5698](https://github.com/MakieOrg/Makie.jl/pull/5698).
 
 ## [0.24.13] - 2026-07-02
