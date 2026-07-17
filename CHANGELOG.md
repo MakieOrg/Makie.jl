@@ -4,9 +4,12 @@
 
 - `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
   `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
+- Scope the CairoMakie precompile workload's figures inside `let`, so rendered `Screen`s and their pixel buffers are no longer serialized into the package image (~150 MB smaller pkgimage) [#5692](https://github.com/MakieOrg/Makie.jl/pull/5692).
+- `tooltip` now inherits `fontsize` from the theme, sets its default outline `linewidth` to `1.0` to match axis spines, reduces its default `triangle_size` from `10` to `7`, and uses slightly wider horizontal `textpadding` [#5698](https://github.com/MakieOrg/Makie.jl/pull/5698).
 
 ## [0.24.13] - 2026-07-02
 
+- WGLMakie: made scene lookup retry timing configurable via `WGLMAKIE_SCENE_RETRY_DELAY_MS` and `WGLMAKIE_SCENE_RETRY_TOTAL_MS` to avoid timeout failures for slow scene initialization. [#5693](https://github.com/MakieOrg/Makie.jl/pull/5693)
 - WGLMakie: fixed a `Cannot destructure property 'geometry' of 'mesh'` JS error and allow `Bonito@v5` [#5683](https://github.com/MakieOrg/Makie.jl/pull/5683)
 - Adjusted cycled attributes to be marked as `:cycled` instead of `nothing` so that `nothing` doesn't get overridden. This allows e.g. `linestyle = nothing` to be set when `linestyle` is cycled. [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267)
 
