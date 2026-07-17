@@ -38,11 +38,11 @@ unconstrained Delaunay triangulation of `xs` and `ys` is computed.
     mixin_generic_plot_attributes()...
 end
 
-function Makie.used_attributes(::Type{<:Tricontour}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
+function used_attributes(::Type{<:Tricontour}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
     return (:triangulation,)
 end
 
-function Makie.convert_arguments(
+function convert_arguments(
         ::Type{<:Tricontour}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
         triangulation = DelaunayTriangulation()
     )
@@ -93,13 +93,12 @@ function _calculate_tricontour_lines!(xs_out, ys_out, colors, triangulation, zs,
     return
 end
 
-function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
-    graph = c.attributes
-
-    map!(graph, [:converted_2, :levels], :computed_levels) do zs, levels
+function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
+    map!(c, [:converted_2, :levels], :computed_levels) do zs, levels
         return _get_tricontour_levels(zs, levels)
     end
-    map!(graph, [:computed_levels, :converted_2], :computed_colorrange) do levels, zs
+
+    map!(c, [:computed_levels, :converted_2], :computed_colorrange) do levels, zs
         isempty(levels) || return extrema_nan(levels)
         c = Float32(first(zs))
         delta = max(one(c), abs(c))
@@ -107,7 +106,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     end
 
     register_computation!(
-        graph,
+        c,
         [:converted_1, :converted_2, :computed_levels],
         [:line_xs, :line_ys, :line_colors]
     ) do (tri, zs, levels), _, cached
@@ -122,13 +121,13 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         return (xs, ys, colors)
     end
 
-    final_color = lift(c.color, c.line_colors) do col, lc
-        isnothing(col) ? lc : col
+    map!(c, [:color, :line_colors], :final_color) do col, lc
+        return isnothing(col) ? lc : col
     end
 
     lines!(
         c, c.line_xs, c.line_ys;
-        color = final_color,
+        color = c.final_color,
         colormap = c.colormap,
         colorscale = c.colorscale,
         colorrange = c.computed_colorrange,
