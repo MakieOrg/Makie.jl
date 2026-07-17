@@ -477,30 +477,7 @@ bool process_clip_planes(inout vec3 p1, inout vec3 p2)
 
 
 bool no_solution(float x){
-    return x <= 0.0001 || isinf(x) || isnan(x);
-}
-
-float min_bigger_0(float a, float b){
-    bool a_no = no_solution(a);
-    bool b_no = no_solution(b);
-    if(a_no && b_no){
-        // no solution
-        return typemax;
-    }
-    if(a_no){
-        return b;
-    }
-    if(b_no){
-        return a;
-    }
-    return min(a, b);
-}
-
-float min_bigger_0(vec3 v1, vec3 v2){
-    float x = min_bigger_0(v1.x, v2.x);
-    float y = min_bigger_0(v1.y, v2.y);
-    float z = min_bigger_0(v1.z, v2.z);
-    return min(x, min(y, z));
+    return abs(x) <= 0.0001 || isinf(x) || isnan(x);
 }
 
 void main()
@@ -529,28 +506,26 @@ void main()
     if ((dir.x == 0.0 && dir.y == 0.0 && dir.z == 0.0) || isnan(dir.x) || isnan(dir.y) || isnan(dir.z))
         discard;
 
+    // Find box - ray intersection so we can skip tracing rays outside the box
+    // Solve
+    //  cube_max = 1 = eye_unit + solution_1 * dir
+    //  cube_min = 0 = eye_unit + solution_0 * dir
     vec3 solution_1 = (1.0 - eye_unit) / dir;
     vec3 solution_0 = (0.0 - eye_unit) / dir;
-    if (no_solution(solution_0.x) && no_solution(solution_1.x)) {
-        if (eye_unit.x < 0.0 || eye_unit.x > 1.0)
-            discard;
-        solution_0.x = -typemax;
-        solution_1.x = typemax;
-    }
-    if (no_solution(solution_0.y) && no_solution(solution_1.y)) {
-        if (eye_unit.y < 0.0 || eye_unit.y > 1.0)
-            discard;
-        solution_0.y = -typemax;
-        solution_1.y = typemax;
-    }
-    if (no_solution(solution_0.z) && no_solution(solution_1.z)) {
-        if (eye_unit.z < 0.0 || eye_unit.z > 1.0)
-            discard;
-        solution_0.z = -typemax;
-        solution_1.z = typemax;
-    }
+
     vec3 solutions_min = min(solution_0, solution_1);
     vec3 solutions_max = max(solution_0, solution_1);
+
+    // exclude inf/nan solutions from dir[i] = 0
+    solutions_min.x = no_solution(solutions_min.x) ? -typemax : solutions_min.x;
+    solutions_min.y = no_solution(solutions_min.y) ? -typemax : solutions_min.y;
+    solutions_min.z = no_solution(solutions_min.z) ? -typemax : solutions_min.z;
+    solutions_max.x = no_solution(solutions_max.x) ? typemax : solutions_max.x;
+    solutions_max.y = no_solution(solutions_max.y) ? typemax : solutions_max.y;
+    solutions_max.z = no_solution(solutions_max.z) ? typemax : solutions_max.z;
+
+    // We're inside the cube when every dimension has entered it (max of min solution)
+    // and none has left it (min of max solution)
     float start_solution = max(max(solutions_min.x, solutions_min.y), solutions_min.z);
     float stop_solution = min(min(solutions_max.x, solutions_max.y), solutions_max.z);
 
