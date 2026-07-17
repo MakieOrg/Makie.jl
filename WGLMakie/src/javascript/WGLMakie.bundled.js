@@ -23122,7 +23122,7 @@ class Plot {
     update(data) {
         const { mesh  } = this;
         if (!mesh) {
-            console.log(`Updating plot ${this.name} (${this.uuid}) with data:`);
+            return;
         }
         const { geometry  } = mesh;
         const { attributes , interleaved_attributes  } = geometry;
@@ -25010,8 +25010,8 @@ function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit
         const init_scene = (scene_data)=>{
             try {
                 create_scene(wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height, framerate, resize_to, px_per_unit, scalefactor);
-                done_init.notify(true);
                 spinner?.remove();
+                requestAnimationFrame(()=>requestAnimationFrame(()=>done_init.notify(true)));
             } catch (e) {
                 Bonito.Connection.send_error("error initializing scene", e);
                 done_init.notify(e);

@@ -20,7 +20,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: ReferenceImages_WGLMakie_1
+          # WGLMakie now tests Julia 1.11 + 1.12 (Bonito v5 needs >=1.11); use the
+          # latest (1.12), which is what the old '1' resolved to.
+          name: ReferenceImages_WGLMakie_1.12
           path: ./ReferenceImages/WGLMakie
       - uses: actions/download-artifact@v8
         with:
