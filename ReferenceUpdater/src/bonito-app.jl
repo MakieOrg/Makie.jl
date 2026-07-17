@@ -78,11 +78,13 @@ const REFIMG_STYLES = Styles(
     CSS(
         ".page-header",
         "padding" => "32px 24px",
-        "background" => "linear-gradient(135deg, $PRIMARY_COLOR 0%, #357ABD 100%)",
-        "color" => "white",
+        "background" => "linear-gradient(135deg, #EAF2FB 0%, #F5F9FF 100%)",
+        "color" => TEXT_DARK,
+        "border" => "1px solid #D6E4F5",
+        "border-left" => "5px solid $PRIMARY_COLOR",
         "border-radius" => "12px",
         "margin-bottom" => "24px",
-        "box-shadow" => "0 4px 16px rgba(0,0,0,0.12)"
+        "box-shadow" => "0 2px 8px rgba(0,0,0,0.06)"
     ),
     CSS(
         ".page-title",
@@ -262,6 +264,31 @@ const REFIMG_STYLES = Styles(
         "margin" => "4px 8px 4px 0",
         "cursor" => "pointer"
     ),
+    CSS(
+        ".card-filename",
+        "font-family" => "monospace",
+        "font-size" => "12px",
+        "color" => TEXT_DARK,
+        "word-break" => "break-all",
+        "margin-bottom" => "4px"
+    ),
+    CSS(
+        ".manifest-status",
+        "display" => "flex",
+        "align-items" => "center",
+        "gap" => "4px",
+        "font-size" => "12px",
+        "font-weight" => "700",
+        "margin-bottom" => "6px"
+    ),
+    CSS(".manifest-status.covered", "color" => SUCCESS_COLOR),
+    CSS(".manifest-status.uncovered", "color" => WARNING_COLOR),
+    CSS(
+        ".manifest-check",
+        "accent-color" => SUCCESS_COLOR,
+        "transform" => "scale(1.1)",
+        "cursor" => "default"
+    ),
     # Text field styles
     CSS(
         ".textfield",
@@ -405,6 +432,17 @@ const UPLOAD_BUTTON_STYLE = Styles(
 # Helper Functions
 # ============================================================================
 
+function manifest_status_dom(covered::Bool)
+    box = covered ?
+        DOM.input(type = "checkbox", checked = true, disabled = true, class = "manifest-check") :
+        DOM.input(type = "checkbox", disabled = true, class = "manifest-check")
+    return DOM.div(
+        box,
+        DOM.span(covered ? "in manifest" : "not in manifest — needs adding", class = "manifest-status-text"),
+        class = covered ? "manifest-status covered" : "manifest-status uncovered",
+    )
+end
+
 function media_element(img_name, local_path, additional_classes = ""; kw...)
     filetype = split(img_name, ".")[end]
     css_class = additional_classes == "" ? "" : " $additional_classes"
@@ -451,8 +489,10 @@ function build_card_grid(img_names, backends, should_include, card_builder)
     return cards
 end
 
-function create_simple_grid_content(root_path, filename, image_folder, backends)
-    files = readlines(joinpath(root_path, filename))
+function create_simple_grid_content(root_path, filename, image_folder, backends; extra_paths = String[], review_only::Bool = false, covered_paths = nothing)
+    path = joinpath(root_path, filename)
+    files = unique(vcat(isfile(path) ? readlines(path) : String[], collect(extra_paths)))
+    filter!(!isempty, files)
     refimages = unique(
         map(files) do img
             replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
@@ -461,12 +501,19 @@ function create_simple_grid_content(root_path, filename, image_folder, backends)
 
     # Card builder for simple cards
     function simple_card_builder(img_name, backend, current_file)
-        # Plain HTML checkbox (no observables)
-        cb = DOM.div(
-            DOM.input(type = "checkbox", class = "checkbox-input"),
-            " $current_file",
-            class = "checkbox-label"
-        )
+        # Plain HTML checkbox (no observables); filename + manifest status in review mode
+        cb = if review_only
+            DOM.div(
+                DOM.div(current_file, class = "card-filename"),
+                manifest_status_dom(covered_paths !== nothing && current_file in covered_paths),
+            )
+        else
+            DOM.div(
+                DOM.input(type = "checkbox", class = "checkbox-input"),
+                " $current_file",
+                class = "checkbox-label"
+            )
+        end
         local_path = Bonito.Asset(normpath(joinpath(root_path, image_folder, backend, img_name)))
         media = media_element(img_name, local_path)
         return Card(
@@ -529,15 +576,24 @@ function BackendCard(
         backend::String,
         score::Float64,
         root_path::String,
-        score_thresholds::Vector{Float64}
+        score_thresholds::Vector{Float64};
+        review_only::Bool = false,
+        covered_paths = nothing
     )
     current_file = backend * "/" * img_name
 
-    # Checkbox (plain HTML, selection handled in JS)
-    cb = DOM.div(
-        DOM.input(type = "checkbox", class = "checkbox-input"),
-        " $current_file"
-    )
+    # Checkbox (plain HTML, selection handled in JS); filename + manifest status in review mode
+    cb = if review_only
+        DOM.div(
+            DOM.div(current_file, class = "card-filename"),
+            manifest_status_dom(covered_paths !== nothing && current_file in covered_paths),
+        )
+    else
+        DOM.div(
+            DOM.input(type = "checkbox", class = "checkbox-input"),
+            " $current_file"
+        )
+    end
 
     # Create all three media paths
     recorded_path = Bonito.Asset(normpath(joinpath(root_path, "recorded", backend, img_name)))
@@ -670,6 +726,86 @@ end
 const JSHelper = Bonito.ES6Module(normpath(joinpath(@__DIR__, "JSHelper.js")))
 
 """
+    review_content(root_path, backends, score_thresholds; display_threshold=0.001)
+
+Static, review-only page content: shows only images that differ (score above
+`display_threshold`) or are listed in the manifest, with a per-card before/after toggle
+and no tool controls. Used for the self-contained `export_static` per-PR page.
+"""
+function review_content(root_path, backends, score_thresholds; display_threshold = 0.001)
+    manifest_entries = read_manifest(joinpath(root_path, "refimage_updates.txt"))
+    manifest_names = Set(replace(e.path, r"(GLMakie|CairoMakie|WGLMakie)/" => "") for e in manifest_entries)
+    manifest_new = [e.path for e in manifest_entries if e.pin == "new" && isfile(joinpath(root_path, "recorded", e.path))]
+
+    classified = classify_entries(manifest_entries, joinpath(root_path, "reference"))
+    covered_paths = union(classified.exempt_changed, classified.exempt_new, classified.to_delete)
+
+    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends; extra_paths = manifest_new, review_only = true, covered_paths)
+    missing_cards = create_simple_grid_content(root_path, "missing_files.txt", "reference", backends; review_only = true, covered_paths)
+
+    scores_imgs = readdlm(joinpath(root_path, "scores.tsv"), '\t')
+    lookup = Dict(scores_imgs[:, 2] .=> scores_imgs[:, 1])
+    imgs_with_score = unique(replace.(string.(scores_imgs[:, 2]), r"(GLMakie|CairoMakie|WGLMakie)/" => ""))
+    sort!(imgs_with_score; by = img -> get_score(lookup, backends, img), rev = true)
+    filter!(imgs_with_score) do img
+        get_score(lookup, backends, img) > display_threshold || img in manifest_names
+    end
+
+    updated_cards = build_card_grid(
+        imgs_with_score, backends,
+        file -> haskey(lookup, file),
+        (img_name, backend, current_file) -> BackendCard(img_name, backend, round(lookup[current_file]; digits = 3), root_path, score_thresholds; review_only = true, covered_paths),
+    )
+
+    cov = approval_coverage(root_path)
+    all_approved = cov.n_approved == cov.n_changed
+    summary = "$(cov.n_approved) of $(cov.n_changed) new/changed images approved via manifest" *
+        (all_approved ? "" : " — the rest still need to be added before merge")
+
+    cycle_controls = DOM.div(
+        DOM.input(type = "checkbox", class = "cycle-checkbox"),
+        " also cycle through the GLMakie reference",
+        class = "checkbox-label"
+    )
+
+    sections = Any[]
+    isempty(updated_cards) || push!(
+        sections, DOM.div(
+            DOM.h2("Changed images", class = "section-header"),
+            DOM.div("Each row shows one image per backend. Use the button on a card to toggle between the recorded image and its current reference.", class = "section-description"),
+            cycle_controls,
+            Grid(updated_cards, columns = "1fr 1fr 1fr"),
+            class = "section",
+        )
+    )
+    isempty(new_cards) || push!(
+        sections, DOM.div(
+            DOM.h2("New images without references", class = "section-header"),
+            DOM.div("These images have no current reference and are added when the PR merges.", class = "section-description"),
+            Grid(new_cards, columns = "1fr 1fr 1fr"),
+            class = "section",
+        )
+    )
+    isempty(missing_cards) || push!(
+        sections, DOM.div(
+            DOM.h2("Reference images without recordings", class = "section-header"),
+            DOM.div("A reference image exists but no image was recorded (a test was deleted or renamed).", class = "section-description"),
+            Grid(missing_cards, columns = "1fr 1fr 1fr"),
+            class = "section",
+        )
+    )
+    isempty(sections) && push!(sections, DOM.div("No differing or manifest-listed reference images.", class = "section-description"))
+
+    header = DOM.div(
+        DOM.h1("Reference image review", class = "page-title"),
+        DOM.p(summary, class = "page-subtitle"),
+        class = "page-header",
+    )
+
+    return DOM.div(REFIMG_STYLES, header, sections..., class = "main-container")
+end
+
+"""
     create_app_content(session, root_path)
 
 Creates the main ReferenceUpdater app content.
@@ -678,6 +814,9 @@ function create_app_content(session::Session, root_path::String)
     # Constants
     backends = ["GLMakie", "CairoMakie", "WGLMakie"]
     score_thresholds = [0.05, 0.03, 0.01]
+
+    # Static export (no live connection) renders the trimmed, review-only page
+    session.connection isa Bonito.NoConnection && return review_content(root_path, backends, score_thresholds)
 
     # Newly added Images
     new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends)
@@ -731,7 +870,8 @@ function create_app_content(session::Session, root_path::String)
 
     # Upload section
     tag_textfield = Bonito.TextField("$(last_major_version())", class = "textfield-tag")
-    upload_button = Bonito.Button("Update reference images with selection", style = UPLOAD_BUTTON_STYLE)
+    manifest_button = Bonito.Button("Add selection to update manifest", style = UPLOAD_BUTTON_STYLE)
+    upload_button = Bonito.Button("Update reference images directly (maintainers)", style = BUTTON_STYLE)
 
     # Loading overlay
     loading_overlay = DOM.div(
@@ -745,12 +885,24 @@ function create_app_content(session::Session, root_path::String)
 
     # Observable to trigger upload with collected selections
     upload_trigger = Observable(Dict{Any, Any}("upload_files" => String[], "delete_files" => String[]))
+    manifest_trigger = Observable(Dict{Any, Any}("upload_files" => String[], "delete_files" => String[]))
 
     # Check if we're in a session (not static export)
     is_static = (session.connection isa Bonito.NoConnection)
     if is_static
         upload_button.attributes[:disabled] = true
+        manifest_button.attributes[:disabled] = true
     else
+        on(manifest_trigger) do selections
+            Threads.@async try
+                reference_folder = joinpath(root_path, "reference")
+                path = add_manifest_selection(selections["upload_files"], selections["delete_files"], reference_folder)
+                @info "Wrote reference image update manifest entries to $path"
+            catch e
+                @error "Failed to add selection to manifest." exception = (e, catch_backtrace())
+            end
+        end
+
         # Handle upload trigger from JS
         on(upload_trigger) do selections
             Threads.@async begin
@@ -778,6 +930,15 @@ function create_app_content(session::Session, root_path::String)
             $(JSHelper).then(mod => {
                 const { uploadFiles, deleteFiles } = mod.collectCheckedFiles();
                 $(upload_trigger).notify({upload_files: uploadFiles, delete_files: deleteFiles});
+            });
+        });
+        """
+
+    manifest_handler = is_static ? DOM.div() : js"""
+        $(manifest_button.value).on(clicked => {
+            $(JSHelper).then(mod => {
+                const { uploadFiles, deleteFiles } = mod.collectCheckedFiles();
+                $(manifest_trigger).notify({upload_files: uploadFiles, delete_files: deleteFiles});
             });
         });
         """
@@ -897,10 +1058,12 @@ function create_app_content(session::Session, root_path::String)
     update_section = DOM.div(
         DOM.h2("Images to update", class = "section-header"),
         DOM.div(
-            "Pressing the button below will download the latest reference images for the selected version; add, update and/or remove the selected images listed below and then upload the changed reference image folder. See Julia terminal for progress updates.",
+            "Select the images to update below, then \"Add selection to update manifest\" to record them in ReferenceTests/refimage_updates.txt (they get promoted into the release when the PR merges through the queue). \"Update reference images directly\" is the old maintainer path that overwrites the release tarball for the given version immediately. See Julia terminal for progress updates.",
             class = "section-description"
         ),
         DOM.div(
+            manifest_button,
+            manifest_handler,
             tag_textfield,
             upload_button,
             upload_handler,

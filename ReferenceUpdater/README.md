@@ -10,6 +10,20 @@ ReferenceUpdater.serve_update_page(commit = "a1b2c3")
 ReferenceUpdater.serve_update_page(pr = 1234)
 ```
 
+## Updating reference images via the manifest (recommended)
+
+A PR that changes rendering should not upload to the release tarball directly (that turns master and every other open PR red until it lands). Instead it records the images it intends to update in `ReferenceTests/refimage_updates.txt`. Each entry is a per-backend path plus the hash of the reference it replaces (or `new`), so a CairoMakie-only change lists only `CairoMakie/...` paths. CI exempts a listed image from the score/missing checks while the pinned hash still matches, so the PR goes green for exactly its declared changes. When the PR merges through the GitHub merge queue, the `merge_group` CI run promotes the recorded images into the `refimages-vX.Y` release; the entries then go inert and are pruned by the next such PR.
+
+Add entries in one of three ways (none require running the backend tests locally):
+
+- Viewer button: run `ReferenceUpdater.serve_update_page(pr = 1234)`, select the images, and click "Add selection to update manifest".
+- Headless (agents): `ReferenceUpdater.add_pr_updates_to_manifest(1234)` picks every image whose score exceeds the threshold plus every new image; pass `select = ["CairoMakie/foo.png", ...]` to choose explicitly. Pins come from the current release tarball, the changed/new classification from the PR's CI artifact.
+- CLI: `reference_updater manifest pr 1234` (or `manifest commit <sha>`).
+
+To promote into a different release tag (e.g. `refimages-v0.26` for a breaking-release branch), enable the merge queue on that branch and add its ref to the `promote-refimages` allowlist in `.github/workflows/ci.yml`; the tag follows `Makie/Project.toml`, and the branch should have its `refimages-vX.Y` release seeded (e.g. copied from the previous minor).
+
+The direct-upload button below remains for maintainers who need to overwrite a release tarball immediately.
+
 You can also install ReferenceUpdater as an app in Julia 1.12 and up using `]app dev path/to/ReferenceUpdater`. Then you can access the functionality directly from the command line (given that the Julia app binary folder is on your path) via:
 
 ```
