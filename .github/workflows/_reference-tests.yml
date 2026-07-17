@@ -18,6 +18,8 @@ jobs:
     if: always()
     needs: [cairomakie, glmakie, wglmakie]
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           # WGLMakie now tests Julia 1.11 + 1.12 (Bonito v5 needs >=1.11); use the
@@ -57,6 +59,9 @@ jobs:
               mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"
               cp -r "${baseDir}/${dir}/recorded/${dir}/." "./ReferenceImagesCombined/recorded/${dir}/"
           done
+
+          # Bundle the update manifest so the per-PR site build is self-contained
+          cp ReferenceTests/refimage_updates.txt "./ReferenceImagesCombined/refimage_updates.txt"
 
           echo "Files and folders have been successfully combined into ReferenceImagesCombined."
       - uses: actions/upload-artifact@v7

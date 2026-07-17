@@ -91,6 +91,18 @@ num_diff_pixels, diff_img = pixelmatch(img1, img2)
 save("diff.png", diff_img)
 ```
 
+## Updating Reference Images
+
+A PR that intentionally changes rendering does not upload to the reference-image release directly. It records the images to update in `ReferenceTests/refimage_updates.txt` (per-backend `<Backend>/<name>.png` paths, each pinning the hash of the reference it replaces or `new`). CI exempts listed images while the pin matches, and the merge queue promotes them into the `refimages-vX.Y` release when the PR merges.
+
+To fill the manifest without running the backend suites locally (they are slow), let the PR's CI run first, then from a scratch env with `ReferenceUpdater` dev'ed and `GITHUB_TOKEN` set:
+
+```julia
+ReferenceUpdater.add_pr_updates_to_manifest(<pr_number>)   # or select = ["CairoMakie/foo.png", ...]
+```
+
+This reads the PR's CI artifact plus the current release tarball, so no local rendering is needed. See `ReferenceUpdater/README.md` for details.
+
 ## Code Formatting
 
 All code must be formatted before finalizing a PR:
