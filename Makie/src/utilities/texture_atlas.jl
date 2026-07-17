@@ -188,6 +188,7 @@ function alternativefonts()
             alternatives = [
                 "TeXGyreHerosMakie-Regular.otf",
                 "DejaVuSans.ttf",
+                "NotoSansCJKkr-Regular.otf",
                 "NotoSansCuneiform-Regular.ttf",
                 "NotoSansSymbols-Regular.ttf",
                 "FiraMono-Medium.ttf",
