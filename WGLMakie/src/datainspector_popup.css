@@ -11,12 +11,12 @@
     transform: translate(-50%, calc(-100% - 8px));
     background: white;
     color: black;
-    border: 2px solid black;
+    border: 1px solid black;
     border-radius: 0;
     padding: 2px 6px;
     white-space: pre;
     font-family: "TeXGyreHerosMakie", sans-serif;
-    font-size: 16px;
+    font-size: 14px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -39,13 +39,13 @@
 .datainspector-popup::before {
     top: 100%;
     transform: translateX(-50%);
-    border-width: 8px 7px 0 7px;
+    border-width: 6px 5px 0 5px;
     border-color: black transparent transparent transparent;
 }
 
 .datainspector-popup::after {
     top: calc(100% - 1px);
     transform: translateX(-50%);
-    border-width: 6px 5px 0 5px;
+    border-width: 5px 4px 0 4px;
     border-color: white transparent transparent transparent;
 }
