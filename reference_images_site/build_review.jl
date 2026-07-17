@@ -1,9 +1,5 @@
 using ReferenceUpdater
 using Bonito
-using BonitoSites
-
-pr_number = parse(Int, get(ENV, "PR_NUMBER", "1"))
-@info "Building reference images review page for PR $pr_number"
 
 root_path = joinpath(@__DIR__, "..", "reference_images_data")
 if !isdir(root_path)
@@ -11,24 +7,19 @@ if !isdir(root_path)
     exit(1)
 end
 
-build_dir = joinpath(@__DIR__, "build")
+build_dir = joinpath(@__DIR__, "review")
+rm(build_dir; force = true, recursive = true)
 mkpath(build_dir)
 
-app = ReferenceUpdater.serve_update_page_from_dir(root_path)
+backends = ["GLMakie", "CairoMakie", "WGLMakie"]
+thresholds = [0.05, 0.03, 0.01]
+app = Bonito.App(_ -> ReferenceUpdater.review_content(root_path, backends, thresholds))
 Bonito.export_static(joinpath(build_dir, "index.html"), app)
 @info "Self-contained review page written to $build_dir"
 
-BonitoSites.deploy(
-    ENV["GITHUB_REPOSITORY"];
-    target = build_dir,
-    subfolder = "reference_images/PR$pr_number",
-    push_preview = true,
-    devbranch = "master",
-)
-
 coverage = ReferenceUpdater.approval_coverage(root_path)
 state = coverage.n_approved == coverage.n_changed ? "success" : "failure"
-@info "Approval coverage: $(coverage.n_approved)/$(coverage.n_changed) new/changed images approved via manifest (state=$state)"
+@info "Approval coverage: $(coverage.n_approved)/$(coverage.n_changed) approved (state=$state)"
 if haskey(ENV, "GITHUB_OUTPUT")
     open(ENV["GITHUB_OUTPUT"], "a") do io
         println(io, "n_changed=", coverage.n_changed)
