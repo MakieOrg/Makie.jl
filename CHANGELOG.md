@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
+  `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
 - Scope the CairoMakie precompile workload's figures inside `let`, so rendered `Screen`s and their pixel buffers are no longer serialized into the package image (~150 MB smaller pkgimage) [#5692](https://github.com/MakieOrg/Makie.jl/pull/5692).
 - `tooltip` now inherits `fontsize` from the theme, sets its default outline `linewidth` to `1.0` to match axis spines, reduces its default `triangle_size` from `10` to `7`, and uses slightly wider horizontal `textpadding` [#5698](https://github.com/MakieOrg/Makie.jl/pull/5698).
 
@@ -22,6 +24,7 @@
 - Added `samples` as a `volume` attribute for controlling the number of ray samples and added `absorption` as a multiplier for sampled colors with `:additive`. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
 - Adjusted `volume` conversions to preserve `N0f8` and `Float16` types (numbers and color eltypes). This allows users to reduce (v)ram usage by choosing smaller types. [#5660](https://github.com/MakieOrg/Makie.jl/pull/5660)
 - Adjusted volume `algorithm = :additive` to include the ray step size as a weight. This should allow additive volumes to render without downscaling volume data [#5662](https://github.com/MakieOrg/Makie.jl/pull/5662)
+- Adjusted `PolarAxis` defaults to match `Axis`: lightened grid colors (fallback major grid is now `RGBAf(0, 0, 0, 0.12)`, was black at 50%; minor grid is now `RGBAf(0, 0, 0, 0.05)`, was black at 20%), reduced the default `spinewidth` from `2` to `1`, and matched the title `titlefont` (now `:bold`), `titlesize` fallback (now the plain `fontsize` instead of `1.2 × fontsize`), and `titlegap` (now `4`, and correctly inheriting `(:Axis, :titlegap)` instead of `(:Axis, :titlesize)`).
 
 ## [0.24.11] - 2026-05-30
 
