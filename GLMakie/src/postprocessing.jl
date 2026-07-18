@@ -133,6 +133,47 @@ function destroy!(pipeline::GLRenderPipeline)
     return
 end
 
+################################################################################
+### Stages
+################################################################################
+
+struct ClearStage <: GLRenderStage
+    framebuffer::GLFramebuffer
+end
+
+on_resize(stage::ClearStage, w, h) = resize!(stage.framebuffer, w, h)
+reconstruct(pass::ClearStage, screen, framebuffer, inputs, stage) = pass
+construct(::Val{:SceneClear}, screen, framebuffer, inputs, parent) = ClearStage(framebuffer)
+
+function run_stage(screen, glscene, stage::ClearStage)
+    set_draw_buffers(stage.framebuffer)
+
+    # Clear everything for safety (in case top level scene does not clear)
+    # (should be at least depth)
+    glDisable(GL_SCISSOR_TEST)
+    glDisable(GL_STENCIL_TEST)
+    wh = size(stage.framebuffer)
+    glViewport(0, 0, wh[1], wh[2])
+    glClearColor(1, 1, 1, 1)
+    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+
+    # Draw scene backgrounds for cleared scenes
+    glEnable(GL_SCISSOR_TEST)
+    ppu = screen.px_per_unit[]
+    for (id, scene) in screen.screens
+        if scene.visible[] && scene.clear[]
+            a = viewport(scene)[]
+            rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            glViewport(rt...)
+            glScissor(rt...)
+            c = scene.backgroundcolor[]
+            glClearColor(red(c), green(c), blue(c), alpha(c))
+            glClear(GL_COLOR_BUFFER_BIT)
+        end
+    end
+    glDisable(GL_SCISSOR_TEST)
+    return
+end
 
 struct SortPlots <: GLRenderStage end
 
