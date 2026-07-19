@@ -98,6 +98,16 @@ end
 
 duration(w::Wait, prev_position) = w.duration
 
+# Wait until `pred()` returns true (records frames meanwhile), up to `timeout`
+# seconds. Use for load-dependent async work (e.g. a GPU analysis whose duration
+# varies with recording overhead) instead of guessing a fixed Wait.
+struct WaitUntil
+    pred::Function
+    timeout::Float64
+end
+WaitUntil(pred; timeout = 60.0) = WaitUntil(pred, Float64(timeout))
+duration(w::WaitUntil, prev_position) = w.timeout
+
 struct LeftClick end
 
 duration(::LeftClick, _) = 0.15
@@ -209,6 +219,19 @@ function scrollevents_frame(s::Scroll, time, prev_time)
     return [Tuple(frac .* s.delta)]
 end
 
+"""
+    DropFiles(paths...)
+
+Delivers `paths` as an `events.dropped_files` event — what GLFW emits when
+the user drags files from a file manager onto the window.
+"""
+struct DropFiles
+    files::Vector{String}
+end
+DropFiles(paths::AbstractString...) = DropFiles(collect(String, paths))
+duration(::DropFiles, _) = 0.1
+droppedfiles_start(d::DropFiles) = d.files
+
 mouseevents_start(obj) = []
 mouseevents_end(obj) = []
 mouseevents_frame(obj, t) = []
@@ -219,6 +242,7 @@ keyboardevents_start(obj) = []
 keyboardevents_end(obj) = []
 unicode_inputs_frame(obj, time, prev_time) = []
 scrollevents_frame(obj, time, prev_time) = []
+droppedfiles_start(obj) = String[]
 
 function alpha_blend(fg::Makie.RGBA, bg::Makie.RGB)
     r = (fg.r * fg.alpha + bg.r * (1 - fg.alpha))
@@ -302,6 +326,8 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
             for keyevent in keyboardevents_start(event)
                 content_scene.events.keyboardbutton[] = keyevent
             end
+            dropped = droppedfiles_start(event)
+            isempty(dropped) || (content_scene.events.dropped_files[] = dropped)
             mousepositions = mousepositions_start(event, event_startposition)
             for mouseposition in mousepositions
                 content_scene.events.mouseposition[] = tuple(mouseposition...)
@@ -310,6 +336,8 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
 
             prev_t_in_event = 0.0
             while t < t_event + current_duration
+                # WaitUntil ends as soon as its predicate holds (timeout = current_duration)
+                event isa WaitUntil && event.pred() && break
                 t_in_event = t - t_event
                 mouseevents = mouseevents_frame(event, t_in_event)
                 for mouseevent in mouseevents
