@@ -166,12 +166,16 @@ mutable struct Screen{GLWindow} <: MakieScreen
 
 
     px_per_unit::Observable{Float32}
+
+    render_context::RenderContext
+
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     render_pipeline::GLRenderPipeline
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, Plot}
+
     framecache::Matrix{RGB{N0f8}}
     render_tick::Observable{Makie.TickState} # listeners must not Consume(true)
     window_open::Observable{Bool}
@@ -204,7 +208,9 @@ mutable struct Screen{GLWindow} <: MakieScreen
         screen = new{GLWindow}(
             glscreen, (10, 10), owns_glscreen, shader_cache, framebuffer_manager,
             config, Threads.Atomic{Bool}(stop_renderloop), rendertask, BudgetedTimer(1.0 / 30.0),
-            Observable(0.0f0), screen2scene,
+            Observable(0.0f0),
+            RenderContext(),
+            screen2scene,
             screens, renderlist, GLRenderPipeline(), cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
             Observable(true), Observable(0.0f0), nothing, reuse, true, false
@@ -498,6 +504,7 @@ function display_scene!(screen::Screen, scene::Scene)
     Makie.push_screen!(scene, screen)
     connect_screen(scene, screen)
     screen.scene = scene
+    recreate!(screen.render_context, screen, scene)
     return
 end
 

@@ -110,10 +110,10 @@ Base.length(pipeline::GLRenderPipeline) = length(pipeline.stages)
 Base.eltype(::Type{GLRenderPipeline}) = GLRenderStage
 
 # render each stage
-function render_frame(screen, glscene, pipeline::GLRenderPipeline)
+function render_frame(screen, scene_group, pipeline::GLRenderPipeline)
     for stage in pipeline
         require_context(screen.glscreen)
-        run_stage(screen, glscene, stage)
+        run_stage(screen, scene_group, stage)
     end
     return
 end
@@ -145,22 +145,22 @@ on_resize(stage::ClearStage, w, h) = resize!(stage.framebuffer, w, h)
 reconstruct(pass::ClearStage, screen, framebuffer, inputs, stage) = pass
 construct(::Val{:SceneClear}, screen, framebuffer, inputs, parent) = ClearStage(framebuffer)
 
-function run_stage(screen, glscene, stage::ClearStage)
+function run_stage(screen, scene_group, stage::ClearStage)
     set_draw_buffers(stage.framebuffer)
 
     # Clear everything for safety (in case top level scene does not clear)
     # (should be at least depth)
-    glDisable(GL_SCISSOR_TEST)
-    glDisable(GL_STENCIL_TEST)
-    wh = size(stage.framebuffer)
-    glViewport(0, 0, wh[1], wh[2])
-    glClearColor(1, 1, 1, 1)
-    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+    # glDisable(GL_SCISSOR_TEST)
+    # glDisable(GL_STENCIL_TEST)
+    # wh = size(stage.framebuffer)
+    # glViewport(0, 0, wh[1], wh[2])
+    # glClearColor(1, 1, 1, 1)
+    # glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
     # Draw scene backgrounds for cleared scenes
     glEnable(GL_SCISSOR_TEST)
     ppu = screen.px_per_unit[]
-    for (id, scene) in screen.screens
+    for scene in scene_group.scenes
         if scene.visible[] && scene.clear[]
             a = viewport(scene)[]
             rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
@@ -179,9 +179,8 @@ struct SortPlots <: GLRenderStage end
 
 construct(::Val{:ZSort}, screen, parent) = SortPlots()
 
-function run_stage(screen, glscene, ::SortPlots)
-    function sortby(x)
-        robj = x[3]
+function run_stage(screen, scene_group, ::SortPlots)
+    function sortby((scene_idx, robj))
         plot = screen.cache2plot[robj.id]
         # TODO: use actual boundingbox
         # ~7% faster than calling zvalue2d doing the same thing?
@@ -189,7 +188,7 @@ function run_stage(screen, glscene, ::SortPlots)
         # return Makie.zvalue2d(plot)
     end
 
-    sort!(screen.renderlist; by = sortby)
+    sort!(scene_group.renderobjects; by = sortby)
     return
 end
 
@@ -327,12 +326,13 @@ end
 
 on_resize(stage::RenderPlots, w, h) = resize!(stage.framebuffer, w, h)
 
-function run_stage(screen, glscene, stage::RenderPlots)
+function run_stage(screen, scene_group, stage::RenderPlots)
     # Somehow errors in here get ignored silently!?
     try
         require_context(screen.glscreen)
         GLAbstraction.bind(stage.framebuffer)
 
+        # This is clearing specific to how we render plots, not scene related clearing
         for (idx, color) in stage.clear
             idx <= stage.framebuffer.counter || continue
             glDrawBuffer(stage.framebuffer.attachments[idx])
@@ -342,11 +342,11 @@ function run_stage(screen, glscene, stage::RenderPlots)
 
         set_draw_buffers(stage.framebuffer)
 
-        for (zindex, screenid, elem) in screen.renderlist
+        for (scene_idx, elem) in scene_group.renderobjects
             elem.visible && haskey(elem.variants, stage.target) || continue
 
-            found, scene = id2scene(screen, screenid)
-            (found && scene.visible[]) || continue
+            scene = scene_group.scenes[scene_idx]
+            scene.visible[] || continue
 
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
@@ -415,7 +415,7 @@ function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
     return RenderPass{:OIT}(framebuffer, robj)
 end
 
-function run_stage(screen, glscene, stage::RenderPass{:OIT})
+function run_stage(screen, scene_group, stage::RenderPass{:OIT})
     # Blend transparent onto opaque
     wh = size(stage.framebuffer)
     set_draw_buffers(stage.framebuffer)
@@ -468,7 +468,7 @@ function construct(::Val{:SSAO2}, screen, framebuffer, inputs, parent)
     return RenderPass{:SSAO2}(framebuffer, robj)
 end
 
-function run_stage(screen, glscene, stage::RenderPass{:SSAO1})
+function run_stage(screen, scene_group, stage::RenderPass{:SSAO1})
     set_draw_buffers(stage.framebuffer)  # occlusion buffer
 
     wh = size(stage.framebuffer)
@@ -501,7 +501,7 @@ function run_stage(screen, glscene, stage::RenderPass{:SSAO1})
     return
 end
 
-function run_stage(screen, glscene, stage::RenderPass{:SSAO2})
+function run_stage(screen, scene_group, stage::RenderPass{:SSAO2})
     # TODO: SSAO doesn't copy the full color buffer and writes to a buffer
     #       previously used for normals. Figure out a better solution than this:
     setup!(screen, stage.framebuffer)
@@ -563,7 +563,7 @@ function construct(::Val{:FXAA2}, screen, framebuffer, inputs, parent)
     return RenderPass{:FXAA2}(framebuffer, robj)
 end
 
-function run_stage(screen, glscene, stage::RenderPass{:FXAA1})
+function run_stage(screen, scene_group, stage::RenderPass{:FXAA1})
     # FXAA - calculate LUMA
     set_draw_buffers(stage.framebuffer)
     # TODO: make scissor explicit?
@@ -577,7 +577,7 @@ function run_stage(screen, glscene, stage::RenderPass{:FXAA1})
     return
 end
 
-function run_stage(screen, glscene, stage::RenderPass{:FXAA2})
+function run_stage(screen, scene_group, stage::RenderPass{:FXAA2})
     # FXAA - perform anti-aliasing
     set_draw_buffers(stage.framebuffer)  # color buffer
     stage.robj[:RCPFrame] = rcpframe(size(stage.framebuffer))
@@ -604,7 +604,7 @@ function construct(::Val{:MSAAResolve}, screen, stage::Makie.LoweredStage)
     return MSAAResolve(input_framebuffer, output_framebuffer)
 end
 
-function run_stage(screen, ::Nothing, stage::MSAAResolve)
+function run_stage(screen, scene_group, stage::MSAAResolve)
     w, h = size(stage.output_framebuffer)
     flag = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
 
@@ -642,7 +642,7 @@ function construct(::Val{:Display}, screen, stage::Makie.LoweredStage)
     return BlitToScreen(source_framebuffer, screen.framebuffer_manager.accumulation)
 end
 
-function run_stage(screen, ::Nothing, stage::BlitToScreen)
+function run_stage(screen, scene_group, stage::BlitToScreen)
     glBindFramebuffer(GL_READ_FRAMEBUFFER, stage.source_framebuffer.id)
     glReadBuffer(get_attachment(stage.source_framebuffer, :color))
 

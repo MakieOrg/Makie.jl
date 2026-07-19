@@ -15,16 +15,14 @@ function prepare_frame(screen, resize_buffers)
     # TODO: temporary, keep track of this in screen owned framebuffer
     stage = last(screen.render_pipeline.stages)::BlitToScreen
     fb = stage.source_framebuffer
-    if haskey(fb, :objectid)
-        # clear objectid
-        wh = size(fb)
-        glDisable(GL_SCISSOR_TEST)
-        glDisable(GL_STENCIL_TEST)
-        set_draw_buffers(fb, :objectid)
-        glViewport(0, 0, wh[1], wh[2])
-        glClearColor(0, 0, 0, 0)
-        glClear(GL_COLOR_BUFFER_BIT)
-    end
+    # clear objectid, color (probably redundant), depth, stencil
+    wh = size(fb)
+    glDisable(GL_SCISSOR_TEST)
+    glDisable(GL_STENCIL_TEST)
+    set_draw_buffers(fb)
+    glViewport(0, 0, wh[1], wh[2])
+    glClearColor(0, 0, 0, 0)
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
 
     return
 end
@@ -41,7 +39,9 @@ function render_frame(screen::Screen; resize_buffers = true)
 
     prepare_frame(screen, resize_buffers)
 
-    render_frame(screen, nothing, screen.render_pipeline)
+    for group in reverse(screen.render_context.groups)
+        render_frame(screen, group, screen.render_pipeline)
+    end
 
     copy_to_screen(screen, screen.framebuffer_manager.accumulation)
 
