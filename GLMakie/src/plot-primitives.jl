@@ -304,6 +304,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     screen.cache2plot[robj.id] = plot
     screen.cache[objectid(plot)] = robj
     push!(screen, scene, robj)
+    insert_robj!(screen.render_context, scene, robj)
 
     # For debugging/checking uniforms
     # missing_uniforms(robj, [inputs; uniforms;], input2glname)

@@ -61,6 +61,14 @@ function SSAO(; radius = nothing, bias = nothing, blur = nothing)
 end
 
 """
+    insert_scene!(screen, scene)
+
+Adds a newly created scene to a backend screen. This is not expected to add
+child scenes or plots.
+"""
+insert_scene!(screen, scene) = nothing
+
+"""
     Scene TODO document this
 
 ## Constructors
@@ -170,6 +178,7 @@ mutable struct Scene <: AbstractScene
                 scene.isclosed = true
             end
         end
+
         # Only finalize the root scene!
         # Children can not go out of scope without their parent being finalized
         if isnothing(parent)
@@ -180,7 +189,15 @@ mutable struct Scene <: AbstractScene
                     @error "Error while freeing scene" exception = (e, catch_backtrace())
                 end
             end
+        else
+            push!(parent.children, scene)
         end
+
+        # May require parent to know about this scene
+        for screen in scene.current_screens
+            Base.invokelatest(insert_scene!, screen, scene)
+        end
+
         return scene
     end
 end
@@ -413,8 +430,6 @@ function Scene(
             error("viewport must be an Observable{Rect2} or a Rect2")
         end
     end
-    push!(parent.children, child)
-    child.parent = parent
     return child
 end
 

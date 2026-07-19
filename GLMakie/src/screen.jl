@@ -582,6 +582,11 @@ function add_scene!(screen::Screen, scene::Scene)
     return
 end
 
+function Makie.insert_scene!(screen::Screen, scene::Scene)
+    insert_scene!(screen.render_context, screen, scene)
+    return
+end
+
 function Makie.insertplots!(screen::Screen, scene::Scene)
     gl_switch_context!(screen.glscreen)
     add_scene!(screen, scene)
