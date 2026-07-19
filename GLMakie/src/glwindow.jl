@@ -27,6 +27,9 @@ mutable struct FramebufferManager
     context::GLAbstraction.GLContext
     size::NTuple{2, Int}
 
+    # separate for accumulating from multiple render pipeline runs
+    accumulation::GLFramebuffer
+
     buffers::Vector{Texture}
     # TODO: Consider removing this and handling resize and deletion in framebuffer.
     # This might be useful to allow half-resolution rendering for example.
@@ -34,7 +37,7 @@ mutable struct FramebufferManager
 end
 
 Makie.@noconstprop function FramebufferManager(context, fb_size::NTuple{2, Int})
-    return FramebufferManager(context, fb_size, Texture[], GLFramebuffer[])
+    return FramebufferManager(context, fb_size, GLFramebuffer(nothing), Texture[], GLFramebuffer[])
 end
 
 Base.size(manager::FramebufferManager) = manager.size
@@ -55,6 +58,10 @@ function destroy!(manager::FramebufferManager)
     ShaderAbstractions.switch_context!(ctx)
     # avoid try .. catch at call site, and allow cleanup to run
     GLAbstraction.require_context_no_error(ctx)
+
+    GLAbstraction.free.(manager.accumulation.buffers)
+    GLAbstraction.free(manager.accumulation)
+    empty!(manager.accumulation)
 
     GLAbstraction.free.(manager.buffers)
     GLAbstraction.free.(manager.children)
@@ -102,6 +109,23 @@ Makie.@noconstprop function generate_framebuffer(manager::FramebufferManager, na
     push!(manager.children, fb)
 
     return fb
+end
+
+function initialize_accumulation_framebuffer!(manager::FramebufferManager)
+    manager.accumulation = GLFramebuffer(manager.context, size(manager))
+    attach_colorbuffer(
+        manager.accumulation, :color,
+        Texture(manager.context, RGBA{N0f8}, size(manager))
+    )
+    attach_depthstencilbuffer(
+        manager.accumulation, :depth_stencil,
+        Texture(
+            manager.context, Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL),
+            size(manager), minfilter = :nearest, x_repeat = :clamp_to_edge,
+            internalformat = GL_DEPTH24_STENCIL8, format = GL_DEPTH_STENCIL
+        )
+    )
+    return manager.accumulation
 end
 
 

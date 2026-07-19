@@ -13,38 +13,40 @@ function initialize_attachments!(manager::FramebufferManager, formats::Vector{Ma
     to_internalformat(::Type{<:Makie.BFT.Depth{32}}) = GL_DEPTH_COMPONENT32F
 
     # function barrier for types?
-    function get_buffer!(context, T, format)
+    function get_buffer!(manager, T, format)
+        context = manager.context
         is_depth_buffer = Makie.is_depth_format(format)
         is_stencil_buffer = Makie.is_stencil_format(format)
         is_depth_stencil_buffer = Makie.is_depth_stencil_format(format)
 
         if is_depth_buffer || is_stencil_buffer || is_depth_stencil_buffer
-            if is_depth_stencil_buffer
-                # TODO: allow 32-8 depth stencil
-                T === Makie.BFT.Depth24Stencil8 || error("$T not supported as a depth stencil buffer type.")
-                return Texture(
-                    context, Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), size(manager),
-                    minfilter = :nearest, x_repeat = :clamp_to_edge,
-                    internalformat = GL_DEPTH24_STENCIL8,
-                    format = GL_DEPTH_STENCIL, samples = format.samples
-                )
-            elseif is_depth_buffer
-                T === Nothing && error("Buffer element type is invalid.")
-                return Texture(
-                    context, Ptr{Float32}(C_NULL), size(manager),
-                    minfilter = :nearest, x_repeat = :clamp_to_edge,
-                    format = GL_DEPTH_COMPONENT, internalformat = to_internalformat(T),
-                    samples = format.samples
-                )
-            else
-                # untested
-                T === Nothing && error("Buffer element type is invalid.")
-                return Texture(
-                    context, T, size(manager),
-                    minfilter = :nearest, x_repeat = :clamp_to_edge,
-                    format = GL_STENCIL, samples = format.samples
-                )
-            end
+            # if is_depth_stencil_buffer
+            #     # TODO: allow 32-8 depth stencil
+            #     T === Makie.BFT.Depth24Stencil8 || error("$T not supported as a depth stencil buffer type.")
+            #     return Texture(
+            #         context, Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), size(manager),
+            #         minfilter = :nearest, x_repeat = :clamp_to_edge,
+            #         internalformat = GL_DEPTH24_STENCIL8,
+            #         format = GL_DEPTH_STENCIL, samples = format.samples
+            #     )
+            # elseif is_depth_buffer
+            #     T === Nothing && error("Buffer element type is invalid.")
+            #     return Texture(
+            #         context, Ptr{Float32}(C_NULL), size(manager),
+            #         minfilter = :nearest, x_repeat = :clamp_to_edge,
+            #         format = GL_DEPTH_COMPONENT, internalformat = to_internalformat(T),
+            #         samples = format.samples
+            #     )
+            # else
+            #     # untested
+            #     T === Nothing && error("Buffer element type is invalid.")
+            #     return Texture(
+            #         context, T, size(manager),
+            #         minfilter = :nearest, x_repeat = :clamp_to_edge,
+            #         format = GL_STENCIL, samples = format.samples
+            #     )
+            # end
+            return get_buffer(manager.accumulation, :depth_stencil)
         end
 
         is_float_format = eltype(T) == N0f8 || eltype(T) <: AbstractFloat
@@ -71,7 +73,7 @@ function initialize_attachments!(manager::FramebufferManager, formats::Vector{Ma
 
     # Add buffers in the order of `formats`
     for format in formats
-        tex = get_buffer!(manager.context, Makie.format_to_type(format), format)
+        tex = get_buffer!(manager, Makie.format_to_type(format), format)
         push!(manager.buffers, tex)
     end
 
@@ -105,6 +107,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
     # Generate all the necessary attachments in the order given above so the
     # correct GLFramebuffers can be generated
     destroy!(manager)
+    initialize_accumulation_framebuffer!(manager)
     initialize_attachments!(manager, pipeline.formats)
 
     # verify that last stage is display

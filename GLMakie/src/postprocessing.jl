@@ -626,27 +626,28 @@ end
 
 # TODO: Could also handle integration with Gtk, CImGui, etc with a dedicated struct
 struct BlitToScreen <: GLRenderStage
-    framebuffer::GLFramebuffer
-    screen_framebuffer_id::Int
+    source_framebuffer::GLFramebuffer
+    target_framebuffer::GLFramebuffer
 end
 
-on_resize(stage::BlitToScreen, w, h) = resize!(stage.framebuffer, w, h)
+function on_resize(stage::BlitToScreen, w, h)
+    resize!(stage.source_framebuffer, w, h)
+    resize!(stage.target_framebuffer, w, h)
+    return
+end
 
 function construct(::Val{:Display}, screen, stage::Makie.LoweredStage)
     require_context(screen.glscreen)
-    framebuffer = generate_framebuffer(screen.framebuffer_manager, stage.inputs)
-    id = get(stage.attributes, :screen_framebuffer_id, 0)
-    return BlitToScreen(framebuffer, id)
+    source_framebuffer = generate_framebuffer(screen.framebuffer_manager, stage.inputs)
+    return BlitToScreen(source_framebuffer, screen.framebuffer_manager.accumulation)
 end
 
 function run_stage(screen, ::Nothing, stage::BlitToScreen)
-    # Set source
-    # glBindFramebuffer(GL_READ_FRAMEBUFFER, stage.framebuffer.id)
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, stage.framebuffer.id)
-    glReadBuffer(get_attachment(stage.framebuffer, :color)) # for safety
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, stage.source_framebuffer.id)
+    glReadBuffer(get_attachment(stage.source_framebuffer, :color))
 
-    # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stage.screen_framebuffer_id)
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stage.target_framebuffer.id)
+    glDrawBuffer(get_attachment(stage.target_framebuffer, :color))
 
     src_w, src_h = framebuffer_size(screen)
     trg_w, trg_h = makie_window_size(screen)

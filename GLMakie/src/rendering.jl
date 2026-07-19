@@ -14,10 +14,10 @@ function prepare_frame(screen, resize_buffers)
 
     # TODO: temporary, keep track of this in screen owned framebuffer
     stage = last(screen.render_pipeline.stages)::BlitToScreen
-    fb = stage.framebuffer
+    fb = stage.source_framebuffer
     if haskey(fb, :objectid)
         # clear objectid
-        wh = size(stage.framebuffer)
+        wh = size(fb)
         glDisable(GL_SCISSOR_TEST)
         glDisable(GL_STENCIL_TEST)
         set_draw_buffers(fb, :objectid)
@@ -43,7 +43,34 @@ function render_frame(screen::Screen; resize_buffers = true)
 
     render_frame(screen, nothing, screen.render_pipeline)
 
+    copy_to_screen(screen, screen.framebuffer_manager.accumulation)
+
     GLAbstraction.require_context(to_native(screen))
+
+    return
+end
+
+"""
+    copy_to_screen(screen, framebuffer)
+
+Copies the final render to the screen for displaying.
+
+Can be extended for other window types by dispatching on `Screen{WindowType}`
+"""
+function copy_to_screen(screen::Screen, fb)
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fb.id)
+    glReadBuffer(get_attachment(fb, :color))
+
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
+
+    src_w, src_h = framebuffer_size(screen)
+    trg_w, trg_h = makie_window_size(screen)
+
+    glBlitFramebuffer(
+        0, 0, src_w, src_h,
+        0, 0, trg_w, trg_h,
+        GL_COLOR_BUFFER_BIT, GL_LINEAR
+    )
 
     return
 end
