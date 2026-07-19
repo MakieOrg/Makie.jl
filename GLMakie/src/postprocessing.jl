@@ -624,39 +624,35 @@ function run_stage(screen, scene_group, stage::MSAAResolve)
 end
 
 
-# TODO: Could also handle integration with Gtk, CImGui, etc with a dedicated struct
-struct BlitToScreen <: GLRenderStage
-    source_framebuffer::GLFramebuffer
-    target_framebuffer::GLFramebuffer
-end
-
-function on_resize(stage::BlitToScreen, w, h)
-    resize!(stage.source_framebuffer, w, h)
-    resize!(stage.target_framebuffer, w, h)
-    return
-end
-
-function construct(::Val{:Display}, screen, stage::Makie.LoweredStage)
+function construct(::Val{:Display}, screen, stage)
     require_context(screen.glscreen)
-    source_framebuffer = generate_framebuffer(screen.framebuffer_manager, stage.inputs)
-    return BlitToScreen(source_framebuffer, screen.framebuffer_manager.accumulation)
+
+    shader = LazyShader(
+        screen.shader_cache,
+        loadshader("postprocessing/fullscreen.vert"),
+        loadshader("postprocessing/copy.frag")
+    )
+    prerender = () -> begin
+        glDepthMask(GL_TRUE)
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_CULL_FACE)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    end
+    inputs = collect_buffers(screen.framebuffer_manager, stage.inputs)
+    robj = PostProcessRenderObject(
+        screen,
+        Dict{Symbol, Any}(:color_buffer => inputs[:color_buffer]),
+        shader, prerender = prerender
+    )
+    return RenderPass{:Display}(screen.framebuffer_manager.accumulation, robj)
 end
 
-function run_stage(screen, scene_group, stage::BlitToScreen)
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, stage.source_framebuffer.id)
-    glReadBuffer(get_attachment(stage.source_framebuffer, :color))
-
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stage.target_framebuffer.id)
-    glDrawBuffer(get_attachment(stage.target_framebuffer, :color))
-
-    src_w, src_h = framebuffer_size(screen)
-    trg_w, trg_h = makie_window_size(screen)
-
-    glBlitFramebuffer(
-        0, 0, src_w, src_h,
-        0, 0, trg_w, trg_h,
-        GL_COLOR_BUFFER_BIT, GL_LINEAR
-    )
-
+function run_stage(screen, scene_group, stage::RenderPass{:Display})
+    # Blend transparent onto opaque
+    wh = size(stage.framebuffer)
+    set_draw_buffers(stage.framebuffer)
+    glViewport(0, 0, wh[1], wh[2])
+    GLAbstraction.render(stage.robj)
     return
 end

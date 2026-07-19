@@ -12,17 +12,45 @@ function prepare_frame(screen, resize_buffers)
         resize!(screen.render_pipeline, new_size...)
     end
 
-    # TODO: temporary, keep track of this in screen owned framebuffer
-    stage = last(screen.render_pipeline.stages)::BlitToScreen
-    fb = stage.source_framebuffer
-    # clear objectid, color (probably redundant), depth, stencil
+    # Clear stencil, depth, objectid (and color, but that should not be needed)
+    fb = screen.framebuffer_manager.accumulation
     wh = size(fb)
     glDisable(GL_SCISSOR_TEST)
     glDisable(GL_STENCIL_TEST)
     set_draw_buffers(fb)
     glViewport(0, 0, wh[1], wh[2])
     glClearColor(0, 0, 0, 0)
+    glClearStencil(0)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
+
+    # prepare for stencil being used
+    glEnable(GL_STENCIL_TEST)
+    glStencilFunc(GL_EQUAL, 0, 0xff)
+
+    return
+end
+
+function update_stencil!(screen::Screen, scene_group, fb)
+    GLAbstraction.bind(fb)
+
+    # draw 1 to stencil buffer for every cleared scene viewport
+    glEnable(GL_SCISSOR_TEST)
+    glEnable(GL_STENCIL_TEST)
+    glStencilFunc(GL_ALWAYS, 0, 0xff)
+    glClearStencil(1)
+    ppu = screen.px_per_unit[]
+    for scene in scene_group.scenes
+        if scene.visible[] && scene.clear[]
+            a = viewport(scene)[]
+            rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            glScissor(rt...)
+            glClear(GL_STENCIL_BUFFER_BIT)
+        end
+    end
+    glDisable(GL_SCISSOR_TEST)
+
+    # And reset to a useful stencil function
+    glStencilFunc(GL_EQUAL, 0, 0xff)
 
     return
 end
@@ -39,8 +67,12 @@ function render_frame(screen::Screen; resize_buffers = true)
 
     prepare_frame(screen, resize_buffers)
 
-    for group in reverse(screen.render_context.groups)
+    # Render groups front to back where the stencil is empty (0)
+    # then add all cleared areas of the group to the stencil so we don't render
+    # under them
+    for group in screen.render_context.groups
         render_frame(screen, group, screen.render_pipeline)
+        update_stencil!(screen, group, screen.framebuffer_manager.accumulation)
     end
 
     copy_to_screen(screen, screen.framebuffer_manager.accumulation)

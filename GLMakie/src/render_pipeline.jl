@@ -116,6 +116,12 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
         error("The final stage must be a Display stage with inputs (:depth, :color, :objectid). $final_stage")
     end
 
+    for (name, idx) in final_stage.inputs
+        if name === :objectid
+            attach_colorbuffer(manager.accumulation, :objectid, get_buffer(manager, idx))
+        end
+    end
+
     # Constructing a RenderStep can be somewhat costly, so we want to reuse them
     # if possible. Steps that aren't reused and thus need to be deleted are
     # tracked here:
