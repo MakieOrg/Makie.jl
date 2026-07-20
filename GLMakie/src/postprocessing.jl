@@ -286,6 +286,15 @@ end
 
 on_resize(stage::RenderPlots, w, h) = resize!(stage.framebuffer, w, h)
 
+# glViewport / glScissor take GLint pixel extents. A scene whose viewport hasn't
+# been laid out yet carries the empty-`Rect2i()` sentinel (typemax/typemin), which
+# makes `effective_clip`'s Int64 `intersect` overflow to a garbage-but-finite rect;
+# `round(Int, ppu .* that)` then throws `InexactError` and kills the whole frame
+# (seen as "Error while rendering!" on the very first render of a fresh window).
+# Clamp each component to a sane pixel range so a transient pre-layout viewport
+# degrades to a valid rect instead of crashing the render loop.
+@inline gl_extent(x::Real) = isfinite(x) ? round(GLint, clamp(x, -1.0f8, 1.0f8)) : GLint(0)
+
 function run_stage(screen, glscene, stage::RenderPlots)
     # Somehow errors in here get ignored silently!?
     try
@@ -317,8 +326,8 @@ function run_stage(screen, glscene, stage::RenderPlots)
             sa = Makie.effective_clip(scene)
 
             require_context(screen.glscreen)
-            glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-            glScissor(round.(Int, ppu .* minimum(sa))..., round.(Int, ppu .* widths(sa))...)
+            glViewport(gl_extent.(ppu .* minimum(a))..., gl_extent.(ppu .* widths(a))...)
+            glScissor(gl_extent.(ppu .* minimum(sa))..., gl_extent.(ppu .* widths(sa))...)
             elem[:px_per_unit] = ppu
 
             stage.prerender(elem[:overdraw]::UInt8)

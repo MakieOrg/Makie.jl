@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed a GLMakie `InexactError` that killed the first render of a fresh window when a scene's viewport had not been laid out yet: the empty-`Rect2i()` sentinel (typemax/typemin) makes `effective_clip`'s Int64 `intersect` overflow to a garbage-but-finite rect, and rounding that to `Int` for `glViewport`/`glScissor` threw. The per-scene scissor code now clamps each pixel extent to a sane `GLint` range (`gl_extent`).
 - Added a unified `colors` theme block for Block widgets, plus a `Makie.derive_colors(; accent, gray, background)` helper that produces a full scheme from a few inputs. `set_theme!(colors = Makie.derive_colors(accent = :crimson))` recolors every interactive Block consistently — see the Block colors docs. Default neutral surfaces shift very slightly from the historical literals. [#5628](https://github.com/MakieOrg/Makie.jl/pull/5628)
   - The `@inherit` macro inside `@Block` now accepts a tuple of symbols (`@inherit((:colors, :accent), default)`) to walk nested theme dicts.
 - Added `Tabs` and `Subfigure` blocks, a tabbed container and the scrollable, event-isolated sub-region it is built on. [#5650](https://github.com/MakieOrg/Makie.jl/pull/5650)
