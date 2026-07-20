@@ -124,9 +124,14 @@ function RenderContext()
     return RenderContext(Dict{UInt64, Int}(), RenderGroup[])
 end
 
-function recreate!(ctx::RenderContext, screen, root::Scene)
+function Base.empty!(ctx::RenderContext)
     empty!(ctx.scene2group)
     empty!(ctx.groups)
+    return
+end
+
+function recreate!(ctx::RenderContext, screen, root::Scene)
+    empty!(ctx)
     build_groups!(ctx, screen, root)
     return
 end
@@ -182,6 +187,8 @@ function find_previous_scene(scene::Scene)
 end
 
 function Makie.insert_scene!(ctx::RenderContext, screen, scene)
+    # TODO: verify that scenes don't get added multiple times
+
     # The given scene renders before "previous" in front to back rendering order.
     # Therefore it takes its spot in `group.scenes`
     previous = find_previous_scene(scene)
@@ -212,8 +219,17 @@ function Makie.insert_scene!(ctx::RenderContext, screen, scene)
         end
     end
 
-    # TODO: Do we need this?
-    add_scene!(screen, scene)
+    screen.requires_update = true
+    # TODO: Does this consume?
+    onany(
+        (args...) -> screen.requires_update = true,
+        scene,
+        scene.visible, scene.backgroundcolor, scene.clear,
+        scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview,
+        scene.camera.resolution
+    )
+
+    # TODO: scene.clear should cause update of scene grouping
 
     return
 end

@@ -8,7 +8,7 @@ draw_atomic(::Screen, ::Scene, ::PlotList) = nothing
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     gl_switch_context!(screen.glscreen)
-    add_scene!(screen, scene)
+    # add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
@@ -18,7 +18,7 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     elseif x isa Makie.PlotList
         # ignore unless not yet displayed
         Makie.for_each_atomic_plot(x) do plot
-            if !haskey(screen.cache, objectid(plot))
+            if !haskey(plot, :gl_renderobject)
                 insert!(screen, scene, plot)
             end
         end
@@ -302,8 +302,6 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     attr.gl_renderobject[]
 
     screen.cache2plot[robj.id] = plot
-    screen.cache[objectid(plot)] = robj
-    push!(screen, scene, robj)
     insert_robj!(screen.render_context, scene, robj)
 
     # For debugging/checking uniforms

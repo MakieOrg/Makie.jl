@@ -317,14 +317,6 @@ function construct(::Val{Symbol("OIT Render")}, screen, framebuffer, inputs, par
     )
 end
 
-function id2scene(screen, id1)
-    # TODO: maybe we should use a different data structure
-    for (id2, scene) in screen.screens
-        id1 == id2 && return true, scene
-    end
-    return false, nothing
-end
-
 on_resize(stage::RenderPlots, w, h) = resize!(stage.framebuffer, w, h)
 
 function run_stage(screen, scene_group, stage::RenderPlots)
