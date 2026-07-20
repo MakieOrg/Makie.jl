@@ -39,8 +39,9 @@ function update_stencil!(screen::Screen, scene_group, fb)
     glStencilFunc(GL_ALWAYS, 0, 0xff)
     glClearStencil(1)
     ppu = screen.px_per_unit[]
-    for scene in scene_group.scenes
-        if scene.visible[] && scene.clear[]
+    for scene_ref in scene_group.scenes
+        scene = scene_ref.value
+        if !isnothing(scene) && scene.visible[] && scene.clear[]
             a = viewport(scene)[]
             rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             glScissor(rt...)

@@ -636,6 +636,7 @@ function Base.delete!(screen::Screen, scene::Scene)
             end
         end
     end
+    delete_scene!(screen.render_context, scene)
     return
 end
 
@@ -686,6 +687,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
             destroy!(renderobject)
             filter!(x -> x[3] !== renderobject, screen.renderlist)
             delete!(screen.cache2plot, renderobject.id)
+            delete_robj!(screen.render_context, scene, renderobject)
         end
     end
     delete!(screen.cache, objectid(plot))

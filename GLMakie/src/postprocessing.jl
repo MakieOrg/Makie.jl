@@ -160,8 +160,9 @@ function run_stage(screen, scene_group, stage::ClearStage)
     # Draw scene backgrounds for cleared scenes
     glEnable(GL_SCISSOR_TEST)
     ppu = screen.px_per_unit[]
-    for scene in scene_group.scenes
-        if scene.visible[] && scene.clear[]
+    for scene_ref in scene_group.scenes
+        scene = scene_ref.value
+        if !isnothing(scene) && scene.visible[] && scene.clear[]
             a = viewport(scene)[]
             rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             glViewport(rt...)
@@ -345,8 +346,10 @@ function run_stage(screen, scene_group, stage::RenderPlots)
         for (scene_idx, elem) in scene_group.renderobjects
             elem.visible && haskey(elem.variants, stage.target) || continue
 
-            scene = scene_group.scenes[scene_idx]
-            scene.visible[] || continue
+            scene = scene_group.scenes[scene_idx].value
+            if isnothing(scene) || !scene.visible[]
+                continue
+            end
 
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
@@ -477,7 +480,10 @@ function run_stage(screen, scene_group, stage::RenderPass{:SSAO1})
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
 
     data = stage.robj.uniforms
-    for (screenid, scene) in screen.screens
+    # TODO: require groups to have consistent SSAO settings?
+    for scene_ref in scene_group.scenes
+        scene = scene_ref.value
+        isnothing(scene) && continue
         # Select the area of one leaf scene
         # This should be per scene because projection may vary between
         # scenes. It should be a leaf scene to avoid repeatedly shading
@@ -514,7 +520,10 @@ function run_stage(screen, scene_group, stage::RenderPass{:SSAO2})
     glEnable(GL_SCISSOR_TEST)
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
     data = stage.robj.uniforms
-    for (screenid, scene) in screen.screens
+    # TODO: require groups to have consistent SSAO settings?
+    for scene_ref in scene_group.scenes
+        scene = scene_ref.value
+        isnothing(scene) && continue
         # Select the area of one leaf scene
         isempty(scene.children) || continue
         a = viewport(scene)[]

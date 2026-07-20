@@ -5,9 +5,8 @@
 # - allow accumulation of negative stencils (draw this, then exclude it from the next group)
 # - allow merging of scenes w.r.t depth buffers
 struct RenderGroup
-    # And whatever is needed for identification?
     gl_pipeline::GLRenderPipeline
-    scenes::Vector{Scene} # TODO: probably WeakRef? Or IdDict?
+    scenes::Vector{WeakRef}
     renderobjects::Vector{Tuple{Int, RenderObject}}
 end
 
@@ -17,11 +16,17 @@ end
 # Base.show(io::IO, ::MIME"text/plain", group::RenderGroup)
 
 function RenderGroup(pipeline)
-    return RenderGroup(pipeline, Scene[], Tuple{Int, RenderObject}[])
+    return RenderGroup(pipeline, WeakRef[], Tuple{Int, RenderObject}[])
 end
 
-function RenderGroup(pipeline, scenes)
-    return RenderGroup(pipeline, scenes, collect_renderobjects!(Tuple{Int, RenderObject}[], scenes))
+function RenderGroup(pipeline, scenes::AbstractVector{Scene})
+    return RenderGroup(pipeline, WeakRef.(scenes))
+end
+
+function RenderGroup(pipeline, scenes::AbstractVector{WeakRef})
+    return RenderGroup(
+        pipeline, scenes, collect_renderobjects!(Tuple{Int, RenderObject}[], scenes)
+    )
 end
 
 function collect_renderobjects!(buffer, scenes::Vector)
@@ -31,6 +36,12 @@ function collect_renderobjects!(buffer, scenes::Vector)
     end
     return buffer
 end
+
+function collect_renderobjects!(buffer, scene_idx, scene::WeakRef)
+    return collect_renderobjects!(buffer, scene_idx, scene.value)
+end
+
+collect_renderobjects!(buffer, scene_idx, ::Nothing) = nothing
 
 function collect_renderobjects!(buffer, scene_idx, scene::Scene)
     for plot in scene.plots
@@ -52,7 +63,7 @@ end
 isfinished(group::RenderGroup) = last(group.scenes).clear[]
 
 function push_scene!(group::RenderGroup, screen, scene::Scene)
-    push!(group.scenes, scene)
+    push!(group.scenes, WeakRef(scene))
     # for plot in scene.plots
     #     insert!(screen, group.renderobjects, plot)
     # end
@@ -62,6 +73,27 @@ end
 
 Base.isempty(group::RenderGroup) = isempty(group.scenes)
 
+function delete_scene!(group::RenderGroup, scene::Scene)
+    for (i, ref) in enumerate(group.scenes)
+        if ref === nothing || ref === scene
+            filter!(x -> x[1] != i, group.renderobjects)
+            for (j, (scene_idx, robj)) in enumerate(group.renderobjects)
+                if scene_idx > i
+                    group.renderobjects[j] = (scene_idx - 1, robj)
+                end
+            end
+            deleteat!(group.scenes, i)
+            # Repeat in case we have GC'd weakrefs alongside the deleted scene
+            return delete_scene!(group, scene)
+        end
+    end
+    return
+end
+
+function delete_robj!(group::RenderGroup, robj::RenderObject)
+    filter!(x -> x[2] !== robj, group.renderobjects)
+    return
+end
 
 # Manages all the rendering stuff
 struct RenderContext
@@ -71,7 +103,7 @@ struct RenderContext
     robj2plot::Dict{UInt32, Plot}
     # Needed for plot (and scene?) insertion?
     # Needed for scene insertion?
-    scene2group::Dict{Scene, Int}
+    scene2group::Dict{UInt64, Int}
 
     groups::Vector{RenderGroup}
 end
@@ -108,22 +140,22 @@ function build_groups!(ctx::RenderContext, screen, scene)
     end
     group = last(ctx.groups)
     push_scene!(group, screen, scene)
-    ctx.scene2group[scene] = length(ctx.groups)
+    ctx.scene2group[objectid(scene)] = length(ctx.groups)
     return
 end
 
-function insert_plot!(ctx::RenderContext, screen, scene, plot)
-    @assert haskey(ctx.scene2group, scene)
-    idx = ctx.scene2group[scene]
-    # just needs some management updates in insert!(screen, scene, plot)?
-    # insert_plot!(ctx.groups[idx], screen, plot)
-end
+# function insert_plot!(ctx::RenderContext, screen, scene, plot)
+#     @assert haskey(ctx.scene2group, objectid(scene))
+#     idx = ctx.scene2group[objectid(scene)]
+#     # just needs some management updates in insert!(screen, scene, plot)?
+#     # insert_plot!(ctx.groups[idx], screen, plot)
+# end
 
 function insert_robj!(ctx::RenderContext, scene, robj)
-    @assert haskey(ctx.scene2group, scene)
-    idx = ctx.scene2group[scene]
+    @assert haskey(ctx.scene2group, objectid(scene))
+    idx = ctx.scene2group[objectid(scene)]
     group = ctx.groups[idx]
-    scene_idx = findfirst(x -> x === scene, group.scenes)
+    scene_idx = findfirst(x -> x.value === scene, group.scenes)
     push!(group.renderobjects, (scene_idx, robj))
     return
 end
@@ -146,11 +178,11 @@ function Makie.insert_scene!(ctx::RenderContext, screen, scene)
     # The given scene renders before "previous" in front to back rendering order.
     # Therefore it takes its spot in `group.scenes`
     previous = find_previous_scene(scene)
-    group_idx = ctx.scene2group[previous]
+    group_idx = ctx.scene2group[objectid(previous)]
     group = ctx.groups[group_idx]
-    scene_idx = findfirst(x -> x === previous, group.scenes)
-    insert!(group.scenes, scene_idx, scene)
-    ctx.scene2group[scene] = group_idx
+    scene_idx = findfirst(x -> x.value === previous, group.scenes)
+    insert!(group.scenes, scene_idx, WeakRef(scene))
+    ctx.scene2group[objectid(scene)] = group_idx
 
     # The group needs to be broken if the added scene clears
     # TODO: improve coverage checks
@@ -166,7 +198,7 @@ function Makie.insert_scene!(ctx::RenderContext, screen, scene)
         insert!(ctx.groups, group_idx+1, new_group)
         for (key, gi) in ctx.scene2group
             if gi == group_idx
-                ctx.scene2group[key] = gi + any(x -> x === key, new_group.scenes)
+                ctx.scene2group[key] = gi + any(x -> objectid(x.value) === key, new_group.scenes)
             elseif gi > group_idx
                 ctx.scene2group[key] = gi + 1
             end
@@ -176,5 +208,37 @@ function Makie.insert_scene!(ctx::RenderContext, screen, scene)
     # TODO: Do we need this?
     add_scene!(screen, scene)
 
+    return
+end
+
+function delete_scene!(ctx::RenderContext, scene::Scene)
+    if haskey(ctx.scene2group, objectid(scene))
+        idx = pop!(ctx.scene2group, objectid(scene))
+        group = ctx.groups[idx]
+        delete_scene!(group, scene)
+        if isempty(group)
+            delete_group!(ctx, idx)
+        end
+    end
+    return
+end
+
+function delete_group!(ctx, idx::Integer)
+    deleteat!(ctx.groups, idx)
+    filter!(kv -> kv[2] != idx, ctx.scene2group)
+    for (key, i) in ctx.scene2group
+        if i > idx
+            ctx.scene2group[key] = i - 1
+        end
+    end
+    return
+end
+
+function delete_robj!(ctx::RenderContext, scene::Scene, robj::RenderObject)
+    if haskey(ctx.scene2group, objectid(scene))
+        idx = pop!(ctx.scene2group, objectid(scene))
+        group = ctx.groups[idx]
+        delete_robj!(group, robj)
+    end
     return
 end
