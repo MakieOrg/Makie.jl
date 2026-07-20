@@ -520,8 +520,24 @@ function free(scene::Scene)
     return
 end
 
+# TODO: Should there be a delete!(parent::Scene, child::Scene)?
+# That would need to:
+# - disconnected viewport, transformations, ...?
+# - replace the shared Events struct in child and all its children
+# - trigger a backend delete!(screen, scene)
+
 function Base.empty!(scene::Scene; reset_theme = true)
-    foreach(empty!, copy(scene.children))
+    for child in copy(scene.children)
+        empty!(child)
+
+        # if we call `empty!(parent)` all the children should be disconnected
+        # and no longer be displayed. The parent should still be displayed.
+        for screen in child.current_screens
+            delete!(screen, child)
+        end
+        empty!(child.current_screens)
+    end
+
     # clear plots of this scene
     for plot in copy(scene.plots)
         delete!(scene, plot)
@@ -536,7 +552,7 @@ function Base.empty!(scene::Scene; reset_theme = true)
     empty!(scene.plots)
     empty!(scene.theme)
 
-    # conditional, since in free we dont want this!
+    # conditional, since in free we don't want this!
     if reset_theme
         merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
     end
@@ -551,6 +567,7 @@ function Base.empty!(scene::Scene; reset_theme = true)
         Observables.off(obsfunc)
     end
     empty!(scene.deregister_callbacks)
+
     return nothing
 end
 

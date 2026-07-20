@@ -60,7 +60,7 @@ function collect_renderobjects!(buffer, scene_idx, plot::AbstractPlot)
     return buffer
 end
 
-isfinished(group::RenderGroup) = last(group.scenes).clear[]
+isfinished(group::RenderGroup) = last(group.scenes).value.clear[]
 
 function push_scene!(group::RenderGroup, screen, scene::Scene)
     push!(group.scenes, WeakRef(scene))
@@ -75,7 +75,7 @@ Base.isempty(group::RenderGroup) = isempty(group.scenes)
 
 function delete_scene!(group::RenderGroup, scene::Scene)
     for (i, ref) in enumerate(group.scenes)
-        if ref === nothing || ref === scene
+        if ref === nothing || ref.value === scene
             filter!(x -> x[1] != i, group.renderobjects)
             for (j, (scene_idx, robj)) in enumerate(group.renderobjects)
                 if scene_idx > i
@@ -97,12 +97,13 @@ end
 
 # Manages all the rendering stuff
 struct RenderContext
-    # TODO: maybe keep old?
-    # plot2robj - useless since we can just do plot.gl_renderobject[]
-    # Needed for picking at least
-    robj2plot::Dict{UInt32, Plot}
     # Needed for plot (and scene?) insertion?
     # Needed for scene insertion?
+    # Is objectid ok?
+    # GC'd scenes call delete!(screen, scene), which cleans up entries here.
+    # Even if an entry remains past GC, it should only be addressed with scenes
+    # that have been added before, which overwrites/updates id collisions.
+    # And even if that doesn't work, we check scene equality in groups
     scene2group::Dict{UInt64, Int}
 
     groups::Vector{RenderGroup}
@@ -120,11 +121,10 @@ function Base.show(io::IO, ::MIME"text/plain", ctx::RenderContext)
 end
 
 function RenderContext()
-    return RenderContext(Dict{UInt32, Plot}(), Dict{Scene, Int}(), RenderGroup[])
+    return RenderContext(Dict{UInt64, Int}(), RenderGroup[])
 end
 
 function recreate!(ctx::RenderContext, screen, root::Scene)
-    empty!(ctx.robj2plot)
     empty!(ctx.scene2group)
     empty!(ctx.groups)
     build_groups!(ctx, screen, root)
@@ -152,11 +152,18 @@ end
 # end
 
 function insert_robj!(ctx::RenderContext, scene, robj)
-    @assert haskey(ctx.scene2group, objectid(scene))
-    idx = ctx.scene2group[objectid(scene)]
-    group = ctx.groups[idx]
-    scene_idx = findfirst(x -> x.value === scene, group.scenes)
-    push!(group.renderobjects, (scene_idx, robj))
+    if haskey(ctx.scene2group, objectid(scene))
+        idx = ctx.scene2group[objectid(scene)]
+        @assert idx isa Integer
+        group = ctx.groups[idx]
+        scene_idx = findfirst(x -> x.value === scene, group.scenes)
+        @assert scene_idx isa Integer
+        push!(group.renderobjects, (scene_idx, robj))
+    else
+        # TODO: We're probably adding robjs before scenes when creating a Screen
+        # from a finished scene graph...
+        @error "Failed to insert robj because parent scene is missing"
+    end
     return
 end
 
@@ -236,7 +243,7 @@ end
 
 function delete_robj!(ctx::RenderContext, scene::Scene, robj::RenderObject)
     if haskey(ctx.scene2group, objectid(scene))
-        idx = pop!(ctx.scene2group, objectid(scene))
+        idx = ctx.scene2group[objectid(scene)]
         group = ctx.groups[idx]
         delete_robj!(group, robj)
     end
