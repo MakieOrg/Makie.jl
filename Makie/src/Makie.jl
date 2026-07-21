@@ -483,7 +483,7 @@ export to_world
 
 # picking + interactive use cases + events
 export mouseover, onpick, pick, Events, Keyboard, Mouse, is_mouseinside
-export ispressed, Exclusively, forward_events!
+export ispressed, Exclusively
 export content_scene, add_tab!, remove_tab!, set_tab!
 export connect_screen
 export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,

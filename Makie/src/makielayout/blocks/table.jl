@@ -522,40 +522,11 @@ end
 function initialize_block!(t::Table)
     scene = t.blockscene
 
-    # Create the TablePlot recipe - its attributes form a ComputeGraph
-    plot = tableplot!(
-        scene,
-        t.data;
-        column_names = t.column_names,
-        column_widths = t.column_widths,
-        row_heights = t.row_heights,
-        i_selected = t.i_selected,
-        i_selected_cell = t.i_selected_cell,
-        sort_column = t.sort_column,
-        sort_direction = t.sort_direction,
-        scroll_offset = t.scroll_offset,
-        max_visible_rows = t.max_visible_rows,
-        header_color = t.header_color,
-        header_textcolor = t.header_textcolor,
-        header_fontsize = t.header_fontsize,
-        header_height = t.header_height,
-        show_sort_indicator = t.show_sort_indicator,
-        cell_color = t.cell_color,
-        cell_color_even = t.cell_color_even,
-        cell_color_odd = t.cell_color_odd,
-        cell_color_hover = t.cell_color_hover,
-        cell_color_selected = t.cell_color_selected,
-        cell_textcolor = t.cell_textcolor,
-        cell_fontsize = t.cell_fontsize,
-        row_height = t.row_height,
-        cell_padding = t.cell_padding,
-        show_grid = t.show_grid,
-        grid_color = t.grid_color,
-        grid_linewidth = t.grid_linewidth,
-        show_vertical_lines = t.show_vertical_lines,
-        show_horizontal_lines = t.show_horizontal_lines,
-        inspectable = false
-    )
+    # Seed the plot's ComputeGraph straight from the block's attributes: the
+    # recipe picks up every key it defines (reactively linked, so later
+    # `update!(t.attributes; ...)` propagates) and ignores block-only ones
+    # (selection, sortable, layout attrs, …). `t.data` is the positional arg.
+    plot = tableplot!(scene, t.attributes, t.data; inspectable = false)
 
     attr = plot.attributes
     last_autosize = Ref((0.0f0, 0.0f0))
