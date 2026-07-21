@@ -192,7 +192,7 @@ end
 # StableRNG
 function ssao_pipeline()
     pipeline = Makie.default_pipeline(ssao = true)
-    attr = pipeline.stages[3].attributes
+    attr = pipeline.stages[4].attributes
     attr[:kernel] = Makie.generate_ssao_kernel(
         attr[:N_samples][], attr[:lerp_min][], attr[:lerp_max][], RNG.STABLE_RNG
     )
@@ -281,6 +281,7 @@ end
         # Pipeline matches test_pipeline_2D up to color_tint
         pipeline = Makie.RenderPipeline()
 
+        clear = push!(pipeline, Makie.SceneClearStage())
         render1 = push!(pipeline, Makie.PlotRenderStage(transparency = false, fxaa = true))
         render2 = push!(pipeline, Makie.TransparentPlotRenderStage())
         oit = push!(pipeline, Makie.OITStage())
@@ -303,6 +304,7 @@ end
         )
         display_stage = push!(pipeline, Makie.DisplayStage())
 
+        connect!(pipeline, clear, fxaa)
         connect!(pipeline, render1, fxaa)
         connect!(pipeline, render1, display_stage, :objectid)
         connect!(pipeline, render1, display_stage, :depth)
@@ -332,11 +334,11 @@ GLMakie.activate!(render_pipeline = Makie.automatic)
     meshscatter!(scene, [0, 0], [-0.5, 0.5], [0.5, -0.5], alpha = 0.5, markersize = 0.2, transparency = true)
     screen = display(scene, render_pipeline = Makie.minimal_render_pipeline(), visible = false)
     img1 = copy(colorbuffer(screen))
-    id = screen.render_context.groups[1].renderobjects[2].id
+    id = screen.render_context.groups[1].renderobjects[1][2].id
     screen = display(scene, render_pipeline = Makie.default_pipeline(), visible = false)
     img2 = copy(colorbuffer(screen))
     # renderobjects should not get destroyed here, so ids should persist
-    @test id == screen.render_context.groups[1].renderobjects[2].id
+    @test id == screen.render_context.groups[1].renderobjects[1][2].id
 
     scene = Scene(size = (600, 300), camera = campixel!)
     image!(scene, 0 .. 300, 0 .. 300, img1)

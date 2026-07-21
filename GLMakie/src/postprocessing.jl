@@ -150,7 +150,7 @@ function run_stage(screen, scene_group, stage::ClearStage)
 end
 
 function clear_scenes!(screen, scene_groups, framebuffer)
-    set_draw_buffers(framebuffer)
+    set_draw_buffers(framebuffer, :color)
 
     # Clear everything for safety (in case top level scene does not clear)
     # (should be at least depth)
@@ -565,10 +565,6 @@ function run_stage(screen, scene_groups, stage::RenderPass{:SSAO1})
 end
 
 function run_stage(screen, scene_groups, stage::RenderPass{:SSAO2})
-    # TODO: SSAO doesn't copy the full color buffer and writes to a buffer
-    #       previously used for normals. Figure out a better solution than this:
-    clear_scenes!(screen, scene_groups, stage.framebuffer)
-
     # SSAO - blur occlusion and apply to color
     set_draw_buffers(stage.framebuffer)  # color buffer
     wh = size(stage.framebuffer)
@@ -695,6 +691,8 @@ end
 struct BlitToScreen <: GLRenderStage
     source_framebuffer::GLFramebuffer
 end
+
+on_resize(stage::BlitToScreen, w, h) = resize!(stage.source_framebuffer, w, h)
 
 function construct(::Val{:Display}, screen, stage)
     require_context(screen.glscreen)

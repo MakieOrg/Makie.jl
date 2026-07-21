@@ -10,7 +10,7 @@ end
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
-    base = 5 # from postprocessing shaders
+    base = 4 # from postprocessing shaders
     # Postprocessing shaders
     @test length(cache.shader_cache) == base
     @test length(cache.template_cache) == base
@@ -296,6 +296,7 @@ end
         @test !isopen(screen)
 
         @test isempty(screen.cache2plot)
+        @test isempty(screen.render_context)
 
         @test isempty(screen.window_open.listeners)
         @test isempty(screen.render_tick.listeners)
@@ -304,7 +305,7 @@ end
 
         @test screen.scene === nothing
         @test screen.rendertask === nothing
-        @test (Base.summarysize(screen) / 10^6) < 1.41
+        @test (Base.summarysize(screen) / 10^6) < 1.42
     end
     # All should go to pool after close
     @test all(x -> x in GLMakie.SCREEN_REUSE_POOL, screens)

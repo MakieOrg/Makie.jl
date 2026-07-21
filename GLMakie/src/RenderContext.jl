@@ -219,6 +219,13 @@ function Makie.insert_scene!(ctx::RenderContext, screen, scene)
                 ctx.scene2group[key] = gi + 1
             end
         end
+    else
+        # increment group idx of render objects whose scenes moved
+        for (i, (s_idx, robj)) in enumerate(group.renderobjects)
+            if s_idx >= scene_idx
+                group.renderobjects[i] = (s_idx+1, robj)
+            end
+        end
     end
 
     screen.requires_update = true

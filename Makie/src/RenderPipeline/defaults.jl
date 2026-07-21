@@ -238,7 +238,7 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
         connect!(pipeline, render1, _ssao)
         connect!(pipeline, _ssao, fxaa ? _fxaa : display, :color)
     end
-    connect!(pipeline, clear, fxaa ? _fxaa : display)
+    connect!(pipeline, clear, ssao ? _ssao : (fxaa ? _fxaa : display))
     connect!(pipeline, render2, fxaa ? _fxaa : display)
     if oit
         connect!(pipeline, render3, _oit)
