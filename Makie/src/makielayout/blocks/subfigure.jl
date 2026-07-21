@@ -149,6 +149,16 @@ function initialize_block!(sf::Subfigure; isolate_events::Bool = false)
         v || (drag_state[] = (:none, 0.0f0, Vec2f(0, 0)))
         return
     end
+    # When this subfigure becomes visible (e.g. a hidden tab is activated),
+    # unhide any child blocks whose `scene.visible` was kept `false` because
+    # `unhide!` saw the parent scene as invisible during block construction.
+    on(blockscene, is_visible) do v
+        v || return
+        for block in flatten_layout_content(sf.layout)
+            unhide!(block)
+        end
+        return
+    end
     on(blockscene, blockscene.events.mousebutton) do ev
         if ev.action == Mouse.release && drag_state[][1] !== :none
             drag_state[] = (:none, 0.0f0, Vec2f(0, 0))
