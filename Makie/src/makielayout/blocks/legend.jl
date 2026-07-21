@@ -84,7 +84,8 @@ function initialize_block!(leg::Legend; entrygroups)
 
     legend_area = lift(round_to_IRect2D, blockscene, leg.layoutobservables.computedbbox)
 
-    scene = Scene(blockscene, blockscene.viewport, camera = campixel!)
+    scene = Scene(blockscene, blockscene.viewport)
+    campixel!(scene; absolute = true)
     leg.scene = scene
     # the rectangle in which the legend is drawn when margins are removed
     legendrect = lift(blockscene, legend_area, leg.margin, ignore_equal_values = true) do la, lm

@@ -10,9 +10,10 @@ function initialize_block!(m::Modal)
     # cover for the whole window while visible, so only the modal's own
     # subtree receives events (see `covers_pointer`).
     overlay = Scene(
-        blockscene; camera = campixel!, clear = false,
+        blockscene; clear = false,
         viewport = blockscene.viewport, visible = is_open
     )
+    campixel!(overlay; absolute = true)
     translate!(overlay, 0, 0, 1000)
     overlay.captures_mouse = true
     m.overlay = overlay

@@ -7,10 +7,11 @@ function initialize_block!(b::Button)
     subarea = lift(scene, b.layoutobservables.computedbbox) do bbox
         round_to_IRect2D(bbox)
     end
-    subscene = Scene(scene, subarea, camera = campixel!)
+    subscene = Scene(scene, subarea)
+    campixel!(subscene; absolute = true)
 
-    # campixel is in absolute window coords, so the button background just
-    # echoes the computed bbox.
+    # the subscene camera is in absolute window coords, so the button background
+    # just echoes the computed bbox.
     buttonrect = lift(scene, b.layoutobservables.computedbbox) do bbox
         Rect2f(bbox)
     end

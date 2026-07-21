@@ -466,20 +466,19 @@ end
 """
     effective_clip(scene::Scene)::Rect2i
 
-Intersection of every ancestor's viewport (not including `scene`'s own).
+Intersection of `scene`'s own viewport with every ancestor's viewport.
 Backends use this as the scissor rectangle, so a scene is rendered only within
-the bounds shared by every one of its parents. The scene's own viewport is
-not part of the intersection — that lets plots near a scene's edge (e.g. axis
-markers near the spines) extend past the scene's own viewport, while still
-being clipped at the smallest enclosing ancestor.
+the bounds shared by itself and all of its parents. Including the scene's own
+viewport keeps the scissor a subset of it (some drivers require `scissor ⊆
+viewport`), while intersecting the ancestors is what clips content that has
+scrolled or been positioned outside an enclosing region (e.g. a `Subfigure`).
 
-For the root scene the intersection is empty; the root's own viewport is
-returned so the scissor matches the window.
+For the root scene this is just its own viewport, so the scissor matches the
+window.
 """
 function effective_clip(scene::Scene)
-    isroot(scene) && return viewport(scene)[]
-    s = parent(scene)
-    rect = viewport(s)[]
+    rect = viewport(scene)[]
+    s = scene
     while !isroot(s)
         s = parent(s)
         rect = intersect(rect, viewport(s)[])
