@@ -24,16 +24,23 @@ function initialize_block!(m::Modal)
     # Body sizing: content-driven (floored at min_size) unless width/height
     # are fixed numbers. The content autosize comes from the inner Subfigure.
     content_autosize = Observable(Vec2f(0, 0); ignore_equal_values = true)
+    # place the body along a viewport axis by `halign`/`valign` (`:left`/`:center`/
+    # `:right`, `:bottom`/`:center`/`:top`, or a 0..1 fraction), inset by `margin`.
+    modaloffset(a::Symbol, avail, sz, margin) =
+        a in (:left, :bottom) ? Float32(margin) :
+        a in (:right, :top) ? max(avail - sz - margin, margin) :
+        round((avail - sz) / 2)
+    modaloffset(a::Real, avail, sz, margin) = clamp(round(Float32(a) * (avail - sz)), 0.0f0, max(avail - sz, 0.0f0))
     body_rect = lift(
         blockscene, blockscene.viewport, content_autosize,
-        m.width, m.height, m.min_size, m.contentpadding, m.header_height
-    ) do vp, asz, w, h, msz, pad, hh
+        m.width, m.height, m.min_size, m.contentpadding, m.header_height, m.halign, m.valign
+    ) do vp, asz, w, h, msz, pad, hh, ha, va
         bw = w isa Number ? Float32(w) : max(Float32(msz[1]), asz[1] + 2pad)
         bh = h isa Number ? Float32(h) : max(Float32(msz[2]), asz[2] + hh + 2pad)
         bw = min(bw, Float32(widths(vp)[1]))
         bh = min(bh, Float32(widths(vp)[2]))
-        x = vp.origin[1] + round((widths(vp)[1] - bw) / 2)
-        y = vp.origin[2] + round((widths(vp)[2] - bh) / 2)
+        x = vp.origin[1] + modaloffset(ha, widths(vp)[1], bw, 2pad)
+        y = vp.origin[2] + modaloffset(va, widths(vp)[2], bh, 2pad)
         return Rect2f(x, y, bw, bh)
     end
 

@@ -196,6 +196,18 @@ widget blocks are available by field name in `pf.widgets` (e.g.
 `pf.widgets[:alpha]`).
 
 With a `title` keyword, a bold section header is added above the fields.
+
+Pass a second positional argument `accessory` — a builder
+`(field::Symbol, gridpos) -> block` — to add a third widget per row (e.g. a
+keyframe toggle or reset button). It is called for each field with that row's
+third-column cell; any returned block is stored in `pf.accessories[field]`.
+Rows whose builder returns `nothing` get no accessory. The column is sized by
+the `accessorywidth` attribute.
+
+```julia
+pf = ParamForm(fig[1, 1], (gain = (1.0, Between(0.0, 4.0)),),
+    (field, pos) -> Button(pos; label = "◆"))
+```
 """
 @Block ParamForm begin
     @forwarded_layout
@@ -204,6 +216,8 @@ With a `title` keyword, a bold section header is added above the fields.
     graph::ComputeGraph
     # Field name => the widget block created for it, e.g. pf.widgets[:alpha].
     widgets::Dict{Symbol, Any}
+    # Field name => the block returned by the `accessory` builder, if any.
+    accessories::Dict{Symbol, Any}
     @attributes begin
         "The horizontal alignment of the block in its suggested bounding box."
         halign = :center
@@ -231,6 +245,8 @@ With a `title` keyword, a bold section header is added above the fields.
         labelwidth = 88
         "Fixed pixel width of the widget column."
         widgetwidth = 175
+        "Fixed pixel width of the optional per-field accessory column (see the `accessory` constructor keyword). Only used when an accessory is built for at least one field."
+        accessorywidth = 28
         "Vertical gap between rows in pixels."
         rowgap = 6
         "Horizontal gap between the label and widget columns in pixels."
@@ -239,15 +255,19 @@ With a `title` keyword, a bold section header is added above the fields.
 end
 
 """
-    build_field!(pf, field, T, constraint, default, row)
+    build_field!(pf, field, T, constraint, default, row, accessory)
 
 Build one form row (label + widget) at `row` in `pf.layout` and wire the
 widget into `pf.graph`: the widget's value observable becomes input
 `Symbol(field, "__raw")`, and a node named `field` converts + validates it via
 [`try_field_value`](@ref), returning `nothing` on invalid input so the graph
 keeps its last valid value.
+
+If `accessory` is not `nothing` it is called as `accessory(field, gridpos)`
+with `gridpos` the third-column cell of this row; a returned block (anything
+but `nothing`) is stored in `pf.accessories[field]`.
 """
-function build_field!(pf::ParamForm, field, ::Type{T}, constraint, default, row) where {T}
+function build_field!(pf::ParamForm, field, ::Type{T}, constraint, default, row, accessory) where {T}
     Label(pf.layout[row, 1], string(field); halign = :right,
           font = pf.labelfont[], color = pf.labelcolor)
     w = widget_for(pf.layout[row, 2], T, constraint, default, pf.widgetwidth[])
@@ -258,20 +278,25 @@ function build_field!(pf::ParamForm, field, ::Type{T}, constraint, default, row)
         v = try_field_value(w, inputs[1], T, constraint)
         return v === nothing ? nothing : (v,)
     end
+    if accessory !== nothing
+        a = accessory(field, pf.layout[row, 3])
+        a === nothing || (pf.accessories[field] = a)
+    end
     return
 end
 
-function initialize_block!(pf::ParamForm, spec)
+function initialize_block!(pf::ParamForm, spec, accessory = nothing)
     fields = convert_form_input(spec)
     pf.graph = ComputeGraph()
     pf.widgets = Dict{Symbol, Any}()
+    pf.accessories = Dict{Symbol, Any}()
     row = 1
     if pf.title[] !== nothing
         Label(pf.layout[row, 1:2], pf.title[]; font = :bold, halign = :left, color = pf.titlecolor)
         row += 1
     end
     for f in fields
-        build_field!(pf, f.field, f.type, f.constraint, f.default, row)
+        build_field!(pf, f.field, f.type, f.constraint, f.default, row, accessory)
         row += 1
     end
     if isempty(fields)
@@ -290,6 +315,8 @@ function initialize_block!(pf::ParamForm, spec)
     else
         colsize!(pf.layout, 1, Fixed(pf.labelwidth[]))
         colsize!(pf.layout, 2, Fixed(pf.widgetwidth[]))
+        # only size the accessory column if a field actually got one
+        isempty(pf.accessories) || colsize!(pf.layout, 3, Fixed(pf.accessorywidth[]))
         rowgap!(pf.layout, pf.rowgap[])
         colgap!(pf.layout, pf.colgap[])
     end
