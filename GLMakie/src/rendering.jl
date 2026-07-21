@@ -13,7 +13,7 @@ function prepare_frame(screen, resize_buffers)
     end
 
     # Clear stencil, depth, objectid (and color, but that should not be needed)
-    fb = screen.framebuffer_manager.accumulation
+    fb = display_framebuffer(screen)
     wh = size(fb)
     glDisable(GL_SCISSOR_TEST)
     glDisable(GL_STENCIL_TEST)
@@ -25,32 +25,6 @@ function prepare_frame(screen, resize_buffers)
 
     # prepare for stencil being used
     glEnable(GL_STENCIL_TEST)
-    glStencilFunc(GL_EQUAL, 0, 0xff)
-
-    return
-end
-
-function update_stencil!(screen::Screen, scene_group, fb)
-    GLAbstraction.bind(fb)
-
-    # draw 1 to stencil buffer for every cleared scene viewport
-    glEnable(GL_SCISSOR_TEST)
-    glEnable(GL_STENCIL_TEST)
-    glStencilFunc(GL_ALWAYS, 0, 0xff)
-    glClearStencil(1)
-    ppu = screen.px_per_unit[]
-    for scene_ref in scene_group.scenes
-        scene = scene_ref.value
-        if !isnothing(scene) && scene.visible[] && scene.clear[]
-            a = viewport(scene)[]
-            rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-            glScissor(rt...)
-            glClear(GL_STENCIL_BUFFER_BIT)
-        end
-    end
-    glDisable(GL_SCISSOR_TEST)
-
-    # And reset to a useful stencil function
     glStencilFunc(GL_EQUAL, 0, 0xff)
 
     return
@@ -68,42 +42,9 @@ function render_frame(screen::Screen; resize_buffers = true)
 
     prepare_frame(screen, resize_buffers)
 
-    # Render groups front to back where the stencil is empty (0)
-    # then add all cleared areas of the group to the stencil so we don't render
-    # under them
-    for group in screen.render_context.groups
-        render_frame(screen, group, screen.render_pipeline)
-        update_stencil!(screen, group, screen.framebuffer_manager.accumulation)
-    end
-
-    copy_to_screen(screen, screen.framebuffer_manager.accumulation)
+    render_frame(screen, screen.render_context.groups, screen.render_pipeline)
 
     GLAbstraction.require_context(to_native(screen))
-
-    return
-end
-
-"""
-    copy_to_screen(screen, framebuffer)
-
-Copies the final render to the screen for displaying.
-
-Can be extended for other window types by dispatching on `Screen{WindowType}`
-"""
-function copy_to_screen(screen::Screen, fb)
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, fb.id)
-    glReadBuffer(get_attachment(fb, :color))
-
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
-
-    src_w, src_h = framebuffer_size(screen)
-    trg_w, trg_h = makie_window_size(screen)
-
-    glBlitFramebuffer(
-        0, 0, src_w, src_h,
-        0, 0, trg_w, trg_h,
-        GL_COLOR_BUFFER_BIT, GL_LINEAR
-    )
 
     return
 end

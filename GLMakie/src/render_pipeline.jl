@@ -46,7 +46,12 @@ function initialize_attachments!(manager::FramebufferManager, formats::Vector{Ma
             #         format = GL_STENCIL, samples = format.samples
             #     )
             # end
-            return get_buffer(manager.accumulation, :depth_stencil)
+            return Texture(
+                context, Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), size(manager),
+                minfilter = :nearest, x_repeat = :clamp_to_edge,
+                internalformat = GL_DEPTH24_STENCIL8,
+                format = GL_DEPTH_STENCIL, samples = format.samples
+            )
         end
 
         is_float_format = eltype(T) == N0f8 || eltype(T) <: AbstractFloat
@@ -107,19 +112,12 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
     # Generate all the necessary attachments in the order given above so the
     # correct GLFramebuffers can be generated
     destroy!(manager)
-    initialize_accumulation_framebuffer!(manager)
     initialize_attachments!(manager, pipeline.formats)
 
     # verify that last stage is display
     final_stage = pipeline.stages[end]
     if !(final_stage.name === :Display && first.(final_stage.inputs) == [:depth, :color, :objectid])
         error("The final stage must be a Display stage with inputs (:depth, :color, :objectid). $final_stage")
-    end
-
-    for (name, idx) in final_stage.inputs
-        if name === :objectid
-            attach_colorbuffer(manager.accumulation, :objectid, get_buffer(manager, idx))
-        end
     end
 
     # Constructing a RenderStep can be somewhat costly, so we want to reuse them
