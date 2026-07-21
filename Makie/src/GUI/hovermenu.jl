@@ -16,9 +16,10 @@ function initialize_block!(g::HoverMenu)
     end
     visible = Observable(false)
 
-    # Create background box using layout (for @forwarded_layout blocks)
+    # Background box spanning the three buttons. `g[1, 1:3]` indexes the
+    # block's forwarded layout directly.
     g.box = Box(
-        g.layout[1, 1:3];
+        g[1, 1:3];
         height = g.height,
         width = g.width,
         color = g.bar_color,
@@ -41,9 +42,9 @@ function initialize_block!(g::HoverMenu)
         cornerradius = 4,
     )
 
-    g.save_button = Button(g.layout[1, 1]; label = "Save", width = 60, bstyle...)
-    g.copy_button = Button(g.layout[1, 2]; label = "Copy", width = 60, bstyle...)
-    g.reset_button = Button(g.layout[1, 3]; label = "Reset", width = 60, bstyle...)
+    g.save_button = Button(g[1, 1]; label = "Save", width = 60, bstyle...)
+    g.copy_button = Button(g[1, 2]; label = "Copy", width = 60, bstyle...)
+    g.reset_button = Button(g[1, 3]; label = "Reset", width = 60, bstyle...)
 
     colgap!(g.layout, 8)
 

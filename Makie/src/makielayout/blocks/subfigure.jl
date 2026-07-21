@@ -1,25 +1,16 @@
-block_kwargs(::Type{Subfigure}) = Set([:isolate_events])
-
-function initialize_block!(sf::Subfigure; isolate_events::Bool = false)
+function initialize_block!(sf::Subfigure)
     blockscene = sf.blockscene
 
     content_area = lift(round_to_IRect2D, blockscene, sf.layoutobservables.computedbbox)
 
     # Unwrap the Compute graph node into a plain Observable{Bool} for the
-    # parts of the API that expect one (Scene's `visible`, `forward_events!`).
+    # parts of the API that expect one (Scene's `visible`).
     is_visible = lift(identity, blockscene, sf.visible)
 
-    scene = if isolate_events
-        Scene(
-            blockscene; events = Events(), camera = campixel!,
-            viewport = content_area, visible = is_visible, clear = false
-        )
-    else
-        Scene(blockscene; camera = campixel!, viewport = content_area, visible = is_visible, clear = false)
-    end
-    if isolate_events
-        forward_events!(scene, blockscene; active = is_visible)
-    end
+    # Share the parent's `Events`: the scene-stacking event router
+    # (`receives_events`, honored by `is_mouseinside`/`addmouseevents!`) keeps
+    # hidden subtrees inert, so no separate `Events`/event forwarding is needed.
+    scene = Scene(blockscene; camera = campixel!, viewport = content_area, visible = is_visible, clear = false)
     sf.scene = scene
 
     poly!(
@@ -123,10 +114,8 @@ function initialize_block!(sf::Subfigure; isolate_events::Bool = false)
 
     # Wheel scrolling runs below the default priority so an inner block (e.g.
     # an Axis zoom-on-scroll handler at priority 0) gets the event first; the
-    # subfigure only scrolls when nothing else consumed.
-    # The handler listens on `scene.events`, which is the *isolated* Events
-    # when `isolate_events = true`. With shared Events (the default), it
-    # additionally checks `is_mouseinside(scene)` so stacked non-isolated
+    # subfigure only scrolls when nothing else consumed. Since the events are
+    # shared with the parent, it also checks `is_mouseinside(scene)` so stacked
     # subfigures don't all scroll on every wheel event.
     on(blockscene, scene.events.scroll; priority = -1) do (dx, dy)
         sf.scrollable[] || return Consume(false)
@@ -147,6 +136,16 @@ function initialize_block!(sf::Subfigure; isolate_events::Bool = false)
     # next mouse-move doesn't keep scrolling.
     on(blockscene, is_visible) do v
         v || (drag_state[] = (:none, 0.0f0, Vec2f(0, 0)))
+        return
+    end
+    # When this subfigure becomes visible (e.g. a hidden tab is activated),
+    # unhide any child blocks whose `scene.visible` was kept `false` because
+    # `unhide!` saw the parent scene as invisible during block construction.
+    on(blockscene, is_visible) do v
+        v || return
+        for block in flatten_layout_content(sf.layout)
+            unhide!(block)
+        end
         return
     end
     on(blockscene, blockscene.events.mousebutton) do ev

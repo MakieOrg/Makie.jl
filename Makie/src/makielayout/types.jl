@@ -1477,23 +1477,23 @@ end
 """
     Subfigure(fig_or_scene; kwargs...)
 
-A clipped, optionally event-isolated, scrollable region with its own
-`Scene` paired with a `GridLayout` — the same shape as a `Figure`, scoped
-to a sub-region. Place blocks via `Axis(subfig[1, 1])` etc., or plot
-directly into `content_scene(subfig)` (in viewport-local pixel coords).
+A clipped, scrollable region with its own `Scene` paired with a
+`GridLayout` — the same shape as a `Figure`, scoped to a sub-region. Place
+blocks via `Axis(subfig[1, 1])` etc., or plot directly into
+`content_scene(subfig)` (in viewport-local pixel coords).
 
 The `visible::Observable{Bool}` attribute controls whether the subfigure is
-shown and, when constructed with `isolate_events = true`, whether it
-receives mouse and keyboard input. When hidden, the subfigure renders
-nothing and (if isolated) sees no input events.
+shown. When hidden it renders nothing and, because the scene-stacking event
+router (`receives_events`) treats hidden subtrees as inert, receives no
+mouse or keyboard input either.
 
 Content larger than the subfigure scrolls vertically and horizontally;
 scrollbars appear only when there is overflow. Content size is derived
 from the inner `GridLayout`'s determinable size, so setting fixed row /
 column sizes makes the subfigure overflow and scroll.
 
-`Tabs` is built on `Subfigure` — one per tab, with `isolate_events = true`
-and `visible = (tabs.active == i)`. Use `Subfigure` directly for scrollable
+`Tabs` is built on `Subfigure` — one per tab, with
+`visible = (tabs.active == i)`. Use `Subfigure` directly for scrollable
 scientific-figure panels, sidebars, dialog regions, etc.
 """
 @Block Subfigure begin
@@ -1501,7 +1501,7 @@ scientific-figure panels, sidebars, dialog regions, etc.
     scroll::Observable{Vec2f}
     contentsize::Observable{Vec2f}
     @attributes begin
-        "Whether the subfigure is shown. When `false` it renders nothing and (if `isolate_events = true`) receives no input."
+        "Whether the subfigure is shown. When `false` it renders nothing and receives no input."
         visible = true
         "Padding (in pixels) around the content, as a number or a (left, right, bottom, top) tuple."
         contentpadding = 10
@@ -1519,6 +1519,8 @@ scientific-figure panels, sidebars, dialog regions, etc.
         scrollbar_thumb_color = RGBAf(0, 0, 0, 0.3)
         "Color of the scrollbar thumb when hovered or dragged."
         scrollbar_thumb_color_active = RGBAf(0, 0, 0, 0.5)
+        # halign / valign / alignmode match the block layout mixin defaults and
+        # are added automatically; only the ones that differ are set here.
         "The height setting of the subfigure."
         height = nothing
         "The width setting of the subfigure."
@@ -1527,12 +1529,6 @@ scientific-figure panels, sidebars, dialog regions, etc.
         tellwidth = false
         "Controls if the parent layout can adjust to this element's height."
         tellheight = false
-        "The horizontal alignment of the subfigure in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the subfigure in its suggested bounding box."
-        valign = :center
-        "The alignment of the subfigure in its suggested bounding box."
-        alignmode = Inside()
     end
 end
 
@@ -1574,11 +1570,12 @@ end
 """
     Tabs(fig_or_scene, labels = ["Tab 1", "Tab 2"]; closable = true, kwargs...)
 
-A tabbed container. Each tab is backed by a [`Subfigure`](@ref) with isolated
-events: place blocks with `tabs[i][row, col] = Axis(...)` or plot directly
-into `content_scene(tabs, i)`. Only the active tab is visible and only the
-active tab receives mouse / keyboard events. Content larger than the visible
-area scrolls vertically and horizontally.
+A tabbed container. Each tab is backed by a [`Subfigure`](@ref): place blocks
+with `tabs[i][row, col] = Axis(...)` or plot directly into
+`content_scene(tabs, i)`. Only the active tab is visible, and because hidden
+scenes are inert to the event router, only the active tab receives mouse /
+keyboard events. Content larger than the visible area scrolls vertically and
+horizontally.
 
 `labels` (a positional argument) and the `closable` keyword seed the initial
 tabs; they are not reactive attributes. Change the set of tabs afterwards with
@@ -1674,20 +1671,11 @@ end
 """
 @Block Table begin
     @attributes begin
-        "The height setting of the table."
-        height = Auto()
+        # Only `width` differs from the block layout mixin defaults; the rest
+        # (height, tellwidth, tellheight, halign, valign, alignmode) are added
+        # automatically with the same values.
         "The width setting of the table."
         width = nothing
-        "Controls if the parent layout can adjust to this element's width."
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height."
-        tellheight = true
-        "The horizontal alignment of the table in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the table in its suggested bounding box."
-        valign = :center
-        "The alignment mode of the table in its parent GridLayout."
-        alignmode = Inside()
 
         "The tabular data to display. Can be a NamedTuple or Dict{Symbol, Any} where each value is a column vector."
         data = (a = [1, 2, 3], b = ["x", "y", "z"])

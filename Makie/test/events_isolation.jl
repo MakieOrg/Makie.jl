@@ -1,93 +1,33 @@
 using Makie
-using Makie: forward_events!, MouseButtonEvent, KeyEvent, Mouse, Keyboard, Events
+using Makie: MouseButtonEvent, Mouse, receives_events
 using Test
 
-@testset "forward_events! isolation" begin
-    root = Scene()
-    active = Observable(true)
-    target = Scene(root; events = Events(), viewport = Rect2i(0, 0, 100, 100))
-    @test events(target) !== events(root)
-    forward_events!(target, root; active = active)
-
-    @testset "context events always forwarded" begin
-        root.events.window_dpi[] = 123.0
-        @test target.events.window_dpi[] == 123.0
-        active[] = false
-        root.events.window_dpi[] = 200.0
-        @test target.events.window_dpi[] == 200.0
-        active[] = true
-    end
-
-    @testset "input gated by active" begin
-        root.events.mouseposition[] = (10.0, 10.0)
-        @test target.events.mouseposition[] == (10.0, 10.0)
-
-        active[] = false
-        root.events.mouseposition[] = (20.0, 20.0)
-        @test target.events.mouseposition[] == (10.0, 10.0)
-
-        active[] = true
-        root.events.mouseposition[] = (30.0, 30.0)
-        @test target.events.mouseposition[] == (30.0, 30.0)
-    end
-
-    @testset "keyboard gated by active" begin
-        got = Ref(0)
-        on(target.events.keyboardbutton) do _
-            got[] += 1
-            return Consume(false)
-        end
-        active[] = true
-        root.events.keyboardbutton[] = KeyEvent(Keyboard.a, Keyboard.press)
-        root.events.keyboardbutton[] = KeyEvent(Keyboard.a, Keyboard.release)
-        @test got[] == 2
-
-        active[] = false
-        before = got[]
-        root.events.keyboardbutton[] = KeyEvent(Keyboard.b, Keyboard.press)
-        @test got[] == before
-    end
-
-    @testset "Consume propagates back to source" begin
-        active[] = true
-        on(target.events.mousebutton; priority = 10) do _
-            return Consume(true)
-        end
-        consumed = setindex!(root.events.mousebutton, MouseButtonEvent(Mouse.left, Mouse.press))
-        @test consumed == true
-    end
-
-    @testset "held inputs released on deactivation" begin
-        active[] = true
-        empty!(root.events.mousebuttonstate)
-        empty!(target.events.mousebuttonstate)
-        root.events.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
-        @test Mouse.right in target.events.mousebuttonstate
-        active[] = false
-        @test isempty(target.events.mousebuttonstate)
-    end
-end
-
-@testset "Tabs event isolation" begin
+@testset "Tabs event isolation (shared events + receives_events)" begin
     f = Figure()
     t = Tabs(f[1, 1], ["A", "B"])
+    Axis(t[1][1, 1])
+    Axis(t[2][1, 1])
     s1, s2 = content_scene(t, 1), content_scene(t, 2)
-    @test events(s1) !== events(f.scene)
-    @test events(s2) !== events(s1)
 
-    counts = [0, 0]
-    on(_ -> (counts[1] += 1; Consume(false)), events(s1).keyboardbutton)
-    on(_ -> (counts[2] += 1; Consume(false)), events(s2).keyboardbutton)
+    # Tabs share the figure's Events (no per-tab Events / event forwarding).
+    @test events(s1) === events(f.scene)
+    @test events(s2) === events(f.scene)
 
+    # Isolation is by visibility: only the active tab is visible, and a hidden
+    # scene is inert to the event router (`receives_events` short-circuits on
+    # `visible[] == false`). Handlers that guard on `receives_events` /
+    # `is_mouseinside` therefore fire only for the active tab.
     t.active[] = 1
-    f.scene.events.keyboardbutton[] = KeyEvent(Keyboard.a, Keyboard.press)
-    @test counts == [1, 0]
+    @test s1.visible[] == true
+    @test s2.visible[] == false
+    @test receives_events(s1) == true
+    @test receives_events(s2) == false
 
     t.active[] = 2
-    before = copy(counts)
-    f.scene.events.keyboardbutton[] = KeyEvent(Keyboard.b, Keyboard.press)
-    @test counts[1] == before[1]
-    @test counts[2] == before[2] + 1
+    @test s1.visible[] == false
+    @test s2.visible[] == true
+    @test receives_events(s1) == false
+    @test receives_events(s2) == true
 end
 
 labels_of(t) = [td.label[] for td in t.tabs]

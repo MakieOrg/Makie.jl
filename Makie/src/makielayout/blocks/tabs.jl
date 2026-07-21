@@ -93,13 +93,13 @@ function add_tab!(
     blockscene = t.blockscene
 
     visible = Observable(false; ignore_equal_values = true)
-    # Share the figure's Events (no `forward_events!`): an inactive tab is
-    # hidden (`visible = false`), and the scene-stacking event router
-    # (`receives_events`, honored by `is_mouseinside`/`addmouseevents!`)
-    # already keeps hidden subtrees inert, so isolated Events aren't needed.
+    # An inactive tab is hidden (`visible = false`), and the scene-stacking
+    # event router (`receives_events`, honored by `is_mouseinside` /
+    # `addmouseevents!`) keeps hidden subtrees inert — so the shared-events
+    # Subfigure needs nothing extra to isolate a tab's input.
     sf = Subfigure(
         blockscene;
-        bbox = t.content_area, isolate_events = false,
+        bbox = t.content_area,
         visible = visible, contentpadding = t.contentpadding,
     )
 

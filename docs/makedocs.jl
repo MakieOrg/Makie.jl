@@ -78,6 +78,7 @@ pages = [
                 "legend.md",
                 "lscene.md",
                 "menu.md",
+                "paramform.md",
                 "polaraxis.md",
                 "slider.md",
                 "slidergrid.md",
