@@ -130,6 +130,8 @@ function Base.empty!(ctx::RenderContext)
     return
 end
 
+Base.isempty(ctx::RenderContext) = isempty(ctx.groups)
+
 function recreate!(ctx::RenderContext, screen, root::Scene)
     empty!(ctx)
     build_groups!(ctx, screen, root)

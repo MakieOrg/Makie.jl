@@ -10,40 +10,41 @@ end
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
+    base = 5 # from postprocessing shaders
     # Postprocessing shaders
-    @test length(cache.shader_cache) == 4
-    @test length(cache.template_cache) == 4
-    @test length(cache.program_cache) == 3
+    @test length(cache.shader_cache) == base
+    @test length(cache.template_cache) == base
+    @test length(cache.program_cache) == base - 1
 
     # Shaders for scatter + linesegments + poly etc (axis)
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 17
-    @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == 13 + base
+    @test length(cache.template_cache) == 13 + base
+    @test length(cache.program_cache) == 6 + base
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 17
-    @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == 13 + base
+    @test length(cache.template_cache) == 13 + base
+    @test length(cache.program_cache) == 6 + base
 
     # Same for linesegments
     display(screen, linesegments(1:4))
-    @test length(cache.shader_cache) == 17
-    @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == 13 + base
+    @test length(cache.template_cache) == 13 + base
+    @test length(cache.program_cache) == 6 + base
 
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
-    @test length(cache.shader_cache) == 19
-    @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 11
+    @test length(cache.shader_cache) == 15 + base
+    @test length(cache.template_cache) == 15 + base
+    @test length(cache.program_cache) == 7 + base
 
     # For second time no new shaders should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
-    @test length(cache.shader_cache) == 19
-    @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 11
+    @test length(cache.shader_cache) == 15 + base
+    @test length(cache.template_cache) == 15 + base
+    @test length(cache.program_cache) == 7 + base
 end
 
 @testset "unit tests" begin
@@ -148,14 +149,16 @@ end
     @test screen in fig.scene.current_screens
     @test length(fig.scene.current_screens) == 1
     @testset "all got freed" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test v.id == 0
+        for group in screen.render_context.groups
+            for (_, robj) in group.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test v.id == 0
+                    end
                 end
-            end
-            for inst in values(robj.variants)
-                @test inst.vertexarray.id == 0
+                for inst in values(robj.variants)
+                    @test inst.vertexarray.id == 0
+                end
             end
         end
     end
@@ -164,19 +167,21 @@ end
     lines!(ax, 1:5, rand(5); linewidth = 3)
     text!(ax, [Point2f(2)], text = ["hi"])
     @testset "no freed object after replotting" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test v.id != 0
+        for group in screen.render_context.groups
+            for (_, robj) in group.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test v.id != 0
+                    end
                 end
-            end
-            for inst in values(robj.variants)
-                @test inst.vertexarray.id != 0
+                for inst in values(robj.variants)
+                    @test inst.vertexarray.id != 0
+                end
             end
         end
     end
     close(screen)
-    @test isempty(screen.renderlist)
+    @test isempty(screen.render_context)
 end
 
 @testset "empty!(ax)" begin
@@ -190,7 +195,7 @@ end
 
     @test ax.scene.plots == [hmp, lp, tp]
 
-    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots...])
+    robjs = map(x -> x.gl_renderobject[], [hmp, lp, tp.plots...])
 
     empty!(ax)
 
@@ -210,19 +215,21 @@ end
     lines!(ax, 1:5, rand(5); linewidth = 3)
     text!(ax, [Point2f(2)], text = ["hi"])
     @testset "no freed object after replotting" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test v.id != 0
+        for group in screen.render_context.groups
+            for (_, robj) in group.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test v.id != 0
+                    end
                 end
-            end
-            for inst in values(robj.variants)
-                @test inst.vertexarray.id != 0
+                for inst in values(robj.variants)
+                    @test inst.vertexarray.id != 0
+                end
             end
         end
     end
     close(screen)
-    @test isempty(screen.renderlist)
+    @test isempty(screen.render_context)
 end
 
 @testset "closing" begin
@@ -288,10 +295,6 @@ end
     for screen in screens
         @test !isopen(screen)
 
-        @test isempty(screen.screen2scene)
-        @test isempty(screen.screens)
-        @test isempty(screen.renderlist)
-        @test isempty(screen.cache)
         @test isempty(screen.cache2plot)
 
         @test isempty(screen.window_open.listeners)
@@ -484,7 +487,7 @@ end
     lines!(ax, sin.(0.0:0.1:2pi))
     text!(ax, 10.0, 0.0, text = "sine wave")
     empty!(ax)
-    ids = [robj.id for (_, _, robj) in screen.renderlist]
+    ids = [robj.id for group in screen.render_context.groups for (_, robj) in group.renderobjects]
 
     lobj = lines!(ax, sin.(0.0:0.1:2pi))
     tex = text!(ax, 10.0, 0.0, text = "sine wave")
@@ -506,7 +509,7 @@ end
     scene = Scene()
     p = lines!(scene, Point2f[])
     screen = display(scene, visible = false)
-    robj = screen.cache[objectid(p)]
+    robj = p.gl_renderobject[]
     indexbuffer = robj.indices
     @test isempty(indexbuffer)
     @test length(indexbuffer) == 0 # skip condition for draw call

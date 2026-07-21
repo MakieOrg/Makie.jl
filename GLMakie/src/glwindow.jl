@@ -44,7 +44,7 @@ Base.size(manager::FramebufferManager) = manager.size
 Base.isempty(manager::FramebufferManager) = isempty(manager.children)
 GLAbstraction.get_buffer(fb::FramebufferManager, idx::Int) = fb.buffers[idx]
 GLAbstraction.bind(fb::FramebufferManager) = GLAbstraction.bind(fb.children[end])
-display_framebuffer(fb::FramebufferManager) = last(fb.children)
+display_framebuffer(fb::FramebufferManager) = fb.accumulation
 
 function Base.resize!(manager::FramebufferManager, w::Int, h::Int)
     gl_switch_context!(manager.context)

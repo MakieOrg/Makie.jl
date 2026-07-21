@@ -146,13 +146,17 @@ reconstruct(pass::ClearStage, screen, framebuffer, inputs, stage) = pass
 construct(::Val{:SceneClear}, screen, framebuffer, inputs, parent) = ClearStage(framebuffer)
 
 function run_stage(screen, scene_group, stage::ClearStage)
-    set_draw_buffers(stage.framebuffer)
+    return clear_scenes!(screen, scene_group, stage.framebuffer)
+end
+
+function clear_scenes!(screen, scene_group, framebuffer)
+    set_draw_buffers(framebuffer)
 
     # Clear everything for safety (in case top level scene does not clear)
     # (should be at least depth)
     # glDisable(GL_SCISSOR_TEST)
     # glDisable(GL_STENCIL_TEST)
-    # wh = size(stage.framebuffer)
+    # wh = size(framebuffer)
     # glViewport(0, 0, wh[1], wh[2])
     # glClearColor(1, 1, 1, 1)
     # glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
@@ -502,7 +506,7 @@ end
 function run_stage(screen, scene_group, stage::RenderPass{:SSAO2})
     # TODO: SSAO doesn't copy the full color buffer and writes to a buffer
     #       previously used for normals. Figure out a better solution than this:
-    setup!(screen, stage.framebuffer)
+    clear_scenes!(screen, scene_group, stage.framebuffer)
 
     # SSAO - blur occlusion and apply to color
     set_draw_buffers(stage.framebuffer)  # color buffer
