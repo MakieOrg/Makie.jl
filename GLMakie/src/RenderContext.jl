@@ -73,6 +73,9 @@ struct RenderContext
     # And even if that doesn't work, we check scene equality in scenes
     scene2glscene::Dict{UInt64, Int}
 
+    # sorted back (first) to front (last)
+    # iterate normally to get the background (root scene) first
+    # iterate in reverse to get the front most scene first
     scenes::Vector{GLScene}
 end
 function Base.show(io::IO, ctx::RenderContext)
@@ -106,11 +109,11 @@ function recreate!(ctx::RenderContext, screen, root::Scene)
 end
 
 function collect_scenes!(ctx::RenderContext, screen, scene)
+    push!(ctx.scenes, GLScene(scene))
+    ctx.scene2glscene[objectid(scene)] = length(ctx.scenes)
     for child in reverse(scene.children)
         collect_scenes!(ctx, screen, child)
     end
-    push!(ctx.scenes, GLScene(scene))
-    ctx.scene2glscene[objectid(scene)] = length(ctx.scenes)
     return
 end
 
@@ -157,12 +160,12 @@ function Makie.insert_scene!(ctx::RenderContext, screen, scene)
     # Therefore it takes its spot in `group.scenes`
     previous = find_previous_scene(scene)
     scene_idx = ctx.scene2glscene[objectid(previous)]
-    insert!(ctx.scenes, scene_idx, GLScene(scene))
+    insert!(ctx.scenes, scene_idx + 1, GLScene(scene))
 
     for (k, idx) in ctx.scene2glscene
-        ctx.scene2glscene[k] = idx + Int(idx >= scene_idx)
+        ctx.scene2glscene[k] = idx + Int(idx > scene_idx)
     end
-    ctx.scene2glscene[objectid(scene)] = scene_idx
+    ctx.scene2glscene[objectid(scene)] = scene_idx + 1
 
     screen.requires_update = true
     # TODO: Does this consume?

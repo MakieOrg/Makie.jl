@@ -164,7 +164,7 @@ function clear_scenes!(screen, glscenes, framebuffer)
     # Draw scene backgrounds for cleared scenes
     glEnable(GL_SCISSOR_TEST)
     ppu = screen.px_per_unit[]
-    for glscene in reverse(glscenes) # back to front
+    for glscene in glscenes # back to front
         scene = glscene.scene.value
         if !isnothing(scene) && scene.visible[] && scene.clear[]
             a = viewport(scene)[]
@@ -390,7 +390,7 @@ function run_stage(screen, glscenes, stage::RenderPlots)
 
         ppu = screen.px_per_unit[]
 
-        for glscene in glscenes # front to back
+        for glscene in reverse(glscenes) # front to back
             scene = glscene.scene.value
             if isnothing(scene) || !scene.visible[]
                 continue
@@ -531,8 +531,8 @@ function run_stage(screen, glscenes, stage::RenderPass{:SSAO1})
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
 
     data = stage.robj.uniforms
-    # TODO: require groups to have consistent SSAO settings?
-    for glscene in glscenes
+    # TODO: Make SSAO a render pipeline setting
+    for glscene in reverse(glscenes)
         scene = glscene.scene.value
         isnothing(scene) && continue
         # Select the area of one leaf scene
@@ -572,7 +572,7 @@ function run_stage(screen, glscenes, stage::RenderPass{:SSAO2})
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
     data = stage.robj.uniforms
     # TODO: require groups to have consistent SSAO settings?
-    for glscene in glscenes
+    for glscene in reverse(glscenes)
         scene = glscene.scene.value
         isnothing(scene) && continue
         # Select the area of one leaf scene
