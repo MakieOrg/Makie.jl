@@ -6,7 +6,7 @@ To make a plot transparent you need to add an alpha value to its `color` or `col
 using FileIO
 
 # color
-fig, ax, p = image(0..11, -1..11, rotr90(FileIO.load(Makie.assetpath("cow.png"))))
+fig, ax, p = image(0..11, -1..11, FileIO.load(Makie.assetpath("cow.png")))
 scatter!(ax, 1:10,fill(10, 10), markersize = 40, color = :red)
 scatter!(ax, 1:10, fill(9, 10), markersize = 40, color = (:red, 0.5))
 scatter!(ax, 1:10, fill(8, 10), markersize = 40, color = RGBf(0.8, 0.6, 0.1))

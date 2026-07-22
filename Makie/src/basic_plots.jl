@@ -230,7 +230,7 @@ Fill in values that can only be calculated when we have all other attributes fil
 calculated_attributes!(plot::T) where {T} = calculated_attributes!(T, plot)
 
 """
-Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
+Plots an image on a rectangle bounded by `x` and `y`.
 """
 @recipe Image (
     x::EndPoints,
@@ -239,6 +239,24 @@ Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image)
 ) begin
     "Sets whether colors should be interpolated between pixels."
     interpolate = true
+    """
+    A tuple `(d1, d2)` of directions describing how the first and second array
+    dims run on the rectangle in data space. Each entry is one of `:up`,
+    `:down`, `:left`, `:right`; exactly one must be vertical and one
+    horizontal. Directions are stated relative to the image-conventional data
+    space where y goes down and x to the right. `image` sets `yreversed = true`
+    as an axis hint on freshly-created axes so that `:down` in `orientation`
+    lines up with the visual downward direction on screen.
+
+    The default `(:down, :right)` matches the convention used by
+    `FileIO.load`, NumPy, PIL, OpenCV and the like: `image[1, 1]` is the
+    top-left pixel, the first array dim runs top-to-bottom, the second runs
+    left-to-right. If your image was stored differently, for example because
+    it was recorded by an unusual scientific instrument, adjust `orientation`
+    accordingly (e.g. `(:left, :up)` for an image where `image[1, 1]` is the
+    bottom-right pixel and the first dim runs along x).
+    """
+    orientation = (:down, :right)
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
     fxaa = false
@@ -252,6 +270,11 @@ Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image)
     uv_transform = automatic
     colormap = [:black, :white]
 end
+
+# `orientation` is consumed by `convert_arguments` (it picks the default
+# extents), so it rides as a convert kwarg in addition to being readable as an
+# attribute from backends.
+used_attributes(::Type{<:Image}, args...) = (:orientation,)
 
 """
 Plots a `data` matrix as a heatmap, i.e. a collection of rectangles colored

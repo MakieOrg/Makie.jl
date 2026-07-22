@@ -199,11 +199,10 @@ for (; title, px_per_units, sizes) in sets
             hidedecorations!(ax)
             _f
         end; px_per_unit = ppu)
-        bm = rotr90(bitmap)
-        npix = Base.size(bm, 1)
+        npix = Base.size(bitmap, 1)
         interval = (1, npix) .- (npix+1)/2
 
-        ax, im = image(f[1, i], interval, interval, bm, interpolate = false, axis = (; autolimitaspect = 1))
+        ax, im = image(f[1, i], interval, interval, bitmap, interpolate = false, axis = (; autolimitaspect = 1))
 
         px_title = rich("px_per_unit = $ppu", color = allequal(px_per_units) ? :gray60 : :black)
         size_title = rich("size = ($size, $size)", color = allequal(sizes) ? :gray60 : :black)
@@ -213,10 +212,10 @@ for (; title, px_per_units, sizes) in sets
         hidedecorations!(ax)
         hidespines!(ax)
         ax.xlabelvisible = true
-        ax.xlabel = "$(join(Base.size(bm), " x ")) px"
+        ax.xlabel = "$(join(Base.size(bitmap), " x ")) px"
         ax.xlabelfont = :italic
 
-        ax2, im2 = image(f[2, i], rotr90(bitmap), interpolate = false, axis = (; autolimitaspect = 1, backgroundcolor = "#f5f2eb"))
+        ax2, im2 = image(f[2, i], bitmap, interpolate = false, axis = (; autolimitaspect = 1, backgroundcolor = "#f5f2eb"))
         ax2.xautolimitmargin = (0.1, 0.1)
         ax2.yautolimitmargin = (0.1, 0.1)
         hidedecorations!(ax2)

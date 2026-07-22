@@ -486,10 +486,10 @@ function boundingbox(p::DataShader, space::Symbol = :data)::Rect3d
     return apply_transform_and_model(p, p.data_limits[])
 end
 
-function convert_arguments(P::Type{<:Union{MeshScatter, Image, Surface, Contour, Contour3d}}, canvas::Canvas, operation = automatic, local_operation = identity)
+function convert_arguments(P::Type{<:Union{MeshScatter, Image, Surface, Contour, Contour3d}}, canvas::Canvas, operation = automatic, local_operation = identity; kw...)
     pixel = Aggregation.get_aggregation(canvas; operation = operation, local_operation = local_operation)
     (xmin, ymin), (xmax, ymax) = extrema(canvas.bounds)
-    return convert_arguments(P, xmin .. xmax, ymin .. ymax, pixel)
+    return convert_arguments(P, xmin .. xmax, ymin .. ymax, pixel; kw...)
 end
 
 # TODO improve color legend API, to not need a fake plot like this

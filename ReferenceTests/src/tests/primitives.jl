@@ -990,6 +990,19 @@ end
     f
 end
 
+@reference_test "image orientation variations" begin
+    n_rows, n_cols = 8, 12
+    li = LinearIndices((n_rows, n_cols))
+    mat = [(v = (li[i, j] - 1) / (n_rows * n_cols - 1); RGBf(v, v, v)) for i in 1:n_rows, j in 1:n_cols]
+    f = Figure(size = (900, 600))
+    for (n, s) in enumerate([(:down, :right), (:down, :left), (:up, :right), (:right, :down)])
+        row, col = divrem(n - 1, 2) .+ (1, 1)
+        ax = Axis(f[row, col]; aspect = DataAspect(), title = "orientation = $(s)", yreversed = true)
+        image!(ax, mat; orientation = s, interpolate = false)
+    end
+    f
+end
+
 @reference_test "meshscatter + scatter marker conversions" begin
     fig = Figure(size = (600, 500))
     Label(fig[0, 1], tellwidth = false, "meshscatter")
