@@ -75,7 +75,6 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     x0, y0 = max.(1, floor.(Int, ppu .* (xy .- range)))
     x1, y1 = min.((w, h), ceil.(Int, ppu .* (xy .+ range)))
     dx = x1 - x0; dy = y1 - y0
-    @info "($x0, $y0) .. ($x1, $y1)"
 
     gl_switch_context!(screen.glscreen)
     GLAbstraction.bind(fb)

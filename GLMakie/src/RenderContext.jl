@@ -1,9 +1,3 @@
-# Represents multiple Makie Scenes that render with the same RenderPipeline and
-# without clearing parts of itself. This should:
-# - avoid resetting the render pipeline
-# - allow shared depth buffers
-# - allow accumulation of negative stencils (draw this, then exclude it from the next group)
-# - allow merging of scenes w.r.t depth buffers
 struct GLScene
     scene::WeakRef
     renderobjects::Vector{RenderObject}
@@ -14,22 +8,11 @@ function Base.show(io::IO, group::GLScene)
 end
 # Base.show(io::IO, ::MIME"text/plain", group::GLScene)
 
-function GLScene()
-    return GLScene(WeakRef(nothing), RenderObject[])
-end
+GLScene() = GLScene(WeakRef(nothing), RenderObject[])
+GLScene(scene::Scene) = GLScene(WeakRef(scene))
+GLScene(scene::WeakRef) = GLScene(scene, collect_renderobjects!(RenderObject[], scene))
 
-function GLScene(scene::Scene)
-    return GLScene(WeakRef(scene))
-end
-
-function GLScene(scene::WeakRef)
-    return GLScene(scene, collect_renderobjects!(RenderObject[], scene))
-end
-
-function collect_renderobjects!(buffer, scene::WeakRef)
-    return collect_renderobjects!(buffer, scene.value)
-end
-
+collect_renderobjects!(buffer, scene::WeakRef) = collect_renderobjects!(buffer, scene.value)
 collect_renderobjects!(buffer, ::Nothing) = nothing
 
 function collect_renderobjects!(buffer, scene::Scene)
@@ -49,20 +32,12 @@ function collect_renderobjects!(buffer, plot::AbstractPlot)
     return buffer
 end
 
-# function delete_scene!(glscene::GLScene, scene::Scene)
-#     @assert glscene.scene.value === scene
-#     for robj in glscene.renderobjects
-#         delete renderobject?
-#     end
-#     return
-# end
-
+# Just deletes tracking. OpenGL destruction happens up the call stack
 function delete_robj!(group::GLScene, robj::RenderObject)
     filter!(x -> x !== robj, group.renderobjects)
     return
 end
 
-# Manages all the rendering stuff
 struct RenderContext
     # Needed for plot (and scene?) insertion?
     # Needed for scene insertion?
@@ -77,21 +52,24 @@ struct RenderContext
     # iterate normally to get the background (root scene) first
     # iterate in reverse to get the front most scene first
     scenes::Vector{GLScene}
+    # Note for future:
+    # If we want multiple render pipelines in the future we should probably
+    # group GLScenes by pipeline (continuous groups)
 end
+
+RenderContext() = RenderContext(Dict{UInt64, Int}(), GLScene[])
+
 function Base.show(io::IO, ctx::RenderContext)
     print(io, "RenderContext($(length(ctx.scenes)) scenes)")
     return io
 end
+
 function Base.show(io::IO, ::MIME"text/plain", ctx::RenderContext)
     print(io, "RenderContext")
     for group in ctx.scenes
         print(io, "\n  ", group)
     end
     return io
-end
-
-function RenderContext()
-    return RenderContext(Dict{UInt64, Int}(), GLScene[])
 end
 
 function Base.empty!(ctx::RenderContext)
@@ -116,13 +94,6 @@ function collect_scenes!(ctx::RenderContext, screen, scene)
     end
     return
 end
-
-# function insert_plot!(ctx::RenderContext, screen, scene, plot)
-#     @assert haskey(ctx.scene2glscene, objectid(scene))
-#     idx = ctx.scene2glscene[objectid(scene)]
-#     # just needs some management updates in insert!(screen, scene, plot)?
-#     # insert_plot!(ctx.scenes[idx], screen, plot)
-# end
 
 function insert_robj!(ctx::RenderContext, scene, robj)
     if haskey(ctx.scene2glscene, objectid(scene))
@@ -176,8 +147,6 @@ function Makie.insert_scene!(ctx::RenderContext, screen, scene)
         scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview,
         scene.camera.resolution
     )
-
-    # TODO: scene.clear should cause update of scene grouping
 
     return
 end
