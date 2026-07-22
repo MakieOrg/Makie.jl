@@ -511,6 +511,11 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
     return
 end
 
+function Makie.insert_scene!(screen::Screen, scene::Scene)
+    session = get_screen_session(screen; error = "Root parent scene needs to be displayed to insert additional scenes")
+    insert_scene!(session, screen, scene)
+    return
+end
 
 function all_plots_scenes(scene::Scene; scene_uuids = String[], plots = Plot[])
     push!(scene_uuids, js_uuid(scene))
