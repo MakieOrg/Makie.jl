@@ -154,8 +154,7 @@ end
 function delete_scene!(ctx::RenderContext, scene::Scene)
     if haskey(ctx.scene2glscene, objectid(scene))
         idx = pop!(ctx.scene2glscene, objectid(scene))
-        glscene = popat!(ctx.scenes, idx)
-        delete_scene!(glscene, scene)
+        popat!(ctx.scenes, idx)
         for (key, i) in ctx.scene2glscene
             ctx.scene2glscene[key] = i - Int(i > idx)
         end

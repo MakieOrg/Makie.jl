@@ -334,11 +334,11 @@ GLMakie.activate!(render_pipeline = Makie.automatic)
     meshscatter!(scene, [0, 0], [-0.5, 0.5], [0.5, -0.5], alpha = 0.5, markersize = 0.2, transparency = true)
     screen = display(scene, render_pipeline = Makie.minimal_render_pipeline(), visible = false)
     img1 = copy(colorbuffer(screen))
-    id = screen.render_context.groups[1].renderobjects[1][2].id
+    id = screen.render_context.scenes[1].renderobjects[1][2].id
     screen = display(scene, render_pipeline = Makie.default_pipeline(), visible = false)
     img2 = copy(colorbuffer(screen))
     # renderobjects should not get destroyed here, so ids should persist
-    @test id == screen.render_context.groups[1].renderobjects[1][2].id
+    @test id == screen.render_context.scenes[1].renderobjects[1][2].id
 
     scene = Scene(size = (600, 300), camera = campixel!)
     image!(scene, 0 .. 300, 0 .. 300, img1)
