@@ -22880,6 +22880,10 @@ function delete_scene(scene_id) {
         scene.remove(scene.children[0]);
     }
     delete scene_cache[scene_id];
+    Object.entries(scene_cache).forEach(([id, parent])=>{
+        const idx = parent.scene_children.findIndex((child)=>child.uuid === scene.uuid);
+        if (idx) parent.scene_children.splice(idx, 1);
+    });
 }
 function find_plots(plot_uuids) {
     const plots = [];
