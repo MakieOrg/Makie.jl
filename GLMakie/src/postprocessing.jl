@@ -110,10 +110,10 @@ Base.length(pipeline::GLRenderPipeline) = length(pipeline.stages)
 Base.eltype(::Type{GLRenderPipeline}) = GLRenderStage
 
 # render each stage
-function render_frame(screen, scene_groups, pipeline::GLRenderPipeline)
+function render_frame(screen, glscenes, pipeline::GLRenderPipeline)
     for stage in pipeline
         require_context(screen.glscreen)
-        run_stage(screen, scene_groups, stage)
+        run_stage(screen, glscenes, stage)
     end
     return
 end
@@ -145,11 +145,11 @@ on_resize(stage::ClearStage, w, h) = resize!(stage.framebuffer, w, h)
 reconstruct(pass::ClearStage, screen, framebuffer, inputs, stage) = pass
 construct(::Val{:SceneClear}, screen, framebuffer, inputs, parent) = ClearStage(framebuffer)
 
-function run_stage(screen, scene_group, stage::ClearStage)
-    return clear_scenes!(screen, scene_group, stage.framebuffer)
+function run_stage(screen, glscenes, stage::ClearStage)
+    return clear_scenes!(screen, glscenes, stage.framebuffer)
 end
 
-function clear_scenes!(screen, scene_groups, framebuffer)
+function clear_scenes!(screen, glscenes, framebuffer)
     set_draw_buffers(framebuffer, :color)
 
     # Clear everything for safety (in case top level scene does not clear)
@@ -163,19 +163,17 @@ function clear_scenes!(screen, scene_groups, framebuffer)
 
     # Draw scene backgrounds for cleared scenes
     glEnable(GL_SCISSOR_TEST)
-    for scene_group in reverse(scene_groups) # back to front
-        ppu = screen.px_per_unit[]
-        for scene_ref in scene_group.scenes # order irrelevant for clearing
-            scene = scene_ref.value
-            if !isnothing(scene) && scene.visible[] && scene.clear[]
-                a = viewport(scene)[]
-                rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-                glViewport(rt...)
-                glScissor(rt...)
-                c = scene.backgroundcolor[]
-                glClearColor(red(c), green(c), blue(c), alpha(c))
-                glClear(GL_COLOR_BUFFER_BIT)
-            end
+    ppu = screen.px_per_unit[]
+    for glscene in reverse(glscenes) # back to front
+        scene = glscene.scene.value
+        if !isnothing(scene) && scene.visible[] && scene.clear[]
+            a = viewport(scene)[]
+            rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            glViewport(rt...)
+            glScissor(rt...)
+            c = scene.backgroundcolor[]
+            glClearColor(red(c), green(c), blue(c), alpha(c))
+            glClear(GL_COLOR_BUFFER_BIT)
         end
     end
     glDisable(GL_SCISSOR_TEST)
@@ -186,8 +184,8 @@ struct SortPlots <: GLRenderStage end
 
 construct(::Val{:ZSort}, screen, parent) = SortPlots()
 
-function run_stage(screen, scene_groups, ::SortPlots)
-    function sortby((scene_idx, robj))
+function run_stage(screen, glscenes, ::SortPlots)
+    function sortby(robj)
         plot = screen.cache2plot[robj.id]
         # TODO: use actual boundingbox
         # ~7% faster than calling zvalue2d doing the same thing?
@@ -197,8 +195,8 @@ function run_stage(screen, scene_groups, ::SortPlots)
 
     # TODO: Would insertion sort be better? We should typically have small
     # arrays of (almost) sorted data
-    for scene_group in scene_groups
-        sort!(scene_group.renderobjects; by = sortby)
+    for glscene in glscenes
+        sort!(glscene.renderobjects; by = sortby)
     end
     return
 end
@@ -345,7 +343,7 @@ function prepare_stencil!(fb)
     return
 end
 
-function update_stencil!(screen, scene_group, fb)
+function update_stencil!(screen, glscene, fb)
     GLAbstraction.bind(fb)
 
     # draw 1 to stencil buffer for every cleared scene viewport
@@ -354,14 +352,12 @@ function update_stencil!(screen, scene_group, fb)
     glStencilFunc(GL_ALWAYS, 0, 0xff)
     glClearStencil(1)
     ppu = screen.px_per_unit[]
-    for scene_ref in scene_group.scenes
-        scene = scene_ref.value
-        if !isnothing(scene) && scene.visible[] && scene.clear[]
-            a = viewport(scene)[]
-            rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-            glScissor(rt...)
-            glClear(GL_STENCIL_BUFFER_BIT)
-        end
+    scene = glscene.scene.value
+    if !isnothing(scene) && scene.visible[] && scene.clear[]
+        a = viewport(scene)[]
+        rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+        glScissor(rt...)
+        glClear(GL_STENCIL_BUFFER_BIT)
     end
     glDisable(GL_SCISSOR_TEST)
 
@@ -371,7 +367,7 @@ function update_stencil!(screen, scene_group, fb)
     return
 end
 
-function run_stage(screen, scene_groups, stage::RenderPlots)
+function run_stage(screen, glscenes, stage::RenderPlots)
     # Somehow errors in here get ignored silently!?
     try
         require_context(screen.glscreen)
@@ -392,28 +388,28 @@ function run_stage(screen, scene_groups, stage::RenderPlots)
 
         prepare_stencil!(stage.framebuffer)
 
-        for scene_group in scene_groups # front to back
-            for (scene_idx, elem) in scene_group.renderobjects
+        ppu = screen.px_per_unit[]
+
+        for glscene in glscenes # front to back
+            scene = glscene.scene.value
+            if isnothing(scene) || !scene.visible[]
+                continue
+            end
+
+            a = viewport(scene)[]
+
+            require_context(screen.glscreen)
+            glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            glScissor(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+
+            for elem in glscene.renderobjects
                 elem.visible && haskey(elem.variants, stage.target) || continue
-
-                scene = scene_group.scenes[scene_idx].value
-                if isnothing(scene) || !scene.visible[]
-                    continue
-                end
-
-                ppu = screen.px_per_unit[]
-                a = viewport(scene)[]
-
-                require_context(screen.glscreen)
-                glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-                glScissor(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
                 elem[:px_per_unit] = ppu
-
                 stage.prerender(elem[:overdraw]::UInt8)
-
                 render(elem, elem.variants[stage.target])
             end
-            update_stencil!(screen, scene_group, stage.framebuffer)
+
+            update_stencil!(screen, glscene, stage.framebuffer)
         end
 
         glDisable(GL_STENCIL_TEST)
@@ -473,7 +469,7 @@ function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
     return RenderPass{:OIT}(framebuffer, robj)
 end
 
-function run_stage(screen, scene_group, stage::RenderPass{:OIT})
+function run_stage(screen, glscene, stage::RenderPass{:OIT})
     # Blend transparent onto opaque
     wh = size(stage.framebuffer)
     set_draw_buffers(stage.framebuffer)
@@ -526,7 +522,7 @@ function construct(::Val{:SSAO2}, screen, framebuffer, inputs, parent)
     return RenderPass{:SSAO2}(framebuffer, robj)
 end
 
-function run_stage(screen, scene_groups, stage::RenderPass{:SSAO1})
+function run_stage(screen, glscenes, stage::RenderPass{:SSAO1})
     set_draw_buffers(stage.framebuffer)  # occlusion buffer
 
     wh = size(stage.framebuffer)
@@ -536,27 +532,25 @@ function run_stage(screen, scene_groups, stage::RenderPass{:SSAO1})
 
     data = stage.robj.uniforms
     # TODO: require groups to have consistent SSAO settings?
-    for scene_group in scene_groups
-        for scene_ref in scene_group.scenes
-            scene = scene_ref.value
-            isnothing(scene) && continue
-            # Select the area of one leaf scene
-            # This should be per scene because projection may vary between
-            # scenes. It should be a leaf scene to avoid repeatedly shading
-            # the same region (though this is not guaranteed...)
-            if !isempty(scene.children) || isempty(scene.plots) ||
-                    !any(p -> to_value(get(p.attributes, :ssao, false)), scene.plots)
-                continue
-            end
-            a = viewport(scene)[]
-            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
-            # update uniforms
-            data[:projection] = Mat4f(scene.camera.projection[])
-            data[:bias] = scene.ssao.bias[]
-            data[:radius] = scene.ssao.radius[]
-            data[:noise_scale] = Vec2f(0.25f0 .* size(stage.framebuffer))
-            GLAbstraction.render(stage.robj)
+    for glscene in glscenes
+        scene = glscene.scene.value
+        isnothing(scene) && continue
+        # Select the area of one leaf scene
+        # This should be per scene because projection may vary between
+        # scenes. It should be a leaf scene to avoid repeatedly shading
+        # the same region (though this is not guaranteed...)
+        if !isempty(scene.children) || isempty(scene.plots) ||
+                !any(p -> to_value(get(p.attributes, :ssao, false)), scene.plots)
+            continue
         end
+        a = viewport(scene)[]
+        glScissor(ppu(minimum(a))..., ppu(widths(a))...)
+        # update uniforms
+        data[:projection] = Mat4f(scene.camera.projection[])
+        data[:bias] = scene.ssao.bias[]
+        data[:radius] = scene.ssao.radius[]
+        data[:noise_scale] = Vec2f(0.25f0 .* size(stage.framebuffer))
+        GLAbstraction.render(stage.robj)
     end
 
     glDisable(GL_SCISSOR_TEST)
@@ -564,7 +558,11 @@ function run_stage(screen, scene_groups, stage::RenderPass{:SSAO1})
     return
 end
 
-function run_stage(screen, scene_groups, stage::RenderPass{:SSAO2})
+function run_stage(screen, glscenes, stage::RenderPass{:SSAO2})
+    # TODO: SSAO doesn't copy the full color buffer and writes to a buffer
+    #       previously used for normals. Figure out a better solution than this:
+    clear_scenes!(screen, glscenes, stage.framebuffer)
+
     # SSAO - blur occlusion and apply to color
     set_draw_buffers(stage.framebuffer)  # color buffer
     wh = size(stage.framebuffer)
@@ -574,19 +572,17 @@ function run_stage(screen, scene_groups, stage::RenderPass{:SSAO2})
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
     data = stage.robj.uniforms
     # TODO: require groups to have consistent SSAO settings?
-    for scene_group in scene_groups
-        for scene_ref in scene_group.scenes
-            scene = scene_ref.value
-            isnothing(scene) && continue
-            # Select the area of one leaf scene
-            isempty(scene.children) || continue
-            a = viewport(scene)[]
-            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
-            # update uniforms
-            data[:blur_range] = scene.ssao.blur
-            data[:inv_texel_size] = rcpframe(size(stage.framebuffer))
-            GLAbstraction.render(stage.robj)
-        end
+    for glscene in glscenes
+        scene = glscene.scene.value
+        isnothing(scene) && continue
+        # Select the area of one leaf scene
+        isempty(scene.children) || continue
+        a = viewport(scene)[]
+        glScissor(ppu(minimum(a))..., ppu(widths(a))...)
+        # update uniforms
+        data[:blur_range] = scene.ssao.blur
+        data[:inv_texel_size] = rcpframe(size(stage.framebuffer))
+        GLAbstraction.render(stage.robj)
     end
     glDisable(GL_SCISSOR_TEST)
 
@@ -627,7 +623,7 @@ function construct(::Val{:FXAA2}, screen, framebuffer, inputs, parent)
     return RenderPass{:FXAA2}(framebuffer, robj)
 end
 
-function run_stage(screen, scene_group, stage::RenderPass{:FXAA1})
+function run_stage(screen, glscene, stage::RenderPass{:FXAA1})
     # FXAA - calculate LUMA
     set_draw_buffers(stage.framebuffer)
     # TODO: make scissor explicit?
@@ -641,7 +637,7 @@ function run_stage(screen, scene_group, stage::RenderPass{:FXAA1})
     return
 end
 
-function run_stage(screen, scene_group, stage::RenderPass{:FXAA2})
+function run_stage(screen, glscene, stage::RenderPass{:FXAA2})
     # FXAA - perform anti-aliasing
     set_draw_buffers(stage.framebuffer)  # color buffer
     stage.robj[:RCPFrame] = rcpframe(size(stage.framebuffer))
@@ -668,7 +664,7 @@ function construct(::Val{:MSAAResolve}, screen, stage::Makie.LoweredStage)
     return MSAAResolve(input_framebuffer, output_framebuffer)
 end
 
-function run_stage(screen, scene_group, stage::MSAAResolve)
+function run_stage(screen, glscene, stage::MSAAResolve)
     w, h = size(stage.output_framebuffer)
     flag = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
 
@@ -700,7 +696,7 @@ function construct(::Val{:Display}, screen, stage)
     return BlitToScreen(framebuffer)
 end
 
-function run_stage(screen, scene_group, stage::BlitToScreen)
+function run_stage(screen, glscene, stage::BlitToScreen)
     copy_to_screen(screen, stage.source_framebuffer)
 end
 

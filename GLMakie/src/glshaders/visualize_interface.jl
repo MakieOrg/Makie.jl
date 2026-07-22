@@ -146,8 +146,8 @@ get_prerender(::Plot) = GLAbstraction.EmptyPrerender()
 get_postrender(::Plot) = GLAbstraction.EmptyPostrender()
 
 function reinitialize_renderobjects!(screen::Screen)
-    for group in screen.render_context.groups
-        for (_, robj) in group.renderobjects
+    for glscene in screen.render_context.scenes
+        for (_, robj) in glscene.renderobjects
             GLAbstraction.clear_instructions!(robj)
             plot = screen.cache2plot[robj.id]
             initialize_renderobject!(screen, robj, plot)
