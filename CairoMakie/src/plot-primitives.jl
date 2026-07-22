@@ -12,33 +12,28 @@ function cairo_draw(screen::Screen, scene::Scene)
     screen.last_render_time = Makie.next_tick!(
         events(scene).tick, Makie.OneTimeRenderTick, screen.creation_time, screen.last_render_time
     )
+    w, h = widths(viewport(Makie.root(scene))[])
+    return cairo_draw(screen, scene, h)
+end
+
+function cairo_draw(screen::Screen, scene::Scene, root_height)
+    scene.visible[] || return
 
     Cairo.save(screen.context)
-    draw_background(screen, scene)
+    draw_background(screen, scene, root_height)
 
-    allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot)
-    sort!(allplots; by = Makie.zvalue2d)
+    plots = Makie.collect_atomic_plots(scene.plots; is_atomic_plot = is_cairomakie_atomic_plot)
+    sort!(plots; by = Makie.zvalue2d)
     # If the backend is not a vector surface (i.e., PNG/ARGB),
     # then there is no point in rasterizing twice.
     should_rasterize = is_vector_backend(screen.surface)
 
-    last_scene = scene
-
     Cairo.save(screen.context)
-    for p in allplots
+    prepare_for_scene(screen, scene)
+    for p in plots
         check_parent_plots(p) do plot
             to_value(get(plot, :visible, true))
         end || continue
-        # only prepare for scene when it changes
-        # this should reduce the number of unnecessary clipping masks etc.
-        pparent = Makie.parent_scene(p)::Scene
-        pparent.visible[]::Bool || continue
-        if pparent != last_scene
-            Cairo.restore(screen.context)
-            Cairo.save(screen.context)
-            prepare_for_scene(screen, pparent)
-            last_scene = pparent
-        end
         Cairo.save(screen.context)
 
         # When a plot is too large to save with a reasonable file size on a vector backend,
@@ -49,13 +44,18 @@ function cairo_draw(screen::Screen, scene::Scene)
         # the backend module which should be used to render the scene, and the pixel density
         # at which it should be rendered.
         if to_value(get(p, :rasterize, false)) != false && should_rasterize
-            draw_plot_as_image(pparent, screen, p, p[:rasterize][])
+            draw_plot_as_image(scene, screen, p, p[:rasterize][])
         else # draw vector
-            draw_plot(pparent, screen, p)
+            draw_plot(scene, screen, p)
         end
         Cairo.restore(screen.context)
     end
     Cairo.restore(screen.context)
+
+    for child in scene.children
+        cairo_draw(screen, child, root_height)
+    end
+
     return
 end
 
@@ -89,7 +89,6 @@ function check_parent_plots(f, scene::Scene)
 end
 
 function prepare_for_scene(screen::Screen, scene::Scene)
-
     # get the root area to correct for its size when translating
     root_area_height = widths(Makie.root(scene))[2]
     scene_area = viewport(scene)[]
@@ -111,11 +110,6 @@ function prepare_for_scene(screen::Screen, scene::Scene)
     return
 end
 
-function draw_background(screen::Screen, scene::Scene)
-    w, h = Makie.widths(viewport(Makie.root(scene))[])
-    return draw_background(screen, scene, h)
-end
-
 function draw_background(screen::Screen, scene::Scene, root_h)
     cr = screen.context
     Cairo.save(cr)
@@ -130,7 +124,7 @@ function draw_background(screen::Screen, scene::Scene, root_h)
         fill(cr)
     end
     Cairo.restore(cr)
-    return foreach(child_scene -> draw_background(screen, child_scene, root_h), scene.children)
+    return
 end
 
 function draw_plot(scene::Scene, screen::Screen, primitive::Plot)
