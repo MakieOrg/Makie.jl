@@ -182,8 +182,14 @@ function per_glyph_block(data, block_idx, N_blocks, block::UnitRange)
         return fill(data, block_length)
     elseif length(data) == N_blocks
         return fill(data[block_idx], block_length)
-    else
+    elseif checkbounds(Bool, data, block)
         return view(data, block)
+    else
+        # Transiently inconsistent update: the text grew before its per-string
+        # attribute vector did (updating a Menu's options resolves the text plot
+        # eagerly mid-cascade, before the recolor lands). Clamp instead of
+        # erroring — the consistent state resolves right after and re-renders.
+        return fill(data[min(block_idx, length(data))], block_length)
     end
 end
 

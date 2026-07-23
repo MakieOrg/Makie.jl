@@ -1,11 +1,16 @@
-function _update_option_colors!(hovered, optionstrings, optionpolycolors, optiontextcolors, m)
+# `hovered` is an index into the VISIBLE (filtered) options; `m.i_selected` always
+# references the ORIGINAL options, so the selection highlight maps through
+# `filtered_indices` (search support, API as in MakieOrg/Makie.jl#5642).
+function _update_option_colors!(hovered, optionstrings, optionpolycolors, optiontextcolors, m,
+                                filtered_indices)
     n = length(optionstrings[])
     resize!(optionpolycolors.val, n)
     resize!(optiontextcolors.val, n)
     base_textcolor = to_color(m.textcolor[])
     active_textcolor = to_color(m.textcolor_active[])
     for idx in 1:n
-        if idx == m.i_selected[]
+        global_idx = idx <= length(filtered_indices[]) ? filtered_indices[][idx] : idx
+        if global_idx == m.i_selected[]
             optionpolycolors.val[idx] = m.cell_color_active[]
             optiontextcolors.val[idx] = active_textcolor
         elseif idx == hovered
@@ -106,13 +111,66 @@ function initialize_block!(m::Menu; default = 1)
         translate!(menuscene, t[1], new_y, t[3])
     end
 
-    optionstrings = lift(o -> optionlabel.(o), blockscene, m.options; ignore_equal_values = true)
+    # search support (API of MakieOrg/Makie.jl#5642): typing while the dropdown
+    # is open filters the VISIBLE options; `i_selected`/`selection` always refer
+    # to the original options via `filtered_indices`.
+    is_searchable = m.searchable[]
+    search_text = Observable(""; ignore_equal_values = true)
+    optionstrings_all = lift(o -> optionlabel.(o), blockscene, m.options; ignore_equal_values = true)
+    filtered_indices = lift(blockscene, optionstrings_all, search_text, m.filter;
+                            ignore_equal_values = true) do strings, query, filter_fn
+        isempty(query) ? collect(eachindex(strings)) :
+            [i for (i, s) in enumerate(strings) if filter_fn(query, s)]
+    end
+    optionstrings = lift(blockscene, optionstrings_all, filtered_indices) do strings, idx
+        strings[idx]
+    end
 
-    selected_text = lift(blockscene, m.prompt, m.i_selected; ignore_equal_values = true) do prompt, i_selected
-        if i_selected == 0
+    selected_text = lift(blockscene, m.prompt, m.i_selected, search_text, m.is_open;
+                         ignore_equal_values = true) do prompt, i_selected, query, open
+        if open && is_searchable
+            isempty(query) ? m.search_placeholder[] : query * "▏"
+        elseif i_selected == 0
             prompt
         else
-            optionstrings[][i_selected]
+            optionstrings_all[][i_selected]
+        end
+    end
+
+    if is_searchable
+        # typing goes into the query while the dropdown is open; keys are consumed
+        # so application shortcuts (single-letter editor keys!) don't fire mid-search
+        on(blockscene, blockscene.events.unicode_input) do chars
+            (m.is_open[] && Makie.receives_events(blockscene)) || return Consume(false)
+            s = chars isa AbstractVector ? String(collect(chars)) : string(chars)
+            isempty(s) && return Consume(false)
+            search_text[] = search_text[] * s
+            return Consume(true)
+        end
+        on(blockscene, blockscene.events.keyboardbutton; priority = 10) do ev
+            (m.is_open[] && Makie.receives_events(blockscene)) || return Consume(false)
+            ev.action in (Keyboard.press, Keyboard.repeat) || return Consume(false)
+            if ev.key == Keyboard.backspace
+                isempty(search_text[]) || (search_text[] = String(chop(search_text[])))
+                return Consume(true)
+            elseif ev.key == Keyboard.enter
+                idx = filtered_indices[]
+                isempty(idx) || (m.i_selected[] = first(idx))
+                m.is_open[] = false
+                return Consume(true)
+            elseif ev.key == Keyboard.escape
+                m.is_open[] = false
+                return Consume(true)
+            end
+            # swallow plain typing keys (they arrive as unicode_input); modified
+            # chords (Ctrl+…) stay application shortcuts
+            mods = blockscene.events.keyboardstate
+            ctrl = Keyboard.left_control in mods || Keyboard.right_control in mods
+            return Consume(!ctrl)
+        end
+        on(blockscene, m.is_open) do open
+            open || (search_text[] = "")
+            return
         end
     end
 
@@ -201,7 +259,7 @@ function initialize_block!(m::Menu; default = 1)
             BBox(ox, ox + w_bbox, oy + h - heights_cumsum[i + 1], oy + h - heights_cumsum[i])
         end
 
-        _update_option_colors!(0, optionstrings, optionpolycolors, optiontextcolors, m)
+        _update_option_colors!(0, optionstrings, optionpolycolors, optiontextcolors, m, filtered_indices)
         notify(optionrects)
         return
     end
@@ -244,11 +302,15 @@ function initialize_block!(m::Menu; default = 1)
                 is_over_options = true
                 was_inside_options[] = true
                 if _mouse_up(butt, was_pressed_options) # PRESSED
-                    m.i_selected[] = _pick_entry(position[2], menuscene, list_y_bounds)
+                    picked = _pick_entry(position[2], menuscene, list_y_bounds)
+                    # the picked row is a VISIBLE index — map to the original option
+                    if picked in eachindex(filtered_indices[])
+                        m.i_selected[] = filtered_indices[][picked]
+                    end
                     m.is_open[] = false
                 else # HOVER
                     idx_hovered = _pick_entry(position[2], menuscene, list_y_bounds)
-                    _update_option_colors!(idx_hovered, optionstrings, optionpolycolors, optiontextcolors, m)
+                    _update_option_colors!(idx_hovered, optionstrings, optionpolycolors, optiontextcolors, m, filtered_indices)
                 end
             else
                 # If not inside anymore, invalidate was_pressed
@@ -287,7 +349,7 @@ function initialize_block!(m::Menu; default = 1)
         # clean up hovers if we're outside
         if !is_over_options && was_inside_options[] # going from being inside to outside
             was_inside_options[] = false
-            _update_option_colors!(0, optionstrings, optionpolycolors, optiontextcolors, m)
+            _update_option_colors!(0, optionstrings, optionpolycolors, optiontextcolors, m, filtered_indices)
         end
         if !is_over_button && was_inside_button[]
             was_inside_button[] = false

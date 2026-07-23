@@ -1470,6 +1470,12 @@ end
         prompt = "Select..."
         "Speed of scrolling in large Menu lists."
         scroll_speed = 15.0
+        "If `true`, typing while the dropdown is open filters the options by `filter(query, label)` (API as in MakieOrg/Makie.jl#5642). Honored only at construction time."
+        searchable = false
+        "Placeholder shown in place of the prompt while the searchable dropdown is open and the query is empty."
+        search_placeholder = "Search…"
+        "Predicate `(query::String, label::String) -> Bool` deciding whether an option matches the search. Used only when `searchable = true`."
+        filter = (q, s) -> occursin(lowercase(q), lowercase(s))
     end
 end
 

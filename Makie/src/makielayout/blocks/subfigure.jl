@@ -138,13 +138,20 @@ function initialize_block!(sf::Subfigure)
         v || (drag_state[] = (:none, 0.0f0, Vec2f(0, 0)))
         return
     end
-    # When this subfigure becomes visible (e.g. a hidden tab is activated),
-    # unhide any child blocks whose `scene.visible` was kept `false` because
-    # `unhide!` saw the parent scene as invisible during block construction.
+    # Keep child blocks' visibility in sync with the subfigure — RECURSIVELY
+    # (nested Subfigures/blocks carry their own layouts). Show: unhide any child
+    # whose `scene.visible` was kept `false` because `unhide!` saw the parent
+    # scene as invisible during block construction. Hide: `hide!` every child,
+    # because a block's mouse machinery gates on its OWN blockscene.visible —
+    # without this, widgets of a hidden subfigure keep consuming clicks meant
+    # for whatever is shown in the same place (e.g. two panels sharing a dock
+    # slot: the hidden panel's buttons steal the visible panel's clicks).
     on(blockscene, is_visible) do v
-        v || return
-        for block in flatten_layout_content(sf.layout)
-            unhide!(block)
+        stack = flatten_layout_content(sf.layout)
+        while !isempty(stack)
+            block = pop!(stack)
+            append!(stack, flatten_layout_content(block))
+            v ? unhide!(block) : hide!(block)
         end
         return
     end
