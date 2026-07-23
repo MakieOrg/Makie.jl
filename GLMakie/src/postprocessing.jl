@@ -390,26 +390,44 @@ function run_stage(screen, glscenes, stage::RenderPlots)
 
         ppu = screen.px_per_unit[]
 
-        for glscene in reverse(glscenes) # front to back
-            scene = glscene.scene.value
-            if isnothing(scene) || !scene.visible[]
-                continue
+        group_end = length(glscenes)
+        while group_end > 0
+            # Find groups of scenes that don't clear. Render renderobjects in
+            # those groups back to front, while the groups are generated
+            # front to back to decrease overdraw
+            group_start = group_end + 1
+            while group_start > 1
+                group_start -= 1
+                if glscenes[group_start].scene.value.clear[]
+                    break
+                end
             end
 
-            a = viewport(scene)[]
+            for glscene in view(glscenes, group_start:group_end) # back to front
+                scene = glscene.scene.value
+                if isnothing(scene) || !scene.visible[]
+                    continue
+                end
 
-            require_context(screen.glscreen)
-            glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-            glScissor(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+                a = viewport(scene)[]
 
-            for elem in glscene.renderobjects
-                elem.visible && haskey(elem.variants, stage.target) || continue
-                elem[:px_per_unit] = ppu
-                stage.prerender(elem[:overdraw]::UInt8)
-                render(elem, elem.variants[stage.target])
+                require_context(screen.glscreen)
+                glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+                glScissor(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+
+                for elem in glscene.renderobjects
+                    elem.visible && haskey(elem.variants, stage.target) || continue
+                    elem[:px_per_unit] = ppu
+                    stage.prerender(elem[:overdraw]::UInt8)
+                    render(elem, elem.variants[stage.target])
+                end
             end
 
-            update_stencil!(screen, glscene, stage.framebuffer)
+            # now exclude the cleared scene from the next group
+            update_stencil!(screen, glscenes[group_start], stage.framebuffer)
+
+            # And prepare the next group
+            group_end = group_start - 1
         end
 
         glDisable(GL_STENCIL_TEST)
@@ -571,7 +589,7 @@ function run_stage(screen, glscenes, stage::RenderPass{:SSAO2})
     glEnable(GL_SCISSOR_TEST)
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
     data = stage.robj.uniforms
-    # TODO: require groups to have consistent SSAO settings?
+    # TODO: require full render pipeline to have consistent SSAO settings?
     for glscene in reverse(glscenes)
         scene = glscene.scene.value
         isnothing(scene) && continue

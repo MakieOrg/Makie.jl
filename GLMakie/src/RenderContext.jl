@@ -89,7 +89,7 @@ end
 function collect_scenes!(ctx::RenderContext, screen, scene)
     push!(ctx.scenes, GLScene(scene))
     ctx.scene2glscene[objectid(scene)] = length(ctx.scenes)
-    for child in reverse(scene.children)
+    for child in scene.children
         collect_scenes!(ctx, screen, child)
     end
     return
