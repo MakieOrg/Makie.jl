@@ -120,7 +120,15 @@ the given scene, but doesn't need to be.
 function find_previous_scene(scene::Scene)
     _parent = parent(scene)
     idx = findfirst(x -> x === scene, _parent.children)
-    return idx === 1 ? _parent : _parent.children[idx - 1]
+    if idx === 1
+        return _parent
+    else
+        previous = _parent.children[idx - 1]
+        while !isempty(previous.children)
+            previous = last(previous.children)
+        end
+        return previous
+    end
 end
 
 function Makie.insert_scene!(ctx::RenderContext, screen, scene)
