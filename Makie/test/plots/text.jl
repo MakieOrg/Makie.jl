@@ -76,10 +76,11 @@ end
     atlas = Makie.get_texture_atlas()
     # Test quad data
     positions = p.positions_transformed_f32c[]
+    glyphs = p.plots[1]
     char_offsets = p.marker_offset[]
-    quad_offsets = p.quad_offset[]
-    uvs = p.sdf_uv[]
-    scales = p.quad_scale[]
+    quad_offsets = glyphs.quad_offset[]
+    uvs = glyphs.sdf_uv[]
+    scales = glyphs.quad_scale[]
 
     # Also doesn't work
     # fta_offsets = map(fta_glyphs) do (img, extent)
