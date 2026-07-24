@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added an `absolute` attribute to `dendrogram` that keeps the input leaf positions instead of translating the root to `origin`, making it easy to align leaves to e.g. heatmap rows or columns [#5666](https://github.com/MakieOrg/Makie.jl/pull/5666).
 - `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
   `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
 - Scope the CairoMakie precompile workload's figures inside `let`, so rendered `Screen`s and their pixel buffers are no longer serialized into the package image (~150 MB smaller pkgimage) [#5692](https://github.com/MakieOrg/Makie.jl/pull/5692).
