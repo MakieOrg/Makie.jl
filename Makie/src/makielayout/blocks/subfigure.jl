@@ -247,12 +247,18 @@ end
 
 content_scene(sf::Subfigure) = sf.scene
 
-# `unhide!` force-sets `b.scene.visible[] = true` (intended for blocks like Axis
-# that initialise it `false`), which would override the reactive binding from
-# `sf.visible`. Subfigure's scene visibility follows `sf.visible`, so don't touch
-# `sf.scene.visible` here — just unhide the blockscene like the default would.
+# The generic `hide!` (e.g. a parent Subfigure's child walk hiding a NESTED
+# subfigure) force-sets `sf.scene.visible[] = false`, overriding the reactive
+# binding from `sf.visible` — and nothing re-fires that binding on re-show, so
+# the content scene would stay invisible forever and every child `unhide!`
+# early-returns on the invisible parent. Re-SYNC the scene with its bound state
+# here instead of blindly forcing `true`: a nested subfigure whose own
+# `visible` is false stays hidden, one that should show gets its scene back
+# BEFORE the walk reaches its children (the walk is parent-first).
 function unhide!(sf::Subfigure)
     sf.blockscene.visible[] || (sf.blockscene.visible[] = true)
+    want = sf.visible[]
+    sf.scene.visible[] == want || (sf.scene.visible[] = want)
     return
 end
 
