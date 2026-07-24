@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `poly` no longer builds the stroke outline when `strokewidth` is `0`, and no longer widens 2D input to 3D points when computing the outline. For a `poly` of 457k points this cuts allocations from 94 MiB to 32 MiB when unstroked (`strokewidth` defaults to `0`) and to 87 MiB when stroked [#5701](https://github.com/MakieOrg/Makie.jl/pull/5701).
 - Added an `absolute` attribute to `dendrogram` that keeps the input leaf positions instead of translating the root to `origin`, making it easy to align leaves to e.g. heatmap rows or columns [#5666](https://github.com/MakieOrg/Makie.jl/pull/5666).
 - `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
   `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
