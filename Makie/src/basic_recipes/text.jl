@@ -343,9 +343,138 @@ function reuse_glyph_layout(cached, color, strokecolor, strokewidth)
     return (gcs, gi, fpc, go, ge, tb, text_color, trot, tscale, text_strokewidth, text_strokecolor, ls, lw, lc, li)
 end
 
+################################################################################
+### text_handler extension
+################################################################################
+
+"""
+    compile_text(handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width)
+
+Engine step of a `text_handler`. Define methods dispatching on the input type the
+handler accepts (e.g. `LaTeXString`). Return a `CompiledGlyphs` (or a custom payload
+with a matching `place_text!` method), or `nothing` to fall through to the built-in
+path. Receives only inputs that affect the laid-out glyphs; display attributes
+(color, rotation, offset, alignment) are applied later in `place_text!`.
+"""
+compile_text(handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width) = nothing
+
+"""
+    CompiledGlyphs
+
+Backend-neutral, unaligned glyph layout returned by `compile_text` (fontsize baked
+in). The Makie-provided `place_text!` applies alignment (from `bbox`), rotation and
+offset, and the block color, then appends to the shared glyph/rule outputs. Handlers
+that need custom placement can return a different payload and define their own
+`place_text!`.
+"""
+struct CompiledGlyphs
+    glyphindices::Vector{UInt64}
+    fonts::Vector{NativeFont}
+    origins::Vector{Point3f}                          # unaligned layout origins
+    extents::Vector{GlyphExtent}
+    scales::Vector{Vec2f}
+    rules::Vector{Tuple{Point3f, Point3f, Float32}}   # (p0, p1, thickness), unaligned
+    bbox::Rect2f                                       # unaligned tight bounds, for alignment
+end
+
+# Route one text block through the handler. Returns true if the handler produced
+# output, false to fall through to the built-in `convert_text_string!` path.
+function handle_text!(
+        outputs, handler, str, i, N, fontsize, font, align, rotation, justification,
+        lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
+    )
+    compiled = compile_text(
+        handler, str, sv_getindex(font, i), fonts, sv_getindex(fontsize, i),
+        sv_getindex(lineheight, i), sv_getindex(justification, i), sv_getindex(word_wrap_width, i)
+    )
+    compiled === nothing && return false
+    place_text!(
+        outputs, compiled, sv_getindex(align, i), sv_getindex(rotation, i),
+        sv_getindex(offset, i), sv_getindex(color, i), sv_getindex(strokecolor, i),
+        sv_getindex(strokewidth, i)
+    )
+    return true
+end
+
+# Makie-provided placement for the neutral CompiledGlyphs payload.
+function place_text!(outputs, c::CompiledGlyphs, align, rotation, offset, color, strokecolor, strokewidth)
+    halign, valign = align
+    bb = c.bbox
+    xshift = get_xshift(minimum(bb)[1], maximum(bb)[1], halign)
+    yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign; default = 0.0f0)
+    shift = Vec3f(xshift, yshift, 0)
+
+    curr = length(outputs.glyphindices)
+    n = length(c.glyphindices)
+    block = (curr + 1):(curr + n)
+    push!(outputs.text_blocks, block)
+
+    origins = Point3f[rotation * (o - shift) for o in c.origins]
+    append!(outputs.glyphindices, c.glyphindices)
+    append!(outputs.font_per_char, c.fonts)
+    append!(outputs.glyph_origins, origins)
+    append!(outputs.glyph_extents, c.extents)
+    append!(outputs.text_scales, c.scales)
+    append!(outputs.text_color, fill(color, n))
+    append!(outputs.text_rotation, fill(rotation, n))
+    append!(outputs.text_strokecolor, fill(strokecolor, n))
+    append!(outputs.text_strokewidth, fill(strokewidth, n))
+    push!(outputs.glyphcollections, GlyphCollection(c.glyphindices, c.fonts, origins, c.extents, c.scales, rotation, color, strokecolor, strokewidth))
+
+    block_idx = length(outputs.text_blocks)
+    for (p0, p1, thickness) in c.rules
+        push!(outputs.linesegments, rotation * (p0 - shift) + offset, rotation * (p1 - shift) + offset)
+        push!(outputs.linewidths, thickness, thickness)
+        push!(outputs.linecolors, color, color)
+        push!(outputs.lineindices, block_idx => first(block), block_idx => first(block))
+    end
+    return
+end
+
+"""
+    MathTeXHandler()
+
+A `text_handler` that lays out `LaTeXString`s with MathTeXEngine.jl through the
+generic `compile_text`/`place_text!` protocol. Setting `text_handler = MathTeXHandler()`
+routes LaTeX math through the pluggable path; non-LaTeX inputs fall through.
+"""
+struct MathTeXHandler end
+
+function compile_text(::MathTeXHandler, str::LaTeXString, font, fonts, fontsize, lineheight, justification, word_wrap_width)
+    fs = Vec2f(first(fontsize))
+    all_els = generate_tex_elements(str)
+    els = filter(x -> x[1] isa TeXChar, all_els)
+    texchars = [x[1] for x in els]
+    scales = Vec2f[Vec2f(x[3] * fs) for x in els]
+    glyphindices = UInt64[FreeTypeAbstraction.glyph_index(tc) for tc in texchars]
+    glyphfonts = NativeFont[tc.font for tc in texchars]
+    extents = GlyphExtent.(texchars)
+    origins = Point3f[to_ndim(Vec3f, fs, 0) .* to_ndim(Point3f, x[2], 0) for x in els]
+
+    bboxes = map(extents, scales) do ext, scale
+        unscaled = height_insensitive_boundingbox_with_advance(ext)
+        return Rect2f(origin(unscaled) * scale, widths(unscaled) * scale)
+    end
+    bb = isempty(bboxes) ? Rect2f(0, 0, 0, 0) : mapreduce(union, zip(bboxes, origins)) do (b, pos)
+        return Rect2f(Rect3f(b) + pos)
+    end
+
+    rules = Tuple{Point3f, Point3f, Float32}[]
+    for (element, position, _) in all_els
+        element isa MathTeXEngine.HLine || continue
+        x, y = position
+        p0 = to_ndim(Point3f, fs .* Point2f(x, y), 0)
+        p1 = to_ndim(Point3f, fs .* Point2f(x + element.width, y), 0)
+        push!(rules, (p0, p1, Float32(fs[1] * element.thickness)))
+    end
+
+    return CompiledGlyphs(glyphindices, glyphfonts, origins, extents, scales, rules, bb)
+end
+
 function compute_glyph_collections!(attr::ComputeGraph)
     inputs = [
         :input_text,
+        :text_handler,
         :fontsize,
         :selected_font,
         :align,
@@ -368,8 +497,8 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :text_strokewidth, :text_strokecolor,
         :linesegments, :linewidths, :linecolors, :lineindices,
     ]
-    return register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
-        if cached !== nothing && all(display_independent_layout, input_texts) &&
+    return register_computation!(attr, inputs, outputs) do (input_texts, text_handler, _inputs...), changed, cached
+        if cached !== nothing && text_handler === nothing && all(display_independent_layout, input_texts) &&
                 !changed.input_text && !changed.fontsize && !changed.selected_font &&
                 !changed.align && !changed.rotation && !changed.justification &&
                 !changed.lineheight && !changed.word_wrap_width && !changed.offset && !changed.fonts
@@ -397,7 +526,9 @@ function compute_glyph_collections!(attr::ComputeGraph)
 
         N = length(input_texts)
         for (block_index, str) in enumerate(input_texts)
-            convert_text_string!(_outputs, str, block_index, N, _inputs...)
+            if text_handler === nothing || !handle_text!(_outputs, text_handler, str, block_index, N, _inputs...)
+                convert_text_string!(_outputs, str, block_index, N, _inputs...)
+            end
         end
 
         return values(_outputs)
