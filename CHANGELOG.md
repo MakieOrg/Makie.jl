@@ -2,6 +2,7 @@
 
 ## Breaking
 
+- **breaking** Added a pluggable `text_handler` attribute and a new `Glyphs` plot primitive. `text` now lays its glyphs out into a `Glyphs` child and can route inputs through a custom layout engine (e.g. `MathTeXHandler`), falling back to the built-in path when a handler returns `nothing`. `Text` is now a container plot, so code that read glyph render attributes (`sdf_uv`, `quad_offset`, `quad_scale`, ...) off a `Text` must read them from its `Glyphs` child instead. [#5713](https://github.com/MakieOrg/Makie.jl/pull/5713)
 - **breaking** Moved `FFMPEG_jll` from a hard dependency to a package extension to avoid pulling in GPL-licensed libraries (e.g. libx264). `record`, `VideoStream`, `convert_video`, and `extract_frames` now require `FFMPEG_jll` to be available in the active environment; Makie will load it automatically on first use. A custom ffmpeg binary can be configured via `Makie.ffmpeg_path!(path)` (or persistently via Preferences.jl). [#5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
 - Expanded scope of dim converts [#5323](https://github.com/MakieOrg/Makie.jl/pull/5323)
   - **breaking** most plot recipes now set the target types for their conversions. This means `plot!(::PlotType{<:Tuple{<:MyArgType}})` requires introducing a conversion trait and extending `Makie.types_for_plot_arguments()`. See docs.
