@@ -901,6 +901,10 @@ end
 free(::Block) = nothing
 
 function Base.delete!(block::Block)
+    return default_delete_block!(block)
+end
+
+function default_delete_block!(block::Block)
     foreach(delete!, block.blocks)
     free(block)
     empty!(block.attributes)

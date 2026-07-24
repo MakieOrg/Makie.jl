@@ -891,6 +891,7 @@ end
     scene8 = Scene(scene6, viewport = Observable(Rect2i(275, 275, 50, 150)),
         backgroundcolor = :orange, clear = true)
 
+    sleep(1) # for WGLMakie?
     st = Makie.Stepper(scene)
     Makie.step!(st)
 

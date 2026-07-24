@@ -6,14 +6,6 @@
 #           Drawing pipeline           #
 ########################################
 
-collect_scenes(scene) = collect_scenes!(Scene[], scene)
-function collect_scenes!(buffer, scene)
-    scene.visible[] || return buffer
-    push!(buffer, scene)
-    foreach(s -> collect_scenes!(buffer, s), scene.children)
-    return buffer
-end
-
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::Screen, root_scene::Scene)
     # So animations based on tick events can finish
@@ -22,7 +14,7 @@ function cairo_draw(screen::Screen, root_scene::Scene)
     )
 
     # collect all scene in back (first) to front (last) order
-    all_scenes = collect_scenes(root_scene)
+    all_scenes = Makie.collect_scenes(root_scene, skip_invisible = true)
 
     # If the backend is not a vector surface (i.e., PNG/ARGB),
     # then there is no point in rasterizing twice.

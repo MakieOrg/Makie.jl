@@ -87,8 +87,20 @@ mutable struct Scene <: AbstractScene
     "The current pixel area of the Scene."
     viewport::Observable{Rect2i}
 
-    "Whether the scene should be cleared."
+    """
+    Controls whether a scene clears its viewport to the background color.
+    This will erase content from scenes that are behind this scene.
+    """
     clear::Observable{Bool}
+
+    """
+    Affects the render order of the scene by controlling the position it occupies
+    in `scene.parent.children`. A low z index (relative to sibling scenes) will
+    move the scene to the back (start of parent.children) and a high z index
+    will move it to the front (end of parent.children). Note that this only acts
+    when the Scene is constructed.
+    """
+    const zindex::Int64
 
     "The `Camera` associated with the Scene."
     camera::Camera
@@ -107,7 +119,14 @@ mutable struct Scene <: AbstractScene
 
     theme::Attributes
 
-    "Children of the Scene inherit its transformation."
+    """
+    Vector of child scenes.
+
+    Child scenes render on top of their parent in the order specified by this
+    vector. Child scenes are added to a parent by calling `Scene(parent, ...)`.
+    by `zindex` first and insertion order second. If a parent scene is set to
+    `visible = false`, all child scenes will be hidden.
+    """
     children::Vector{Scene}
 
     """
@@ -132,6 +151,7 @@ mutable struct Scene <: AbstractScene
             events::Events,
             viewport::Observable{Rect2i},
             clear::Observable{Bool},
+            zindex::Int64,
             camera::Camera,
             camera_controls::AbstractCamera,
             transformation::Transformation,
@@ -151,6 +171,7 @@ mutable struct Scene <: AbstractScene
             events,
             viewport,
             clear,
+            zindex,
             camera,
             camera_controls,
             transformation,
@@ -190,7 +211,11 @@ mutable struct Scene <: AbstractScene
                 end
             end
         else
-            push!(parent.children, scene)
+            idx = length(parent.children)
+            while idx > 1 && parent.children[idx].zindex > zindex
+                idx -= 1
+            end
+            insert!(parent.children, idx + 1, scene)
         end
 
         # May require parent to know about this scene
@@ -289,6 +314,7 @@ function Scene(;
         viewport::Union{Observable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
         clear::Union{Automatic, Observable{Bool}, Bool} = automatic,
+        zindex::Int64 = 0,
         transform_func = identity,
         camera::Union{Function, Camera, Nothing} = nothing,
         camera_controls::AbstractCamera = EmptyCamera(),
@@ -357,7 +383,7 @@ function Scene(;
         clear = convert(Observable{Bool}, clear)
     end
     scene = Scene(
-        parent, events, scene_viewport, clear, cam, camera_controls,
+        parent, events, scene_viewport, clear, zindex, cam, camera_controls,
         transformation, plots, m_theme,
         children, current_screens, bg, visible, ssao, _lights;
         deregister_callbacks = deregister_callbacks
@@ -855,4 +881,59 @@ function collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_pl
     collect_atomic_plots(scene.plots, plots; is_atomic_plot = is_atomic_plot)
     collect_atomic_plots(scene.children, plots; is_atomic_plot = is_atomic_plot)
     return plots
+end
+
+"""
+    collect_scenes(scene)
+
+Collects `scene` and all its child scenes in a Vector following back to front
+order.
+"""
+function collect_scenes(scene; skip_invisible = false)
+    return collect_scenes!(push!, Scene[], scene; skip_invisible)
+end
+
+"""
+    collect_scenes!([push_callback = push!], buffer, scene)
+
+Successively calls `push_callback(buffer, s::Scene)` to add `scene` and all
+its child scenes to `buffer` in back to front order.
+"""
+function collect_scenes!(buffer, scene; skip_invisible = false)
+    return collect_scenes!(push!, buffer, scene; skip_invisible)
+end
+
+function collect_scenes!(push_scene_cb!, buffer, scene; skip_invisible = false)
+    # collect scenes in back to front order
+    skip_invisible && !scene.visible[] && return buffer
+    push_scene_cb!(buffer, scene)
+    for child in scene.children
+        collect_scenes!(push_scene_cb!, buffer, child; skip_invisible)
+    end
+    return buffer
+end
+
+"""
+    find_previous_scene(scene)
+
+Returns the scene that should render immediately before `scene` assuming depth
+first ordering.
+"""
+function find_previous_scene(scene::Scene)
+    _parent = parent(scene)
+    idx = findfirst(x -> x === scene, _parent.children)
+    if idx === 1
+        # No sibling that render after the parent and before this scene, so
+        # the parent scene is immediately behind this
+        return _parent
+    else
+        # There exists a sibling that renders before `scene` and after
+        # `scene.parent`. We need to find the last scene that renders in the
+        # sibling tree, i.e.:
+        previous = _parent.children[idx - 1]
+        while !isempty(previous.children)
+            previous = last(previous.children)
+        end
+        return previous
+    end
 end

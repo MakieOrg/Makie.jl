@@ -43,6 +43,9 @@ function _mouse_up(butt, was_pressed)
     return false
 end
 
+# TODO: Move to theme?
+const MENU_ZINDEX = 200_000
+
 block_kwargs(::Type{Menu}) = Set([:default])
 function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
@@ -90,8 +93,10 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear = true, visible = m.is_open)
-    translate!(menuscene, 0, 0, 200)
+    m.menuscene = menuscene = Scene(
+        blockscene.parent, scenearea, camera = campixel!,
+        clear = true, zindex = MENU_ZINDEX, visible = m.is_open
+    )
 
     onany(blockscene, scenearea, listheight) do area, listheight
         t = translation(menuscene)[]
@@ -385,4 +390,10 @@ end
 
 function optionvalue(option::Tuple{Any, Any})
     return option[2]
+end
+
+function Base.delete!(menu::Menu)
+    delete!(menu.menuscene)
+    default_delete_block!(menu)
+    return
 end

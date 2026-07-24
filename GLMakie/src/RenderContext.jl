@@ -1,3 +1,6 @@
+# TODO: We probably should track visible explicitly here as an OR'd combination
+# of all parent scenes and the represented scene since scene.visible forwarding
+# can be overwritten
 struct GLScene
     scene::WeakRef
     renderobjects::Vector{RenderObject}
@@ -80,17 +83,11 @@ end
 
 Base.isempty(ctx::RenderContext) = isempty(ctx.scenes)
 
-function recreate!(ctx::RenderContext, screen, root::Scene)
+function recreate!(ctx::RenderContext, root::Scene)
     empty!(ctx)
-    collect_scenes!(ctx, screen, root)
-    return
-end
-
-function collect_scenes!(ctx::RenderContext, screen, scene)
-    push!(ctx.scenes, GLScene(scene))
-    ctx.scene2glscene[objectid(scene)] = length(ctx.scenes)
-    for child in scene.children
-        collect_scenes!(ctx, screen, child)
+    Makie.collect_scenes!(ctx, root) do ctx, scene
+        push!(ctx.scenes, GLScene(scene))
+        ctx.scene2glscene[objectid(scene)] = length(ctx.scenes)
     end
     return
 end
@@ -109,38 +106,16 @@ function insert_robj!(ctx::RenderContext, scene, robj)
     return
 end
 
-"""
-    find_previous_scene(scene)
-
-Returns the scene that should render immediately before `scene` assuming depth
-first ordering. This is either the scene immediately before `scene` in
-`parent.children` or the parent itself. The returned scene might be covered by
-the given scene, but doesn't need to be.
-"""
-function find_previous_scene(scene::Scene)
-    _parent = parent(scene)
-    idx = findfirst(x -> x === scene, _parent.children)
-    if idx === 1
-        return _parent
-    else
-        previous = _parent.children[idx - 1]
-        while !isempty(previous.children)
-            previous = last(previous.children)
-        end
-        return previous
-    end
-end
-
 function Makie.insert_scene!(ctx::RenderContext, screen, scene)
     # verify that scenes don't get added multiple times
     @assert !haskey(ctx.scene2glscene, objectid(scene))
 
-    # The given scene renders before "previous" in front to back rendering order.
-    # Therefore it takes its spot in `group.scenes`
-    previous = find_previous_scene(scene)
+    # The given scene renders after "previous" in back to front render order.
+    previous = Makie.find_previous_scene(scene)
     scene_idx = ctx.scene2glscene[objectid(previous)]
     insert!(ctx.scenes, scene_idx + 1, GLScene(scene))
 
+    # Inserting it bumps all indices after `scene_idx` by 1
     for (k, idx) in ctx.scene2glscene
         ctx.scene2glscene[k] = idx + Int(idx > scene_idx)
     end

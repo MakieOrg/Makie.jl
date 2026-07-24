@@ -1417,6 +1417,7 @@ end
 ```
 """
 @Block Menu begin
+    menuscene::Scene
     @attributes begin
         "The height setting of the menu."
         height = Auto()

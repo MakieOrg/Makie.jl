@@ -479,7 +479,7 @@ function display_scene!(screen::Screen, scene::Scene)
         error("GLMakie can not display a scene in multiple Screens.")
     end
     resize!(screen, size(scene)...)
-    recreate!(screen.render_context, screen, scene)
+    recreate!(screen.render_context, scene)
     insertplots!(screen, scene)
     Makie.push_screen!(scene, screen)
     connect_screen(scene, screen)
