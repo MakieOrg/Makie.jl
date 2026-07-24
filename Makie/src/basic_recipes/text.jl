@@ -314,6 +314,35 @@ function append_tex_linesegment_data!(
     return nothing
 end
 
+"""
+    display_independent_layout(text) -> Bool
+
+Whether a text value's laid-out glyph geometry is independent of the display
+attributes (color, strokecolor, strokewidth). Plain strings apply those per-glyph
+*after* layout, so their geometry can be reused when only display attributes change.
+`RichText` and `LaTeXString` bake color into their layout, so they return `false`
+and recompute. Custom text types default to `false` (conservative).
+"""
+display_independent_layout(::AbstractString) = true
+display_independent_layout(@nospecialize(x)) = false
+
+# Reuse cached glyph geometry, recomputing only the per-glyph display arrays.
+# Valid only when no layout-affecting input changed and every block's text has
+# `display_independent_layout == true` (checked by the caller).
+function reuse_glyph_layout(cached, color, strokecolor, strokewidth)
+    (gcs, gi, fpc, go, ge, tb, _, trot, tscale, _, _, ls, lw, lc, li) = cached
+    N = length(tb)
+    text_color = RGBAf[]
+    text_strokecolor = RGBAf[]
+    text_strokewidth = Float32[]
+    for (i, block) in enumerate(tb)
+        append!(text_color, per_glyph_block(color, i, N, block))
+        append!(text_strokecolor, per_glyph_block(strokecolor, i, N, block))
+        append!(text_strokewidth, per_glyph_block(strokewidth, i, N, block))
+    end
+    return (gcs, gi, fpc, go, ge, tb, text_color, trot, tscale, text_strokewidth, text_strokecolor, ls, lw, lc, li)
+end
+
 function compute_glyph_collections!(attr::ComputeGraph)
     inputs = [
         :input_text,
@@ -340,6 +369,13 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :linesegments, :linewidths, :linecolors, :lineindices,
     ]
     return register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
+        if cached !== nothing && all(display_independent_layout, input_texts) &&
+                !changed.input_text && !changed.fontsize && !changed.selected_font &&
+                !changed.align && !changed.rotation && !changed.justification &&
+                !changed.lineheight && !changed.word_wrap_width && !changed.offset && !changed.fonts
+            return reuse_glyph_layout(cached, _inputs[10], _inputs[11], _inputs[12])
+        end
+
         _outputs = (
             glyphcollections = GlyphCollection[],
             glyphindices = UInt64[],
