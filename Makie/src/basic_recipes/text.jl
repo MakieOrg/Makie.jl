@@ -446,7 +446,16 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     register_colormapping!(attr)
     register_text_computations!(attr)
     register_glyphs!(plot)
-    return tex_linesegments!(plot)
+    tex_linesegments!(plot)
+    return register_text_plotlist!(plot)
+end
+
+# Channel for non-glyph, non-rule output (images, arbitrary handler plots). Empty
+# until a text_handler emits specs; an empty plotlist has no children and no render
+# objects, so it costs nothing for the default glyph/rule paths.
+function register_text_plotlist!(plot)
+    map!(_ -> PlotSpec[], plot.attributes, [:input_text], :text_specs)
+    return plotlist!(plot, plot.text_specs)
 end
 
 function register_glyphs!(plot)

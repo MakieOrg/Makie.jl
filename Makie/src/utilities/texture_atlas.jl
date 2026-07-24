@@ -538,11 +538,26 @@ is_all_equal_scale(::Vector{Real}) = true
 is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
 is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
+"""
+    rasterize_marker_for_gpu(marker, markersize) -> Union{Nothing, Matrix, Vector{Matrix}}
+
+Extension hook for GPU backends (GLMakie / WGLMakie) to rasterize an opaque scatter
+marker into an image (or one image per marker) at upload time. Returns `nothing` by
+default, deferring to the existing SDF / image-matrix paths. CairoMakie ignores the
+resulting image and dispatches `draw_marker` on the original marker type instead, so a
+handler can render the same marker as vectors on Cairo and as a raster on the GPU.
+"""
+rasterize_marker_for_gpu(@nospecialize(marker), @nospecialize(markersize)) = nothing
+
 function compute_marker_attributes((atlas, marker, font, scale), changed, last)
     # Note: Careful, changed[2] is not always called marker
     # TODO, only calculate offset if needed
     # [atlas_sym, :marker, :font, :markersize]
     # [:sdf_marker_shape, :sdf_uv, :image]
+    if !(marker isa Matrix{<:Colorant} || marker isa Vector{<:Matrix{<:Colorant}})
+        raster = rasterize_marker_for_gpu(marker, scale)
+        raster === nothing || (marker = raster)
+    end
     if marker isa Matrix{<:Colorant} # single image marker
         return (Cint(RECTANGLE), Vec4f(0, 0, 1, 1), marker)
     elseif marker isa Vector{<:Matrix{<:Colorant}} # multiple image markers
