@@ -27,12 +27,9 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Scatter)
     return draw_atomic_scatter(ctx, attr[:cairo_attributes][])
 end
 
-function draw_atomic(scene::Scene, screen::Screen, plot::Text)
-    # :text_strokewidth # TODO: missing, but does per-glyph strokewidth even work? Same for strokecolor?
+function draw_atomic(scene::Scene, screen::Screen, plot::Glyphs)
     attr = plot.attributes
-    # input -> markerspace
-    # TODO: We're doing per-string/glyphcollection work per glyph here
-    cairo_unclipped_indices!(attr, :per_char_positions_transformed_f32c)
+    cairo_unclipped_indices!(attr, :positions_transformed_f32c)
     Makie.register_positions_projected!(
         scene.compute, attr, Point3d;
         input_name = :positions_transformed_f32c, output_name = :positions_in_markerspace,
@@ -45,15 +42,15 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Text)
         add_input!(attr, :cam_view, scene.compute.view) # different from plot.view
     end
     inputs = [
-        :text_blocks, :font_per_char, :glyphindices, :marker_offset, :text_rotation,
-        :text_scales, :text_strokewidth, :text_strokecolor, :markerspace,
-        :text_color, :glowwidth, :glowcolor,
+        :font_per_char, :glyphindices, :marker_offset, :rotation,
+        :scale, :strokewidth, :strokecolor, :markerspace,
+        :color, :glowwidth, :glowcolor,
         :positions_in_markerspace, :projectionview, :eye_to_clip, :cam_view, :resolution,
         :transform_marker, :size_model, :unclipped_indices,
     ]
     extract_attributes!(attr, inputs, :cairo_attributes)
     ctx = screen.context
-    return draw_text(ctx, attr[:cairo_attributes][])
+    return draw_glyphs(ctx, attr[:cairo_attributes][])
 end
 
 
@@ -141,17 +138,16 @@ function flush_glyph_batch!(ctx, glyph_buffer, font, color, mat, strokewidth, st
     return
 end
 
-function draw_text(ctx, attr::NamedTuple)
+function draw_glyphs(ctx, attr::NamedTuple)
     positions = attr.positions_in_markerspace
-    text_blocks = attr.text_blocks
     font_per_char = attr.font_per_char
     glyphindices = attr.glyphindices
     marker_offset = attr.marker_offset
-    text_rotation = attr.text_rotation
-    text_scales = attr.text_scales
-    text_strokewidth = attr.text_strokewidth
-    text_strokecolor = attr.text_strokecolor
-    text_color = attr.text_color
+    rotations = attr.rotation
+    scales = attr.scale
+    strokewidths = attr.strokewidth
+    strokecolors = attr.strokecolor
+    colors = attr.color
     markerspace = attr.markerspace
     valid_indices = attr.unclipped_indices
     glowwidth = attr.glowwidth
@@ -166,88 +162,84 @@ function draw_text(ctx, attr::NamedTuple)
     )
 
     glyph_buffer = CairoGlyph[]
+    local batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor
 
-    for (block_idx, glyph_indices) in enumerate(text_blocks)
+    Cairo.save(ctx)
+
+    # Glow pass: build combined glyph path once, stroke with decreasing widths
+    if glowwidth > 0 && glow_a > 0
         Cairo.save(ctx)
-
-        glyph_pos = positions[block_idx]
-        local batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor
-
-        # Glow pass: build combined glyph path once, stroke with decreasing widths
-        if glowwidth > 0 && glow_a > 0
-            Cairo.save(ctx)
-            for glyph_idx in glyph_indices
-                glyph_idx in valid_indices || continue
-                glyph = glyphindices[glyph_idx]
-                glyph == 0 && continue
-                gp3 = glyph_pos .+ size_model * marker_offset[glyph_idx]
-                any(isnan, gp3) && continue
-                scale = Makie.sv_getindex(text_scales, glyph_idx)
-                rotation = Makie.sv_getindex(text_rotation, glyph_idx)
-                pos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
-                cairoface = set_ft_font(ctx, font_per_char[glyph_idx])
-                set_font_matrix(ctx, mat)
-                glyph_path(ctx, glyph, pos...)
-                cairo_font_face_destroy(cairoface)
-            end
-            n_layers = max(1, round(Int, glowwidth))
-            Cairo.set_source_rgba(ctx, glow_r, glow_g, glow_b, glow_a / n_layers)
-            Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
-            Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
-            for i in n_layers:-1:2
-                Cairo.set_line_width(ctx, 2.0 * glowwidth * i / n_layers)
-                Cairo.stroke_preserve(ctx)
-            end
-            Cairo.set_line_width(ctx, 2.0 * glowwidth / n_layers)
-            Cairo.stroke(ctx)
-            Cairo.restore(ctx)
-        end
-
-        for glyph_idx in glyph_indices
+        for glyph_idx in eachindex(glyphindices)
             glyph_idx in valid_indices || continue
-
             glyph = glyphindices[glyph_idx]
             glyph == 0 && continue
-
-            offset = marker_offset[glyph_idx]
-            font = font_per_char[glyph_idx]
-            rotation = Makie.sv_getindex(text_rotation, glyph_idx)
-            color = Makie.sv_getindex(text_color, glyph_idx)
-            strokewidth = Makie.sv_getindex(text_strokewidth, glyph_idx)
-            strokecolor = Makie.sv_getindex(text_strokecolor, glyph_idx)
-            scale = Makie.sv_getindex(text_scales, glyph_idx)
-
-            gp3 = glyph_pos .+ size_model * offset
+            gp3 = positions[glyph_idx] .+ size_model * marker_offset[glyph_idx]
             any(isnan, gp3) && continue
-
-            glyphpos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
-
-            if !isempty(glyph_buffer) && (
-                    font !== batch_font ||
-                        color != batch_color ||
-                        mat != batch_mat ||
-                        strokewidth != batch_strokewidth ||
-                        strokecolor != batch_strokecolor
-                )
-                flush_glyph_batch!(ctx, glyph_buffer, batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor)
-            end
-
-            if isempty(glyph_buffer)
-                batch_font = font
-                batch_color = color
-                batch_mat = mat
-                batch_strokewidth = strokewidth
-                batch_strokecolor = strokecolor
-            end
-
-            push!(glyph_buffer, CairoGlyph(glyph, glyphpos[1], glyphpos[2]))
+            scale = Makie.sv_getindex(scales, glyph_idx)
+            rotation = Makie.sv_getindex(rotations, glyph_idx)
+            pos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
+            cairoface = set_ft_font(ctx, font_per_char[glyph_idx])
+            set_font_matrix(ctx, mat)
+            glyph_path(ctx, glyph, pos...)
+            cairo_font_face_destroy(cairoface)
         end
-
-        if !isempty(glyph_buffer)
-            flush_glyph_batch!(ctx, glyph_buffer, batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor)
+        n_layers = max(1, round(Int, glowwidth))
+        Cairo.set_source_rgba(ctx, glow_r, glow_g, glow_b, glow_a / n_layers)
+        Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
+        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
+        for i in n_layers:-1:2
+            Cairo.set_line_width(ctx, 2.0 * glowwidth * i / n_layers)
+            Cairo.stroke_preserve(ctx)
         end
+        Cairo.set_line_width(ctx, 2.0 * glowwidth / n_layers)
+        Cairo.stroke(ctx)
         Cairo.restore(ctx)
     end
+
+    for glyph_idx in eachindex(glyphindices)
+        glyph_idx in valid_indices || continue
+
+        glyph = glyphindices[glyph_idx]
+        glyph == 0 && continue
+
+        offset = marker_offset[glyph_idx]
+        font = font_per_char[glyph_idx]
+        rotation = Makie.sv_getindex(rotations, glyph_idx)
+        color = Makie.sv_getindex(colors, glyph_idx)
+        strokewidth = Makie.sv_getindex(strokewidths, glyph_idx)
+        strokecolor = Makie.sv_getindex(strokecolors, glyph_idx)
+        scale = Makie.sv_getindex(scales, glyph_idx)
+
+        gp3 = positions[glyph_idx] .+ size_model * offset
+        any(isnan, gp3) && continue
+
+        glyphpos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
+
+        if !isempty(glyph_buffer) && (
+                font !== batch_font ||
+                    color != batch_color ||
+                    mat != batch_mat ||
+                    strokewidth != batch_strokewidth ||
+                    strokecolor != batch_strokecolor
+            )
+            flush_glyph_batch!(ctx, glyph_buffer, batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor)
+        end
+
+        if isempty(glyph_buffer)
+            batch_font = font
+            batch_color = color
+            batch_mat = mat
+            batch_strokewidth = strokewidth
+            batch_strokecolor = strokecolor
+        end
+
+        push!(glyph_buffer, CairoGlyph(glyph, glyphpos[1], glyphpos[2]))
+    end
+
+    if !isempty(glyph_buffer)
+        flush_glyph_batch!(ctx, glyph_buffer, batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor)
+    end
+    Cairo.restore(ctx)
     return
 end
 

@@ -650,6 +650,40 @@ function deprecated_attributes(::Type{<:MeshScatter})
 end
 
 """
+    glyphs(positions)
+
+Renders a flat batch of font glyphs from the texture atlas, one glyph per entry in
+`positions`. This is the primitive `Text` lowers its glyphs to. Each glyph is placed at
+`project(position) + marker_offset`, with `position` acting in `space` and `marker_offset`
+in `markerspace`. `Glyphs` has no notion of strings or lines; that layout lives in `Text`.
+"""
+@recipe Glyphs (positions,) begin
+    "Index of each glyph within its font."
+    glyphindices = UInt64[]
+    "Font of each glyph."
+    font_per_char = NativeFont[]
+    "Per-glyph offset from `position`, in `markerspace` units."
+    marker_offset = Point3f[]
+    "Per-glyph size (fontsize), in `markerspace` units."
+    scale = Vec2f[]
+    "Color of each glyph."
+    color = :black
+    "Rotation of each glyph."
+    rotation = 0.0
+    strokecolor = (:black, 0.0)
+    strokewidth = 0
+    glowcolor = (:black, 0.0)
+    glowwidth = 0.0
+    "Space in which `scale` and `marker_offset` act. See `Makie.spaces()`."
+    markerspace = :pixel
+    "Controls whether the model matrix (without translation) applies to the glyphs themselves."
+    transform_marker = false
+    mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
+    fxaa = false
+end
+
+"""
 Plots one or multiple texts passed via the `text` keyword.
 """
 @recipe Text (positions,) begin

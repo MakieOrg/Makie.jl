@@ -12,9 +12,6 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     # poll inside functions to make wait on compile less prominent
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
-    elseif x isa Text
-        draw_atomic(screen, scene, x)
-        insert!(screen, scene, x.plots[1])
     elseif x isa Makie.PlotList
         # ignore unless not yet displayed
         Makie.for_each_atomic_plot(x) do plot
@@ -455,24 +452,24 @@ end
 ### Text
 ################################################################################
 
-function assemble_text_robj!(data, screen::Screen, attr, args, input2glname)
+function assemble_glyphs_robj!(data, screen::Screen, attr, args, input2glname)
     data[:distancefield] = get_texture!(screen.glscreen, Makie.get_texture_atlas())
     data[:shape] = Cint(DISTANCEFIELD)
     data[:image] = nothing
-    data[:rotation] = args.text_rotation
+    data[:rotation] = args.rotation
 
     # pass nothing to avoid going into image generating functions
     return draw_scatter(screen, (nothing, data[:position]), data)
 end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Text)
+function draw_atomic(screen::Screen, scene::Scene, plot::Glyphs)
     attr = generic_robj_setup(screen, scene, plot)
 
     if haskey(attr, :depthsorting) && attr[:depthsorting][]
         # is projectionview enough to trigger on scene resize in all cases?
         register_computation!(
             attr,
-            [:per_char_positions_transformed_f32c, :projectionview, :model_f32c],
+            [:positions_transformed_f32c, :projectionview, :model_f32c],
             [:gl_depth_cache, :gl_indices]
         ) do (pos, projectionview, space, model), changed, last
             pvm = projectionview * model
@@ -481,12 +478,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
             return depthsort!(pos, depth_vals, indices, pvm)
         end
     else
-        register_computation!(attr, [:per_char_positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
+        register_computation!(attr, [:positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
             return (length(ps),)
         end
     end
 
-    register_computation!(attr, [:per_char_positions_transformed_f32c], [:gl_len]) do (ps,), changed, last
+    register_computation!(attr, [:positions_transformed_f32c], [:gl_len]) do (ps,), changed, last
         return (Int32(length(ps)),)
     end
 
@@ -496,8 +493,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
 
     # Simple forwards
     uniforms = [
-        :per_char_positions_transformed_f32c,
-        :text_color, :text_strokecolor, :text_rotation,
+        :positions_transformed_f32c,
+        :color, :strokecolor, :rotation,
         :marker_offset, :quad_offset, :sdf_uv, :quad_scale,
         :lowclip_color, :highclip_color, :nan_color,
         :strokewidth, :glowcolor, :glowwidth,
@@ -508,29 +505,29 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
 
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
-    # TODO: text_strokewidth doesn't work because the shader only accepts a uniform float
+    # TODO: strokewidth doesn't work because the shader only accepts a uniform float
     # this is also true on master
 
     # To take the human error out of the bookkeeping of two lists
     # Could also consider using this in computation since Dict lookups are
     # O(1) and only takes ~4ns
     input2glname = Dict{Symbol, Symbol}(
-        :text_rotation => :rotation,
-        :per_char_positions_transformed_f32c => :position,
-        :text_color => :color,
+        :rotation => :rotation,
+        :positions_transformed_f32c => :position,
+        :color => :color,
         :sdf_uv => :uv_offset_width,
         :gl_markerspace => :markerspace,
         :quad_scale => :scale,
         :quad_offset => :quad_offset,
         :marker_offset => :marker_offset,
-        :text_strokecolor => :stroke_color, :strokewidth => :stroke_width,
+        :strokecolor => :stroke_color, :strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
         :gl_indices => :indices, :gl_len => :len,
     )
 
-    robj = register_robj!(assemble_text_robj!, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_glyphs_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end

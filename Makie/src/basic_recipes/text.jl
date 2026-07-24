@@ -370,8 +370,6 @@ function compute_glyph_collections!(attr::ComputeGraph)
 end
 
 function register_text_computations!(attr::ComputeGraph)
-    add_constant!(attr, :atlas, get_texture_atlas())
-
     map!(to_font, attr, [:fonts, :font], :selected_font)
 
     # Resolve colormapping to colors early. This allows rich text which returns
@@ -382,42 +380,16 @@ function register_text_computations!(attr::ComputeGraph)
     # And :glyphcollection if applicable
     compute_glyph_collections!(attr)
 
-    map!(attr, [:atlas, :glyphindices, :font_per_char], :sdf_uv) do atlas, gi, fonts
-        return glyph_uv_width!.((atlas,), gi, fonts)
-    end
-
     map!(attr, [:glyph_origins, :offset, :text_blocks], :marker_offset) do origins, offset, blocks
         return Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r]
     end
 
-    map!(
-        attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :text_scales],
-        [:quad_offset, :quad_scale]
-    ) do atlas, gi, text_blocks, fonts, fontsize
-
-        quad_offsets = Vec2f[]
-        quad_scales = Vec2f[]
-        pad = atlas.glyph_padding / atlas.pix_per_glyph
-        per_glyph_attributes(text_blocks, (gi, fonts, fontsize)) do g, f, fs
-            # These are tight to the glyph. They do not fill the full space
-            # a glyph takes within a string/layout.
-            bb = FreeTypeAbstraction.metrics_bb(g, f, fs)[1]
-            quad_offset = Vec2f(minimum(bb) .- fs .* pad)
-            quad_scale = Vec2f(widths(bb) .+ fs * 2pad)
-            push!(quad_offsets, quad_offset)
-            push!(quad_scales, quad_scale)
-        end
-        return (quad_offsets, quad_scales)
-    end
-    # TODO: remapping positions to be per glyph first generates quite a few
-    # redundant transform applications and projections in CairoMakie
     register_position_transforms!(attr, input_name = :positions, transformed_name = :positions_transformed)
 
-    map!(attr, [:text_blocks, :positions_transformed_f32c], :per_char_positions_transformed_f32c) do blocks, pos
-        if length(blocks) != length(pos)
-            error("Text blocks and positions have different lengths: $(length(blocks)) != $(length(pos)). Please use `update!(plot_object; arg1/arg2/text/position/color/etc...) to update multiple attributes together.")
-        end
-        return [p for (b, p) in zip(blocks, pos) for i in b]
+    # One data-space anchor position per glyph (repeated within a string). The
+    # Glyphs child transforms these; per-string transform reuse is task #8.
+    map!(attr, [:positions, :text_blocks], :per_glyph_positions) do positions, blocks
+        return Point3f[to_ndim(Point3f, sv_getindex(positions, i), 0) for (i, r) in enumerate(blocks) for _ in r]
     end
 
     return
@@ -435,11 +407,29 @@ get_text_type(::T) where {T} = T
 function calculated_attributes!(::Type{Text}, plot::Plot)
     attr = plot.attributes
 
-    add_constant!(attr, :sdf_marker_shape, Cint(DISTANCEFIELD))
-
     register_colormapping!(attr)
     register_text_computations!(attr)
+    register_glyphs!(plot)
     return tex_linesegments!(plot)
+end
+
+function register_glyphs!(plot)
+    return glyphs!(
+        plot, plot.per_glyph_positions;
+        glyphindices = plot.glyphindices,
+        font_per_char = plot.font_per_char,
+        marker_offset = plot.marker_offset,
+        scale = plot.text_scales,
+        color = plot.text_color,
+        rotation = plot.text_rotation,
+        strokecolor = plot.text_strokecolor,
+        strokewidth = plot.text_strokewidth,
+        glowcolor = plot.glowcolor,
+        glowwidth = plot.glowwidth,
+        markerspace = plot.markerspace,
+        transform_marker = plot.transform_marker,
+        space = plot.space,
+    )
 end
 
 function tex_linesegments!(plot)

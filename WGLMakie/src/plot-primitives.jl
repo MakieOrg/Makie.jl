@@ -2,7 +2,7 @@ using Makie: register_computation!
 
 # Javascript Plot type (there are only three right now)
 js_plot_type(plot::Makie.AbstractPlot) = "Mesh"
-js_plot_type(plot::Union{Scatter, Makie.Text}) = "Scatter"
+js_plot_type(plot::Union{Scatter, Makie.Glyphs}) = "Scatter"
 js_plot_type(plot::Union{Lines, LineSegments}) = "Lines"
 
 function serialize_three(scene::Scene, plot::Makie.PrimitivePlotTypes)
@@ -333,9 +333,9 @@ function get_glyph_data(scene::Scene, glyphs, fonts)
     end
 end
 
-function register_text_computation!(attr, scene)
-    map!(attr, [:text_blocks, :text_scales], :glyph_scales) do text_blocks, fontsize
-        return Makie.map_per_glyph(text_blocks, Vec2f, Makie.to_2d_scale(fontsize))
+function register_glyph_computation!(attr, scene)
+    map!(attr, [:scale, :glyphindices], :glyph_scales) do scale, gi
+        return Vec2f[Vec2f(Makie.to_2d_scale(Makie.sv_getindex(scale, i))) for i in eachindex(gi)]
     end
     return register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs, fonts, glyph_scales), changed, last
         hashes, updates = get_glyph_data(scene, glyphs, fonts)
@@ -348,17 +348,17 @@ function register_text_computation!(attr, scene)
     end
 end
 
-function create_shader(scene::Scene, plot::Makie.Text)
-    # billboard for text causes glyph to not align correctly, should always be false
+function create_shader(scene::Scene, plot::Makie.Glyphs)
+    # billboard for glyphs causes them to not align correctly, should always be false
     attr = plot.attributes
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
-    backend_colors!(attr, :text_color)
-    register_text_computation!(attr, scene)
+    backend_colors!(attr, :color)
+    register_glyph_computation!(attr, scene)
 
-    ComputePipeline.alias!(attr, :text_rotation, :converted_rotation)
-    ComputePipeline.alias!(attr, :text_strokecolor, :converted_strokecolor)
-    ComputePipeline.alias!(attr, :per_char_positions_transformed_f32c, :wgl_positions)
+    ComputePipeline.alias!(attr, :rotation, :converted_rotation)
+    ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)
+    ComputePipeline.alias!(attr, :positions_transformed_f32c, :wgl_positions)
     inputs = [
         :wgl_positions,
 
