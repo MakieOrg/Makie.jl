@@ -162,7 +162,7 @@ function draw_glyphs(ctx, attr::NamedTuple)
     )
 
     glyph_buffer = CairoGlyph[]
-    local batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor
+    batch = nothing # (font, color, matrix, strokewidth, strokecolor) of the current run
 
     Cairo.save(ctx)
 
@@ -215,29 +215,19 @@ function draw_glyphs(ctx, attr::NamedTuple)
 
         glyphpos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
 
-        if !isempty(glyph_buffer) && (
-                font !== batch_font ||
-                    color != batch_color ||
-                    mat != batch_mat ||
-                    strokewidth != batch_strokewidth ||
-                    strokecolor != batch_strokecolor
+        if batch !== nothing && !(
+                font === batch[1] && color == batch[2] && mat == batch[3] &&
+                    strokewidth == batch[4] && strokecolor == batch[5]
             )
-            flush_glyph_batch!(ctx, glyph_buffer, batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor)
+            flush_glyph_batch!(ctx, glyph_buffer, batch...)
         end
-
-        if isempty(glyph_buffer)
-            batch_font = font
-            batch_color = color
-            batch_mat = mat
-            batch_strokewidth = strokewidth
-            batch_strokecolor = strokecolor
-        end
+        batch = (font, color, mat, strokewidth, strokecolor)
 
         push!(glyph_buffer, CairoGlyph(glyph, glyphpos[1], glyphpos[2]))
     end
 
     if !isempty(glyph_buffer)
-        flush_glyph_batch!(ctx, glyph_buffer, batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor)
+        flush_glyph_batch!(ctx, glyph_buffer, batch...)
     end
     Cairo.restore(ctx)
     return

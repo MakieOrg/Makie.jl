@@ -1,3 +1,5 @@
+# `text` has no `plot!` body; it builds its Glyphs + plotlist children in
+# `calculated_attributes!`, so it lives here to satisfy the atomic-plot contract.
 const atomic_functions = (
     text, glyphs, meshscatter, scatter, mesh, linesegments,
     lines, surface, volume, heatmap, image, voxels,

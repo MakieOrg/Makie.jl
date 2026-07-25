@@ -664,6 +664,9 @@ function register_marker_computations!(attr::ComputeGraph)
     end
 end
 
+# Text is a container (Glyphs + plotlist children) and never rendered directly, but it
+# stays here because it converts its own attributes and needs register_camera! to project
+# its plotlist block positions. The leaf traversal (is_atomic_plot) skips the container.
 const PrimitivePlotTypes = Union{
     Scatter, Lines, LineSegments, Text, Glyphs, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume,

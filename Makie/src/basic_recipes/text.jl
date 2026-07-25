@@ -349,21 +349,21 @@ end
     compile_text(handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width)
 
 Engine step of a `text_handler`. Define methods dispatching on the input type the
-handler accepts (e.g. `LaTeXString`). Return a `CompiledGlyphs` (or a custom payload
-with a matching `place_text!` method), or `nothing` to fall through to the built-in
-path. Receives only inputs that affect the laid-out glyphs; display attributes
-(color, rotation, offset, alignment) are applied later in `place_text!`.
+handler accepts (e.g. `LaTeXString`). Return a `CompiledText`, or `nothing` to fall
+through to the built-in path. Receives only inputs that affect the laid-out glyphs;
+display attributes (color, rotation, offset, alignment) are applied later in
+`place_text!`.
 """
 compile_text(handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width) = nothing
 
 """
     CompiledGlyphs
 
-Backend-neutral, unaligned glyph layout returned by `compile_text` (fontsize baked in,
-glyphs only). The Makie-provided `place_text!` computes the alignment shift from `bbox`
+Backend-neutral, unaligned glyph layout (fontsize baked in, glyphs only), carried by
+`CompiledText`. The Makie-provided `place_text!` computes the alignment shift from `bbox`
 and `baseline`, applies rotation and offset and the block color, and merges the glyphs
 into the shared `Glyphs` batch. Non-glyph output (rules, images, ...) travels alongside
-as the `Vector{PlotSpec}` in `compile_text`'s return, not in here.
+as `CompiledText.specs`, not in here.
 """
 struct CompiledGlyphs
     glyphindices::Vector{UInt64}
@@ -374,6 +374,22 @@ struct CompiledGlyphs
     bbox::Rect2f                   # alignment box for :top/:bottom/:center/fractions
     baseline::Float32              # baseline y in the layout frame, for valign = :baseline
 end
+
+"""
+    CompiledText(glyphs::CompiledGlyphs)
+    CompiledText(specs::Vector{PlotSpec})
+    CompiledText(glyphs::CompiledGlyphs, specs::Vector{PlotSpec})
+
+Return value of `compile_text`: an optional glyph layout plus optional non-glyph plots
+(rules, images, ...) for one text block. A handler constructs it from whichever parts it
+produces.
+"""
+struct CompiledText
+    glyphs::Union{Nothing, CompiledGlyphs}
+    specs::Union{Nothing, Vector{PlotSpec}}
+end
+CompiledText(glyphs::CompiledGlyphs) = CompiledText(glyphs, nothing)
+CompiledText(specs::Vector{PlotSpec}) = CompiledText(nothing, specs)
 
 # Route one text block through the handler. Returns true if the handler produced
 # output, false to fall through to the built-in `convert_text_string!` path.
@@ -386,31 +402,43 @@ function handle_text!(
         sv_getindex(lineheight, i), sv_getindex(justification, i), sv_getindex(word_wrap_width, i)
     )
     compiled === nothing && return false
-    glyphs, specs = compiled
     place_text!(
-        outputs, glyphs, specs, sv_getindex(align, i), sv_getindex(rotation, i),
+        outputs, compiled, sv_getindex(align, i), sv_getindex(rotation, i),
         sv_getindex(offset, i), sv_getindex(color, i), sv_getindex(strokecolor, i),
         sv_getindex(strokewidth, i)
     )
     return true
 end
 
-# Makie-provided placement for the neutral CompiledGlyphs payload: compute the
+# Makie-provided placement for the neutral CompiledText payload: compute the
 # alignment shift, merge the glyphs into the shared batch, and emit any non-glyph
 # specs (rules, images, ...) into the text_specs plotlist channel.
-function place_text!(outputs, c::CompiledGlyphs, specs, align, rotation, offset, color, strokecolor, strokewidth)
-    halign, valign = align
-    bb = c.bbox
-    xshift = get_xshift(minimum(bb)[1], maximum(bb)[1], halign)
-    yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign; default = c.baseline)
-    shift = Vec3f(xshift, yshift, 0)
+function place_text!(outputs, c::CompiledText, align, rotation, offset, color, strokecolor, strokewidth)
+    glyphs = c.glyphs
+    shift = if glyphs === nothing
+        Vec3f(0)
+    else
+        halign, valign = align
+        bb = glyphs.bbox
+        xshift = get_xshift(minimum(bb)[1], maximum(bb)[1], halign)
+        yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign; default = glyphs.baseline)
+        Vec3f(xshift, yshift, 0)
+    end
 
-    place_glyphs!(outputs, c, shift, rotation, color, strokecolor, strokewidth)
-    for spec in specs
-        placed = transform_text_spec(spec, p -> rotation * (to_ndim(Point3f, p, 0) - shift) + offset)
-        # specs that don't set their own color follow the text color (e.g. rules)
-        haskey(placed.kwargs, :color) || (placed.kwargs[:color] = color)
-        push_text_spec!(outputs, placed)
+    if glyphs === nothing
+        curr = length(outputs.glyphindices)
+        push!(outputs.text_blocks, (curr + 1):curr) # empty block keeps per-string indices aligned
+    else
+        place_glyphs!(outputs, glyphs, shift, rotation, color, strokecolor, strokewidth)
+    end
+
+    if c.specs !== nothing
+        for spec in c.specs
+            placed = transform_text_spec(spec, p -> rotation * (to_ndim(Point3f, p, 0) - shift) + offset)
+            # specs that don't set their own color follow the text color (e.g. rules)
+            haskey(placed.kwargs, :color) || (placed.kwargs[:color] = color)
+            push_text_spec!(outputs, placed)
+        end
     end
     return
 end
@@ -490,7 +518,7 @@ function compile_text(::MathTeXHandler, str::LaTeXString, font, fonts, fontsize,
     specs = PlotSpec[]
     isempty(rule_points) || push!(specs, PlotSpec(:LineSegments, rule_points; linewidth = rule_widths))
 
-    return (CompiledGlyphs(glyphindices, glyphfonts, origins, extents, scales, bb, 0.0f0), specs)
+    return CompiledText(CompiledGlyphs(glyphindices, glyphfonts, origins, extents, scales, bb, 0.0f0), specs)
 end
 
 function compute_glyph_collections!(attr::ComputeGraph)
