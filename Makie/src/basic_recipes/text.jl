@@ -346,15 +346,20 @@ end
 ################################################################################
 
 """
-    compile_text(handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width)
+    compile_text(handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth)
 
-Engine step of a `text_handler`. Define methods dispatching on the input type the
-handler accepts (e.g. `LaTeXString`). Return a `CompiledText`, or `nothing` to fall
-through to the built-in path. Receives only inputs that affect the laid-out glyphs;
-display attributes (color, rotation, offset, alignment) are applied later in
-`place_text!`.
+Engine step of a `text_handler`. Define methods dispatching on the input type the handler
+accepts (e.g. `LaTeXString`). Return a `CompiledText`, or a custom payload with a matching
+`place_text!` method (e.g. a rasterized image marker), or `nothing` to fall through to the
+built-in path.
+
+The appearance attributes (`color`, `strokecolor`, `strokewidth`) are passed because some
+handlers bake them into their output (a rasterized LaTeX image can't be recolored
+afterwards). Glyph-based handlers can ignore them and let `place_text!` apply them to the
+glyph batch instead. `place_text!` receives the same appearance attributes plus the
+placement ones (align, rotation, offset), which are never baked.
 """
-compile_text(handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width) = nothing
+compile_text(handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth) = nothing
 
 """
     CompiledGlyphs
@@ -399,7 +404,8 @@ function handle_text!(
     )
     compiled = compile_text(
         handler, str, sv_getindex(font, i), fonts, sv_getindex(fontsize, i),
-        sv_getindex(lineheight, i), sv_getindex(justification, i), sv_getindex(word_wrap_width, i)
+        sv_getindex(lineheight, i), sv_getindex(justification, i), sv_getindex(word_wrap_width, i),
+        sv_getindex(color, i), sv_getindex(strokecolor, i), sv_getindex(strokewidth, i)
     )
     compiled === nothing && return false
     place_text!(
@@ -487,7 +493,7 @@ routes LaTeX math through the pluggable path; non-LaTeX inputs fall through.
 """
 struct MathTeXHandler end
 
-function compile_text(::MathTeXHandler, str::LaTeXString, font, fonts, fontsize, lineheight, justification, word_wrap_width)
+function compile_text(::MathTeXHandler, str::LaTeXString, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth)
     fs = Vec2f(first(fontsize))
     all_els = generate_tex_elements(str)
     els = filter(x -> x[1] isa TeXChar, all_els)
