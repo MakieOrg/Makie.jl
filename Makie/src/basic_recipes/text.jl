@@ -296,22 +296,20 @@ function append_tex_linesegment_data!(
         tex_offset, tex_elements, fontsize, rotation::Quaternion, color::RGBAf, offset::VecTypes{3}
     )
 
-    block_idx = length(outputs.text_blocks)
-    pos_idx = first(last(outputs.text_blocks))
-
+    points = Point3f[]
+    widths = Float32[]
     for (element, position, _) in tex_elements
-        if element isa MathTeXEngine.HLine
-            h = element
-            x, y = position
-            p0 = rotation * to_ndim(Point3f, fontsize .* Point2f(x, y) .- tex_offset, 0) .+ offset
-            p1 = rotation * to_ndim(Point3f, fontsize .* Point2f(x + h.width, y) .- tex_offset, 0) .+ offset
-            push!(outputs.linesegments, p0, p1)
-            push!(outputs.linewidths, fontsize * h.thickness, fontsize * h.thickness)
-            push!(outputs.linecolors, color, color)
-            push!(outputs.lineindices, block_idx => pos_idx, block_idx => pos_idx)
-        end
+        element isa MathTeXEngine.HLine || continue
+        h = element
+        x, y = position
+        p0 = rotation * to_ndim(Point3f, fontsize .* Point2f(x, y) .- tex_offset, 0) .+ offset
+        p1 = rotation * to_ndim(Point3f, fontsize .* Point2f(x + h.width, y) .- tex_offset, 0) .+ offset
+        push!(points, p0, p1)
+        push!(widths, fontsize * h.thickness, fontsize * h.thickness)
     end
-    return nothing
+    isempty(points) && return
+    push_text_spec!(outputs, PlotSpec(:LineSegments, points; linewidth = widths, color = color))
+    return
 end
 
 """
@@ -330,7 +328,7 @@ display_independent_layout(@nospecialize(x)) = false
 # Valid only when no layout-affecting input changed and every block's text has
 # `display_independent_layout == true` (checked by the caller).
 function reuse_glyph_layout(cached, color, strokecolor, strokewidth)
-    (gcs, gi, fpc, go, ge, tb, _, trot, tscale, _, _, ls, lw, lc, li) = cached
+    (gcs, gi, fpc, go, ge, tb, _, trot, tscale, _, _, ts, tsbi, tsbb) = cached
     N = length(tb)
     text_color = RGBAf[]
     text_strokecolor = RGBAf[]
@@ -340,7 +338,7 @@ function reuse_glyph_layout(cached, color, strokecolor, strokewidth)
         append!(text_strokecolor, per_glyph_block(strokecolor, i, N, block))
         append!(text_strokewidth, per_glyph_block(strokewidth, i, N, block))
     end
-    return (gcs, gi, fpc, go, ge, tb, text_color, trot, tscale, text_strokewidth, text_strokecolor, ls, lw, lc, li)
+    return (gcs, gi, fpc, go, ge, tb, text_color, trot, tscale, text_strokewidth, text_strokecolor, ts, tsbi, tsbb)
 end
 
 ################################################################################
@@ -361,20 +359,20 @@ compile_text(handler, src, font, fonts, fontsize, lineheight, justification, wor
 """
     CompiledGlyphs
 
-Backend-neutral, unaligned glyph layout returned by `compile_text` (fontsize baked
-in). The Makie-provided `place_text!` applies alignment (from `bbox`), rotation and
-offset, and the block color, then appends to the shared glyph/rule outputs. Handlers
-that need custom placement can return a different payload and define their own
-`place_text!`.
+Backend-neutral, unaligned glyph layout returned by `compile_text` (fontsize baked in,
+glyphs only). The Makie-provided `place_text!` computes the alignment shift from `bbox`
+and `baseline`, applies rotation and offset and the block color, and merges the glyphs
+into the shared `Glyphs` batch. Non-glyph output (rules, images, ...) travels alongside
+as the `Vector{PlotSpec}` in `compile_text`'s return, not in here.
 """
 struct CompiledGlyphs
     glyphindices::Vector{UInt64}
     fonts::Vector{NativeFont}
-    origins::Vector{Point3f}                          # unaligned layout origins
+    origins::Vector{Point3f}       # unaligned layout origins
     extents::Vector{GlyphExtent}
     scales::Vector{Vec2f}
-    rules::Vector{Tuple{Point3f, Point3f, Float32}}   # (p0, p1, thickness), unaligned
-    bbox::Rect2f                                       # unaligned tight bounds, for alignment
+    bbox::Rect2f                   # alignment box for :top/:bottom/:center/fractions
+    baseline::Float32              # baseline y in the layout frame, for valign = :baseline
 end
 
 # Route one text block through the handler. Returns true if the handler produced
@@ -388,27 +386,39 @@ function handle_text!(
         sv_getindex(lineheight, i), sv_getindex(justification, i), sv_getindex(word_wrap_width, i)
     )
     compiled === nothing && return false
+    glyphs, specs = compiled
     place_text!(
-        outputs, compiled, sv_getindex(align, i), sv_getindex(rotation, i),
+        outputs, glyphs, specs, sv_getindex(align, i), sv_getindex(rotation, i),
         sv_getindex(offset, i), sv_getindex(color, i), sv_getindex(strokecolor, i),
         sv_getindex(strokewidth, i)
     )
     return true
 end
 
-# Makie-provided placement for the neutral CompiledGlyphs payload.
-function place_text!(outputs, c::CompiledGlyphs, align, rotation, offset, color, strokecolor, strokewidth)
+# Makie-provided placement for the neutral CompiledGlyphs payload: compute the
+# alignment shift, merge the glyphs into the shared batch, and emit any non-glyph
+# specs (rules, images, ...) into the text_specs plotlist channel.
+function place_text!(outputs, c::CompiledGlyphs, specs, align, rotation, offset, color, strokecolor, strokewidth)
     halign, valign = align
     bb = c.bbox
     xshift = get_xshift(minimum(bb)[1], maximum(bb)[1], halign)
-    yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign; default = 0.0f0)
+    yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign; default = c.baseline)
     shift = Vec3f(xshift, yshift, 0)
 
-    curr = length(outputs.glyphindices)
-    n = length(c.glyphindices)
-    block = (curr + 1):(curr + n)
-    push!(outputs.text_blocks, block)
+    place_glyphs!(outputs, c, shift, rotation, color, strokecolor, strokewidth)
+    for spec in specs
+        placed = transform_text_spec(spec, p -> rotation * (to_ndim(Point3f, p, 0) - shift) + offset)
+        # specs that don't set their own color follow the text color (e.g. rules)
+        haskey(placed.kwargs, :color) || (placed.kwargs[:color] = color)
+        push_text_spec!(outputs, placed)
+    end
+    return
+end
 
+function place_glyphs!(outputs, c::CompiledGlyphs, shift, rotation, color, strokecolor, strokewidth)
+    n = length(c.glyphindices)
+    curr = length(outputs.glyphindices)
+    push!(outputs.text_blocks, (curr + 1):(curr + n))
     origins = Point3f[rotation * (o - shift) for o in c.origins]
     append!(outputs.glyphindices, c.glyphindices)
     append!(outputs.font_per_char, c.fonts)
@@ -420,14 +430,23 @@ function place_text!(outputs, c::CompiledGlyphs, align, rotation, offset, color,
     append!(outputs.text_strokecolor, fill(strokecolor, n))
     append!(outputs.text_strokewidth, fill(strokewidth, n))
     push!(outputs.glyphcollections, GlyphCollection(c.glyphindices, c.fonts, origins, c.extents, c.scales, rotation, color, strokecolor, strokewidth))
+    return
+end
 
-    block_idx = length(outputs.text_blocks)
-    for (p0, p1, thickness) in c.rules
-        push!(outputs.linesegments, rotation * (p0 - shift) + offset, rotation * (p1 - shift) + offset)
-        push!(outputs.linewidths, thickness, thickness)
-        push!(outputs.linecolors, color, color)
-        push!(outputs.lineindices, block_idx => first(block), block_idx => first(block))
-    end
+# Apply a per-point transform to a spec's positional data (its first positional arg).
+function transform_text_spec(spec::PlotSpec, f)
+    new_positions = Point3f[f(p) for p in first(spec.args)]
+    new_args = copy(spec.args)
+    new_args[1] = new_positions
+    return PlotSpec(spec.type, new_args...; spec.kwargs...)
+end
+
+# Push a placed (markerspace, block-relative) spec into the text_specs plotlist
+# channel, tagged with the current block index and its bounding box.
+function push_text_spec!(outputs, spec::PlotSpec)
+    push!(outputs.text_specs, spec)
+    push!(outputs.text_spec_block_indices, length(outputs.text_blocks))
+    push!(outputs.text_spec_bboxes, Rect3d(first(spec.args)))
     return
 end
 
@@ -456,19 +475,22 @@ function compile_text(::MathTeXHandler, str::LaTeXString, font, fonts, fontsize,
         return Rect2f(origin(unscaled) * scale, widths(unscaled) * scale)
     end
     bb = isempty(bboxes) ? Rect2f(0, 0, 0, 0) : mapreduce(union, zip(bboxes, origins)) do (b, pos)
-        return Rect2f(Rect3f(b) + pos)
+            return Rect2f(Rect3f(b) + pos)
     end
 
-    rules = Tuple{Point3f, Point3f, Float32}[]
+    rule_points = Point3f[]
+    rule_widths = Float32[]
     for (element, position, _) in all_els
         element isa MathTeXEngine.HLine || continue
         x, y = position
-        p0 = to_ndim(Point3f, fs .* Point2f(x, y), 0)
-        p1 = to_ndim(Point3f, fs .* Point2f(x + element.width, y), 0)
-        push!(rules, (p0, p1, Float32(fs[1] * element.thickness)))
+        push!(rule_points, to_ndim(Point3f, fs .* Point2f(x, y), 0), to_ndim(Point3f, fs .* Point2f(x + element.width, y), 0))
+        w = Float32(fs[1] * element.thickness)
+        push!(rule_widths, w, w)
     end
+    specs = PlotSpec[]
+    isempty(rule_points) || push!(specs, PlotSpec(:LineSegments, rule_points; linewidth = rule_widths))
 
-    return CompiledGlyphs(glyphindices, glyphfonts, origins, extents, scales, rules, bb)
+    return (CompiledGlyphs(glyphindices, glyphfonts, origins, extents, scales, bb, 0.0f0), specs)
 end
 
 function compute_glyph_collections!(attr::ComputeGraph)
@@ -495,7 +517,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :text_blocks,
         :text_color, :text_rotation, :text_scales,
         :text_strokewidth, :text_strokecolor,
-        :linesegments, :linewidths, :linecolors, :lineindices,
+        :text_specs, :text_spec_block_indices, :text_spec_bboxes,
     ]
     return register_computation!(attr, inputs, outputs) do (input_texts, text_handler, _inputs...), changed, cached
         if cached !== nothing && text_handler === nothing && all(display_independent_layout, input_texts) &&
@@ -517,10 +539,9 @@ function compute_glyph_collections!(attr::ComputeGraph)
             text_scales = Vec2f[],
             text_strokewidth = Float32[],
             text_strokecolor = RGBAf[],
-            linesegments = Point3f[],
-            linewidths = Float32[],
-            linecolors = RGBAf[],
-            lineindices = Pair{Int, Int}[],
+            text_specs = PlotSpec[],
+            text_spec_block_indices = Int[],
+            text_spec_bboxes = Rect3d[],
         )
         # strokewidth = Float32[] # TODO: Skipped?
 
@@ -577,16 +598,33 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     register_colormapping!(attr)
     register_text_computations!(attr)
     register_glyphs!(plot)
-    tex_linesegments!(plot)
     return register_text_plotlist!(plot)
 end
 
-# Channel for non-glyph, non-rule output (images, arbitrary handler plots). Empty
-# until a text_handler emits specs; an empty plotlist has no children and no render
-# objects, so it costs nothing for the default glyph/rule paths.
+# Materialize the non-glyph text specs (LaTeX rules, handler images, ...) as a plotlist
+# child. Each spec is in its block's markerspace frame; here we add the block's projected
+# position (per camera) and render in markerspace. Empty for plain text, so the plotlist
+# has no children and no render objects.
 function register_text_plotlist!(plot)
-    map!(_ -> PlotSpec[], plot.attributes, [:input_text], :text_specs)
-    return plotlist!(plot, plot.text_specs)
+    register_model_clip_planes!(plot.attributes)
+    map!(
+        plot.attributes,
+        [
+            :text_specs, :text_spec_block_indices, :preprojection, :model_f32c,
+            :positions_transformed_f32c, :model_clip_planes, :space, :markerspace,
+        ],
+        :_shifted_text_specs,
+    ) do specs, block_indices, preprojection, model_f32c, positions, clip_planes, space, markerspace
+        isempty(specs) && return PlotSpec[]
+        ms_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
+        return map(specs, block_indices) do spec, bidx
+            shifted = transform_text_spec(spec, p -> p + ms_positions[bidx])
+            kw = copy(shifted.kwargs)
+            kw[:space] = markerspace
+            return PlotSpec(shifted.type, shifted.args...; kw...)
+        end
+    end
+    return plotlist!(plot, plot._shifted_text_specs)
 end
 
 function register_glyphs!(plot)
@@ -605,29 +643,6 @@ function register_glyphs!(plot)
         markerspace = plot.markerspace,
         transform_marker = plot.transform_marker,
         space = plot.space,
-    )
-end
-
-function tex_linesegments!(plot)
-    register_model_clip_planes!(plot.attributes)
-
-    # Don't user register_markerspace_positions() here so we skip calculating them
-    # if no linesegments are needed
-    map!(
-        plot.attributes,
-        [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :model_clip_planes, :space],
-        :linesgments_shifted
-    ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes, space
-        isempty(linesegments) && return Point3f[]
-        markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
-        return map(linesegments, indices) do seg, (block_idx, glyph_idx)
-            return seg + markerspace_positions[block_idx]
-        end
-    end
-
-    return linesegments!(
-        plot, plot.linesgments_shifted; linewidth = plot.linewidths,
-        color = plot.linecolors, space = plot.markerspace
     )
 end
 
@@ -774,9 +789,9 @@ function register_raw_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :linesegments, :linewidths, :lineindices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :text_spec_bboxes, :text_spec_block_indices],
             :raw_string_boundingboxes
-        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
+        ) do blocks, bbs, origins, rotation, spec_bboxes, spec_block_indices
 
             text_bbs = map(blocks) do idxs
                 output = Rect3d()
@@ -789,8 +804,7 @@ function register_raw_string_boundingboxes!(plot)
                 return output
             end
 
-            for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
-                bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
+            for (block_idx, bb) in zip(spec_block_indices, spec_bboxes)
                 text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
             end
 
@@ -816,9 +830,9 @@ function register_fast_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :linesegments, :linewidths, :lineindices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :text_spec_bboxes, :text_spec_block_indices],
             :fast_string_boundingboxes
-        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
+        ) do blocks, bbs, origins, rotation, spec_bboxes, spec_block_indices
 
             text_bbs = map(blocks) do idxs
                 output = Rect3d(Point3d(NaN), Vec3d(0))
@@ -831,8 +845,7 @@ function register_fast_string_boundingboxes!(plot)
                 return output
             end
 
-            for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
-                bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
+            for (block_idx, bb) in zip(spec_block_indices, spec_bboxes)
                 text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
             end
 
