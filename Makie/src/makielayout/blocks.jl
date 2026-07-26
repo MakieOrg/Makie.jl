@@ -205,7 +205,7 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
     push!(fields_vector, :(blockscene::Scene))
     push!(fields_vector, :(layout::Union{Nothing, GridLayout}))
 
-    attrs = extract_attributes!(body)
+    attrs = extract_attributes!(body, name)
 
     i_forwarded_layout = findfirst(
         x -> x isa Expr && x.head === :macrocall &&
@@ -328,7 +328,7 @@ function mixin_block_layout_attributes()
     end
 end
 
-function extract_attributes!(body)
+function extract_attributes!(body, blockname)
     i = findfirst(
         expr -> MacroTools.@capture(expr, @attributes blockexpr_),
         body.args
@@ -352,7 +352,7 @@ function extract_attributes!(body)
         pushfirst!(attr_input_expr.args, :(Makie.mixin_block_layout_attributes()...))
     end
 
-    return build_documented_attributes(attr_input_expr)
+    return build_documented_attributes(attr_input_expr, source = blockname)
 end
 
 
