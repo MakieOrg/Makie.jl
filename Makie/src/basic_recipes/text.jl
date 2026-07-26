@@ -38,7 +38,11 @@ convert_attribute(str::AbstractString, ::key"text", ::key"text") = Ref{Any}([str
 convert_attribute(rt::RichText, ::key"text", ::key"text") = Ref{Any}([rt])
 convert_attribute(x::AbstractVector, ::key"text", ::key"text") = Ref{Any}(vec(x))
 
-to_string_arr(text::AbstractVector) = text
+# `copy` so the producer emits a fresh `input_text` array each run. An aliased
+# array makes `is_same` (which can't tell whether a shared array was mutated in
+# place) report a change, re-running text layout on every position update while
+# layout solves, which for image handlers (LaTeX) means recompiling every pass.
+to_string_arr(text::AbstractVector) = copy(text)
 to_string_arr(text) = [text]
 
 function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_args)
@@ -63,7 +67,8 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
             # position data will always be wrapped in a Vector, so strings should too
             return ((a_pos,), Ref{Any}([args[1]]))
         elseif args isa Tuple{<:AbstractVector{<:AbstractString}}
-            return ((a_pos,), Ref{Any}(args[1]))
+            # copy: a fresh array lets `is_same` filter unchanged text (see `to_string_arr`)
+            return ((a_pos,), Ref{Any}(copy(args[1])))
         elseif args isa Tuple{<:AbstractVector{<:Tuple{<:Any, <:VecTypes}}}
             # [(text, pos), ...] argument
             return ((last.(args[1]),), Ref{Any}(first.(args[1])))
