@@ -97,7 +97,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
 
     # Exit early if the pipeline is already up to date
     lowered_pipeline = Makie.LoweredRenderPipeline(pipeline)
-    screen.render_pipeline == pipeline && return
+    screen.render_pipeline.parent == pipeline && return
 
     return gl_render_pipeline!(screen, lowered_pipeline)
 end
