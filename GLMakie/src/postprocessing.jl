@@ -165,8 +165,8 @@ function clear_scenes!(screen, glscenes, framebuffer)
     glEnable(GL_SCISSOR_TEST)
     ppu = screen.px_per_unit[]
     for glscene in glscenes # back to front
-        scene = glscene.scene.value
-        if !isnothing(scene) && scene.visible[] && scene.clear[]
+        scene = glscene.scene
+        if scene.visible[] && scene.clear[]
             a = viewport(scene)[]
             rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             glViewport(rt...)
@@ -349,8 +349,8 @@ function update_stencil!(screen, glscene, fb)
     glStencilFunc(GL_ALWAYS, 0, 0xff)
     glClearStencil(1)
     ppu = screen.px_per_unit[]
-    scene = glscene.scene.value
-    if !isnothing(scene) && scene.visible[] && scene.clear[]
+    scene = glscene.scene
+    if scene.visible[] && scene.clear[]
         a = viewport(scene)[]
         rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
         glScissor(rt...)
@@ -395,13 +395,13 @@ function run_stage(screen, glscenes, stage::RenderPlots)
             group_start = group_end + 1
             while group_start > 1
                 group_start -= 1
-                if glscenes[group_start].scene.value.clear[]
+                if glscenes[group_start].scene.clear[]
                     break
                 end
             end
 
             for glscene in view(glscenes, group_start:group_end) # back to front
-                scene = glscene.scene.value
+                scene = glscene.scene
                 if isnothing(scene) || !scene.visible[]
                     continue
                 end
@@ -548,8 +548,7 @@ function run_stage(screen, glscenes, stage::RenderPass{:SSAO1})
     data = stage.robj.uniforms
     # TODO: Make SSAO a render pipeline setting
     for glscene in reverse(glscenes)
-        scene = glscene.scene.value
-        isnothing(scene) && continue
+        scene = glscene.scene
         # Select the area of one leaf scene
         # This should be per scene because projection may vary between
         # scenes. It should be a leaf scene to avoid repeatedly shading
@@ -588,8 +587,7 @@ function run_stage(screen, glscenes, stage::RenderPass{:SSAO2})
     data = stage.robj.uniforms
     # TODO: require full render pipeline to have consistent SSAO settings?
     for glscene in reverse(glscenes)
-        scene = glscene.scene.value
-        isnothing(scene) && continue
+        scene = glscene.scene
         # Select the area of one leaf scene
         isempty(scene.children) || continue
         a = viewport(scene)[]

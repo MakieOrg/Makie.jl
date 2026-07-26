@@ -2,21 +2,23 @@
 # of all parent scenes and the represented scene since scene.visible forwarding
 # can be overwritten
 struct GLScene
-    scene::WeakRef
+    # This does not need to be a WeakRef because
+    # 1. child scene cleanup no longer relies on GC. If a child scene is removed
+    # from the scene tree on the Makie side it must be explicitly removed in the
+    # backend as well to ensure they stay in sync.
+    # 2. The root scene is also kept in `Screen` as a direct reference, so it
+    # can not be cleaned up through GC alone. It is only detached by
+    # `empty!(screen)` which also clears the full render context
+    scene::Scene
     renderobjects::Vector{RenderObject}
 end
 
-function Base.show(io::IO, group::GLScene)
-    print(io, "GLScene($(group.scene), $(length(group.renderobjects)) render objects)")
+function Base.show(io::IO, glscene::GLScene)
+    print(io, "GLScene($(glscene.scene), $(length(glscene.renderobjects)) render objects)")
 end
 # Base.show(io::IO, ::MIME"text/plain", group::GLScene)
 
-GLScene() = GLScene(WeakRef(nothing), RenderObject[])
-GLScene(scene::Scene) = GLScene(WeakRef(scene))
-GLScene(scene::WeakRef) = GLScene(scene, collect_renderobjects!(RenderObject[], scene))
-
-collect_renderobjects!(buffer, scene::WeakRef) = collect_renderobjects!(buffer, scene.value)
-collect_renderobjects!(buffer, ::Nothing) = nothing
+GLScene(scene::Scene) = GLScene(scene, RenderObject[])
 
 function collect_renderobjects!(buffer, scene::Scene)
     for plot in scene.plots
