@@ -66,9 +66,11 @@ function flag_float64(robj)
         Observable,
     }
     for (k, v) in robj.buffers
+        k === :gl_zindex && continue
         v isa banned_types && error("$k in vertexarray is a banned type $(typeof(v))")
     end
     for (k, v) in robj.uniforms
+        k === :gl_zindex && continue
         v isa banned_types && error("$k in uniforms is a banned type: $(typeof(v))")
     end
     return
@@ -98,6 +100,8 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
         # println("Updating ", name)
         if name === :visible
             robj.visible = value
+        elseif name === :gl_zindex
+            robj.zindex = value
         elseif gl_name === :indices || gl_name === :faces
             if robj.indices isa GLAbstraction.GPUArray
                 GLAbstraction.update!(robj.indices, value)
@@ -233,8 +237,11 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     attr = plot.attributes
 
     # These must always be there!
-    push!(uniforms, :uniform_clip_planes, :uniform_num_clip_planes, :depth_shift, :visible, :fxaa)
-    push!(uniforms, :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction)
+    core_attributes = Symbol[
+        :uniform_clip_planes, :uniform_num_clip_planes, :depth_shift, :visible, :fxaa, :gl_zindex,
+        :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction
+    ]
+    append!(uniforms,core_attributes)
     haskey(attr, :preprojection) && push!(uniforms, :preprojection)
     push!(input2glname, :uniform_clip_planes => :clip_planes)
     get!(input2glname, :uniform_num_clip_planes, :num_clip_planes) # don't overwrite
@@ -256,6 +263,8 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         error("Duplicate robj inputs detected in $merged_inputs: $duplicates")
     end
 
+    map!(Makie.zvalue2d, plot, [:zindex, :model], :gl_zindex)
+
     robj = let
         args = NamedTuple(map(key -> key => getproperty(attr, key)[], merged_inputs))
         robj = construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
@@ -264,7 +273,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     end
 
     # Filter out unused inputs and static attributes to prevent overwrite
-    always_keep = Set([:visible, :indices, :faces, :instances, :fxaa])
+    always_keep = Set([:visible, :indices, :faces, :instances, :fxaa, :gl_zindex])
     filter!(merged_inputs) do name
         glname = get(input2glname, name, name)
         if in(glname, always_keep)

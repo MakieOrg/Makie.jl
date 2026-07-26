@@ -184,16 +184,10 @@ struct SortPlots <: GLRenderStage end
 
 construct(::Val{:ZSort}, screen, parent) = SortPlots()
 
+Makie.zvalue2d(@nospecialize(robj::RenderObject)) = robj.zindex
 function run_stage(screen, glscenes, ::SortPlots)
-    function sortby(robj)
-        plot = screen.cache2plot[robj.id]
-        return Makie.zvalue2d(plot)
-    end
-
-    # TODO: Would insertion sort be better? We should typically have small
-    # arrays of (almost) sorted data
     for glscene in glscenes
-        sort!(glscene.renderobjects; by = sortby)
+        sort!(glscene.renderobjects; by = Makie.zvalue2d)
     end
     return
 end

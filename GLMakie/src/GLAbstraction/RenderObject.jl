@@ -27,6 +27,7 @@ mutable struct RenderObject{IndexType, InstanceType}
     context # OpenGL context
     id::UInt32
     visible::Bool
+    zindex::Float64
 
     # data of the renderobject
     buffers::Dict{Symbol, GLBuffer}
@@ -58,7 +59,7 @@ mutable struct RenderObject{IndexType, InstanceType}
         # and since this is a UUID, it shouldn't matter
         id = pack_bool(RENDER_OBJECT_ID_COUNTER[], fxaa)
         robj = new{IndexType, InstanceType}(
-            context, id, to_value(visible),
+            context, id, to_value(visible), 0.0,
             buffers, indices, instances, primitive,
             uniforms,
             Dict{Symbol, RenderInstructions}(),
