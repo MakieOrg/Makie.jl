@@ -187,10 +187,7 @@ construct(::Val{:ZSort}, screen, parent) = SortPlots()
 function run_stage(screen, glscenes, ::SortPlots)
     function sortby(robj)
         plot = screen.cache2plot[robj.id]
-        # TODO: use actual boundingbox
-        # ~7% faster than calling zvalue2d doing the same thing?
-        return Makie.transformationmatrix(plot)[][3, 4]
-        # return Makie.zvalue2d(plot)
+        return Makie.zvalue2d(plot)
     end
 
     # TODO: Would insertion sort be better? We should typically have small
