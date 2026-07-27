@@ -405,8 +405,8 @@ end
 ################################################################################
 
 # Layout a single-line RichText into a GlyphCollection with the baseline at y=0.
-# We call the layout sub-steps directly, skipping apply_alignment_and_justification!
-# which would shift all origins by the descender height.
+# We call the layout sub-steps directly, skipping apply_justification! since a
+# single line has no unused width to distribute.
 function _layout_richtext_for_path(text::RichText, fontsize, font, fonts)
     lines = [GlyphInfo[]]
     gs = GlyphState(0, 0, Vec2f(fontsize), font, RGBAf(0, 0, 0, 1))

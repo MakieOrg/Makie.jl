@@ -1,20 +1,18 @@
 using FreeTypeAbstraction: hadvance, leftinkbound, inkwidth, get_extent, ascender, descender
 
-function justification2float(justification, halign)
-    if justification === automatic
-        if halign === :left || halign == 0
-            return 0.0f0
-        elseif halign === :right || halign == 1
-            return 1.0f0
-        elseif halign === :center || halign == 0.5
-            return 0.5f0
-        else
-            return 0.5f0
-        end
-    else
-        msg = "Invalid justification $justification. Valid values are <:Real, :left, :center and :right."
-        return halign2num(justification, msg)
-    end
+"""
+    justification2float(justification, halign)
+
+Resolves `justification` to the fraction of a line's unused width that is added
+to its glyph origins. `automatic` follows `halign`, so a text block's alignment
+and its justification are resolved together, before layout.
+"""
+function justification2float(justification, halign)::Float32
+    justification === automatic || return halign2num(
+        justification,
+        "Invalid justification $justification. Valid values are <:Real, :left, :center and :right."
+    )
+    return halign2num(halign)
 end
 
 function create_lineinfos(charinfos, word_wrap_width)
@@ -90,31 +88,24 @@ function create_lineinfos(charinfos, word_wrap_width)
 end
 
 """
-    glyph_collection(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation, color, word_wrap_width)
+    glyph_collection(str::AbstractString, font_per_char, fontscale_px, lineheight_factor, justification, word_wrap_width)
 
-Calculate the positions for each glyph in a string given a certain font, font size, alignment, etc.
-This layout in text coordinates, relative to the anchor point [0,0] can then be translated and
-rotated to wherever it is needed in the plot.
+Calculate the position of each glyph in a string given a certain font, font size,
+line height etc. The origins are in the layout frame: the first line's baseline
+sits at y = 0 and the left edge of the layout box at x = 0. `bbox` and `baseline`
+describe that frame so alignment, rotation and offset can be applied afterwards.
 """
 function glyph_collection(
-        str::AbstractString, font_per_char, fontscale_px, (halign, valign),
-        lineheight_factor, justification, word_wrap_width, rotation
-    )
-    return glyph_collection(
-        str, font_per_char, fontscale_px, halign, valign,
-        lineheight_factor, justification, word_wrap_width, rotation
-    )
-end
-
-function glyph_collection(
-        str::AbstractString, font_per_char, fontscale_px, halign, valign,
-        lineheight_factor, justification, word_wrap_width, rotation
+        str::AbstractString, font_per_char, fontscale_px,
+        lineheight_factor, justification::Real, word_wrap_width
     )
     isempty(str) && return (
         glyphindices = UInt64[],
         font_per_char = NativeFont[],
         char_origins = Point3f[],
         glyph_extents = FreeTypeAbstraction.FontExtent{Float32}[],
+        bbox = Rect2f(0, 0, 0, 0),
+        baseline = 0.0f0,
     )
     # collect information about every character in the string
     charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, _font, scale
@@ -152,12 +143,8 @@ function glyph_collection(
     # how much each line differs from the maximum width for justification correction
     width_differences = maxwidth .- linewidths
 
-    # shift all x values by the justification amount needed for each line
-    # if justification is automatic it depends on alignment
-    float_justification = justification2float(justification, halign)
-
     xs_justified = map(xs, width_differences) do xsgroup, wd
-        xsgroup .+ wd * float_justification
+        xsgroup .+ wd * justification
     end
 
     # each character carries a "lineheight" metric given its font and scale and a lineheight scaling factor
@@ -170,12 +157,8 @@ function glyph_collection(
     # compute y values by adding up lineheights in negative y direction
     ys = cumsum([0.0; -lineheights[2:end]])
 
-    # compute x values after left/center/right alignment
-    halign = halign2num(halign)
-    xs_aligned = [xsgroup .- halign * maxwidth for xsgroup in xs_justified]
-
-    # for y alignment, we need the largest ascender of the first line
-    # and the largest descender of the last line
+    # the layout box spans the largest ascender of the first line down to the
+    # largest descender of the last line
     first_line_ascender = maximum(lineinfos[1]) do l
         last(l.scale) * l.extent.ascender
     end
@@ -189,32 +172,22 @@ function glyph_collection(
         end
     end
 
-    # compute the height of all lines together
-    overall_height = first_line_ascender - ys[end] - last_line_descender
+    bottom = ys[end] + last_line_descender
 
-    # compute y values after top/center/bottom/baseline alignment
-    ys_aligned = if valign === :baseline
-        ys .- first_line_ascender .+ overall_height .+ last_line_descender
-    else
-        va = valign2num(valign, "Invalid valign $valign. Valid values are <:Number, :bottom, :baseline, :top, and :center.")
-        ys .- first_line_ascender .+ (1 - va) .* overall_height
-    end
-
-    # compute the origins for each character by rotating each character around the common origin
-    # which is the alignment anchor and now [0, 0]
     # use 3D coordinates already because later they will be required in that format anyway
-    charorigins = [Ref(rotation) .* Point3f.(xsgroup, y, 0) for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
+    charorigins = [Point3f.(xsgroup, y, 0) for (xsgroup, y) in zip(xs_justified, ys)]
 
-    # return a GlyphCollection, which contains each character's origin, height-insensitive
-    # boundingbox and horizontal advance value
-    # these values should be enough to draw characters correctly,
-    # compute boundingboxes without relayouting and maybe implement
-    # interactive features that need to know where characters begin and end
+    # each character's origin, height-insensitive boundingbox and horizontal
+    # advance value should be enough to draw characters correctly, compute
+    # boundingboxes without relayouting and maybe implement interactive features
+    # that need to know where characters begin and end
     return (
         glyphindices = map(x -> glyph_index(x.font, x.char), charinfos),
         font_per_char = map(x -> x.font, charinfos),
         char_origins = reduce(vcat, charorigins),
         glyph_extents = map(x -> x.extent, charinfos),
+        bbox = Rect2f(0, bottom, maxwidth, first_line_ascender - bottom),
+        baseline = Float32(ys[end]),
     )
 end
 

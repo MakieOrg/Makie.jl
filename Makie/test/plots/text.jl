@@ -171,6 +171,66 @@ end
     @test length(p2.text_spec_bboxes[]) == 1
 end
 
+struct CountingHandler
+    calls::Base.RefValue{Int}
+end
+
+function Makie.compile_text(h::CountingHandler, str, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth)
+    h.calls[] += 1
+    return nothing
+end
+
+@testset "placement does not relayout" begin
+    handler = CountingHandler(Ref(0))
+    scene = Scene(camera = campixel!)
+    p = text!(scene, Point2f(100, 100), text = "ab\ncd", fontsize = 20, align = (:left, :bottom), text_handler = handler)
+    p.glyph_origins[]
+    layouts = handler.calls[]
+    @test layouts == 1
+
+    for (attribute, value) in [
+            (:align, (:left, :top)),        # same justification, so no relayout
+            (:rotation, Float32(pi / 4)),
+            (:offset, Vec2f(5, 5)),
+        ]
+        setproperty!(p, attribute, value)
+        p.glyph_origins[]
+        @test handler.calls[] == layouts
+    end
+
+    p.align = (:right, :top) # justification follows halign, so this does relayout
+    p.glyph_origins[]
+    @test handler.calls[] == layouts + 1
+
+    p.fontsize = 30
+    p.glyph_origins[]
+    @test handler.calls[] == layouts + 2
+end
+
+@testset "per block placement attributes" begin
+    scene = Scene(camera = campixel!)
+
+    # PolarAxis starts its tick labels out like this
+    p = text!(scene, Point2f[], text = String[], align = Point2f[], offset = Point2f[])
+    @test p.glyph_origins[] == Point3f[]
+    @test p.resolved_justification[] == Float32[]
+
+    p2 = text!(
+        scene, [Point2f(0, 0), Point2f(100, 0)], text = ["ab", "cd"],
+        align = [(:left, :bottom), (:right, :top)], rotation = [0.0, pi / 2], offset = [Vec2f(0), Vec2f(5, 5)]
+    )
+    origins, rotations = p2.glyph_origins[], p2.glyph_rotations[]
+    @test length(origins) == 4
+    @test rotations[1:2] == fill(Quaternionf(0, 0, 0, 1), 2)
+    @test rotations[3:4] == fill(convert(Quaternionf, to_rotation(pi / 2)), 2)
+
+    # the first glyph lays out at the layout frame's origin, and (:left, :bottom)
+    # shifts the block so the frame's lower left corner lands on the anchor
+    box = p2.block_bboxes[][1]
+    @test origins[1] == Point3f(-minimum(box)[1], -minimum(box)[2], 0)
+    @test p2.marker_offset[][3:4] == origins[3:4] .+ Point3f(5, 5, 0)
+end
+
 @testset "text boundingboxes" begin
     @testset "empty string" begin
         scene = Scene(camera = campixel!)
