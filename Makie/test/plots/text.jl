@@ -242,16 +242,42 @@ end
     @test_throws err text!(scene, Point2f(0, 0), text = "abcd", strokewidth = [1, 2, 3, 4])
     @test_throws err text!(scene, Point2f(0, 0), text = "abcd", fontsize = [10, 20, 30, 40])
 
+    # `color` feeds text layout so it errors while plotting, the other two only
+    # once the value is pulled
     path = [Point2f(0, 0), Point2f(100, 0)]
     for (attribute, value) in [(:color, [:red, :green]), (:strokecolor, [:red, :green]), (:strokewidth, [1, 2])]
-        p = pathtext!(scene, path; text = "ab", space = :pixel, attribute => value)
-        glyphs = only(p.plots)
-        @test_throws "`pathtext` takes a single $attribute, got 2 values." getproperty(glyphs, attribute)[]
+        @test_throws "`pathtext` takes a single $attribute, got 2 values." begin
+            p = pathtext!(scene, path; text = "ab", space = :pixel, attribute => value)
+            getproperty(only(p.plots), attribute)[]
+        end
     end
 
     # rich text is the supported way to style parts of one string
     p = pathtext!(scene, path; text = rich("a", rich("b", color = :red)), space = :pixel)
     @test only(p.plots).color[] == [RGBAf(0, 0, 0, 1), RGBAf(1, 0, 0, 1)]
+end
+
+@testset "pathtext color" begin
+    scene = Scene(camera = campixel!)
+    path = [Point2f(0, 0), Point2f(100, 0)]
+
+    plain = pathtext!(scene, path; text = "abc", color = :red, space = :pixel)
+    @test only(plain.plots).color[] == RGBAf(1, 0, 0, 1)
+
+    # rich text takes the plot's color for the parts it doesn't style itself
+    styled = pathtext!(scene, path; text = rich("ab", rich("c", color = :blue)), color = :red, space = :pixel)
+    @test only(styled.plots).color[] == [RGBAf(1, 0, 0, 1), RGBAf(1, 0, 0, 1), RGBAf(0, 0, 1, 1)]
+
+    # a number is colormapped rather than rejected
+    mapped = pathtext!(
+        scene, path; text = "abc", space = :pixel,
+        color = 0.5, colormap = [:red, :red], colorrange = (0, 1)
+    )
+    @test only(mapped.plots).color[] == RGBAf(1, 0, 0, 1)
+
+    # alpha is folded in once, like `text` does it
+    faded = pathtext!(scene, path; text = "abc", color = :red, alpha = 0.5, space = :pixel)
+    @test only(faded.plots).computed_color[] == RGBAf(1, 0, 0, 0.5)
 end
 
 @testset "pathtext draws glyphs directly" begin

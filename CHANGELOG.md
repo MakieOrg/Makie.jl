@@ -4,6 +4,7 @@
 
 - **breaking** `text` and `pathtext` no longer style individual characters from a vector `color`, `strokecolor`, `strokewidth` or `fontsize`; `text` reads such a vector as one value per string and both error on a length they can't use. Use `rich` text to style parts of a string.
 - **breaking** `pathtext` now draws into a `Glyphs` child plot instead of a `Text` one.
+- Fixed `rich` text in `pathtext` ignoring the plot's `color` for the parts it doesn't style itself, and `alpha` being applied twice.
 - **breaking** `align = (halign, :baseline)` now aligns `rich` text and `LaTeXString`s on their baseline instead of their bottom edge, matching plain strings.
 - **breaking** With `justification = automatic`, a fractional `halign` now justifies by that fraction instead of falling back to `0.5`.
 - **breaking** Added a pluggable `text_handler` attribute and a new `Glyphs` plot primitive. `text` now lays its glyphs out into a `Glyphs` child and can route inputs through a custom layout engine (e.g. `MathTeXHandler`), falling back to the built-in path when a handler returns `nothing`. `Text` is now a container plot, so code that read glyph render attributes (`sdf_uv`, `quad_offset`, `quad_scale`, ...) off a `Text` must read them from its `Glyphs` child instead. [#5713](https://github.com/MakieOrg/Makie.jl/pull/5713)
