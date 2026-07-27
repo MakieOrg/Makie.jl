@@ -213,20 +213,6 @@ function convert_text_string!(
     rotations = per_glyph_block(rotation, i, N, block)
     colors = per_glyph_block(color, i, N, block)
 
-    # TODO: Should we get rid of this in general?
-    gc = GlyphCollection(
-        nt.glyphindices,
-        nt.font_per_char,
-        nt.char_origins,
-        nt.glyph_extents,
-        scales,
-        rotations,
-        colors,
-        RGBAf[],
-        Float32[]
-    )
-
-    push!(outputs.glyphcollections, gc)
     append!(outputs.text_color, colors)
     append!(outputs.text_rotation, rotations)
     append!(outputs.text_scales, scales)
@@ -248,7 +234,6 @@ function convert_text_string!(
     curr = length(outputs.glyphindices)
     n = length(gc.glyphs)
 
-    push!(outputs.glyphcollections, gc)
     push!(outputs.text_blocks, (curr + 1):(curr + n))
     append!(outputs.glyphindices, gc.glyphs)
     append!(outputs.glyph_origins, gc.origins)
@@ -275,7 +260,6 @@ function convert_text_string!(
     curr = length(outputs.glyphindices)
     n = length(gc.glyphs)
 
-    push!(outputs.glyphcollections, gc)
     push!(outputs.text_blocks, (curr + 1):(curr + n))
     append!(outputs.glyphindices, gc.glyphs)
     append!(outputs.glyph_origins, gc.origins)
@@ -333,7 +317,7 @@ display_independent_layout(@nospecialize(x)) = false
 # Valid only when no layout-affecting input changed and every block's text has
 # `display_independent_layout == true` (checked by the caller).
 function reuse_glyph_layout(cached, color, strokecolor, strokewidth)
-    (gcs, gi, fpc, go, ge, tb, _, trot, tscale, _, _, ts, tsbi, tsbb) = cached
+    (gi, fpc, go, ge, tb, _, trot, tscale, _, _, ts, tsbi, tsbb) = cached
     N = length(tb)
     text_color = RGBAf[]
     text_strokecolor = RGBAf[]
@@ -343,7 +327,7 @@ function reuse_glyph_layout(cached, color, strokecolor, strokewidth)
         append!(text_strokecolor, per_glyph_block(strokecolor, i, N, block))
         append!(text_strokewidth, per_glyph_block(strokewidth, i, N, block))
     end
-    return (gcs, gi, fpc, go, ge, tb, text_color, trot, tscale, text_strokewidth, text_strokecolor, ts, tsbi, tsbb)
+    return (gi, fpc, go, ge, tb, text_color, trot, tscale, text_strokewidth, text_strokecolor, ts, tsbi, tsbb)
 end
 
 ################################################################################
@@ -468,7 +452,6 @@ function place_glyphs!(outputs, c::CompiledGlyphs, shift, rotation, color, strok
     append!(outputs.text_rotation, fill(rotation, n))
     append!(outputs.text_strokecolor, fill(strokecolor, n))
     append!(outputs.text_strokewidth, fill(strokewidth, n))
-    push!(outputs.glyphcollections, GlyphCollection(c.glyphindices, c.fonts, origins, c.extents, c.scales, rotation, color, strokecolor, strokewidth))
     return
 end
 
@@ -550,7 +533,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :strokewidth,
     ]
     outputs = [
-        :glyphcollections, :glyphindices,
+        :glyphindices,
         :font_per_char,
         :glyph_origins, :glyph_extents,
         :text_blocks,
@@ -567,7 +550,6 @@ function compute_glyph_collections!(attr::ComputeGraph)
         end
 
         _outputs = (
-            glyphcollections = GlyphCollection[],
             glyphindices = UInt64[],
             font_per_char = NativeFont[],
             glyph_origins = Point3f[],
