@@ -88,14 +88,14 @@ function create_lineinfos(charinfos, word_wrap_width)
 end
 
 """
-    glyph_collection(str::AbstractString, font_per_char, fontscale_px, lineheight_factor, justification, word_wrap_width)
+    layout_string(str::AbstractString, font_per_char, fontscale_px, lineheight_factor, justification, word_wrap_width)
 
 Calculate the position of each glyph in a string given a certain font, font size,
 line height etc. The origins are in the layout frame: the first line's baseline
 sits at y = 0 and the left edge of the layout box at x = 0. `bbox` and `baseline`
 describe that frame so alignment, rotation and offset can be applied afterwards.
 """
-function glyph_collection(
+function layout_string(
         str::AbstractString, font_per_char, fontscale_px,
         lineheight_factor, justification::Real, word_wrap_width
     )

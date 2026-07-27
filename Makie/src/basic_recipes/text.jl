@@ -86,101 +86,6 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     return
 end
 
-function per_glyph_getindex(x, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi::Int)
-    if isscalar(x)
-        return x
-    elseif isa(x, AbstractVector)
-        N_strings = length(text_blocks)
-        if (N_strings > 0) && (length(x) == last(last(text_blocks)))
-            return x[gi] # use per glyph index
-        elseif length(x) == N_strings
-            return x[bi] # use per text block index
-        else
-            error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
-        end
-    else
-        return x
-    end
-end
-
-function per_text_getindex(x, text_blocks::Vector{UnitRange{Int}}, bi::Int)
-    if isscalar(x)
-        return x
-    elseif isa(x, AbstractVector)
-        N_strings = length(text_blocks)
-        if (N_strings > 0) && (length(x) == last(last(text_blocks))) # data is per glyph
-            return view(x, text_blocks[bi]) # use per glyph index
-        elseif length(x) == N_strings
-            return x[bi] # use per text block index
-        else
-            error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
-        end
-    else
-        return x
-    end
-end
-
-function per_text_block(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
-    _getindex(x, bi) = per_text_getindex(x, text_blocks, bi)
-    for block_idx in eachindex(text_blocks)
-        f(_getindex.(args, block_idx)...)
-    end
-    return
-end
-
-function per_glyph_attributes(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
-    _getindex(x, gi, bi) = per_glyph_getindex(x, text_blocks, gi, bi)
-    glyph_idx = 1
-    for block_idx in eachindex(text_blocks)
-        for _ in text_blocks[block_idx]
-            f(_getindex.(args, glyph_idx, block_idx)...)
-            glyph_idx += 1
-        end
-    end
-    return
-end
-
-function map_per_glyph(text_blocks::Vector{UnitRange{Int}}, Typ, arg)
-    isscalar(arg) && return fill(arg, last(last(glyphs)))
-    result = Typ[]
-    per_glyph_attributes(text_blocks, (arg,)) do a
-        push!(result, a)
-    end
-    return result
-end
-
-
-function get_from_collection(glyphcollection::AbstractArray, name::Symbol, Typ)
-    result = Typ[]
-    for g in glyphcollection
-        arr = getfield(g, name)
-        if arr isa Vector
-            append!(result, arr)
-        else
-            _arr = arr.sv
-            if _arr isa Vector
-                append!(result, _arr)
-            else
-                append!(result, (_arr for i in 1:length(g.glyphs)))
-            end
-        end
-    end
-    return result
-end
-
-function get_text_blocks(gcs)
-    text_blocks = UnitRange{Int}[]
-    curr = 1
-    for g in gcs
-        push!(text_blocks, curr:(curr + length(g.glyphs)))
-        curr += length(g.glyphs)
-    end
-    return text_blocks
-end
-
-#####################################
-# New stuff
-
 """
     GlyphBuffer()
 
@@ -345,7 +250,7 @@ function convert_text_string!(
     )
 
     args = sv_getindex.((font, fontsize, lineheight, justification, word_wrap_width), i)
-    layout = glyph_collection(input_text, args...)
+    layout = layout_string(input_text, args...)
 
     per_block(x) = BlockAttribute(x, i, N)
     push_glyph_block!(
@@ -386,7 +291,7 @@ function convert_text_string!(
     )
 
     args = sv_getindex.((fontsize, color, strokecolor, strokewidth, word_wrap_width), i)
-    tex_elements, layout = texelems_and_glyph_collection(input_text, args...)
+    tex_elements, layout = texelems_and_layout(input_text, args...)
 
     push_glyph_block!(
         buffer, layout.glyphindices, layout.fonts, layout.origins, layout.extents;
@@ -635,7 +540,7 @@ function register_resolved_justification!(attr::ComputeGraph)
     end
 end
 
-function compute_glyph_collections!(attr::ComputeGraph)
+function register_glyph_layout!(attr::ComputeGraph)
     inputs = [
         :input_text,
         :text_handler,
@@ -764,8 +669,8 @@ function register_text_computations!(attr::ComputeGraph)
 
     register_resolved_justification!(attr)
 
-    # This computes one output per `GlyphBuffer` field
-    compute_glyph_collections!(attr)
+    # one output per `GlyphBuffer` field
+    register_glyph_layout!(attr)
 
     register_glyph_placement!(attr)
 
@@ -1169,7 +1074,7 @@ data_limits_obs(plot::Text) = ComputePipeline.get_observable!(register_data_limi
 ######################
 
 
-function texelems_and_glyph_collection(
+function texelems_and_layout(
         str::LaTeXString, fontscale_px,
         color, strokecolor, strokewidth, word_wrap_width
     )

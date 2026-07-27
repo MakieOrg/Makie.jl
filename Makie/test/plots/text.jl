@@ -15,7 +15,7 @@
     end
 end
 
-@testset "Glyph Collections" begin
+@testset "glyph layout" begin
     using Makie.FreeTypeAbstraction
 
     # Test whether Makie's padded signed distance field text matches

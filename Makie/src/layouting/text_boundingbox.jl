@@ -21,7 +21,7 @@ end
 # Utility
 function text_bb(str, font, size)
     rot = Quaternionf(0, 0, 0, 1)
-    layout = glyph_collection(str, font, size, 0.0f0, 0.0f0, -1)
+    layout = layout_string(str, font, size, 0.0f0, 0.0f0, -1)
     return unchecked_boundingbox(layout.glyphindices, layout.origins, size, layout.extents, rot)
 end
 
