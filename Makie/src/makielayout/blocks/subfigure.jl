@@ -153,6 +153,37 @@ function initialize_block!(sf::Subfigure)
             append!(stack, flatten_layout_content(block))
             v ? unhide!(block) : hide!(block)
         end
+        v && clip_content_to_viewport!()
+        return
+    end
+
+    """
+    Scrolled-out content must also stop RECEIVING clicks. A block's mouse
+    machinery gates on its own `blockscene.visible` and its own bbox — and a
+    scrollable subfigure moves content freely past its viewport, so a widget
+    scrolled out of sight still sits somewhere in the window and swallows
+    presses meant for whatever is drawn there (measured: a panel 1213 px tall in
+    a 714 px viewport put its buttons over the timeline underneath, where they
+    ate the clicks). Hide what does not intersect the viewport.
+    """
+    function clip_content_to_viewport!()
+        is_visible[] || return
+        vp = scene.viewport[]
+        (widths(vp)[1] <= 0 || widths(vp)[2] <= 0) && return
+        stack = flatten_layout_content(sf.layout)
+        while !isempty(stack)
+            block = pop!(stack)
+            append!(stack, flatten_layout_content(block))
+            bb = block.layoutobservables.computedbbox[]
+            all(isfinite, bb.origin) && all(isfinite, bb.widths) || continue
+            outside = bb.origin[1] + bb.widths[1] < left(vp) || bb.origin[1] > right(vp) ||
+                      bb.origin[2] + bb.widths[2] < bottom(vp) || bb.origin[2] > top(vp)
+            outside ? hide!(block) : unhide!(block)
+        end
+        return
+    end
+    onany(blockscene, layout_bbox, scene.viewport) do _, _
+        clip_content_to_viewport!()
         return
     end
     on(blockscene, blockscene.events.mousebutton) do ev
