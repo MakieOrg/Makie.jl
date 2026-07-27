@@ -231,6 +231,23 @@ end
     @test p2.marker_offset[][3:4] == origins[3:4] .+ Point3f(5, 5, 0)
 end
 
+@testset "pathtext draws glyphs directly" begin
+    scene = Scene(camera = campixel!)
+    font = Makie.defaultfont()
+    p = pathtext!(scene, [Point2f(0, 100), Point2f(300, 100)], text = "ab", fontsize = 20, space = :pixel)
+
+    glyphs = only(p.plots)
+    @test glyphs isa Makie.Glyphs
+    @test glyphs.glyphindices[] == FreeTypeAbstraction.glyph_index.(font, ['a', 'b'])
+    @test glyphs.scale[] == fill(Vec2f(20), 2)
+    # the positions are the glyph origins, so nothing is left for marker_offset
+    @test glyphs.marker_offset[] == fill(Point3f(0), 2)
+
+    positions = glyphs.positions[]
+    @test positions[1] ≈ Point2f(0, 100)
+    @test positions[2][1] ≈ 20 * Makie.GlyphExtent(font, 'a').hadvance
+end
+
 @testset "text boundingboxes" begin
     @testset "empty string" begin
         scene = Scene(camera = campixel!)
