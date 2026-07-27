@@ -134,15 +134,25 @@ struct ToolTip
     scene::Scene
     callback::Bonito.JSCode
     plot_uuids::Vector{String}
+    trigger::Symbol
+    range::Int
     class::String
     css::Any
-    function ToolTip(figlike, callback; plots = nothing, class = "popup", css = POPUP_CSS)
+    function ToolTip(
+        figlike,
+        callback;
+        plots = nothing,
+        trigger = :click,
+        range = 0,
+        class = "popup",
+        css = POPUP_CSS,
+    )
         scene = Makie.get_scene(figlike)
         if isnothing(plots)
             plots = scene.plots
         end
         all_plots = js_uuid.(filter!(x -> x.inspectable[], Makie.collect_atomic_plots(plots)))
-        return new(scene, callback, all_plots, class, css)
+        return new(scene, callback, all_plots, trigger, range, class, css)
     end
 end
 
@@ -179,7 +189,10 @@ function Bonito.jsrender(session::Session, tt::ToolTip)
             $(scene).then(scene => {
                 const plots_to_pick = new Set($(tt.plot_uuids));
                 const callback = $(tt.callback);
-                WGL.register_popup($popup, scene, plots_to_pick, callback)
+                WGL.register_popup($popup, scene, plots_to_pick, callback, {
+                    trigger: $(string(tt.trigger)),
+                    range: $(tt.range)
+                })
             })
         """
     )
