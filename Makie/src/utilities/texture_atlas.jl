@@ -383,7 +383,7 @@ function render(atlas::TextureAtlas, (glyph_index, _font)::Tuple{UInt64, NativeF
 
     # TODO: Is this needed or should newline be filtered before this?
     if glyph_index == 0 # don't render  newline and others
-        # TODO, render them as box and filter out newlines in GlyphCollection
+        # TODO, render them as box and filter out newlines during text layout
         glyph_index = FreeTypeAbstraction.glyph_index(font, ' ')
     end
 

@@ -404,14 +404,14 @@ end
 # Layout
 ################################################################################
 
-# Layout a single-line RichText into a GlyphCollection with the baseline at y=0.
-# We call the layout sub-steps directly, skipping apply_justification! since a
-# single line has no unused width to distribute.
+# Layout a single-line RichText with the baseline at y=0. We call the layout
+# sub-steps directly, skipping apply_justification! since a single line has no
+# unused width to distribute (which also means the layout box is irrelevant here).
 function _layout_richtext_for_path(text::RichText, fontsize, font, fonts)
     lines = [GlyphInfo[]]
     gs = GlyphState(0, 0, Vec2f(fontsize), font, RGBAf(0, 0, 0, 1))
     process_rt_node!(lines, gs, text, fonts)
-    return GlyphCollection(reduce(vcat, lines))
+    return glyph_arrays(reduce(vcat, lines), Rect2f(0, 0, 0, 0), 0.0f0)
 end
 
 # `sample_fn(s)` returns `(point, tangent, subpath_id)` or `nothing`.
@@ -507,20 +507,20 @@ function _layout_glyphs(text::AbstractString, fontsize::Float32, font, fonts)
 end
 
 function _layout_glyphs(text::RichText, fontsize::Float32, font, fonts)
-    gc = _layout_richtext_for_path(text, fontsize, font, fonts)
-    n = length(gc.glyphs)
+    layout = _layout_richtext_for_path(text, fontsize, font, fonts)
+    n = length(layout.glyphindices)
     n == 0 && return (Char[], Float32[], Float32[], Float32[], nothing)
 
     chars = _richtext_chars(text)
     length(chars) != n && error("RichText character count ($(length(chars))) does not match glyph count ($n).")
 
-    scales = collect_vector(gc.scales, n)
-    x_positions = Float32[gc.origins[i][1] for i in 1:n]
-    y_offsets = Float32[gc.origins[i][2] for i in 1:n]
-    advances = Float32[gc.extents[i].hadvance * scales[i][1] for i in 1:n]
+    scales = layout.scales
+    x_positions = Float32[o[1] for o in layout.origins]
+    y_offsets = Float32[o[2] for o in layout.origins]
+    advances = Float32[layout.extents[i].hadvance * scales[i][1] for i in 1:n]
     styles = (
-        colors = collect_vector(gc.colors, n),
-        fonts = collect_vector(gc.fonts, n),
+        colors = layout.colors,
+        fonts = layout.fonts,
         fontsizes = Float32[s[1] for s in scales],
     )::_PathtextGlyphStyles
     return (chars, x_positions, y_offsets, advances, styles)

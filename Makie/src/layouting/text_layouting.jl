@@ -101,9 +101,9 @@ function glyph_collection(
     )
     isempty(str) && return (
         glyphindices = UInt64[],
-        font_per_char = NativeFont[],
-        char_origins = Point3f[],
-        glyph_extents = FreeTypeAbstraction.FontExtent{Float32}[],
+        fonts = NativeFont[],
+        origins = Point3f[],
+        extents = GlyphExtent[],
         bbox = Rect2f(0, 0, 0, 0),
         baseline = 0.0f0,
     )
@@ -183,9 +183,9 @@ function glyph_collection(
     # that need to know where characters begin and end
     return (
         glyphindices = map(x -> glyph_index(x.font, x.char), charinfos),
-        font_per_char = map(x -> x.font, charinfos),
-        char_origins = reduce(vcat, charorigins),
-        glyph_extents = map(x -> x.extent, charinfos),
+        fonts = map(x -> x.font, charinfos),
+        origins = reduce(vcat, charorigins),
+        extents = map(x -> x.extent, charinfos),
         bbox = Rect2f(0, bottom, maxwidth, first_line_ascender - bottom),
         baseline = Float32(ys[end]),
     )
@@ -211,5 +211,3 @@ end
 
 _offset_to_vec(o::VecTypes) = to_ndim(Vec3f, o, 0)
 _offset_to_vec(o::Vector) = to_ndim.(Vec3f, o, 0)
-Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
-Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1

@@ -262,10 +262,6 @@ function append_per_glyph!(dest::Vector, attribute::BlockAttribute, n::Int, offs
     end
 end
 
-function append_per_glyph!(dest::Vector, sv::ScalarOrVector, n::Int, offset::Int)
-    return append_per_glyph!(dest, sv.sv, n, offset)
-end
-
 function append_per_glyph!(dest::Vector, value, n::Int, ::Int)
     if isscalar(value)
         append!(dest, Iterators.repeated(value, n))
@@ -284,7 +280,7 @@ Appends the glyphs of one text block to `buffer` and records their index range i
 `buffer.text_blocks`. `origins` are in the layout frame, described by `bbox` (the
 box `align` positions) and `baseline` (the y that `valign = :baseline` puts on the
 anchor). `glyphindices`, `origins` and `extents` are per glyph; the remaining
-attributes may also be scalar, a `ScalarOrVector` or a [`BlockAttribute`](@ref).
+attributes may also be scalar or a [`BlockAttribute`](@ref).
 """
 function push_glyph_block!(
         buffer::GlyphBuffer, glyphindices, fonts, origins, extents;
@@ -349,12 +345,12 @@ function convert_text_string!(
     )
 
     args = sv_getindex.((font, fontsize, lineheight, justification, word_wrap_width), i)
-    nt = glyph_collection(input_text, args...)
+    layout = glyph_collection(input_text, args...)
 
     per_block(x) = BlockAttribute(x, i, N)
     push_glyph_block!(
-        buffer, nt.glyphindices, nt.font_per_char, nt.char_origins, nt.glyph_extents;
-        bbox = nt.bbox, baseline = nt.baseline,
+        buffer, layout.glyphindices, layout.fonts, layout.origins, layout.extents;
+        bbox = layout.bbox, baseline = layout.baseline,
         scales = per_block(to_2d_scale(fontsize)), # TODO: convert_attribute?
         colors = per_block(color),
         strokecolors = per_block(strokecolor),
@@ -371,13 +367,13 @@ function convert_text_string!(
     )
 
     args = sv_getindex.((fontsize, font, fonts, justification, lineheight, color), i)
-    gc, bbox = layout_text(input_text, args...)
+    layout = layout_text(input_text, args...)
 
     push_glyph_block!(
-        buffer, gc.glyphs, gc.fonts, gc.origins, gc.extents;
-        bbox = bbox, baseline = 0.0f0,
-        scales = gc.scales, colors = gc.colors,
-        strokecolors = gc.strokecolors, strokewidths = gc.strokewidths,
+        buffer, layout.glyphindices, layout.fonts, layout.origins, layout.extents;
+        bbox = layout.bbox, baseline = layout.baseline,
+        scales = layout.scales, colors = layout.colors,
+        strokecolors = layout.strokecolors, strokewidths = layout.strokewidths,
     )
 
     return
@@ -390,13 +386,13 @@ function convert_text_string!(
     )
 
     args = sv_getindex.((fontsize, color, strokecolor, strokewidth, word_wrap_width), i)
-    tex_elements, gc, bbox = texelems_and_glyph_collection(input_text, args...)
+    tex_elements, layout = texelems_and_glyph_collection(input_text, args...)
 
     push_glyph_block!(
-        buffer, gc.glyphs, gc.fonts, gc.origins, gc.extents;
-        bbox = bbox, baseline = 0.0f0,
-        scales = gc.scales, colors = gc.colors,
-        strokecolors = gc.strokecolors, strokewidths = gc.strokewidths,
+        buffer, layout.glyphindices, layout.fonts, layout.origins, layout.extents;
+        bbox = layout.bbox, baseline = layout.baseline,
+        scales = layout.scales, colors = layout.colors,
+        strokecolors = layout.strokecolors, strokewidths = layout.strokewidths,
     )
 
     append_tex_linesegment_data!(buffer, tex_elements, args[1], args[2])
@@ -1234,19 +1230,21 @@ function texelems_and_glyph_collection(
         end
         end
 
-    layout = GlyphCollection(
-        glyphindices,
-        fonts,
-        Point3f.(basepositions),
-        extents,
-        scales_2d,
-        Quaternionf(0, 0, 0, 1),
-        color,
-        strokecolor,
-        strokewidth
+    n = length(glyphindices)
+    layout = (
+        glyphindices = UInt64.(glyphindices),
+        fonts = fonts,
+        origins = Point3f.(basepositions),
+        extents = extents,
+        scales = scales_2d,
+        colors = fill(to_color(color), n),
+        strokecolors = fill(to_color(strokecolor), n),
+        strokewidths = fill(Float32(strokewidth), n),
+        bbox = bb,
+        baseline = 0.0f0,
     )
 
-    return all_els, layout, bb
+    return all_els, layout
 end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
@@ -1266,7 +1264,6 @@ struct GlyphInfo
     origin::Point2f
     extent::GlyphExtent
     size::Vec2f
-    rotation::Quaternionf
     color::RGBAf
     strokecolor::RGBAf
     strokewidth::Float32
@@ -1280,7 +1277,6 @@ function GlyphInfo(
         origin = gi.origin,
         extent = gi.extent,
         size = gi.size,
-        rotation = gi.rotation,
         color = gi.color,
         strokecolor = gi.strokecolor,
         strokewidth = gi.strokewidth
@@ -1292,25 +1288,9 @@ function GlyphInfo(
         origin,
         extent,
         size,
-        rotation,
         color,
         strokecolor,
         strokewidth
-    )
-end
-
-
-function GlyphCollection(v::Vector{GlyphInfo})
-    return GlyphCollection(
-        [i.glyph for i in v],
-        [i.font for i in v],
-        [Point3f(i.origin..., 0) for i in v],
-        [i.extent for i in v],
-        [i.size for i in v],
-        [i.rotation for i in v],
-        [i.color for i in v],
-        [i.strokecolor for i in v],
-        [i.strokewidth for i in v],
     )
 end
 
@@ -1325,7 +1305,23 @@ function layout_text(rt::RichText, ts, f, fset, jus, lh, col)
     apply_lineheight!(lines, lh)
     bbox = apply_justification!(lines, jus)
 
-    return GlyphCollection(reduce(vcat, lines)), bbox
+    return glyph_arrays(reduce(vcat, lines), bbox, 0.0f0)
+end
+
+# Flatten laid-out glyphs into the parallel arrays a glyph block is pushed from.
+function glyph_arrays(infos::Vector{GlyphInfo}, bbox::Rect2f, baseline::Real)
+    return (
+        glyphindices = UInt64[i.glyph for i in infos],
+        fonts = NativeFont[i.font for i in infos],
+        origins = Point3f[to_ndim(Point3f, i.origin, 0) for i in infos],
+        extents = GlyphExtent[i.extent for i in infos],
+        scales = Vec2f[i.size for i in infos],
+        colors = RGBAf[i.color for i in infos],
+        strokecolors = RGBAf[i.strokecolor for i in infos],
+        strokewidths = Float32[i.strokewidth for i in infos],
+        bbox = bbox,
+        baseline = Float32(baseline),
+    )
 end
 
 function apply_lineheight!(lines, lh)
@@ -1467,7 +1463,6 @@ function process_rt_node!(lines, gs::GlyphState, s::String, _)
                     ori,
                     gext,
                     gs.size,
-                    to_rotation(0),
                     gs.color,
                     RGBAf(0, 0, 0, 0),
                     0.0f0,
