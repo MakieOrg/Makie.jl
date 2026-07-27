@@ -4,7 +4,7 @@
 
 - `WGLMakie.ToolTip` gained a `trigger` keyword (`:click`, the previous default behavior, or
   `:hover`) and a `range` keyword to control the picking tolerance in pixels, so tooltips can
-  now follow the cursor on hover instead of only appearing on click [#PR_NUMBER](https://github.com/MakieOrg/Makie.jl/pull/PR_NUMBER).
+  now follow the cursor on hover instead of only appearing on click [#5715](https://github.com/MakieOrg/Makie.jl/pull/5715).
 - Added an `absolute` attribute to `dendrogram` that keeps the input leaf positions instead of translating the root to `origin`, making it easy to align leaves to e.g. heatmap rows or columns [#5666](https://github.com/MakieOrg/Makie.jl/pull/5666).
 - `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
   `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
