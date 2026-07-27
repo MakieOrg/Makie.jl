@@ -53,6 +53,52 @@ function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceCont
 end
 
 
+"""
+    AwaitedNode(node)
+
+Wraps a `Hyperscript.Node` (e.g. anything created via `DOM.div`, `DOM.m`, ...) so that
+interpolating it into a `js"..."` string waits for the node to actually be mounted in the
+DOM before resolving, instead of Bonito's default `Node` interpolation, which compiles to
+a plain, one-shot `document.querySelector(...)` with no retry. That default is only safe
+if the node is *guaranteed* to already be in the DOM by the time the interpolated code
+runs — which the JS module (`\$(WGL)`) finishing its own async load does not guarantee: on
+a slow/cold page load, the module can finish loading before Bonito has actually spliced
+this particular node into `document.body`, silently querying `null`. Mirrors the retry
+loop used for `Scene` lookups above, and shares its env var configuration.
+"""
+struct AwaitedNode
+    node::Hyperscript.Node
+end
+
+function Bonito.print_js_code(io::IO, awaited::AwaitedNode, context::Bonito.JSSourceContext)
+    id = Bonito.uuid(context.session, awaited.node)
+    retry_delay_ms = max(1, something(tryparse(Int, get(ENV, "WGLMAKIE_SCENE_RETRY_DELAY_MS", "100")), 100))
+    total_wait_ms = max(retry_delay_ms, something(tryparse(Int, get(ENV, "WGLMAKIE_SCENE_RETRY_TOTAL_MS", "60000")), 60000))
+    max_retries = max(100, cld(total_wait_ms, retry_delay_ms))
+
+    code = js"""(function() {
+        function try_find_node(_retries) {
+            let retries = _retries || 0;
+            const max_retries = $(max_retries);
+            const retry_delay = $(retry_delay_ms);
+            const node = document.querySelector('[data-jscall-id="' + $(id) + '"]');
+            if (node) {
+                return Promise.resolve(node);
+            } else if (retries < max_retries) {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        try_find_node(retries + 1).then(resolve);
+                    }, retry_delay);
+                });
+            } else {
+                return Promise.reject(new Error("DOM node not found after retries: " + $(id)));
+            }
+        }
+        return try_find_node();
+    })()"""
+    return Bonito.print_js_code(io, code, context)
+end
+
 function get_order!(session::Session)
     order = Bonito.get_metadata(session, :wglmakie_scene_order, 1)
     Bonito.set_metadata!(session, :wglmakie_scene_order, order + 1)
@@ -122,13 +168,16 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     comm = Observable(Dict{String, Any}())
 
     # Keep texture atlas in parent session, so we don't need to send it over and over again
+    # `wrapper`/`canvas` are awaited (not interpolated directly) since the JS module
+    # loading (`$(WGL)`) does not guarantee they've already been mounted in the DOM —
+    # see `AwaitedNode`.
     evaljs(
         session, js"""
-        $(WGL).then(WGL => {
+        Promise.all([$(WGL), $(AwaitedNode(wrapper)), $(AwaitedNode(canvas))]).then(([WGL, wrapper, canvas]) => {
             WGL.execute_in_order($order, ()=> {
                 WGL.setup_scene_init(
-                    $wrapper,
-                    $canvas,
+                    wrapper,
+                    canvas,
                     $width,
                     $height,
                     $(config.resize_to),

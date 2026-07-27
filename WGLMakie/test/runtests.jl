@@ -122,6 +122,51 @@ edisplay = Bonito.use_electron_display(devtools = true)
         end
     end
 
+    @testset "AwaitedNode retries until the DOM node is mounted" begin
+        # Regression test for a race where interpolating a DOM `Node` into `js"..."`
+        # (as `three_display` does for its `wrapper`/`canvas`) compiled to a bare,
+        # one-shot `document.querySelector(...)`. If the JS module finished loading
+        # before Bonito had actually mounted that specific node — most likely on a
+        # slow/cold first page load — the query silently returned `null` and
+        # `setup_scene_init` failed, without ever throwing on the Julia side.
+        # `AwaitedNode` fixes this by retrying until the node appears. We test the
+        # retry mechanism directly (rather than trying to reproduce the original
+        # cold-load timing, which isn't reliably reproducible in CI): start the
+        # lookup before the node exists in the DOM at all, then mount a matching
+        # node after a deliberate delay, and confirm the lookup still resolves.
+        local node_session = nothing
+        app = App() do session
+            node_session = session
+            return DOM.div("awaited node test container")
+        end
+        display(edisplay, app)
+        Bonito.wait_for(() -> !isnothing(node_session))
+        session = node_session
+
+        node = DOM.div("mounted late"; id = "awaited-node-test")
+        node_id = Bonito.uuid(session, node)
+
+        result = evaljs_value(
+            session, js"""
+                (async () => {
+                    // Start the retry loop *before* the node exists in the DOM —
+                    // this is the scenario the original bug hit.
+                    const lookup = $(WGLMakie.AwaitedNode(node));
+                    // Simulate the delayed DOM mount that caused the original race.
+                    setTimeout(() => {
+                        const el = document.createElement('div');
+                        el.setAttribute('data-jscall-id', $(node_id));
+                        el.textContent = 'mounted-late';
+                        document.body.appendChild(el);
+                    }, 300);
+                    const found = await lookup;
+                    return found.textContent;
+                })()
+            """
+        )
+        @test result == "mounted-late"
+    end
+
     @testset "small float passthrough" begin
         scene = Scene()
         p1 = volume!(scene, fill(N0f8(0.5), 4, 4, 4)::Array{N0f8, 3})
