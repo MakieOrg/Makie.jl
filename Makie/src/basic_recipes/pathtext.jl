@@ -13,15 +13,15 @@ Newlines in `text` are currently not supported.
 @recipe PathText (path::Union{PointVector{2, <:Real}, BezierPath},) begin
     "The text to place along the path. May be `String` or `RichText`. Must not contain newlines."
     text = ""
-    "The color of the text. May be a single value or a vector with one entry per character."
+    "The color of the text. To color parts of the text differently, use `rich` text."
     color = @inherit textcolor
     "Sets the font. Can be a `Symbol` that is looked up in `fonts` or a font path/name."
     font = @inherit font
     "Dictionary of fonts that can be referenced by `Symbol`."
     fonts = @inherit fonts
-    "Color of the text stroke. May be per-character."
+    "Color of the text stroke."
     strokecolor = :black
-    "Width of the text stroke in pixels. May be per-character."
+    "Width of the text stroke in pixels."
     strokewidth = 0
     "Font size in pixels."
     fontsize = @inherit fontsize
@@ -594,6 +594,14 @@ end
 # plot!
 ################################################################################
 
+function _single_pathtext_value(value, name::Symbol)
+    isscalar(value) && return value
+    return error(
+        "`pathtext` takes a single $name, got $(length(value)) values. " *
+            "To style parts of the text differently, use `rich` text."
+    )
+end
+
 function _validate_pathtext(text::AbstractString)
     occursin('\n', text) && throw(ArgumentError("`pathtext` does not support newlines in `text`."))
     return text
@@ -630,8 +638,16 @@ function plot!(p::PathText)
         ]
     )
 
+    # `pathtext` draws one string, so each style attribute takes one value. Styling
+    # parts of the text differently is `rich` text's job: shaping can merge several
+    # code points into one glyph, so a vector indexed per character has nothing
+    # well-defined to index (`text` dropped the same thing).
+    for name in (:color, :strokecolor, :strokewidth)
+        map!(v -> _single_pathtext_value(v, name), p, [name], Symbol(:_pathtext_single_, name))
+    end
+
     # RichText brings a color per glyph; a plain string uses the recipe's `color`.
-    map!(p, [:_pathtext_layout_colors, :color], :_pathtext_color) do layout_colors, user_color
+    map!(p, [:_pathtext_layout_colors, :_pathtext_single_color], :_pathtext_color) do layout_colors, user_color
         return layout_colors === nothing ? user_color : layout_colors
     end
 
@@ -642,7 +658,7 @@ function plot!(p::PathText)
 
     glyphs!(
         p,
-        shared_attributes(p, Glyphs; drop = [:color, :rotation, :space, :markerspace]),
+        shared_attributes(p, Glyphs; drop = [:color, :strokecolor, :strokewidth, :rotation, :space, :markerspace]),
         p._pathtext_positions;
         glyphindices = p._pathtext_glyphindices,
         font_per_char = p._pathtext_fonts,
@@ -650,6 +666,8 @@ function plot!(p::PathText)
         marker_offset = p._pathtext_marker_offsets,
         rotation = p._pathtext_rotations,
         color = p._pathtext_color,
+        strokecolor = p._pathtext_single_strokecolor,
+        strokewidth = p._pathtext_single_strokewidth,
         space = :pixel,
         markerspace = :pixel,
         transformation = :nothing,

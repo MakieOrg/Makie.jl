@@ -241,6 +241,17 @@ end
     @test_throws err text!(scene, Point2f(0, 0), text = "abcd", color = [:red, :green, :blue, :black])
     @test_throws err text!(scene, Point2f(0, 0), text = "abcd", strokewidth = [1, 2, 3, 4])
     @test_throws err text!(scene, Point2f(0, 0), text = "abcd", fontsize = [10, 20, 30, 40])
+
+    path = [Point2f(0, 0), Point2f(100, 0)]
+    for (attribute, value) in [(:color, [:red, :green]), (:strokecolor, [:red, :green]), (:strokewidth, [1, 2])]
+        p = pathtext!(scene, path; text = "ab", space = :pixel, attribute => value)
+        glyphs = only(p.plots)
+        @test_throws "`pathtext` takes a single $attribute, got 2 values." getproperty(glyphs, attribute)[]
+    end
+
+    # rich text is the supported way to style parts of one string
+    p = pathtext!(scene, path; text = rich("a", rich("b", color = :red)), space = :pixel)
+    @test only(p.plots).color[] == [RGBAf(0, 0, 0, 1), RGBAf(1, 0, 0, 1)]
 end
 
 @testset "pathtext draws glyphs directly" begin

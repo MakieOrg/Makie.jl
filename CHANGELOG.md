@@ -2,7 +2,7 @@
 
 ## Breaking
 
-- **breaking** `text` no longer styles individual characters of a string from a vector `color`, `strokecolor`, `strokewidth` or `fontsize`; such a vector is now one value per string and a mismatched length errors. Use `rich` text to style parts of a string.
+- **breaking** `text` and `pathtext` no longer style individual characters from a vector `color`, `strokecolor`, `strokewidth` or `fontsize`; `text` reads such a vector as one value per string and both error on a length they can't use. Use `rich` text to style parts of a string.
 - **breaking** `pathtext` now draws into a `Glyphs` child plot instead of a `Text` one.
 - **breaking** `align = (halign, :baseline)` now aligns `rich` text and `LaTeXString`s on their baseline instead of their bottom edge, matching plain strings.
 - **breaking** With `justification = automatic`, a fractional `halign` now justifies by that fraction instead of falling back to `0.5`.
