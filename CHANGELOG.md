@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Fixed a WGLMakie race where a slow/cold first page load (fresh browser tab, first
+  display in a process) could cause `three_display` to silently fail to initialize the
+  canvas: interpolating a DOM node into `js"..."` compiled to a one-shot
+  `document.querySelector(...)` with no retry, which could run before Bonito had actually
+  mounted the node. Added `AwaitedNode`, which retries until the node appears, mirroring
+  the existing `Scene` lookup retry logic [#5716](https://github.com/MakieOrg/Makie.jl/pull/5716).
 - Added an `absolute` attribute to `dendrogram` that keeps the input leaf positions instead of translating the root to `origin`, making it easy to align leaves to e.g. heatmap rows or columns [#5666](https://github.com/MakieOrg/Makie.jl/pull/5666).
 - `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
   `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
