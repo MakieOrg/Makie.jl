@@ -175,9 +175,9 @@ struct CountingHandler
     calls::Base.RefValue{Int}
 end
 
-function Makie.compile_text(h::CountingHandler, str, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth)
+function Makie.emit_text!(buffer, h::CountingHandler, str, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth)
     h.calls[] += 1
-    return nothing
+    return false
 end
 
 @testset "placement does not relayout" begin

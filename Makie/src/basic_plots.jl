@@ -689,7 +689,7 @@ Plots one or multiple texts passed via the `text` keyword.
 @recipe Text (positions,) begin
     "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
     text = ""
-    "An optional text handler object that intercepts matching text inputs and lays them out with a custom engine (it just needs `Makie.compile_text` methods for the input types it accepts). `nothing` (default) uses the built-in glyph/rich/LaTeX paths. Elements whose `compile_text` returns `nothing` fall through to the built-in path, so handled and unhandled strings can be mixed."
+    "An optional text handler object that intercepts matching text inputs and lays them out with a custom engine (it just needs `Makie.emit_text!` methods for the input types it accepts). `nothing` (default) uses the built-in glyph/rich/LaTeX paths. Elements whose `emit_text!` returns `false` fall through to the built-in path, so handled and unhandled strings can be mixed."
     text_handler = @inherit text_handler
     "Sets the color of the text. One can set one color per string by passing a `Vector{<:Colorant}`, or one colorant for all of them. If color is a vector of numbers, the colormap args are used to map the numbers to colors. To color parts of one string differently, use `rich` text."
     color = @inherit textcolor

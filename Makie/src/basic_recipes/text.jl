@@ -359,114 +359,43 @@ end
 ################################################################################
 
 """
-    compile_text(handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth)
+    emit_text!(buffer::GlyphBuffer, handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth) -> Bool
 
-Engine step of a `text_handler`. Define methods dispatching on the input type the handler
-accepts (e.g. `LaTeXString`). Return a `CompiledText`, or a custom payload with a matching
-`place_text!` method (e.g. a rasterized image marker), or `nothing` to fall through to the
-built-in path.
+Lays out one text block with a `text_handler`. Define methods dispatching on the handler
+and the input type it accepts (e.g. `LaTeXString`), append the result to `buffer`, and
+return `true`. Return `false` without touching `buffer` to fall through to the built-in
+path, which is how handled and unhandled strings mix in one plot.
 
-The output is in the layout frame: alignment, rotation and offset are applied downstream,
-so a handler never sees them. `justification` arrives resolved to a fraction in 0..1
-(`automatic` is already folded in against `halign`).
+Append with [`push_glyph_block!`](@ref) for glyphs, [`push_empty_block!`](@ref) for a block
+that has none (an image, say), and [`push_text_spec!`](@ref) for non-glyph plots such as
+rules. Exactly one block must be pushed per call.
 
-The appearance attributes (`color`, `strokecolor`, `strokewidth`) are passed because some
-handlers bake them into their output (a rasterized LaTeX image can't be recolored
-afterwards). Glyph-based handlers can ignore them and let `place_text!` apply them to the
-glyph batch instead.
+Everything is in the block's layout frame: `align`, `rotation` and `offset` are applied
+downstream, so a handler never sees them, and changing them re-runs placement rather than
+the handler. `justification` arrives resolved to a fraction in 0..1 (`automatic` is already
+folded in against `halign`). The appearance attributes are passed because a handler may
+either bake them in (a rasterized image can't be recolored afterwards) or hand them to
+`push_glyph_block!`.
 """
-compile_text(handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth) = nothing
-
-"""
-    CompiledGlyphs
-
-Backend-neutral glyph layout (fontsize baked in, glyphs only) in the layout frame, carried
-by `CompiledText`. The Makie-provided `place_text!` merges the glyphs into the shared
-`Glyphs` batch along with the block color. Non-glyph output (rules, images, ...) travels
-alongside as `CompiledText.specs`, not in here.
-"""
-struct CompiledGlyphs
-    glyphindices::Vector{UInt64}
-    fonts::Vector{NativeFont}
-    origins::Vector{Point3f}
-    extents::Vector{GlyphExtent}
-    scales::Vector{Vec2f}
+# Untyped so that a method typing just the handler and the input type is more
+# specific than this one, rather than ambiguous with it.
+function emit_text!(
+        buffer, handler, src, font, fonts, fontsize, lineheight,
+        justification, word_wrap_width, color, strokecolor, strokewidth
+    )
+    return false
 end
 
-"""
-    CompiledText(glyphs::CompiledGlyphs, bbox, baseline)
-    CompiledText(specs::Vector{PlotSpec}, bbox, baseline)
-    CompiledText(glyphs::CompiledGlyphs, specs::Vector{PlotSpec}, bbox, baseline)
-
-Return value of `compile_text`: one text block's optional glyph layout plus optional
-non-glyph plots (rules, images, ...), together with the layout frame they live in.
-`bbox` is the box `align` positions and `baseline` the y that `valign = :baseline`
-puts on the anchor.
-"""
-struct CompiledText
-    glyphs::Union{Nothing, CompiledGlyphs}
-    specs::Union{Nothing, Vector{PlotSpec}}
-    bbox::Rect2f
-    baseline::Float32
-end
-CompiledText(glyphs::CompiledGlyphs, bbox::Rect2f, baseline::Real) = CompiledText(glyphs, nothing, bbox, baseline)
-CompiledText(specs::Vector{PlotSpec}, bbox::Rect2f, baseline::Real) = CompiledText(nothing, specs, bbox, baseline)
-
-# Route one text block through the handler. Returns true if the handler produced
-# output, false to fall through to the built-in `convert_text_string!` path.
+# Route one text block through the handler, resolving the per-block attribute values.
 function handle_text!(
         buffer::GlyphBuffer, handler, str, i, N, fontsize, font, justification,
         lineheight, word_wrap_width, fonts, color, strokecolor, strokewidth
     )
-    compiled = compile_text(
-        handler, str, sv_getindex(font, i), fonts, sv_getindex(fontsize, i),
+    return emit_text!(
+        buffer, handler, str, sv_getindex(font, i), fonts, sv_getindex(fontsize, i),
         sv_getindex(lineheight, i), sv_getindex(justification, i), sv_getindex(word_wrap_width, i),
         sv_getindex(color, i), sv_getindex(strokecolor, i), sv_getindex(strokewidth, i)
-    )
-    compiled === nothing && return false
-    place_text!(
-        buffer, compiled, sv_getindex(color, i),
-        sv_getindex(strokecolor, i), sv_getindex(strokewidth, i)
-    )
-    return true
-end
-
-"""
-    place_text!(buffer::GlyphBuffer, compiled, color, strokecolor, strokewidth)
-
-Placement step of a `text_handler`, dispatching on the payload `compile_text`
-returned. Makie implements it for [`CompiledText`](@ref); a handler with a custom
-payload defines its own method and appends to `buffer` with
-[`push_glyph_block!`](@ref), [`push_empty_block!`](@ref) and
-[`push_text_spec!`](@ref). Everything pushed is in the block's layout frame;
-`align`, `rotation` and `offset` are applied downstream.
-"""
-function place_text!(buffer::GlyphBuffer, c::CompiledText, color, strokecolor, strokewidth)
-    if c.glyphs === nothing
-        push_empty_block!(buffer; bbox = c.bbox, baseline = c.baseline)
-    else
-        place_glyphs!(buffer, c.glyphs, c.bbox, c.baseline, color, strokecolor, strokewidth)
-    end
-
-    if c.specs !== nothing
-        for spec in c.specs
-            # specs that don't set their own color follow the text color (e.g. rules)
-            colored = haskey(spec.kwargs, :color) ? spec :
-                PlotSpec(spec.type, spec.args...; spec.kwargs..., color = color)
-            push_text_spec!(buffer, colored)
-        end
-    end
-    return
-end
-
-function place_glyphs!(buffer::GlyphBuffer, c::CompiledGlyphs, bbox, baseline, color, strokecolor, strokewidth)
-    push_glyph_block!(
-        buffer, c.glyphindices, c.fonts, c.origins, c.extents;
-        bbox = bbox, baseline = baseline,
-        scales = c.scales, colors = color,
-        strokecolors = strokecolor, strokewidths = strokewidth,
-    )
-    return
+    )::Bool
 end
 
 # Apply a per-point transform to a spec's positional data (its first positional arg).
@@ -481,12 +410,16 @@ end
     MathTeXHandler()
 
 A `text_handler` that lays out `LaTeXString`s with MathTeXEngine.jl through the
-generic `compile_text`/`place_text!` protocol. Setting `text_handler = MathTeXHandler()`
+generic [`emit_text!`](@ref) protocol. Setting `text_handler = MathTeXHandler()`
 routes LaTeX math through the pluggable path; non-LaTeX inputs fall through.
 """
 struct MathTeXHandler end
 
-function compile_text(::MathTeXHandler, str::LaTeXString, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth)
+function emit_text!(
+        buffer::GlyphBuffer, ::MathTeXHandler, str::LaTeXString, font, fonts, fontsize,
+        lineheight, justification, word_wrap_width, color, strokecolor, strokewidth
+    )
+
     fs = Vec2f(first(fontsize))
     all_els = generate_tex_elements(str)
     els = filter(x -> x[1] isa TeXChar, all_els)
@@ -505,6 +438,13 @@ function compile_text(::MathTeXHandler, str::LaTeXString, font, fonts, fontsize,
             return Rect2f(Rect3f(b) + pos)
     end
 
+    # MathTeXEngine's frame already has the baseline at y = 0
+    push_glyph_block!(
+        buffer, glyphindices, glyphfonts, origins, extents;
+        bbox = bb, baseline = 0.0f0, scales = scales, colors = color,
+        strokecolors = strokecolor, strokewidths = strokewidth,
+    )
+
     rule_points = Point3f[]
     rule_widths = Float32[]
     for (element, position, _) in all_els
@@ -514,10 +454,11 @@ function compile_text(::MathTeXHandler, str::LaTeXString, font, fonts, fontsize,
         w = Float32(fs[1] * element.thickness)
         push!(rule_widths, w, w)
     end
-    specs = PlotSpec[]
-    isempty(rule_points) || push!(specs, PlotSpec(:LineSegments, rule_points; linewidth = rule_widths))
+    isempty(rule_points) || push_text_spec!(
+        buffer, PlotSpec(:LineSegments, rule_points; linewidth = rule_widths, color = color)
+    )
 
-    return CompiledText(CompiledGlyphs(glyphindices, glyphfonts, origins, extents, scales), specs, bb, 0.0f0)
+    return true
 end
 
 # `align` only reaches text layout through this: automatic justification follows
