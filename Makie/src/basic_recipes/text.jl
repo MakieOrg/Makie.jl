@@ -142,10 +142,11 @@ end
 """
     BlockAttribute(data, block_index, n_blocks)
 
-Wraps a text attribute that still needs resolving to one value per glyph for text
-block `block_index`. `data` may be a scalar, one value per text block, or one value
-per glyph across the whole plot; which one it is can only be decided against the
-block's glyph count, so [`push_glyph_block!`](@ref) resolves it while appending.
+Wraps a text attribute that still needs resolving for text block `block_index`.
+`data` is either a scalar or one value per text block, and [`push_glyph_block!`](@ref)
+resolves it while appending. Styling individual characters of a string this way is
+not supported: a glyph is not a character (font shaping can merge several code
+points into one), so per-character styling belongs in `rich` text.
 """
 struct BlockAttribute{T}
     data::T
@@ -153,21 +154,17 @@ struct BlockAttribute{T}
     n_blocks::Int
 end
 
-# `offset` is the number of glyphs already in the buffer, needed to slice data
-# that is indexed per glyph across the whole plot.
-function append_per_glyph!(dest::Vector, attribute::BlockAttribute, n::Int, offset::Int)
+function append_per_glyph!(dest::Vector, attribute::BlockAttribute, n::Int)
     data = attribute.data
-    if isscalar(data)
-        return append_per_glyph!(dest, data, n, offset)
-    elseif length(data) == attribute.n_blocks
-        return append_per_glyph!(dest, data[attribute.block_index], n, offset)
-    else
-        append!(dest, view(data, (offset + 1):(offset + n)))
-        return
-    end
+    isscalar(data) && return append_per_glyph!(dest, data, n)
+    length(data) == attribute.n_blocks || error(
+        "Expected a scalar or one value per string ($(attribute.n_blocks)), got $(length(data)). " *
+            "To style parts of a string differently, use `rich` text."
+    )
+    return append_per_glyph!(dest, data[attribute.block_index], n)
 end
 
-function append_per_glyph!(dest::Vector, value, n::Int, ::Int)
+function append_per_glyph!(dest::Vector, value, n::Int)
     if isscalar(value)
         append!(dest, Iterators.repeated(value, n))
     elseif length(value) == n
@@ -202,11 +199,11 @@ function push_glyph_block!(
     append!(buffer.glyph_layout_origins, origins)
     append!(buffer.glyph_extents, extents)
 
-    append_per_glyph!(buffer.glyph_fonts, fonts, n, offset)
-    append_per_glyph!(buffer.glyph_scales, scales, n, offset)
-    append_per_glyph!(buffer.glyph_colors, colors, n, offset)
-    append_per_glyph!(buffer.glyph_strokecolors, strokecolors, n, offset)
-    append_per_glyph!(buffer.glyph_strokewidths, strokewidths, n, offset)
+    append_per_glyph!(buffer.glyph_fonts, fonts, n)
+    append_per_glyph!(buffer.glyph_scales, scales, n)
+    append_per_glyph!(buffer.glyph_colors, colors, n)
+    append_per_glyph!(buffer.glyph_strokecolors, strokecolors, n)
+    append_per_glyph!(buffer.glyph_strokewidths, strokewidths, n)
 
     return
 end
@@ -350,10 +347,9 @@ function refill_display_attributes!(buffer::GlyphBuffer, color, strokecolor, str
     N = length(buffer.text_blocks)
     for (i, block) in enumerate(buffer.text_blocks)
         n = length(block)
-        offset = first(block) - 1
-        append_per_glyph!(buffer.glyph_colors, BlockAttribute(color, i, N), n, offset)
-        append_per_glyph!(buffer.glyph_strokecolors, BlockAttribute(strokecolor, i, N), n, offset)
-        append_per_glyph!(buffer.glyph_strokewidths, BlockAttribute(strokewidth, i, N), n, offset)
+        append_per_glyph!(buffer.glyph_colors, BlockAttribute(color, i, N), n)
+        append_per_glyph!(buffer.glyph_strokecolors, BlockAttribute(strokecolor, i, N), n)
+        append_per_glyph!(buffer.glyph_strokewidths, BlockAttribute(strokewidth, i, N), n)
     end
     return
 end

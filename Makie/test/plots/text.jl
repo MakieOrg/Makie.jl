@@ -231,6 +231,18 @@ end
     @test p2.marker_offset[][3:4] == origins[3:4] .+ Point3f(5, 5, 0)
 end
 
+@testset "attribute vectors are per string" begin
+    scene = Scene(camera = campixel!)
+
+    p = text!(scene, [Point2f(0, 0), Point2f(100, 0)], text = ["ab", "cde"], color = [:red, :blue])
+    @test p.glyph_colors[] == [fill(RGBAf(1, 0, 0, 1), 2); fill(RGBAf(0, 0, 1, 1), 3)]
+
+    err = "Expected a scalar or one value per string (1), got 4."
+    @test_throws err text!(scene, Point2f(0, 0), text = "abcd", color = [:red, :green, :blue, :black])
+    @test_throws err text!(scene, Point2f(0, 0), text = "abcd", strokewidth = [1, 2, 3, 4])
+    @test_throws err text!(scene, Point2f(0, 0), text = "abcd", fontsize = [10, 20, 30, 40])
+end
+
 @testset "pathtext draws glyphs directly" begin
     scene = Scene(camera = campixel!)
     font = Makie.defaultfont()

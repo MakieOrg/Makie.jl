@@ -691,7 +691,7 @@ Plots one or multiple texts passed via the `text` keyword.
     text = ""
     "An optional text handler object that intercepts matching text inputs and lays them out with a custom engine (it just needs `Makie.compile_text` methods for the input types it accepts). `nothing` (default) uses the built-in glyph/rich/LaTeX paths. Elements whose `compile_text` returns `nothing` fall through to the built-in path, so handled and unhandled strings can be mixed."
     text_handler = @inherit text_handler
-    "Sets the color of the text. One can set one color per glyph by passing a `Vector{<:Colorant}`, or one colorant for the whole text. If color is a vector of numbers, the colormap args are used to map the numbers to colors."
+    "Sets the color of the text. One can set one color per string by passing a `Vector{<:Colorant}`, or one colorant for all of them. If color is a vector of numbers, the colormap args are used to map the numbers to colors. To color parts of one string differently, use `rich` text."
     color = @inherit textcolor
     "Sets the font. Can be a `Symbol` which will be looked up in the `fonts` dictionary or a `String` specifying the (partial) name of a font or the file path of a font file"
     font = @inherit font
