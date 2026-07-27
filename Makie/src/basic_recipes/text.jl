@@ -200,12 +200,12 @@ function convert_text_string!(
 
     args = sv_getindex.((font, fontsize, align, lineheight, justification, word_wrap_width, rotation), i)
     nt = glyph_collection(input_text, args...)
-    curr = length(outputs.glyphindices)
+    curr = length(outputs.glyph_indices)
     block = (curr + 1):(curr + length(nt.glyphindices))
 
     push!(outputs.text_blocks, block)
-    append!(outputs.glyphindices, nt.glyphindices)
-    append!(outputs.font_per_char, nt.font_per_char)
+    append!(outputs.glyph_indices, nt.glyphindices)
+    append!(outputs.glyph_fonts, nt.font_per_char)
     append!(outputs.glyph_origins, nt.char_origins)
     append!(outputs.glyph_extents, nt.glyph_extents)
 
@@ -213,12 +213,12 @@ function convert_text_string!(
     rotations = per_glyph_block(rotation, i, N, block)
     colors = per_glyph_block(color, i, N, block)
 
-    append!(outputs.text_color, colors)
-    append!(outputs.text_rotation, rotations)
-    append!(outputs.text_scales, scales)
+    append!(outputs.glyph_colors, colors)
+    append!(outputs.glyph_rotations, rotations)
+    append!(outputs.glyph_scales, scales)
 
-    append!(outputs.text_strokecolor, per_glyph_block(strokecolor, i, N, block))
-    append!(outputs.text_strokewidth, per_glyph_block(strokewidth, i, N, block))
+    append!(outputs.glyph_strokecolors, per_glyph_block(strokecolor, i, N, block))
+    append!(outputs.glyph_strokewidths, per_glyph_block(strokewidth, i, N, block))
 
     return
 end
@@ -231,20 +231,20 @@ function convert_text_string!(
 
     args = sv_getindex.((fontsize, font, fonts, align, rotation, justification, lineheight, color), i)
     gc = layout_text(input_text, args...)
-    curr = length(outputs.glyphindices)
+    curr = length(outputs.glyph_indices)
     n = length(gc.glyphs)
 
     push!(outputs.text_blocks, (curr + 1):(curr + n))
-    append!(outputs.glyphindices, gc.glyphs)
+    append!(outputs.glyph_indices, gc.glyphs)
     append!(outputs.glyph_origins, gc.origins)
     append!(outputs.glyph_extents, gc.extents)
 
-    append!(outputs.font_per_char, collect_vector(gc.fonts, n))
-    append!(outputs.text_color, collect_vector(gc.colors, n))
-    append!(outputs.text_strokecolor, collect_vector(gc.strokecolors, n))
-    append!(outputs.text_strokewidth, collect_vector(gc.strokewidths, n))
-    append!(outputs.text_rotation, collect_vector(gc.rotations, n))
-    append!(outputs.text_scales, collect_vector(gc.scales, n))
+    append!(outputs.glyph_fonts, collect_vector(gc.fonts, n))
+    append!(outputs.glyph_colors, collect_vector(gc.colors, n))
+    append!(outputs.glyph_strokecolors, collect_vector(gc.strokecolors, n))
+    append!(outputs.glyph_strokewidths, collect_vector(gc.strokewidths, n))
+    append!(outputs.glyph_rotations, collect_vector(gc.rotations, n))
+    append!(outputs.glyph_scales, collect_vector(gc.scales, n))
 
     return
 end
@@ -257,19 +257,19 @@ function convert_text_string!(
 
     args = sv_getindex.((fontsize, align, rotation, color, strokecolor, strokewidth, word_wrap_width), i)
     tex_elements, gc, tex_offsets = texelems_and_glyph_collection(input_text, args...)
-    curr = length(outputs.glyphindices)
+    curr = length(outputs.glyph_indices)
     n = length(gc.glyphs)
 
     push!(outputs.text_blocks, (curr + 1):(curr + n))
-    append!(outputs.glyphindices, gc.glyphs)
+    append!(outputs.glyph_indices, gc.glyphs)
     append!(outputs.glyph_origins, gc.origins)
     append!(outputs.glyph_extents, gc.extents)
-    append!(outputs.font_per_char, collect_vector(gc.fonts, n))
-    append!(outputs.text_color, collect_vector(gc.colors, n))
-    append!(outputs.text_strokecolor, collect_vector(gc.strokecolors, n))
-    append!(outputs.text_strokewidth, collect_vector(gc.strokewidths, n))
-    append!(outputs.text_rotation, collect_vector(gc.rotations, n))
-    append!(outputs.text_scales, collect_vector(gc.scales, n))
+    append!(outputs.glyph_fonts, collect_vector(gc.fonts, n))
+    append!(outputs.glyph_colors, collect_vector(gc.colors, n))
+    append!(outputs.glyph_strokecolors, collect_vector(gc.strokecolors, n))
+    append!(outputs.glyph_strokewidths, collect_vector(gc.strokewidths, n))
+    append!(outputs.glyph_rotations, collect_vector(gc.rotations, n))
+    append!(outputs.glyph_scales, collect_vector(gc.scales, n))
 
     append_tex_linesegment_data!(
         outputs, tex_offsets, tex_elements,
@@ -319,15 +319,15 @@ display_independent_layout(@nospecialize(x)) = false
 function reuse_glyph_layout(cached, color, strokecolor, strokewidth)
     (gi, fpc, go, ge, tb, _, trot, tscale, _, _, ts, tsbi, tsbb) = cached
     N = length(tb)
-    text_color = RGBAf[]
-    text_strokecolor = RGBAf[]
-    text_strokewidth = Float32[]
+    glyph_colors = RGBAf[]
+    glyph_strokecolors = RGBAf[]
+    glyph_strokewidths = Float32[]
     for (i, block) in enumerate(tb)
-        append!(text_color, per_glyph_block(color, i, N, block))
-        append!(text_strokecolor, per_glyph_block(strokecolor, i, N, block))
-        append!(text_strokewidth, per_glyph_block(strokewidth, i, N, block))
+        append!(glyph_colors, per_glyph_block(color, i, N, block))
+        append!(glyph_strokecolors, per_glyph_block(strokecolor, i, N, block))
+        append!(glyph_strokewidths, per_glyph_block(strokewidth, i, N, block))
     end
-    return (gi, fpc, go, ge, tb, text_color, trot, tscale, text_strokewidth, text_strokecolor, ts, tsbi, tsbb)
+    return (gi, fpc, go, ge, tb, glyph_colors, trot, tscale, glyph_strokewidths, glyph_strokecolors, ts, tsbi, tsbb)
 end
 
 ################################################################################
@@ -421,7 +421,7 @@ function place_text!(outputs, c::CompiledText, align, rotation, offset, color, s
     end
 
     if glyphs === nothing
-        curr = length(outputs.glyphindices)
+        curr = length(outputs.glyph_indices)
         push!(outputs.text_blocks, (curr + 1):curr) # empty block keeps per-string indices aligned
     else
         place_glyphs!(outputs, glyphs, shift, rotation, color, strokecolor, strokewidth)
@@ -440,18 +440,18 @@ end
 
 function place_glyphs!(outputs, c::CompiledGlyphs, shift, rotation, color, strokecolor, strokewidth)
     n = length(c.glyphindices)
-    curr = length(outputs.glyphindices)
+    curr = length(outputs.glyph_indices)
     push!(outputs.text_blocks, (curr + 1):(curr + n))
     origins = Point3f[rotation * (o - shift) for o in c.origins]
-    append!(outputs.glyphindices, c.glyphindices)
-    append!(outputs.font_per_char, c.fonts)
+    append!(outputs.glyph_indices, c.glyphindices)
+    append!(outputs.glyph_fonts, c.fonts)
     append!(outputs.glyph_origins, origins)
     append!(outputs.glyph_extents, c.extents)
-    append!(outputs.text_scales, c.scales)
-    append!(outputs.text_color, fill(color, n))
-    append!(outputs.text_rotation, fill(rotation, n))
-    append!(outputs.text_strokecolor, fill(strokecolor, n))
-    append!(outputs.text_strokewidth, fill(strokewidth, n))
+    append!(outputs.glyph_scales, c.scales)
+    append!(outputs.glyph_colors, fill(color, n))
+    append!(outputs.glyph_rotations, fill(rotation, n))
+    append!(outputs.glyph_strokecolors, fill(strokecolor, n))
+    append!(outputs.glyph_strokewidths, fill(strokewidth, n))
     return
 end
 
@@ -533,12 +533,12 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :strokewidth,
     ]
     outputs = [
-        :glyphindices,
-        :font_per_char,
+        :glyph_indices,
+        :glyph_fonts,
         :glyph_origins, :glyph_extents,
         :text_blocks,
-        :text_color, :text_rotation, :text_scales,
-        :text_strokewidth, :text_strokecolor,
+        :glyph_colors, :glyph_rotations, :glyph_scales,
+        :glyph_strokewidths, :glyph_strokecolors,
         :text_specs, :text_spec_block_indices, :text_spec_bboxes,
     ]
     return register_computation!(attr, inputs, outputs) do (input_texts, text_handler, _inputs...), changed, cached
@@ -550,16 +550,16 @@ function compute_glyph_collections!(attr::ComputeGraph)
         end
 
         _outputs = (
-            glyphindices = UInt64[],
-            font_per_char = NativeFont[],
+            glyph_indices = UInt64[],
+            glyph_fonts = NativeFont[],
             glyph_origins = Point3f[],
             glyph_extents = GlyphExtent[],
             text_blocks = UnitRange{Int64}[],
-            text_color = RGBAf[],
-            text_rotation = Quaternionf[],
-            text_scales = Vec2f[],
-            text_strokewidth = Float32[],
-            text_strokecolor = RGBAf[],
+            glyph_colors = RGBAf[],
+            glyph_rotations = Quaternionf[],
+            glyph_scales = Vec2f[],
+            glyph_strokewidths = Float32[],
+            glyph_strokecolors = RGBAf[],
             text_specs = PlotSpec[],
             text_spec_block_indices = Int[],
             text_spec_bboxes = Rect3d[],
@@ -585,7 +585,7 @@ function register_text_computations!(attr::ComputeGraph)
     # its own colors to be mixed with other text types which dont.
     add_computation!(attr, Val(:computed_color))
 
-    # This computes :glyphindices, :font_per_char, :glyph_origins, :glyph_extents, :text_blocks
+    # This computes :glyph_indices, :glyph_fonts, :glyph_origins, :glyph_extents, :text_blocks
     # And :glyphcollection if applicable
     compute_glyph_collections!(attr)
 
@@ -651,13 +651,13 @@ end
 function register_glyphs!(plot)
     return glyphs!(
         plot, plot.per_glyph_positions;
-        glyphindices = plot.glyphindices,
-        font_per_char = plot.font_per_char,
+        glyphindices = plot.glyph_indices,
+        font_per_char = plot.glyph_fonts,
         marker_offset = plot.marker_offset,
-        scale = plot.text_scales,
-        color = plot.text_color,
-        rotation = plot.text_rotation,
-        strokecolor = plot.text_strokecolor,
+        scale = plot.glyph_scales,
+        color = plot.glyph_colors,
+        rotation = plot.glyph_rotations,
+        strokecolor = plot.glyph_strokecolors,
         strokewidth = plot.strokewidth, # scalar uniform; GL/WGL can't do per-glyph stroke width
         glowcolor = plot.glowcolor,
         glowwidth = plot.glowwidth,
@@ -725,7 +725,7 @@ Base.length(iter::PerCharIterator) = last(last(iter.blocks))
 
 function register_raw_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :raw_glyph_boundingboxes)
-        map!(gl_bboxes, plot.attributes, [:glyphindices, :text_scales, :glyph_extents], :raw_glyph_boundingboxes)
+        map!(gl_bboxes, plot.attributes, [:glyph_indices, :glyph_scales, :glyph_extents], :raw_glyph_boundingboxes)
     end
     return plot.raw_glyph_boundingboxes
 end
@@ -747,7 +747,7 @@ function register_fast_glyph_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:raw_glyph_boundingboxes, :marker_offset, :text_rotation],
+            plot.attributes, [:raw_glyph_boundingboxes, :marker_offset, :glyph_rotations],
             :fast_glyph_boundingboxes
         ) do bbs, origins, rotations
 
@@ -777,7 +777,7 @@ function register_glyph_boundingboxes!(plot)
         register_markerspace_positions!(plot)
         map!(
             plot.attributes,
-            [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :text_blocks, :markerspace_positions],
+            [:raw_glyph_boundingboxes, :marker_offset, :glyph_rotations, :text_blocks, :markerspace_positions],
             :glyph_boundingboxes
         ) do bbs, origins, rotations, blocks, positions
 
@@ -810,7 +810,7 @@ function register_raw_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :text_spec_bboxes, :text_spec_block_indices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :glyph_rotations, :text_spec_bboxes, :text_spec_block_indices],
             :raw_string_boundingboxes
         ) do blocks, bbs, origins, rotation, spec_bboxes, spec_block_indices
 
@@ -851,7 +851,7 @@ function register_fast_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :text_spec_bboxes, :text_spec_block_indices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :glyph_rotations, :text_spec_bboxes, :text_spec_block_indices],
             :fast_string_boundingboxes
         ) do blocks, bbs, origins, rotation, spec_bboxes, spec_block_indices
 

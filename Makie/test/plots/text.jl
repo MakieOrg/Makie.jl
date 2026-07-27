@@ -58,14 +58,14 @@ end
         ]
     )
 
-    @test p.glyphindices[] == FreeTypeAbstraction.glyph_index.(font, chars)
-    @test p.font_per_char[] == [font for _ in 1:4]
+    @test p.glyph_indices[] == FreeTypeAbstraction.glyph_index.(font, chars)
+    @test p.glyph_fonts[] == [font for _ in 1:4]
     @test all(isapprox.(p.glyph_origins[], [Point3f(x, 0, 0) for x in origins], atol = 1.0e-10))
-    @test all(s -> s == Vec2f(p.fontsize[]), p.text_scales[])
-    @test all(r -> r == Quaternionf(0, 0, 0, 1), p.text_rotation[])
-    @test all(c -> c == RGBAf(0, 0, 0, 1), p.text_color[])
-    @test all(x -> x == RGBAf(0, 0, 0, 0), p.text_strokecolor[])
-    @test all(x -> x == 0, p.text_strokewidth[])
+    @test all(s -> s == Vec2f(p.fontsize[]), p.glyph_scales[])
+    @test all(r -> r == Quaternionf(0, 0, 0, 1), p.glyph_rotations[])
+    @test all(c -> c == RGBAf(0, 0, 0, 1), p.glyph_colors[])
+    @test all(x -> x == RGBAf(0, 0, 0, 0), p.glyph_strokecolors[])
+    @test all(x -> x == 0, p.glyph_strokewidths[])
 
     makie_hi_bb = Makie.height_insensitive_boundingbox.(p.glyph_extents[])
     makie_hi_bb_wa = Makie.height_insensitive_boundingbox_with_advance.(p.glyph_extents[])
@@ -130,7 +130,7 @@ end
         @test begin
             for changed in ["test", rich("test"), L"test"]
                 p.text = changed
-                p.glyphindices[]
+                p.glyph_indices[]
             end
             true
         end
@@ -139,7 +139,7 @@ end
         @test begin
             for changed in ["test", rich("test"), L"test"]
                 p.text = [changed]
-                p.glyphindices[]
+                p.glyph_indices[]
             end
             true
         end
