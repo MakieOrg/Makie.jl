@@ -181,98 +181,210 @@ end
 #####################################
 # New stuff
 
-function per_glyph_block(data, block_idx, N_blocks, block::UnitRange)
-    block_length = length(block)
+"""
+    GlyphBuffer()
+
+The arrays behind the outputs of the `Text` plot's glyph layout node, in output
+order. The node reuses one buffer across evaluations (`empty!` + refill) so
+re-layouting text does not allocate a fresh set of arrays every time.
+
+Text is appended one block (one input string) at a time with
+[`push_glyph_block!`](@ref) or [`push_empty_block!`](@ref), which keep
+`text_blocks` consistent with the parallel per-glyph arrays. Non-glyph output
+(LaTeX rules, handler images, ...) goes through [`push_text_spec!`](@ref).
+"""
+struct GlyphBuffer
+    glyph_indices::Vector{UInt64}
+    glyph_fonts::Vector{NativeFont}
+    glyph_origins::Vector{Point3f}
+    glyph_extents::Vector{GlyphExtent}
+    text_blocks::Vector{UnitRange{Int64}}
+    glyph_colors::Vector{RGBAf}
+    glyph_rotations::Vector{Quaternionf}
+    glyph_scales::Vector{Vec2f}
+    glyph_strokewidths::Vector{Float32}
+    glyph_strokecolors::Vector{RGBAf}
+    text_specs::Vector{PlotSpec}
+    text_spec_block_indices::Vector{Int}
+    text_spec_bboxes::Vector{Rect3d}
+end
+
+function GlyphBuffer()
+    return GlyphBuffer(
+        UInt64[], NativeFont[], Point3f[], GlyphExtent[], UnitRange{Int64}[],
+        RGBAf[], Quaternionf[], Vec2f[], Float32[], RGBAf[],
+        PlotSpec[], Int[], Rect3d[]
+    )
+end
+
+# The node's outputs are named after the fields, so the cached outputs come back
+# in field order and rewrapping them hands the same arrays back for reuse.
+GlyphBuffer(cached::NamedTuple) = GlyphBuffer(values(cached)...)
+
+node_outputs(buffer::GlyphBuffer) = map(name -> getfield(buffer, name), fieldnames(GlyphBuffer))
+
+function Base.empty!(buffer::GlyphBuffer)
+    foreach(empty!, node_outputs(buffer))
+    return buffer
+end
+
+"""
+    BlockAttribute(data, block_index, n_blocks)
+
+Wraps a text attribute that still needs resolving to one value per glyph for text
+block `block_index`. `data` may be a scalar, one value per text block, or one value
+per glyph across the whole plot; which one it is can only be decided against the
+block's glyph count, so [`push_glyph_block!`](@ref) resolves it while appending.
+"""
+struct BlockAttribute{T}
+    data::T
+    block_index::Int
+    n_blocks::Int
+end
+
+# `offset` is the number of glyphs already in the buffer, needed to slice data
+# that is indexed per glyph across the whole plot.
+function append_per_glyph!(dest::Vector, attribute::BlockAttribute, n::Int, offset::Int)
+    data = attribute.data
     if isscalar(data)
-        return fill(data, block_length)
-    elseif length(data) == N_blocks
-        return fill(data[block_idx], block_length)
+        return append_per_glyph!(dest, data, n, offset)
+    elseif length(data) == attribute.n_blocks
+        return append_per_glyph!(dest, data[attribute.block_index], n, offset)
     else
-        return view(data, block)
+        append!(dest, view(data, (offset + 1):(offset + n)))
+        return
     end
 end
 
+function append_per_glyph!(dest::Vector, sv::ScalarOrVector, n::Int, offset::Int)
+    return append_per_glyph!(dest, sv.sv, n, offset)
+end
+
+function append_per_glyph!(dest::Vector, value, n::Int, ::Int)
+    if isscalar(value)
+        append!(dest, Iterators.repeated(value, n))
+    elseif length(value) == n
+        append!(dest, value)
+    else
+        error("Expected a scalar or $n values per glyph, got $(length(value)).")
+    end
+    return
+end
+
+"""
+    push_glyph_block!(buffer, glyphindices, fonts, origins, extents; scales, colors, rotations, strokecolors, strokewidths)
+
+Appends the glyphs of one text block to `buffer` and records their index range in
+`buffer.text_blocks`. `glyphindices`, `origins` and `extents` are per glyph; the
+remaining attributes may also be scalar, a `ScalarOrVector` or a
+[`BlockAttribute`](@ref).
+"""
+function push_glyph_block!(
+        buffer::GlyphBuffer, glyphindices, fonts, origins, extents;
+        scales, colors, rotations, strokecolors, strokewidths
+    )
+
+    n = length(glyphindices)
+    offset = length(buffer.glyph_indices)
+    push!(buffer.text_blocks, (offset + 1):(offset + n))
+
+    append!(buffer.glyph_indices, glyphindices)
+    append!(buffer.glyph_origins, origins)
+    append!(buffer.glyph_extents, extents)
+
+    append_per_glyph!(buffer.glyph_fonts, fonts, n, offset)
+    append_per_glyph!(buffer.glyph_scales, scales, n, offset)
+    append_per_glyph!(buffer.glyph_colors, colors, n, offset)
+    append_per_glyph!(buffer.glyph_rotations, rotations, n, offset)
+    append_per_glyph!(buffer.glyph_strokecolors, strokecolors, n, offset)
+    append_per_glyph!(buffer.glyph_strokewidths, strokewidths, n, offset)
+
+    return
+end
+
+"""
+    push_empty_block!(buffer)
+
+Records a text block without glyphs (e.g. one a handler renders as an image), so
+`buffer.text_blocks` keeps one entry per input string.
+"""
+function push_empty_block!(buffer::GlyphBuffer)
+    n = length(buffer.glyph_indices)
+    push!(buffer.text_blocks, (n + 1):n)
+    return
+end
+
+"""
+    push_text_spec!(buffer, spec[, bbox])
+
+Adds a non-glyph plot for the block currently being pushed, in that block's
+markerspace frame. `bbox` defaults to the bounding box of the spec's positions and
+should be given when the visual extent differs from them (e.g. an image marker).
+"""
+function push_text_spec!(buffer::GlyphBuffer, spec::PlotSpec, bbox::Rect3d = Rect3d(first(spec.args)))
+    push!(buffer.text_specs, spec)
+    push!(buffer.text_spec_block_indices, length(buffer.text_blocks))
+    push!(buffer.text_spec_bboxes, bbox)
+    return
+end
+
 function convert_text_string!(
-        outputs::NamedTuple,
+        buffer::GlyphBuffer,
         input_text::AbstractString, i, N, fontsize, font, align, rotation, justification,
         lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
     )
 
     args = sv_getindex.((font, fontsize, align, lineheight, justification, word_wrap_width, rotation), i)
     nt = glyph_collection(input_text, args...)
-    curr = length(outputs.glyph_indices)
-    block = (curr + 1):(curr + length(nt.glyphindices))
 
-    push!(outputs.text_blocks, block)
-    append!(outputs.glyph_indices, nt.glyphindices)
-    append!(outputs.glyph_fonts, nt.font_per_char)
-    append!(outputs.glyph_origins, nt.char_origins)
-    append!(outputs.glyph_extents, nt.glyph_extents)
-
-    scales = per_glyph_block(to_2d_scale(fontsize), i, N, block) # TODO: convert_attribute?
-    rotations = per_glyph_block(rotation, i, N, block)
-    colors = per_glyph_block(color, i, N, block)
-
-    append!(outputs.glyph_colors, colors)
-    append!(outputs.glyph_rotations, rotations)
-    append!(outputs.glyph_scales, scales)
-
-    append!(outputs.glyph_strokecolors, per_glyph_block(strokecolor, i, N, block))
-    append!(outputs.glyph_strokewidths, per_glyph_block(strokewidth, i, N, block))
+    per_block(x) = BlockAttribute(x, i, N)
+    push_glyph_block!(
+        buffer, nt.glyphindices, nt.font_per_char, nt.char_origins, nt.glyph_extents;
+        scales = per_block(to_2d_scale(fontsize)), # TODO: convert_attribute?
+        colors = per_block(color),
+        rotations = per_block(rotation),
+        strokecolors = per_block(strokecolor),
+        strokewidths = per_block(strokewidth),
+    )
 
     return
 end
 
 function convert_text_string!(
-        outputs::NamedTuple,
+        buffer::GlyphBuffer,
         input_text::RichText, i, N, fontsize, font, align, rotation, justification,
         lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
     )
 
     args = sv_getindex.((fontsize, font, fonts, align, rotation, justification, lineheight, color), i)
     gc = layout_text(input_text, args...)
-    curr = length(outputs.glyph_indices)
-    n = length(gc.glyphs)
 
-    push!(outputs.text_blocks, (curr + 1):(curr + n))
-    append!(outputs.glyph_indices, gc.glyphs)
-    append!(outputs.glyph_origins, gc.origins)
-    append!(outputs.glyph_extents, gc.extents)
-
-    append!(outputs.glyph_fonts, collect_vector(gc.fonts, n))
-    append!(outputs.glyph_colors, collect_vector(gc.colors, n))
-    append!(outputs.glyph_strokecolors, collect_vector(gc.strokecolors, n))
-    append!(outputs.glyph_strokewidths, collect_vector(gc.strokewidths, n))
-    append!(outputs.glyph_rotations, collect_vector(gc.rotations, n))
-    append!(outputs.glyph_scales, collect_vector(gc.scales, n))
+    push_glyph_block!(
+        buffer, gc.glyphs, gc.fonts, gc.origins, gc.extents;
+        scales = gc.scales, colors = gc.colors, rotations = gc.rotations,
+        strokecolors = gc.strokecolors, strokewidths = gc.strokewidths,
+    )
 
     return
 end
 
 function convert_text_string!(
-        outputs::NamedTuple,
+        buffer::GlyphBuffer,
         input_text::LaTeXString, i, N, fontsize, font, align, rotation, justification,
         lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
     )
 
     args = sv_getindex.((fontsize, align, rotation, color, strokecolor, strokewidth, word_wrap_width), i)
     tex_elements, gc, tex_offsets = texelems_and_glyph_collection(input_text, args...)
-    curr = length(outputs.glyph_indices)
-    n = length(gc.glyphs)
 
-    push!(outputs.text_blocks, (curr + 1):(curr + n))
-    append!(outputs.glyph_indices, gc.glyphs)
-    append!(outputs.glyph_origins, gc.origins)
-    append!(outputs.glyph_extents, gc.extents)
-    append!(outputs.glyph_fonts, collect_vector(gc.fonts, n))
-    append!(outputs.glyph_colors, collect_vector(gc.colors, n))
-    append!(outputs.glyph_strokecolors, collect_vector(gc.strokecolors, n))
-    append!(outputs.glyph_strokewidths, collect_vector(gc.strokewidths, n))
-    append!(outputs.glyph_rotations, collect_vector(gc.rotations, n))
-    append!(outputs.glyph_scales, collect_vector(gc.scales, n))
+    push_glyph_block!(
+        buffer, gc.glyphs, gc.fonts, gc.origins, gc.extents;
+        scales = gc.scales, colors = gc.colors, rotations = gc.rotations,
+        strokecolors = gc.strokecolors, strokewidths = gc.strokewidths,
+    )
 
     append_tex_linesegment_data!(
-        outputs, tex_offsets, tex_elements,
+        buffer, tex_offsets, tex_elements,
         args[1], args[3], args[4], sv_getindex(offset, i)
     )
     # args = fontsize, rotation, color
@@ -281,7 +393,7 @@ function convert_text_string!(
 end
 
 function append_tex_linesegment_data!(
-        outputs::NamedTuple,
+        buffer::GlyphBuffer,
         tex_offset, tex_elements, fontsize, rotation::Quaternion, color::RGBAf, offset::VecTypes{3}
     )
 
@@ -297,7 +409,7 @@ function append_tex_linesegment_data!(
         push!(widths, fontsize * h.thickness, fontsize * h.thickness)
     end
     isempty(points) && return
-    push_text_spec!(outputs, PlotSpec(:LineSegments, points; linewidth = widths, color = color))
+    push_text_spec!(buffer, PlotSpec(:LineSegments, points; linewidth = widths, color = color))
     return
 end
 
@@ -313,21 +425,23 @@ and recompute. Custom text types default to `false` (conservative).
 display_independent_layout(::AbstractString) = true
 display_independent_layout(@nospecialize(x)) = false
 
-# Reuse cached glyph geometry, recomputing only the per-glyph display arrays.
-# Valid only when no layout-affecting input changed and every block's text has
-# `display_independent_layout == true` (checked by the caller).
-function reuse_glyph_layout(cached, color, strokecolor, strokewidth)
-    (gi, fpc, go, ge, tb, _, trot, tscale, _, _, ts, tsbi, tsbb) = cached
-    N = length(tb)
-    glyph_colors = RGBAf[]
-    glyph_strokecolors = RGBAf[]
-    glyph_strokewidths = Float32[]
-    for (i, block) in enumerate(tb)
-        append!(glyph_colors, per_glyph_block(color, i, N, block))
-        append!(glyph_strokecolors, per_glyph_block(strokecolor, i, N, block))
-        append!(glyph_strokewidths, per_glyph_block(strokewidth, i, N, block))
+# Keep the buffer's cached glyph geometry, refilling only the per-glyph display
+# arrays. Valid only when no layout-affecting input changed and every block's text
+# has `display_independent_layout == true` (checked by the caller).
+function refill_display_attributes!(buffer::GlyphBuffer, color, strokecolor, strokewidth)
+    empty!(buffer.glyph_colors)
+    empty!(buffer.glyph_strokecolors)
+    empty!(buffer.glyph_strokewidths)
+
+    N = length(buffer.text_blocks)
+    for (i, block) in enumerate(buffer.text_blocks)
+        n = length(block)
+        offset = first(block) - 1
+        append_per_glyph!(buffer.glyph_colors, BlockAttribute(color, i, N), n, offset)
+        append_per_glyph!(buffer.glyph_strokecolors, BlockAttribute(strokecolor, i, N), n, offset)
+        append_per_glyph!(buffer.glyph_strokewidths, BlockAttribute(strokewidth, i, N), n, offset)
     end
-    return (gi, fpc, go, ge, tb, glyph_colors, trot, tscale, glyph_strokewidths, glyph_strokecolors, ts, tsbi, tsbb)
+    return
 end
 
 ################################################################################
@@ -388,7 +502,7 @@ CompiledText(specs::Vector{PlotSpec}) = CompiledText(nothing, specs)
 # Route one text block through the handler. Returns true if the handler produced
 # output, false to fall through to the built-in `convert_text_string!` path.
 function handle_text!(
-        outputs, handler, str, i, N, fontsize, font, align, rotation, justification,
+        buffer::GlyphBuffer, handler, str, i, N, fontsize, font, align, rotation, justification,
         lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
     )
     compiled = compile_text(
@@ -398,17 +512,24 @@ function handle_text!(
     )
     compiled === nothing && return false
     place_text!(
-        outputs, compiled, sv_getindex(align, i), sv_getindex(rotation, i),
+        buffer, compiled, sv_getindex(align, i), sv_getindex(rotation, i),
         sv_getindex(offset, i), sv_getindex(color, i), sv_getindex(strokecolor, i),
         sv_getindex(strokewidth, i)
     )
     return true
 end
 
-# Makie-provided placement for the neutral CompiledText payload: compute the
-# alignment shift, merge the glyphs into the shared batch, and emit any non-glyph
-# specs (rules, images, ...) into the text_specs plotlist channel.
-function place_text!(outputs, c::CompiledText, align, rotation, offset, color, strokecolor, strokewidth)
+"""
+    place_text!(buffer::GlyphBuffer, compiled, align, rotation, offset, color, strokecolor, strokewidth)
+
+Placement step of a `text_handler`, dispatching on the payload `compile_text`
+returned. Makie implements it for [`CompiledText`](@ref); a handler with a custom
+payload defines its own method and appends to `buffer` with
+[`push_glyph_block!`](@ref), [`push_empty_block!`](@ref) and
+[`push_text_spec!`](@ref). Positions are relative to the text block's anchor, in
+`markerspace`.
+"""
+function place_text!(buffer::GlyphBuffer, c::CompiledText, align, rotation, offset, color, strokecolor, strokewidth)
     glyphs = c.glyphs
     shift = if glyphs === nothing
         Vec3f(0)
@@ -421,10 +542,9 @@ function place_text!(outputs, c::CompiledText, align, rotation, offset, color, s
     end
 
     if glyphs === nothing
-        curr = length(outputs.glyph_indices)
-        push!(outputs.text_blocks, (curr + 1):curr) # empty block keeps per-string indices aligned
+        push_empty_block!(buffer)
     else
-        place_glyphs!(outputs, glyphs, shift, rotation, color, strokecolor, strokewidth)
+        place_glyphs!(buffer, glyphs, shift, rotation, color, strokecolor, strokewidth)
     end
 
     if c.specs !== nothing
@@ -432,26 +552,19 @@ function place_text!(outputs, c::CompiledText, align, rotation, offset, color, s
             placed = transform_text_spec(spec, p -> rotation * (to_ndim(Point3f, p, 0) - shift) + offset)
             # specs that don't set their own color follow the text color (e.g. rules)
             haskey(placed.kwargs, :color) || (placed.kwargs[:color] = color)
-            push_text_spec!(outputs, placed)
+            push_text_spec!(buffer, placed)
         end
     end
     return
 end
 
-function place_glyphs!(outputs, c::CompiledGlyphs, shift, rotation, color, strokecolor, strokewidth)
-    n = length(c.glyphindices)
-    curr = length(outputs.glyph_indices)
-    push!(outputs.text_blocks, (curr + 1):(curr + n))
+function place_glyphs!(buffer::GlyphBuffer, c::CompiledGlyphs, shift, rotation, color, strokecolor, strokewidth)
     origins = Point3f[rotation * (o - shift) for o in c.origins]
-    append!(outputs.glyph_indices, c.glyphindices)
-    append!(outputs.glyph_fonts, c.fonts)
-    append!(outputs.glyph_origins, origins)
-    append!(outputs.glyph_extents, c.extents)
-    append!(outputs.glyph_scales, c.scales)
-    append!(outputs.glyph_colors, fill(color, n))
-    append!(outputs.glyph_rotations, fill(rotation, n))
-    append!(outputs.glyph_strokecolors, fill(strokecolor, n))
-    append!(outputs.glyph_strokewidths, fill(strokewidth, n))
+    push_glyph_block!(
+        buffer, c.glyphindices, c.fonts, origins, c.extents;
+        scales = c.scales, colors = color, rotations = rotation,
+        strokecolors = strokecolor, strokewidths = strokewidth,
+    )
     return
 end
 
@@ -461,15 +574,6 @@ function transform_text_spec(spec::PlotSpec, f)
     new_args = copy(spec.args)
     new_args[1] = new_positions
     return PlotSpec(spec.type, new_args...; spec.kwargs...)
-end
-
-# Push a placed (markerspace, block-relative) spec into the text_specs plotlist
-# channel, tagged with the current block index and its bounding box.
-function push_text_spec!(outputs, spec::PlotSpec)
-    push!(outputs.text_specs, spec)
-    push!(outputs.text_spec_block_indices, length(outputs.text_blocks))
-    push!(outputs.text_spec_bboxes, Rect3d(first(spec.args)))
-    return
 end
 
 """
@@ -532,48 +636,27 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :strokecolor,
         :strokewidth,
     ]
-    outputs = [
-        :glyph_indices,
-        :glyph_fonts,
-        :glyph_origins, :glyph_extents,
-        :text_blocks,
-        :glyph_colors, :glyph_rotations, :glyph_scales,
-        :glyph_strokewidths, :glyph_strokecolors,
-        :text_specs, :text_spec_block_indices, :text_spec_bboxes,
-    ]
+    outputs = collect(fieldnames(GlyphBuffer))
     return register_computation!(attr, inputs, outputs) do (input_texts, text_handler, _inputs...), changed, cached
+        buffer = cached === nothing ? GlyphBuffer() : GlyphBuffer(cached)
+
         if cached !== nothing && text_handler === nothing && all(display_independent_layout, input_texts) &&
                 !changed.input_text && !changed.fontsize && !changed.selected_font &&
                 !changed.align && !changed.rotation && !changed.justification &&
                 !changed.lineheight && !changed.word_wrap_width && !changed.offset && !changed.fonts
-            return reuse_glyph_layout(cached, _inputs[10], _inputs[11], _inputs[12])
+            refill_display_attributes!(buffer, _inputs[10], _inputs[11], _inputs[12])
+            return node_outputs(buffer)
         end
 
-        _outputs = (
-            glyph_indices = UInt64[],
-            glyph_fonts = NativeFont[],
-            glyph_origins = Point3f[],
-            glyph_extents = GlyphExtent[],
-            text_blocks = UnitRange{Int64}[],
-            glyph_colors = RGBAf[],
-            glyph_rotations = Quaternionf[],
-            glyph_scales = Vec2f[],
-            glyph_strokewidths = Float32[],
-            glyph_strokecolors = RGBAf[],
-            text_specs = PlotSpec[],
-            text_spec_block_indices = Int[],
-            text_spec_bboxes = Rect3d[],
-        )
-        # strokewidth = Float32[] # TODO: Skipped?
-
+        empty!(buffer)
         N = length(input_texts)
         for (block_index, str) in enumerate(input_texts)
-            if text_handler === nothing || !handle_text!(_outputs, text_handler, str, block_index, N, _inputs...)
-                convert_text_string!(_outputs, str, block_index, N, _inputs...)
+            if text_handler === nothing || !handle_text!(buffer, text_handler, str, block_index, N, _inputs...)
+                convert_text_string!(buffer, str, block_index, N, _inputs...)
             end
         end
 
-        return values(_outputs)
+        return node_outputs(buffer)
     end
 
 end
@@ -585,8 +668,7 @@ function register_text_computations!(attr::ComputeGraph)
     # its own colors to be mixed with other text types which dont.
     add_computation!(attr, Val(:computed_color))
 
-    # This computes :glyph_indices, :glyph_fonts, :glyph_origins, :glyph_extents, :text_blocks
-    # And :glyphcollection if applicable
+    # This computes one output per `GlyphBuffer` field
     compute_glyph_collections!(attr)
 
     map!(attr, [:glyph_origins, :offset, :text_blocks], :marker_offset) do origins, offset, blocks

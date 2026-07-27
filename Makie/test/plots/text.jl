@@ -146,6 +146,31 @@ end
     end
 end
 
+@testset "glyph buffer reuse" begin
+    scene = Scene()
+    p = text!(scene, Point2f(0), text = "ab")
+    glyphs = p.plots[1]
+    indices, origins, colors = p.glyph_indices[], p.glyph_origins[], p.glyph_colors[]
+    @test length(glyphs.sdf_uv[]) == 2
+
+    p.text = "abcd"
+    @test p.glyph_indices[] === indices
+    @test p.glyph_origins[] === origins
+    @test length(indices) == 4
+    @test length(glyphs.sdf_uv[]) == 4
+
+    p.color = :red
+    @test p.glyph_colors[] === colors
+    @test colors == fill(RGBAf(1, 0, 0, 1), 4)
+
+    p2 = text!(scene, Point2f(0), text = L"\frac{1}{2}")
+    @test length(p2.text_specs[]) == 1
+    p2.fontsize = 30
+    @test length(p2.text_specs[]) == 1
+    @test length(p2.text_spec_block_indices[]) == 1
+    @test length(p2.text_spec_bboxes[]) == 1
+end
+
 @testset "text boundingboxes" begin
     @testset "empty string" begin
         scene = Scene(camera = campixel!)
