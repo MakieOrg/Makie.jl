@@ -186,7 +186,7 @@ function Bonito.jsrender(session::Session, tt::ToolTip)
     popup = DOM.div("", class = tt.class)
     Bonito.evaljs(
         session, js"""
-            $(scene).then(scene => {
+            Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => {
                 const plots_to_pick = new Set($(tt.plot_uuids));
                 const callback = $(tt.callback);
                 WGL.register_popup($popup, scene, plots_to_pick, callback, {
