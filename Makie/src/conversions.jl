@@ -957,7 +957,8 @@ convert_attribute(cycle, ::key"cycle") = Cycle(cycle)
 convert_attribute(font, ::key"font") = to_font(font)
 
 convert_attribute(color, ::key"color") = Ref{Any}(color)
-# dim convertable data needs to be preserved
+# types that could be processed by dim_converts error with to_color so we need
+# to be specific with what forwards to to_color
 for T in (Symbol, String, Colorant, VecTypes, Real)
     @eval begin
         convert_attribute(color::$T, ::key"color") = Ref{Any}(to_color(color))
