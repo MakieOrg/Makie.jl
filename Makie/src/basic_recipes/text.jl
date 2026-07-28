@@ -531,6 +531,11 @@ function register_glyph_layout!(attr::ComputeGraph)
             # no handler is `nothing`, which has no `emit_text!` method of its own and
             # so lands on the fallback, i.e. Makie's own layout
             emit_text!(buffer, text_handler, str, attributes)
+            length(buffer.text_blocks) == i || error(
+                "`emit_text!` for $(typeof(text_handler)) pushed " *
+                    "$(length(buffer.text_blocks) - i + 1) blocks for one string, " *
+                    "but must push exactly one."
+            )
         end
 
         return node_outputs(buffer)

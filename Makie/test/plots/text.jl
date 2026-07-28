@@ -177,7 +177,7 @@ end
 
 function Makie.emit_text!(buffer, h::CountingHandler, str, attributes)
     h.calls[] += 1
-    return false
+    return Makie.default_text_layout!(buffer, str, attributes)
 end
 
 @testset "placement does not relayout" begin
