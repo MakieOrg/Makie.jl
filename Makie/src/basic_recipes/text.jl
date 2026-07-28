@@ -139,31 +139,6 @@ function Base.empty!(buffer::GlyphBuffer)
     return buffer
 end
 
-"""
-    BlockAttribute(data, block_index, n_blocks)
-
-Wraps a text attribute that still needs resolving for text block `block_index`.
-`data` is either a scalar or one value per text block, and [`push_glyph_block!`](@ref)
-resolves it while appending. Styling individual characters of a string this way is
-not supported: a glyph is not a character (font shaping can merge several code
-points into one), so per-character styling belongs in `rich` text.
-"""
-struct BlockAttribute{T}
-    data::T
-    block_index::Int
-    n_blocks::Int
-end
-
-function append_per_glyph!(dest::Vector, attribute::BlockAttribute, n::Int)
-    data = attribute.data
-    isscalar(data) && return append_per_glyph!(dest, data, n)
-    length(data) == attribute.n_blocks || error(
-        "Expected a scalar or one value per string ($(attribute.n_blocks)), got $(length(data)). " *
-            "To style parts of a string differently, use `rich` text."
-    )
-    return append_per_glyph!(dest, data[attribute.block_index], n)
-end
-
 function append_per_glyph!(dest::Vector, value, n::Int)
     if isscalar(value)
         append!(dest, Iterators.repeated(value, n))
@@ -182,7 +157,7 @@ Appends the glyphs of one text block to `buffer` and records their index range i
 `buffer.text_blocks`. `origins` are in the layout frame, described by `bbox` (the
 box `align` positions) and `baseline` (the y that `valign = :baseline` puts on the
 anchor). `glyphindices`, `origins` and `extents` are per glyph; the remaining
-attributes may also be scalar or a [`BlockAttribute`](@ref).
+attributes are either per glyph or one value for the whole block.
 """
 function push_glyph_block!(
         buffer::GlyphBuffer, glyphindices, fonts, origins, extents;
@@ -240,36 +215,64 @@ function push_text_spec!(buffer::GlyphBuffer, spec::PlotSpec, bbox::Rect3d = Rec
     return
 end
 
-function convert_text_string!(
-        buffer::GlyphBuffer,
-        input_text::AbstractString, i, N, fontsize, font, justification,
-        lineheight, word_wrap_width, fonts, color, strokecolor, strokewidth
-    )
+"""
+    TextAttributes
 
-    args = sv_getindex.((font, fontsize, lineheight, justification, word_wrap_width), i)
-    layout = layout_string(input_text, args...)
+Everything about one text block except the string itself, as handed to
+[`emit_text!`](@ref). The values are already resolved for that block: an attribute given
+per string is indexed, `fontsize` is a `Vec2f`, and `justification` is a fraction in 0..1
+(`automatic` folded in against `halign`).
 
-    per_block(x) = BlockAttribute(x, i, N)
+`align`, `rotation` and `offset` are deliberately absent. They are applied by a downstream
+placement node, so a handler works in the block's own layout frame and changing them
+re-runs placement rather than the handler.
+
+This is a struct rather than a long argument list so that a new attribute can be added
+without breaking existing handlers. Destructure the ones you need:
+
+```julia
+function Makie.emit_text!(buffer, ::MyHandler, str::AbstractString, attributes)
+    (; fontsize, color) = attributes
+    # ...
+end
+```
+"""
+struct TextAttributes
+    font::NativeFont
+    fonts::Any
+    fontsize::Vec2f
+    lineheight::Float32
+    justification::Float32
+    word_wrap_width::Float32
+    color::RGBAf
+    strokecolor::RGBAf
+    strokewidth::Float32
+end
+
+"""
+    default_text_layout!(buffer::GlyphBuffer, src, attributes::TextAttributes)
+
+Makie's own layout for one text block, covering `AbstractString`, `RichText` and
+`LaTeXString`. This is what [`emit_text!`](@ref) falls back to, and what a handler
+calls to hand a block back that it decided not to lay out itself.
+"""
+function default_text_layout!(buffer::GlyphBuffer, src::AbstractString, attributes::TextAttributes)
+    (; font, fontsize, lineheight, justification, word_wrap_width) = attributes
+    layout = layout_string(src, font, fontsize, lineheight, justification, word_wrap_width)
+
     push_glyph_block!(
         buffer, layout.glyphindices, layout.fonts, layout.origins, layout.extents;
         bbox = layout.bbox, baseline = layout.baseline,
-        scales = per_block(to_2d_scale(fontsize)), # TODO: convert_attribute?
-        colors = per_block(color),
-        strokecolors = per_block(strokecolor),
-        strokewidths = per_block(strokewidth),
+        scales = fontsize, colors = attributes.color,
+        strokecolors = attributes.strokecolor, strokewidths = attributes.strokewidth,
     )
 
     return
 end
 
-function convert_text_string!(
-        buffer::GlyphBuffer,
-        input_text::RichText, i, N, fontsize, font, justification,
-        lineheight, word_wrap_width, fonts, color, strokecolor, strokewidth
-    )
-
-    args = sv_getindex.((fontsize, font, fonts, justification, lineheight, color), i)
-    layout = layout_text(input_text, args...)
+function default_text_layout!(buffer::GlyphBuffer, src::RichText, attributes::TextAttributes)
+    (; fontsize, font, fonts, justification, lineheight, color) = attributes
+    layout = layout_text(src, fontsize, font, fonts, justification, lineheight, color)
 
     push_glyph_block!(
         buffer, layout.glyphindices, layout.fonts, layout.origins, layout.extents;
@@ -281,14 +284,9 @@ function convert_text_string!(
     return
 end
 
-function convert_text_string!(
-        buffer::GlyphBuffer,
-        input_text::LaTeXString, i, N, fontsize, font, justification,
-        lineheight, word_wrap_width, fonts, color, strokecolor, strokewidth
-    )
-
-    args = sv_getindex.((fontsize, color, strokecolor, strokewidth, word_wrap_width), i)
-    tex_elements, layout = texelems_and_layout(input_text, args...)
+function default_text_layout!(buffer::GlyphBuffer, src::LaTeXString, attributes::TextAttributes)
+    (; fontsize, color, strokecolor, strokewidth, word_wrap_width) = attributes
+    tex_elements, layout = texelems_and_layout(src, fontsize, color, strokecolor, strokewidth, word_wrap_width)
 
     push_glyph_block!(
         buffer, layout.glyphindices, layout.fonts, layout.origins, layout.extents;
@@ -297,7 +295,9 @@ function convert_text_string!(
         strokecolors = layout.strokecolors, strokewidths = layout.strokewidths,
     )
 
-    append_tex_linesegment_data!(buffer, tex_elements, args[1], args[2])
+    # the rules share the glyphs' uniform size (`texelems_and_layout` takes the
+    # first component too)
+    append_tex_linesegment_data!(buffer, tex_elements, fontsize[1], color)
 
     return
 end
@@ -345,11 +345,14 @@ function refill_display_attributes!(buffer::GlyphBuffer, color, strokecolor, str
     empty!(buffer.glyph_strokewidths)
 
     N = length(buffer.text_blocks)
+    for (name, value) in [(:color, color), (:strokecolor, strokecolor), (:strokewidth, strokewidth)]
+        validate_per_string(name, value, N)
+    end
     for (i, block) in enumerate(buffer.text_blocks)
         n = length(block)
-        append_per_glyph!(buffer.glyph_colors, BlockAttribute(color, i, N), n)
-        append_per_glyph!(buffer.glyph_strokecolors, BlockAttribute(strokecolor, i, N), n)
-        append_per_glyph!(buffer.glyph_strokewidths, BlockAttribute(strokewidth, i, N), n)
+        append_per_glyph!(buffer.glyph_colors, sv_getindex(color, i), n)
+        append_per_glyph!(buffer.glyph_strokecolors, sv_getindex(strokecolor, i), n)
+        append_per_glyph!(buffer.glyph_strokewidths, sv_getindex(strokewidth, i), n)
     end
     return
 end
@@ -358,47 +361,16 @@ end
 ### text_handler extension
 ################################################################################
 
-"""
-    TextAttributes
-
-Everything about one text block except the string itself, as handed to
-[`emit_text!`](@ref). The values are already resolved for that block: an attribute given
-per string is indexed, `fontsize` is a `Vec2f`, and `justification` is a fraction in 0..1
-(`automatic` folded in against `halign`).
-
-`align`, `rotation` and `offset` are deliberately absent. They are applied by a downstream
-placement node, so a handler works in the block's own layout frame and changing them
-re-runs placement rather than the handler.
-
-This is a struct rather than a long argument list so that a new attribute can be added
-without breaking existing handlers. Destructure the ones you need:
-
-```julia
-function Makie.emit_text!(buffer, ::MyHandler, str::AbstractString, attributes)
-    (; fontsize, color) = attributes
-    # ...
-end
-```
-"""
-struct TextAttributes
-    font::NativeFont
-    fonts::Any
-    fontsize::Vec2f
-    lineheight::Float32
-    justification::Float32
-    word_wrap_width::Float32
-    color::RGBAf
-    strokecolor::RGBAf
-    strokewidth::Float32
-end
 
 """
-    emit_text!(buffer::GlyphBuffer, handler, src, attributes::TextAttributes) -> Bool
+    emit_text!(buffer::GlyphBuffer, handler, src, attributes::TextAttributes)
 
 Lays out one text block with a `text_handler`. Define methods dispatching on the handler
-and the input type it accepts (e.g. `LaTeXString`), append the result to `buffer`, and
-return `true`. Return `false` without touching `buffer` to fall through to the built-in
-path, which is how handled and unhandled strings mix in one plot.
+and the input type it accepts (e.g. `LaTeXString`), and append the result to `buffer`.
+Input types a handler has no method for reach Makie's own layout through this fallback, so
+handled and unhandled strings mix in one plot without the handler doing anything. A handler
+that only decides once it sees the content hands the block back with
+[`default_text_layout!`](@ref).
 
 Append with [`push_glyph_block!`](@ref) for glyphs, [`push_empty_block!`](@ref) for a block
 that has none (an image, say), and [`push_text_spec!`](@ref) for non-glyph plots such as
@@ -410,19 +382,29 @@ either bake them in (a rasterized image can't be recolored afterwards) or hand t
 """
 # Untyped so that a method typing just the handler and the input type is more
 # specific than this one, rather than ambiguous with it.
-emit_text!(buffer, handler, src, attributes) = false
+emit_text!(buffer, handler, src, attributes) = default_text_layout!(buffer, src, attributes)
 
-# Route one text block through the handler, resolving the per-block attribute values.
-function handle_text!(
-        buffer::GlyphBuffer, handler, str, i, N, fontsize, font, justification,
-        lineheight, word_wrap_width, fonts, color, strokecolor, strokewidth
+# Pick out block `i`'s value from each attribute.
+function block_attributes(
+        i, fontsize, font, justification, lineheight, word_wrap_width,
+        fonts, color, strokecolor, strokewidth
     )
-    attributes = TextAttributes(
+    return TextAttributes(
         sv_getindex(font, i), fonts, to_2d_scale(sv_getindex(fontsize, i)),
         sv_getindex(lineheight, i), sv_getindex(justification, i), sv_getindex(word_wrap_width, i),
         sv_getindex(color, i), sv_getindex(strokecolor, i), sv_getindex(strokewidth, i)
     )
-    return emit_text!(buffer, handler, str, attributes)::Bool
+end
+
+# An attribute is either one value for all strings or one per string. Indexing per
+# glyph is not supported: shaping can merge code points into a single glyph, so
+# `rich` text is how parts of a string get styled differently.
+function validate_per_string(name::Symbol, value, n_strings::Int)
+    (isscalar(value) || length(value) == n_strings) && return
+    return error(
+        "Expected a scalar $name or one value per string ($n_strings), got $(length(value)). " *
+            "To style parts of a string differently, use `rich` text."
+    )
 end
 
 # Apply a per-point transform to a spec's positional data (its first positional arg).
@@ -483,7 +465,7 @@ function emit_text!(buffer::GlyphBuffer, ::MathTeXHandler, str::LaTeXString, att
         buffer, PlotSpec(:LineSegments, rule_points; linewidth = rule_widths, color = color)
     )
 
-    return true
+    return
 end
 
 # `align` only reaches text layout through this: automatic justification follows
@@ -532,15 +514,23 @@ function register_glyph_layout!(attr::ComputeGraph)
         end
 
         empty!(buffer)
-        args = (
-            fontsize, selected_font, resolved_justification, lineheight, word_wrap_width,
-            fonts, computed_color, strokecolor, strokewidth,
-        )
         N = length(input_text)
-        for (block_index, str) in enumerate(input_text)
-            if text_handler === nothing || !handle_text!(buffer, text_handler, str, block_index, N, args...)
-                convert_text_string!(buffer, str, block_index, N, args...)
-            end
+        for (name, value) in [
+                (:fontsize, fontsize), (:font, selected_font), (:lineheight, lineheight),
+                (:word_wrap_width, word_wrap_width), (:color, computed_color),
+                (:strokecolor, strokecolor), (:strokewidth, strokewidth),
+            ]
+            validate_per_string(name, value, N)
+        end
+
+        for (i, str) in enumerate(input_text)
+            attributes = block_attributes(
+                i, fontsize, selected_font, resolved_justification, lineheight,
+                word_wrap_width, fonts, computed_color, strokecolor, strokewidth
+            )
+            # no handler is `nothing`, which has no `emit_text!` method of its own and
+            # so lands on the fallback, i.e. Makie's own layout
+            emit_text!(buffer, text_handler, str, attributes)
         end
 
         return node_outputs(buffer)

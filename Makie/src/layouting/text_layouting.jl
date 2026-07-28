@@ -108,7 +108,9 @@ function layout_string(
         baseline = 0.0f0,
     )
     # collect information about every character in the string
-    charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, _font, scale
+    # Ref: the font and the scale are one value for the whole string, and a `Vec2`
+    # fontsize would otherwise broadcast as a two-element container
+    charinfos = broadcast((c for c in str), Ref(font_per_char), Ref(fontscale_px)) do char, _font, scale
         font = find_font_for_char(char, _font)
         (
             char = char,

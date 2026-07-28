@@ -237,10 +237,14 @@ end
     p = text!(scene, [Point2f(0, 0), Point2f(100, 0)], text = ["ab", "cde"], color = [:red, :blue])
     @test p.glyph_colors[] == [fill(RGBAf(1, 0, 0, 1), 2); fill(RGBAf(0, 0, 1, 1), 3)]
 
-    err = "Expected a scalar or one value per string (1), got 4."
-    @test_throws err text!(scene, Point2f(0, 0), text = "abcd", color = [:red, :green, :blue, :black])
-    @test_throws err text!(scene, Point2f(0, 0), text = "abcd", strokewidth = [1, 2, 3, 4])
-    @test_throws err text!(scene, Point2f(0, 0), text = "abcd", fontsize = [10, 20, 30, 40])
+    for (attribute, value) in [
+            (:color, [:red, :green, :blue, :black]), (:strokewidth, [1, 2, 3, 4]),
+            (:fontsize, [10, 20, 30, 40]),
+        ]
+        @test_throws "Expected a scalar $attribute or one value per string (1), got 4." text!(
+            scene, Point2f(0, 0); text = "abcd", attribute => value
+        )
+    end
 
     # `color` feeds text layout so it errors while plotting, the other two only
     # once the value is pulled
