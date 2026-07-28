@@ -77,7 +77,12 @@ end
 # Primitive Plots (recursion endpoints)
 _extract_colormap(@nospecialize(::ComputePlots)) = Dict{Symbol, Any}()
 _extract_colormap(@nospecialize(plot::Voxels)) = Dict{Symbol, Any}(:color => plot.chunk, :colorrange => plot.value_limits)
-_extract_colormap(@nospecialize(plot::Surface)) = Dict{Symbol, Any}(:color => plot.raw_color)
+function _extract_colormap(@nospecialize(plot::Union{Surface, Heatmap, Image}))
+    # args or recursive_convert
+    pre_dc_args = plot.dim_converted.parent.inputs[1]
+    map!(args -> args[end], plot, pre_dc_args, :pre_dc_color)
+    return Dict{Symbol, Any}(:color => plot.pre_dc_color)
+end
 
 # Recipe Overwrites
 
@@ -380,7 +385,7 @@ function initialize_block!(cb::Colorbar)
 
     # TODO, implement interpolate = true for irregular grids in CairoMakie
     # Then, we can just use heatmap! and don't need the image plot!
-    map!(cb, :color_mapping_type, [:show_cats, :show_continuous]) do type
+    map!(cb, :color_mapping_type, [:show_catigorical, :show_continuous]) do type
         return (type !== continuous, type === continuous)
     end
 
@@ -388,8 +393,8 @@ function initialize_block!(cb::Colorbar)
         blockscene,
         cb.xrange, cb.yrange, cb.continuous_pixels;
         colormap = cb.alpha_colormap,
-        colorrange = cb.colorrange,
-        visible = cb.show_cats,
+        colorrange = cb.resolved_colorrange,
+        visible = cb.show_catigorical,
         inspectable = false
     )
 
@@ -400,7 +405,7 @@ function initialize_block!(cb::Colorbar)
         blockscene,
         cb.xlims, cb.ylims, cb.continuous_pixels;
         colormap = cb.alpha_colormap,
-        colorrange = cb.colorrange,
+        colorrange = cb.resolved_colorrange,
         visible = cb.show_continuous,
         inspectable = false
     )
