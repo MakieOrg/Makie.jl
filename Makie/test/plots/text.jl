@@ -175,9 +175,9 @@ struct CountingHandler
     calls::Base.RefValue{Int}
 end
 
-function Makie.emit_text!(buffer, h::CountingHandler, str, attributes)
+function Makie.emit_text(h::CountingHandler, str, attributes)
     h.calls[] += 1
-    return Makie.emit_text!(buffer, nothing, str, attributes)
+    return Makie.emit_text(nothing, str, attributes)
 end
 
 @testset "placement does not relayout" begin
@@ -205,6 +205,34 @@ end
     p.fontsize = 30
     p.glyph_origins[]
     @test handler.calls[] == layouts + 2
+end
+
+struct WrappedText
+    value::String
+end
+
+struct WrappedTextHandler end
+
+function Makie.emit_text(::WrappedTextHandler, str::WrappedText, attributes)
+    size = Vec2f(length(str.value), 1)
+    spec = Makie.PlotSpec(:Scatter, [Point3f(0.5size[1], 0.5size[2], 0)])
+    return Makie.TextLayout(
+        ; bbox = Rect2f(0, 0, size...), baseline = 0.2f0,
+        specs = Makie.PlotSpec[spec],
+        spec_bboxes = Rect3d[Rect3d(Point3d(0), Vec3d(size..., 0))],
+    )
+end
+
+@testset "text handler dispatches per block" begin
+    scene = Scene(camera = campixel!)
+    p = text!(
+        scene, [Point2f(0, 0), Point2f(100, 0), Point2f(200, 0)];
+        text = Any["ab", WrappedText("cde"), L"f"],
+        text_handler = WrappedTextHandler(),
+    )
+
+    @test length.(p.text_blocks[]) == [2, 0, 1]
+    @test p.text_spec_block_indices[] == [2]
 end
 
 @testset "per block placement attributes" begin

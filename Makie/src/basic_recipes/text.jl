@@ -98,10 +98,8 @@ rotated or offset. `block_bboxes` and `block_baselines` describe that frame per
 text block, which is what the downstream placement node needs to apply `align`,
 `rotation` and `offset` (see [`register_glyph_placement!`](@ref)).
 
-Text is appended one block (one input string) at a time with
-[`push_glyph_block!`](@ref) or [`push_empty_block!`](@ref), which keep
-`text_blocks` consistent with the parallel per-glyph arrays. Non-glyph output
-(LaTeX rules, handler images, ...) goes through [`push_text_spec!`](@ref).
+One [`TextLayout`](@ref) is appended per input string, keeping `text_blocks`
+consistent with the parallel per-glyph and per-spec arrays.
 """
 struct GlyphBuffer
     glyph_indices::Vector{UInt64}
@@ -140,78 +138,99 @@ function Base.empty!(buffer::GlyphBuffer)
 end
 
 function append_per_glyph!(dest::Vector, value, n::Int)
-    if isscalar(value)
-        append!(dest, Iterators.repeated(value, n))
-    elseif length(value) == n
-        append!(dest, value)
-    else
-        error("Expected a scalar or $n values per glyph, got $(length(value)).")
-    end
+    isscalar(value) ? append!(dest, Iterators.repeated(value, n)) : append!(dest, value)
     return
 end
 
-"""
-    push_glyph_block!(buffer, glyphindices, fonts, origins, extents; bbox, baseline, scales, colors, strokecolors, strokewidths)
+spec_position_bboxes(specs) = Rect3d[Rect3d(first(spec.args)) for spec in specs]
 
-Appends the glyphs of one text block to `buffer` and records their index range in
-`buffer.text_blocks`. `origins` are in the layout frame, described by `bbox` (the
-box `align` positions) and `baseline` (the y that `valign = :baseline` puts on the
-anchor). `glyphindices`, `origins` and `extents` are per glyph; the remaining
-attributes are either per glyph or one value for the whole block.
 """
-function push_glyph_block!(
-        buffer::GlyphBuffer, glyphindices, fonts, origins, extents;
-        bbox, baseline, scales, colors, strokecolors, strokewidths
+    TextLayout(glyphindices, fonts, origins, extents; bbox, baseline, scales,
+        colors, strokecolors, strokewidths, specs = PlotSpec[],
+        spec_bboxes = spec_position_bboxes(specs))
+
+The layout result for one scalar text value. `origins` are in the layout frame,
+described by `bbox` (the box `align` positions) and `baseline` (the y that
+`valign = :baseline` puts on the anchor). `glyphindices`, `origins` and `extents`
+are per glyph; the remaining glyph attributes are either per glyph or one value
+for the whole block.
+
+`specs` contains non-glyph plots such as LaTeX rules or a handler-rendered image,
+with one visual bounding box each in `spec_bboxes`. Those default to the bounding
+boxes of the specs' positions and should be given when the visual extent differs
+from them (e.g. an image marker).
+"""
+struct TextLayout{I, F, O, E, S, C, SC, SW}
+    glyphindices::I
+    fonts::F
+    origins::O
+    extents::E
+    scales::S
+    colors::C
+    strokecolors::SC
+    strokewidths::SW
+    bbox::Rect2f
+    baseline::Float32
+    specs::Vector{PlotSpec}
+    spec_bboxes::Vector{Rect3d}
+end
+
+function TextLayout(
+        glyphindices, fonts, origins, extents;
+        bbox, baseline, scales, colors, strokecolors, strokewidths,
+        specs = PlotSpec[], spec_bboxes = spec_position_bboxes(specs)
     )
+    return TextLayout(
+        glyphindices, fonts, origins, extents, scales, colors, strokecolors,
+        strokewidths, bbox, baseline, specs, spec_bboxes
+    )
+end
 
-    n = length(glyphindices)
+function TextLayout(; bbox, baseline, specs = PlotSpec[], spec_bboxes = spec_position_bboxes(specs))
+    return TextLayout(
+        UInt64[], NativeFont[], Point3f[], GlyphExtent[];
+        bbox, baseline, scales = Vec2f[], colors = RGBAf[],
+        strokecolors = RGBAf[], strokewidths = Float32[], specs, spec_bboxes
+    )
+end
+
+function validate_glyph_value(name, value, n)
+    (isscalar(value) || length(value) == n) && return
+    error("Expected a scalar or $n values per glyph for $name, got $(length(value)).")
+end
+
+function append_text_layout!(buffer::GlyphBuffer, layout::TextLayout)
+    n = length(layout.glyphindices)
+    length(layout.origins) == n ||
+        error("Expected $n glyph origins, got $(length(layout.origins)).")
+    length(layout.extents) == n ||
+        error("Expected $n glyph extents, got $(length(layout.extents)).")
+    for name in (:fonts, :scales, :colors, :strokecolors, :strokewidths)
+        validate_glyph_value(name, getfield(layout, name), n)
+    end
+    length(layout.specs) == length(layout.spec_bboxes) ||
+        error("Expected one bounding box per text spec.")
+
     offset = length(buffer.glyph_indices)
     push!(buffer.text_blocks, (offset + 1):(offset + n))
-    push!(buffer.block_bboxes, bbox)
-    push!(buffer.block_baselines, baseline)
+    push!(buffer.block_bboxes, layout.bbox)
+    push!(buffer.block_baselines, layout.baseline)
 
-    append!(buffer.glyph_indices, glyphindices)
-    append!(buffer.glyph_layout_origins, origins)
-    append!(buffer.glyph_extents, extents)
+    append!(buffer.glyph_indices, layout.glyphindices)
+    append!(buffer.glyph_layout_origins, layout.origins)
+    append!(buffer.glyph_extents, layout.extents)
+    append_per_glyph!(buffer.glyph_fonts, layout.fonts, n)
+    append_per_glyph!(buffer.glyph_scales, layout.scales, n)
+    append_per_glyph!(buffer.glyph_colors, layout.colors, n)
+    append_per_glyph!(buffer.glyph_strokecolors, layout.strokecolors, n)
+    append_per_glyph!(buffer.glyph_strokewidths, layout.strokewidths, n)
 
-    append_per_glyph!(buffer.glyph_fonts, fonts, n)
-    append_per_glyph!(buffer.glyph_scales, scales, n)
-    append_per_glyph!(buffer.glyph_colors, colors, n)
-    append_per_glyph!(buffer.glyph_strokecolors, strokecolors, n)
-    append_per_glyph!(buffer.glyph_strokewidths, strokewidths, n)
-
-    return
-end
-
-"""
-    push_empty_block!(buffer; bbox, baseline)
-
-Records a text block without glyphs (e.g. one a handler renders as an image), so
-`buffer.text_blocks` keeps one entry per input string. `bbox` and `baseline` are
-still needed: they are the layout frame the block's specs get placed in.
-"""
-function push_empty_block!(buffer::GlyphBuffer; bbox, baseline)
-    n = length(buffer.glyph_indices)
-    push!(buffer.text_blocks, (n + 1):n)
-    push!(buffer.block_bboxes, bbox)
-    push!(buffer.block_baselines, baseline)
-    return
-end
-
-"""
-    push_text_spec!(buffer, spec[, bbox])
-
-Adds a non-glyph plot for the block currently being pushed, positioned in that
-block's layout frame. `bbox` defaults to the bounding box of the spec's positions
-and should be given when the visual extent differs from them (e.g. an image
-marker). Placement transforms the positions and the bbox alike; a `rotation`
-kwarg on the spec, if present, gets the block rotation composed into it, so an
-oriented marker turns with the text.
-"""
-function push_text_spec!(buffer::GlyphBuffer, spec::PlotSpec, bbox::Rect3d = Rect3d(first(spec.args)))
-    push!(buffer.layout_specs, spec)
-    push!(buffer.text_spec_block_indices, length(buffer.text_blocks))
-    push!(buffer.layout_spec_bboxes, bbox)
+    append!(buffer.layout_specs, layout.specs)
+    append!(buffer.layout_spec_bboxes, layout.spec_bboxes)
+    append!(
+        buffer.text_spec_block_indices,
+        Iterators.repeated(length(buffer.text_blocks), length(layout.specs))
+    )
     return
 end
 
@@ -219,7 +238,7 @@ end
     TextAttributes
 
 Everything about one text block except the string itself, as handed to
-[`emit_text!`](@ref). The values are already resolved for that block: an attribute given
+[`emit_text`](@ref). The values are already resolved for that block: an attribute given
 per string is indexed, `fontsize` is a `Vec2f`, and `justification` is a fraction in 0..1
 (`automatic` folded in against `halign`).
 
@@ -231,7 +250,7 @@ This is a struct rather than a long argument list so that a new attribute can be
 without breaking existing handlers. Destructure the ones you need:
 
 ```julia
-function Makie.emit_text!(buffer, ::MyHandler, str::AbstractString, attributes)
+function Makie.emit_text(::MyHandler, str::AbstractString, attributes)
     (; fontsize, color) = attributes
     # ...
 end
@@ -250,67 +269,56 @@ struct TextAttributes
 end
 
 # Makie's own text layout is just the `handler === nothing` implementation of
-# `emit_text!`, so the built-in path and a `text_handler` go through one protocol.
+# `emit_text`, so the built-in path and a `text_handler` go through one protocol.
 
-# Reached with an input type Makie has no layout for. Also the recursion stop for the
-# generic `emit_text!` fallback, which delegates to `nothing`.
-function emit_text!(buffer::GlyphBuffer, ::Nothing, src, attributes::TextAttributes)
+function emit_text(::Nothing, src, attributes::TextAttributes)
     return error(
-        "`text` cannot lay out $(typeof(src)). Pass a `text_handler` with an " *
-            "`emit_text!` method for it, or convert it to a String, `rich` text or a LaTeXString."
+        "`text` cannot lay out $(typeof(src)). Pass a `text_handler` with a " *
+            "`emit_text` method for it, or convert it to a String, `rich` text or a LaTeXString."
     )
 end
 
-function emit_text!(buffer::GlyphBuffer, ::Nothing, src::AbstractString, attributes::TextAttributes)
+function emit_text(::Nothing, src::AbstractString, attributes::TextAttributes)
     (; font, fontsize, lineheight, justification, word_wrap_width) = attributes
     layout = layout_string(src, font, fontsize, lineheight, justification, word_wrap_width)
 
-    push_glyph_block!(
-        buffer, layout.glyphindices, layout.fonts, layout.origins, layout.extents;
+    return TextLayout(
+        layout.glyphindices, layout.fonts, layout.origins, layout.extents;
         bbox = layout.bbox, baseline = layout.baseline,
         scales = fontsize, colors = attributes.color,
         strokecolors = attributes.strokecolor, strokewidths = attributes.strokewidth,
     )
-
-    return
 end
 
-function emit_text!(buffer::GlyphBuffer, ::Nothing, src::RichText, attributes::TextAttributes)
+function emit_text(::Nothing, src::RichText, attributes::TextAttributes)
     (; fontsize, font, fonts, justification, lineheight, color) = attributes
     layout = layout_text(src, fontsize, font, fonts, justification, lineheight, color)
 
-    push_glyph_block!(
-        buffer, layout.glyphindices, layout.fonts, layout.origins, layout.extents;
+    return TextLayout(
+        layout.glyphindices, layout.fonts, layout.origins, layout.extents;
         bbox = layout.bbox, baseline = layout.baseline,
         scales = layout.scales, colors = layout.colors,
         strokecolors = layout.strokecolors, strokewidths = layout.strokewidths,
     )
-
-    return
 end
 
-function emit_text!(buffer::GlyphBuffer, ::Nothing, src::LaTeXString, attributes::TextAttributes)
+function emit_text(::Nothing, src::LaTeXString, attributes::TextAttributes)
     (; fontsize, color, strokecolor, strokewidth, word_wrap_width) = attributes
     tex_elements, layout = texelems_and_layout(src, fontsize, color, strokecolor, strokewidth, word_wrap_width)
+    # the rules share the glyphs' uniform size (`texelems_and_layout` takes the
+    # first component too)
+    spec = tex_linesegment_spec(tex_elements, fontsize[1], color)
 
-    push_glyph_block!(
-        buffer, layout.glyphindices, layout.fonts, layout.origins, layout.extents;
+    return TextLayout(
+        layout.glyphindices, layout.fonts, layout.origins, layout.extents;
         bbox = layout.bbox, baseline = layout.baseline,
         scales = layout.scales, colors = layout.colors,
         strokecolors = layout.strokecolors, strokewidths = layout.strokewidths,
+        specs = spec === nothing ? PlotSpec[] : PlotSpec[spec],
     )
-
-    # the rules share the glyphs' uniform size (`texelems_and_layout` takes the
-    # first component too)
-    append_tex_linesegment_data!(buffer, tex_elements, fontsize[1], color)
-
-    return
 end
 
-function append_tex_linesegment_data!(
-        buffer::GlyphBuffer, tex_elements, fontsize, color::RGBAf
-    )
-
+function tex_linesegment_spec(tex_elements, fontsize, color::RGBAf)
     points = Point3f[]
     widths = Float32[]
     for (element, position, _) in tex_elements
@@ -324,9 +332,8 @@ function append_tex_linesegment_data!(
         )
         push!(widths, fontsize * h.thickness, fontsize * h.thickness)
     end
-    isempty(points) && return
-    push_text_spec!(buffer, PlotSpec(:LineSegments, points; linewidth = widths, color = color))
-    return
+    isempty(points) && return nothing
+    return PlotSpec(:LineSegments, points; linewidth = widths, color = color)
 end
 
 """
@@ -368,28 +375,22 @@ end
 
 
 """
-    emit_text!(buffer::GlyphBuffer, handler, src, attributes::TextAttributes)
+    emit_text(handler, src, attributes::TextAttributes) -> TextLayout
 
 Lays out one text block with a `text_handler`. Define methods dispatching on the handler
-and the input type it accepts (e.g. `LaTeXString`), and append the result to `buffer`.
+and the input type it accepts (e.g. `LaTeXString`) and return one [`TextLayout`](@ref).
 
 Makie's own layout is the `handler === nothing` implementation of this same function, which
 is what `text_handler = nothing` means and where input types a handler has no method for
 end up, so handled and unhandled strings mix in one plot without the handler doing
 anything. A handler that only decides once it sees the content hands the block back with
-`emit_text!(buffer, nothing, src, attributes)`.
-
-Append with [`push_glyph_block!`](@ref) for glyphs, [`push_empty_block!`](@ref) for a block
-that has none (an image, say), and [`push_text_spec!`](@ref) for non-glyph plots such as
-rules. Exactly one block must be pushed per call, in the block's layout frame.
+`emit_text(nothing, src, attributes)`.
 
 The appearance attributes in [`TextAttributes`](@ref) are there because a handler may
-either bake them in (a rasterized image can't be recolored afterwards) or hand them to
-`push_glyph_block!`.
+either bake them in (a rasterized image can't be recolored afterwards) or include them
+in the returned glyph arrays.
 """
-# Untyped so that a method typing just the handler and the input type is more
-# specific than this one, rather than ambiguous with it.
-emit_text!(buffer, handler, src, attributes) = emit_text!(buffer, nothing, src, attributes)
+emit_text(handler, src, attributes) = emit_text(nothing, src, attributes)
 
 # Pick out block `i`'s value from each attribute.
 function block_attributes(
@@ -426,12 +427,12 @@ end
     MathTeXHandler()
 
 A `text_handler` that lays out `LaTeXString`s with MathTeXEngine.jl through the
-generic [`emit_text!`](@ref) protocol. Setting `text_handler = MathTeXHandler()`
+generic [`emit_text`](@ref) protocol. Setting `text_handler = MathTeXHandler()`
 routes LaTeX math through the pluggable path; non-LaTeX inputs fall through.
 """
 struct MathTeXHandler end
 
-function emit_text!(buffer::GlyphBuffer, ::MathTeXHandler, str::LaTeXString, attributes::TextAttributes)
+function emit_text(::MathTeXHandler, str::LaTeXString, attributes::TextAttributes)
     (; color, strokecolor, strokewidth) = attributes
 
     fs = Vec2f(attributes.fontsize[1])
@@ -452,13 +453,6 @@ function emit_text!(buffer::GlyphBuffer, ::MathTeXHandler, str::LaTeXString, att
             return Rect2f(Rect3f(b) + pos)
     end
 
-    # MathTeXEngine's frame already has the baseline at y = 0
-    push_glyph_block!(
-        buffer, glyphindices, glyphfonts, origins, extents;
-        bbox = bb, baseline = 0.0f0, scales = scales, colors = color,
-        strokecolors = strokecolor, strokewidths = strokewidth,
-    )
-
     rule_points = Point3f[]
     rule_widths = Float32[]
     for (element, position, _) in all_els
@@ -468,11 +462,15 @@ function emit_text!(buffer::GlyphBuffer, ::MathTeXHandler, str::LaTeXString, att
         w = Float32(fs[1] * element.thickness)
         push!(rule_widths, w, w)
     end
-    isempty(rule_points) || push_text_spec!(
-        buffer, PlotSpec(:LineSegments, rule_points; linewidth = rule_widths, color = color)
-    )
+    specs = isempty(rule_points) ? PlotSpec[] :
+        PlotSpec[PlotSpec(:LineSegments, rule_points; linewidth = rule_widths, color = color)]
 
-    return
+    # MathTeXEngine's frame already has the baseline at y = 0
+    return TextLayout(
+        glyphindices, glyphfonts, origins, extents;
+        bbox = bb, baseline = 0.0f0, scales, colors = color,
+        strokecolors = strokecolor, strokewidths = strokewidth, specs,
+    )
 end
 
 # `align` only reaches text layout through this: automatic justification follows
@@ -535,14 +533,7 @@ function register_glyph_layout!(attr::ComputeGraph)
                 i, fontsize, selected_font, resolved_justification, lineheight,
                 word_wrap_width, fonts, computed_color, strokecolor, strokewidth
             )
-            # no handler is `nothing`, which has no `emit_text!` method of its own and
-            # so lands on the fallback, i.e. Makie's own layout
-            emit_text!(buffer, text_handler, str, attributes)
-            length(buffer.text_blocks) == i || error(
-                "`emit_text!` for $(typeof(text_handler)) pushed " *
-                    "$(length(buffer.text_blocks) - i + 1) blocks for one string, " *
-                    "but must push exactly one."
-            )
+            append_text_layout!(buffer, emit_text(text_handler, str, attributes))
         end
 
         return node_outputs(buffer)
