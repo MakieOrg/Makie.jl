@@ -175,7 +175,7 @@ struct CountingHandler
     calls::Base.RefValue{Int}
 end
 
-function Makie.emit_text!(buffer, h::CountingHandler, str, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth)
+function Makie.emit_text!(buffer, h::CountingHandler, str, attributes)
     h.calls[] += 1
     return false
 end

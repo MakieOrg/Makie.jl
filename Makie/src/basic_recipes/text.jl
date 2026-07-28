@@ -359,7 +359,41 @@ end
 ################################################################################
 
 """
-    emit_text!(buffer::GlyphBuffer, handler, src, font, fonts, fontsize, lineheight, justification, word_wrap_width, color, strokecolor, strokewidth) -> Bool
+    TextAttributes
+
+Everything about one text block except the string itself, as handed to
+[`emit_text!`](@ref). The values are already resolved for that block: an attribute given
+per string is indexed, `fontsize` is a `Vec2f`, and `justification` is a fraction in 0..1
+(`automatic` folded in against `halign`).
+
+`align`, `rotation` and `offset` are deliberately absent. They are applied by a downstream
+placement node, so a handler works in the block's own layout frame and changing them
+re-runs placement rather than the handler.
+
+This is a struct rather than a long argument list so that a new attribute can be added
+without breaking existing handlers. Destructure the ones you need:
+
+```julia
+function Makie.emit_text!(buffer, ::MyHandler, str::AbstractString, attributes)
+    (; fontsize, color) = attributes
+    # ...
+end
+```
+"""
+struct TextAttributes
+    font::NativeFont
+    fonts::Any
+    fontsize::Vec2f
+    lineheight::Float32
+    justification::Float32
+    word_wrap_width::Float32
+    color::RGBAf
+    strokecolor::RGBAf
+    strokewidth::Float32
+end
+
+"""
+    emit_text!(buffer::GlyphBuffer, handler, src, attributes::TextAttributes) -> Bool
 
 Lays out one text block with a `text_handler`. Define methods dispatching on the handler
 and the input type it accepts (e.g. `LaTeXString`), append the result to `buffer`, and
@@ -368,34 +402,27 @@ path, which is how handled and unhandled strings mix in one plot.
 
 Append with [`push_glyph_block!`](@ref) for glyphs, [`push_empty_block!`](@ref) for a block
 that has none (an image, say), and [`push_text_spec!`](@ref) for non-glyph plots such as
-rules. Exactly one block must be pushed per call.
+rules. Exactly one block must be pushed per call, in the block's layout frame.
 
-Everything is in the block's layout frame: `align`, `rotation` and `offset` are applied
-downstream, so a handler never sees them, and changing them re-runs placement rather than
-the handler. `justification` arrives resolved to a fraction in 0..1 (`automatic` is already
-folded in against `halign`). The appearance attributes are passed because a handler may
+The appearance attributes in [`TextAttributes`](@ref) are there because a handler may
 either bake them in (a rasterized image can't be recolored afterwards) or hand them to
 `push_glyph_block!`.
 """
 # Untyped so that a method typing just the handler and the input type is more
 # specific than this one, rather than ambiguous with it.
-function emit_text!(
-        buffer, handler, src, font, fonts, fontsize, lineheight,
-        justification, word_wrap_width, color, strokecolor, strokewidth
-    )
-    return false
-end
+emit_text!(buffer, handler, src, attributes) = false
 
 # Route one text block through the handler, resolving the per-block attribute values.
 function handle_text!(
         buffer::GlyphBuffer, handler, str, i, N, fontsize, font, justification,
         lineheight, word_wrap_width, fonts, color, strokecolor, strokewidth
     )
-    return emit_text!(
-        buffer, handler, str, sv_getindex(font, i), fonts, sv_getindex(fontsize, i),
+    attributes = TextAttributes(
+        sv_getindex(font, i), fonts, to_2d_scale(sv_getindex(fontsize, i)),
         sv_getindex(lineheight, i), sv_getindex(justification, i), sv_getindex(word_wrap_width, i),
         sv_getindex(color, i), sv_getindex(strokecolor, i), sv_getindex(strokewidth, i)
-    )::Bool
+    )
+    return emit_text!(buffer, handler, str, attributes)::Bool
 end
 
 # Apply a per-point transform to a spec's positional data (its first positional arg).
@@ -415,12 +442,10 @@ routes LaTeX math through the pluggable path; non-LaTeX inputs fall through.
 """
 struct MathTeXHandler end
 
-function emit_text!(
-        buffer::GlyphBuffer, ::MathTeXHandler, str::LaTeXString, font, fonts, fontsize,
-        lineheight, justification, word_wrap_width, color, strokecolor, strokewidth
-    )
+function emit_text!(buffer::GlyphBuffer, ::MathTeXHandler, str::LaTeXString, attributes::TextAttributes)
+    (; color, strokecolor, strokewidth) = attributes
 
-    fs = Vec2f(first(fontsize))
+    fs = Vec2f(attributes.fontsize[1])
     all_els = generate_tex_elements(str)
     els = filter(x -> x[1] isa TeXChar, all_els)
     texchars = [x[1] for x in els]
