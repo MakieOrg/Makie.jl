@@ -377,8 +377,18 @@ end
 """
     layout_text(handler, src, attributes::TextAttributes) -> TextLayout
 
-Lays out one text block with a `text_handler`. Define methods dispatching on the handler
-and the input type it accepts (e.g. `LaTeXString`) and return one [`TextLayout`](@ref).
+Lays out one text block with a `text_handler`. A handler claims an input type by having a
+method for it and returns one [`TextLayout`](@ref) per call:
+
+```julia
+struct MyHandler end
+
+function Makie.layout_text(::MyHandler, src::LaTeXString, attributes::Makie.TextAttributes)
+    (; fontsize, color) = attributes
+    # ...
+    return Makie.TextLayout(glyphindices, fonts, origins, extents; bbox, baseline, ...)
+end
+```
 
 Makie's own layout is the `handler === nothing` implementation of this same function, which
 is what `text_handler = nothing` means and where input types a handler has no method for
@@ -386,9 +396,14 @@ end up, so handled and unhandled strings mix in one plot without the handler doi
 anything. A handler that only decides once it sees the content hands the block back with
 `layout_text(nothing, src, attributes)`.
 
-The appearance attributes in [`TextAttributes`](@ref) are there because a handler may
-either bake them in (a rasterized image can't be recolored afterwards) or include them
-in the returned glyph arrays.
+Note that `LaTeXString <: AbstractString`, so a method taking `AbstractString` claims LaTeX
+input as well and would lay out its raw source. Dispatch on `String` to leave it to Makie.
+
+The layout is in the block's own frame: `align`, `rotation` and `offset` are applied
+downstream, so changing them re-runs placement rather than the handler. The appearance
+attributes in [`TextAttributes`](@ref) are there because a handler may either bake them in
+(a rasterized image can't be recolored afterwards) or include them in the returned glyph
+arrays.
 """
 layout_text(handler, src, attributes) = layout_text(nothing, src, attributes)
 

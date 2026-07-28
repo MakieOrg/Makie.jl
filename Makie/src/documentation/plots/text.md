@@ -263,3 +263,31 @@ Label(
 
 f
 ```
+
+### Text handlers
+
+Text layout is pluggable through the `text_handler` attribute, so a package can supply an engine that lays text out instead of Makie.
+The usual reason is `LaTeXString`s: Makie lays those out with MathTeXEngine.jl, which covers a subset of LaTeX, and a handler can hand them to a full TeX installation instead and embed the PDF or image that comes back.
+A handler can also add support for text types Makie knows nothing about.
+
+Set it on a plot like any other attribute, with a handler object the package provides:
+
+```julia
+text!(ax, points, text = labels, text_handler = SomeEngine())
+```
+
+A handler only claims the input types it has methods for, so text it doesn't handle is laid out by Makie as usual and the two can be mixed in one plot.
+
+Text Makie creates itself, such as axis and legend labels, is reached through the theme:
+
+```julia
+set_theme!(text_handler = SomeEngine())
+
+# or scoped to one figure
+with_theme(text_handler = SomeEngine()) do
+    # ...
+end
+```
+
+To write a handler rather than use one, see the docstrings of `Makie.layout_text`, `Makie.TextLayout` and `Makie.TextAttributes`.
+`Makie.MathTeXHandler()` is a worked example: it lays `LaTeXString`s out with MathTeXEngine.jl through this protocol, doing what the built-in path does internally.
