@@ -29,6 +29,12 @@ function calculated_attributes!(::Type{Glyphs}, plot::Plot)
         return (quad_offsets, quad_scales)
     end
 
+    # GL and WGL bind the stroke width to a uniform float, so a per-glyph one
+    # collapses to the first value there. CairoMakie uses `strokewidth` per glyph.
+    map!(attr, :strokewidth, :uniform_strokewidth) do strokewidth
+        return Float32(isscalar(strokewidth) ? strokewidth : get(strokewidth, 1, 0.0f0))
+    end
+
     register_position_transforms!(attr)
 
     map!(

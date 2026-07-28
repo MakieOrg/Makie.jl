@@ -718,7 +718,7 @@ function register_glyphs!(plot)
         color = plot.glyph_colors,
         rotation = plot.glyph_rotations,
         strokecolor = plot.glyph_strokecolors,
-        strokewidth = plot.strokewidth, # scalar uniform; GL/WGL can't do per-glyph stroke width
+        strokewidth = plot.glyph_strokewidths,
         glowcolor = plot.glowcolor,
         glowwidth = plot.glowwidth,
         markerspace = plot.markerspace,

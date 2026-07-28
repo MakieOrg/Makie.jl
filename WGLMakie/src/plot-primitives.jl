@@ -226,7 +226,7 @@ function scatter_program(attr)
         :quad_offset => get(attr, :quad_offset, Vec2f[]),
         :sdf_marker_shape => get(attr, :sdf_marker_shape, Vec2f[]),
 
-        :strokewidth => attr.strokewidth,
+        :strokewidth => get(attr, :uniform_strokewidth, attr.strokewidth),
         :converted_strokecolor => attr.converted_strokecolor,
         :glowwidth => attr.glowwidth,
         :glowcolor => attr.glowcolor,
@@ -364,7 +364,9 @@ function create_shader(scene::Scene, plot::Makie.Glyphs)
 
         :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange,
         :nan_color, :highclip_color, :lowclip_color, :pattern,
-        :strokewidth, :glowwidth, :glowcolor,
+        # the shader binds the stroke width to a uniform, so a per-glyph one
+        # collapses to its first value
+        :uniform_strokewidth, :glowwidth, :glowcolor,
 
         :converted_rotation, :converted_strokecolor,
         :marker_offset, :sdf_marker_shape, :glyph_data,

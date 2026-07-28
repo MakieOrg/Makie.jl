@@ -294,6 +294,20 @@ end
     end
 end
 
+@testset "per string strokewidth reaches the glyphs" begin
+    scene = Scene(camera = campixel!)
+    p = text!(scene, [Point2f(0, 0), Point2f(100, 0)], text = ["ab", "cde"], strokewidth = [1, 2])
+
+    glyphs = p.plots[1]
+    @test p.glyph_strokewidths[] == Float32[1, 1, 2, 2, 2]
+    @test glyphs.strokewidth[] == p.glyph_strokewidths[]
+    # GL and WGL bind the stroke width to a uniform float
+    @test glyphs.uniform_strokewidth[] === 1.0f0
+
+    scalar = text!(scene, Point2f(0, 0), text = "ab", strokewidth = 3)
+    @test scalar.plots[1].uniform_strokewidth[] === 3.0f0
+end
+
 @testset "pathtext color" begin
     scene = Scene(camera = campixel!)
     path = [Point2f(0, 0), Point2f(100, 0)]

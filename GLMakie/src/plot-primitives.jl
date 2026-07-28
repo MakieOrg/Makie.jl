@@ -497,7 +497,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Glyphs)
         :color, :strokecolor, :rotation,
         :marker_offset, :quad_offset, :sdf_uv, :quad_scale,
         :lowclip_color, :highclip_color, :nan_color,
-        :strokewidth, :glowcolor, :glowwidth,
+        :uniform_strokewidth, :glowcolor, :glowwidth,
         :model_f32c, :transform_marker,
         :gl_indices, :gl_len, :f32c_scale,
     ]
@@ -505,8 +505,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Glyphs)
 
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
-    # TODO: strokewidth doesn't work because the shader only accepts a uniform float
-    # this is also true on master
+    # TODO: a per-glyph strokewidth collapses to its first value because the shader
+    # only accepts a uniform float. This is also true on master.
 
     # To take the human error out of the bookkeeping of two lists
     # Could also consider using this in computation since Dict lookups are
@@ -520,7 +520,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Glyphs)
         :quad_scale => :scale,
         :quad_offset => :quad_offset,
         :marker_offset => :marker_offset,
-        :strokecolor => :stroke_color, :strokewidth => :stroke_width,
+        :strokecolor => :stroke_color, :uniform_strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
