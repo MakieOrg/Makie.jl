@@ -249,14 +249,19 @@ struct TextAttributes
     strokewidth::Float32
 end
 
-"""
-    default_text_layout!(buffer::GlyphBuffer, src, attributes::TextAttributes)
+# Makie's own text layout is just the `handler === nothing` implementation of
+# `emit_text!`, so the built-in path and a `text_handler` go through one protocol.
 
-Makie's own layout for one text block, covering `AbstractString`, `RichText` and
-`LaTeXString`. This is what [`emit_text!`](@ref) falls back to, and what a handler
-calls to hand a block back that it decided not to lay out itself.
-"""
-function default_text_layout!(buffer::GlyphBuffer, src::AbstractString, attributes::TextAttributes)
+# Reached with an input type Makie has no layout for. Also the recursion stop for the
+# generic `emit_text!` fallback, which delegates to `nothing`.
+function emit_text!(buffer::GlyphBuffer, ::Nothing, src, attributes::TextAttributes)
+    return error(
+        "`text` cannot lay out $(typeof(src)). Pass a `text_handler` with an " *
+            "`emit_text!` method for it, or convert it to a String, `rich` text or a LaTeXString."
+    )
+end
+
+function emit_text!(buffer::GlyphBuffer, ::Nothing, src::AbstractString, attributes::TextAttributes)
     (; font, fontsize, lineheight, justification, word_wrap_width) = attributes
     layout = layout_string(src, font, fontsize, lineheight, justification, word_wrap_width)
 
@@ -270,7 +275,7 @@ function default_text_layout!(buffer::GlyphBuffer, src::AbstractString, attribut
     return
 end
 
-function default_text_layout!(buffer::GlyphBuffer, src::RichText, attributes::TextAttributes)
+function emit_text!(buffer::GlyphBuffer, ::Nothing, src::RichText, attributes::TextAttributes)
     (; fontsize, font, fonts, justification, lineheight, color) = attributes
     layout = layout_text(src, fontsize, font, fonts, justification, lineheight, color)
 
@@ -284,7 +289,7 @@ function default_text_layout!(buffer::GlyphBuffer, src::RichText, attributes::Te
     return
 end
 
-function default_text_layout!(buffer::GlyphBuffer, src::LaTeXString, attributes::TextAttributes)
+function emit_text!(buffer::GlyphBuffer, ::Nothing, src::LaTeXString, attributes::TextAttributes)
     (; fontsize, color, strokecolor, strokewidth, word_wrap_width) = attributes
     tex_elements, layout = texelems_and_layout(src, fontsize, color, strokecolor, strokewidth, word_wrap_width)
 
@@ -367,10 +372,12 @@ end
 
 Lays out one text block with a `text_handler`. Define methods dispatching on the handler
 and the input type it accepts (e.g. `LaTeXString`), and append the result to `buffer`.
-Input types a handler has no method for reach Makie's own layout through this fallback, so
-handled and unhandled strings mix in one plot without the handler doing anything. A handler
-that only decides once it sees the content hands the block back with
-[`default_text_layout!`](@ref).
+
+Makie's own layout is the `handler === nothing` implementation of this same function, which
+is what `text_handler = nothing` means and where input types a handler has no method for
+end up, so handled and unhandled strings mix in one plot without the handler doing
+anything. A handler that only decides once it sees the content hands the block back with
+`emit_text!(buffer, nothing, src, attributes)`.
 
 Append with [`push_glyph_block!`](@ref) for glyphs, [`push_empty_block!`](@ref) for a block
 that has none (an image, say), and [`push_text_spec!`](@ref) for non-glyph plots such as
@@ -382,7 +389,7 @@ either bake them in (a rasterized image can't be recolored afterwards) or hand t
 """
 # Untyped so that a method typing just the handler and the input type is more
 # specific than this one, rather than ambiguous with it.
-emit_text!(buffer, handler, src, attributes) = default_text_layout!(buffer, src, attributes)
+emit_text!(buffer, handler, src, attributes) = emit_text!(buffer, nothing, src, attributes)
 
 # Pick out block `i`'s value from each attribute.
 function block_attributes(
