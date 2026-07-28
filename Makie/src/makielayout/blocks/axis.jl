@@ -128,9 +128,11 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scene = Scene(
         ax.blockscene, viewport = Rect2i(0, 0, 0, 0), visible = false,
-        clear = true, backgroundcolor = ax.backgroundcolor
+        clear = map(c -> alpha(to_color(c)) == 1, ax.backgroundcolor),
+        backgroundcolor = ax.backgroundcolor
     )
     decoration_scene = Scene(ax.blockscene, camera = campixel!)
+    ax.decoration_scene = decoration_scene
     add_input!(ax, :viewport, scene.viewport)
     # Hide to block updates, will be unhidden! in constructor who calls this!
     @assert !scene.visible[]
@@ -152,6 +154,17 @@ function initialize_block!(ax::Axis; palette = nothing)
         palette_attr = palette isa Attributes ? palette : Attributes(palette)
         ax.scene.theme.palette = palette_attr
     end
+
+    # Note: This is now a fallback for transparent backgroundcolors
+    # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
+    # so it doesn't rasterize the scene
+    background = poly!(
+        ax.blockscene, ax.viewport; color = ax.backgroundcolor, inspectable = false,
+        shading = NoShading, strokecolor = :transparent,
+        visible = map(c -> alpha(to_color(c)) != 1, ax.backgroundcolor)
+    )
+    translate!(background, 0, 0, -100)
+    elements[:background] = background
 
     map!(ax, [:xaxisposition, :viewport], :xaxis_endpoints) do xaxisposition, area
         if xaxisposition === :bottom

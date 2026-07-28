@@ -333,6 +333,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
 """
 @Block Axis <: AbstractAxis begin
     scene::Scene
+    decoration_scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
     mouseeventhandle::MouseEventHandle

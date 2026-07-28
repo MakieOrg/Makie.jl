@@ -546,12 +546,10 @@ function free(scene::Scene)
     return
 end
 
-# TODO: Should there be a delete!(parent::Scene, child::Scene)?
-# That would need to:
-# - disconnected viewport, transformations, ...?
-# - replace the shared Events struct in child and all its children
-# - trigger a backend delete!(screen, scene)
+Base.delete!(scene::Scene) = empty!(scene)
 
+# TODO: Shouldn't empty just remove content from the given scene, rather than
+# resetting everything and removing the scene from its parent?
 function Base.empty!(scene::Scene; reset_theme = true)
     for child in copy(scene.children)
         empty!(child)
@@ -569,7 +567,7 @@ function Base.empty!(scene::Scene; reset_theme = true)
         delete!(scene, plot)
     end
 
-    # clear all child scenes
+    # remove this scene from parent
     if !isnothing(scene.parent)
         filter!(x -> x !== scene, scene.parent.children)
     end

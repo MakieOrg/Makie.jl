@@ -45,8 +45,8 @@ edisplay = Bonito.use_electron_display(devtools = true)
         # are modified in which case the numbers should just be updated
         f, a, p = scatter(rand(10))
         colorbuffer(f)
-        @test length(p.attributes.inputs) == 37
-        @test length(p.attributes.outputs) == 92
+        @test length(p.attributes.inputs) == 38
+        @test length(p.attributes.outputs) == 94
     end
 
     @testset "refimages" begin

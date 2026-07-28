@@ -10,7 +10,7 @@ end
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
-    base = 4 # from postprocessing shaders
+    base = 2 # from postprocessing shaders
     # Postprocessing shaders
     @test length(cache.shader_cache) == base
     @test length(cache.template_cache) == base
