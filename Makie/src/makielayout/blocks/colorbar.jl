@@ -22,7 +22,8 @@ information.
 For the second case a `Dict{Symbol, Any}` containing the relevant colormapping
 attributes. These may include:
 - `:colormap`: The colormap of the plot.
-- `:color`: The color values that the colormap applies to.
+- `:color` or `dim_converted`: The color values that the colormap applies to,
+    either before color dim conversion apply (color) or after (dim_converted).
 - `:colorrange`: The colorrange of the plot, i.e. the extrema of `color`.
 - `:colorscale`: The colorscale of plot.
 - `:lowclip`: The lowclip of the plot.
@@ -78,10 +79,7 @@ end
 _extract_colormap(@nospecialize(::ComputePlots)) = Dict{Symbol, Any}()
 _extract_colormap(@nospecialize(plot::Voxels)) = Dict{Symbol, Any}(:color => plot.chunk, :colorrange => plot.value_limits)
 function _extract_colormap(@nospecialize(plot::Union{Surface, Heatmap, Image}))
-    # args or recursive_convert
-    pre_dc_args = plot.dim_converted.parent.inputs[1]
-    map!(args -> args[end], plot, pre_dc_args, :pre_dc_color)
-    return Dict{Symbol, Any}(:color => plot.pre_dc_color)
+    return Dict{Symbol, Any}(:dim_converted => plot.raw_color)
 end
 
 # Recipe Overwrites
@@ -169,7 +167,7 @@ function add_default_colorbar_attributes(output, overwrites, @nospecialize(plot)
         end
     end
     if !haskey(output, :color) && haskey(plot, :raw_color)
-        output[:color] = plot.raw_color
+        output[:dim_converted] = plot.raw_color
     end
     return output
 end
@@ -200,8 +198,8 @@ function colorbar_attributes_complete(dictlike)
     # Technically colorrange can be derived from colors, and colors are
     # unnecessary with colorrange unless the colormap is categorical.
     # lowclip, highclip and colorscale are generally more niche
-    full = (:colormap, :color, :colorrange, :colorscale, :lowclip, :highclip)
-    return issubset(full, keys(dictlike))
+    full = (:colormap, :colorrange, :colorscale, :lowclip, :highclip)
+    return issubset(full, keys(dictlike)) && (haskey(dictlike, :color) || haskey(dictlike, :dim_converted))
 end
 
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
@@ -243,7 +241,9 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     return Colorbar(fig_or_scene; cmap..., kwargs...)
 end
 
-function initialize_block!(cb::Colorbar)
+block_kwargs(::Type{Colorbar}) = (:dim_converted,)
+
+function initialize_block!(cb::Colorbar; kwargs...)
     blockscene = cb.blockscene
 
     map!(cb, [:size, :vertical], :autosize) do sz, vertical
@@ -265,13 +265,18 @@ function initialize_block!(cb::Colorbar)
         cb.dim_conversion = init
     end
 
-    if !isa(cb.dim_conversion[], Union{Nothing, NoDimConversion})
-        map!(cb, [:dim_conversion, :values], :dc_values) do dc, color
-            converted = convert_dim_value(dc, cb.attributes, color, nothing)
-            return to_color(converted)
-        end
+    if haskey(kwargs, :dim_converted)
+        map!(to_color, cb, kwargs[:dim_converted], :dc_values)
+        on(x -> @error("Colorbar values are controlled by a plot via :dc_values"), cb.values)
     else
-        ComputePipeline.map!(to_color, cb, :values, :dc_values)
+        if !isa(cb.dim_conversion[], Union{Nothing, NoDimConversion})
+            map!(cb, [:dim_conversion, :values], :dc_values) do dc, color
+                converted = convert_dim_value(dc, cb.attributes, color, nothing)
+                return to_color(converted)
+            end
+        else
+            ComputePipeline.map!(to_color, cb, :values, :dc_values)
+        end
     end
 
     map!(cb, :dc_values, :_derived_colorrange) do values
@@ -302,7 +307,7 @@ function initialize_block!(cb::Colorbar)
 
     map!(
         cb,
-        [:color_mapping, :color_mapping_type, :values, :nsteps, :resolved_colorrange],
+        [:color_mapping, :color_mapping_type, :dc_values, :nsteps, :resolved_colorrange],
         :cb_colors
     ) do mapping, mapping_type, values, n, limits
         if mapping_type === Makie.continuous
