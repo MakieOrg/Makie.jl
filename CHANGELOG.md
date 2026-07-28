@@ -3,6 +3,7 @@
 ## Breaking
 
 - **breaking** `text` and `pathtext` no longer style individual characters from a vector `color`, `strokecolor`, `strokewidth` or `fontsize`; `text` reads such a vector as one value per string and both error on a length they can't use. Use `rich` text to style parts of a string.
+- **breaking** A vector `rotation` on `text` is one rotation per string instead of one per glyph, and errors on a length it can't use.
 - **breaking** `pathtext` now draws into a `Glyphs` child plot instead of a `Text` one.
 - Fixed `rich` text in `pathtext` ignoring the plot's `color` for the parts it doesn't style itself, and `alpha` being applied twice.
 - **breaking** `align = (halign, :baseline)` now aligns `rich` text and `LaTeXString`s on their baseline instead of their bottom edge, matching plain strings.

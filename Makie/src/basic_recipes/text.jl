@@ -422,12 +422,12 @@ end
 # An attribute is either one value for all strings or one per string. Indexing per
 # glyph is not supported: shaping can merge code points into a single glyph, so
 # `rich` text is how parts of a string get styled differently.
-function validate_per_string(name::Symbol, value, n_strings::Int)
-    (isscalar(value) || length(value) == n_strings) && return
-    return error(
-        "Expected a scalar $name or one value per string ($n_strings), got $(length(value)). " *
-            "To style parts of a string differently, use `rich` text."
+function validate_per_string(
+        name::Symbol, value, n_strings::Int,
+        hint = "To style parts of a string differently, use `rich` text."
     )
+    (isscalar(value) || length(value) == n_strings) && return
+    return error("Expected a scalar $name or one value per string ($n_strings), got $(length(value)). $hint")
 end
 
 # Apply a per-point transform to a spec's positional data (its first positional arg).
@@ -600,6 +600,11 @@ function register_glyph_placement!(attr::ComputeGraph)
     return register_computation!(attr, inputs, outputs) do inputs, changed, cached
         (; glyph_layout_origins, text_blocks, block_bboxes, block_baselines) = inputs
         (; align, rotation, offset, layout_specs, layout_spec_bboxes, text_spec_block_indices) = inputs
+
+        validate_per_string(
+            :rotation, rotation, length(text_blocks),
+            "Glyphs within a string share one rotation."
+        )
 
         origins, rotations, specs, spec_bboxes = if cached === nothing
             (Point3f[], Quaternionf[], PlotSpec[], Rect3d[])

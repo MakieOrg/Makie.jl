@@ -287,6 +287,11 @@ end
     # rich text is the supported way to style parts of one string
     p = pathtext!(scene, path; text = rich("a", rich("b", color = :red)), space = :pixel)
     @test only(p.plots).color[] == [RGBAf(0, 0, 0, 1), RGBAf(1, 0, 0, 1)]
+
+    @test_throws "Expected a scalar rotation or one value per string (1), got 3." begin
+        rotated = text!(scene, Point2f(0, 0); text = "abc", rotation = [0.0, 0.5, 1.0])
+        rotated.glyph_rotations[]
+    end
 end
 
 @testset "pathtext color" begin
