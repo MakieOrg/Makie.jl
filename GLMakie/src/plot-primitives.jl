@@ -65,12 +65,13 @@ function flag_float64(robj)
         AbstractArray{<:VecTypes{N, Float64}} where {N},
         Observable,
     }
+    allowed = (:gl_zindex, :zindex)
     for (k, v) in robj.buffers
-        k === :gl_zindex && continue
+        k in allowed && continue
         v isa banned_types && error("$k in vertexarray is a banned type $(typeof(v))")
     end
     for (k, v) in robj.uniforms
-        k === :gl_zindex && continue
+        k in allowed && continue
         v isa banned_types && error("$k in uniforms is a banned type: $(typeof(v))")
     end
     return
@@ -220,6 +221,7 @@ function construct_robj(constructor!, screen, scene, attr, args, uniforms, input
         :num_clip_planes => 0, # default for in-shader resolution of clip planes
         # TODO: integrate this into the OIT Render Stage
         :oit_scale => screen.config.transparency_weight_scale,
+        :zindex => args.gl_zindex,
     )
 
     if haskey(attr, :shading)
@@ -241,7 +243,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         :uniform_clip_planes, :uniform_num_clip_planes, :depth_shift, :visible, :fxaa, :gl_zindex,
         :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction
     ]
-    append!(uniforms,core_attributes)
+    append!(uniforms, core_attributes)
     haskey(attr, :preprojection) && push!(uniforms, :preprojection)
     push!(input2glname, :uniform_clip_planes => :clip_planes)
     get!(input2glname, :uniform_num_clip_planes, :num_clip_planes) # don't overwrite

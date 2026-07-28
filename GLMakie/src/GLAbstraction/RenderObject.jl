@@ -42,7 +42,7 @@ mutable struct RenderObject{IndexType, InstanceType}
     observables::Vector{Observable} # for clean up
 
     function RenderObject(
-            context, visible,
+            context, visible, zindex,
             buffers::Dict{Symbol, GLBuffer},
             indices::IndexType,
             instances::InstanceType,
@@ -59,7 +59,7 @@ mutable struct RenderObject{IndexType, InstanceType}
         # and since this is a UUID, it shouldn't matter
         id = pack_bool(RENDER_OBJECT_ID_COUNTER[], fxaa)
         robj = new{IndexType, InstanceType}(
-            context, id, to_value(visible), 0.0,
+            context, id, to_value(visible), zindex,
             buffers, indices, instances, primitive,
             uniforms,
             Dict{Symbol, RenderInstructions}(),
@@ -126,6 +126,7 @@ function RenderObject(context, data::Dict{Symbol, Any})
 
     # Not handled as uniform
     visible = pop!(data, :visible, true)
+    zindex = pop!(data, :zindex, 0.0)
     @assert !isa(visible, Observable) "No more of this!"
 
     # for clean up on deletion
@@ -197,7 +198,7 @@ function RenderObject(context, data::Dict{Symbol, Any})
     cleanup = [:indices, :doc_string] # maybe also: overdraw, transparency, ssao, shading?
     foreach(key -> pop!(data, key, nothing), cleanup)
 
-    robj = RenderObject(context, visible, buffers, indices, instances, primitive, data, observables)
+    robj = RenderObject(context, visible, zindex, buffers, indices, instances, primitive, data, observables)
 
     # automatically integrate object ID, will be discarded if shader doesn't use it
     robj[:objectid] = robj.id
