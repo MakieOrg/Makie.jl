@@ -608,7 +608,23 @@ function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
         return
     end
 
-    robj = plot.attributes[:trace_renderobject][]
+    # Deleting must never *create* the render object.  `computed[]` resolves the
+    # edge, and an edge that never resolved builds its TypedEdge on first
+    # resolve — whose constructor re-runs draw_atomic and push!es the mesh into
+    # a Hikari scene whose GPU arrays may already have been freed, tripping
+    # `resize!(::LavaArray): the backing DataRef was already freed`.  This bites
+    # even when the screen is still open (the guard above only covers the
+    # all-closed case), because `free(scene)` deletes plots one by one.
+    #
+    # If the edge never resolved there is no render object on the GPU, so there
+    # is nothing to delete; otherwise read the cached value rather than
+    # re-resolving, since what we must tear down is what actually exists.
+    computed = plot.attributes[:trace_renderobject]
+    if !Makie.ComputePipeline.is_resolved(computed)
+        delete!(plot.attributes, :trace_renderobject, force=true, recursive=true)
+        return
+    end
+    robj = computed[]
     isnothing(robj) && return
 
     # Find which scene state owns this plot

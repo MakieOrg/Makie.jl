@@ -62,6 +62,19 @@ end
 hasparent(computed::Computed) = isdefined(computed, :parent)
 getparent(computed::Computed) = hasparent(computed) ? computed.parent : nothing
 
+"""
+    is_resolved(computed::Computed) -> Bool
+
+Whether `computed` already holds a value, *without* triggering a resolve.
+
+An edge output only gets its `value` assigned on the first `resolve!`, so this
+answers "has this ever been computed" without causing it to be computed. That
+distinction matters during teardown: `computed[]` on a never-resolved edge
+builds its `TypedEdge`, and that constructor runs the edge callback — so asking
+for a value can create the very resource the caller is trying to destroy.
+"""
+is_resolved(computed::Computed) = isdefined(computed, :value)
+
 struct ResolveException{E <: Exception} <: Exception
     start::Computed
     error::E
@@ -1405,7 +1418,7 @@ end
 
 include("io.jl")
 
-export Computed, ComputeEdge
+export Computed, ComputeEdge, is_resolved
 export ComputeGraph
 export register_computation!, map_latest!
 export add_input!, add_inputs!, add_constant!, add_constants!
