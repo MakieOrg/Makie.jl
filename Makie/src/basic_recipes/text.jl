@@ -176,6 +176,10 @@ end
 #####################################
 # New stuff
 
+# a stand-in for a per-string attribute that has no value to sample yet
+blockfallback(::Type{T}) where {T} = zero(T)
+blockfallback(::Type{<:Quaternion}) = Quaternionf(0, 0, 0, 1)
+
 function per_glyph_block(data, block_idx, N_blocks, block::UnitRange)
     block_length = length(block)
     if isscalar(data)
@@ -189,6 +193,9 @@ function per_glyph_block(data, block_idx, N_blocks, block::UnitRange)
         # attribute vector did (updating a Menu's options resolves the text plot
         # eagerly mid-cascade, before the recolor lands). Clamp instead of
         # erroring — the consistent state resolves right after and re-renders.
+        # An error here is thrown inside the compute graph and takes the whole
+        # render loop down with it, so an empty vector must not throw either.
+        isempty(data) && return fill(blockfallback(eltype(data)), block_length)
         return fill(data[min(block_idx, length(data))], block_length)
     end
 end

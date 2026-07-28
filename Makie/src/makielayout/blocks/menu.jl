@@ -207,19 +207,39 @@ function initialize_block!(m::Menu; default = 1)
 
     textpositions = Observable(zeros(Point2f, length(optionstrings[])); ignore_equal_values = true)
 
-    # band-aid fix for resizing before display
-    on(optionstrings) do strings
-        N = length(strings)
-        if N != length(textpositions[])
-            resize!(textpositions[], N)
-            notify(textpositions)
-        end
-        return
-    end
-
     optionrects = Observable([Rect2d(0, 0, 0, 0)]; ignore_equal_values = true)
     optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values = true)
     optiontextcolors = Observable(fill(to_color(m.textcolor[]), length(optionstrings[])); ignore_equal_values = true)
+
+    # The option list is one text plot with one entry per option, so positions
+    # and colors are per-string vectors that MUST have the length of the new
+    # strings by the time the text plot sees them: it resolves eagerly (the list
+    # height below listens to its glyph boundingboxes), long before the geometry
+    # handler gets to resize anything. A filter that first matches nothing and
+    # then matches again used to leave an EMPTY color vector behind and the text
+    # plot indexed out of bounds — which killed the render loop. The priority
+    # puts this ahead of the plot's own listener.
+    on(blockscene, optionstrings; priority = 1) do strings
+        N = length(strings)
+        if N != length(textpositions[])
+            old = length(textpositions[])
+            resize!(textpositions[], N)
+            for i in (old + 1):N
+                textpositions[][i] = Point2f(0)     # placed by the geometry handler
+            end
+            notify(textpositions)
+        end
+        if N != length(optionrects[]) || N != length(optiontextcolors[])
+            old = length(optionrects[])
+            resize!(optionrects.val, N)
+            for i in (old + 1):N
+                optionrects.val[i] = Rect2d(0, 0, 0, 0)
+            end
+            _update_option_colors!(0, optionstrings, optionpolycolors, optiontextcolors, m, filtered_indices)
+            notify(optionrects)
+        end
+        return
+    end
 
     # the y boundaries of the list rectangles
     list_y_bounds = Ref(Float32[])
