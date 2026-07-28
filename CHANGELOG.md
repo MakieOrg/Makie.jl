@@ -2,13 +2,13 @@
 
 ## Breaking
 
-- **breaking** `text` and `pathtext` no longer style individual characters from a vector `color`, `strokecolor`, `strokewidth` or `fontsize`; `text` reads such a vector as one value per string and both error on a length they can't use. Use `rich` text to style parts of a string.
-- **breaking** A vector `rotation` on `text` is one rotation per string instead of one per glyph, and errors on a length it can't use.
-- **breaking** `pathtext` now draws into a `Glyphs` child plot instead of a `Text` one.
-- Fixed `rich` text in `pathtext` ignoring the plot's `color` for the parts it doesn't style itself, and `alpha` being applied twice.
-- **breaking** `align = (halign, :baseline)` now aligns `rich` text and `LaTeXString`s on their baseline instead of their bottom edge, matching plain strings.
-- **breaking** With `justification = automatic`, a fractional `halign` now justifies by that fraction instead of falling back to `0.5`.
-- **breaking** Added a pluggable `text_handler` attribute and a new `Glyphs` plot primitive. `text` now lays its glyphs out into a `Glyphs` child and can route inputs through a custom layout engine that defines `Makie.layout_text` for the input types it handles, with unhandled types falling back to the built-in path. `Text` is now a container plot, so code that read glyph render attributes (`sdf_uv`, `quad_offset`, `quad_scale`, ...) off a `Text` must read them from its `Glyphs` child instead. [#5713](https://github.com/MakieOrg/Makie.jl/pull/5713)
+- **breaking** `text` and `pathtext` no longer style individual characters from a vector `color`, `strokecolor`, `strokewidth` or `fontsize`; `text` reads such a vector as one value per string and both error on a length they can't use. Use `rich` text to style parts of a string. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
+- **breaking** A vector `rotation` on `text` is one rotation per string instead of one per glyph, and errors on a length it can't use. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
+- **breaking** `pathtext` now draws into a `Glyphs` child plot instead of a `Text` one. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
+- Fixed `rich` text in `pathtext` ignoring the plot's `color` for the parts it doesn't style itself, and `alpha` being applied twice. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
+- **breaking** `align = (halign, :baseline)` now aligns `rich` text and `LaTeXString`s on their baseline instead of their bottom edge, matching plain strings. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
+- **breaking** With `justification = automatic`, a fractional `halign` now justifies by that fraction instead of falling back to `0.5`. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
+- **breaking** Added a pluggable `text_handler` attribute and a new `Glyphs` plot primitive. `text` now lays its glyphs out into a `Glyphs` child and can route inputs through a custom layout engine that defines `Makie.layout_text` for the input types it handles, with unhandled types falling back to the built-in path. `Text` is now a container plot, so code that read glyph render attributes (`sdf_uv`, `quad_offset`, `quad_scale`, ...) off a `Text` must read them from its `Glyphs` child instead. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
 - **breaking** Moved `FFMPEG_jll` from a hard dependency to a package extension to avoid pulling in GPL-licensed libraries (e.g. libx264). `record`, `VideoStream`, `convert_video`, and `extract_frames` now require `FFMPEG_jll` to be available in the active environment; Makie will load it automatically on first use. A custom ffmpeg binary can be configured via `Makie.ffmpeg_path!(path)` (or persistently via Preferences.jl). [#5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
 - Expanded scope of dim converts [#5323](https://github.com/MakieOrg/Makie.jl/pull/5323)
   - **breaking** most plot recipes now set the target types for their conversions. This means `plot!(::PlotType{<:Tuple{<:MyArgType}})` requires introducing a conversion trait and extending `Makie.types_for_plot_arguments()`. See docs.
