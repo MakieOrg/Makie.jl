@@ -78,9 +78,6 @@ end
 # Primitive Plots (recursion endpoints)
 _extract_colormap(@nospecialize(::ComputePlots)) = Dict{Symbol, Any}()
 _extract_colormap(@nospecialize(plot::Voxels)) = Dict{Symbol, Any}(:color => plot.chunk, :colorrange => plot.value_limits)
-function _extract_colormap(@nospecialize(plot::Union{Surface, Heatmap, Image}))
-    return Dict{Symbol, Any}(:dim_converted => plot.raw_color)
-end
 
 # Recipe Overwrites
 
@@ -159,15 +156,19 @@ function add_default_colorbar_attributes(attr, @nospecialize(plot))
     return add_default_colorbar_attributes(Dict{Symbol, Any}(), attr, plot)
 end
 function add_default_colorbar_attributes(output, overwrites, @nospecialize(plot))
-    for name in [:color, :colormap, :colorrange, :colorscale, :lowclip, :highclip, :dim_convert_4]
+    for name in [:colormap, :colorrange, :colorscale, :lowclip, :highclip, :dim_convert_4]
         if haskey(overwrites, name)
             output[name] = overwrites[name]
         elseif haskey(plot, name)
             push!(output, name => plot[name])
         end
     end
-    if !haskey(output, :color) && haskey(plot, :raw_color)
-        output[:dim_converted] = plot.raw_color
+    if !haskey(output, :dim_converted) && !haskey(output, :color)
+        if haskey(plot, :raw_color)
+            output[:dim_converted] = plot.raw_color
+        elseif haskey(plot, :color)
+            output[:color] = plot.color
+        end
     end
     return output
 end
