@@ -238,7 +238,7 @@ end
     TextAttributes
 
 Everything about one text block except the string itself, as handed to
-[`emit_text`](@ref). The values are already resolved for that block: an attribute given
+[`layout_text`](@ref). The values are already resolved for that block: an attribute given
 per string is indexed, `fontsize` is a `Vec2f`, and `justification` is a fraction in 0..1
 (`automatic` folded in against `halign`).
 
@@ -250,7 +250,7 @@ This is a struct rather than a long argument list so that a new attribute can be
 without breaking existing handlers. Destructure the ones you need:
 
 ```julia
-function Makie.emit_text(::MyHandler, str::AbstractString, attributes)
+function Makie.layout_text(::MyHandler, str::AbstractString, attributes)
     (; fontsize, color) = attributes
     # ...
 end
@@ -269,16 +269,16 @@ struct TextAttributes
 end
 
 # Makie's own text layout is just the `handler === nothing` implementation of
-# `emit_text`, so the built-in path and a `text_handler` go through one protocol.
+# `layout_text`, so the built-in path and a `text_handler` go through one protocol.
 
-function emit_text(::Nothing, src, attributes::TextAttributes)
+function layout_text(::Nothing, src, attributes::TextAttributes)
     return error(
         "`text` cannot lay out $(typeof(src)). Pass a `text_handler` with a " *
-            "`emit_text` method for it, or convert it to a String, `rich` text or a LaTeXString."
+            "`layout_text` method for it, or convert it to a String, `rich` text or a LaTeXString."
     )
 end
 
-function emit_text(::Nothing, src::AbstractString, attributes::TextAttributes)
+function layout_text(::Nothing, src::AbstractString, attributes::TextAttributes)
     (; font, fontsize, lineheight, justification, word_wrap_width) = attributes
     layout = layout_string(src, font, fontsize, lineheight, justification, word_wrap_width)
 
@@ -290,9 +290,9 @@ function emit_text(::Nothing, src::AbstractString, attributes::TextAttributes)
     )
 end
 
-function emit_text(::Nothing, src::RichText, attributes::TextAttributes)
+function layout_text(::Nothing, src::RichText, attributes::TextAttributes)
     (; fontsize, font, fonts, justification, lineheight, color) = attributes
-    layout = layout_text(src, fontsize, font, fonts, justification, lineheight, color)
+    layout = layout_richtext(src, fontsize, font, fonts, justification, lineheight, color)
 
     return TextLayout(
         layout.glyphindices, layout.fonts, layout.origins, layout.extents;
@@ -302,7 +302,7 @@ function emit_text(::Nothing, src::RichText, attributes::TextAttributes)
     )
 end
 
-function emit_text(::Nothing, src::LaTeXString, attributes::TextAttributes)
+function layout_text(::Nothing, src::LaTeXString, attributes::TextAttributes)
     (; fontsize, color, strokecolor, strokewidth, word_wrap_width) = attributes
     tex_elements, layout = texelems_and_layout(src, fontsize, color, strokecolor, strokewidth, word_wrap_width)
     # the rules share the glyphs' uniform size (`texelems_and_layout` takes the
@@ -375,7 +375,7 @@ end
 
 
 """
-    emit_text(handler, src, attributes::TextAttributes) -> TextLayout
+    layout_text(handler, src, attributes::TextAttributes) -> TextLayout
 
 Lays out one text block with a `text_handler`. Define methods dispatching on the handler
 and the input type it accepts (e.g. `LaTeXString`) and return one [`TextLayout`](@ref).
@@ -384,13 +384,13 @@ Makie's own layout is the `handler === nothing` implementation of this same func
 is what `text_handler = nothing` means and where input types a handler has no method for
 end up, so handled and unhandled strings mix in one plot without the handler doing
 anything. A handler that only decides once it sees the content hands the block back with
-`emit_text(nothing, src, attributes)`.
+`layout_text(nothing, src, attributes)`.
 
 The appearance attributes in [`TextAttributes`](@ref) are there because a handler may
 either bake them in (a rasterized image can't be recolored afterwards) or include them
 in the returned glyph arrays.
 """
-emit_text(handler, src, attributes) = emit_text(nothing, src, attributes)
+layout_text(handler, src, attributes) = layout_text(nothing, src, attributes)
 
 # Pick out block `i`'s value from each attribute.
 function block_attributes(
@@ -427,12 +427,12 @@ end
     MathTeXHandler()
 
 A `text_handler` that lays out `LaTeXString`s with MathTeXEngine.jl through the
-generic [`emit_text`](@ref) protocol. Setting `text_handler = MathTeXHandler()`
+generic [`layout_text`](@ref) protocol. Setting `text_handler = MathTeXHandler()`
 routes LaTeX math through the pluggable path; non-LaTeX inputs fall through.
 """
 struct MathTeXHandler end
 
-function emit_text(::MathTeXHandler, str::LaTeXString, attributes::TextAttributes)
+function layout_text(::MathTeXHandler, str::LaTeXString, attributes::TextAttributes)
     (; color, strokecolor, strokewidth) = attributes
 
     fs = Vec2f(attributes.fontsize[1])
@@ -533,7 +533,7 @@ function register_glyph_layout!(attr::ComputeGraph)
                 i, fontsize, selected_font, resolved_justification, lineheight,
                 word_wrap_width, fonts, computed_color, strokecolor, strokewidth
             )
-            append_text_layout!(buffer, emit_text(text_handler, str, attributes))
+            append_text_layout!(buffer, layout_text(text_handler, str, attributes))
         end
 
         return node_outputs(buffer)
@@ -1155,7 +1155,7 @@ function GlyphInfo(
 end
 
 
-function layout_text(rt::RichText, ts, f, fset, jus, lh, col)
+function layout_richtext(rt::RichText, ts, f, fset, jus, lh, col)
     lines = [GlyphInfo[]]
 
     gs = GlyphState(0, 0, Vec2f(ts), f, col)

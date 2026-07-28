@@ -175,9 +175,9 @@ struct CountingHandler
     calls::Base.RefValue{Int}
 end
 
-function Makie.emit_text(h::CountingHandler, str, attributes)
+function Makie.layout_text(h::CountingHandler, str, attributes)
     h.calls[] += 1
-    return Makie.emit_text(nothing, str, attributes)
+    return Makie.layout_text(nothing, str, attributes)
 end
 
 @testset "placement does not relayout" begin
@@ -213,7 +213,7 @@ end
 
 struct WrappedTextHandler end
 
-function Makie.emit_text(::WrappedTextHandler, str::WrappedText, attributes)
+function Makie.layout_text(::WrappedTextHandler, str::WrappedText, attributes)
     size = Vec2f(length(str.value), 1)
     spec = Makie.PlotSpec(:Scatter, [Point3f(0.5size[1], 0.5size[2], 0)])
     return Makie.TextLayout(
