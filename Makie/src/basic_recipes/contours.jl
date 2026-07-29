@@ -257,6 +257,8 @@ end
 function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     map!(nan_extrema, plot, :converted_3, :zrange)
     map!(plot, [:levels, :zrange], :zlevels) do levels, zrange
+        zmin, zmax = zrange
+        isapprox(zmin, zmax) && return eltype(zrange)[]
         if levels isa AbstractVector{<:Number}
             return levels
         elseif levels isa Integer
@@ -265,7 +267,12 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
             error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
         end
     end
-    map!(default_automatic, plot, [:colorrange, :zrange], :computed_colorrange)
+    map!(plot, [:colorrange, :zrange], :computed_colorrange) do colorrange, zrange
+        zmin, zmax = default_automatic(colorrange, zrange)
+        isapprox(zmin, zmax) || return (zmin, zmax)
+        delta = max(one(zmin), abs(zmin))
+        return (zmin - delta, zmax + delta)
+    end
 
     map!(
         color_per_level, plot,

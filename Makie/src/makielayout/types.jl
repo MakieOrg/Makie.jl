@@ -2195,7 +2195,7 @@ end
         # Spine
 
         "The width of the spine."
-        spinewidth::Float32 = 2
+        spinewidth::Float32 = 1
         "The color of the spine."
         spinecolor = :black
         "Controls whether the spine is visible."
@@ -2322,7 +2322,7 @@ end
         gridz::Float32 = -100
 
         "The color of the `r` grid."
-        rgridcolor = inherit(scene, (:Axis, :xgridcolor), (:black, 0.5))
+        rgridcolor = inherit(scene, (:Axis, :xgridcolor), RGBAf(0, 0, 0, 0.12))
         "The linewidth of the `r` grid."
         rgridwidth::Float32 = inherit(scene, (:Axis, :xgridwidth), 1)
         "The linestyle of the `r` grid."
@@ -2331,7 +2331,7 @@ end
         rgridvisible::Bool = inherit(scene, (:Axis, :xgridvisible), true)
 
         "The color of the `r` minor grid."
-        rminorgridcolor = inherit(scene, (:Axis, :xminorgridcolor), (:black, 0.2))
+        rminorgridcolor = inherit(scene, (:Axis, :xminorgridcolor), RGBAf(0, 0, 0, 0.05))
         "The linewidth of the `r` minor grid."
         rminorgridwidth::Float32 = inherit(scene, (:Axis, :xminorgridwidth), 1)
         "The linestyle of the `r` minor grid."
@@ -2342,7 +2342,7 @@ end
         # Theta minor and major grid
 
         "The color of the `theta` grid."
-        thetagridcolor = inherit(scene, (:Axis, :ygridcolor), (:black, 0.5))
+        thetagridcolor = inherit(scene, (:Axis, :ygridcolor), RGBAf(0, 0, 0, 0.12))
         "The linewidth of the `theta` grid."
         thetagridwidth::Float32 = inherit(scene, (:Axis, :ygridwidth), 1)
         "The linestyle of the `theta` grid."
@@ -2352,7 +2352,7 @@ end
 
 
         "The color of the `theta` minor grid."
-        thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
+        thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), RGBAf(0, 0, 0, 0.05))
         "The linewidth of the `theta` minor grid."
         thetaminorgridwidth::Float32 = inherit(scene, (:Axis, :yminorgridwidth), 1)
         "The linestyle of the `theta` minor grid."
@@ -2365,13 +2365,13 @@ end
         "The title of the plot"
         title = ""
         "The gap between the title and the top of the axis"
-        titlegap::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> x / 2, inherit(scene, :fontsize, 16)))
+        titlegap::Float32 = inherit(scene, (:Axis, :titlegap), 4)
         "The alignment of the title.  Can be any of `:center`, `:left`, or `:right`."
         titlealign = :center
         "The fontsize of the title."
-        titlesize::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> 1.2x, inherit(scene, :fontsize, 16)))
+        titlesize::Float32 = inherit(scene, (:Axis, :titlesize), inherit(scene, :fontsize, 16))
         "The font of the title."
-        titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, Makie.defaultfont()))
+        titlefont = inherit(scene, (:Axis, :titlefont), :bold)
         "The color of the title."
         titlecolor = inherit(scene, (:Axis, :titlecolor), inherit(scene, :textcolor, :black))
         "Controls if the title is visible."
