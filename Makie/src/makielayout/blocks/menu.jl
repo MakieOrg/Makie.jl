@@ -46,8 +46,7 @@ end
 
 function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
-
-    is_searchable = m.searchable[]
+    
     search_text = Observable("")
 
     listheight = Observable(0.0; ignore_equal_values = true)
@@ -150,12 +149,12 @@ function initialize_block!(m::Menu; default = 1)
     # Handle menu open/close transitions
     on(blockscene, m.is_open) do open
         if open
-            if is_searchable
+            if m.searchable[]
                 displayed_string[] = "" # Clear text so we start fresh with filtering
                 selection_focused[] = true
             end
         else
-            if is_searchable
+            if m.searchable[]
                 selection_focused[] = false
                 search_text[] = ""
             end
@@ -165,7 +164,7 @@ function initialize_block!(m::Menu; default = 1)
 
     # Pipe user keystrokes into search query
     on(blockscene, displayed_string) do s
-        if m.is_open[] && is_searchable
+        if m.is_open[] && m.searchable[]
             search_text[] = s
         end
     end
@@ -195,7 +194,7 @@ function initialize_block!(m::Menu; default = 1)
 
     # A nice in-place placeholder for the search query
     placeholder_visible = lift(blockscene, m.is_open, displayed_string) do open, s
-        return open && is_searchable && isempty(s)
+        return open && m.searchable[] && isempty(s)
     end
 
     placeholder_text = text!(
@@ -327,7 +326,7 @@ function initialize_block!(m::Menu; default = 1)
                     if m.is_open[]
                         # If searchable, clicking inside the box shouldn't close the menu,
                         # so that the user can click to reposition the cursor/select text.
-                        if !is_searchable
+                        if !m.searchable[]
                             m.is_open[] = false
                         end
                     else
