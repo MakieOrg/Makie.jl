@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Improved window resize performance in GLMakie, especially noticeable with many plot objects [#5431](https://github.com/MakieOrg/Makie.jl/pull/5431)
 
 - Added an `absolute` attribute to `dendrogram` that keeps the input leaf positions instead of translating the root to `origin`, making it easy to align leaves to e.g. heatmap rows or columns [#5666](https://github.com/MakieOrg/Makie.jl/pull/5666).
 - `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
