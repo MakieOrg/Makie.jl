@@ -72,6 +72,26 @@ function extract_colormap(plot::Union{Contourf, Tricontourf})
     )
 end
 
+function extract_colormap(plot::Tricontour)
+    levels = ComputePipeline.get_observable!(plot.computed_levels)
+    colorrange = ComputePipeline.get_observable!(plot.computed_colorrange)
+    return ColorMapping(
+        levels[], levels, plot.colormap, colorrange,
+        plot.colorscale, Observable(1.0),
+        Observable(automatic), Observable(automatic), Observable(:transparent)
+    )
+end
+
+function extract_colormap(plot::Contour{<:Tuple{X, Y, Z}}) where {X, Y, Z}
+    levels = ComputePipeline.get_observable!(plot.zlevels)
+    colorrange = ComputePipeline.get_observable!(plot.computed_colorrange)
+    return ColorMapping(
+        levels[], levels, plot.colormap, colorrange,
+        plot.colorscale, Observable(1.0),
+        Observable(automatic), Observable(automatic), Observable(:transparent)
+    )
+end
+
 function extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     levels = ComputePipeline.get_observable!(plot.value_levels)
     # Users may use transparency to make layered isosurfaces visible. Because
@@ -249,7 +269,7 @@ function initialize_block!(cb::Colorbar)
         end
         s_scaled = scale.(colors)
         mini, maxi = extrema(s_scaled)
-        s_scaled = (s_scaled .- mini) ./ (maxi - mini)
+        s_scaled = mini < maxi ? (s_scaled .- mini) ./ (maxi - mini) : fill(0.5f0, length(s_scaled))
         if v
             xrange[] = LinRange(xmin, xmax, 2)
             yrange[] = s_scaled .* (ymax - ymin) .+ ymin
