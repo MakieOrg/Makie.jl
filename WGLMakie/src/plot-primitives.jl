@@ -126,7 +126,7 @@ function create_wgl_renderobject(callback, attr, inputs)
         else
             updates = plot_updates(args, changed)
             last.wgl_renderobject[:visible] = args.visible
-            last.wgl_renderobject[:gl_zindex] = args.gl_zindex
+            last.wgl_renderobject[:gl_zindex] = -args.gl_zindex
             update_values!(last.wgl_update_obs, Bonito.LargeUpdate(updates))
             return nothing
         end
@@ -763,6 +763,6 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     dict[:uniforms][:uniform_clip_planes] = serialize_three(plot.uniform_clip_planes[])
     dict[:uniforms][:uniform_num_clip_planes] = serialize_three(plot.uniform_num_clip_planes[])
     dict[:overdraw] = plot.overdraw[]
-    dict[:zvalue] = Makie.zvalue2d(plot)
+    dict[:gl_zindex] = Makie.zvalue2d(plot)
     return dict
 end
