@@ -64,6 +64,48 @@ end
     fig
 end
 
+@reference_test "Menu search" begin
+    fig = Figure(size = (200, 300))
+
+    fruits = [
+        "Apple", "Apricot", "Banana", "Blackberry", "Blueberry",
+        "Cherry", "Cranberry", "Date", "Elderberry", "Fig",
+        "Grape", "Grapefruit", "Honeydew", "Kiwi", "Lemon",
+        "Lime", "Mango", "Nectarine", "Orange", "Papaya"
+    ]
+
+    sm = Menu(
+        fig[1,1], options = fruits, searchable = true,
+        search_placeholder = "type to filter...", prompt = "Searchable menu..."
+    )
+
+    Box(fig[2, 1])
+    fig
+
+    st = Makie.Stepper(fig)
+
+    click(events(fig), (100, 270))
+    Makie.step!(st) # check default open
+
+    events(fig).unicode_input[] = 'g'
+    Makie.step!(st) # check search
+
+    click(events(fig), (100, 200))
+    Makie.step!(st) # check selection
+
+    click(events(fig), (100, 270))
+    Makie.step!(st) # check search reset
+    click(events(fig), (100, 200))
+    Makie.step!(st) # check selection without search
+
+    click(events(fig), (100, 270))
+    events(fig).unicode_input[] = 'g'
+    click(events(fig), (100, 290))
+    Makie.step!(st) # check no selection
+
+    st
+end
+
 @reference_test "Label with text wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     fig = Figure(size = (1000, 660))
