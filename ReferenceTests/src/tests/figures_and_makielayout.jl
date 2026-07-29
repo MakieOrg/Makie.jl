@@ -71,11 +71,11 @@ end
         "Apple", "Apricot", "Banana", "Blackberry", "Blueberry",
         "Cherry", "Cranberry", "Date", "Elderberry", "Fig",
         "Grape", "Grapefruit", "Honeydew", "Kiwi", "Lemon",
-        "Lime", "Mango", "Nectarine", "Orange", "Papaya"
+        "Lime", "Mango", "Nectarine", "Orange", "Papaya",
     ]
 
     sm = Menu(
-        fig[1,1], options = fruits, searchable = true,
+        fig[1, 1], options = fruits, searchable = true,
         search_placeholder = "type to filter...", prompt = "Searchable menu..."
     )
 

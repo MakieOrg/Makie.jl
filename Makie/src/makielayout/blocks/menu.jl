@@ -46,7 +46,7 @@ end
 
 function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
-    
+
     search_text = Observable("")
 
     listheight = Observable(0.0; ignore_equal_values = true)
