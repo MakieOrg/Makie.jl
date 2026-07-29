@@ -3,6 +3,10 @@
 ## Unreleased
 
 - Added `FastInterpolations` as the default `Resampler` interpolation backend for ~2-9x faster resampling; passing an `Interpolations` degree keeps the old behavior [#5706](https://github.com/MakieOrg/Makie.jl/pull/5706).
+- Fixed `volume` and 3D `contour` plots losing parts of the interior when rendered with mirrored or left-handed transforms, such as with one or three reversed axes in `Axis3`. [#5649](https://github.com/MakieOrg/Makie.jl/issues/5649)
+- Added `tricontour` recipe for plotting isolines on unstructured/scattered data, analogous to `tricontourf`. Supports `Colorbar(fig[1,2], tr)` [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Added `Colorbar(fig[1,2], plt)` support for 2D `contour` plots [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Fixed crashes when plotting constant scalar fields: `contourf`/`tricontourf` now produce evenly-spaced bands around the constant value; `contour` produces no lines; `heatmap` and all colormapped plots no longer error on `colorrange=(c,c)` [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
 - Added an `absolute` attribute to `dendrogram` that keeps the input leaf positions instead of translating the root to `origin`, making it easy to align leaves to e.g. heatmap rows or columns [#5666](https://github.com/MakieOrg/Makie.jl/pull/5666).
 - `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
   `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
