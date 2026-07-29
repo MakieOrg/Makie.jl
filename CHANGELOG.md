@@ -2,10 +2,16 @@
 
 ## Unreleased
 
-- add `searchable` kwarg to Menu [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
+- Added `searchable` kwarg to Menu [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
+- Added an `absolute` attribute to `dendrogram` that keeps the input leaf positions instead of translating the root to `origin`, making it easy to align leaves to e.g. heatmap rows or columns [#5666](https://github.com/MakieOrg/Makie.jl/pull/5666).
+- `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
+  `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
+- Scope the CairoMakie precompile workload's figures inside `let`, so rendered `Screen`s and their pixel buffers are no longer serialized into the package image (~150 MB smaller pkgimage) [#5692](https://github.com/MakieOrg/Makie.jl/pull/5692).
+- `tooltip` now inherits `fontsize` from the theme, sets its default outline `linewidth` to `1.0` to match axis spines, reduces its default `triangle_size` from `10` to `7`, and uses slightly wider horizontal `textpadding` [#5698](https://github.com/MakieOrg/Makie.jl/pull/5698).
 
 ## [0.24.13] - 2026-07-02
 
+- WGLMakie: made scene lookup retry timing configurable via `WGLMAKIE_SCENE_RETRY_DELAY_MS` and `WGLMAKIE_SCENE_RETRY_TOTAL_MS` to avoid timeout failures for slow scene initialization. [#5693](https://github.com/MakieOrg/Makie.jl/pull/5693)
 - WGLMakie: fixed a `Cannot destructure property 'geometry' of 'mesh'` JS error and allow `Bonito@v5` [#5683](https://github.com/MakieOrg/Makie.jl/pull/5683)
 - Adjusted cycled attributes to be marked as `:cycled` instead of `nothing` so that `nothing` doesn't get overridden. This allows e.g. `linestyle = nothing` to be set when `linestyle` is cycled. [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267)
 
@@ -20,6 +26,7 @@
 - Added `samples` as a `volume` attribute for controlling the number of ray samples and added `absorption` as a multiplier for sampled colors with `:additive`. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
 - Adjusted `volume` conversions to preserve `N0f8` and `Float16` types (numbers and color eltypes). This allows users to reduce (v)ram usage by choosing smaller types. [#5660](https://github.com/MakieOrg/Makie.jl/pull/5660)
 - Adjusted volume `algorithm = :additive` to include the ray step size as a weight. This should allow additive volumes to render without downscaling volume data [#5662](https://github.com/MakieOrg/Makie.jl/pull/5662)
+- Adjusted `PolarAxis` defaults to match `Axis`: lightened grid colors (fallback major grid is now `RGBAf(0, 0, 0, 0.12)`, was black at 50%; minor grid is now `RGBAf(0, 0, 0, 0.05)`, was black at 20%), reduced the default `spinewidth` from `2` to `1`, and matched the title `titlefont` (now `:bold`), `titlesize` fallback (now the plain `fontsize` instead of `1.2 × fontsize`), and `titlegap` (now `4`, and correctly inheriting `(:Axis, :titlegap)` instead of `(:Axis, :titlesize)`).
 
 ## [0.24.11] - 2026-05-30
 
