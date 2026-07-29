@@ -480,6 +480,38 @@ end
     @test pl.color[] === :blue
 end
 
+struct WrappedString <: AbstractString
+    s::String
+end
+Base.ncodeunits(w::WrappedString) = ncodeunits(w.s)
+Base.codeunit(w::WrappedString) = codeunit(w.s)
+Base.codeunit(w::WrappedString, i::Integer) = codeunit(w.s, i)
+Base.isvalid(w::WrappedString, i::Integer) = isvalid(w.s, i)
+Base.iterate(w::WrappedString, i::Integer = 1) = iterate(w.s, i)
+Base.String(w::WrappedString) = w.s
+
+@testset "labels of a custom string type" begin
+    @test Makie.iswhitespace(WrappedString("  "))
+    @test !Makie.iswhitespace(WrappedString("ab"))
+    @test !Makie.iswhitespace(42)
+
+    function left_protrusion(ylabel)
+        f = Figure()
+        ax = Axis(f[1, 1]; ylabel)
+        lines!(ax, 1:10, 1:10)
+        Makie.update_state_before_display!(f)
+        return ax.layoutobservables.protrusions[].left
+    end
+
+    @test left_protrusion(WrappedString(" ")) == left_protrusion("")
+    @test left_protrusion(WrappedString("y")) > left_protrusion(WrappedString(" "))
+
+    f = Figure()
+    ax = Axis(f[1, 1], xlabel = WrappedString("x"), title = WrappedString("t"))
+    lines!(ax, 1:10, 1:10)
+    @test_nowarn Makie.update_state_before_display!(f)
+end
+
 @testset "briefly empty ticklabels" begin
     # issue 2079, for some reason at Axis initialization briefly there would be a zero-element
     # ticklabel/position array and this would be split into a Vector{Any} for the positions,
