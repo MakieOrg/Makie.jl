@@ -736,6 +736,7 @@ end
             SliderGrid(
                 scene,
                 (label = "Amplitude", range = 0:0.1:10, startvalue = 5),
+                (label = "Band", type = IntervalSlider, range = 0:0.1:10, startvalues = (2.0, 8.0)),
                 (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
                 (
                     label = "Phase", range = 0:0.01:2pi,
@@ -757,6 +758,40 @@ end
         end
         @test isempty(d)
     end
+end
+
+@testset "SliderGrid with IntervalSlider" begin
+    fig = Figure()
+    sg = SliderGrid(
+        fig[1, 1],
+        (label = "Amplitude", range = 0:0.1:10, startvalue = 5.0),
+        (label = "Band", type = IntervalSlider, range = 0:0.1:10, startvalues = (2.0, 8.0)),
+        (label = "Frequency", range = 0:0.5:50, startvalue = 10.0),
+    )
+
+    @test sg.sliders[1] isa Slider
+    @test sg.sliders[2] isa IntervalSlider
+    @test sg.sliders[3] isa Slider
+
+    @test sg.sliders[1].value[] == 5.0
+    @test sg.sliders[2].interval[] == (2.0, 8.0)
+    @test sg.sliders[3].value[] == 10.0
+
+    @test sg.valuelabels[1].text[] == "5.0"
+    @test sg.valuelabels[2].text[] == "(2.0, 8.0)"
+    @test sg.valuelabels[3].text[] == "10.0"
+
+    set_close_to!(sg.sliders[1], 7.5)
+    @test sg.sliders[1].value[] == 7.5
+    @test sg.valuelabels[1].text[] == "7.5"
+
+    set_close_to!(sg.sliders[2], 3.0, 6.0)
+    @test sg.sliders[2].interval[] == (3.0, 6.0)
+    @test sg.valuelabels[2].text[] == "(3.0, 6.0)"
+
+    set_close_to!(sg.sliders[3], 25.0)
+    @test sg.sliders[3].value[] == 25.0
+    @test sg.valuelabels[3].text[] == "25.0"
 end
 
 @testset "Legend with rich text" begin
