@@ -139,7 +139,6 @@ include("float32-scaling.jl")
 
 include("interfaces.jl")
 include("compute-plots.jl")
-include("units.jl")
 include("shorthands.jl")
 
 # camera types + functions
