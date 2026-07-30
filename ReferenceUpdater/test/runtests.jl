@@ -12,7 +12,7 @@ function make_reference_tree(dir, files)
     return dir
 end
 
-@testset "manifest read/write/classify" begin
+@testset "fragment read/write/classify/prune" begin
     mktempdir() do dir
         refdir = make_reference_tree(
             joinpath(dir, "ref"), [
@@ -22,17 +22,22 @@ end
         )
         h = reference_hash(joinpath(refdir, "CairoMakie/tooltip.png"))
 
-        mpath = joinpath(dir, "manifest.txt")
+        mdir = joinpath(dir, "refimage_updates")
         write_manifest(
             [
                 RefimageUpdate("CairoMakie/tooltip.png", h),
                 RefimageUpdate("GLMakie/tooltip.png", "deadbeef"),
                 RefimageUpdate("CairoMakie/brandnew.png", "new"),
                 RefimageUpdate("WGLMakie/gone.png", "delete"),
-            ], mpath
+            ], mdir
         )
 
-        entries = read_manifest(mpath)
+        # one fragment file per image, at its mirrored path -> no shared file between images
+        @test isfile(joinpath(mdir, "CairoMakie", "tooltip.png.pin"))
+        @test isfile(joinpath(mdir, "GLMakie", "tooltip.png.pin"))
+        @test read(joinpath(mdir, "CairoMakie", "tooltip.png.pin"), String) |> strip == h
+
+        entries = read_manifest(mdir)
         @test length(entries) == 4
 
         c = classify_entries(entries, refdir)
@@ -41,8 +46,10 @@ end
         @test isempty(c.to_delete)
         @test Set(e.path for e in c.inert) == Set(["GLMakie/tooltip.png", "WGLMakie/gone.png"])
 
-        @test Set(e.path for e in prune_inert(entries, refdir)) ==
+        prune_inert!(refdir, mdir)
+        @test Set(e.path for e in read_manifest(mdir)) ==
             Set(["CairoMakie/tooltip.png", "CairoMakie/brandnew.png"])
+        @test !isfile(joinpath(mdir, "GLMakie", "tooltip.png.pin"))   # inert file deleted
     end
 end
 
@@ -54,13 +61,12 @@ end
                 "GLMakie/stale.png" => "stale-bytes",
             ]
         )
-        mpath = joinpath(dir, "manifest.txt")
+        mdir = joinpath(dir, "refimage_updates")
 
-        write_manifest([RefimageUpdate("GLMakie/stale.png", "wronghash")], mpath)
-        add_manifest_selection(["CairoMakie/a.png"], ["GLMakie/dropme.png"], refdir; manifest_path = mpath)
+        write_manifest([RefimageUpdate("GLMakie/stale.png", "wronghash")], mdir)
+        add_manifest_selection(["CairoMakie/a.png"], ["GLMakie/dropme.png"], refdir; manifest_dir = mdir)
 
-        entries = read_manifest(mpath)
-        by_path = Dict(e.path => e.pin for e in entries)
+        by_path = Dict(e.path => e.pin for e in read_manifest(mdir))
         @test !haskey(by_path, "GLMakie/stale.png")               # inert entry pruned
         @test by_path["CairoMakie/a.png"] == reference_hash(joinpath(refdir, "CairoMakie/a.png"))
         @test by_path["GLMakie/dropme.png"] == "delete"
@@ -99,7 +105,7 @@ end
             [
                 RefimageUpdate("CairoMakie/changed.png", h),
                 RefimageUpdate("WGLMakie/newthing.png", "new"),
-            ], joinpath(dir, "refimage_updates.txt")
+            ], joinpath(dir, "refimage_updates")
         )
 
         cov = approval_coverage(dir; threshold = 0.05, reference_folder = refdir)

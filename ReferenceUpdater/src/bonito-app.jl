@@ -726,14 +726,14 @@ end
 const JSHelper = Bonito.ES6Module(normpath(joinpath(@__DIR__, "JSHelper.js")))
 
 """
-    review_content(root_path, backends, score_thresholds; display_threshold=0.001)
+    review_content(root_path, backends, score_thresholds; display_threshold=0.05)
 
 Static, review-only page content: shows only images that differ (score above
 `display_threshold`) or are listed in the manifest, with a per-card before/after toggle
 and no tool controls. Used for the self-contained `export_static` per-PR page.
 """
-function review_content(root_path, backends, score_thresholds; display_threshold = 0.001)
-    manifest_entries = read_manifest(joinpath(root_path, "refimage_updates.txt"))
+function review_content(root_path, backends, score_thresholds; display_threshold = 0.05)
+    manifest_entries = read_manifest(joinpath(root_path, "refimage_updates"))
     manifest_names = Set(replace(e.path, r"(GLMakie|CairoMakie|WGLMakie)/" => "") for e in manifest_entries)
     manifest_new = [e.path for e in manifest_entries if e.pin == "new" && isfile(joinpath(root_path, "recorded", e.path))]
 
@@ -1058,7 +1058,7 @@ function create_app_content(session::Session, root_path::String)
     update_section = DOM.div(
         DOM.h2("Images to update", class = "section-header"),
         DOM.div(
-            "Select the images to update below, then \"Add selection to update manifest\" to record them in ReferenceTests/refimage_updates.txt (they get promoted into the release when the PR merges through the queue). \"Update reference images directly\" is the old maintainer path that overwrites the release tarball for the given version immediately. See Julia terminal for progress updates.",
+            "Select the images to update below, then \"Add selection to update manifest\" to record them in ReferenceTests/refimage_updates/ (they get promoted into the release after the PR merges). \"Update reference images directly\" is the old maintainer path that overwrites the release tarball for the given version immediately. See Julia terminal for progress updates.",
             class = "section-description"
         ),
         DOM.div(

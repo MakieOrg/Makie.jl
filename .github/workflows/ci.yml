@@ -10,6 +10,7 @@ on:
     branches:
       - master
       - 'release-*'
+      - jk/self-contained-refimage-prs
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
@@ -47,15 +48,17 @@ jobs:
     name: Promote reference images
     needs: [reference-tests]
     # Branches allowed to promote reference images into their own refimages-vX.Y
-    # release (only from the merge queue). Enable the merge queue on a branch and
-    # add its ref below to opt it in. `0.26` is the initial test branch.
+    # release. Promotion runs on push, i.e. after a PR lands on the branch; the
+    # merge_group condition additionally covers branches that merge through a queue.
+    # Add a branch's ref below (and to `on.push.branches` if not already covered)
+    # to opt it in. `0.26` is the initial test branch.
     if: >
-      github.event_name == 'merge_group' &&
+      (github.event_name == 'push' || github.event_name == 'merge_group') &&
       contains(fromJSON('[
       "refs/heads/master",
       "refs/heads/0.26",
       "refs/heads/jk/self-contained-refimage-prs"
-      ]'), github.event.merge_group.base_ref)
+      ]'), github.event_name == 'merge_group' && github.event.merge_group.base_ref || github.ref)
     uses: ./.github/workflows/_promote-refimages.yml
     secrets: inherit
 

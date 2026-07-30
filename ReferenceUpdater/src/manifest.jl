@@ -1,18 +1,19 @@
 function add_manifest_selection(
         upload_paths, delete_paths, reference_folder::AbstractString;
-        manifest_path = refimage_manifest_path()
+        manifest_dir = refimage_manifest_dir()
     )
-    kept = prune_inert(read_manifest(manifest_path), reference_folder)
-    new_entries = vcat(
-        [RefimageUpdate(String(p), pin_for(p, reference_folder)) for p in upload_paths],
-        [RefimageUpdate(String(p), "delete") for p in delete_paths],
-    )
-    write_manifest(vcat(kept, new_entries), manifest_path)
-    return manifest_path
+    prune_inert!(reference_folder, manifest_dir)   # drop already-promoted / stale fragments
+    for p in upload_paths
+        write_entry(RefimageUpdate(String(p), pin_for(p, reference_folder)), manifest_dir)
+    end
+    for p in delete_paths
+        write_entry(RefimageUpdate(String(p), "delete"), manifest_dir)
+    end
+    return manifest_dir
 end
 
-add_to_manifest(paths, reference_folder; manifest_path = refimage_manifest_path()) =
-    add_manifest_selection(paths, String[], reference_folder; manifest_path)
+add_to_manifest(paths, reference_folder; manifest_dir = refimage_manifest_dir()) =
+    add_manifest_selection(paths, String[], reference_folder; manifest_dir)
 
 function manifest_candidates(artifact_dir, select; threshold, backends)
     if select isa AbstractVector
@@ -54,7 +55,7 @@ pass a vector of `<Backend>/<name>.png` paths to select explicitly.
 function add_pr_updates_to_manifest(
         pr = nothing; commit = nothing, select = :auto, threshold = 0.05,
         backends = ("GLMakie", "CairoMakie", "WGLMakie"),
-        tag = last_major_version(), manifest_path = refimage_manifest_path()
+        tag = last_major_version(), manifest_dir = refimage_manifest_dir()
     )
     artifact_dir = download_artifacts(; pr, commit)
     reference_folder = download_refimages(tag)
@@ -62,14 +63,14 @@ function add_pr_updates_to_manifest(
         paths = manifest_candidates(artifact_dir, select; threshold, backends)
         if isempty(paths)
             @info "No candidate images to add to the manifest."
-            return manifest_path
+            return manifest_dir
         end
-        add_to_manifest(paths, reference_folder; manifest_path)
-        @info "Added $(length(paths)) entr$(length(paths) == 1 ? "y" : "ies") to $manifest_path"
+        add_to_manifest(paths, reference_folder; manifest_dir)
+        @info "Added $(length(paths)) entr$(length(paths) == 1 ? "y" : "ies") to $manifest_dir"
     finally
         rm(reference_folder; force = true, recursive = true)
     end
-    return manifest_path
+    return manifest_dir
 end
 
 """
@@ -99,7 +100,7 @@ function approval_coverage(root_path; threshold = 0.05, reference_folder = joinp
             push!(new_unapproved, String(p))
         end
     end
-    c = classify_entries(read_manifest(joinpath(root_path, "refimage_updates.txt")), reference_folder)
+    c = classify_entries(read_manifest(joinpath(root_path, "refimage_updates")), reference_folder)
     total = union(changed, new_unapproved, c.exempt_new)
     approved = union(intersect(changed, c.exempt_changed), c.exempt_new)
     return (; n_changed = length(total), n_approved = length(approved))

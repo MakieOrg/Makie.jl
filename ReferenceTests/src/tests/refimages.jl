@@ -79,3 +79,6 @@ end
 @testset "generic_components" begin
     include("generic_components.jl")
 end
+@testset "sandbox" begin
+    include("sandbox.jl")
+end

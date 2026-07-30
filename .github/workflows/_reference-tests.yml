@@ -60,8 +60,8 @@ jobs:
               cp -r "${baseDir}/${dir}/recorded/${dir}/." "./ReferenceImagesCombined/recorded/${dir}/"
           done
 
-          # Bundle the update manifest so the per-PR site build is self-contained
-          cp ReferenceTests/refimage_updates.txt "./ReferenceImagesCombined/refimage_updates.txt"
+          # Bundle the update manifest so the per-PR review page build is self-contained
+          cp -r ReferenceTests/refimage_updates "./ReferenceImagesCombined/refimage_updates"
 
           echo "Files and folders have been successfully combined into ReferenceImagesCombined."
       - uses: actions/upload-artifact@v7
@@ -99,3 +99,50 @@ jobs:
             echo "::error::$N_MISSING missing reference image(s) must be uploaded"
             exit 1
           fi
+
+  review-page:
+    name: Reference image review page
+    runs-on: ubuntu-latest
+    needs: [consolidation]
+    if: always() && needs.consolidation.result == 'success'
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: ReferenceImages
+          path: ./reference_images_data
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v3
+      - name: Install Julia dependencies
+        run: julia --project=reference_images_site -e 'using Pkg; Pkg.instantiate()'
+      - name: Build self-contained review page
+        id: build
+        run: julia --project=reference_images_site reference_images_site/build_review.jl
+      - name: Upload review page (unzipped, viewable directly in the browser)
+        id: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: reference-image-review
+          path: reference_images_site/review/index.html
+          archive: false
+      - name: Post reference images status linking to the review page
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          STATE: ${{ steps.build.outputs.state }}
+          N_CHANGED: ${{ steps.build.outputs.n_changed }}
+          N_APPROVED: ${{ steps.build.outputs.n_approved }}
+          URL: ${{ steps.upload.outputs.artifact-url }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/$SHA" \
+            -f state="$STATE" \
+            -f context="reference images" \
+            -f target_url="$URL" \
+            -f description="$N_APPROVED/$N_CHANGED new/changed images approved via manifest"
