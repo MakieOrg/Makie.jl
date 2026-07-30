@@ -6,11 +6,6 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 };
 in vec3 frag_vert;
 
-const float max_distance = 1.3;
-
-const int num_samples = 200;
-const float step_size = max_distance / float(num_samples);
-
 uniform vec4 uniform_clip_planes[8];
 uniform int uniform_num_clip_planes;
 uniform vec3 light_color;
@@ -21,8 +16,30 @@ uniform mat4 projection, view;
 
 float _normalize(float val, float from, float to) { return (val-from) / (to - from); }
 
+vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
+    float cmin = colorrange.x;
+    float cmax = colorrange.y;
+    if (value <= cmax && value >= cmin) {
+        // in value range, continue!
+    } else if (value < cmin) {
+        return get_lowclip_color();
+    } else if (value > cmax) {
+        return get_highclip_color();
+    } else {
+        // isnan is broken (of course) -.-
+        // so if outside value range and not smaller/bigger min/max we assume NaN
+        return get_nan_color();
+    }
+    float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+    // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+    // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+    float stepsize = 1.0 / float(textureSize(color_map, 0));
+    i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+    return texture(color_map, vec2(i01, 0.0));
+}
+
 vec4 color_lookup(float intensity, sampler2D color_ramp, vec2 norm) {
-    return texture(color_ramp, vec2(_normalize(intensity, norm.x, norm.y), 0.0));
+    return get_color_from_cmap(intensity, color_ramp, norm);
 }
 vec4 color_lookup(vec4 color, bool color_ramp, bool norm) {
     return color; // stub method
@@ -110,66 +127,78 @@ vec4 volume(vec3 front, vec3 dir)
     // If our voxels are not isotropic, then the distance that we trace through
     // depends on the direction.
     vec3  pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0;
+    vec3 color_sum = vec3(0.0);
     int i = 0;
-    for (i; i < num_samples; ++i) {
+    float step_size = length(dir);
+
+    for (i; i < samples; ++i) {
         float intensity = texture(uniform_color, pos).x;
-        vec4 density = color_lookup(intensity, uniform_colormap, uniform_colorrange);
-        float opacity = step_size * density.a * absorption;
-        T *= 1.0 - opacity;
-        if (T <= 0.01)
+        vec4 color_sample = color_lookup(intensity, uniform_colormap, uniform_colorrange);
+
+        float opacity = clamp(step_size * color_sample.a * absorption, 0.0, 1.0);
+        color_sum += (opacity * transmittance) * color_sample.rgb;
+        transmittance *= 1.0 - opacity;
+
+        if (transmittance <= 0.01)
             break;
 
-        Lo += (T*opacity)*density.rgb;
         pos += dir;
     }
-    return vec4(Lo, 1.0 - T);
+    return vec4(color_sum / (1.0 - transmittance), 1.0 - transmittance);
 }
 
 
 vec4 absorptionrgba(vec3 front, vec3 dir)
 {
     vec3  pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0;
+    vec3 color_sum = vec3(0.0);
     int i = 0;
-    for (i; i < num_samples ; ++i) {
-        vec4 density = texture(uniform_color, pos);
-        float opacity = step_size * density.a * absorption;
-        T *= 1.0 - opacity;
-        if (T <= 0.01)
+    float step_size = length(dir);
+
+    for (i; i < samples ; ++i) {
+        vec4 color_sample = texture(uniform_color, pos);
+
+        float opacity = clamp(step_size * color_sample.a * absorption, 0.0, 1.0);
+        color_sum += (transmittance * opacity) * color_sample.rgb;
+        transmittance *= 1.0 - opacity;
+
+        if (transmittance <= 0.01)
             break;
 
-        Lo += (T*opacity)*density.rgb;
         pos += dir;
     }
-    return vec4(Lo, 1.0 - T);
+    return vec4(color_sum / (1.0 - transmittance), 1.0 - transmittance);
 }
 
 vec4 contours(vec3 front, vec3 dir)
 {
     vec3 pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0;
+    vec3 color_sum = vec3(0.0);
     int i = 0;
     vec3 camdir = normalize(dir);
-    for (i; i < num_samples; ++i) {
+    float step_size = length(dir);
+
+    for (i; i < samples; ++i) {
         float intensity = texture(uniform_color, pos).x;
-        vec4 density = color_lookup(intensity, uniform_colormap, uniform_colorrange);
-        float opacity = density.a;
+        vec4 color_sample = color_lookup(intensity, uniform_colormap, uniform_colorrange);
+
+        float opacity = color_sample.a;
         if(opacity > 0.0){
             vec3 N = gennormal(pos, step_size);
             vec3 L = light_direction;
-            vec3 opaque = blinnphong(N, camdir, L, density.rgb);
-            Lo += (T * opacity) * opaque;
-            T *= 1.0 - opacity;
-            if (T <= 0.01)
+            vec3 opaque = blinnphong(N, camdir, L, color_sample.rgb);
+            color_sum += (transmittance * opacity) * opaque;
+            transmittance *= 1.0 - opacity;
+
+            if (transmittance <= 0.01)
                 break;
         }
         pos += dir;
     }
-    return vec4(Lo, 1.0 - T);
+    return vec4(color_sum / (1.0 - transmittance), 1.0 - transmittance);
 }
 
 vec4 isosurface(vec3 front, vec3 dir)
@@ -179,7 +208,9 @@ vec4 isosurface(vec3 front, vec3 dir)
     int i = 0;
     vec4 diffuse_color = color_lookup(isovalue, uniform_colormap, uniform_colorrange);
     vec3 camdir = normalize(dir);
-    for (i; i < num_samples; ++i){
+    float step_size = length(dir);
+
+    for (i; i < samples; ++i){
         float density = texture(uniform_color, pos).x;
         if(abs(density - isovalue) < isorange){
             vec3 N = gennormal(pos, step_size);
@@ -195,16 +226,24 @@ vec4 isosurface(vec3 front, vec3 dir)
     return c;
 }
 
+bool less_than_max(float val, bool range) { return true; }
+bool less_than_max(float val, vec2 range) { return (val < range.y); }
+
 vec4 mip(vec3 front, vec3 dir)
 {
     vec3 pos = front + dir;
-    int i = 1;
-    float maximum = texture(uniform_color, front).x;
-    for (i; i < num_samples; ++i, pos += dir){
+    int i = 0;
+    float maximum = -10000000000000000.0;
+    bool highclip_visible = get_highclip_color().a > 0.0;
+
+    for (i; i < samples; ++i, pos += dir){
         float density = texture(uniform_color, pos).x;
-        if(maximum < density)
+        bool consider_sample = less_than_max(density, uniform_colorrange) || highclip_visible;
+        if (consider_sample && (maximum < density))
             maximum = density;
     }
+    if (maximum == -10000000000000000.0)
+        maximum = 10000000000000000.0;
     return color_lookup(maximum, uniform_colormap, uniform_colorrange);
 }
 
@@ -212,9 +251,10 @@ vec4 additivergba(vec3 front, vec3 dir)
 {
     vec3 pos = front;
     vec4 integrated_color = vec4(0., 0., 0., 0.);
+    float step_size = length(dir);
     int i = 0;
-    for (i; i < num_samples ; ++i) {
-        vec4 density = texture(uniform_color, pos);
+    for (i; i < samples ; ++i) {
+        vec4 density = absorption * step_size * texture(uniform_color, pos);
         integrated_color = 1.0 - (1.0 - integrated_color) * (1.0 - density);
         pos += dir;
     }
@@ -224,20 +264,24 @@ vec4 additivergba(vec3 front, vec3 dir)
 vec4 volumeindexedrgba(vec3 front, vec3 dir)
 {
     vec3 pos = front;
-    float T = 1.0;
-    vec3 Lo = vec3(0.0);
+    float transmittance = 1.0;
+    vec3 color_sum = vec3(0.0);
     int i = 0;
-    for (i; i < num_samples; ++i) {
+    float step_size = length(dir);
+
+    for (i; i < samples; ++i) {
         int index = int(texture(uniform_color, pos).x) - 1;
-        vec4 density = color_lookup(uniform_colormap, index);
-        float opacity = step_size * density.a * absorption;
-        Lo += (T*opacity)*density.rgb;
-        T *= 1.0 - opacity;
-        if (T <= 0.01)
+        vec4 color_sample = color_lookup(uniform_colormap, index);
+
+        float opacity = clamp(step_size * color_sample.a * absorption, 0.0, 1.0);
+        color_sum += (transmittance * opacity) * color_sample.rgb;
+        transmittance *= 1.0 - opacity;
+
+        if (transmittance <= 0.01)
             break;
         pos += dir;
     }
-    return vec4(Lo, 1.0 - T);
+    return vec4(color_sum / (1.0 - transmittance), 1.0 - transmittance);
 }
 
 uniform uint objectid;
@@ -272,30 +316,7 @@ bool process_clip_planes(inout vec3 p1, inout vec3 p2)
 
 
 bool no_solution(float x){
-    return x <= 0.0001 || isinf(x) || isnan(x);
-}
-
-float min_bigger_0(float a, float b){
-    bool a_no = no_solution(a);
-    bool b_no = no_solution(b);
-    if(a_no && b_no){
-        // no solution
-        return typemax;
-    }
-    if(a_no){
-        return b;
-    }
-    if(b_no){
-        return a;
-    }
-    return min(a, b);
-}
-
-float min_bigger_0(vec3 v1, vec3 v2){
-    float x = min_bigger_0(v1.x, v2.x);
-    float y = min_bigger_0(v1.y, v2.y);
-    float z = min_bigger_0(v1.z, v2.z);
-    return min(x, min(y, z));
+    return abs(x) < 0.0001 || isinf(x) || isnan(x);
 }
 
 vec2 encode_uint_to_float(uint value) {
@@ -315,31 +336,52 @@ void main()
 {
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
-    vec3 back_position = frag_vert;
-    vec3 dir = normalize(eye_unit - back_position);
+    vec3 back_position = frag_vert; // frag_vert is different from GLMakie here
+    vec3 dir = normalize(back_position - eye_unit);
 
     bool is_outside_box = (eye_unit.x < 0.0 || eye_unit.y < 0.0 || eye_unit.z < 0.0
             || eye_unit.x > 1.0 || eye_unit.y > 1.0 || eye_unit.z > 1.0);
 
-    vec3 start = eye_unit;
-    vec3 stop = back_position;
+    // Find the true ray interval through the unit box. The rasterized cube
+    // face only provides screen coverage; the exit point must not depend on
+    // front/back face classification.
+    if ((dir.x == 0.0 && dir.y == 0.0 && dir.z == 0.0) || isnan(dir.x) || isnan(dir.y) || isnan(dir.z))
+        discard;
 
-    if (is_outside_box) {
-        // only trace inside the box:
-        // solve back_position + distance * dir == 1
-        // solve back_position + distance * dir == 0
-        // to see where it first hits unit cube!
-        vec3 solution_1 = (1.0 - back_position) / dir;
-        vec3 solution_0 = (0.0 - back_position) / dir;
-        float solution = min_bigger_0(solution_1, solution_0);
-        start = back_position + solution * dir;
-    }
+    // Find box - ray intersection so we can skip tracing rays outside the box
+    // Solve
+    //  cube_max = 1 = eye_unit + solution_1 * dir
+    //  cube_min = 0 = eye_unit + solution_0 * dir
+    vec3 solution_1 = (1.0 - eye_unit) / dir;
+    vec3 solution_0 = (0.0 - eye_unit) / dir;
+
+    vec3 solutions_min = min(solution_0, solution_1);
+    vec3 solutions_max = max(solution_0, solution_1);
+
+    // exclude inf/nan solutions from dir[i] = 0
+    solutions_min.x = no_solution(solutions_min.x) ? -typemax : solutions_min.x;
+    solutions_min.y = no_solution(solutions_min.y) ? -typemax : solutions_min.y;
+    solutions_min.z = no_solution(solutions_min.z) ? -typemax : solutions_min.z;
+    solutions_max.x = no_solution(solutions_max.x) ? typemax : solutions_max.x;
+    solutions_max.y = no_solution(solutions_max.y) ? typemax : solutions_max.y;
+    solutions_max.z = no_solution(solutions_max.z) ? typemax : solutions_max.z;
+
+    // We're inside the cube when every dimension has entered it (max of min solution)
+    // and none has left it (min of max solution)
+    float start_solution = max(max(solutions_min.x, solutions_min.y), solutions_min.z);
+    float stop_solution = min(min(solutions_max.x, solutions_max.y), solutions_max.z);
+
+    if (stop_solution < max(start_solution, 0.0))
+        discard;
+
+    vec3 start = eye_unit + (is_outside_box ? start_solution : 0.0) * dir;
+    vec3 stop = eye_unit + stop_solution * dir;
 
     // if completely clipped discard this ray tracing attempt
     if (process_clip_planes(start, stop))
         discard;
 
-    vec3 step_in_dir = (stop - start) / float(num_samples);
+    vec3 step_in_dir = (stop - start) / float(samples);
 
     if(algorithm == 0)
         color = isosurface(start, step_in_dir);

@@ -2,10 +2,36 @@
 
 ## Unreleased
 
+- Added support for `IntervalSlider`s in `SliderGrid` via the `type` keyword
+- `poly` no longer builds the stroke outline when `strokewidth` is `0`, and no longer widens 2D input to 3D points when computing the outline. For a `poly` of 457k points this cuts allocations from 94 MiB to 32 MiB when unstroked (`strokewidth` defaults to `0`) and to 87 MiB when stroked [#5713](https://github.com/MakieOrg/Makie.jl/pull/5713).
+- Fixed `volume` and 3D `contour` plots losing parts of the interior when rendered with mirrored or left-handed transforms, such as with one or three reversed axes in `Axis3`. [#5649](https://github.com/MakieOrg/Makie.jl/issues/5649)
+- Added `tricontour` recipe for plotting isolines on unstructured/scattered data, analogous to `tricontourf`. Supports `Colorbar(fig[1,2], tr)` [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Added `Colorbar(fig[1,2], plt)` support for 2D `contour` plots [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Fixed crashes when plotting constant scalar fields: `contourf`/`tricontourf` now produce evenly-spaced bands around the constant value; `contour` produces no lines; `heatmap` and all colormapped plots no longer error on `colorrange=(c,c)` [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Added an `absolute` attribute to `dendrogram` that keeps the input leaf positions instead of translating the root to `origin`, making it easy to align leaves to e.g. heatmap rows or columns [#5666](https://github.com/MakieOrg/Makie.jl/pull/5666).
+- `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
+  `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
+- Scope the CairoMakie precompile workload's figures inside `let`, so rendered `Screen`s and their pixel buffers are no longer serialized into the package image (~150 MB smaller pkgimage) [#5692](https://github.com/MakieOrg/Makie.jl/pull/5692).
+- `tooltip` now inherits `fontsize` from the theme, sets its default outline `linewidth` to `1.0` to match axis spines, reduces its default `triangle_size` from `10` to `7`, and uses slightly wider horizontal `textpadding` [#5698](https://github.com/MakieOrg/Makie.jl/pull/5698).
+
+## [0.24.13] - 2026-07-02
+
+- WGLMakie: made scene lookup retry timing configurable via `WGLMAKIE_SCENE_RETRY_DELAY_MS` and `WGLMAKIE_SCENE_RETRY_TOTAL_MS` to avoid timeout failures for slow scene initialization. [#5693](https://github.com/MakieOrg/Makie.jl/pull/5693)
+- WGLMakie: fixed a `Cannot destructure property 'geometry' of 'mesh'` JS error and allow `Bonito@v5` [#5683](https://github.com/MakieOrg/Makie.jl/pull/5683)
+- Adjusted cycled attributes to be marked as `:cycled` instead of `nothing` so that `nothing` doesn't get overridden. This allows e.g. `linestyle = nothing` to be set when `linestyle` is cycled. [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267)
+
+## [0.24.12] - 2026-06-18
+
 - `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).
 - Fixed `contourf` not rendering non-closed contours [#5651](https://github.com/MakieOrg/Makie.jl/issues/5651).
 - Fixed WGLMakie flickering while continuously resizing a canvas by re-rendering right after the resize.
 - Fixed WGLMakie crashing on a `null` WebGL context; it now shows the WebGL error message and requests the context with `failIfMajorPerformanceCaveat: false`.
+- Updated `volume` colormapping to include `lowclip`, `highclip` and `nancolor`. This affects `:absorption`, `:mip` and `:iso` algorithms as well as 3D `contour` plots. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
+- Fixed some errors with the color accumulation of `:absorption`, `:absorptionrgba` and `:indexedabsorption` algorithms in `volume` plots. Renders should no longer over sample thin regions (corners and edges of the volume bounding box) and otherwise be brighter. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
+- Added `samples` as a `volume` attribute for controlling the number of ray samples and added `absorption` as a multiplier for sampled colors with `:additive`. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
+- Adjusted `volume` conversions to preserve `N0f8` and `Float16` types (numbers and color eltypes). This allows users to reduce (v)ram usage by choosing smaller types. [#5660](https://github.com/MakieOrg/Makie.jl/pull/5660)
+- Adjusted volume `algorithm = :additive` to include the ray step size as a weight. This should allow additive volumes to render without downscaling volume data [#5662](https://github.com/MakieOrg/Makie.jl/pull/5662)
+- Adjusted `PolarAxis` defaults to match `Axis`: lightened grid colors (fallback major grid is now `RGBAf(0, 0, 0, 0.12)`, was black at 50%; minor grid is now `RGBAf(0, 0, 0, 0.05)`, was black at 20%), reduced the default `spinewidth` from `2` to `1`, and matched the title `titlefont` (now `:bold`), `titlesize` fallback (now the plain `fontsize` instead of `1.2 × fontsize`), and `titlegap` (now `4`, and correctly inheriting `(:Axis, :titlegap)` instead of `(:Axis, :titlesize)`).
 
 ## [0.24.11] - 2026-05-30
 
@@ -1029,7 +1055,9 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...HEAD
+[0.24.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.12...v0.24.13
+[0.24.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...v0.24.12
 [0.24.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.10...v0.24.11
 [0.24.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.9...v0.24.10
 [0.24.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.8...v0.24.9

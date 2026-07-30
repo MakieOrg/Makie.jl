@@ -1,7 +1,7 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.24.11"
 authors = ["Simon Danisch", "Julius Krumbiegel"]
+version = "0.24.13"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -67,9 +67,6 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [weakdeps]
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 
-[sources.ComputePipeline]
-path = "../ComputePipeline"
-
 [extensions]
 MakieDynamicQuantitiesExt = "DynamicQuantities"
 
@@ -128,9 +125,12 @@ SignedDistanceFields = "0.4"
 SparseArrays = "1.0, 1.6"
 Statistics = "1, 1.6"
 StatsBase = "0.31, 0.32, 0.33, 0.34"
-StatsFuns = "0.9, 1.0"
+StatsFuns = "0.9, 1.0, 2"
 StructArrays = "0.3, 0.4, 0.5, 0.6, 0.7"
 TriplotBase = "=0.1.0"
 UnicodeFun = "0.4"
 Unitful = "1"
 julia = "1.10"
+
+[sources.ComputePipeline]
+path = "../ComputePipeline"

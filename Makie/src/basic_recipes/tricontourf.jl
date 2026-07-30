@@ -59,11 +59,11 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     mixin_generic_plot_attributes()...
 end
 
-function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
+function used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
     return (:triangulation,)
 end
 
-function Makie.convert_arguments(
+function convert_arguments(
         ::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
         triangulation = DelaunayTriangulation()
     )
@@ -114,7 +114,7 @@ function _calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Floa
         end
 
         for pointvec in pointvecs
-            p = Makie.Polygon(pointvec)
+            p = Polygon(pointvec)
             push!(polys, p)
             push!(colors, lc)
         end
@@ -122,7 +122,7 @@ function _calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Floa
     return
 end
 
-function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
+function plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
     graph = c.attributes
 
     # prepare levels, colormap related nodes
