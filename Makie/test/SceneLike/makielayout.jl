@@ -39,6 +39,49 @@ end
     @test m2.filter[]("sinh", "sin") == false
 end
 
+@testset "Searchable Menu filtering" begin
+    fig = Figure()
+    m = Menu(fig[1, 1], options = ["Apple", "Apricot", "Banana"], searchable = true)
+    Makie.update_state_before_display!(fig)
+    e = events(fig)
+
+    bbox = m.layoutobservables.computedbbox[]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(bbox) .+ widths(bbox) ./ 2))
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+
+    optiontexts = m.blockscene.children[1].plots[2]::Makie.Text
+    e.unicode_input[] = 'p'
+    @test optiontexts.text[] == ["Apple", "Apricot"]
+    @test length(optiontexts.color[]) == 2
+
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.backspace, Keyboard.press)
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.backspace, Keyboard.release)
+    @test optiontexts.text[] == ["Apple", "Apricot", "Banana"]
+    @test length(optiontexts.color[]) == 3
+end
+
+@testset "Menu option text colors" begin
+    fig = Figure()
+    m = Menu(fig[1, 1], options = ["a", "b", "c"], default = "b", textcolor_hover = :red)
+    Makie.update_state_before_display!(fig)
+    e = events(fig)
+
+    bbox = m.layoutobservables.computedbbox[]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(bbox) .+ widths(bbox) ./ 2))
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+
+    menuscene = m.blockscene.children[1]
+    optionpolys = menuscene.plots[1]::Poly
+    optiontexts = menuscene.plots[2]::Makie.Text
+    @test optiontexts.color[] == to_color.([:black, :white, :black])
+
+    option = optionpolys.converted[][1][3]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(option) .+ widths(option) ./ 2 .+ Makie.origin(viewport(menuscene)[])))
+    @test optiontexts.color[] == to_color.([:black, :white, :red])
+end
+
 @testset "Generic Block functionality" begin
     for T in subtypes(Makie.Block)
         T === Makie.AbstractAxis && continue

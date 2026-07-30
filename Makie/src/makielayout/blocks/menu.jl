@@ -1,4 +1,17 @@
-function _update_option_colors!(hovered, optionstrings, optionpolycolors, m, filtered_indices)
+function _option_text_colors(hovered, optionstrings, m, filtered_indices)
+    return map(eachindex(optionstrings)) do idx
+        global_idx = filtered_indices[][idx]
+        if global_idx == m.i_selected[]
+            return to_color(m.textcolor_active[])
+        elseif idx == hovered
+            return to_color(m.textcolor_hover[])
+        else
+            return to_color(m.textcolor[])
+        end
+    end
+end
+
+function _update_option_colors!(hovered, optionstrings, optionpolycolors, optiontexts, m, filtered_indices)
     n = length(optionstrings[])
     resize!(optionpolycolors.val, n)
     map!(optionpolycolors.val, 1:n) do idx
@@ -15,6 +28,7 @@ function _update_option_colors!(hovered, optionstrings, optionpolycolors, m, fil
             end
         end
     end
+    optiontexts.color = _option_text_colors(hovered, optionstrings[], m, filtered_indices)
     return notify(optionpolycolors)
 end
 
@@ -219,16 +233,6 @@ function initialize_block!(m::Menu; default = 1)
 
     textpositions = Observable(zeros(Point2f, length(optionstrings[])); ignore_equal_values = true)
 
-    # band-aid fix for resizing before display
-    on(optionstrings) do strings
-        N = length(strings)
-        if N != length(textpositions[])
-            resize!(textpositions[], N)
-            notify(textpositions)
-        end
-        return
-    end
-
     optionrects = Observable([Rect2d(0, 0, 0, 0)]; ignore_equal_values = true)
     optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values = true)
 
@@ -238,9 +242,22 @@ function initialize_block!(m::Menu; default = 1)
     optionpolys = poly!(menuscene, optionrects, color = optionpolycolors, inspectable = false)
 
     optiontexts = text!(
-        menuscene, textpositions, text = optionstrings, align = (:left, :center),
-        fontsize = m.fontsize, inspectable = false
+        menuscene, textpositions, text = optionstrings[], align = (:left, :center),
+        fontsize = m.fontsize, color = _option_text_colors(0, optionstrings[], m, filtered_indices),
+        inspectable = false
     )
+
+    # band-aid fix for resizing before display. Texts and their colors have to be set in
+    # one update because computing the glyphs errors while the two have different lengths
+    on(optionstrings) do strings
+        N = length(strings)
+        if N != length(textpositions[])
+            resize!(textpositions[], N)
+            notify(textpositions)
+        end
+        update!(optiontexts, text = strings, color = _option_text_colors(0, strings, m, filtered_indices))
+        return
+    end
 
     # listheight needs to be up to date before showing the menuscene so that its
     # direction is correct
@@ -270,7 +287,7 @@ function initialize_block!(m::Menu; default = 1)
             BBox(0, w_bbox, h - heights_cumsum[i + 1], h - heights_cumsum[i])
         end
 
-        _update_option_colors!(0, optionstrings, optionpolycolors, m, filtered_indices)
+        _update_option_colors!(0, optionstrings, optionpolycolors, optiontexts, m, filtered_indices)
         notify(optionrects)
         return
     end
@@ -308,7 +325,7 @@ function initialize_block!(m::Menu; default = 1)
                     m.is_open[] = false
                 else # HOVER
                     idx_hovered = _pick_entry(mp[2], menuscene, list_y_bounds)
-                    _update_option_colors!(idx_hovered, optionstrings, optionpolycolors, m, filtered_indices)
+                    _update_option_colors!(idx_hovered, optionstrings, optionpolycolors, optiontexts, m, filtered_indices)
                 end
             else
                 # If not inside anymore, invalidate was_pressed

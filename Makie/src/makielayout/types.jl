@@ -1409,6 +1409,10 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
         textpadding = (8, 10, 8, 8)
         "Color of entry texts"
         textcolor = :black
+        "Color of the text of the entry that is the current selection"
+        textcolor_active = :white
+        "Color of the text of the entry that is hovered"
+        textcolor_hover = :black
         "The opening direction of the menu (:up or :down)"
         direction = automatic
         "The default message prompting a selection when i == 0"
