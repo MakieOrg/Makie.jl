@@ -49,8 +49,8 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         @testset "refimages" begin
             ReferenceTests.mark_broken_tests()
             recorded_files, recording_dir = @include_reference_tests GLMakie "refimages.jl" joinpath(@__DIR__, "glmakie_refimages.jl")
-            missing_images, scores = ReferenceTests.record_comparison(recording_dir, "GLMakie")
-            ReferenceTests.test_comparison(scores; threshold = 0.05)
+            missing_images, scores, exempt = ReferenceTests.record_comparison(recording_dir, "GLMakie")
+            ReferenceTests.test_comparison(scores; threshold = 0.05, exempt)
         end
 
         GLMakie.closeall()
