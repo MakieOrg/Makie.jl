@@ -13,6 +13,7 @@
   `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
 - Scope the CairoMakie precompile workload's figures inside `let`, so rendered `Screen`s and their pixel buffers are no longer serialized into the package image (~150 MB smaller pkgimage) [#5692](https://github.com/MakieOrg/Makie.jl/pull/5692).
 - `tooltip` now inherits `fontsize` from the theme, sets its default outline `linewidth` to `1.0` to match axis spines, reduces its default `triangle_size` from `10` to `7`, and uses slightly wider horizontal `textpadding` [#5698](https://github.com/MakieOrg/Makie.jl/pull/5698).
+- Fixed plots in `Axis3` not clipping in the correct place due to `clip_planes` not getting updated [#5723](https://github.com/MakieOrg/Makie.jl/pull/5723)
 
 ## [0.24.13] - 2026-07-02
 
