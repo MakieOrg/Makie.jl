@@ -138,10 +138,10 @@ function initialize_block!(m::Menu; default = 1)
 
     button_hovered = Observable(false)
     selectionpoly_color = lift(
-        blockscene, button_hovered, m.selection_cell_color_inactive,
-        m.cell_color_hover
-    ) do hovered, inactive, hover
-        hovered ? to_color(hover) : to_color(inactive)
+        blockscene, button_hovered, m.is_open,
+        m.selection_cell_color_inactive, m.cell_color_hover
+    ) do hovered, is_open, inactive, hover
+        return (hovered && !is_open) ? to_color(hover) : to_color(inactive)
     end
     selectionpoly = poly!(
         blockscene, selectionarea, color = selectionpoly_color;
@@ -312,8 +312,11 @@ function initialize_block!(m::Menu; default = 1)
         # track if we have been inside menu/options to clean up if we haven't been
         is_over_options = false
         is_over_button = false
+        is_inside_menuscene = false
+        consume = false
 
         if Makie.is_mouseinside(menuscene) # the whole scene containing all options
+            is_inside_menuscene = true
             # Is inside the expanded menu selection (the polys cover the whole
             # selectable area and are in pixel space relative to menuscene)
             if any(r -> mp in r, optionpolys[1][])
@@ -331,7 +334,7 @@ function initialize_block!(m::Menu; default = 1)
                 # If not inside anymore, invalidate was_pressed
                 was_pressed_options[] = false
             end
-            return Consume(true)
+            consume = true
         else
             # If not inside menuscene, we check the state for the menu button
             # (use position because selectionpoly is in blockscene)
@@ -352,7 +355,7 @@ function initialize_block!(m::Menu; default = 1)
                         y_for_top_align = height(menuscene.viewport[]) - listheight[]
                         translate!(menuscene, t[1], y_for_top_align, t[3])
                     end
-                    return Consume(true)
+                    consume = true
                 else # HOVER
                     button_hovered[] = true
                 end
@@ -368,11 +371,20 @@ function initialize_block!(m::Menu; default = 1)
         end
 
         # clean up hovers if we're outside
-        if !is_over_button && !is_over_options && butt.button == Mouse.left && butt.action == Mouse.press
+        if !is_over_options && was_inside_options[] # going from being inside to outside
+            was_inside_options[] = false
+            _update_option_colors!(0, optionstrings, optionpolycolors, optiontexts, m, filtered_indices)
+        end
+        if !is_over_button && was_inside_button[]
+            was_inside_button[] = false
+            button_hovered[] = false
+        end
+        # if mouse got over anything else, we close the menu
+        if !is_over_button && !is_inside_menuscene && butt.button == Mouse.left && butt.action == Mouse.press
             m.is_open[] = false
         end
 
-        return Consume(false)
+        return Consume(consume)
     end
 
     on(blockscene, menuscene.events.scroll; priority = 61) do (x, y)

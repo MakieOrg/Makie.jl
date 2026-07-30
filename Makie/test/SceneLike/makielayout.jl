@@ -82,6 +82,36 @@ end
     @test optiontexts.color[] == to_color.([:black, :white, :red])
 end
 
+@testset "Menu selection box hover color" begin
+    fig = Figure()
+    m = Menu(fig[1, 1], options = ["a", "b", "c"], selection_cell_color_inactive = :red, cell_color_hover = :orange)
+    Makie.update_state_before_display!(fig)
+    selectionpoly = m.blockscene.plots[1]::Poly
+    e = events(fig)
+    click() = (
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press);
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    )
+
+    bbox = m.layoutobservables.computedbbox[]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(bbox) .+ widths(bbox) ./ 2))
+    @test to_color(selectionpoly.color[]) == to_color(:orange)
+
+    click()
+    @test m.is_open[]
+    @test to_color(selectionpoly.color[]) == to_color(:red)
+
+    menuscene = m.blockscene.children[1]
+    option = menuscene.plots[1].converted[][1][2]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(option) .+ widths(option) ./ 2 .+ Makie.origin(viewport(menuscene)[])))
+    @test to_color(selectionpoly.color[]) == to_color(:red)
+
+    click()
+    @test !m.is_open[]
+    @test m.selection[] == "b"
+    @test to_color(selectionpoly.color[]) == to_color(:red)
+end
+
 @testset "Generic Block functionality" begin
     for T in subtypes(Makie.Block)
         T === Makie.AbstractAxis && continue
