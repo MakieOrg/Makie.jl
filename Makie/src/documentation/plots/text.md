@@ -290,4 +290,4 @@ end
 ```
 
 To write a handler rather than use one, see the docstrings of `Makie.layout_text`, `Makie.TextLayout` and `Makie.TextAttributes`.
-`Makie.MathTeXHandler()` is a worked example: it lays `LaTeXString`s out with MathTeXEngine.jl through this protocol, doing what the built-in path does internally.
+Makie's own layout is written against the same protocol, as the `handler === nothing` implementation of `layout_text`, so its methods for `String`, `RichText` and `LaTeXString` are worked examples of it.

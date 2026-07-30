@@ -142,12 +142,10 @@ function append_per_glyph!(dest::Vector, value, n::Int)
     return
 end
 
-spec_position_bboxes(specs) = Rect3d[Rect3d(first(spec.args)) for spec in specs]
-
 """
     TextLayout(glyphindices, fonts, origins, extents; bbox, baseline, scales,
         colors, strokecolors, strokewidths, specs = PlotSpec[],
-        spec_bboxes = spec_position_bboxes(specs))
+        spec_bboxes = Rect3d[])
 
 The layout result for one scalar text value. `origins` are in the layout frame,
 described by `bbox` (the box `align` positions) and `baseline` (the y that
@@ -155,10 +153,10 @@ described by `bbox` (the box `align` positions) and `baseline` (the y that
 are per glyph; the remaining glyph attributes are either per glyph or one value
 for the whole block.
 
-`specs` contains non-glyph plots such as LaTeX rules or a handler-rendered image,
-with one visual bounding box each in `spec_bboxes`. Those default to the bounding
-boxes of the specs' positions and should be given when the visual extent differs
-from them (e.g. an image marker).
+`specs` contains non-glyph plots such as LaTeX rules or a handler-rendered image.
+Each one needs its visual bounding box in `spec_bboxes`, which only the handler
+knows: a spec's positions don't imply its extent (a scatter marker covers far more
+than the point it sits on).
 """
 struct TextLayout{I, F, O, E, S, C, SC, SW}
     glyphindices::I
@@ -178,7 +176,7 @@ end
 function TextLayout(
         glyphindices, fonts, origins, extents;
         bbox, baseline, scales, colors, strokecolors, strokewidths,
-        specs = PlotSpec[], spec_bboxes = spec_position_bboxes(specs)
+        specs = PlotSpec[], spec_bboxes = Rect3d[]
     )
     return TextLayout(
         glyphindices, fonts, origins, extents, scales, colors, strokecolors,
@@ -186,7 +184,7 @@ function TextLayout(
     )
 end
 
-function TextLayout(; bbox, baseline, specs = PlotSpec[], spec_bboxes = spec_position_bboxes(specs))
+function TextLayout(; bbox, baseline, specs = PlotSpec[], spec_bboxes = Rect3d[])
     return TextLayout(
         UInt64[], NativeFont[], Point3f[], GlyphExtent[];
         bbox, baseline, scales = Vec2f[], colors = RGBAf[],
@@ -308,13 +306,16 @@ function layout_text(::Nothing, src::LaTeXString, attributes::TextAttributes)
     # the rules share the glyphs' uniform size (`texelems_and_layout` takes the
     # first component too)
     spec = tex_linesegment_spec(tex_elements, fontsize[1], color)
+    # a rule's extent is its two end points, give or take its thickness
+    specs = spec === nothing ? PlotSpec[] : PlotSpec[spec]
+    spec_bboxes = Rect3d[Rect3d(first(s.args)) for s in specs]
 
     return TextLayout(
         layout.glyphindices, layout.fonts, layout.origins, layout.extents;
         bbox = layout.bbox, baseline = layout.baseline,
         scales = layout.scales, colors = layout.colors,
         strokecolors = layout.strokecolors, strokewidths = layout.strokewidths,
-        specs = spec === nothing ? PlotSpec[] : PlotSpec[spec],
+        specs, spec_bboxes,
     )
 end
 
@@ -436,56 +437,6 @@ function transform_text_spec(spec::PlotSpec, f)
     new_args = copy(spec.args)
     new_args[1] = new_positions
     return PlotSpec(spec.type, new_args...; spec.kwargs...)
-end
-
-"""
-    MathTeXHandler()
-
-A `text_handler` that lays out `LaTeXString`s with MathTeXEngine.jl through the
-generic [`layout_text`](@ref) protocol. Setting `text_handler = MathTeXHandler()`
-routes LaTeX math through the pluggable path; non-LaTeX inputs fall through.
-"""
-struct MathTeXHandler end
-
-function layout_text(::MathTeXHandler, str::LaTeXString, attributes::TextAttributes)
-    (; color, strokecolor, strokewidth) = attributes
-
-    fs = Vec2f(attributes.fontsize[1])
-    all_els = generate_tex_elements(str)
-    els = filter(x -> x[1] isa TeXChar, all_els)
-    texchars = [x[1] for x in els]
-    scales = Vec2f[Vec2f(x[3] * fs) for x in els]
-    glyphindices = UInt64[FreeTypeAbstraction.glyph_index(tc) for tc in texchars]
-    glyphfonts = NativeFont[tc.font for tc in texchars]
-    extents = GlyphExtent.(texchars)
-    origins = Point3f[to_ndim(Vec3f, fs, 0) .* to_ndim(Point3f, x[2], 0) for x in els]
-
-    bboxes = map(extents, scales) do ext, scale
-        unscaled = height_insensitive_boundingbox_with_advance(ext)
-        return Rect2f(origin(unscaled) * scale, widths(unscaled) * scale)
-    end
-    bb = isempty(bboxes) ? Rect2f(0, 0, 0, 0) : mapreduce(union, zip(bboxes, origins)) do (b, pos)
-            return Rect2f(Rect3f(b) + pos)
-    end
-
-    rule_points = Point3f[]
-    rule_widths = Float32[]
-    for (element, position, _) in all_els
-        element isa MathTeXEngine.HLine || continue
-        x, y = position
-        push!(rule_points, to_ndim(Point3f, fs .* Point2f(x, y), 0), to_ndim(Point3f, fs .* Point2f(x + element.width, y), 0))
-        w = Float32(fs[1] * element.thickness)
-        push!(rule_widths, w, w)
-    end
-    specs = isempty(rule_points) ? PlotSpec[] :
-        PlotSpec[PlotSpec(:LineSegments, rule_points; linewidth = rule_widths, color = color)]
-
-    # MathTeXEngine's frame already has the baseline at y = 0
-    return TextLayout(
-        glyphindices, glyphfonts, origins, extents;
-        bbox = bb, baseline = 0.0f0, scales, colors = color,
-        strokecolors = strokecolor, strokewidths = strokewidth, specs,
-    )
 end
 
 # `align` only reaches text layout through this: automatic justification follows
