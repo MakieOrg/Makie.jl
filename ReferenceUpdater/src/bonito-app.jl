@@ -1058,7 +1058,7 @@ function create_app_content(session::Session, root_path::String)
     update_section = DOM.div(
         DOM.h2("Images to update", class = "section-header"),
         DOM.div(
-            "Select the images to update below, then \"Add selection to update manifest\" to record them in ReferenceTests/refimage_updates/ (they get promoted into the release when the PR merges through the queue). \"Update reference images directly\" is the old maintainer path that overwrites the release tarball for the given version immediately. See Julia terminal for progress updates.",
+            "Select the images to update below, then \"Add selection to update manifest\" to record them in ReferenceTests/refimage_updates/ (they get promoted into the release after the PR merges). \"Update reference images directly\" is the old maintainer path that overwrites the release tarball for the given version immediately. See Julia terminal for progress updates.",
             class = "section-description"
         ),
         DOM.div(
