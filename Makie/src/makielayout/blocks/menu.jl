@@ -4,9 +4,9 @@ function _update_option_colors!(hovered, optionstrings, optionpolycolors, m, fil
     map!(optionpolycolors.val, 1:n) do idx
         global_idx = filtered_indices[][idx]
         if global_idx == m.i_selected[]
-            return m.cell_color_active[]
+            return to_color(m.cell_color_active[])
         elseif idx == hovered
-            return m.cell_color_hover[]
+            return to_color(m.cell_color_hover[])
         else
             if iseven(idx)
                 to_color(m.cell_color_inactive_even[])
