@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Added `searchable` kwarg to Menu [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
+- `Menu` is now searchable: typing while it is open filters the options. Set `searchable = false` for the old behavior [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
 - Added `textcolor_active` and `textcolor_hover` attributes to `Menu`, with the selected entry now white by default [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
 - Fixed `Menu` erroring on hover when `cell_color_hover` or `cell_color_active` were not `RGBA` values [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
 - Added support for `IntervalSlider`s in `SliderGrid` via the `type` keyword

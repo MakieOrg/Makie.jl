@@ -1356,18 +1356,19 @@ on(menu2.selection) do selected_function
 end
 ```
 
-`searchable = true` adds a text box at the top of the dropdown
-that filters the visible options as the user types. The filter predicate is the
-filter attribute and defaults to a case-insensitive substring match on the
-option label.  `searchable` is only honored at construction time.  `i_selected`
-and `selection` always reference the original options, not the visible subset.
+By default the menu is searchable: while it is open, its selection box acts as a
+text box and typing filters the visible options. The filter predicate is the
+`filter` attribute and defaults to a case-insensitive substring match on the
+option label. Set `searchable = false` for a plain dropdown; the attribute is
+only honored at construction time. `i_selected` and `selection` always reference
+the original options, not the visible subset.
 
 ```julia
 menu3 = Menu(fig[1, 1], options = ["Apple", "Apricot", "Banana", "Cherry"],
-             searchable = true, search_placeholder = "filter fruit...")
+             search_placeholder = "filter fruit...")
 # custom filter: prefix match instead of substring
 menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
-             searchable = true, filter = (q, label) -> startswith(label, q))
+             filter = (q, label) -> startswith(label, q))
 ```
 """
 @Block Menu begin
@@ -1424,8 +1425,8 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
         prompt = "Select..."
         "Speed of scrolling in large Menu lists."
         scroll_speed = 15.0
-        "If `true`, the dropdown is preceded by a text box that filters options by `filter(query, label)`. Honored only at construction time."
-        searchable = false
+        "If `true`, the open menu's selection box acts as a text box that filters options by `filter(query, label)`. Honored only at construction time."
+        searchable = true
         "Placeholder text for the search box when `searchable = true`."
         search_placeholder = "Search..."
         "Predicate `(query::String, label::String) -> Bool` deciding whether an option matches the search. Used only when `searchable = true`."

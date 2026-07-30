@@ -85,6 +85,25 @@ interaction_record(fig, "menu_example.mp4", events)
 ```
 
 
+## Searching
+
+While a menu is open, its selection box acts as a text box and typing filters the visible options. The `filter` attribute decides what counts as a match and defaults to a case-insensitive substring match on the option label. Set `searchable = false` for a plain dropdown without this behavior.
+
+```@figure backend=GLMakie
+fig = Figure(size = (300, 300))
+
+menu = Menu(
+    fig[1, 1], tellheight = false, valign = :top,
+    options = ["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Grape"],
+    search_placeholder = "type to filter..."
+)
+
+menu.is_open = true
+events(fig).unicode_input[] = 'b'
+
+fig
+```
+
 ## Menu direction
 
 You can change the direction of the menu with `direction = :up` or `direction = :down`. By default, the direction is determined automatically to avoid cutoff at the figure boundaries.
