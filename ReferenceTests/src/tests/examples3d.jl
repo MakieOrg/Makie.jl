@@ -327,7 +327,7 @@ end
     )
 
     a, p = surface(fig[2, 1], x, y, z)
-    Makie.rotate!(p, Vec3f(0, 1, 1), pi/2)
+    Makie.rotate!(p, Vec3f(0, 1, 1), pi / 2)
 
     fig
 end
