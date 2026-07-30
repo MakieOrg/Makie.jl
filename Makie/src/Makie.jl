@@ -84,7 +84,7 @@ import InverseFunctions
 
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
-export Pixel, px, Unit, plotkey, attributes, used_attributes
+export plotkey, attributes, used_attributes
 export Linestyle
 assetpath(files...) = normpath(joinpath(artifact"MakieAssets", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))
@@ -292,10 +292,6 @@ export DateTimeTicks
 # Transformations
 export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, data_limits
-
-# Spaces for widths and markers
-const PixelSpace = Pixel
-export SceneSpace, PixelSpace, Pixel
 
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d

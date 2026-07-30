@@ -209,6 +209,8 @@ function screen_relative(scene::Scene, mpos)
     return Point2f(mpos) .- Point2f(minimum(viewport(scene)[]))
 end
 
+@deprecate to_screen(scene::Scene, mpos) screen_relative false
+
 """
     mouseposition(scene = hovered_scene())
 
