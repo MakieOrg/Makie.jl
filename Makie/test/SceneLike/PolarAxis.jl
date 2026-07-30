@@ -49,7 +49,7 @@
                             # mirror = false: axis on counterclockwise side, ticks on clockwise side
                             # mirror = true: axis on cw side, ticks on ccw
                             s, c = sincos(angle + ifelse(mirror, pi / 2, -pi / 2))
-                            @test rticklabelplot.offset[] ≈ 10.0f0 * Vec3f(c, s, 0)
+                            @test rticklabelplot.offset[] ≈ 10.0f0 * Point2f(c, s)
 
                             # tick rotation:
                             # synched with picked angle
@@ -77,7 +77,7 @@
                     # clockwise or counterclockwise side of r line?
                     offset_dir_angle = label_angle + ifelse(mirror, pi / 2, -pi / 2)
                     s, c = sincos(offset_dir_angle)
-                    @test rticklabelplot.offset[] ≈ 10.0f0 * Vec3f(c, s, 0)
+                    @test rticklabelplot.offset[] ≈ 10.0f0 * Point2f(c, s)
 
                     s, c = sincos(offset_dir_angle - v)
                     scale = 1 / max(abs(s), abs(c))
@@ -93,7 +93,7 @@
                     label_angle = po.direction[] * (po.theta_0[] + tick_side_shift)
                     offset_dir_angle = label_angle + ifelse(mirror, pi / 2, -pi / 2)
                     s, c = sincos(offset_dir_angle)
-                    @test rticklabelplot.offset[] ≈ 10.0f0 * Vec3f(c, s, 0)
+                    @test rticklabelplot.offset[] ≈ 10.0f0 * Point2f(c, s)
                     scale = 1 / max(abs(s), abs(c))
                     @test rticklabelplot.align[] ≈ Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
                 end
@@ -109,7 +109,7 @@
                     label_angle = po.direction[] * (po.theta_0[] + tick_side_shift)
                     offset_dir_angle = label_angle + ifelse(mirror, pi / 2, -pi / 2)
                     s, c = sincos(offset_dir_angle)
-                    @test rticklabelplot.offset[] ≈ 10.0f0 * Vec3f(c, s, 0)
+                    @test rticklabelplot.offset[] ≈ 10.0f0 * Point2f(c, s)
 
                     @test mod(rticklabelplot.attributes.inputs[:rotation].value, -pi .. pi) ≈ mod(offset_dir_angle, -pi .. pi) atol = 1.0e-6
                 end

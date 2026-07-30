@@ -445,7 +445,7 @@ end
 # valign, or halign on left-justified text) is filtered by `is_same` and never
 # triggers a relayout.
 function register_resolved_justification!(attr::ComputeGraph)
-    return map!(attr, [:input_text, :justification, :align], :resolved_justification) do input_text, justification, align
+    return map!(attr, [:input_text, :justification, :validated_align], :resolved_justification) do input_text, justification, align
         isscalar(justification) && isscalar(align) && return justification2float(justification, align[1])
         # per-block values, so `input_text` sets the count rather than either input
         return Float32[
@@ -466,13 +466,14 @@ function register_glyph_layout!(attr::ComputeGraph)
         :word_wrap_width,
         :fonts,
         :computed_color,
-        :strokecolor,
+        :converted_strokecolor,
         :strokewidth,
     ]
     outputs = collect(fieldnames(GlyphBuffer))
     return register_computation!(attr, inputs, outputs) do inputs, changed, cached
         (; input_text, text_handler, fontsize, selected_font, resolved_justification) = inputs
-        (; lineheight, word_wrap_width, fonts, computed_color, strokecolor, strokewidth) = inputs
+        (; lineheight, word_wrap_width, fonts, computed_color, strokewidth) = inputs
+        (; converted_strokecolor) = inputs
 
         buffer = cached === nothing ? GlyphBuffer() : GlyphBuffer(cached)
 
@@ -480,7 +481,7 @@ function register_glyph_layout!(attr::ComputeGraph)
                 !changed.input_text && !changed.fontsize && !changed.selected_font &&
                 !changed.resolved_justification && !changed.lineheight &&
                 !changed.word_wrap_width && !changed.fonts
-            refill_display_attributes!(buffer, computed_color, strokecolor, strokewidth)
+            refill_display_attributes!(buffer, computed_color, converted_strokecolor, strokewidth)
             return node_outputs(buffer)
         end
 
@@ -489,7 +490,7 @@ function register_glyph_layout!(attr::ComputeGraph)
         for (name, value) in [
                 (:fontsize, fontsize), (:font, selected_font), (:lineheight, lineheight),
                 (:word_wrap_width, word_wrap_width), (:color, computed_color),
-                (:strokecolor, strokecolor), (:strokewidth, strokewidth),
+                (:strokecolor, converted_strokecolor), (:strokewidth, strokewidth),
             ]
             validate_per_string(name, value, N)
         end
@@ -497,7 +498,7 @@ function register_glyph_layout!(attr::ComputeGraph)
         for (i, str) in enumerate(input_text)
             attributes = block_attributes(
                 i, fontsize, selected_font, resolved_justification, lineheight,
-                word_wrap_width, fonts, computed_color, strokecolor, strokewidth
+                word_wrap_width, fonts, computed_color, converted_strokecolor, strokewidth
             )
             append_text_layout!(buffer, layout_text(text_handler, str, attributes))
         end
@@ -544,13 +545,14 @@ and moving it.
 function register_glyph_placement!(attr::ComputeGraph)
     inputs = [
         :glyph_layout_origins, :text_blocks, :block_bboxes, :block_baselines,
-        :align, :rotation, :offset,
+        :validated_align, :rotation, :converted_offset,
         :layout_specs, :layout_spec_bboxes, :text_spec_block_indices,
     ]
     outputs = [:glyph_origins, :glyph_rotations, :text_specs, :text_spec_bboxes]
     return register_computation!(attr, inputs, outputs) do inputs, changed, cached
         (; glyph_layout_origins, text_blocks, block_bboxes, block_baselines) = inputs
-        (; align, rotation, offset, layout_specs, layout_spec_bboxes, text_spec_block_indices) = inputs
+        (; rotation, layout_specs, layout_spec_bboxes, text_spec_block_indices) = inputs
+        (; validated_align, converted_offset) = inputs
 
         validate_per_string(
             :rotation, rotation, length(text_blocks),
@@ -564,7 +566,7 @@ function register_glyph_placement!(attr::ComputeGraph)
         end
 
         shifts = map(eachindex(text_blocks)) do i
-            return block_alignment_shift(block_bboxes[i], block_baselines[i], sv_getindex(align, i))
+            return block_alignment_shift(block_bboxes[i], block_baselines[i], sv_getindex(validated_align, i))
         end
 
         for (i, block) in enumerate(text_blocks)
@@ -577,7 +579,7 @@ function register_glyph_placement!(attr::ComputeGraph)
 
         for (spec, bbox, i) in zip(layout_specs, layout_spec_bboxes, text_spec_block_indices)
             rot = to_rotation(sv_getindex(rotation, i))
-            off = to_ndim(Vec3f, sv_getindex(offset, i), 0)
+            off = to_ndim(Vec3f, sv_getindex(converted_offset, i), 0)
             push!(specs, place_spec(spec, rot, shifts[i], off))
             push!(spec_bboxes, rotate_bbox(bbox - to_ndim(Vec3d, shifts[i], 0), rot) + off)
         end
@@ -591,7 +593,7 @@ function register_text_computations!(attr::ComputeGraph)
 
     # Resolve colormapping to colors early. This allows rich text which returns
     # its own colors to be mixed with other text types which dont.
-    add_computation!(attr, Val(:computed_color))
+    add_computation!(attr, Val(:computed_color); nan_color = :converted_nan_color)
 
     register_resolved_justification!(attr)
 
@@ -600,7 +602,7 @@ function register_text_computations!(attr::ComputeGraph)
 
     register_glyph_placement!(attr)
 
-    map!(attr, [:glyph_origins, :offset, :text_blocks], :marker_offset) do origins, offset, blocks
+    map!(attr, [:glyph_origins, :converted_offset, :text_blocks], :marker_offset) do origins, offset, blocks
         return Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r]
     end
 
@@ -627,17 +629,36 @@ get_text_type(::T) where {T} = T
 function calculated_attributes!(::Type{Text}, plot::Plot)
     attr = plot.attributes
 
-    register_colormapping!(attr)
+    # `Text` is a recipe, so its attributes arrive unconverted. Layout bakes colors into
+    # the glyph arrays and placement needs a 3d offset, so it converts what it consumes;
+    # what it forwards to the `Glyphs` child is converted there.
+    map!(to_color, attr, :color, :converted_color)
+    map!(to_color, attr, :nan_color, :converted_nan_color)
+    map!(to_color, attr, :strokecolor, :converted_strokecolor)
+    map!(to_3d_offset, attr, :offset, :converted_offset)
+    map!(attr, :align, :validated_align) do align
+        validate_text_align(align)
+        return align
+    end
+    register_colormapping!(attr, :converted_color)
     register_text_computations!(attr)
-    register_glyphs!(plot)
-    return register_text_plotlist!(plot)
+    return
+end
+
+function plot!(plot::Text)
+    # `add_text_specs!` projects each block's anchor position, which needs the camera.
+    # Primitives get this from `connect_plot!`; a recipe asks for it.
+    register_camera!(parent_scene(plot), plot)
+    add_glyphs!(plot)
+    add_text_specs!(plot)
+    return plot
 end
 
 # Materialize the non-glyph text specs (LaTeX rules, handler images, ...) as a plotlist
 # child. Each spec is in its block's markerspace frame; here we add the block's projected
 # position (per camera) and render in markerspace. Empty for plain text, so the plotlist
 # has no children and no render objects.
-function register_text_plotlist!(plot)
+function add_text_specs!(plot)
     register_model_clip_planes!(plot.attributes)
     map!(
         plot.attributes,
@@ -659,7 +680,7 @@ function register_text_plotlist!(plot)
     return plotlist!(plot, plot._shifted_text_specs)
 end
 
-function register_glyphs!(plot)
+function add_glyphs!(plot)
     return glyphs!(
         plot, plot.per_glyph_positions;
         glyphindices = plot.glyph_indices,

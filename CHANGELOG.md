@@ -4,6 +4,7 @@
 
 - **breaking** `text` and `pathtext` no longer style individual characters from a vector `color`, `strokecolor`, `strokewidth` or `fontsize`; `text` reads such a vector as one value per string and both error on a length they can't use. Use `rich` text to style parts of a string. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
 - **breaking** A vector `rotation` on `text` is one rotation per string instead of one per glyph, and errors on a length it can't use. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
+- **breaking** `text` is a regular recipe now rather than a primitive plot, so reading an attribute off a `Text` gives the value as passed instead of a converted one (`plot.offset` stays a `Point2f` instead of becoming a `Vec3f`, `plot.color` stays `:red`), matching every other recipe. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
 - Fixed an axis label, title or subtitle of a string type other than `String` erroring instead of being laid out. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
 - **breaking** `pathtext` now draws into a `Glyphs` child plot instead of a `Text` one. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
 - Fixed `rich` text in `pathtext` ignoring the plot's `color` for the parts it doesn't style itself, and `alpha` being applied twice. [#5717](https://github.com/MakieOrg/Makie.jl/pull/5717)
