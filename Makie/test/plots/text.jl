@@ -294,6 +294,31 @@ end
     end
 end
 
+@testset "generic attributes reach the children" begin
+    scene = Scene(camera = campixel!)
+    p = text!(scene, Point2f(0, 0), text = L"\frac{a}{b}", fontsize = 20)
+    Makie.update_state_before_display!(scene)
+    glyphs, specs = p.plots[1], p.plots[2]
+
+    # GLMakie and WGLMakie build render objects from leaf plots, so a stale `visible`
+    # on the child draws text the parent hides
+    for value in (false, true)
+        p.visible = value
+        @test glyphs.visible[] == value
+        @test only(specs.plots).visible[] == value
+    end
+
+    p.depth_shift = 0.25f0
+    @test glyphs.depth_shift[] == 0.25f0
+    p.transparency = true
+    @test glyphs.transparency[] == true
+
+    # `alpha` is folded into the glyph colors, so passing it on would apply it twice
+    p.alpha = 0.5
+    @test glyphs.alpha[] == 1.0
+    @test glyphs.color[][1] == RGBAf(0, 0, 0, 0.5)
+end
+
 @testset "per string strokewidth reaches the glyphs" begin
     scene = Scene(camera = campixel!)
     p = text!(scene, [Point2f(0, 0), Point2f(100, 0)], text = ["ab", "cde"], strokewidth = [1, 2])

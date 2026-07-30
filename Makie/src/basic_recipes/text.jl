@@ -664,16 +664,17 @@ function add_text_specs!(plot)
         plot.attributes,
         [
             :text_specs, :text_spec_block_indices, :preprojection, :model_f32c,
-            :positions_transformed_f32c, :model_clip_planes, :space, :markerspace,
+            :positions_transformed_f32c, :model_clip_planes, :space, :markerspace, :visible,
         ],
         :_shifted_text_specs,
-    ) do specs, block_indices, preprojection, model_f32c, positions, clip_planes, space, markerspace
+    ) do specs, block_indices, preprojection, model_f32c, positions, clip_planes, space, markerspace, visible
         isempty(specs) && return PlotSpec[]
         ms_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
         return map(specs, block_indices) do spec, bidx
             shifted = transform_text_spec(spec, p -> p + ms_positions[bidx])
             kw = copy(shifted.kwargs)
             kw[:space] = markerspace
+            kw[:visible] = visible
             return PlotSpec(shifted.type, shifted.args...; kw...)
         end
     end
@@ -682,7 +683,15 @@ end
 
 function add_glyphs!(plot)
     return glyphs!(
-        plot, plot.per_glyph_positions;
+        plot,
+        # everything not resolved per glyph below travels as is, so `visible`,
+        # `depth_shift`, `fxaa` and friends reach what actually draws. `alpha` is
+        # excluded because it is already folded into the glyph colors.
+        shared_attributes(
+            plot, Glyphs;
+            drop = [:color, :alpha, :strokecolor, :strokewidth, :rotation, :marker_offset]
+        ),
+        plot.per_glyph_positions;
         glyphindices = plot.glyph_indices,
         font_per_char = plot.glyph_fonts,
         marker_offset = plot.marker_offset,
@@ -691,11 +700,6 @@ function add_glyphs!(plot)
         rotation = plot.glyph_rotations,
         strokecolor = plot.glyph_strokecolors,
         strokewidth = plot.glyph_strokewidths,
-        glowcolor = plot.glowcolor,
-        glowwidth = plot.glowwidth,
-        markerspace = plot.markerspace,
-        transform_marker = plot.transform_marker,
-        space = plot.space,
     )
 end
 
