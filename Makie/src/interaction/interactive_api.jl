@@ -387,7 +387,7 @@ function select_point(scene; blocking = false, priority = 2, kwargs...)
     point_ret = Observable(Point2f(0, 0))
     # Create an initially hidden  arrow
     plotted_point = scatter!(
-        scene, point; visible = false, marker = Circle, markersize = 20px,
+        scene, point; visible = false, marker = Circle, markersize = 20,
         color = RGBAf(0.1, 0.1, 0.8, 0.5), kwargs...,
     )
 
