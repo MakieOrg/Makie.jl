@@ -241,6 +241,14 @@ end
         @test poly_plot.visible[] == true
     end
 
+    @testset "External text shrink with active selection" begin
+        f, et = _make_editor("hello world"; cursors = [EditCursor(0, 11)], focused = true)
+        et.arg1 = ""
+        Makie.update_state_before_display!(f)
+        rects = only(p for p in et.plots if p isa Poly).arg1[]
+        @test rects == Rect2f[]
+    end
+
     @testset "Drag extends selection" begin
         f, et = _make_editor("hello world"; cursors = [EditCursor(0)], focused = false)
         ev = events(f)
