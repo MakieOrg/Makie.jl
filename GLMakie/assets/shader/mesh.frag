@@ -118,6 +118,8 @@ vec4 get_pattern_color(Nothing color){return vec4(1,0,1,1);}
 
 void write2framebuffer(vec4 color, uvec2 id);
 
+vec4 apply_stroke(vec4 color);
+
 #ifndef NO_SHADING
 vec3 illuminate(vec3 normal, vec3 base_color);
 #endif
@@ -133,6 +135,7 @@ void main(){
     #ifndef NO_SHADING
     color.rgb = illuminate(normalize(o_world_normal), color.rgb);
     #endif
+    color = apply_stroke(color);
 
 #ifdef PICKING_INDEX_FROM_UV
     ivec2 size = textureSize(image, 0);

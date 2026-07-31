@@ -1103,6 +1103,38 @@ function assemble_mesh_robj!(data, screen::Screen, attr, args, input2glname)
     return draw_mesh(screen, data)
 end
 
+# Packs stroke data into 9 samplerBuffer texels per triangle: 3x the corner positions
+# with the width multiplier of the edge from that corner to the next, then per corner
+# 2x wing edge endpoints with their width multipliers (width 0 = unused slot).
+function register_stroke_data!(attr)
+    return map!(
+        attr,
+        [:positions_transformed_f32c, :faces, :stroke_edge_widths, :stroke_wing_indices, :stroke_wing_widths],
+        :gl_stroke_data
+    ) do positions, faces, edge_widths, wing_indices, wing_widths
+        isempty(edge_widths) && return fill(Vec4f(0), 9)
+        at(idx) = to_ndim(Point3f, positions[idx], 0.0f0)
+        data = Vector{Vec4f}(undef, 9 * length(faces))
+        for (t, f) in enumerate(faces)
+            base = 9 * (t - 1)
+            for i in 1:3
+                p = at(f[i])
+                data[base + i] = Vec4f(p[1], p[2], p[3], edge_widths[t][i])
+            end
+            for k in 1:6
+                idx = wing_indices[t][k]
+                if idx == 0
+                    data[base + 3 + k] = Vec4f(0)
+                else
+                    p = at(idx)
+                    data[base + 3 + k] = Vec4f(p[1], p[2], p[3], wing_widths[t][k])
+                end
+            end
+        end
+        return data
+    end
+end
+
 function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     attr = plot.attributes
 
@@ -1110,6 +1142,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.register_world_normalmatrix!(attr)
     Makie.register_view_normalmatrix!(attr)
+    register_stroke_data!(attr)
 
     inputs = [
         # Special
@@ -1123,6 +1156,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :view_normalmatrix, :pattern_uv_transform, :fetch_pixel,
         :interpolate_in_fragment_shader,
+        :strokewidth, :strokecolor, :gl_stroke_data,
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -1131,6 +1165,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :lowclip_color => :lowclip, :highclip_color => :highclip,
         :scaled_color => :image, :model_f32c => :model,
         :pattern_uv_transform => :uv_transform,
+        :gl_stroke_data => :stroke_data,
     )
 
     robj = register_robj!(assemble_mesh_robj!, screen, scene, plot, inputs, uniforms, input2glname)

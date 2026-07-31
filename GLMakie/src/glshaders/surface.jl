@@ -58,7 +58,7 @@ function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Sur
     shader = GLVisualizeShader(
         screen,
         "util.vert", "surface.vert",
-        "fragment_output.frag", "lighting.frag", "mesh.frag",
+        "fragment_output.frag", "lighting.frag", "mesh.frag", "mesh_nostroke.frag",
         view = view
     )
     return shader
