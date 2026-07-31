@@ -33,7 +33,9 @@ end
 
 function draw_atomic(scene::Scene, screen::Screen, primitive::Makie.Mesh)
     Makie.compute_colors!(primitive.attributes)
-    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
+    if use_rasterized_mesh(primitive.attributes)
+        draw_mesh_rasterized(scene, screen, primitive.attributes)
+    elseif Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
         draw_mesh2D(scene, screen, primitive.attributes)
     else
         draw_mesh3D(scene, screen, primitive.attributes)
