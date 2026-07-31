@@ -243,7 +243,8 @@ calculated_attributes!(plot::T) where {T} = calculated_attributes!(T, plot)
     image(x, y, image)
     image(image)
 
-Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
+Plots an image on a rectangle bounded by `x` and `y` which are both 2-tuples specifying the axis
+end points and default to size of image.
 """
 @recipe Image (
     x::EndPoints,
@@ -281,6 +282,8 @@ are not centered within the resulting rectangles.
 
 `x` and `y` can also be of length `i+1` and `j+1`, in this case they
 are interpreted as the edges of the rectangles.
+
+If `x` and `y` are both 2-tuples they specify the end points of each axis.
 
 Colors of the rectangles are derived from `matrix[i, j]`.
 The third argument may also be a `Function` (i, j) -> v which is then evaluated over the
