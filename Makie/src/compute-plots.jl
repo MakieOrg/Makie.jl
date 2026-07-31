@@ -1008,6 +1008,134 @@ function register_mesh_decomposition!(attr)
     end
 end
 
+function canonical_vertex_ids(positions)
+    canonical = Dict{eltype(positions), Int}()
+    return Int[get!(canonical, p, i) for (i, p) in enumerate(positions)]
+end
+
+function count_mesh_edges(faces, canonical_ids)
+    counts = Dict{NTuple{2, Int}, Int}()
+    for f in faces
+        n = length(f)
+        for i in 1:n
+            edge = minmax(canonical_ids[f[i]], canonical_ids[f[mod1(i + 1, n)]])
+            edge[1] == edge[2] && continue
+            counts[edge] = get(counts, edge, 0) + 1
+        end
+    end
+    return counts
+end
+
+function corner_wings(incident_edges, positions, v, o1, o2)
+    at(u) = to_ndim(Point3d, positions[u], 0)
+    direction(u) = normalize(Vec3d(at(u) - at(v)))
+    d1 = direction(o1)
+    d2 = direction(o2)
+    plane_normal = normalize(cross(d1, d2))
+
+    # A wing that leaves the triangle's plane belongs to a face seen at an angle, so its
+    # stroke band should not continue onto this triangle (it would project as a stray
+    # band across the face). Slight non-planarity is allowed for curved surfaces.
+    function is_in_plane((u, _))
+        out_of_plane = abs(dot(plane_normal, direction(u)))
+        return !isnan(out_of_plane) && out_of_plane < 0.3
+    end
+    wings = filter(((u, _),) -> u != o1 && u != o2, incident_edges)
+    wings = filter(is_in_plane, wings)
+    length(wings) <= 2 && return wings
+
+    function wedge_closeness((u, _))
+        du = direction(u)
+        score = max(dot(du, d1), dot(du, d2))
+        return isnan(score) ? -Inf : score
+    end
+    return partialsort(wings, 1:2; by = wedge_closeness, rev = true)
+end
+
+"""
+    stroke_edge_data(mesh, gl_faces, strokeedges)
+
+Computes the per-triangle edge information needed to stroke visible mesh edges in a
+backend shader. A stroked edge gets a width multiplier of 1 if it lies on the mesh
+boundary (belongs to exactly one face of `mesh`) and 0.5 if it is shared between faces
+and `strokeedges === :all` (so both adjacent faces together render one full stroke width).
+Edges that do not appear in `faces(mesh)`, i.e. those introduced by triangulating
+non-triangular faces, are never stroked. Vertices are matched by position, so edges
+remain shared even if faces reference duplicated vertices.
+
+Returns three vectors with one element per triangle in `gl_faces`:
+
+- `edge_widths::Vector{Vec3f}`: width multipliers of the triangle's own edges,
+  ordered 1-2, 2-3, 3-1, with 0 for edges that are not stroked.
+- `wing_indices::Vector{Vec{6, Int32}}` and `wing_widths::Vector{Vec{6, Float32}}`:
+  per corner (two slots each), stroked edges that are incident to the corner vertex but
+  are not edges of the triangle itself, given as the vertex index of the other edge
+  endpoint and the edge's width multiplier. Index 0 marks an unused slot. Without these
+  "wings", a stroke band that continues past a corner into a neighboring triangle would
+  be cut off at the triangulation edge, leaving notches. Only edges roughly coplanar with
+  the triangle qualify, and if more than two remain, the two closest in angle to the
+  triangle's own edges at that corner are kept, since those are the ones whose bands can
+  reach into the triangle.
+"""
+function stroke_edge_data(mesh, gl_faces, strokeedges::Symbol)
+    positions = coordinates(mesh)
+    canonical_ids = canonical_vertex_ids(positions)
+    counts = count_mesh_edges(faces(mesh), canonical_ids)
+    shared_width = strokeedges === :all ? 0.5f0 : 0.0f0
+    edge_width(count) = count == 0 ? 0.0f0 : (count == 1 ? 1.0f0 : shared_width)
+
+    incident = Dict{Int, Vector{Tuple{Int, Float32}}}()
+    for (edge, count) in counts
+        width = edge_width(count)
+        width == 0.0f0 && continue
+        push!(get!(Vector{Tuple{Int, Float32}}, incident, edge[1]), (edge[2], width))
+        push!(get!(Vector{Tuple{Int, Float32}}, incident, edge[2]), (edge[1], width))
+    end
+
+    no_wings = Tuple{Int, Float32}[]
+    edge_widths = Vector{Vec3f}(undef, length(gl_faces))
+    wing_indices = Vector{Vec{6, Int32}}(undef, length(gl_faces))
+    wing_widths = Vector{Vec{6, Float32}}(undef, length(gl_faces))
+
+    for (t, f) in enumerate(gl_faces)
+        corners = (canonical_ids[f[1]], canonical_ids[f[2]], canonical_ids[f[3]])
+        edge_widths[t] = Vec3f(
+            ntuple(3) do i
+                edge_width(get(counts, minmax(corners[i], corners[mod1(i + 1, 3)]), 0))
+            end
+        )
+
+        indices = zeros(Int32, 6)
+        widths = zeros(Float32, 6)
+        for i in 1:3
+            v = corners[i]
+            o1 = corners[mod1(i + 1, 3)]
+            o2 = corners[mod1(i + 2, 3)]
+            wings = corner_wings(get(incident, v, no_wings), positions, v, o1, o2)
+            for (j, (u, width)) in enumerate(wings)
+                indices[2 * (i - 1) + j] = u
+                widths[2 * (i - 1) + j] = width
+            end
+        end
+        wing_indices[t] = Vec{6, Int32}(indices)
+        wing_widths[t] = Vec{6, Float32}(widths)
+    end
+
+    return edge_widths, wing_indices, wing_widths
+end
+
+function register_mesh_stroke!(attr)
+    return map!(
+        attr, [:mesh, :faces, :strokeedges, :strokewidth],
+        [:stroke_edge_widths, :stroke_wing_indices, :stroke_wing_widths]
+    ) do mesh, gl_faces, strokeedges, strokewidth
+        if iszero(strokewidth)
+            return (Vec3f[], Vec{6, Int32}[], Vec{6, Float32}[])
+        end
+        return stroke_edge_data(mesh, gl_faces, strokeedges)
+    end
+end
+
 # optionally converts uv_transform to the one used with patterns (different defaults)
 function register_pattern_uv_transform!(attr; modelname = :model_f32c, colorname = :color)
     register_computation!(
@@ -1129,6 +1257,7 @@ end
 function calculated_attributes!(::Type{Mesh}, plot::Plot)
     attr = plot.attributes
     register_mesh_decomposition!(attr)
+    register_mesh_stroke!(attr)
     register_colormapping!(attr, :mesh_color)
     calculated_attributes!(PointBased(), plot)
     return register_pattern_uv_transform!(attr, colorname = :mesh_color)
