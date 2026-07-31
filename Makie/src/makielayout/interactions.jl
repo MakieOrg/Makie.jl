@@ -457,7 +457,26 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
 
     if ax.viewmode[] == :free
 
-        ax.zoom_mult[] = ax.zoom_mult[] * zoom_mult
+        new_zm = ax.zoom_mult[] * zoom_mult
+
+        if ax.zoommode[] == :cursor
+            # Mouse position in pixels relative to viewport
+            mp_px = mouseposition_px(ax)
+            # Full viewport area
+            pa = viewport(ax.scene)[]
+            # Reference height for normalization (matches DragPan logic)
+            ws = widths(ax.layoutobservables.computedbbox[])[2]
+
+            # Normalized mouse position from center in units of half-height
+            m = (2 .* mp_px .- widths(pa)) ./ ws
+
+            # Update axis_offset to keep the point under the cursor fixed
+            # Formula: offset_new = (offset_old + m * (1 - s)) / s
+            ax.axis_offset[] = (ax.axis_offset[] .+ m .* (1.0 .- zoom_mult)) ./ zoom_mult
+            ax.zoom_mult[] = ax.zoom_mult[] * zoom_mult
+        else
+            ax.zoom_mult[] = ax.zoom_mult[] * zoom_mult
+        end
 
     else
         # Compute target
