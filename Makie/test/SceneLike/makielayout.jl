@@ -59,6 +59,17 @@ end
     e.keyboardbutton[] = Makie.KeyEvent(Keyboard.backspace, Keyboard.release)
     @test optiontexts.text[] == ["Apple", "Apricot", "Banana"]
     @test length(optiontexts.color[]) == 3
+
+    m.i_selected[] = 2
+    e.unicode_input[] = 'p'
+    @test optiontexts.text[] == ["Apple", "Apricot"]
+    e.mouseposition[] = (1.0, 1.0)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    @test !m.is_open[]
+    @test m.i_selected[] == 2
+    @test m.selection[] == "Apricot"
+    @test optiontexts.text[] == ["Apple", "Apricot", "Banana"]
 end
 
 @testset "Menu option text colors" begin

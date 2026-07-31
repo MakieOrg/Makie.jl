@@ -79,7 +79,7 @@ end
         search_placeholder = "type to filter...", prompt = "Searchable menu..."
     )
 
-    Box(fig[2, 1])
+    Box(fig[2, 1], color = :tomato, strokevisible = false)
     fig
 
     st = Makie.Stepper(fig)
@@ -97,11 +97,6 @@ end
     Makie.step!(st) # check search reset
     click(events(fig), (100, 200))
     Makie.step!(st) # check selection without search
-
-    click(events(fig), (100, 270))
-    events(fig).unicode_input[] = 'g'
-    click(events(fig), (100, 290))
-    Makie.step!(st) # check no selection
 
     st
 end
