@@ -577,8 +577,10 @@ function Resampler(
     if applicable(data, lr, lr)
         return Resampler(data, res, update_while_button_pressed, lowres_background)
     else
-        dataf32 = el32convert(data)
-        ET = eltype(dataf32)
+        # Only the element type of `el32convert(data)` is needed, so convert an empty
+        # view instead of the whole array - `data` is expected to be huge and the
+        # converted copy would be thrown away immediately.
+        ET = eltype(el32convert(view(data, 1:0)))
         # Interpolations happily converts to Float64 here, but that's not desirable for e.g. RGB{N0f8}, or Float32 data
         # Since we expect these arrays to be huge, this is no laughing matter ;)
         interp = Interpolations.interpolate(eltype(ET), ET, data, Interpolations.BSpline(method))
@@ -757,14 +759,18 @@ struct Pyramid{T, M <: AbstractMatrix{T}} <: AbstractMatrix{T}
 end
 
 function Pyramid(data::AbstractMatrix; min_resolution = 1024, mode = Interpolations.Linear())
-    ranges(d) = (LinRange(1, size(data, 1), size(d, 1)), LinRange(1, size(data, 2), size(d, 2)))
     ET = ImageBase.restrict_eltype(first(data))
+    # The knots have to use the same scalar type as the interpolation weights (WT).
+    # `LinRange(1, ::Int, ::Int)` would give us Float64 knots, which promotes every
+    # sampled image back to Float64 and doubles its size - see the note in `Resampler`.
+    WT = eltype(ET)
+    ranges(d) = (LinRange{WT}(1, size(data, 1), size(d, 1)), LinRange{WT}(1, size(data, 2), size(d, 2)))
     resized = convert(Matrix{ET}, data)
-    pyramid = [Interpolations.interpolate(eltype(ET), ET, ranges(resized), resized, Interpolations.Gridded(mode))]
+    pyramid = [Interpolations.interpolate(WT, ET, ranges(resized), resized, Interpolations.Gridded(mode))]
     while any(x -> x > min_resolution, size(resized))
         resized = ImageBase.restrict(resized)
         interp = Interpolations.interpolate(
-            eltype(ET), ET, ranges(resized), resized,
+            WT, ET, ranges(resized), resized,
             Interpolations.Gridded(mode)
         )
         push!(pyramid, interp)
