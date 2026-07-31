@@ -738,6 +738,23 @@ frame), presents to the window, and handles input events.
 """
 function start_renderloop!(screen::Screen, root_scene::Scene)
     w, h = size(root_scene)
+
+    # Compile the ray-tracing pipeline + kernels BEFORE opening the window.
+    # `render!` draws to an offscreen film (no window needed), so the first —
+    # potentially slow — shader compile happens here instead of inside the
+    # render loop, where it would freeze a blank GLFW window ("Not Responding")
+    # because `GLFW.PollEvents()` can't run while the loop blocks on the compile.
+    @info "RayMakie: compiling render pipeline before opening window…"
+    let t0 = time()
+        for ss in screen.scene_states
+            ss.overlay_only && continue
+            screen.state = ss
+            render!(screen)
+        end
+        KernelAbstractions.synchronize(screen.config.device)
+        @info "RayMakie: pipeline ready ($(round(time() - t0, digits=1))s) — opening window"
+    end
+
     win = Lava.RenderWindow(w, h; title=screen.config.title, vsync=screen.config.vsync)
     screen.window = win
     connect_glfw_events!(root_scene, win.handle, screen.stop_renderloop)
