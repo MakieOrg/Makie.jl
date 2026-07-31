@@ -2,11 +2,11 @@ function _option_text_colors(hovered, optionstrings, m, filtered_indices)
     return map(eachindex(optionstrings)) do idx
         global_idx = filtered_indices[][idx]
         if global_idx == m.i_selected[]
-            return to_color(m.textcolor_active[])
+            return m.textcolor_active[]
         elseif idx == hovered
-            return to_color(m.textcolor_hover[])
+            return m.textcolor_hover[]
         else
-            return to_color(m.textcolor[])
+            return m.textcolor[]
         end
     end
 end
@@ -17,14 +17,14 @@ function _update_option_colors!(hovered, optionstrings, optionpolycolors, option
     map!(optionpolycolors.val, 1:n) do idx
         global_idx = filtered_indices[][idx]
         if global_idx == m.i_selected[]
-            return to_color(m.cell_color_active[])
+            return m.cell_color_active[]
         elseif idx == hovered
-            return to_color(m.cell_color_hover[])
+            return m.cell_color_hover[]
         else
             if iseven(idx)
-                to_color(m.cell_color_inactive_even[])
+                m.cell_color_inactive_even[]
             else
-                to_color(m.cell_color_inactive_odd[])
+                m.cell_color_inactive_odd[]
             end
         end
     end
@@ -141,7 +141,7 @@ function initialize_block!(m::Menu; default = 1)
         blockscene, button_hovered, m.is_open,
         m.selection_cell_color_inactive, m.cell_color_hover
     ) do hovered, is_open, inactive, hover
-        return (hovered && !is_open) ? to_color(hover) : to_color(inactive)
+        return (hovered && !is_open) ? hover : inactive
     end
     selectionpoly = poly!(
         blockscene, selectionarea, color = selectionpoly_color;

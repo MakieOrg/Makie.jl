@@ -1394,15 +1394,15 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
         "Is the menu showing the available options"
         is_open = false
         "Cell color when hovered"
-        cell_color_hover = COLOR_ACCENT_DIMMED[]
+        cell_color_hover::RGBAf = COLOR_ACCENT_DIMMED[]
         "Cell color when active"
-        cell_color_active = COLOR_ACCENT[]
+        cell_color_active::RGBAf = COLOR_ACCENT[]
         "Cell color when inactive even"
-        cell_color_inactive_even = RGBf(0.97, 0.97, 0.97)
+        cell_color_inactive_even::RGBAf = RGBf(0.97, 0.97, 0.97)
         "Cell color when inactive odd"
-        cell_color_inactive_odd = RGBf(0.97, 0.97, 0.97)
+        cell_color_inactive_odd::RGBAf = RGBf(0.97, 0.97, 0.97)
         "Selection cell color when inactive"
-        selection_cell_color_inactive = RGBf(0.94, 0.94, 0.94)
+        selection_cell_color_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
         "Color of the dropdown arrow"
         dropdown_arrow_color = (:black, 0.2)
         "Size of the dropdown arrow"
@@ -1414,11 +1414,11 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
         "Padding of entry texts"
         textpadding = (8, 10, 8, 8)
         "Color of entry texts"
-        textcolor = :black
+        textcolor::RGBAf = :black
         "Color of the text of the entry that is the current selection"
-        textcolor_active = :white
+        textcolor_active::RGBAf = :white
         "Color of the text of the entry that is hovered"
-        textcolor_hover = :black
+        textcolor_hover::RGBAf = :black
         "The opening direction of the menu (:up or :down)"
         direction = automatic
         "The default message prompting a selection when i == 0"
