@@ -18,9 +18,13 @@ jobs:
     if: always()
     needs: [cairomakie, glmakie, wglmakie]
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
-          name: ReferenceImages_WGLMakie_1
+          # WGLMakie now tests Julia 1.11 + 1.12 (Bonito v5 needs >=1.11); use the
+          # latest (1.12), which is what the old '1' resolved to.
+          name: ReferenceImages_WGLMakie_1.12
           path: ./ReferenceImages/WGLMakie
       - uses: actions/download-artifact@v8
         with:
@@ -55,6 +59,9 @@ jobs:
               mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"
               cp -r "${baseDir}/${dir}/recorded/${dir}/." "./ReferenceImagesCombined/recorded/${dir}/"
           done
+
+          # Bundle the update manifest so the per-PR review page build is self-contained
+          cp -r ReferenceTests/refimage_updates "./ReferenceImagesCombined/refimage_updates"
 
           echo "Files and folders have been successfully combined into ReferenceImagesCombined."
       - uses: actions/upload-artifact@v7
@@ -92,3 +99,50 @@ jobs:
             echo "::error::$N_MISSING missing reference image(s) must be uploaded"
             exit 1
           fi
+
+  review-page:
+    name: Reference image review page
+    runs-on: ubuntu-latest
+    needs: [consolidation]
+    if: always() && needs.consolidation.result == 'success'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: ReferenceImages
+          path: ./reference_images_data
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v3
+      - name: Install Julia dependencies
+        run: julia --project=reference_images_site -e 'using Pkg; Pkg.instantiate()'
+      - name: Build self-contained review page
+        id: build
+        run: julia --project=reference_images_site reference_images_site/build_review.jl
+      - name: Upload review page (unzipped, viewable directly in the browser)
+        id: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: reference-image-review
+          path: reference_images_site/review/index.html
+          archive: false
+      # The commit status is posted by refimage-status.yml (workflow_run), because
+      # fork PRs only get a read-only token here and cannot write statuses.
+      - name: Save status data for the chained status workflow
+        env:
+          STATE: ${{ steps.build.outputs.state }}
+          N_CHANGED: ${{ steps.build.outputs.n_changed }}
+          N_APPROVED: ${{ steps.build.outputs.n_approved }}
+          REVIEW_ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: >
+          printf '{"state":"%s","n_changed":%s,"n_approved":%s,"review_artifact_id":%s}\n'
+          "$STATE" "$N_CHANGED" "$N_APPROVED" "$REVIEW_ARTIFACT_ID" > refimage_status.json
+      - name: Upload status data
+        uses: actions/upload-artifact@v7
+        with:
+          name: refimage_status
+          path: refimage_status.json

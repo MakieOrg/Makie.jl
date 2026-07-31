@@ -13,6 +13,7 @@ Base.show(io::IO, fap::FigureAxisPlot) = show(io, fap.figure)
 Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAxisPlot()")
 
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
+Base.iterate(fap::FigureAxis, args...) = iterate((fap.figure, fap.axis), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
 get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
@@ -142,30 +143,33 @@ args_preferred_axis(args...) = nothing
 preferred_axis_type(::Volume) = LScene
 preferred_axis_type(::Union{Image, Heatmap}) = Axis
 
-# For plots that don't require an axis,
-# E.g. BlockSpec
-struct FigureOnly end
-
-function preferred_axis_type(
-        ::Union{Wireframe, Surface, Contour3d}, x::AbstractArray, y::AbstractArray,
-        z::AbstractArray
+# Keep these as `args_preferred_axis` for backwards compat (i.e. allow more
+# specialized methods of `args_preferred_axis` to win dispatch, instead of cutting
+# them off by with a less specialized `preferred_axis_type`)
+function args_preferred_axis(
+        ::Union{Wireframe, Surface, Contour3d},
+        x::AbstractArray, y::AbstractArray, z::AbstractArray
     )
     return all(x -> z[1] ≈ x, z) ? Axis : LScene
 end
 
-preferred_axis_type(::AbstractVector, ::AbstractVector, ::AbstractVector, ::Function) = LScene
-preferred_axis_type(::AbstractArray{T, 3}) where {T} = LScene
+args_preferred_axis(::AbstractVector, ::AbstractVector, ::AbstractVector, ::Function) = LScene
+args_preferred_axis(::AbstractArray{T, 3}) where {T} = LScene
 
-function preferred_axis_type(::AbstractVector{<:Union{AbstractGeometry{DIM}, GeometryBasics.Mesh{DIM}}}) where {DIM}
+function args_preferred_axis(::AbstractVector{<:Union{AbstractGeometry{DIM}, GeometryBasics.Mesh{DIM}}}) where {DIM}
     return DIM === 2 ? Axis : LScene
 end
 
-function preferred_axis_type(::Union{AbstractGeometry{DIM}, GeometryBasics.Mesh{DIM}}) where {DIM}
+function args_preferred_axis(::Union{AbstractGeometry{DIM}, GeometryBasics.Mesh{DIM}}) where {DIM}
     return DIM === 2 ? Axis : LScene
 end
 
-preferred_axis_type(::AbstractVector{<:Point3}) = LScene
-preferred_axis_type(::AbstractVector{<:Point2}) = Axis
+args_preferred_axis(::AbstractVector{<:Point3}) = LScene
+args_preferred_axis(::AbstractVector{<:Point2}) = Axis
+
+# For plots that don't require an axis,
+# E.g. BlockSpec
+struct FigureOnly end
 
 # axis attributes
 

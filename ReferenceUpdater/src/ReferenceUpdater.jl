@@ -22,6 +22,8 @@ end
 
 include("image_download.jl")
 include("artifact-download.jl")
+include("../../ReferenceTests/src/refimage_manifest.jl")
+include("manifest.jl")
 include("bonito-app.jl")
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
@@ -31,27 +33,55 @@ function __init__()
     return atexit(wipe_cache!)
 end
 
+function print_usage()
+    print(
+        """
+        Usage: reference_updater <pr|commit> <value>
+               reference_updater manifest <pr|commit> <value>
+          pr <number>               - Open the viewer for a pull request's latest CI run
+          commit <sha>              - Open the viewer for a specific commit's CI run
+          manifest pr <number>      - Add the PR's recorded updates to the manifest (no viewer)
+          manifest commit <sha>     - Add the commit's recorded updates to the manifest
+
+        Examples:
+          reference_updater pr 123
+          reference_updater manifest pr 123
+        """
+    )
+    return
+end
+
+function source_kwargs(mode, value)
+    mode == "pr" && return (; pr = parse(Int, value))
+    mode == "commit" && return (; commit = value)
+    return nothing
+end
+
 function (@main)(args::Vector{String})
     if length(args) < 2
-        println("Usage: reference_updater <pr|commit> <value>")
-        println("  pr <number>      - Update references using pull request's latest CI run")
-        println("  commit <sha>     - Update references using a specific commit's CI run")
-        println()
-        println("Examples:")
-        println("  reference_updater pr 123")
-        println("  reference_updater commit abc123")
+        print_usage()
         return 1
     end
 
-    mode = args[1]
-    value = args[2]
+    if args[1] == "manifest"
+        if length(args) < 3
+            print_usage()
+            return 1
+        end
+        if args[2] == "pr"
+            add_pr_updates_to_manifest(parse(Int, args[3]))
+        elseif args[2] == "commit"
+            add_pr_updates_to_manifest(; commit = args[3])
+        else
+            println("`manifest` must be followed by 'pr' or 'commit'.")
+            return 1
+        end
+        return 0
+    end
 
-    if mode == "pr"
-        kw = (; pr = parse(Int, value))
-    elseif mode == "commit"
-        kw = (; commit = value)
-    else
-        println("First argument must be 'pr' or 'commit'")
+    kw = source_kwargs(args[1], args[2])
+    if kw === nothing
+        println("First argument must be 'pr', 'commit', or 'manifest'.")
         println("Run without arguments to see usage.")
         return 1
     end

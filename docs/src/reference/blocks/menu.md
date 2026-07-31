@@ -28,7 +28,7 @@ func = Observable{Any}(funcs[1])
 ys = lift(func) do f
     f.(0:0.3:10)
 end
-scat = scatter!(ax, ys, markersize = 10px, color = ys)
+scat = scatter!(ax, ys, markersize = 10, color = ys)
 
 cb = Colorbar(fig[1, 3], scat)
 
