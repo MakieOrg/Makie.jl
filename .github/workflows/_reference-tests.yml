@@ -107,7 +107,6 @@ jobs:
     if: always() && needs.consolidation.result == 'success'
     permissions:
       contents: read
-      statuses: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -131,18 +130,19 @@ jobs:
           name: reference-image-review
           path: reference_images_site/review/index.html
           archive: false
-      - name: Post reference images status linking to the review page
-        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+      # The commit status is posted by refimage-status.yml (workflow_run), because
+      # fork PRs only get a read-only token here and cannot write statuses.
+      - name: Save status data for the chained status workflow
         env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
           STATE: ${{ steps.build.outputs.state }}
           N_CHANGED: ${{ steps.build.outputs.n_changed }}
           N_APPROVED: ${{ steps.build.outputs.n_approved }}
-          URL: ${{ steps.upload.outputs.artifact-url }}
-        run: |
-          gh api "repos/${{ github.repository }}/statuses/$SHA" \
-            -f state="$STATE" \
-            -f context="reference images" \
-            -f target_url="$URL" \
-            -f description="$N_APPROVED/$N_CHANGED new/changed images approved via manifest"
+          REVIEW_ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: >
+          printf '{"state":"%s","n_changed":%s,"n_approved":%s,"review_artifact_id":%s}\n'
+          "$STATE" "$N_CHANGED" "$N_APPROVED" "$REVIEW_ARTIFACT_ID" > refimage_status.json
+      - name: Upload status data
+        uses: actions/upload-artifact@v7
+        with:
+          name: refimage_status
+          path: refimage_status.json
