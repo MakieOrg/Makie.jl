@@ -431,4 +431,14 @@ end
         ev.tick[] = Makie.Tick(Makie.RegularRenderTick, 3, 1.5, 0.5)
         @test length(only(p for p in et.plots if p isa LineSegments).arg1[]) == 2  # one cursor → 2 endpoints
     end
+
+    @testset "Caret visibility follows focus without ticks" begin
+        f, et = _make_editor("abc"; cursors = [EditCursor(1)], focused = false)
+        caret = only(p for p in et.plots if p isa LineSegments)
+        @test caret.visible[] == false
+        et.focused[] = true
+        @test caret.visible[] == true
+        et.focused[] = false
+        @test caret.visible[] == false
+    end
 end

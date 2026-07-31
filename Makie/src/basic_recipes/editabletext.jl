@@ -630,7 +630,7 @@ function Makie.plot!(plot::EditableText)
     # gets reset on focus and on every edit, so the caret is always solid when
     # the cursor first appears or after the user types — never half-faded mid-cycle.
     last_edit_time = Observable(0.0)
-    cursor_visible_obs = Observable(true; ignore_equal_values = true)
+    cursor_visible_obs = Observable(plot.focused[]; ignore_equal_values = true)
 
     parent = Makie.parent_scene(plot)
     push!(
@@ -645,11 +645,15 @@ function Makie.plot!(plot::EditableText)
             return nothing
         end
     )
+    # visibility must follow focus directly, not only through ticks: backends
+    # deliver ticks on their own schedule, so a snapshot taken between a focus
+    # change and the next tick would show a stale caret state
     push!(
         plot.deregister_callbacks, on(plot.focused) do f
             if f
                 last_edit_time[] = events(parent).tick[].time
             end
+            cursor_visible_obs[] = f
             return nothing
         end
     )
