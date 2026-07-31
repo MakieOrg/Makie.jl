@@ -1909,7 +1909,7 @@ end
 end
 
 @reference_test "boxplot" begin
-    fig = Figure()
+    fig = Figure(size = (500, 900))
 
     categories = vcat(fill(1, 300), fill(2, 300), fill(3, 300))
     values = RNG.randn(900) .+ range(-1, 1, length = 900)
@@ -1940,13 +1940,24 @@ end
         ax_vert, categories, values, orientation = :vertical, weights = weights,
         gap = 0.5,
         show_notch = true, notchwidth = 0.75,
-        markersize = 5, strokewidth = 2.0, strokecolor = :black,
-        medianlinewidth = 5, mediancolor = :orange,
-        whiskerwidth = 1.0, whiskerlinewidth = 3, whiskercolor = :green,
-        outlierstrokewidth = 1.0, outlierstrokecolor = :red,
+        markersize = 5, outlierstrokewidth = 1.0, outlierstrokecolor = :red,
+        strokewidth = 2.0, strokecolor = :black, strokestyle = :dash,
+        medianlinewidth = 5, mediancolor = :orange, medianlinestyle = :dot,
+        whiskerwidth = 1.0, whiskerlinewidth = 3, whiskercolor = :green, whiskerlinestyle = :dot,
         width = 1.5,
     )
     boxplot!(ax_horiz, categories, values; orientation = :horizontal, width = categories ./ 3)
+
+    boxplot(
+        fig[3:4, 1:2], categories, values,
+        orientation = :vertical, weights = weights,
+        gap = 0.5, show_notch = true, notchwidth = 0.75,
+        show_outliers = false,
+        strokewidth = 10, strokecolor = :darkred, strokejoinstyle = :round,
+        medianlinewidth = 10, mediancolor = :green, medianlinecap = :round,
+        whiskerwidth = 1.0, whiskerlinewidth = 10, whiskercolor = :black, whiskerlinecap = :round,
+        width = 1.5,
+    )
 
     fig
 end
