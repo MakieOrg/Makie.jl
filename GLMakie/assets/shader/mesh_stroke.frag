@@ -29,7 +29,10 @@ vec2 stroke_screen_space(vec3 position)
 float distance_to_segment(vec2 p, vec2 a, vec2 b)
 {
     vec2 ab = b - a;
-    float t = clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0);
+    float len2 = dot(ab, ab);
+    if (len2 < 1e-20)
+        return length(p - a);
+    float t = clamp(dot(p - a, ab) / len2, 0.0, 1.0);
     return length(p - a - t * ab);
 }
 
