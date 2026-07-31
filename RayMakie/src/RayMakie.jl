@@ -674,4 +674,47 @@ for name in names(Makie, all=true)
     end
 end
 
+# ── PrecompileTools workload: bake the hw_accel render path's host inference ──
+# Cold startup of a ray-traced render has two independent costs. Lava's frozen
+# kernel cache removes the first (GPUCompiler → LLVM → SPIR-V); this removes the
+# second — Julia's own inference/codegen of colorbuffer → VolPath → Lava launch
+# — by rendering a small scene during precompilation, so PrecompileTools keeps
+# the inferred code in RayMakie's package image.
+#
+# What this can and cannot bake: the RT stages and workqueue kernels are keyed on
+# the scene's whole material multi-type-set, so the material-set-specific
+# specialization is only bakeable by a workload rendering that exact scene. The
+# SCENE-GENERIC half (colorbuffer, screen, buffer alloc, BVH/AS build, RT
+# pipeline setup, camera, integrator core) is not, and it dominates — a single
+# one-Diffuse-sphere render here cut the unrelated 15-material `materials` scene's
+# cold host codegen from ~45s to ~10s.
+#
+# `Lava.@compile_workload` runs both halves under this kernel-cache version: the
+# first precompile compiles this scene's kernels and freezes them to disk, later
+# precompiles load them back instead of recompiling SPIR-V.
+#
+# Rendering needs a working Vulkan device, so the try/catch skips the workload
+# cleanly on device-less machines (CI) rather than breaking precompilation. It is
+# on by default; toggle it the standard PrecompileTools way, via Preferences:
+#     using RayMakie, Preferences
+#     set_preferences!(RayMakie, "precompile_workload" => false; force = true)  # disable
+const PRECOMPILE_KERNELS_VERSION = "raymakie_pc"
+Lava.@setup_workload begin
+    try
+        dev = Lava.LavaBackend()
+        Lava.@compile_workload PRECOMPILE_KERNELS_VERSION begin
+            scene = Scene(size = (96, 72),
+                          lights = [PointLight(RGBf(30, 30, 30), Vec3f(4, 5, 6))])
+            cam3d!(scene)
+            mesh!(scene, Sphere(Point3f(0, 0, 0), 0.9f0);
+                  material = Hikari.Diffuse(Kd = (0.6, 0.6, 0.6)))
+            activate!(; device = dev)
+            colorbuffer(scene; backend = RayMakie,
+                        integrator = Hikari.VolPath(; samples = 1, max_depth = 4, hw_accel = true))
+        end
+    catch e
+        @warn "RayMakie GPU precompile workload skipped" exception = (e, catch_backtrace())
+    end
+end
+
 end
