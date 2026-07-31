@@ -16,7 +16,7 @@
 - Fixed plots in `Axis3` not clipping in the correct place when changing aspect due to plot `clip_planes` not getting updated [#5723](https://github.com/MakieOrg/Makie.jl/pull/5723)
 - Fixed `surface` normals sometimes being `NaN` in GLMakie (when vertices collapse to single point on the edge of a surface) [#5725](https://github.com/MakieOrg/Makie.jl/pull/5725)
 - Fixed specialized `args_preferred_axis` methods getting skipped by less specialized Makie defaults [#5722](https://github.com/MakieOrg/Makie.jl/pull/5722)
-- Fixed `Resampler(Pyramid(data))` resampling to `Float64`/`RGB{Float64}` instead of `Float32`/`RGB{Float32}`, which doubled the size of every resampled image, and stopped `Resampler` from allocating a full throwaway copy of its input just to derive an element type (halves peak allocation for non-`Float32` input) [#5727](https://github.com/MakieOrg/Makie.jl/pull/5727)
+- Fixed `Resampler(Pyramid(data))` resampling to `Float64`/`RGB{Float64}` instead of `Float32`/`RGB{Float32}`, which doubled the size of every resampled image, and stopped `Resampler` from allocating a full throwaway copy of its input just to derive an element type (halves peak allocation for non-`Float32` input) [#5728](https://github.com/MakieOrg/Makie.jl/pull/5728)
 
 ## [0.24.13] - 2026-07-02
 
