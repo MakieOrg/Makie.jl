@@ -258,6 +258,32 @@ end
     @test ax.limits[] == ((0, 1), (0, 2), (nothing, nothing))
 end
 
+function Base.isapprox(a::Makie.Plane, b::Makie.Plane; kwargs...)
+    return isapprox(a.normal, b.normal; kwargs...) && isapprox(a.distance, b.distance; kwargs...)
+end
+
+@testset "Axis3 plot clip" begin
+    f = Figure()
+    ax3 = Axis3(f[1, 1])
+    sc = scatter!(ax3, Rect3f(0, 0, 0, 1, 1, 1))
+    expected = [
+        Plane3f(Vec3f(1, 0, 0), -1), Plane3f(Vec3f(0, 1, 0), -1), Plane3f(Vec3f(0, 0, 1), -2 / 3),
+        Plane3f(Vec3f(-1, 0, 0), -1), Plane3f(Vec3f(0, -1, 0), -1), Plane3f(Vec3f(0, 0, -1), -2 / 3),
+    ]
+    @test all(ax3.scene.theme.clip_planes[] .≈ expected)
+    # check plot init
+    @test all(sc.clip_planes[] .≈ expected)
+
+    # check update
+    ax3.aspect[] = :data
+    expected = [
+        Plane3f(Vec3f(1, 0, 0), -1), Plane3f(Vec3f(0, 1, 0), -1), Plane3f(Vec3f(0, 0, 1), -1),
+        Plane3f(Vec3f(-1, 0, 0), -1), Plane3f(Vec3f(0, -1, 0), -1), Plane3f(Vec3f(0, 0, -1), -1),
+    ]
+    @test all(ax3.scene.theme.clip_planes[] .≈ expected)
+    @test all(sc.clip_planes[] .≈ expected)
+end
+
 @testset "Axis limits intervals" begin
     fig = Figure()
     ax = Axis(fig[1, 1], limits = (0 .. 600, 0 .. 15))
