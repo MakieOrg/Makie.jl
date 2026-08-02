@@ -11,8 +11,23 @@ function record_comparison(base_folder::String, backend::String; record_folder_n
     testimage_paths = get_all_relative_filepaths_recursively(record_folder)
     missing_refimages, scores = compare(testimage_paths, reference_folder, record_folder)
 
+    manifest = filter(e -> startswith(e.path, backend * "/"), read_manifest())
+    classified = classify_entries(manifest, reference_folder)
+
+    if !isempty(classified.inert)
+        @warn(
+            "Inert reference image update manifest entries for $backend (the stored reference " *
+                "changed since these were pinned). Harmless leftovers from already-promoted " *
+                "updates are pruned by the next manifest generation; if one of these images " *
+                "fails its comparison below, its update conflicts with a promoted one and the " *
+                "manifest must be regenerated with ReferenceUpdater:\n" *
+                join(("  " * e.path for e in classified.inert), '\n')
+        )
+    end
+
     open(joinpath(base_folder, "new_files.txt"), "w") do file
         for path in missing_refimages
+            path in classified.exempt_new && continue
             println(file, path)
         end
     end
@@ -37,14 +52,18 @@ function record_comparison(base_folder::String, backend::String; record_folder_n
         end
     end
 
-    return missing_refimages, scores
+    return missing_refimages, scores, classified.exempt_changed
 end
 
-function test_comparison(scores; threshold)
+function test_comparison(scores; threshold, exempt = Set{String}())
     return @testset "Comparison scores" begin
         for (image, score) in pairs(scores)
             @testset "$image" begin
-                @test score <= threshold
+                if image in exempt
+                    @test_skip score <= threshold
+                else
+                    @test score <= threshold
+                end
             end
         end
     end
