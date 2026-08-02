@@ -139,7 +139,8 @@ function Makie.plot!(plot::CrossBar)
         return boxes, midlines
     end
     # linecap is irrelevant since the poly outline is always closed
-    poly!(plot, Attributes(plot), plot.boxes,
+    poly!(
+        plot, Attributes(plot), plot.boxes,
         linestyle = plot.strokestyle,
         joinstyle = plot.strokejoinstyle, miter_limit = plot.strokemiterlimit,
     )
@@ -155,7 +156,7 @@ function Makie.plot!(plot::CrossBar)
         linestyle = plot.midlinestyle,
         visible = plot.show_midline,
         inspectable = plot.inspectable,
-        plot.midlines, depth_shift = -1e-5
+        plot.midlines, depth_shift = -1.0e-5
     )
     return plot
 end
