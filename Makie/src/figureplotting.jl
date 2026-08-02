@@ -403,12 +403,30 @@ figurelike_return(ax::AbstractAxis, plot::AbstractPlot) = AxisPlot(ax, plot)
 figurelike_return!(::AbstractAxis, plot::AbstractPlot) = plot
 figurelike_return!(::Union{Plot, Scene}, plot::AbstractPlot) = plot
 
-update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
+function update_state_before_display!(f::FigureAxisPlot)
+    update_state_before_display!(f.figure)
+    # Apply GUI from theme if enabled (add_gui! handles the theme check internally)
+    add_gui!(f)
+    return
+end
 update_state_before_display!(f::FigureBlock) = update_state_before_display!(f.figure)
 
 function update_state_before_display!(f::Figure)
     for c in f.content
         update_state_before_display!(c)
+    end
+    add_gui!(f)
+    return
+end
+
+# Recurse into nested layouts so blocks placed inside another block's
+# `GridLayout` — e.g. an `Axis` inside a `Tabs` tab — also get their
+# pre-display state updates (auto limits etc.). The default fallback for
+# non-axis content stays a no-op, so this only adds work for things that
+# care.
+function update_state_before_display!(layout::GridLayout)
+    for gc in layout.content
+        update_state_before_display!(gc.content)
     end
     return
 end

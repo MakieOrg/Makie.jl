@@ -121,12 +121,24 @@ end
 ```
 """
 function addmouseevents!(scene, elements...; priority = 1)
-    is_mouse_over_relevant_area() = isempty(elements) ? Makie.is_mouseinside(scene) : mouseover(scene, elements...)
-    return _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+    # A hidden scene shouldn't generate mouse events for anything anchored
+    # to it — without this check, Block widgets (Button, Checkbox, …) keep
+    # firing clicks/hover on their bbox even after the block has been
+    # visually hidden by `block.blockscene.visible[] = false`.
+    is_mouse_over_relevant_area() = scene.visible[] &&
+        (isempty(elements) ? Makie.is_mouseinside(scene) : mouseover(scene, elements...))
+    return _addmouseevents!(scene, is_mouse_over_relevant_area, Makie.mouseposition_px, priority)
 end
 function addmouseevents!(scene, bbox::Observables.AbstractObservable{<:Rect2}; priority = 1)
-    is_mouse_over_relevant_area() = Makie.mouseposition_px(scene) in bbox[]
-    return _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+    # Block geometry (`computedbbox`, slider endpoints, …) lives in absolute
+    # window-pixel coordinates and blockscene cameras are window-absolute
+    # (campixel!), so hit-test and report event positions in that same frame.
+    # `mouseposition_px` is viewport-relative and stops matching the absolute
+    # bboxes as soon as the blockscene inherits an offset viewport (e.g. for
+    # a widget placed inside a Subfigure/Tabs content scene).
+    to_px(scene) = Point2f(events(scene).mouseposition[])
+    is_mouse_over_relevant_area() = scene.visible[] && (to_px(scene) in bbox[])
+    return _addmouseevents!(scene, is_mouse_over_relevant_area, to_px, priority)
 end
 
 
@@ -185,7 +197,7 @@ function to_click_event(b::Mouse.Button)
     return error("No recognized mouse button $b")
 end
 
-function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+function _addmouseevents!(scene, is_mouse_over_relevant_area, to_px, priority)
     Mouse = Makie.Mouse
     dblclick_max_interval = 0.2
 
@@ -194,8 +206,8 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     )
     # initialize state variables
     last_mouseevent = Ref{Mouse.Action}(Mouse.release)
-    prev_data = Ref(mouseposition(scene))
-    prev_px = Ref(Makie.mouseposition_px(scene))
+    prev_px = Ref(Point2f(to_px(scene)))
+    prev_data = Ref(to_world(scene, prev_px[]))
     mouse_downed_inside = Ref(false)
     mouse_downed_button = Ref{Optional{Mouse.Button}}(nothing)
     drag_ongoing = Ref(false)
@@ -211,8 +223,8 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     mousepos_observerfunc = on(scene, events(scene).mouseposition; priority = priority) do mp
         consumed = false
         t = time()
-        data = mouseposition(scene)
-        px = mouseposition_px(scene)
+        px = Point2f(to_px(scene))
+        data = to_world(scene, px)
         mouse_inside = is_mouse_over_relevant_area()
 
         # last_mouseevent can only be up or down

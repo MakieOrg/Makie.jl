@@ -84,7 +84,8 @@ function initialize_block!(leg::Legend; entrygroups)
 
     legend_area = lift(round_to_IRect2D, blockscene, leg.layoutobservables.computedbbox)
 
-    scene = Scene(blockscene, blockscene.viewport, camera = campixel!)
+    scene = Scene(blockscene, blockscene.viewport)
+    campixel!(scene; absolute = true)
     leg.scene = scene
     # the rectangle in which the legend is drawn when margins are removed
     legendrect = lift(blockscene, legend_area, leg.margin, ignore_equal_values = true) do la, lm
@@ -397,6 +398,7 @@ function initialize_block!(leg::Legend; entrygroups)
     # Process hide/show events
     sevents = events(blockscene)
     on(scene, sevents.mousebutton, priority = 1) do event
+        Makie.receives_events(blockscene) || return Consume(false)
         mpos = sevents.mouseposition[]
         if (event.action == Mouse.release) && in(mpos, legend_area[])
             if event.button == Mouse.left
@@ -1110,11 +1112,58 @@ function get_plots(scene::Scene)
     return plots
 end
 
-# convenience constructor for axis legend
-axislegend(ax = current_axis(); kwargs...) = axislegend(ax, ax; kwargs...)
+"""
+    Legend(ax::Axis; position = :rt, kwargs...)
+    Legend(ax::Axis, title; position = :rt, kwargs...)
 
-axislegend(title::AbstractString; kwargs...) = axislegend(current_axis(), current_axis(), title; kwargs...)
-axislegend(ax, title::AbstractString; kwargs...) = axislegend(ax, ax, title; kwargs...)
+Create a legend positioned inside an Axis's plot area.
+
+This is a convenience constructor that automatically extracts labeled plots from the axis
+and positions the legend using the `position` argument.
+
+## Arguments
+- `ax`: The axis to place the legend in and extract plots from
+- `title`: Optional title for the legend
+
+## Keyword Arguments
+- `position`: Position symbol (`:rt`, `:lt`, `:rb`, `:lb`, `:ct`, `:cb`, `:lc`, `:rc`, `:cc`)
+              or tuple `(halign, valign)`. Default: `:rt`
+- `margin`: Margin around the legend. Default: `(6, 6, 6, 6)` for `(left, right, bottom, top)`
+- `merge`: If `true`, merge plots with the same label. Default: `false`
+- `unique`: If `true`, only show unique label/plot-type combinations. Default: `false`
+- All other keyword arguments are passed to `Legend`
+
+## Examples
+```julia
+fig, ax, pl = scatter(rand(10), label="Points")
+Legend(ax)  # Creates legend at default position :rt
+
+lines!(ax, rand(10), label="Line")
+Legend(ax; position=:lt, title="My Legend")
+```
+"""
+function Legend(
+        ax::Union{Axis, Axis3}, _title = nothing;
+        position = :rt, margin = (6, 6, 6, 6),
+        merge = false, unique = false, title = _title, kwargs...
+    )
+    plots, labels = get_labeled_plots(ax, merge = merge, unique = unique)
+    isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
+    pos_kw = legend_position_to_aligns(position)
+    return Legend(
+        ax.parent, plots, labels, title;
+        bbox = ax.scene.viewport,
+        margin = margin,
+        pos_kw...,
+        kwargs...
+    )
+end
+
+# convenience constructor for axis legend
+axislegend(ax = current_axis(); kwargs...) = Legend(ax; kwargs...)
+
+axislegend(title::AbstractString; kwargs...) = Legend(current_axis(), title; kwargs...)
+axislegend(ax, title::AbstractString; kwargs...) = Legend(ax, title; kwargs...)
 
 """
     axislegend(ax, args...; position = :rt, kwargs...)
@@ -1135,16 +1184,14 @@ same labels are treated. If merge is true, all plot objects with the same
 label will be layered on top of each other into one legend entry. If unique
 is true, all plot objects with the same plot type and label will be reduced
 to one occurrence.
+
+Note: This is equivalent to `Legend(ax; position, kwargs...)`.
 """
-function axislegend(ax, args...; position = :rt, kwargs...)
+function axislegend(ax, args...; position = :rt, margin = (6, 6, 6, 6), kwargs...)
     return Legend(
         ax.parent, args...;
         bbox = ax.scene.viewport,
-        margin = get(
-            kwargs,
-            :margin,
-            get(something(theme(:Legend), NamedTuple()), :margin, (6, 6, 6, 6))
-        ),
+        margin = margin,
         legend_position_to_aligns(position)...,
         kwargs...
     )

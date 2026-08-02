@@ -1,20 +1,26 @@
-function _update_option_colors!(hovered, optionstrings, optionpolycolors, m)
+function _update_option_colors!(hovered, optionstrings, optionpolycolors, optiontextcolors, m)
     n = length(optionstrings[])
     resize!(optionpolycolors.val, n)
-    map!(optionpolycolors.val, 1:n) do idx
+    resize!(optiontextcolors.val, n)
+    base_textcolor = to_color(m.textcolor[])
+    active_textcolor = to_color(m.textcolor_active[])
+    for idx in 1:n
         if idx == m.i_selected[]
-            return m.cell_color_active[]
+            optionpolycolors.val[idx] = m.cell_color_active[]
+            optiontextcolors.val[idx] = active_textcolor
         elseif idx == hovered
-            return m.cell_color_hover[]
+            optionpolycolors.val[idx] = m.cell_color_hover[]
+            optiontextcolors.val[idx] = base_textcolor
         else
-            if iseven(idx)
-                to_color(m.cell_color_inactive_even[])
-            else
+            optionpolycolors.val[idx] = iseven(idx) ?
+                to_color(m.cell_color_inactive_even[]) :
                 to_color(m.cell_color_inactive_odd[])
-            end
+            optiontextcolors.val[idx] = base_textcolor
         end
     end
-    return notify(optionpolycolors)
+    notify(optionpolycolors)
+    notify(optiontextcolors)
+    return
 end
 
 function _pick_entry(y, menuscene, list_y_bounds)
@@ -90,7 +96,8 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear = true, visible = m.is_open)
+    menuscene = Scene(blockscene, scenearea, clear = true, visible = m.is_open)
+    campixel!(menuscene; absolute = true)
     translate!(menuscene, 0, 0, 200)
 
     onany(blockscene, scenearea, listheight) do area, listheight
@@ -155,6 +162,7 @@ function initialize_block!(m::Menu; default = 1)
 
     optionrects = Observable([Rect2d(0, 0, 0, 0)]; ignore_equal_values = true)
     optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values = true)
+    optiontextcolors = Observable(fill(to_color(m.textcolor[]), length(optionstrings[])); ignore_equal_values = true)
 
     # the y boundaries of the list rectangles
     list_y_bounds = Ref(Float32[])
@@ -163,7 +171,7 @@ function initialize_block!(m::Menu; default = 1)
 
     optiontexts = text!(
         menuscene, textpositions, text = optionstrings, align = (:left, :center),
-        fontsize = m.fontsize, inspectable = false
+        fontsize = m.fontsize, color = optiontextcolors, inspectable = false
     )
 
     # listheight needs to be up to date before showing the menuscene so that its
@@ -179,22 +187,22 @@ function initialize_block!(m::Menu; default = 1)
         # No need to update when the scene is hidden
         widths(bbox) == Vec2i(0) && return
 
-        pad = m.textpadding[] # gc_heights triggers on padding, so we don't need to react to it
-        # listheight[] = h
-
+        pad = m.textpadding[]
+        # campixel is absolute, so anchor the list at the menuscene viewport
+        # origin. `list_y_bounds` are likewise in absolute window y.
+        ox, oy = Float32(left(bbox)), Float32(bottom(bbox))
         heights_cumsum = [zero(eltype(heights)); cumsum(heights)]
-        list_y_bounds[] = h .- heights_cumsum
+        list_y_bounds[] = oy .+ (h .- heights_cumsum)
         texts_y = @views h .- 0.5 .* (heights_cumsum[1:(end - 1)] .+ heights_cumsum[2:end])
-        textpositions[] = Point2f.(pad[1], texts_y)
+        textpositions[] = Point2f.(ox + pad[1], oy .+ texts_y)
         w_bbox = width(bbox)
-        # need to manipulate the vectors themselves, otherwise update errors when lengths change
         resize!(optionrects.val, length(heights))
 
         optionrects.val .= map(eachindex(heights)) do i
-            BBox(0, w_bbox, h - heights_cumsum[i + 1], h - heights_cumsum[i])
+            BBox(ox, ox + w_bbox, oy + h - heights_cumsum[i + 1], oy + h - heights_cumsum[i])
         end
 
-        _update_option_colors!(0, optionstrings, optionpolycolors, m)
+        _update_option_colors!(0, optionstrings, optionpolycolors, optiontextcolors, m)
         notify(optionrects)
         return
     end
@@ -215,24 +223,33 @@ function initialize_block!(m::Menu; default = 1)
     was_pressed_button = Ref(false)
 
     onany(blockscene, e.mouseposition, e.mousebutton; priority = 64) do position, butt
-        mp = screen_relative(menuscene, position)
-        # track if we have been inside menu/options to clean up if we haven't been
+        # Inert when hidden or when another scene covers the pointer.
+        Makie.receives_events(blockscene) || return Consume(false)
+        # optionrects and list_y_bounds are in absolute window coords (campixel
+        # is absolute); offset by the menuscene's translation for the scroll
+        # state when hit-testing.
+        mp = Point2f(position) .- Vec2f(translation(menuscene)[][1], translation(menuscene)[][2])
         is_over_options = false
         is_over_button = false
 
         if Makie.is_mouseinside(menuscene) # the whole scene containing all options
-            # Is inside the expanded menu selection (the polys cover the whole
-            # selectable area and are in pixel space relative to menuscene)
+            # We entered the dropdown — the button cleanup below is short-circuited
+            # by the early return, so reset the button's hover indicator here.
+            if was_inside_button[]
+                was_inside_button[] = false
+                button_hovered[] = false
+            end
+            # Is inside the expanded menu selection (optionrects cover the whole
+            # selectable area, hit-tested with the translation-adjusted `mp`)
             if any(r -> mp in r, optionpolys[1][])
                 is_over_options = true
                 was_inside_options[] = true
-                # we either clicked on an item or hover it
                 if _mouse_up(butt, was_pressed_options) # PRESSED
-                    m.i_selected[] = _pick_entry(mp[2], menuscene, list_y_bounds)
+                    m.i_selected[] = _pick_entry(position[2], menuscene, list_y_bounds)
                     m.is_open[] = false
                 else # HOVER
-                    idx_hovered = _pick_entry(mp[2], menuscene, list_y_bounds)
-                    _update_option_colors!(idx_hovered, optionstrings, optionpolycolors, m)
+                    idx_hovered = _pick_entry(position[2], menuscene, list_y_bounds)
+                    _update_option_colors!(idx_hovered, optionstrings, optionpolycolors, optiontextcolors, m)
                 end
             else
                 # If not inside anymore, invalidate was_pressed
@@ -271,7 +288,7 @@ function initialize_block!(m::Menu; default = 1)
         # clean up hovers if we're outside
         if !is_over_options && was_inside_options[] # going from being inside to outside
             was_inside_options[] = false
-            _update_option_colors!(0, optionstrings, optionpolycolors, m)
+            _update_option_colors!(0, optionstrings, optionpolycolors, optiontextcolors, m)
         end
         if !is_over_button && was_inside_button[]
             was_inside_button[] = false
@@ -285,6 +302,7 @@ function initialize_block!(m::Menu; default = 1)
     end
 
     on(blockscene, menuscene.events.scroll; priority = 61) do (x, y)
+        Makie.receives_events(blockscene) || return Consume(false)
         if is_mouseinside(menuscene)
             t = translation(menuscene)[]
             # Hack to differentiate mousewheel and trackpad scrolling

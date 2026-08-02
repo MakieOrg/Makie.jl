@@ -221,6 +221,7 @@ include("shorthands.jl")
 # camera types + functions
 include("camera/projection_math.jl")
 include("camera/camera.jl")
+include("event_routing.jl")
 include("camera/camera2d.jl")
 include("camera/camera3d.jl")
 include("camera/old_camera3d.jl")
@@ -483,6 +484,7 @@ export to_world
 # picking + interactive use cases + events
 export mouseover, onpick, pick, Events, Keyboard, Mouse, is_mouseinside
 export ispressed, Exclusively
+export content_scene, add_tab!, remove_tab!, set_tab!
 export connect_screen
 export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,
     scroll, keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
@@ -602,6 +604,7 @@ include("basic_recipes/pathtext.jl")
 include("basic_recipes/raincloud.jl")
 
 include("deprecated.jl")
+include("GUI/gui.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe, Voxels
 export heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, wireframe, voxels

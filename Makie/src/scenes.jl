@@ -119,6 +119,14 @@ mutable struct Scene <: AbstractScene
     # Can't type this, don't have the type yet
     data_inspector::Any
 
+    """
+    Pointer-routing opt-in: when `true`, this scene claims the pointer for its
+    subtree while visible (see `covers_pointer`/`receives_events`), regardless
+    of `clear`/z. For overlays that paint a translucent backdrop via plots
+    (e.g. a modal dialog) instead of an opaque `clear = true` background.
+    """
+    captures_mouse::Bool
+
     function Scene(
             parent::Union{Nothing, Scene},
             events::Events,
@@ -158,7 +166,8 @@ mutable struct Scene <: AbstractScene
             ComputeGraph(),
             DimConversions(),
             false,
-            nothing
+            nothing,
+            false
         )
         add_camera_computation!(scene.compute, scene)
         add_light_computation!(scene.compute, scene, lights)
@@ -436,6 +445,54 @@ function root(scene::Scene)
     return scene
 end
 parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
+
+"""
+    scene_visible(scene::Scene)
+
+Effective visibility of `scene`: `true` only if `scene` and all of its ancestors
+are visible. Unlike `scene.visible[]`, this cascades down the scene tree, so a
+scene nested under an invisible ancestor counts as hidden even when its own
+`visible[]` is `true` (as happens when a `Block` force-shows its own scene).
+"""
+function scene_visible(scene::Scene)
+    while true
+        scene.visible[] || return false
+        isroot(scene) && return true
+        scene = parent(scene)
+    end
+    return
+end
+
+"""
+    effective_clip(scene::Scene)::Rect2i
+
+Intersection of `scene`'s own viewport with every ancestor's viewport.
+Backends use this as the scissor rectangle, so a scene is rendered only within
+the bounds shared by itself and all of its parents. Including the scene's own
+viewport keeps the scissor a subset of it (some drivers require `scissor ⊆
+viewport`), while intersecting the ancestors is what clips content that has
+scrolled or been positioned outside an enclosing region (e.g. a `Subfigure`).
+
+For the root scene this is just its own viewport, so the scissor matches the
+window.
+"""
+function effective_clip(scene::Scene)
+    rect = viewport(scene)[]
+    s = scene
+    while !isroot(s)
+        s = parent(s)
+        rect = intersect(rect, viewport(s)[])
+    end
+    # `intersect` on `Rect2i` returns negative widths for disjoint rects, which
+    # turns `glScissor` into `GL_INVALID_VALUE` (and Cairo's clip into a no-op).
+    # Clamp to an empty rect at the intersection origin so callers get a sane
+    # "draw nothing" instead.
+    w = widths(rect)
+    if w[1] < 0 || w[2] < 0
+        return Rect2i(minimum(rect), Vec2i(0, 0))
+    end
+    return rect
+end
 
 GeometryBasics.widths(scene::Scene) = widths(to_value(viewport(scene)))
 
@@ -737,18 +794,45 @@ is2d(lims::Rect3) = widths(lims)[3] == 0.0
 ##### Figure type
 #####
 
+"""
+    GUIState
+
+Stores the configuration and state of GUI elements for a Figure.
+Created during Figure construction with normalized options from figure attributes and theme.
+
+## Fields
+Options (nothing = disabled, Dict = enabled with options):
+- `hovermenu_options::Union{Nothing, Dict{Symbol,Any}}`: Options for the hover menu bar
+- `legend_options::Union{Nothing, Dict{Symbol,Any}}`: Options for the legend overlay
+- `colorbar_options::Union{Nothing, Dict{Symbol,Any}}`: Options for the colorbar overlay
+
+Created elements (nothing until added):
+- `hovermenu::Union{Nothing, Any}`: Reference to the hover menu elements if created
+- `legend::Union{Nothing, Block}`: Reference to the legend if created
+- `colorbar::Union{Nothing, Block}`: Reference to the colorbar if created
+"""
+mutable struct GUIState
+    # Options (nothing = disabled)
+    hovermenu_options::Union{Nothing, Dict{Symbol, Any}}
+    legend_options::Union{Nothing, Dict{Symbol, Any}}
+    colorbar_options::Union{Nothing, Dict{Symbol, Any}}
+    # Created elements
+    hovermenu::Union{Nothing, Any}
+    legend::Union{Nothing, Block}
+    colorbar::Union{Nothing, Block}
+end
+
+function GUIState(; hovermenu_options = nothing, legend_options = nothing, colorbar_options = nothing)
+    return GUIState(hovermenu_options, legend_options, colorbar_options, nothing, nothing, nothing)
+end
+
 struct Figure
     scene::Scene
     layout::GridLayoutBase.GridLayout
     content::Vector
     attributes::Attributes
     current_axis::Ref{Any}
-
-    function Figure(args...)
-        f = new(args...)
-        current_figure!(f)
-        return f
-    end
+    gui_state::GUIState
 end
 
 struct FigureAxisPlot

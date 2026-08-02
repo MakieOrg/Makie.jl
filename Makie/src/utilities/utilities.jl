@@ -319,6 +319,20 @@ lerp(a::T, b::T, val::AbstractFloat) where {T} = a .+ val * (b .- a)
 lerp(a::RGBAf, b::RGBAf, val::AbstractFloat) = a .+ val * (b .- a)
 lerp(a::Colorant, b::Colorant, val::AbstractFloat) = lerp(RGBAf(a), RGBAf(b), val)
 
+# Perceptually-uniform interpolation between two colors via Oklab, so equal
+# values of `t` produce equal perceived steps even when one pole is a saturated
+# accent or a non-neutral gray.
+function lerp_oklab(a::Colorant, b::Colorant, t::Real)
+    oa = convert(Colors.Oklab, a)
+    ob = convert(Colors.Oklab, b)
+    m = Colors.Oklab(
+        (1 - t) * oa.l + t * ob.l,
+        (1 - t) * oa.a + t * ob.a,
+        (1 - t) * oa.b + t * ob.b,
+    )
+    return RGBf(convert(Colors.RGB, m))
+end
+
 function merged_get!(defaults::Function, key, scene, input::Vector{Any})
     return merged_get!(defaults, key, scene, Attributes(input))
 end

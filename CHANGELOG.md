@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Added a unified `colors` theme block for Block widgets, plus a `Makie.derive_colors(; accent, gray, background)` helper that produces a full scheme from a few inputs. `set_theme!(colors = Makie.derive_colors(accent = :crimson))` recolors every interactive Block consistently — see the Block colors docs. Default neutral surfaces shift very slightly from the historical literals. [#5628](https://github.com/MakieOrg/Makie.jl/pull/5628)
+  - The `@inherit` macro inside `@Block` now accepts a tuple of symbols (`@inherit((:colors, :accent), default)`) to walk nested theme dicts.
+- Added `Tabs` and `Subfigure` blocks, a tabbed container and the scrollable, event-isolated sub-region it is built on. [#5650](https://github.com/MakieOrg/Makie.jl/pull/5650)
+- Added a `Table` block for displaying tabular data, with row/cell selection, column sorting and scrolling. [#5510](https://github.com/MakieOrg/Makie.jl/pull/5510)
+- Added pointer-event routing based on visual scene stacking so overlay scenes (menus, dropdowns, popups) no longer leak mouse events to widgets underneath. `receives_events(scene)` returns `false` when a scene in a different subtree visually covers the pointer, and `is_mouseinside(scene)` honors it automatically. [#5510](https://github.com/MakieOrg/Makie.jl/pull/5510)
+- Added a high-level figure GUI: a `HoverMenu` toolbar (save / copy / reset) plus opt-in automatic `Legend`/`Colorbar` insertion, controlled via `Figure(; gui, legend, colorbar)` or the theme. Also added convenience constructors `Legend(ax; ...)`, `Colorbar(ax, plot; ...)` and `axiscolorbar`. [#3491](https://github.com/MakieOrg/Makie.jl/pull/3491)
+- Added a `Modal` block: a theme-styled dialog with a translucent backdrop that blocks pointer input to everything underneath while open (`open!`/`close!`, × button, optional backdrop-click dismissal). The content area is a `Subfigure`, so fixed-size modals scroll. Scenes can opt into pointer capture explicitly with `scene.captures_mouse = true`.
+
 ## Breaking
 
 - **breaking** Moved `FFMPEG_jll` from a hard dependency to a package extension to avoid pulling in GPL-licensed libraries (e.g. libx264). `record`, `VideoStream`, `convert_video`, and `extract_frames` now require `FFMPEG_jll` to be available in the active environment; Makie will load it automatically on first use. A custom ffmpeg binary can be configured via `Makie.ffmpeg_path!(path)` (or persistently via Preferences.jl). [#5588](https://github.com/MakieOrg/Makie.jl/pull/5588)

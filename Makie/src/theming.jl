@@ -28,6 +28,68 @@ end
 
 const DEFAULT_PALETTES = generate_default_palette()
 
+const DEFAULT_ACCENT_COLOR = RGBf((79, 122, 214) ./ 255...)
+
+# Rec. 709 / sRGB luminance coefficients.
+_relative_luminance(c) = 0.2126f0 * red(c) + 0.7152f0 * green(c) + 0.0722f0 * blue(c)
+
+"""
+    derive_colors(; accent = Makie.DEFAULT_ACCENT_COLOR,
+                    gray = automatic,
+                    background = :white)
+
+Derive a complete set of UI role colors from a small set of user inputs. The
+result is a `NamedTuple` of nine `RGBf` values that Block defaults can pull
+from via the theme's nested `colors` block.
+
+Inputs:
+- `accent`: primary accent color used for active, checked, and focused states.
+- `gray`: the "contrast pole" mixed with `background` to produce neutrals.
+  `automatic` picks pure black for light backgrounds and pure white for dark
+  ones. Pass a tinted color (e.g. a slightly warm dark) to bias all neutrals
+  toward that hue.
+- `background`: the canvas background. Its luminance also selects the default
+  contrast pole when `gray = automatic`.
+
+Returns roles: `background`, `surface`, `surface_subtle`, `border`, `text`,
+`text_muted`, `text_on_accent`, `accent`, `accent_subtle`. State conventions
+across Blocks: idle uses `surface`, hover uses `accent_subtle`, and
+active/checked/focused uses `accent`.
+
+Mixing happens in Oklab so equal weights between `background` and `gray`/
+`accent` give perceptually-even steps. The weights are picked to give a
+familiar light-mode appearance (≈92% surface, ≈74% border, ≈50% muted text)
+while remaining well-balanced when `gray` or `background` is tinted.
+"""
+function derive_colors(;
+        accent = DEFAULT_ACCENT_COLOR,
+        gray = automatic,
+        background = :white,
+    )
+    bg = RGBf(to_color(background))
+    a = RGBf(to_color(accent))
+    auto_pole = _relative_luminance(bg) >= 0.5f0 ? RGBf(0, 0, 0) : RGBf(1, 1, 1)
+    g = RGBf(to_color(default_automatic(gray, auto_pole)))
+
+    # Text on an accent fill must contrast with the accent itself, not with the
+    # page background — pick by accent luminance regardless of `gray`.
+    text_on_accent = _relative_luminance(a) >= 0.5f0 ? RGBf(0, 0, 0) : RGBf(1, 1, 1)
+
+    return (
+        background = bg,
+        surface = lerp_oklab(bg, g, 0.06),
+        surface_subtle = lerp_oklab(bg, g, 0.03),
+        border = lerp_oklab(bg, g, 0.2),
+        text = g,
+        text_muted = lerp_oklab(bg, g, 0.4),
+        text_on_accent = text_on_accent,
+        accent = a,
+        accent_subtle = lerp_oklab(bg, a, 0.45),
+    )
+end
+
+const DEFAULT_COLORS = derive_colors()
+
 const MAKIE_DEFAULT_THEME = Attributes(
     palette = DEFAULT_PALETTES,
     font = :regular,
@@ -37,6 +99,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         italic = "TeX Gyre Heros Makie Italic",
         bold_italic = "TeX Gyre Heros Makie Bold Italic",
     ),
+    colors = Attributes(DEFAULT_COLORS),
     fontsize = 14,
     textcolor = :black,
     padding = Vec3f(0.05),
@@ -64,6 +127,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     visible = true,
     Axis = Attributes(),
     Axis3 = Attributes(),
+    Figure = Attributes(),
     legend = Attributes(),
     axis_type = automatic,
     camera = automatic,
@@ -147,7 +211,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         resource = automatic,
         plugin = automatic,
         max_recursion = 10
-    )
+    ),
 )
 
 const CURRENT_DEFAULT_THEME = deepcopy(MAKIE_DEFAULT_THEME)
