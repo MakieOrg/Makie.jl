@@ -22,9 +22,58 @@ struct TextureColorSampler
     interpolate::Bool
 end
 
-fragment_color(s::UniformColorSampler, face, weights) = s.color
+struct MatcapSampler
+    image::Matrix{RGBAf}
+    view_normals::Vector{Vec3f}
+end
 
-function fragment_color(s::VertexColorSampler, face, weights)
+# Samples the pattern tile by window position like GLMakie's fetch_pixel path, which
+# uses gl_FragCoord with a pixel-to-uv pattern_uv_transform. Raster buffer pixels are
+# mapped back to viewport-local logical coordinates with a bottom-left origin.
+struct PatternSampler
+    image::Matrix{RGBAf}
+    uv_transform::Mat{2, 3, Float32}
+    pixel_origin::Vec2f
+    inv_px_scale::Float32
+    viewport_height::Float32
+end
+
+wrap_index(i, n, repeat::Bool) = repeat ? mod(i - 1, n) + 1 : clamp(i, 1, n)
+
+function sample_texture(img::Matrix{RGBAf}, uv::Vec2f, interpolate::Bool, repeat::Bool)
+    nx, ny = size(img)
+    if interpolate
+        x = uv[1] * nx - 0.5f0
+        y = uv[2] * ny - 0.5f0
+        x0 = floor(Int, x)
+        y0 = floor(Int, y)
+        fx = x - x0
+        fy = y - y0
+        i0 = wrap_index(x0 + 1, nx, repeat)
+        i1 = wrap_index(x0 + 2, nx, repeat)
+        j0 = wrap_index(y0 + 1, ny, repeat)
+        j1 = wrap_index(y0 + 2, ny, repeat)
+        c00 = img[i0, j0]
+        c10 = img[i1, j0]
+        c01 = img[i0, j1]
+        c11 = img[i1, j1]
+        mix2(a, b, f) = (1 - f) * a + f * b
+        channel(getter) = mix2(
+            mix2(Float32(getter(c00)), Float32(getter(c10)), fx),
+            mix2(Float32(getter(c01)), Float32(getter(c11)), fx),
+            fy
+        )
+        return RGBAf(channel(red), channel(green), channel(blue), channel(alpha))
+    else
+        x = wrap_index(floor(Int, uv[1] * nx) + 1, nx, repeat)
+        y = wrap_index(floor(Int, uv[2] * ny) + 1, ny, repeat)
+        return img[x, y]
+    end
+end
+
+fragment_color(s::UniformColorSampler, face, weights, frag_px) = s.color
+
+function fragment_color(s::VertexColorSampler, face, weights, frag_px)
     c1, c2, c3 = s.colors[face[1]], s.colors[face[2]], s.colors[face[3]]
     return RGBAf(
         weights[1] * c1.r + weights[2] * c2.r + weights[3] * c3.r,
@@ -34,34 +83,27 @@ function fragment_color(s::VertexColorSampler, face, weights)
     )
 end
 
-function fragment_color(s::TextureColorSampler, face, weights)
+function fragment_color(s::TextureColorSampler, face, weights, frag_px)
     uv = weights[1] * s.uvs[face[1]] + weights[2] * s.uvs[face[2]] + weights[3] * s.uvs[face[3]]
-    nx, ny = size(s.image)
-    if s.interpolate
-        x = clamp(uv[1] * nx - 0.5f0, 0.0f0, nx - 1.0f0)
-        y = clamp(uv[2] * ny - 0.5f0, 0.0f0, ny - 1.0f0)
-        x0 = floor(Int, x)
-        y0 = floor(Int, y)
-        fx = x - x0
-        fy = y - y0
-        x1 = min(x0 + 1, nx - 1)
-        y1 = min(y0 + 1, ny - 1)
-        c00 = s.image[x0 + 1, y0 + 1]
-        c10 = s.image[x1 + 1, y0 + 1]
-        c01 = s.image[x0 + 1, y1 + 1]
-        c11 = s.image[x1 + 1, y1 + 1]
-        mix2(a, b, f) = (1 - f) * a + f * b
-        channel(getter) = mix2(
-            mix2(Float32(getter(c00)), Float32(getter(c10)), fx),
-            mix2(Float32(getter(c01)), Float32(getter(c11)), fx),
-            fy
-        )
-        return RGBAf(channel(red), channel(green), channel(blue), channel(alpha))
-    else
-        x = clamp(floor(Int, uv[1] * nx) + 1, 1, nx)
-        y = clamp(floor(Int, uv[2] * ny) + 1, 1, ny)
-        return s.image[x, y]
-    end
+    return sample_texture(s.image, uv, s.interpolate, false)
+end
+
+# from mesh.frag: muv = normalize(o_view_normal).xy * 0.5 + 0.5, sampled at (1 - muv.y, muv.x)
+function fragment_color(s::MatcapSampler, face, weights, frag_px)
+    normal = zero_normalize(
+        weights[1] * s.view_normals[face[1]] +
+            weights[2] * s.view_normals[face[2]] +
+            weights[3] * s.view_normals[face[3]]
+    )
+    uv = Vec2f(0.5f0 - 0.5f0 * normal[2], 0.5f0 + 0.5f0 * normal[1])
+    return sample_texture(s.image, uv, true, false)
+end
+
+function fragment_color(s::PatternSampler, face, weights, frag_px)
+    window_x = (s.pixel_origin[1] + frag_px[1]) * s.inv_px_scale
+    window_y = s.viewport_height - (s.pixel_origin[2] + frag_px[2]) * s.inv_px_scale
+    uv = s.uv_transform * Vec3f(window_x, window_y, 1)
+    return sample_texture(s.image, uv, true, true)
 end
 
 struct RasterStrokeData
@@ -234,7 +276,7 @@ function rasterize_mesh!(
                 clipped && continue
             end
 
-            color = fragment_color(color_sampler, face, weights)
+            color = fragment_color(color_sampler, face, weights, p)
 
             if lighting !== nothing
                 normal = zero_normalize(
@@ -282,6 +324,9 @@ function pack_downsampled_argb32(framebuffer::Matrix{RGBA{N0f8}}, ss::Int)
     return out
 end
 
+pattern_tile(sampler::Makie.ShaderAbstractions.Sampler) = Matrix{RGBAf}(sampler.data)
+pattern_tile(image::AbstractMatrix{<:Colorant}) = Matrix{RGBAf}(image)
+
 function mesh_color_sampler(plot, color, uvs, uv_transform)
     if color isa Matrix{RGBAf}
         if !(uvs isa Vector{Vec2f})
@@ -299,14 +344,7 @@ function mesh_color_sampler(plot, color, uvs, uv_transform)
     end
 end
 
-function use_rasterized_mesh(plot::ComputeGraph)
-    iszero(plot.strokewidth[]) && return false
-    if plot.fetch_pixel[]::Bool || !isnothing(to_value(get(plot, :matcap, nothing)))
-        @warn "Mesh stroking is not supported together with pattern or matcap colors in CairoMakie, ignoring stroke." maxlog = 1
-        return false
-    end
-    return true
-end
+use_rasterized_mesh(plot::ComputeGraph) = !iszero(plot.strokewidth[])
 
 function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph)
     positions = plot.positions_transformed_f32c[]::Union{Vector{Point2f}, Vector{Point3f}}
@@ -403,9 +441,23 @@ function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph)
     end
 
     # color
-    color = compute_colors(plot)::Union{RGBAf, Vector{RGBAf}, Matrix{RGBAf}}
+    color = compute_colors(plot)
     uv_transform = plot.pattern_uv_transform[]::Union{Nothing, Mat{2, 3, Float32, 6}}
-    color_sampler = mesh_color_sampler(plot, color, plot.texturecoordinates[], uv_transform)
+    matcap = to_value(get(plot, :matcap, nothing))::Union{Nothing, Matrix{RGBAf}}
+    color_sampler = if plot.fetch_pixel[]::Bool
+        PatternSampler(
+            pattern_tile(color), uv_transform::Mat{2, 3, Float32, 6},
+            Vec2f(x0, y0), 1.0f0 / px_scale, resolution[2]
+        )
+    elseif matcap !== nothing && meshnormals !== nothing
+        view = plot.view[]::Mat4f
+        i3 = Vec(1, 2, 3)
+        view_normalmatrix = transpose(inv(Mat3f((view * model)[i3, i3])))
+        view_normals = [zero_normalize(view_normalmatrix * normal) for normal in meshnormals]
+        MatcapSampler(matcap, view_normals)
+    else
+        mesh_color_sampler(plot, color, plot.texturecoordinates[], uv_transform)
+    end
 
     # stroke
     stroke = nothing
