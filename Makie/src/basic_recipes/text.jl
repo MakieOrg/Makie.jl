@@ -652,9 +652,10 @@ function register_text_computations!(attr::ComputeGraph)
 
     register_position_transforms!(attr, input_name = :positions, transformed_name = :positions_transformed)
 
-    # One data-space anchor position per glyph (repeated within a string). The
-    # Glyphs child transforms these; per-string transform reuse is task #8.
-    map!(attr, [:positions, :text_blocks], :per_glyph_positions) do positions, blocks
+    # One anchor position per glyph, repeated within a string. `transform_func` is
+    # applied before the repeat, so it runs once per string rather than once per glyph;
+    # the `Glyphs` child inherits only the model and does not transform again.
+    map!(attr, [:positions_transformed, :text_blocks], :per_glyph_positions) do positions, blocks
         return Point3f[to_ndim(Point3f, sv_getindex(positions, i), 0) for (i, r) in enumerate(blocks) for _ in r]
     end
 
@@ -744,6 +745,7 @@ function add_glyphs!(plot)
         rotation = plot.glyph_rotations,
         strokecolor = plot.glyph_strokecolors,
         strokewidth = plot.glyph_strokewidths,
+        transformation = :inherit_model,
     )
 end
 

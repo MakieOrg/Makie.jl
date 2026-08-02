@@ -315,6 +315,22 @@ end
     end
 end
 
+@testset "transform_func applies per string" begin
+    f = Figure()
+    ax = Axis(f[1, 1], xscale = log10)
+    p = text!(ax, [Point2f(10, 1), Point2f(1000, 2)], text = ["a", "bb"])
+    Makie.update_state_before_display!(f)
+
+    # log10 runs once per string, and the two glyphs of "bb" share that anchor
+    @test p.per_glyph_positions[] == [Point3f(1, 1, 0), Point3f(3, 2, 0), Point3f(3, 2, 0)]
+
+    # the child no longer transforms, so the model has to reach it
+    glyphs = p.plots[1]
+    translate!(p, 5, 6, 0)
+    @test glyphs.model_f32c[][1, 4] == 5.0f0
+    @test glyphs.model_f32c[][2, 4] == 6.0f0
+end
+
 @testset "generic attributes reach the children" begin
     scene = Scene(camera = campixel!)
     p = text!(scene, Point2f(0, 0), text = L"\frac{a}{b}", fontsize = 20)
