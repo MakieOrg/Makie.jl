@@ -74,8 +74,8 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
 
     broadcast_foreach(
         points_list, color,
-        strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])
-    ) do points, color, strokecolor, strokestyle, strokewidth, model
+        strokecolor, poly.strokewidth[], Ref(poly.model[])
+    ) do points, color, strokecolor, strokewidth, model
         draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth, miter_limit, joinstyle, linecap)
     end
     if color isa Cairo.CairoPattern
