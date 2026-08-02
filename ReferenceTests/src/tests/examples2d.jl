@@ -987,6 +987,27 @@ end
     f
 end
 
+@reference_test "tricontour" begin
+    x = RNG.randn(50)
+    y = RNG.randn(50)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
+
+    x2 = RNG.rand(30)
+    y2 = RNG.rand(30)
+    z2 = sin.(2π .* x2) .* cos.(2π .* y2)
+
+    f = Figure(size = (900, 300))
+    ax1, tr1 = tricontour(f[1, 1], x, y, z; levels = 8)
+    scatter!(ax1, x, y; color = z, strokewidth = 1, strokecolor = :black)
+    Colorbar(f[1, 2], tr1)
+
+    ax2, tr2 = tricontour(f[1, 3], x, y, z; levels = 8, color = :black, linewidth = 2)
+
+    ax3, tr3 = tricontour(f[1, 4], x2, y2, z2; levels = 6, colormap = :RdBu)
+    Colorbar(f[1, 5], tr3)
+    f
+end
+
 @reference_test "contour labels 2D" begin
     paraboloid = (x, y) -> 10(x^2 + y^2)
 
