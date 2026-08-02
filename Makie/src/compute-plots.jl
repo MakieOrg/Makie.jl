@@ -1136,6 +1136,39 @@ function register_mesh_stroke!(attr)
     end
 end
 
+# Packs stroke data into 9 texture texels per triangle for backend shaders: 3x the corner
+# positions with the width multiplier of the edge from that corner to the next, then per
+# corner 2x wing edge endpoints with their width multipliers (width 0 = unused slot).
+function register_stroke_data!(attr)
+    haskey(attr, :stroke_data_packed) && return attr[:stroke_data_packed]
+    return map!(
+        attr,
+        [:positions_transformed_f32c, :faces, :stroke_edge_widths, :stroke_wing_indices, :stroke_wing_widths],
+        :stroke_data_packed
+    ) do positions, faces, edge_widths, wing_indices, wing_widths
+        isempty(edge_widths) && return fill(Vec4f(0), 9)
+        at(idx) = to_ndim(Point3f, positions[idx], 0.0f0)
+        data = Vector{Vec4f}(undef, 9 * length(faces))
+        for (t, f) in enumerate(faces)
+            base = 9 * (t - 1)
+            for i in 1:3
+                p = at(f[i])
+                data[base + i] = Vec4f(p[1], p[2], p[3], edge_widths[t][i])
+            end
+            for k in 1:6
+                idx = wing_indices[t][k]
+                if idx == 0
+                    data[base + 3 + k] = Vec4f(0)
+                else
+                    p = at(idx)
+                    data[base + 3 + k] = Vec4f(p[1], p[2], p[3], wing_widths[t][k])
+                end
+            end
+        end
+        return data
+    end
+end
+
 # optionally converts uv_transform to the one used with patterns (different defaults)
 function register_pattern_uv_transform!(attr; modelname = :model_f32c, colorname = :color)
     register_computation!(
