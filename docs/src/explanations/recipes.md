@@ -328,7 +328,7 @@ It is also possible to overwrite `Makie.argument_docs_md(::Type{<:MyPlot})` to r
 
 The next part of the docstring is an example, which is usually sourced from a markdown file in the `src/documentation/plots` directory in Makie.
 To include an externally defined example file, you can add a method of `Makie.path_to_plot_examples(::Type{<:MyPlot})` pointing to a markdown file.
-It should structured like this
+It should be structured like this
 
 ```
 # myplot
