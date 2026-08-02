@@ -38,12 +38,15 @@ convert_attribute(str::AbstractString, ::key"text", ::key"text") = Ref{Any}([str
 convert_attribute(rt::RichText, ::key"text", ::key"text") = Ref{Any}([rt])
 convert_attribute(x::AbstractVector, ::key"text", ::key"text") = Ref{Any}(vec(x))
 
-# `copy` so the producer emits a fresh `input_text` array each run. An aliased
-# array makes `is_same` (which can't tell whether a shared array was mutated in
-# place) report a change, re-running text layout on every position update while
-# layout solves, which for image handlers (LaTeX) means recompiling every pass.
-to_string_arr(text::AbstractVector) = copy(text)
+to_string_arr(text::AbstractVector) = text
 to_string_arr(text) = [text]
+
+# The producer hands back the same array when the text is untouched, and `is_same`
+# reads an aliased array as changed because it cannot tell one from a mutated one.
+# Saying whether the text changed rather than leaving it to be guessed keeps a
+# position update from re-running layout, which for an image handler (LaTeX) is the
+# difference between moving a label and recompiling it.
+text_update(value, changed::Bool) = ExplicitUpdate(Ref{Any}(value), changed ? :force : :deny)
 
 function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_args)
     # Set up Inputs
@@ -60,22 +63,24 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     if !haskey(attr, :position)
         add_input!(AttributeConvert(:position, :text), attr, :position, get(user_kw, :position, (0.0, 0.0)))
     end
-    register_computation!(attr, inputs, [:_positions, :input_text]) do inputs, changed, cached
+    register_computation!(attr, inputs, [:_positions, :_text_update]) do inputs, changed, cached
         a_pos, a_text, args... = values(inputs)
+        _, text_changed, args_changed... = values(changed)
         # Note: Could add RichText
         if args isa Tuple{<:AbstractString}
             # position data will always be wrapped in a Vector, so strings should too
-            return ((a_pos,), Ref{Any}([args[1]]))
+            return ((a_pos,), text_update([args[1]], args_changed[1]))
         elseif args isa Tuple{<:AbstractVector{<:AbstractString}}
-            # copy: a fresh array lets `is_same` filter unchanged text (see `to_string_arr`)
-            return ((a_pos,), Ref{Any}(copy(args[1])))
+            return ((a_pos,), text_update(args[1], args_changed[1]))
         elseif args isa Tuple{<:AbstractVector{<:Tuple{<:Any, <:VecTypes}}}
             # [(text, pos), ...] argument
-            return ((last.(args[1]),), Ref{Any}(first.(args[1])))
+            return ((last.(args[1]),), text_update(first.(args[1]), args_changed[1]))
         else # assume position data
-            return (args, Ref{Any}(to_string_arr(a_text)))
+            return (args, text_update(to_string_arr(a_text), text_changed))
         end
     end
+
+    map!(unwrap_explicit_update, attr, :_text_update, :input_text)
 
     # Continue with _register_expand_arguments with adjusted input names
     expanded = _register_expand_arguments!(Text, attr, [:_positions], attr._positions[], true)
@@ -107,10 +112,10 @@ struct GlyphBuffer
     glyph_layout_origins::Vector{Point3f}
     glyph_extents::Vector{GlyphExtent}
     text_blocks::Vector{UnitRange{Int64}}
-    glyph_colors::Vector{RGBAf}
+    layout_colors::Vector{RGBAf}
     glyph_scales::Vector{Vec2f}
-    glyph_strokewidths::Vector{Float32}
-    glyph_strokecolors::Vector{RGBAf}
+    layout_strokewidths::Vector{Float32}
+    layout_strokecolors::Vector{RGBAf}
     block_bboxes::Vector{Rect2f}
     block_baselines::Vector{Float32}
     layout_specs::Vector{PlotSpec}
@@ -219,9 +224,9 @@ function append_text_layout!(buffer::GlyphBuffer, layout::TextLayout)
     append!(buffer.glyph_extents, layout.extents)
     append_per_glyph!(buffer.glyph_fonts, layout.fonts, n)
     append_per_glyph!(buffer.glyph_scales, layout.scales, n)
-    append_per_glyph!(buffer.glyph_colors, layout.colors, n)
-    append_per_glyph!(buffer.glyph_strokecolors, layout.strokecolors, n)
-    append_per_glyph!(buffer.glyph_strokewidths, layout.strokewidths, n)
+    append_per_glyph!(buffer.layout_colors, layout.colors, n)
+    append_per_glyph!(buffer.layout_strokecolors, layout.strokecolors, n)
+    append_per_glyph!(buffer.layout_strokewidths, layout.strokewidths, n)
 
     append!(buffer.layout_specs, layout.specs)
     append!(buffer.layout_spec_bboxes, layout.spec_bboxes)
@@ -349,26 +354,13 @@ and recompute. Custom text types default to `false` (conservative).
 display_independent_layout(::AbstractString) = true
 display_independent_layout(@nospecialize(x)) = false
 
-# Keep the buffer's cached glyph geometry, refilling only the per-glyph display
-# arrays. Valid only when no layout-affecting input changed and every block's text
-# has `display_independent_layout == true` (checked by the caller).
-function refill_display_attributes!(buffer::GlyphBuffer, color, strokecolor, strokewidth)
-    empty!(buffer.glyph_colors)
-    empty!(buffer.glyph_strokecolors)
-    empty!(buffer.glyph_strokewidths)
+"""
+    bakes_display_attributes(handler, text) -> Bool
 
-    N = length(buffer.text_blocks)
-    for (name, value) in [(:color, color), (:strokecolor, strokecolor), (:strokewidth, strokewidth)]
-        validate_per_string(name, value, N)
-    end
-    for (i, block) in enumerate(buffer.text_blocks)
-        n = length(block)
-        append_per_glyph!(buffer.glyph_colors, sv_getindex(color, i), n)
-        append_per_glyph!(buffer.glyph_strokecolors, sv_getindex(strokecolor, i), n)
-        append_per_glyph!(buffer.glyph_strokewidths, sv_getindex(strokewidth, i), n)
-    end
-    return
-end
+Whether laying `text` out resolves the display attributes, so that changing one has to
+lay it out again. A handler is assumed to bake, since it may rasterize.
+"""
+bakes_display_attributes(handler, text) = handler !== nothing || !display_independent_layout(text)
 
 ################################################################################
 ### text_handler extension
@@ -455,6 +447,24 @@ function register_resolved_justification!(attr::ComputeGraph)
     end
 end
 
+# The display attributes only reach layout when some text bakes them in; otherwise this
+# stays `nothing` from one evaluation to the next, so recoloring never marks layout dirty.
+function register_baked_display_attributes!(attr::ComputeGraph)
+    inputs = [:input_text, :text_handler, :computed_color, :converted_strokecolor, :strokewidth]
+    map!(attr, inputs, :baked_display_attributes) do text, handler, color, strokecolor, strokewidth
+        # here rather than downstream so a bad length is reported when the plot is
+        # created, not when its colors are first pulled
+        for (name, value) in [(:color, color), (:strokecolor, strokecolor), (:strokewidth, strokewidth)]
+            validate_per_string(name, value, length(text))
+        end
+        any(str -> bakes_display_attributes(handler, str), text) || return nothing
+        return (color, strokecolor, strokewidth)
+    end
+    # the value alternates between `nothing` and a tuple as the text type changes
+    ComputePipeline.set_type!(attr.baked_display_attributes, Any)
+    return
+end
+
 function register_glyph_layout!(attr::ComputeGraph)
     inputs = [
         :input_text,
@@ -465,32 +475,25 @@ function register_glyph_layout!(attr::ComputeGraph)
         :lineheight,
         :word_wrap_width,
         :fonts,
-        :computed_color,
-        :converted_strokecolor,
-        :strokewidth,
+        :baked_display_attributes,
     ]
     outputs = collect(fieldnames(GlyphBuffer))
     return register_computation!(attr, inputs, outputs) do inputs, changed, cached
         (; input_text, text_handler, fontsize, selected_font, resolved_justification) = inputs
-        (; lineheight, word_wrap_width, fonts, computed_color, strokewidth) = inputs
-        (; converted_strokecolor) = inputs
+        (; lineheight, word_wrap_width, fonts, baked_display_attributes) = inputs
+
+        # Placeholders when nothing bakes: what a layouter puts in its glyph arrays for
+        # those blocks is replaced by `register_glyph_display!` anyway.
+        color, strokecolor, strokewidth = something(
+            baked_display_attributes, (RGBAf(0, 0, 0, 1), RGBAf(0, 0, 0, 0), 0.0f0)
+        )
 
         buffer = cached === nothing ? GlyphBuffer() : GlyphBuffer(cached)
-
-        if cached !== nothing && text_handler === nothing && all(display_independent_layout, input_text) &&
-                !changed.input_text && !changed.fontsize && !changed.selected_font &&
-                !changed.resolved_justification && !changed.lineheight &&
-                !changed.word_wrap_width && !changed.fonts
-            refill_display_attributes!(buffer, computed_color, converted_strokecolor, strokewidth)
-            return node_outputs(buffer)
-        end
-
         empty!(buffer)
         N = length(input_text)
         for (name, value) in [
                 (:fontsize, fontsize), (:font, selected_font), (:lineheight, lineheight),
-                (:word_wrap_width, word_wrap_width), (:color, computed_color),
-                (:strokecolor, converted_strokecolor), (:strokewidth, strokewidth),
+                (:word_wrap_width, word_wrap_width),
             ]
             validate_per_string(name, value, N)
         end
@@ -498,7 +501,7 @@ function register_glyph_layout!(attr::ComputeGraph)
         for (i, str) in enumerate(input_text)
             attributes = block_attributes(
                 i, fontsize, selected_font, resolved_justification, lineheight,
-                word_wrap_width, fonts, computed_color, converted_strokecolor, strokewidth
+                word_wrap_width, fonts, color, strokecolor, strokewidth
             )
             append_text_layout!(buffer, layout_text(text_handler, str, attributes))
         end
@@ -506,6 +509,45 @@ function register_glyph_layout!(attr::ComputeGraph)
         return node_outputs(buffer)
     end
 
+end
+
+"""
+    register_glyph_display!(attr::ComputeGraph)
+
+Expands `color`, `strokecolor` and `strokewidth` to one value per glyph. Text that bakes
+them keeps what its layouter resolved; everything else takes the plot's value for its
+string, which is why recoloring plain text costs an expansion rather than a layout.
+"""
+function register_glyph_display!(attr::ComputeGraph)
+    inputs = [
+        :input_text, :text_handler, :text_blocks,
+        :layout_colors, :layout_strokecolors, :layout_strokewidths,
+        :computed_color, :converted_strokecolor, :strokewidth,
+    ]
+    outputs = [:glyph_colors, :glyph_strokecolors, :glyph_strokewidths]
+    return register_computation!(attr, inputs, outputs) do inputs, changed, cached
+        (; input_text, text_handler, text_blocks) = inputs
+        (; layout_colors, layout_strokecolors, layout_strokewidths) = inputs
+        (; computed_color, converted_strokecolor, strokewidth) = inputs
+
+        colors, strokecolors, strokewidths = cached === nothing ?
+            (RGBAf[], RGBAf[], Float32[]) : empty!.(values(cached))
+
+        for (i, block) in enumerate(text_blocks)
+            if bakes_display_attributes(text_handler, input_text[i])
+                append!(colors, view(layout_colors, block))
+                append!(strokecolors, view(layout_strokecolors, block))
+                append!(strokewidths, view(layout_strokewidths, block))
+            else
+                n = length(block)
+                append_per_glyph!(colors, sv_getindex(computed_color, i), n)
+                append_per_glyph!(strokecolors, sv_getindex(converted_strokecolor, i), n)
+                append_per_glyph!(strokewidths, sv_getindex(strokewidth, i), n)
+            end
+        end
+
+        return (colors, strokecolors, strokewidths)
+    end
 end
 
 """
@@ -598,7 +640,9 @@ function register_text_computations!(attr::ComputeGraph)
     register_resolved_justification!(attr)
 
     # one output per `GlyphBuffer` field
+    register_baked_display_attributes!(attr)
     register_glyph_layout!(attr)
+    register_glyph_display!(attr)
 
     register_glyph_placement!(attr)
 

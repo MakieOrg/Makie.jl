@@ -207,6 +207,27 @@ end
     @test handler.calls[] == layouts + 2
 end
 
+@testset "moving text does not relayout" begin
+    handler = CountingHandler(Ref(0))
+    scene = Scene(camera = campixel!)
+    p = text!(scene, [Point2f(10, 10), Point2f(50, 50)], text = ["a", "b"], text_handler = handler)
+    p.glyph_origins[]
+    layouts = handler.calls[]
+    @test layouts == 2
+
+    p[1] = [Point2f(20, 20), Point2f(60, 60)]
+    p.glyph_origins[]
+    @test handler.calls[] == layouts
+
+    p.text = ["a", "b"] # a different array holding the same text
+    p.glyph_origins[]
+    @test handler.calls[] == layouts
+
+    p.text = ["x", "y"]
+    p.glyph_origins[]
+    @test handler.calls[] == layouts + 2
+end
+
 struct WrappedText
     value::String
 end
