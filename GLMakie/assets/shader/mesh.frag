@@ -93,6 +93,7 @@ vec4 get_color(sampler2D color, vec3 uv, vec2 color_norm, sampler1D color_map, s
 }
 
 uniform bool fetch_pixel;
+uniform float px_per_unit;
 
 {{uv_transform_type}} uv_transform;
 vec2 apply_uv_transform(Nothing t1, int i, vec2 uv){ return uv; }
@@ -107,7 +108,8 @@ vec2 apply_uv_transform(samplerBuffer transforms, int index, vec2 uv){
 }
 
 vec4 get_pattern_color(sampler2D color){
-    vec2 pos = apply_uv_transform(uv_transform, o_InstanceID, gl_FragCoord.xy);
+    // pattern_uv_transform maps logical pixels, gl_FragCoord is physical pixels
+    vec2 pos = apply_uv_transform(uv_transform, o_InstanceID, gl_FragCoord.xy / px_per_unit);
     return texture(color, pos);
 }
 vec4 get_pattern_color(sampler3D color){
