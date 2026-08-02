@@ -10,6 +10,7 @@ on:
     branches:
       - master
       - 'release-*'
+      - ff/breaking-0.25
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
@@ -54,7 +55,8 @@ jobs:
     if: >
       (github.event_name == 'push' || github.event_name == 'merge_group') &&
       contains(fromJSON('[
-      "refs/heads/master"
+      "refs/heads/master",
+      "refs/heads/ff/breaking-0.25"
       ]'), github.event_name == 'merge_group' && github.event.merge_group.base_ref || github.ref)
     uses: ./.github/workflows/_promote-refimages.yml
     secrets: inherit
