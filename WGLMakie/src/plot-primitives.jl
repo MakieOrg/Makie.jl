@@ -113,7 +113,7 @@ function plot_updates(args, changed)
     return new_values
 end
 
-function create_wgl_renderobject(callback, attr, inputs)
+function create_wgl_renderobject(callback, attr, inputs; rename_updates = nothing)
     # default case
     haskey(attr, :uniform_clip_planes) || Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
@@ -123,6 +123,11 @@ function create_wgl_renderobject(callback, attr, inputs)
             return (program, Observable{Any}([]))
         else
             updates = plot_updates(args, changed)
+            if !isnothing(rename_updates)
+                for update in updates
+                    update[1] = get(rename_updates, update[1], update[1])
+                end
+            end
             last.wgl_renderobject[:visible] = args.visible
             update_values!(last.wgl_update_obs, Bonito.LargeUpdate(updates))
             return nothing
@@ -406,6 +411,11 @@ function meshscatter_program(args)
         :f32c_scale => args.f32c_scale,
         # Note: uv needs to be generated via register_computation! to allow updates
         :uv => Vec2f(0),
+        # mesh.frag references the stroke uniforms, but only meshes support stroking
+        :strokewidth => 0.0f0,
+        :strokecolor => Vec4f(0),
+        :stroke_data => Sampler(fill(Vec4f(0), 1, 1), minfilter = :nearest),
+        :viewport_origin => Vec2f(0),
     )
     per_instance, uniforms = assemble_particle_robj!(args, data)
     return create_instanced_shader(
@@ -494,7 +504,12 @@ function add_uv_mesh!(attr)
     end
 end
 
+# Meshes render de-indexed (one vertex per triangle corner with a trivial index buffer)
+# so that gl_VertexID / 3 recovers the primitive index for edge stroking, which WebGL
+# cannot provide as gl_PrimitiveID. Image, Heatmap and Surface share this program and
+# keep their indexed geometry with inactive stroke uniforms.
 function mesh_program(attr)
+    deindexed = hasproperty(attr, :wgl_mesh_positions)
 
     data = Dict(
         :shading => attr.primitive_shading,
@@ -512,28 +527,95 @@ function mesh_program(attr)
     )
 
     handle_color!(data, attr)
-    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    # id + picking + px_per_unit get filled in JS, need to be here to emit the correct
+    # shader uniforms
     data[:picking] = false
     data[:object_id] = UInt32(0)
+    data[:px_per_unit] = 0.0f0
+
+    if deindexed
+        data[:vertex_color] = attr.wgl_mesh_vertex_color
+        data[:vertex_index] = attr.wgl_mesh_vertex_index
+        data[:strokewidth] = attr.strokewidth
+        data[:strokecolor] = attr.strokecolor
+        data[:stroke_data] = attr.wgl_stroke_data
+        data[:viewport_origin] = attr.wgl_viewport_origin
+        positions = attr.wgl_mesh_positions
+        normals = attr.wgl_mesh_normals
+        texturecoordinates = attr.wgl_mesh_uv
+        faces = attr.wgl_mesh_faces
+    else
+        data[:vertex_index] = -1.0f0
+        data[:strokewidth] = 0.0f0
+        data[:strokecolor] = Vec4f(0)
+        data[:stroke_data] = Sampler(fill(Vec4f(0), 1, 1), minfilter = :nearest)
+        data[:viewport_origin] = Vec2f(0)
+        positions = attr.positions_transformed_f32c
+        normals = attr.normals
+        texturecoordinates = attr.texturecoordinates
+        faces = attr.faces
+    end
+
     is_vertex((_, x)) = begin
-        (x isa AbstractVector) && !Makie.is_scalar_attribute(x) && (length(x) == length(attr.positions_transformed_f32c))
+        (x isa AbstractVector) && !Makie.is_scalar_attribute(x) && (length(x) == length(positions))
     end
     uniforms = filter(!is_vertex, data)
     buffers = filter(is_vertex, data)
-    if !isnothing(attr.normals)
-        buffers[:normals] = attr.normals
+    if !isnothing(normals)
+        buffers[:normals] = normals
     else
         uniforms[:normals] = Vec3f(0)
     end
-    if !isnothing(attr.texturecoordinates)
-        buffers[:texturecoordinates] = attr.texturecoordinates
+    if !isnothing(texturecoordinates)
+        buffers[:texturecoordinates] = texturecoordinates
     else
         uniforms[:texturecoordinates] = Vec2f(0)
     end
-    buffers[:positions_transformed_f32c] = attr.positions_transformed_f32c
-    buffers[:faces] = attr.faces
+    buffers[:positions_transformed_f32c] = positions
+    buffers[:faces] = faces
 
     return create_shader(buffers, uniforms, lasset("mesh.vert"), lasset("mesh.frag"))
+end
+
+function register_wgl_mesh_expansion!(attr)
+    return map!(
+        attr,
+        [:positions_transformed_f32c, :faces, :normals, :texturecoordinates, :vertex_color],
+        [
+            :wgl_mesh_positions, :wgl_mesh_faces, :wgl_mesh_vertex_index,
+            :wgl_mesh_normals, :wgl_mesh_uv, :wgl_mesh_vertex_color,
+        ]
+    ) do positions, faces, normals, texturecoordinates, vertex_color
+        expand(v::AbstractVector) = [v[f[i]] for f in faces for i in 1:3]
+        expand(v) = v
+        expanded_color = if vertex_color isa AbstractVector && length(vertex_color) == length(positions)
+            expand(vertex_color)
+        else
+            vertex_color
+        end
+        trivial_faces = collect(UInt32, 0:(3 * length(faces) - 1))
+        vertex_index = Float32[Base.to_index(f[i]) - 1 for f in faces for i in 1:3]
+        return (
+            expand(positions), trivial_faces, vertex_index,
+            expand(normals), expand(texturecoordinates), expanded_color,
+        )
+    end
+end
+
+function register_wgl_mesh_stroke!(attr)
+    Makie.register_stroke_data!(attr)
+    map!(attr, :stroke_data_packed, :wgl_stroke_data) do packed
+        width = min(length(packed), 2048)
+        height = cld(length(packed), width)
+        texel_data = fill(Vec4f(0), width, height)
+        for (i, texel) in enumerate(packed)
+            i0 = i - 1
+            texel_data[i0 % width + 1, i0 ÷ width + 1] = texel
+        end
+        return Sampler(texel_data, minfilter = :nearest)
+    end
+    map!(viewport -> Vec2f(minimum(viewport)), attr, :viewport, :wgl_viewport_origin)
+    return
 end
 
 function create_shader(::Scene, plot::Union{Heatmap, Image})
@@ -565,18 +647,35 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
     backend_colors!(attr)
     add_primitive_shading!(scene, attr)
+    register_wgl_mesh_expansion!(attr)
+    register_wgl_mesh_stroke!(attr)
     inputs = [
         # Special
         :space,
         # Needs explicit handling
-        :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
+        :uniform_colormap, :uniform_color, :uniform_colorrange, :pattern,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :wgl_uv_transform, :fetch_pixel, :primitive_shading, :color_mapping_type,
-        :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
+        :depth_shift,
+        :wgl_mesh_positions, :wgl_mesh_faces, :wgl_mesh_vertex_index,
+        :wgl_mesh_normals, :wgl_mesh_uv, :wgl_mesh_vertex_color,
+        :strokewidth, :strokecolor, :wgl_stroke_data, :wgl_viewport_origin,
         :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
-    return create_wgl_renderobject(mesh_program, attr, inputs)
+    # JS buffers and uniforms keep the standard names, so updates of the de-indexed
+    # buffers have to be renamed to reach them
+    rename_updates = Dict(
+        :wgl_mesh_positions => :positions_transformed_f32c,
+        :wgl_mesh_faces => :faces,
+        :wgl_mesh_vertex_index => :vertex_index,
+        :wgl_mesh_normals => :normals,
+        :wgl_mesh_uv => :texturecoordinates,
+        :wgl_mesh_vertex_color => :vertex_color,
+        :wgl_stroke_data => :stroke_data,
+        :wgl_viewport_origin => :viewport_origin,
+    )
+    return create_wgl_renderobject(mesh_program, attr, inputs; rename_updates)
 end
 
 
