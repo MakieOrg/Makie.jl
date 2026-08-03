@@ -67,10 +67,10 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
         a_pos, a_text, args... = values(inputs)
         _, text_changed, args_changed... = values(changed)
         # Note: Could add RichText
-        if args isa Tuple{<:AbstractString}
+        if args isa Tuple{<:Union{AbstractString, RichText}}
             # position data will always be wrapped in a Vector, so strings should too
             return ((a_pos,), text_update([args[1]], args_changed[1]))
-        elseif args isa Tuple{<:AbstractVector{<:AbstractString}}
+        elseif args isa Tuple{<:AbstractVector{<:Union{AbstractString, RichText}}}
             return ((a_pos,), text_update(args[1], args_changed[1]))
         elseif args isa Tuple{<:AbstractVector{<:Tuple{<:Any, <:VecTypes}}}
             # [(text, pos), ...] argument

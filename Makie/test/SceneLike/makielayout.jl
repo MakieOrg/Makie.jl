@@ -20,6 +20,109 @@ using InteractiveUtils: subtypes
     @test true
 end
 
+@testset "Searchable Menu" begin
+    fig = Figure()
+    m = Menu(fig[1, 1], options = ["Apple", "Apricot", "Banana"], searchable = true)
+    @test m.selection[] === "Apple"
+    m.i_selected[] = 2
+    @test m.selection[] == "Apricot"
+    # option mutation preserves selection by value+label
+    m.options[] = ["Banana", "Apricot", "Cherry"]
+    @test m.i_selected[] == 2
+    @test m.selection[] == "Apricot"
+    # custom filter attribute is honored
+    m2 = Menu(
+        fig[1, 2], options = ["sin", "sinh", "cos"], searchable = true,
+        filter = (q, s) -> startswith(s, q)
+    )
+    @test m2.filter[]("sin", "sinh") == true
+    @test m2.filter[]("sinh", "sin") == false
+end
+
+@testset "Searchable Menu filtering" begin
+    fig = Figure()
+    m = Menu(fig[1, 1], options = ["Apple", "Apricot", "Banana"], searchable = true)
+    Makie.update_state_before_display!(fig)
+    e = events(fig)
+
+    bbox = m.layoutobservables.computedbbox[]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(bbox) .+ widths(bbox) ./ 2))
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+
+    optiontexts = m.blockscene.children[1].plots[2]::Makie.Text
+    e.unicode_input[] = 'p'
+    @test optiontexts.text[] == ["Apple", "Apricot"]
+    @test length(optiontexts.color[]) == 2
+
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.backspace, Keyboard.press)
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.backspace, Keyboard.release)
+    @test optiontexts.text[] == ["Apple", "Apricot", "Banana"]
+    @test length(optiontexts.color[]) == 3
+
+    m.i_selected[] = 2
+    e.unicode_input[] = 'p'
+    @test optiontexts.text[] == ["Apple", "Apricot"]
+    e.mouseposition[] = (1.0, 1.0)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    @test !m.is_open[]
+    @test m.i_selected[] == 2
+    @test m.selection[] == "Apricot"
+    @test optiontexts.text[] == ["Apple", "Apricot", "Banana"]
+end
+
+@testset "Menu option text colors" begin
+    fig = Figure()
+    m = Menu(fig[1, 1], options = ["a", "b", "c"], default = "b", textcolor_hover = :red)
+    Makie.update_state_before_display!(fig)
+    e = events(fig)
+
+    bbox = m.layoutobservables.computedbbox[]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(bbox) .+ widths(bbox) ./ 2))
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+
+    menuscene = m.blockscene.children[1]
+    optionpolys = menuscene.plots[1]::Poly
+    optiontexts = menuscene.plots[2]::Makie.Text
+    @test optiontexts.color[] == to_color.([:black, :white, :black])
+
+    option = optionpolys.converted[][1][3]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(option) .+ widths(option) ./ 2 .+ Makie.origin(viewport(menuscene)[])))
+    @test optiontexts.color[] == to_color.([:black, :white, :red])
+end
+
+@testset "Menu selection box hover color" begin
+    fig = Figure()
+    m = Menu(fig[1, 1], options = ["a", "b", "c"], selection_cell_color_inactive = :red, cell_color_hover = :orange)
+    Makie.update_state_before_display!(fig)
+    selectionpoly = m.blockscene.plots[1]::Poly
+    e = events(fig)
+    click() = (
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press);
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    )
+
+    bbox = m.layoutobservables.computedbbox[]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(bbox) .+ widths(bbox) ./ 2))
+    @test to_color(selectionpoly.color[]) == to_color(:orange)
+
+    click()
+    @test m.is_open[]
+    @test to_color(selectionpoly.color[]) == to_color(:red)
+
+    menuscene = m.blockscene.children[1]
+    option = menuscene.plots[1].converted[][1][2]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(option) .+ widths(option) ./ 2 .+ Makie.origin(viewport(menuscene)[])))
+    @test to_color(selectionpoly.color[]) == to_color(:red)
+
+    click()
+    @test !m.is_open[]
+    @test m.selection[] == "b"
+    @test to_color(selectionpoly.color[]) == to_color(:red)
+end
+
 @testset "Generic Block functionality" begin
     for T in subtypes(Makie.Block)
         T === Makie.AbstractAxis && continue
@@ -165,6 +268,32 @@ end
     @test ax.limits[] == ((0, 1), (0, 2), (1, 5))
     zlims!()
     @test ax.limits[] == ((0, 1), (0, 2), (nothing, nothing))
+end
+
+function Base.isapprox(a::Makie.Plane, b::Makie.Plane; kwargs...)
+    return isapprox(a.normal, b.normal; kwargs...) && isapprox(a.distance, b.distance; kwargs...)
+end
+
+@testset "Axis3 plot clip" begin
+    f = Figure()
+    ax3 = Axis3(f[1, 1])
+    sc = scatter!(ax3, Rect3f(0, 0, 0, 1, 1, 1))
+    expected = [
+        Plane3f(Vec3f(1, 0, 0), -1), Plane3f(Vec3f(0, 1, 0), -1), Plane3f(Vec3f(0, 0, 1), -2 / 3),
+        Plane3f(Vec3f(-1, 0, 0), -1), Plane3f(Vec3f(0, -1, 0), -1), Plane3f(Vec3f(0, 0, -1), -2 / 3),
+    ]
+    @test all(ax3.scene.theme.clip_planes[] .≈ expected)
+    # check plot init
+    @test all(sc.clip_planes[] .≈ expected)
+
+    # check update
+    ax3.aspect[] = :data
+    expected = [
+        Plane3f(Vec3f(1, 0, 0), -1), Plane3f(Vec3f(0, 1, 0), -1), Plane3f(Vec3f(0, 0, 1), -1),
+        Plane3f(Vec3f(-1, 0, 0), -1), Plane3f(Vec3f(0, -1, 0), -1), Plane3f(Vec3f(0, 0, -1), -1),
+    ]
+    @test all(ax3.scene.theme.clip_planes[] .≈ expected)
+    @test all(sc.clip_planes[] .≈ expected)
 end
 
 @testset "Axis limits intervals" begin
@@ -677,6 +806,7 @@ end
             SliderGrid(
                 scene,
                 (label = "Amplitude", range = 0:0.1:10, startvalue = 5),
+                (label = "Band", type = IntervalSlider, range = 0:0.1:10, startvalues = (2.0, 8.0)),
                 (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
                 (
                     label = "Phase", range = 0:0.01:2pi,
@@ -698,6 +828,40 @@ end
         end
         @test isempty(d)
     end
+end
+
+@testset "SliderGrid with IntervalSlider" begin
+    fig = Figure()
+    sg = SliderGrid(
+        fig[1, 1],
+        (label = "Amplitude", range = 0:0.1:10, startvalue = 5.0),
+        (label = "Band", type = IntervalSlider, range = 0:0.1:10, startvalues = (2.0, 8.0)),
+        (label = "Frequency", range = 0:0.5:50, startvalue = 10.0),
+    )
+
+    @test sg.sliders[1] isa Slider
+    @test sg.sliders[2] isa IntervalSlider
+    @test sg.sliders[3] isa Slider
+
+    @test sg.sliders[1].value[] == 5.0
+    @test sg.sliders[2].interval[] == (2.0, 8.0)
+    @test sg.sliders[3].value[] == 10.0
+
+    @test sg.valuelabels[1].text[] == "5.0"
+    @test sg.valuelabels[2].text[] == "(2.0, 8.0)"
+    @test sg.valuelabels[3].text[] == "10.0"
+
+    set_close_to!(sg.sliders[1], 7.5)
+    @test sg.sliders[1].value[] == 7.5
+    @test sg.valuelabels[1].text[] == "7.5"
+
+    set_close_to!(sg.sliders[2], 3.0, 6.0)
+    @test sg.sliders[2].interval[] == (3.0, 6.0)
+    @test sg.valuelabels[2].text[] == "(3.0, 6.0)"
+
+    set_close_to!(sg.sliders[3], 25.0)
+    @test sg.sliders[3].value[] == 25.0
+    @test sg.valuelabels[3].text[] == "25.0"
 end
 
 @testset "Legend with rich text" begin
