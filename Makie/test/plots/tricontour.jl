@@ -104,10 +104,11 @@ end
 
     _, _, tr = tricontour(xs, ys, zs; levels = 6)
     cmap = Makie.extract_colormap(tr)
-    @test cmap isa Makie.ColorMapping
-    lo, hi = cmap.colorrange[]
-    @test isfinite(lo) && isfinite(hi)
-    @test lo < hi
+    @test cmap isa Dict
+    @test cmap[:colorrange] === p.computed_colorrange
+    @test cmap[:color] === p.computed_levels
+    @test cmap[:lowclip] == Makie.automatic
+    @test cmap[:highclip] == Makie.automatic
 end
 
 @testset "Colorbar extract_colormap for 2D contour" begin
@@ -116,10 +117,12 @@ end
 
     _, _, p = contour(xs, ys, zs; levels = 5)
     cmap = Makie.extract_colormap(p)
-    @test cmap isa Makie.ColorMapping
-    lo, hi = cmap.colorrange[]
-    @test isfinite(lo) && isfinite(hi)
-    @test lo < hi
+    @test cmap isa Dict
+    @test cmap[:colorrange] === p.computed_colorrange
+    @test cmap[:color] === p.zlevels
+    @test cmap[:colorscale] === p.colorscale
+    @test cmap[:lowclip][] == Makie.automatic
+    @test cmap[:highclip][] == Makie.automatic
 end
 
 @testset "constant colorrange expansion" begin
