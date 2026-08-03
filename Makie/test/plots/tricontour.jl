@@ -105,8 +105,8 @@ end
     _, _, tr = tricontour(xs, ys, zs; levels = 6)
     cmap = Makie.extract_colormap(tr)
     @test cmap isa Dict
-    @test cmap[:colorrange] === p.computed_colorrange
-    @test cmap[:color] === p.computed_levels
+    @test cmap[:colorrange] === tr.computed_colorrange
+    @test cmap[:color] === tr.computed_levels
     @test cmap[:lowclip] == Makie.automatic
     @test cmap[:highclip] == Makie.automatic
 end

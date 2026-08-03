@@ -705,7 +705,9 @@ end
         e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
     end
     e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.release)
-    e.mouseposition[] = (80, 340) # keep the mouse away from markers
+    wait_for_data_inspector(f, di) do
+        e.mouseposition[] = (80, 340) # keep the mouse away from markers
+    end
 
     Makie.step!(st)
 
@@ -723,7 +725,9 @@ end
     e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
     e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
     e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.release)
-    e.mouseposition[] = (80, 340) # keep the mouse away from markers
+    wait_for_data_inspector(f, di) do
+        e.mouseposition[] = (80, 340) # keep the mouse away from markers
+    end
 
     Makie.step!(st)
 
