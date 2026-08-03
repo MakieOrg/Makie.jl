@@ -357,6 +357,22 @@ const REFIMG_STYLES = Styles(
         "height" => "auto",
         "grid-area" => "1 / 1"
     ),
+    CSS(
+        ".media-container .media-img",
+        "cursor" => "pointer"
+    ),
+    # Card grid - one row per image, one column per backend
+    CSS(
+        ".card-grid",
+        "display" => "grid",
+        "grid-template-columns" => "1fr 1fr 1fr",
+        "gap" => "10px"
+    ),
+    CSS(
+        "@media (max-width: 1000px)",
+        CSS(".card-grid", "grid-template-columns" => "1fr"),
+        CSS(".card-base", "min-width" => "0")
+    ),
     # Main container
     CSS(
         ".main-container",
@@ -457,6 +473,8 @@ function media_element(img_name, local_path, additional_classes = ""; kw...)
     end
     return dom
 end
+
+card_grid(cards) = DOM.div(cards, class = "card-grid")
 
 
 """
@@ -595,15 +613,15 @@ function BackendCard(
         )
     end
 
-    # Create all three media paths
     recorded_path = Bonito.Asset(normpath(joinpath(root_path, "recorded", backend, img_name)))
     reference_path = Bonito.Asset(normpath(joinpath(root_path, "reference", backend, img_name)))
-    glmakie_ref_path = Bonito.Asset(normpath(joinpath(root_path, "reference", "GLMakie", img_name)))
+    # WGLMakie-only tests (e.g. HTML widgets) have no GLMakie reference to cycle to
+    glmakie_ref_file = normpath(joinpath(root_path, "reference", "GLMakie", img_name))
 
-    # Create three media elements (identical CSS and positioning)
     media_recorded = media_element(img_name, recorded_path; style = "z-index: 3")
     media_reference = media_element(img_name, reference_path; style = "z-index: 2")
-    media_glmakie = media_element(img_name, glmakie_ref_path; style = "z-index: 1")
+    media_glmakie = isfile(glmakie_ref_file) ?
+        media_element(img_name, Bonito.Asset(glmakie_ref_file); style = "z-index: 1") : nothing
 
     # Button container (for JS to find and update)
     path_button = Bonito.Button("Showing: recorded", style = BUTTON_STYLE)
@@ -615,9 +633,7 @@ function BackendCard(
 
     # Media container
     media_container = DOM.div(
-        media_recorded,
-        media_reference,
-        media_glmakie,
+        filter(!isnothing, [media_recorded, media_reference, media_glmakie]),
         class = "media-container"
     )
 
@@ -772,9 +788,9 @@ function review_content(root_path, backends, score_thresholds; display_threshold
     isempty(updated_cards) || push!(
         sections, DOM.div(
             DOM.h2("Changed images", class = "section-header"),
-            DOM.div("Each row shows one image per backend. Use the button on a card to toggle between the recorded image and its current reference.", class = "section-description"),
+            DOM.div("Each row shows one image per backend. Click an image or use the button on its card to toggle between the recorded image and its current reference.", class = "section-description"),
             cycle_controls,
-            Grid(updated_cards, columns = "1fr 1fr 1fr"),
+            card_grid(updated_cards),
             class = "section",
         )
     )
@@ -782,7 +798,7 @@ function review_content(root_path, backends, score_thresholds; display_threshold
         sections, DOM.div(
             DOM.h2("New images without references", class = "section-header"),
             DOM.div("These images have no current reference and are added when the PR merges.", class = "section-description"),
-            Grid(new_cards, columns = "1fr 1fr 1fr"),
+            card_grid(new_cards),
             class = "section",
         )
     )
@@ -790,7 +806,7 @@ function review_content(root_path, backends, score_thresholds; display_threshold
         sections, DOM.div(
             DOM.h2("Reference images without recordings", class = "section-header"),
             DOM.div("A reference image exists but no image was recorded (a test was deleted or renamed).", class = "section-description"),
-            Grid(missing_cards, columns = "1fr 1fr 1fr"),
+            card_grid(missing_cards),
             class = "section",
         )
     )
@@ -961,7 +977,7 @@ function create_app_content(session::Session, root_path::String)
     end
 
     # Main grid
-    main_grid = Grid(updated_cards, columns = "1fr 1fr 1fr")
+    main_grid = card_grid(updated_cards)
 
     # Setup JS filtering
     onjs(
@@ -982,7 +998,7 @@ function create_app_content(session::Session, root_path::String)
     )
 
     toggle_all_new = Bonito.Button("Toggle all", style = BUTTON_STYLE)
-    new_grid = Grid(new_cards, columns = "1fr 1fr 1fr")
+    new_grid = card_grid(new_cards)
     onjs(
         session, toggle_all_new.value, js"""
         function(click) {
@@ -992,7 +1008,7 @@ function create_app_content(session::Session, root_path::String)
     )
 
     toggle_all_missing = Bonito.Button("Toggle all", style = BUTTON_STYLE)
-    missing_grid = Grid(missing_cards, columns = "1fr 1fr 1fr")
+    missing_grid = card_grid(missing_cards)
     onjs(
         session, toggle_all_missing.value, js"""
         function(click) {
