@@ -39,7 +39,7 @@ end
         color = :transparent,
         strokewidth = 2,
         strokecolor = 1:15,
-        strokecolormap=:matter,
+        strokecolormap = :matter,
     )
 
     fig

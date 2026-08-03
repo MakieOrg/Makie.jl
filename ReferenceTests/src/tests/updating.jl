@@ -310,7 +310,7 @@ end
 end
 
 @reference_test "linestyle update" begin
-    f,a,p = lines(Rect2f(0, 0, 1, 1), linewidth = 3, linestyle = :dot)
+    f, a, p = lines(Rect2f(0, 0, 1, 1), linewidth = 3, linestyle = :dot)
     p2 = linesegments!(
         [0.1, 0.1, 0.9, 0.9], [0.1, 0.9, 0.1, 0.9], linewidth = 8,
         linestyle = :solid, linecap = :round

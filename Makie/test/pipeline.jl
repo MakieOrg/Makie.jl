@@ -140,7 +140,7 @@ end
     @test pl1.linestyle[] === nothing
     # The explicitly set solid linestyles must not be overridden by the cycle.
     @test pl2.linestyle[] === nothing
-    @test pl3.linestyle[] == [0f0]
+    @test pl3.linestyle[] == [0.0f0]
     # Because `pl2` and `pl3` set `linestyle` explicitly, they must not count as
     # cycling and thus must not advance the cycle. `pl4` is therefore only the
     # second *cycling* line and gets palette index 2, i.e. `:dash`.
