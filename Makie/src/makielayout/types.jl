@@ -614,6 +614,11 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         yzoomkey::IsPressedInputType = Makie.Keyboard.y
         "Button that needs to be pressed to allow scroll zooming."
         zoombutton::IsPressedInputType = true
+        "The key (and button) combination for triggering a limit reset (equivalent to `reset_limits!(ax)`)"
+        resetlimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & Mouse.left
+        "The key (and button) combination for triggering a limit recalculation (equivalent to `autolimits!(ax)`)"
+        recomputelimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
@@ -2105,6 +2110,13 @@ end
         for zooming centered approximately where the cursor is. This is disabled with `viewmode = :free`.
         """
         zoommode::Symbol = :center
+        "The key (and button) combination for triggering a limit reset (equivalent to `reset_limits!(ax)`)"
+        resetlimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & Mouse.left
+        "The key (and button) combination for triggering a rotation reset (sets `elevation` and `azimuth` to its default values)"
+        resetrotationkey::IsPressedInputType = (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+        "The key (and button) combination for triggering a limit recalculation (equivalent to `autolimits!(ax)`)"
+        recomputelimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+
 
         "Locks interactive translation in the x direction."
         xtranslationlock::Bool = false
