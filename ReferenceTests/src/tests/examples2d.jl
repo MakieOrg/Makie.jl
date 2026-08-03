@@ -27,12 +27,21 @@ end
 
 @reference_test "poly and colormap" begin
     # example by @Paulms from MakieOrg/Makie.jl#310
-    points = Point2f[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
+    points = Point2f[[0, 0], [1, 0], [1, 1], [0, 1]]
     colors = [0.0, 0.0, 0.5, 0.0]
-    fig, ax, polyplot = poly(points, color = colors, colorrange = (0.0, 1.0))
-    points = Point2f[[0.1, 0.1], [0.2, 0.1], [0.2, 0.2], [0.1, 0.2]]
+    fig, ax, polyplot = poly(points, color = colors, colorrange = (0.0, 1.0), colormap = :terrain)
+    points = Point2f[[1, 1], [2, 1], [2, 2], [1, 2]]
     colors = [0.5, 0.5, 1.0, 0.3]
     poly!(ax, points, color = colors, colorrange = (0.0, 1.0))
+
+    poly!(
+        [Rect(i, j, 0.25, 0.25) for i in 0.1:0.4:1.8 for j in 0.1:0.75:1.6],
+        color = :transparent,
+        strokewidth = 2,
+        strokecolor = 1:15,
+        strokecolormap=:matter,
+    )
+
     fig
 end
 

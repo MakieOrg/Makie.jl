@@ -46,7 +46,7 @@ end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])
@@ -65,7 +65,7 @@ end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
     color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])
@@ -155,7 +155,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
     else
         error("Wrong type for linestyle: $(poly.linestyle[]).")
     end
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
 
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])
     joinstyle = to_cairo_joinstyle(poly.joinstyle[])
@@ -252,7 +252,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     end
 
     color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])
@@ -289,7 +289,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     end
 
     color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])
@@ -482,7 +482,7 @@ function draw_plot(scene::Scene, screen::Screen, arrow::Arrows2D)
     poly = only(arrow.plots)
     color = to_cairo_color(poly.color[], poly)
     model = Ref(poly.model[])
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
     strokewidth = poly.strokewidth[]
 
