@@ -16,7 +16,7 @@ A PR that changes rendering should not upload to the release tarball directly (t
 
 Add entries in one of three ways (none require running the backend tests locally):
 
-- Viewer button: run `ReferenceUpdater.serve_update_page(pr = 1234)`, select the images, and click "Add selection to update manifest".
+- Viewer button: run `ReferenceUpdater.serve_update_page(pr = 1234)`, select the images, and click "Add pin files for selection".
 - Headless (agents): `ReferenceUpdater.add_pr_updates_to_manifest(1234)` picks every image whose score exceeds the threshold plus every new image; pass `select = ["CairoMakie/foo.png", ...]` to choose explicitly. Pins come from the current release tarball, the changed/new classification from the PR's CI artifact.
 - CLI: `reference_updater manifest pr 1234` (or `manifest commit <sha>`).
 
