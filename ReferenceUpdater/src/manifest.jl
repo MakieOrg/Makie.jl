@@ -15,6 +15,18 @@ end
 add_to_manifest(paths, reference_folder; manifest_dir = refimage_manifest_dir()) =
     add_manifest_selection(paths, String[], reference_folder; manifest_dir)
 
+"""
+    review_pin_state(path, score, pinned_paths; threshold = 0.05)
+
+What a reviewed image needs: `:pinned` when an active pin file already covers it,
+`:unpinned` when it differs enough to need one, and `:unchanged` when it is only shown to
+compare against another backend that differs.
+"""
+function review_pin_state(path, score, pinned_paths; threshold = 0.05)
+    path in pinned_paths && return :pinned
+    return score > threshold ? :unpinned : :unchanged
+end
+
 function manifest_candidates(artifact_dir, select; threshold, backends)
     if select isa AbstractVector
         paths = Set(String.(select))

@@ -111,6 +111,14 @@ end
     @test result.missing_recordings == [joinpath("GLMakie", "deleted.png")]
 end
 
+@testset "review_pin_state" begin
+    pinned = Set(["CairoMakie/pinned.png"])
+    @test review_pin_state("CairoMakie/pinned.png", 0.9, pinned; threshold = 0.05) == :pinned
+    @test review_pin_state("CairoMakie/pinned.png", 0.0, pinned; threshold = 0.05) == :pinned
+    @test review_pin_state("GLMakie/changed.png", 0.9, pinned; threshold = 0.05) == :unpinned
+    @test review_pin_state("GLMakie/same.png", 0.0, pinned; threshold = 0.05) == :unchanged
+end
+
 @testset "approval_coverage" begin
     mktempdir() do dir
         refdir = make_reference_tree(

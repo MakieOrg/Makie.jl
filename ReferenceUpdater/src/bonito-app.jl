@@ -273,7 +273,7 @@ const REFIMG_STYLES = Styles(
         "margin-bottom" => "4px"
     ),
     CSS(
-        ".manifest-status",
+        ".pin-status",
         "display" => "flex",
         "align-items" => "center",
         "gap" => "4px",
@@ -281,13 +281,26 @@ const REFIMG_STYLES = Styles(
         "font-weight" => "700",
         "margin-bottom" => "6px"
     ),
-    CSS(".manifest-status.covered", "color" => SUCCESS_COLOR),
-    CSS(".manifest-status.uncovered", "color" => WARNING_COLOR),
+    CSS(".pin-status.pinned", "color" => SUCCESS_COLOR),
+    CSS(".pin-status.unpinned", "color" => WARNING_COLOR),
     CSS(
-        ".manifest-check",
+        ".pin-check",
         "accent-color" => SUCCESS_COLOR,
         "transform" => "scale(1.1)",
         "cursor" => "default"
+    ),
+    CSS(
+        ".card-note",
+        "font-size" => "12px",
+        "color" => "#78909C",
+        "margin-bottom" => "6px"
+    ),
+    CSS(
+        ".failed-list",
+        "padding-left" => "24px",
+        "font-family" => "monospace",
+        "font-size" => "13px",
+        "color" => TEXT_DARK
     ),
     # Text field styles
     CSS(
@@ -448,14 +461,39 @@ const UPLOAD_BUTTON_STYLE = Styles(
 # Helper Functions
 # ============================================================================
 
-function manifest_status_dom(covered::Bool)
-    box = covered ?
-        DOM.input(type = "checkbox", checked = true, disabled = true, class = "manifest-check") :
-        DOM.input(type = "checkbox", disabled = true, class = "manifest-check")
+function pin_status_dom(pinned::Bool)
+    box = pinned ?
+        DOM.input(type = "checkbox", checked = true, disabled = true, class = "pin-check") :
+        DOM.input(type = "checkbox", disabled = true, class = "pin-check")
     return DOM.div(
         box,
-        DOM.span(covered ? "in manifest" : "not in manifest — needs adding", class = "manifest-status-text"),
-        class = covered ? "manifest-status covered" : "manifest-status uncovered",
+        DOM.span(pinned ? "pin file present" : "no pin file, needs adding", class = "pin-status-text"),
+        class = pinned ? "pin-status pinned" : "pin-status unpinned",
+    )
+end
+
+comparison_note_dom() = DOM.div("unchanged, shown for comparison", class = "card-note")
+
+"""
+    failed_recordings_section(root_path)
+
+Section listing the tests that errored instead of producing an image, or `nothing` if there
+are none. No images are shown since there is nothing to compare.
+"""
+function failed_recordings_section(root_path)
+    path = joinpath(root_path, "failed_recordings.txt")
+    isfile(path) || return nothing
+    names = sort!(unique(filter(!isempty, strip.(readlines(path)))))
+    isempty(names) && return nothing
+    return DOM.div(
+        DOM.h2("Tests that failed to record", class = "section-header"),
+        DOM.div(
+            "These tests errored, so no image was recorded and no comparison is possible. " *
+                "The stacktrace is in the log of the backend's reference test job.",
+            class = "section-description"
+        ),
+        DOM.ul((DOM.li(name) for name in names), class = "failed-list"),
+        class = "section",
     )
 end
 
@@ -507,7 +545,7 @@ function build_card_grid(img_names, backends, should_include, card_builder)
     return cards
 end
 
-function create_simple_grid_content(root_path, filename, image_folder, backends; extra_paths = String[], review_only::Bool = false, covered_paths = nothing)
+function create_simple_grid_content(root_path, filename, image_folder, backends; extra_paths = String[], review_only::Bool = false, pinned_paths = nothing)
     path = joinpath(root_path, filename)
     files = unique(vcat(isfile(path) ? readlines(path) : String[], collect(extra_paths)))
     filter!(!isempty, files)
@@ -519,11 +557,11 @@ function create_simple_grid_content(root_path, filename, image_folder, backends;
 
     # Card builder for simple cards
     function simple_card_builder(img_name, backend, current_file)
-        # Plain HTML checkbox (no observables); filename + manifest status in review mode
+        # Plain HTML checkbox (no observables); filename + pin status in review mode
         cb = if review_only
             DOM.div(
                 DOM.div(current_file, class = "card-filename"),
-                manifest_status_dom(covered_paths !== nothing && current_file in covered_paths),
+                pin_status_dom(pinned_paths !== nothing && current_file in pinned_paths),
             )
         else
             DOM.div(
@@ -585,9 +623,11 @@ function get_score_class(score::Real, thresholds::Vector{Float64})
 end
 
 """
-    BackendCard(img_name, backend, score, root_path, score_thresholds)
+    BackendCard(img_name, backend, score, root_path, score_thresholds; status)
 
-Create a reference image card for a specific backend.
+Create a reference image card for a specific backend. Passing a `status` DOM element
+replaces the selection checkbox with the file name and that element, which is what the
+read-only review page uses.
 """
 function BackendCard(
         img_name::String,
@@ -595,16 +635,15 @@ function BackendCard(
         score::Float64,
         root_path::String,
         score_thresholds::Vector{Float64};
-        review_only::Bool = false,
-        covered_paths = nothing
+        status = nothing
     )
     current_file = backend * "/" * img_name
 
-    # Checkbox (plain HTML, selection handled in JS); filename + manifest status in review mode
-    cb = if review_only
+    # Checkbox (plain HTML, selection handled in JS); filename + status in review mode
+    cb = if !isnothing(status)
         DOM.div(
             DOM.div(current_file, class = "card-filename"),
-            manifest_status_dom(covered_paths !== nothing && current_file in covered_paths),
+            status,
         )
     else
         DOM.div(
@@ -745,38 +784,41 @@ const JSHelper = Bonito.ES6Module(normpath(joinpath(@__DIR__, "JSHelper.js")))
     review_content(root_path, backends, score_thresholds; display_threshold=0.05)
 
 Static, review-only page content: shows only images that differ (score above
-`display_threshold`) or are listed in the manifest, with a per-card before/after toggle
+`display_threshold`) or have an active pin file, with a per-card before/after toggle
 and no tool controls. Used for the self-contained `export_static` per-PR page.
 """
 function review_content(root_path, backends, score_thresholds; display_threshold = 0.05)
-    manifest_entries = read_manifest(joinpath(root_path, "refimage_updates"))
-    manifest_names = Set(replace(e.path, r"(GLMakie|CairoMakie|WGLMakie)/" => "") for e in manifest_entries)
-    manifest_new = [e.path for e in manifest_entries if e.pin == "new" && isfile(joinpath(root_path, "recorded", e.path))]
+    # inert pin files (their reference changed since the pin was taken) are left out
+    # entirely, since they neither exempt an image nor need any action
+    classified = classify_entries(read_manifest(joinpath(root_path, "refimage_updates")), joinpath(root_path, "reference"))
+    pinned_paths = union(classified.exempt_changed, classified.exempt_new, classified.to_delete)
+    pinned_names = Set(replace(path, r"(GLMakie|CairoMakie|WGLMakie)/" => "") for path in pinned_paths)
+    pinned_new = filter(path -> isfile(joinpath(root_path, "recorded", path)), sort!(collect(classified.exempt_new)))
 
-    classified = classify_entries(manifest_entries, joinpath(root_path, "reference"))
-    covered_paths = union(classified.exempt_changed, classified.exempt_new, classified.to_delete)
-
-    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends; extra_paths = manifest_new, review_only = true, covered_paths)
-    missing_cards = create_simple_grid_content(root_path, "missing_files.txt", "reference", backends; review_only = true, covered_paths)
+    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends; extra_paths = pinned_new, review_only = true, pinned_paths)
+    missing_cards = create_simple_grid_content(root_path, "missing_files.txt", "reference", backends; review_only = true, pinned_paths)
 
     scores_imgs = readdlm(joinpath(root_path, "scores.tsv"), '\t')
     lookup = Dict(scores_imgs[:, 2] .=> scores_imgs[:, 1])
     imgs_with_score = unique(replace.(string.(scores_imgs[:, 2]), r"(GLMakie|CairoMakie|WGLMakie)/" => ""))
     sort!(imgs_with_score; by = img -> get_score(lookup, backends, img), rev = true)
     filter!(imgs_with_score) do img
-        get_score(lookup, backends, img) > display_threshold || img in manifest_names
+        get_score(lookup, backends, img) > display_threshold || img in pinned_names
     end
 
-    updated_cards = build_card_grid(
-        imgs_with_score, backends,
-        file -> haskey(lookup, file),
-        (img_name, backend, current_file) -> BackendCard(img_name, backend, round(lookup[current_file]; digits = 3), root_path, score_thresholds; review_only = true, covered_paths),
-    )
+    function review_card(img_name, backend, current_file)
+        score = lookup[current_file]
+        state = review_pin_state(current_file, score, pinned_paths; threshold = display_threshold)
+        status = state === :unchanged ? comparison_note_dom() : pin_status_dom(state === :pinned)
+        return BackendCard(img_name, backend, round(score; digits = 3), root_path, score_thresholds; status)
+    end
+
+    updated_cards = build_card_grid(imgs_with_score, backends, file -> haskey(lookup, file), review_card)
 
     cov = approval_coverage(root_path)
     all_approved = cov.n_approved == cov.n_changed
-    summary = "$(cov.n_approved) of $(cov.n_changed) new/changed images approved via manifest" *
-        (all_approved ? "" : " — the rest still need to be added before merge")
+    summary = "$(cov.n_approved) of $(cov.n_changed) new/changed images approved by pin files" *
+        (all_approved ? "" : ", the rest still need to be added before merge")
 
     cycle_controls = DOM.div(
         DOM.input(type = "checkbox", class = "cycle-checkbox"),
@@ -805,12 +847,14 @@ function review_content(root_path, backends, score_thresholds; display_threshold
     isempty(missing_cards) || push!(
         sections, DOM.div(
             DOM.h2("Reference images without recordings", class = "section-header"),
-            DOM.div("A reference image exists but no image was recorded (a test was deleted or renamed).", class = "section-description"),
+            DOM.div("A reference image exists but no image was recorded, so its test was deleted or renamed.", class = "section-description"),
             card_grid(missing_cards),
             class = "section",
         )
     )
-    isempty(sections) && push!(sections, DOM.div("No differing or manifest-listed reference images.", class = "section-description"))
+    failed_section = failed_recordings_section(root_path)
+    isnothing(failed_section) || push!(sections, failed_section)
+    isempty(sections) && push!(sections, DOM.div("No differing or pinned reference images.", class = "section-description"))
 
     header = DOM.div(
         DOM.h1("Reference image review", class = "page-title"),
@@ -886,7 +930,7 @@ function create_app_content(session::Session, root_path::String)
 
     # Upload section
     tag_textfield = Bonito.TextField("$(last_major_version())", class = "textfield-tag")
-    manifest_button = Bonito.Button("Add selection to update manifest", style = UPLOAD_BUTTON_STYLE)
+    manifest_button = Bonito.Button("Add pin files for selection", style = UPLOAD_BUTTON_STYLE)
     upload_button = Bonito.Button("Update reference images directly (maintainers)", style = BUTTON_STYLE)
 
     # Loading overlay
@@ -1074,7 +1118,7 @@ function create_app_content(session::Session, root_path::String)
     update_section = DOM.div(
         DOM.h2("Images to update", class = "section-header"),
         DOM.div(
-            "Select the images to update below, then \"Add selection to update manifest\" to record them in ReferenceTests/refimage_updates/ (they get promoted into the release after the PR merges). \"Update reference images directly\" is the old maintainer path that overwrites the release tarball for the given version immediately. See Julia terminal for progress updates.",
+            "Select the images to update below, then \"Add pin files for selection\" to write one pin file per image into ReferenceTests/refimage_updates/ (they get promoted into the release after the PR merges). \"Update reference images directly\" is the old maintainer path that overwrites the release tarball for the given version immediately. See Julia terminal for progress updates.",
             class = "section-description"
         ),
         DOM.div(
@@ -1153,6 +1197,8 @@ function create_app_content(session::Session, root_path::String)
         class = "section"
     )
 
+    failed_section = something(failed_recordings_section(root_path), DOM.div())
+
     return DOM.div(
         REFIMG_STYLES,
         loading_overlay,
@@ -1161,6 +1207,7 @@ function create_app_content(session::Session, root_path::String)
         glmakie_compare_section,
         new_image_section,
         missing_recordings_section,
+        failed_section,
         main_section,
         class = "main-container"
     )
