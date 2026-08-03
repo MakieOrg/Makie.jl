@@ -97,17 +97,19 @@ end
 end
 
 @testset "split_missing_recordings" begin
-    attempted = ["errored", "recorded", "stepper"]
+    attempted = ["errored", "errored stepper", "recorded", "stepper"]
     recorded = [joinpath("GLMakie", "recorded.png"), joinpath("GLMakie", "stepper", "step-1.png")]
     reference = [
         joinpath("GLMakie", "recorded.png"), joinpath("GLMakie", "stepper", "step-1.png"),
         joinpath("GLMakie", "errored.png"), joinpath("GLMakie", "deleted.png"),
         joinpath("GLMakie", "excluded.png"),
+        joinpath("GLMakie", "errored stepper", "step-1.png"),
+        joinpath("GLMakie", "errored stepper", "step-2.png"),
     ]
     skipped = [joinpath("GLMakie", "excluded.png")]
 
     result = split_missing_recordings(attempted, recorded, reference, skipped)
-    @test result.failed == ["errored"]
+    @test result.failed == ["errored", "errored stepper"]
     @test result.missing_recordings == [joinpath("GLMakie", "deleted.png")]
 end
 
