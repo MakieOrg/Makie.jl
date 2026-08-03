@@ -303,37 +303,33 @@ end
 end
 
 
-@reference_test "Image on Surface Sphere" begin
+@reference_test "Surface tests" begin
     n = 20
     θ = [0;(0.5:(n - 0.5)) / n;1]
     φ = [(0:(2n - 2)) * 2 / (2n - 1);2]
     x = [cospi(φ) * sinpi(θ) for θ in θ, φ in φ]
     y = [sinpi(φ) * sinpi(θ) for θ in θ, φ in φ]
     z = [cospi(θ) for θ in θ, φ in φ]
-    pts = vec(Point3f.(x, y, z))
-    f, ax, p = surface(x, y, z, color = Makie.logo(), transparency = true)
-end
 
-@reference_test "Arrows on Sphere" begin
-    n = 20
+    fig = Figure(size = (800, 800))
+    surface(fig[1, 1], x, y, z, color = Makie.logo(), transparency = true)
+
     f = (x, y, z) -> x * exp(cos(y) * z)
     ∇f = (x, y, z) -> Point3f(exp(cos(y) * z), -sin(y) * z * x * exp(cos(y) * z), x * cos(y) * exp(cos(y) * z))
     ∇ˢf = (x, y, z) -> ∇f(x, y, z) - Point3f(x, y, z) * dot(Point3f(x, y, z), ∇f(x, y, z))
 
-    θ = [0;(0.5:(n - 0.5)) / n;1]
-    φ = [(0:(2n - 2)) * 2 / (2n - 1);2]
-    x = [cospi(φ) * sinpi(θ) for θ in θ, φ in φ]
-    y = [sinpi(φ) * sinpi(θ) for θ in θ, φ in φ]
-    z = [cospi(θ) for θ in θ, φ in φ]
-
     pts = vec(Point3f.(x, y, z))
     ∇ˢF = vec(∇ˢf.(x, y, z)) .* 0.1f0
-    surface(x, y, z)
+    surface(fig[1, 2], x, y, z)
     arrows!(
         pts, ∇ˢF,
         arrowsize = 0.03, linecolor = (:white, 0.6), linewidth = 0.03
     )
-    current_figure()
+
+    a, p = surface(fig[2, 1], x, y, z)
+    Makie.rotate!(p, Vec3f(0, 1, 1), pi / 2)
+
+    fig
 end
 
 @reference_test "surface + contour3d" begin

@@ -50,6 +50,7 @@ end
         include("plots/poly.jl")
         include("plots/mesh_stroke.jl")
         include("plots/contourf.jl")
+        include("plots/tricontour.jl")
         include("plots/voronoiplot.jl")
     end
 

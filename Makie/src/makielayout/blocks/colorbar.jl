@@ -125,6 +125,15 @@ function _extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z,
     )
 end
 
+function extract_colormap(plot::Tricontour)
+    return Dict{Symbol, Any}(
+        :color => plot.computed_levels,
+        :colorrange => plot.computed_colorrange,
+        :lowclip => automatic,
+        :highclip => automatic,
+    )
+end
+
 function add_default_colorbar_attributes(attr::Dict{Symbol, Any}, @nospecialize(plot))
     return add_default_colorbar_attributes(attr, attr, plot)
 end
@@ -286,7 +295,7 @@ function initialize_block!(cb::Colorbar)
         end
         s_scaled = scale.(colors)
         mini, maxi = extrema(s_scaled)
-        s_scaled = (s_scaled .- mini) ./ (maxi - mini)
+        s_scaled = mini < maxi ? (s_scaled .- mini) ./ (maxi - mini) : fill(0.5f0, length(s_scaled))
         if vertical
             xrange = collect(LinRange(xmin, xmax, 2))
             yrange = s_scaled .* (ymax - ymin) .+ ymin
