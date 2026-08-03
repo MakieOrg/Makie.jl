@@ -1,6 +1,7 @@
 using Test
 
 include(joinpath(@__DIR__, "..", "..", "ReferenceTests", "src", "refimage_manifest.jl"))
+include(joinpath(@__DIR__, "..", "..", "ReferenceTests", "src", "runtests.jl"))
 include(joinpath(@__DIR__, "..", "src", "manifest.jl"))
 
 function make_reference_tree(dir, files)
@@ -87,6 +88,27 @@ end
         explicit = manifest_candidates(dir, ["CairoMakie/x.png"]; threshold = 0.05, backends = ("CairoMakie",))
         @test explicit == ["CairoMakie/x.png"]
     end
+end
+
+@testset "recording_title" begin
+    @test recording_title(joinpath("GLMakie", "Standard deviation band.png")) == "Standard deviation band"
+    @test recording_title(joinpath("WGLMakie", "Menu search", "step-1.png")) == "Menu search"
+    @test recording_title(joinpath("CairoMakie", "Record Video.mp4")) == "Record Video"
+end
+
+@testset "split_missing_recordings" begin
+    attempted = ["errored", "recorded", "stepper"]
+    recorded = [joinpath("GLMakie", "recorded.png"), joinpath("GLMakie", "stepper", "step-1.png")]
+    reference = [
+        joinpath("GLMakie", "recorded.png"), joinpath("GLMakie", "stepper", "step-1.png"),
+        joinpath("GLMakie", "errored.png"), joinpath("GLMakie", "deleted.png"),
+        joinpath("GLMakie", "excluded.png"),
+    ]
+    skipped = [joinpath("GLMakie", "excluded.png")]
+
+    result = split_missing_recordings(attempted, recorded, reference, skipped)
+    @test result.failed == ["errored"]
+    @test result.missing_recordings == [joinpath("GLMakie", "deleted.png")]
 end
 
 @testset "approval_coverage" begin
