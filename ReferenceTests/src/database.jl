@@ -43,6 +43,9 @@ macro reference_test(name, code)
                 if $title in $REGISTERED_TESTS
                     error("title must be unique. Duplicate title: $($title)")
                 end
+                # registered before running so a test that errors still counts as attempted,
+                # which is what tells a failed recording apart from a deleted test
+                push!($REGISTERED_TESTS, $title)
                 println("running $(lpad(COUNTER[] += 1, 3)): $($title)")
                 Makie.set_theme!(;
                     size = (500, 500),
@@ -55,7 +58,6 @@ macro reference_test(name, code)
                     $(esc(code))
                 end
                 @test save_result(joinpath(RECORDING_DIR[], $title), result)
-                push!($REGISTERED_TESTS, $title)
                 elapsed = round(time() - t1; digits = 5)
                 total = Sys.total_memory()
                 mem = round((total - Sys.free_memory()) / 10^9; digits = 3)
@@ -121,11 +123,11 @@ macro include_reference_tests(backend::Symbol, path, paths...)
                     include(include_path)
                 end
             end
-            recorded_files = collect(ReferenceTests.REGISTERED_TESTS)
+            attempted_tests = collect(ReferenceTests.REGISTERED_TESTS)
             recording_dir = recording_dir
             empty!(ReferenceTests.REGISTERED_TESTS)
             ReferenceTests.COUNTER[] = 0
-            (recorded_files, recording_dir)
+            (attempted_tests, recording_dir)
         end
     )
 end
