@@ -654,9 +654,11 @@ function register_text_computations!(attr::ComputeGraph)
 
     # One anchor position per glyph, repeated within a string. `transform_func` is
     # applied before the repeat, so it runs once per string rather than once per glyph;
-    # the `Glyphs` child inherits only the model and does not transform again.
+    # the `Glyphs` child inherits only the model and does not transform again. The float
+    # type is kept so Float64 positions survive until the child's float32 rescaling.
     map!(attr, [:positions_transformed, :text_blocks], :per_glyph_positions) do positions, blocks
-        return Point3f[to_ndim(Point3f, sv_getindex(positions, i), 0) for (i, r) in enumerate(blocks) for _ in r]
+        PT = Point3{eltype(eltype(positions))}
+        return PT[to_ndim(PT, sv_getindex(positions, i), 0) for (i, r) in enumerate(blocks) for _ in r]
     end
 
     return

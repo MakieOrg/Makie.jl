@@ -331,6 +331,14 @@ end
     @test glyphs.model_f32c[][2, 4] == 6.0f0
 end
 
+@testset "Float64 anchors survive until float32 rescaling" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    p = text!(ax, [Point2(1.0e9, 1.0), Point2(1.0e9 + 1.0e-3, 2.0)], text = ["a", "b"])
+    Makie.update_state_before_display!(f)
+    @test p.per_glyph_positions[] == [Point3d(1.0e9, 1, 0), Point3d(1.0e9 + 1.0e-3, 2, 0)]
+end
+
 @testset "generic attributes reach the children" begin
     scene = Scene(camera = campixel!)
     p = text!(scene, Point2f(0, 0), text = L"\frac{a}{b}", fontsize = 20)
