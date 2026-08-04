@@ -226,7 +226,7 @@ function scatter_program(attr)
         :quad_offset => get(attr, :quad_offset, Vec2f[]),
         :sdf_marker_shape => get(attr, :sdf_marker_shape, Vec2f[]),
 
-        :strokewidth => get(attr, :uniform_strokewidth, attr.strokewidth),
+        :strokewidth => haskey(attr, :uniform_strokewidth) ? attr.uniform_strokewidth : attr.strokewidth,
         :converted_strokecolor => attr.converted_strokecolor,
         :glowwidth => attr.glowwidth,
         :glowcolor => attr.glowcolor,
