@@ -200,8 +200,15 @@
             )
 
             rectanglezoom = ax.interactions[:rectanglezoom][2]
+            crosses_lower_domain = Makie._clamp_rectanglezoom_limits(
+                Rect2(0, 0, 1, 1.5e6), ax.finallimits[]
+            )
+            @test minimum(crosses_lower_domain)[2] == minimum(ax.finallimits[])[2]
+            @test_logs min_level = Base.CoreLogging.Warn rectanglezoom.callback(crosses_lower_domain)
+            @test ax.targetlimits[] == crosses_lower_domain
+
             @test_logs (:warn, r"Rectangle zoom ignored") rectanglezoom.callback(Rect2(0, 0, 1, 0))
-            @test ax.targetlimits[] == below_to_above
+            @test ax.targetlimits[] == crosses_lower_domain
 
             transform = Makie.transform_func(ax)
             inverse_transform = Makie.inverse_transform(transform)
@@ -210,7 +217,7 @@
             )
             @test all(isfinite, normalized)
             @test normalized[2] in defined_interval(log10)
-            @test ax.targetlimits[] == below_to_above
+            @test ax.targetlimits[] == crosses_lower_domain
         end
 
         @test init == Makie._PICK_COUNTER[]

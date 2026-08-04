@@ -117,7 +117,15 @@ function _chosen_limits(rz, ax)
     if rz.restrict_y || !ax.yrectzoom[]
         r = Rect2(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2])
     end
-    return r
+    return _clamp_rectanglezoom_limits(r, lims)
+end
+
+function _clamp_rectanglezoom_limits(selection::Rect2, visible_limits::Rect2)
+    selection_min, selection_max = extrema(selection)
+    visible_min, visible_max = extrema(visible_limits)
+    clamped_min = clamp.(selection_min, visible_min, visible_max)
+    clamped_max = clamp.(selection_max, visible_min, visible_max)
+    return Rect2(Point2(clamped_min), Vec2(clamped_max .- clamped_min))
 end
 
 function _selection_vertices(ax_scene, outer, inner)
