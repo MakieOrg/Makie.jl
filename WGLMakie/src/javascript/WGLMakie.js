@@ -367,12 +367,19 @@ function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
 
 function add_canvas_events(screen, comm, resize_to) {
     const { canvas,  winscale } = screen;
+    // A throttled move can be queued when the user presses or releases a button.
+    // Invalidate it so it cannot overwrite the exact pointer position carried by
+    // the button event after that transition has reached Julia.
+    let mouseposition_generation = 0;
 
     canvas.addEventListener("webglcontextlost", (event) => {
         dispose_screen(screen);
     });
 
-    function mouse_callback(event) {
+    function mouse_callback(event, generation) {
+        if (generation !== mouseposition_generation) {
+            return;
+        }
         const [x, y] = events2unitless(screen, event);
         comm.notify({ mouseposition: [x, y] });
     }
@@ -380,23 +387,27 @@ function add_canvas_events(screen, comm, resize_to) {
     const notify_mouse_throttled = Bonito.throttle_function(mouse_callback, 40);
 
     function mousemove(event) {
-        notify_mouse_throttled(event);
+        notify_mouse_throttled(event, ++mouseposition_generation);
         return false;
     }
 
     canvas.addEventListener("mousemove", mousemove);
 
     function mousedown(event) {
+        const [x, y] = events2unitless(screen, event);
+        ++mouseposition_generation;
         comm.notify({
-            mousedown: event.buttons,
+            pointerdown: [x, y, event.buttons],
         });
         return false;
     }
     canvas.addEventListener("mousedown", mousedown);
 
     function mouseup(event) {
+        const [x, y] = events2unitless(screen, event);
+        ++mouseposition_generation;
         comm.notify({
-            mouseup: event.buttons,
+            pointerup: [x, y, event.buttons],
         });
         return false;
     }

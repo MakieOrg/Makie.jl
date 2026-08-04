@@ -9,6 +9,8 @@ using ReferenceTests
 using Makie: N0f8, RGBA
 import Electron
 
+include("events.jl")
+
 @testset "mimes" begin
     Makie.inline!(true)
     f, ax, pl = scatter(1:4)
@@ -119,6 +121,80 @@ edisplay = Bonito.use_electron_display(devtools = true)
             @test events(f).window_open[] == false
             @test Makie.isclosed(f.scene) == true
             @test Makie.isopen(f.scene) == false
+        end
+    end
+
+    @testset "browser pointer coordinates" begin
+        scene = Scene(size = (400, 300))
+        scatter!(scene, Point2f(0, 0))
+        observed = Tuple{Makie.MouseButtonEvent, Tuple{Float64, Float64}}[]
+        listener = on(events(scene).mousebutton) do event
+            push!(observed, (event, events(scene).mouseposition[]))
+        end
+
+        try
+            display(edisplay, App(scene))
+            @test Bonito.wait_for(() -> events(scene).window_open[]; timeout = 10) == :success
+
+            expected_press = Tuple(
+                Float64.(
+                    run(
+                        edisplay.window, """
+                            (() => {
+                                const canvas = document.querySelector(\"canvas\");
+                                const rect = canvas.getBoundingClientRect();
+                                const height = canvas.wglmakie_screen.renderer._height;
+                                const dispatch = (type, x, y, buttons) => canvas.dispatchEvent(
+                                    new MouseEvent(type, {
+                                        bubbles: true,
+                                        button: 0,
+                                        buttons,
+                                        clientX: rect.left + x,
+                                        clientY: rect.top + y,
+                                    })
+                                );
+                                dispatch(\"mousemove\", 20, 30, 0);
+                                dispatch(\"mousemove\", 40, 50, 0);
+                                dispatch(\"mousedown\", 120, 140, 1);
+                                return [120, height - 140];
+                            })()
+                        """
+                    )
+                )
+            )
+            @test Bonito.wait_for(() -> !isempty(observed); timeout = 10) == :success
+            @test observed[1] == (Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press), expected_press)
+
+            expected_release = Tuple(
+                Float64.(
+                    run(
+                        edisplay.window, """
+                            (() => {
+                                const canvas = document.querySelector(\"canvas\");
+                                const rect = canvas.getBoundingClientRect();
+                                const height = canvas.wglmakie_screen.renderer._height;
+                                const dispatch = (type, x, y, buttons) => canvas.dispatchEvent(
+                                    new MouseEvent(type, {
+                                        bubbles: true,
+                                        button: 0,
+                                        buttons,
+                                        clientX: rect.left + x,
+                                        clientY: rect.top + y,
+                                    })
+                                );
+                                dispatch(\"mousemove\", 180, 190, 1);
+                                dispatch(\"mouseup\", 220, 210, 0);
+                                return [220, height - 210];
+                            })()
+                        """
+                    )
+                )
+            )
+            @test Bonito.wait_for(() -> length(observed) == 2; timeout = 10) == :success
+            @test observed[2] == (Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.release), expected_release)
+        finally
+            off(listener)
+            display(edisplay, App(nothing))
         end
     end
 
