@@ -344,8 +344,6 @@ function mesh_color_sampler(plot, color, uvs, uv_transform)
     end
 end
 
-use_rasterized_mesh(plot::ComputeGraph) = !iszero(plot.strokewidth[])
-
 function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph)
     positions = plot.positions_transformed_f32c[]::Union{Vector{Point2f}, Vector{Point3f}}
     faces = plot.faces[]::Vector{GLTriangleFace}
