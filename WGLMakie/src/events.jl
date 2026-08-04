@@ -63,30 +63,21 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
                 x, y = Float64.((mouseposition...,))
                 e.mouseposition[] = (x, y)
             end
+            @handle msg.pointerdown begin
+                x, y, buttons = pointerdown
+                e.mouseposition[] = Float64.((x, y))
+                update_mousebutton_state!(e, buttons)
+            end
+            @handle msg.pointerup begin
+                x, y, buttons = pointerup
+                e.mouseposition[] = Float64.((x, y))
+                update_mousebutton_state!(e, buttons)
+            end
             @handle msg.mousedown begin
-                # This can probably be done better from the JS side?
-                state = e.mousebuttonstate
-                if mousedown & 1 != 0 && !(Mouse.left in state)
-                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.left, Mouse.press))
-                end
-                if mousedown & 2 != 0 && !(Mouse.right in state)
-                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.right, Mouse.press))
-                end
-                if mousedown & 4 != 0 && !(Mouse.middle in state)
-                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.middle, Mouse.press))
-                end
+                update_mousebutton_state!(e, mousedown)
             end
             @handle msg.mouseup begin
-                state = e.mousebuttonstate
-                if mouseup & 1 == 0 && (Mouse.left in state)
-                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.left, Mouse.release))
-                end
-                if mouseup & 2 == 0 && (Mouse.right in state)
-                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.right, Mouse.release))
-                end
-                if mouseup & 4 == 0 && (Mouse.middle in state)
-                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.middle, Mouse.release))
-                end
+                update_mousebutton_state!(e, mouseup)
             end
             @handle msg.scroll begin
                 e.scroll[] = Float64.((sign.(scroll)...,))
@@ -121,6 +112,27 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
         return
     end
 
+    return
+end
+
+function update_mousebutton_state!(e, buttons)
+    buttons = Int(buttons)
+    state = e.mousebuttonstate
+    if buttons & 1 != 0 && !(Mouse.left in state)
+        setindex!(e.mousebutton, MouseButtonEvent(Mouse.left, Mouse.press))
+    elseif buttons & 1 == 0 && (Mouse.left in state)
+        setindex!(e.mousebutton, MouseButtonEvent(Mouse.left, Mouse.release))
+    end
+    if buttons & 2 != 0 && !(Mouse.right in state)
+        setindex!(e.mousebutton, MouseButtonEvent(Mouse.right, Mouse.press))
+    elseif buttons & 2 == 0 && (Mouse.right in state)
+        setindex!(e.mousebutton, MouseButtonEvent(Mouse.right, Mouse.release))
+    end
+    if buttons & 4 != 0 && !(Mouse.middle in state)
+        setindex!(e.mousebutton, MouseButtonEvent(Mouse.middle, Mouse.press))
+    elseif buttons & 4 == 0 && (Mouse.middle in state)
+        setindex!(e.mousebutton, MouseButtonEvent(Mouse.middle, Mouse.release))
+    end
     return
 end
 
