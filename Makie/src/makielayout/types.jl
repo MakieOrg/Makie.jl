@@ -781,7 +781,7 @@ function RectangleZoom(f::Function, ax::Axis; kw...)
     return r
 end
 
-function _rectanglezoom_limits_are_valid(ax::Axis, lims::Rect)
+function _axis_limits_are_valid(ax::Axis, lims::Rect)
     mi, ma = extrema(lims)
     return all(isfinite, mi) && all(isfinite, ma) && all(>(0), widths(lims)) &&
         validate_limits_for_scale((mi[1], ma[1]), ax.xscale[]) &&
@@ -790,7 +790,7 @@ end
 
 function RectangleZoom(ax::Axis; kw...)
     return RectangleZoom(ax; kw...) do newlims
-        if _rectanglezoom_limits_are_valid(ax, newlims)
+        if _axis_limits_are_valid(ax, newlims)
             ax.targetlimits[] = newlims
         else
             @warn "Rectangle zoom ignored: selected limits are invalid for this axis scale" maxlog = 1

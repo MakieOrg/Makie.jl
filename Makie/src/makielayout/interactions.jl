@@ -298,7 +298,10 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
             Rectd(newxorigin, newyorigin, newxwidth, newywidth)
         end
         inv_transf = Makie.inverse_transform(transf)
-        tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
+        newlimits = Makie.apply_transform(inv_transf, newrect_trans)
+        if _axis_limits_are_valid(ax, newlimits)
+            tlimits[] = newlimits
+        end
     end
 
     # NOTE this might be problematic if if we add scrolling to something like Menu
