@@ -11,6 +11,7 @@
     l2 = lines!(scene, [20, 50, NaN, 20, 50], [200, 200, NaN, 230, 230], linewidth = 20, linecap = :round)
     ls = linesegments!(scene, [20, 50, NaN, NaN, 20, 50], [260, 260, NaN, NaN, 290, 290], linewidth = 20, linecap = :square)
     tp = text!(scene, Point2f[(15, 320), (NaN, NaN), (15, 350)], text = ["█ ●", "hi", "●"], fontsize = 20, align = (:left, :center))
+    gp = tp.plots[1]
 
     i = image!(scene, 80 .. 140, 20 .. 50, to_color.([:red :blue; :green :orange; :black :lightblue]), interpolate = false)
     s = surface!(scene, 80 .. 140, 80 .. 110, [1 2; 3 4; 5 6], interpolate = false)
@@ -110,18 +111,18 @@
         end
 
         @testset "text" begin
-            @test pick(scene, 15, 320) == (tp, 1)
+            @test pick(scene, 15, 320) == (gp, 1)
             @test pick(scene, 13, 320) == (nothing, 0)
             # edge checks, further outside due to AA
             @test pick(scene, 20, 306) == (nothing, 0)
-            @test pick(scene, 20, 320) == (tp, 1)
+            @test pick(scene, 20, 320) == (gp, 1)
             @test pick(scene, 20, 333) == (nothing, 0)
             # space is counted
-            @test pick(scene, 43, 320) == (tp, 3)
-            @test pick(scene, 48, 324) == (tp, 3)
+            @test pick(scene, 43, 320) == (gp, 3)
+            @test pick(scene, 48, 324) == (gp, 3)
             @test pick(scene, 49, 326) == (nothing, 0)
             # characters at nan position are counted
-            @test pick(scene, 20, 350) == (tp, 6)
+            @test pick(scene, 20, 350) == (gp, 6)
         end
 
         @testset "image" begin
@@ -305,8 +306,8 @@
             @test pick(scene, 5, 280, 10) == (ls, 6)
         end
         @testset "text" begin
-            @test pick(scene, 32, 320, 10) == (tp, 1)
-            @test pick(scene, 35, 320, 10) == (tp, 3)
+            @test pick(scene, 32, 320, 10) == (gp, 1)
+            @test pick(scene, 35, 320, 10) == (gp, 3)
         end
         @testset "image" begin
             @test pick(scene, 98, 15, 10) == (i, 1)
@@ -827,7 +828,10 @@ function create_test_plot()
     # Text with uncommon chars (no custom fonts)
     text!(ax, 5, 6, text = "∫∂∇αβγ←→€¥", fontsize = 40, align = (:center, :center))
     text!(ax, 5, 4, text = "◆●▲½⅓∞≈", fontsize = 40, color = :darkred, strokewidth = 2, strokecolor = :white, align = (:center, :center))
-    text!(ax, 5, 2, text = "abcdefg", color = 1:8, colormap = :turbo, fontsize = 60, align = (:center, :center), font = assetpath("fonts", "blkchcry.ttf"))
+    str = "abcdefg"
+    cols = resample_cmap(:turbo, length(str))
+    per_char = rich((rich(string(c); color = col) for (c, col) in zip(str, cols))...)
+    text!(ax, 5, 2, text = per_char, fontsize = 60, align = (:center, :center), font = assetpath("fonts", "blkchcry.ttf"))
     return f
 end
 

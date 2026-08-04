@@ -19,31 +19,31 @@ end
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 17
     @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.program_cache) == 9
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 17
     @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.program_cache) == 9
 
     # Same for linesegments
     display(screen, linesegments(1:4))
     @test length(cache.shader_cache) == 17
     @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.program_cache) == 9
 
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
     @test length(cache.shader_cache) == 19
     @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 11
+    @test length(cache.program_cache) == 10
 
     # For second time no new shaders should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
     @test length(cache.shader_cache) == 19
     @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 11
+    @test length(cache.program_cache) == 10
 end
 
 @testset "unit tests" begin
@@ -190,7 +190,7 @@ end
 
     @test ax.scene.plots == [hmp, lp, tp]
 
-    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots...])
+    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots[1]])
 
     empty!(ax)
 
