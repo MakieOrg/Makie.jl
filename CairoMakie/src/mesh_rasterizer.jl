@@ -441,7 +441,7 @@ function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph)
     # color
     color = compute_colors(plot)
     uv_transform = plot.pattern_uv_transform[]::Union{Nothing, Mat{2, 3, Float32, 6}}
-    matcap = to_value(get(plot, :matcap, nothing))::Union{Nothing, Matrix{RGBAf}}
+    matcap::Union{Nothing, Matrix{RGBAf}} = to_value(get(plot, :matcap, nothing))
     color_sampler = if plot.fetch_pixel[]::Bool
         PatternSampler(
             pattern_tile(color), uv_transform::Mat{2, 3, Float32, 6},
