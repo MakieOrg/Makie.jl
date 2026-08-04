@@ -165,6 +165,54 @@
             @test newlim.widths ≈ lim.widths ./ Vec2(2, 3) atol = 1.0e-6
         end
 
+        @testset "Log-scale selection rectangle" begin
+            fig = Figure()
+            ax = Axis(fig[1, 1]; yscale = log10, limits = (-20, 30, 1.0e-28, 2.0e6))
+            x = range(0, 10; length = 500)
+            lines!(ax, x, 1.0e-8 .* exp.(1.5 .* x))
+            Makie.update_state_before_display!(fig)
+
+            axbox = viewport(ax.scene)[]
+            original_limits = ax.targetlimits[]
+            e = events(ax)
+
+            function select_rectangle!(from, to)
+                e.mouseposition[] = Tuple(from)
+                e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+                e.mouseposition[] = Tuple(to)
+                e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+                return ax.targetlimits[]
+            end
+
+            above = axbox.origin + axbox.widths .* Vec2(0.25, 0.85)
+            below = axbox.origin + axbox.widths .* Vec2(0.75, 0.25)
+            above_to_below = select_rectangle!(above, below)
+
+            ax.targetlimits[] = original_limits
+            below_to_above = select_rectangle!(below, above)
+
+            @test above_to_below ≈ below_to_above
+            @test all(isfinite, minimum(above_to_below))
+            @test all(isfinite, maximum(above_to_below))
+            @test all(>(0), widths(above_to_below))
+            @test validate_limits_for_scale(
+                (minimum(above_to_below)[2], maximum(above_to_below)[2]), log10
+            )
+
+            rectanglezoom = ax.interactions[:rectanglezoom][2]
+            @test_logs (:warn, r"Rectangle zoom ignored") rectanglezoom.callback(Rect2(0, 0, 1, 0))
+            @test ax.targetlimits[] == below_to_above
+
+            transform = Makie.transform_func(ax)
+            inverse_transform = Makie.inverse_transform(transform)
+            normalized = Makie._rectanglezoom_data_position(
+                ax, Point2(0, -Inf), transform, inverse_transform
+            )
+            @test all(isfinite, normalized)
+            @test normalized[2] in defined_interval(log10)
+            @test ax.targetlimits[] == below_to_above
+        end
+
         @test init == Makie._PICK_COUNTER[]
 
         # Ctrl-click to restore

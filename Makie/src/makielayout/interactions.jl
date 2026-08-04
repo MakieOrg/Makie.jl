@@ -141,6 +141,12 @@ function _selection_vertices(ax_scene, outer, inner)
     return [proj(obl), proj(obr), proj(otr), proj(otl), proj(ibl), proj(ibr), proj(itr), proj(itl)]
 end
 
+function _rectanglezoom_data_position(ax::Axis, point, transform, inverse_transform)
+    transformed_limits = Makie.apply_transform(transform, ax.finallimits[])
+    clamped_point = rectclamp(point, transformed_limits)
+    return Makie.apply_transform(inverse_transform, clamped_point)
+end
+
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     # only rectangle zoom if modifier is pressed (defaults to true)
     ispressed(ax.scene, r.modifier) || return Consume(false)
@@ -157,8 +163,8 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     end
 
     if event.type === MouseEventTypes.leftdragstart
-        data = Makie.apply_transform(inv_transf, event.data)
-        prev_data = Makie.apply_transform(inv_transf, event.prev_data)
+        data = _rectanglezoom_data_position(ax, event.data, transf, inv_transf)
+        prev_data = _rectanglezoom_data_position(ax, event.prev_data, transf, inv_transf)
 
         r.from = prev_data
         r.to = data
@@ -167,9 +173,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         return Consume(true)
 
     elseif event.type === MouseEventTypes.leftdrag
-        # clamp mouse data to shown limits
-        rect = Makie.apply_transform(transf, ax.finallimits[])
-        data = Makie.apply_transform(inv_transf, rectclamp(event.data, rect))
+        data = _rectanglezoom_data_position(ax, event.data, transf, inv_transf)
 
         r.to = data
         r.rectnode[] = _chosen_limits(r, ax)
