@@ -60,7 +60,7 @@ mutable struct ScreenConfig
     scalefactor::Union{Nothing, Float32}
 
     # Render Constants & Postprocessor
-    render_pipeline::Makie.RenderPipeline
+    render_pipeline::Makie.RenderGraph
     transparency_weight_scale::Float32
     max_lights::Int
     max_light_parameters::Int
@@ -85,7 +85,7 @@ mutable struct ScreenConfig
             scalefactor::Union{Makie.Automatic, Number},
 
             # Preprocessor
-            render_pipeline::Makie.RenderPipeline,
+            render_pipeline::Makie.RenderGraph,
             transparency_weight_scale::Number,
             max_lights::Int,
             max_light_parameters::Int
@@ -169,7 +169,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
-    render_pipeline::GLRenderPipeline
+    render_pipeline::GLRenderGraph
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, Plot}
     framecache::Matrix{RGB{N0f8}}
@@ -205,7 +205,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             glscreen, (10, 10), owns_glscreen, shader_cache, framebuffer_manager,
             config, Threads.Atomic{Bool}(stop_renderloop), rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0.0f0), screen2scene,
-            screens, renderlist, GLRenderPipeline(), cache, cache2plot,
+            screens, renderlist, GLRenderGraph(), cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
             Observable(true), Observable(0.0f0), nothing, reuse, true, false
         )
