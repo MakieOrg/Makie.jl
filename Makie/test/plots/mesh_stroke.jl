@@ -76,6 +76,16 @@ nonzero_wings(wing_indices, wing_widths, corner) =
         @test widths_all == Vec3f[(1, 0.5, 0), (0, 1, 1), (1, 1, 0), (0, 1, 0.5)]
     end
 
+    @testset "band stroke attributes do not reach the inner mesh" begin
+        f, ax, pl = band(1:5, fill(0.0, 5), fill(1.0, 5), strokewidth = 3, strokecolor = collect(1.0:5.0))
+        inner_mesh, inner_lines = pl.plots
+        @test inner_mesh isa Makie.Mesh
+        @test inner_mesh.strokewidth[] == 0.0f0
+        @test inner_mesh.strokecolor[] == Makie.RGBAf(0, 0, 0, 0)
+        @test inner_lines.linewidth[] == 3.0f0
+        @test inner_lines.color[] == Float32[1, 2, 3, 4, 5, 1, 1, 2, 3, 4, 5]
+    end
+
     @testset "stroke_edge_widths computation is gated on strokewidth" begin
         f, ax, pl = mesh(two_quads_mesh())
         @test pl.stroke_edge_widths[] == Vec3f[]
