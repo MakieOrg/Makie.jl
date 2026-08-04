@@ -793,7 +793,7 @@ function RectangleZoom(ax::Axis; kw...)
         if _axis_limits_are_valid(ax, newlims)
             ax.targetlimits[] = newlims
         else
-            @warn "Rectangle zoom ignored: selected limits are invalid for this axis scale" maxlog = 1
+            @warn "Rectangle zoom ignored: selected limits are invalid for this axis scale" selected_limits = newlims visible_limits = ax.finallimits[] xscale = ax.xscale[] yscale = ax.yscale[] maxlog = 1
         end
         return
     end
