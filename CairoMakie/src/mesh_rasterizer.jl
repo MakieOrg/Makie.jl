@@ -22,6 +22,49 @@ struct TextureColorSampler
     interpolate::Bool
 end
 
+# Numeric colors interpolate the raw values per fragment and look up the colormap
+# afterwards, like GLMakie's get_color_from_cmap path. Interpolating the mapped
+# colors instead would smear lowclip/highclip/nan regions (e.g. Inf values) into
+# gradients and blur sharp colormap bands.
+struct ColormapData
+    colormap::Vector{RGBAf}
+    colorrange::Vec2f
+    lowclip::RGBAf
+    highclip::RGBAf
+    nan_color::RGBAf
+    mapping_type::Makie.ColorMappingType
+end
+
+function ColormapData(plot::ComputeGraph)
+    return ColormapData(
+        plot.alpha_colormap[],
+        Vec2f(plot.scaled_colorrange[]),
+        plot.lowclip_color[],
+        plot.highclip_color[],
+        plot.nan_color[],
+        plot.color_mapping_type[],
+    )
+end
+
+function sample_colormap(cmap::ColormapData, value::Float32)
+    return Makie.sample_color(
+        cmap.colormap, value, cmap.colorrange,
+        cmap.lowclip, cmap.highclip, cmap.nan_color, cmap.mapping_type
+    )
+end
+
+struct VertexValueSampler
+    values::Vector{Float32}
+    cmap::ColormapData
+end
+
+struct ValueTextureSampler
+    values::Matrix{Float32}
+    uvs::Vector{Vec2f}
+    interpolate::Bool
+    cmap::ColormapData
+end
+
 struct MatcapSampler
     image::Matrix{RGBAf}
     view_normals::Vector{Vec3f}
@@ -86,6 +129,51 @@ end
 function fragment_color(s::TextureColorSampler, face, weights, frag_px)
     uv = weights[1] * s.uvs[face[1]] + weights[2] * s.uvs[face[2]] + weights[3] * s.uvs[face[3]]
     return sample_texture(s.image, uv, s.interpolate, false)
+end
+
+# zero weights are skipped so that Inf values do not turn into NaN via 0 * Inf
+function fragment_color(s::VertexValueSampler, face, weights, frag_px)
+    value = 0.0f0
+    for k in 1:3
+        w = weights[k]
+        w > 0.0f0 && (value += w * s.values[face[k]])
+    end
+    return sample_colormap(s.cmap, value)
+end
+
+function sample_value(vals::Matrix{Float32}, uv::Vec2f, interpolate::Bool)
+    nx, ny = size(vals)
+    if interpolate
+        x = uv[1] * nx - 0.5f0
+        y = uv[2] * ny - 0.5f0
+        x0 = floor(Int, x)
+        y0 = floor(Int, y)
+        fx = x - x0
+        fy = y - y0
+        i0 = clamp(x0 + 1, 1, nx)
+        i1 = clamp(x0 + 2, 1, nx)
+        j0 = clamp(y0 + 1, 1, ny)
+        j1 = clamp(y0 + 2, 1, ny)
+        value = 0.0f0
+        w00 = (1 - fx) * (1 - fy)
+        w10 = fx * (1 - fy)
+        w01 = (1 - fx) * fy
+        w11 = fx * fy
+        w00 > 0.0f0 && (value += w00 * vals[i0, j0])
+        w10 > 0.0f0 && (value += w10 * vals[i1, j0])
+        w01 > 0.0f0 && (value += w01 * vals[i0, j1])
+        w11 > 0.0f0 && (value += w11 * vals[i1, j1])
+        return value
+    else
+        x = clamp(floor(Int, uv[1] * nx) + 1, 1, nx)
+        y = clamp(floor(Int, uv[2] * ny) + 1, 1, ny)
+        return vals[x, y]
+    end
+end
+
+function fragment_color(s::ValueTextureSampler, face, weights, frag_px)
+    uv = weights[1] * s.uvs[face[1]] + weights[2] * s.uvs[face[2]] + weights[3] * s.uvs[face[3]]
+    return sample_colormap(s.cmap, sample_value(s.values, uv, s.interpolate))
 end
 
 # from mesh.frag: muv = normalize(o_view_normal).xy * 0.5 + 0.5, sampled at (1 - muv.y, muv.x)
@@ -327,16 +415,31 @@ end
 pattern_tile(sampler::Makie.ShaderAbstractions.Sampler) = Matrix{RGBAf}(sampler.data)
 pattern_tile(image::AbstractMatrix{<:Colorant}) = Matrix{RGBAf}(image)
 
-function mesh_color_sampler(plot, color, uvs, uv_transform)
+function texture_uvs(uvs, uv_transform)
+    if !(uvs isa Vector{Vec2f})
+        error("Meshes with a texture color need 2D texture coordinates.")
+    end
+    if uv_transform !== nothing
+        uvt = uv_transform::Mat{2, 3, Float32, 6}
+        return map(uv -> uvt * to_ndim(Vec3f, uv, 1), uvs)
+    end
+    return uvs
+end
+
+function mesh_color_sampler(plot, uvs, uv_transform)
+    scaled_color = plot.scaled_color[]
+    if scaled_color isa AbstractMatrix{<:Real}
+        return ValueTextureSampler(
+            Float32.(scaled_color), texture_uvs(uvs, uv_transform),
+            plot.interpolate[]::Bool, ColormapData(plot)
+        )
+    elseif scaled_color isa AbstractVector{<:Real}
+        return VertexValueSampler(Float32.(scaled_color), ColormapData(plot))
+    end
+
+    color = compute_colors(plot)
     if color isa Matrix{RGBAf}
-        if !(uvs isa Vector{Vec2f})
-            error("Meshes with a texture color need 2D texture coordinates.")
-        end
-        if uv_transform !== nothing
-            uvt = uv_transform::Mat{2, 3, Float32, 6}
-            uvs = map(uv -> uvt * to_ndim(Vec3f, uv, 1), uvs)
-        end
-        return TextureColorSampler(color, uvs, plot.interpolate[]::Bool)
+        return TextureColorSampler(color, texture_uvs(uvs, uv_transform), plot.interpolate[]::Bool)
     elseif color isa Vector{RGBAf}
         return VertexColorSampler(color)
     else
@@ -439,12 +542,11 @@ function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph)
     end
 
     # color
-    color = compute_colors(plot)
     uv_transform = plot.pattern_uv_transform[]::Union{Nothing, Mat{2, 3, Float32, 6}}
     matcap::Union{Nothing, Matrix{RGBAf}} = to_value(get(plot, :matcap, nothing))
     color_sampler = if plot.fetch_pixel[]::Bool
         PatternSampler(
-            pattern_tile(color), uv_transform::Mat{2, 3, Float32, 6},
+            pattern_tile(compute_colors(plot)), uv_transform::Mat{2, 3, Float32, 6},
             Vec2f(x0, y0), 1.0f0 / px_scale, resolution[2]
         )
     elseif matcap !== nothing && meshnormals !== nothing
@@ -454,7 +556,7 @@ function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph)
         view_normals = [zero_normalize(view_normalmatrix * normal) for normal in meshnormals]
         MatcapSampler(matcap, view_normals)
     else
-        mesh_color_sampler(plot, color, plot.texturecoordinates[], uv_transform)
+        mesh_color_sampler(plot, plot.texturecoordinates[], uv_transform)
     end
 
     # stroke
