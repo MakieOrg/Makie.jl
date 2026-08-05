@@ -150,14 +150,14 @@ struct ToolTip
     class::String
     css::Any
     function ToolTip(
-        figlike,
-        callback;
-        plots = nothing,
-        trigger = :click,
-        range = 0,
-        class = "popup",
-        css = POPUP_CSS,
-    )
+            figlike,
+            callback;
+            plots = nothing,
+            trigger = :click,
+            range = 0,
+            class = "popup",
+            css = POPUP_CSS,
+        )
         scene = Makie.get_scene(figlike)
         if isnothing(plots)
             plots = scene.plots
