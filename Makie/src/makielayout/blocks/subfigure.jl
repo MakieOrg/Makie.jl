@@ -22,7 +22,12 @@ function initialize_block!(sf::Subfigure)
     sf.contentsize = Observable(Vec2f(0, 0); ignore_equal_values = true)
 
     layout_bbox = Observable(Rect2f(0, 0, 1, 1); ignore_equal_values = true)
-    layout = GridLayout(; bbox = layout_bbox)
+    # TOP-LEFT, not centred. A GridLayout defaults to `valign = :center`, so
+    # content that does not fill a scroll region floated in the middle of it —
+    # and the taller the region, the further from where the user is reading. When
+    # content DOES overflow, the alignment makes no difference, so this only ever
+    # affects the short case, where centring was never the intent.
+    layout = GridLayout(; bbox = layout_bbox, valign = :top, halign = :left)
     layout.parent = scene
     sf.layout = layout
 

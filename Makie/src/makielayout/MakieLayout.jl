@@ -32,6 +32,7 @@ include("blocks/table.jl")
 include("blocks/textbox.jl")
 include("blocks/container.jl")
 include("blocks/subfigure.jl")
+include("blocks/card.jl")
 include("blocks/tabs.jl")
 include("blocks/modal.jl")
 include("blocks/paramform.jl")
@@ -40,6 +41,7 @@ include("blocks/paramform.jl")
 export @Block, Block
 export axislegend, axiscolorbar
 export open!, close!
+export card_accessory, filter_cards!
 export Between, OneOf, FilePath, convert_form_input
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export linkxaxes!, linkyaxes!, linkaxes!
