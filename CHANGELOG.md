@@ -5,11 +5,24 @@
 - `WGLMakie.ToolTip` gained a `trigger` keyword (`:click`, the previous default behavior, or
   `:hover`) and a `range` keyword to control the picking tolerance in pixels, so tooltips can
   now follow the cursor on hover instead of only appearing on click [#5715](https://github.com/MakieOrg/Makie.jl/pull/5715).
+- `Menu` is now searchable: typing while it is open filters the options. Set `searchable = false` for the old behavior [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
+- Added `textcolor_active` and `textcolor_hover` attributes to `Menu`, with the selected entry now white by default [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
+- Fixed `Menu` erroring on hover when `cell_color_hover` or `cell_color_active` were not `RGBA` values [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
+- Added support for `IntervalSlider`s in `SliderGrid` via the `type` keyword
+- `poly` no longer builds the stroke outline when `strokewidth` is `0`, and no longer widens 2D input to 3D points when computing the outline. For a `poly` of 457k points this cuts allocations from 94 MiB to 32 MiB when unstroked (`strokewidth` defaults to `0`) and to 87 MiB when stroked [#5713](https://github.com/MakieOrg/Makie.jl/pull/5713).
+- Fixed `volume` and 3D `contour` plots losing parts of the interior when rendered with mirrored or left-handed transforms, such as with one or three reversed axes in `Axis3`. [#5649](https://github.com/MakieOrg/Makie.jl/issues/5649)
+- Added `tricontour` recipe for plotting isolines on unstructured/scattered data, analogous to `tricontourf`. Supports `Colorbar(fig[1,2], tr)` [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Added `Colorbar(fig[1,2], plt)` support for 2D `contour` plots [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Fixed crashes when plotting constant scalar fields: `contourf`/`tricontourf` now produce evenly-spaced bands around the constant value; `contour` produces no lines; `heatmap` and all colormapped plots no longer error on `colorrange=(c,c)` [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
 - Added an `absolute` attribute to `dendrogram` that keeps the input leaf positions instead of translating the root to `origin`, making it easy to align leaves to e.g. heatmap rows or columns [#5666](https://github.com/MakieOrg/Makie.jl/pull/5666).
 - `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
   `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
 - Scope the CairoMakie precompile workload's figures inside `let`, so rendered `Screen`s and their pixel buffers are no longer serialized into the package image (~150 MB smaller pkgimage) [#5692](https://github.com/MakieOrg/Makie.jl/pull/5692).
 - `tooltip` now inherits `fontsize` from the theme, sets its default outline `linewidth` to `1.0` to match axis spines, reduces its default `triangle_size` from `10` to `7`, and uses slightly wider horizontal `textpadding` [#5698](https://github.com/MakieOrg/Makie.jl/pull/5698).
+- Fixed plots in `Axis3` not clipping in the correct place when changing aspect due to plot `clip_planes` not getting updated [#5723](https://github.com/MakieOrg/Makie.jl/pull/5723)
+- Fixed `surface` normals sometimes being `NaN` in GLMakie (when vertices collapse to single point on the edge of a surface) [#5725](https://github.com/MakieOrg/Makie.jl/pull/5725)
+- Fixed specialized `args_preferred_axis` methods getting skipped by less specialized Makie defaults [#5722](https://github.com/MakieOrg/Makie.jl/pull/5722)
+- Fixed `Axis3(..., title = rich(...))` not working [#5729](https://github.com/MakieOrg/Makie.jl/pull/5729)
 
 ## [0.24.13] - 2026-07-02
 
