@@ -107,7 +107,9 @@ function plot_updates(args, changed)
                     serialize_three(value)
                 end
             end
-            push!(new_values, [name, _val])
+            # the shader binds this input as `strokewidth` (see `scatter_program`)
+            js_name = name === :uniform_strokewidth ? :strokewidth : name
+            push!(new_values, [js_name, _val])
         end
     end
     return new_values
