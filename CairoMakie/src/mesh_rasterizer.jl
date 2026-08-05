@@ -287,14 +287,18 @@ function mix_colors(a::RGBAf, b::RGBAf, factor::Float32)
     return RGBAf(m(a.r, b.r), m(a.g, b.g), m(a.b, b.b), m(a.alpha, b.alpha))
 end
 
+# NaN → 0 like the GPU's float-to-unorm conversion (e.g. NaN lighting from
+# degenerate-cell normals must not throw in the N0f8 constructor)
+clamp01_nan(x::Float32) = ifelse(isnan(x), 0.0f0, clamp(x, 0.0f0, 1.0f0))
+
 # source-over blending of straight-alpha src onto premultiplied dst
 function blend_premultiplied(dst::RGBA{N0f8}, src::RGBAf)
-    a = clamp(src.alpha, 0.0f0, 1.0f0)
+    a = clamp01_nan(src.alpha)
     rest = 1.0f0 - a
     return RGBA{N0f8}(
-        clamp(a * clamp(src.r, 0.0f0, 1.0f0) + rest * Float32(dst.r), 0.0f0, 1.0f0),
-        clamp(a * clamp(src.g, 0.0f0, 1.0f0) + rest * Float32(dst.g), 0.0f0, 1.0f0),
-        clamp(a * clamp(src.b, 0.0f0, 1.0f0) + rest * Float32(dst.b), 0.0f0, 1.0f0),
+        clamp(a * clamp01_nan(src.r) + rest * Float32(dst.r), 0.0f0, 1.0f0),
+        clamp(a * clamp01_nan(src.g) + rest * Float32(dst.g), 0.0f0, 1.0f0),
+        clamp(a * clamp01_nan(src.b) + rest * Float32(dst.b), 0.0f0, 1.0f0),
         clamp(a + rest * Float32(dst.alpha), 0.0f0, 1.0f0),
     )
 end
