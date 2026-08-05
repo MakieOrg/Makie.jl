@@ -1172,6 +1172,72 @@ function register_stroke_data!(attr)
     end
 end
 
+# Computes stroke edge data for the quad grid of a surface. The quad mesh is built
+# inside the computation and only when stroking is active, so unstroked surfaces do
+# not pay for CPU mesh construction. :stroke_faces lists the triangles the edge data
+# refers to, matching the triangulation order of the surface_as_mesh :faces node.
+function register_surface_stroke!(attr)
+    haskey(attr, :stroke_edge_widths) && return
+    haskey(attr, :positions_transformed_f32c) || add_surface_vertex_positions!(attr)
+    map!(
+        attr, [:positions_transformed_f32c, :z, :strokeedges, :strokewidth],
+        [:stroke_edge_widths, :stroke_wing_indices, :stroke_wing_widths, :stroke_faces]
+    ) do positions, z, strokeedges, strokewidth
+        if iszero(strokewidth)
+            return (Vec3f[], Vec{6, Int32}[], Vec{6, Float32}[], GLTriangleFace[])
+        end
+        m = surface2mesh(positions, size(z))
+        gl_faces = decompose(GLTriangleFace, m)
+        return (stroke_edge_data(m, gl_faces, strokeedges)..., gl_faces)
+    end
+    return
+end
+
+# Packs surface stroke data in grid cell (GPU instance) order with two triangle slots per
+# cell, so that a shader rendering the surface as one instanced quad per cell can fetch
+# the data at `2 * instance + primitive`. Cells removed for containing NaN get zero
+# entries. Each triangle's cell is identified by its smallest vertex index, the cell's
+# lower-left corner, which both triangles of a quad contain; the triangle containing the
+# lower-right corner is the first slot, matching the triangulation of the unit rect.
+function register_surface_stroke_data!(attr)
+    register_surface_stroke!(attr)
+    haskey(attr, :stroke_data_packed) && return
+    map!(
+        attr,
+        [:positions_transformed_f32c, :z, :stroke_faces, :stroke_edge_widths, :stroke_wing_indices, :stroke_wing_widths],
+        :stroke_data_packed
+    ) do positions, z, faces, edge_widths, wing_indices, wing_widths
+        isempty(edge_widths) && return fill(Vec4f(0), 9)
+        nx = size(z, 1)
+        ncells = (size(z, 1) - 1) * (size(z, 2) - 1)
+        data = fill(Vec4f(0), 9 * 2 * ncells)
+        at(idx) = to_ndim(Point3f, positions[idx], 0.0f0)
+        for (t, f) in enumerate(faces)
+            fi = (Base.to_index(f[1]), Base.to_index(f[2]), Base.to_index(f[3]))
+            corner = minimum(fi)
+            i0 = (corner - 1) % nx
+            j0 = (corner - 1) ÷ nx
+            slot = (corner + 1) in fi ? 0 : 1
+            base = 9 * (2 * (i0 + j0 * (nx - 1)) + slot)
+            for i in 1:3
+                p = at(f[i])
+                data[base + i] = Vec4f(p[1], p[2], p[3], edge_widths[t][i])
+            end
+            for k in 1:6
+                idx = wing_indices[t][k]
+                if idx == 0
+                    data[base + 3 + k] = Vec4f(0)
+                else
+                    p = at(idx)
+                    data[base + 3 + k] = Vec4f(p[1], p[2], p[3], wing_widths[t][k])
+                end
+            end
+        end
+        return data
+    end
+    return
+end
+
 # optionally converts uv_transform to the one used with patterns (different defaults)
 function register_pattern_uv_transform!(attr; modelname = :model_f32c, colorname = :color)
     register_computation!(

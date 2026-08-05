@@ -415,22 +415,29 @@ end
 pattern_tile(sampler::Makie.ShaderAbstractions.Sampler) = Matrix{RGBAf}(sampler.data)
 pattern_tile(image::AbstractMatrix{<:Colorant}) = Matrix{RGBAf}(image)
 
-function texture_uvs(uvs, uv_transform)
+# For surfaces, uvs are rescaled so that grid vertices map to texel centers of a
+# same-sized color matrix, like the (W)GLMakie sampling of surface color textures.
+function texture_uvs(uvs, uv_transform, grid_size)
     if !(uvs isa Vector{Vec2f})
         error("Meshes with a texture color need 2D texture coordinates.")
     end
     if uv_transform !== nothing
         uvt = uv_transform::Mat{2, 3, Float32, 6}
-        return map(uv -> uvt * to_ndim(Vec3f, uv, 1), uvs)
+        uvs = map(uv -> uvt * to_ndim(Vec3f, uv, 1), uvs)
+    end
+    if grid_size !== nothing
+        scale = Vec2f((grid_size .- 1) ./ grid_size)
+        trans = Vec2f(0.5 ./ grid_size)
+        uvs = map(uv -> scale .* uv .+ trans, uvs)
     end
     return uvs
 end
 
-function mesh_color_sampler(plot, uvs, uv_transform)
+function mesh_color_sampler(plot, uvs, uv_transform, grid_size)
     scaled_color = plot.scaled_color[]
     if scaled_color isa AbstractMatrix{<:Real}
         return ValueTextureSampler(
-            Float32.(scaled_color), texture_uvs(uvs, uv_transform),
+            Float32.(scaled_color), texture_uvs(uvs, uv_transform, grid_size),
             plot.interpolate[]::Bool, ColormapData(plot)
         )
     elseif scaled_color isa AbstractVector{<:Real}
@@ -439,7 +446,7 @@ function mesh_color_sampler(plot, uvs, uv_transform)
 
     color = compute_colors(plot)
     if color isa Matrix{RGBAf}
-        return TextureColorSampler(color, texture_uvs(uvs, uv_transform), plot.interpolate[]::Bool)
+        return TextureColorSampler(color, texture_uvs(uvs, uv_transform, grid_size), plot.interpolate[]::Bool)
     elseif color isa Vector{RGBAf}
         return VertexColorSampler(color)
     else
@@ -447,7 +454,7 @@ function mesh_color_sampler(plot, uvs, uv_transform)
     end
 end
 
-function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph)
+function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph; grid_size = nothing)
     positions = plot.positions_transformed_f32c[]::Union{Vector{Point2f}, Vector{Point3f}}
     faces = plot.faces[]::Vector{GLTriangleFace}
     isempty(faces) && return
@@ -556,7 +563,7 @@ function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph)
         view_normals = [zero_normalize(view_normalmatrix * normal) for normal in meshnormals]
         MatcapSampler(matcap, view_normals)
     else
-        mesh_color_sampler(plot, plot.texturecoordinates[], uv_transform)
+        mesh_color_sampler(plot, plot.texturecoordinates[], uv_transform, grid_size)
     end
 
     # stroke

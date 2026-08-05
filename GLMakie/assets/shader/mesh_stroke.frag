@@ -20,6 +20,10 @@ uniform mat4 projection, view, model;
 // interpolates to the fragment's own normalized device coordinates
 noperspective in vec2 o_ndc;
 
+// meshes render non-instanced (o_InstanceID = 0), so their stroke data is indexed by
+// gl_PrimitiveID alone; instanced surfaces store two triangles per grid cell instance
+flat in int o_InstanceID;
+
 vec2 stroke_screen_space(vec3 position)
 {
     vec4 clip = projection * view * model * vec4(position, 1);
@@ -52,7 +56,7 @@ vec4 apply_stroke(samplerBuffer data, vec4 color)
     if (strokewidth <= 0.0)
         return color;
 
-    int base = 9 * gl_PrimitiveID;
+    int base = 9 * (2 * o_InstanceID + gl_PrimitiveID);
     vec4 c0 = texelFetch(data, base + 0);
     vec4 c1 = texelFetch(data, base + 1);
     vec4 c2 = texelFetch(data, base + 2);

@@ -42,6 +42,9 @@ function draw_surface(screen, main, data::Dict)
         uv_transform = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
         instances = const_lift(x -> (size(x, 1) - 1) * (size(x, 2) - 1), main) => "number of planes used to render the surface"
         px_per_unit = 1.0f0
+        strokewidth = 0.0f0
+        strokecolor = RGBAf(0, 0, 0, 0)
+        stroke_data = nothing => TextureBuffer
     end
     return RenderObject(screen.glscreen, data)
 end
@@ -58,7 +61,7 @@ function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Sur
     shader = GLVisualizeShader(
         screen,
         "util.vert", "surface.vert",
-        "fragment_output.frag", "lighting.frag", "mesh.frag", "mesh_nostroke.frag",
+        "fragment_output.frag", "lighting.frag", "mesh.frag", "mesh_stroke.frag",
         view = view
     )
     return shader

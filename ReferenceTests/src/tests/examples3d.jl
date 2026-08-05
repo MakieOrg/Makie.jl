@@ -46,6 +46,25 @@ end
     f
 end
 
+@reference_test "surface stroke" begin
+    f = Figure(size = (600, 600))
+    r = range(-2, 2, length = 13)
+    zs = [2 * sinc(sqrt(x^2 + y^2)) for x in r, y in r]
+    surface(f[1, 1], r, r, zs, strokewidth = 1, strokecolor = :black, strokeedges = :all)
+
+    zs_hole = copy(zs)
+    zs_hole[5:7, 6:9] .= NaN
+    surface(f[1, 2], r, r, zs_hole, strokewidth = 3, strokecolor = :red)
+
+    surface(f[2, 1], r, r, zs, color = :orange, strokewidth = 2, strokecolor = (:black, 0.5), strokeedges = :all)
+    surface(
+        f[2, 2], r, r, zs, color = :transparent, transparency = true, shading = NoShading,
+        strokewidth = 1, strokecolor = :black, strokeedges = :all
+    )
+
+    f
+end
+
 @reference_test "Orthographic Camera" begin
     function colormesh((geometry, color))
         mesh1 = normal_mesh(geometry)

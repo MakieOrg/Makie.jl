@@ -86,6 +86,44 @@ nonzero_wings(wing_indices, wing_widths, corner) =
         @test inner_lines.color[] == Float32[1, 2, 3, 4, 5, 1, 1, 2, 3, 4, 5]
     end
 
+    @testset "surface stroke data" begin
+        zs = Float64[1 4; 2 5; 3 6]
+        f, a, pl = surface(1:3, 1:2, zs)
+        Makie.register_surface_stroke_data!(pl.attributes)
+        @test pl.stroke_edge_widths[] == Vec3f[]
+        @test pl.stroke_data_packed[] == fill(Vec4f(0), 9)
+
+        pl.strokewidth = 5
+        @test pl.stroke_edge_widths[] == Vec3f[(1, 0, 0), (0, 1, 1), (1, 1, 0), (0, 1, 0)]
+        pl.strokeedges = :all
+        @test pl.stroke_edge_widths[] == Vec3f[(1, 0.5, 0), (0, 1, 1), (1, 1, 0), (0, 1, 0.5)]
+
+        packed = pl.stroke_data_packed[]
+        @test length(packed) == 9 * 2 * 2
+        ps = pl.positions_transformed_f32c[]
+        for (t, face) in enumerate(pl.stroke_faces[])
+            for i in 1:3
+                expected_width = pl.stroke_edge_widths[][t][i]
+                @test packed[9 * (t - 1) + i] == Vec4f(ps[face[i]]..., expected_width)
+            end
+        end
+    end
+
+    @testset "NaN grid cells get zeroed stroke data slots" begin
+        zs = Float64[1 1 1; 1 1 1; 1 1 NaN]
+        f, a, pl = surface(1:3, 1:3, zs, strokewidth = 2, strokeedges = :all)
+        Makie.register_surface_stroke_data!(pl.attributes)
+        @test length(pl.stroke_faces[]) == 6
+        packed = pl.stroke_data_packed[]
+        @test length(packed) == 9 * 2 * 4
+        cell22 = (9 * 2 * 3 + 1):(9 * 2 * 4)
+        @test all(iszero, packed[cell22])
+        for instance in 0:2
+            slots = (9 * 2 * instance + 1):(9 * 2 * (instance + 1))
+            @test !all(iszero, packed[slots])
+        end
+    end
+
     @testset "stroke_edge_widths computation is gated on strokewidth" begin
         f, ax, pl = mesh(two_quads_mesh())
         @test pl.stroke_edge_widths[] == Vec3f[]

@@ -717,6 +717,40 @@ function create_shader(scene::Scene, plot::Surface)
     end
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     add_primitive_shading!(scene, attr)
+
+    # Stroking needs the de-indexed mesh path, at the cost of losing vertex sharing,
+    # so it is only taken when stroking is enabled at plot creation.
+    if !iszero(plot.strokewidth[])
+        Makie.register_surface_stroke!(attr)
+        register_wgl_mesh_expansion!(attr)
+        register_wgl_mesh_stroke!(attr)
+        inputs = [
+            # Special
+            :space,
+            # Needs explicit handling
+            :uniform_colormap, :uniform_color, :uniform_colorrange, :pattern,
+            :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
+            :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+            :wgl_uv_transform, :fetch_pixel, :primitive_shading, :color_mapping_type,
+            :depth_shift,
+            :wgl_mesh_positions, :wgl_mesh_faces, :wgl_mesh_vertex_index,
+            :wgl_mesh_normals, :wgl_mesh_uv, :wgl_mesh_vertex_color,
+            :strokewidth, :strokecolor, :wgl_stroke_data, :wgl_viewport_origin,
+            :uniform_clip_planes, :uniform_num_clip_planes, :visible,
+        ]
+        rename_updates = Dict(
+            :wgl_mesh_positions => :positions_transformed_f32c,
+            :wgl_mesh_faces => :faces,
+            :wgl_mesh_vertex_index => :vertex_index,
+            :wgl_mesh_normals => :normals,
+            :wgl_mesh_uv => :texturecoordinates,
+            :wgl_mesh_vertex_color => :vertex_color,
+            :wgl_stroke_data => :stroke_data,
+            :wgl_viewport_origin => :viewport_origin,
+        )
+        return create_wgl_renderobject(mesh_program, attr, inputs; rename_updates)
+    end
+
     inputs = [
         # Special
         :space,

@@ -240,35 +240,6 @@ function _transform_to_world(f32_model, tf, pos)
 end
 
 
-# Mesh + surface entry point
-function draw_mesh3D(scene, screen, plot::ComputeGraph)
-    clip_planes = plot.clip_planes[]::Vector{Plane3f}
-    uv_transform = plot.pattern_uv_transform[]::Union{Nothing, Mat{2, 3, Float32, 6}}
-
-    # per-element in meshscatter
-    world_points = Makie.apply_model(
-        plot.model_f32c[]::Mat4f,
-        plot.positions_transformed_f32c[]::Union{Vector{Point3f}, Vector{Point2f}}
-    )
-    screen_points = cairo_project_to_screen(plot, output_type = Point3f)::Vector{Point3f}
-    meshfaces = plot.faces[]::Vector{GLTriangleFace}
-    meshnormals = plot.normals[]::Union{Nothing, Vector{Vec3f}}
-    _meshuvs = plot.texturecoordinates[]
-
-    if (_meshuvs isa AbstractVector{<:Vec3})
-        error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
-    end
-    meshuvs::Union{Nothing, Vector{Vec2f}} = _meshuvs
-
-    color = compute_colors(plot)
-
-    return draw_mesh3D(
-        scene, screen, plot,
-        world_points, screen_points, meshfaces, meshnormals, meshuvs,
-        uv_transform, color, clip_planes
-    )
-end
-
 function draw_mesh3D(
         scene, screen, plot::ComputeGraph,
         world_points, screen_points, meshfaces, meshnormals, meshuvs,
@@ -460,8 +431,10 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Makie.Surface)
     attr = plot.attributes
     Makie.add_computation!(attr, Val(:surface_as_mesh))
     Makie.register_pattern_uv_transform!(attr)
+    Makie.register_surface_stroke!(attr)
+    Makie.compute_colors!(attr)
 
-    draw_mesh3D(scene, screen, attr)
+    draw_mesh_rasterized(scene, screen, attr, grid_size = size(attr.z[]))
     return nothing
 end
 
