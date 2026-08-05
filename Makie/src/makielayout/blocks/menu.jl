@@ -101,7 +101,8 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear = true, visible = m.is_open)
+    menuscene = Scene(blockscene, scenearea, clear = true, visible = m.is_open)
+    campixel!(menuscene; absolute = true)
     translate!(menuscene, 0, 0, 200)
 
     onany(blockscene, scenearea, listheight) do area, listheight

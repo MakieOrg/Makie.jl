@@ -5,7 +5,8 @@ function initialize_block!(tbox::Textbox)
         Rect(round.(Int, bb.origin), round.(Int, bb.widths))
     end
 
-    scene = Scene(topscene, scenearea, camera = campixel!)
+    scene = Scene(topscene, scenearea)
+    campixel!(scene; absolute = true)
 
     roundedrectpoints = lift(roundedrectvertices, topscene, scenearea, tbox.cornerradius, tbox.cornersegments)
 

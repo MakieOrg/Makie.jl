@@ -593,7 +593,12 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, graph)
 
-    b.blockscene = Scene(topscene, clear = false, camera = campixel!)
+    # Block content is positioned in the window-absolute coordinates of the
+    # layout `computedbbox`, so the blockscene uses `campixel!(; absolute = true)`
+    # (identical to the default at the window origin, but correct when the block
+    # lives inside an offset scene such as a `Subfigure`/`Tabs` content area).
+    b.blockscene = Scene(topscene, clear = false)
+    campixel!(b.blockscene; absolute = true)
 
     if has_forwarded_layout(T)
         init_layout!(b)

@@ -1,20 +1,17 @@
 """
     covers_pointer(scene::Scene) -> Bool
 
-True when `scene` is the topmost layer over its viewport: visible, with
-`clear[] == true` (paints its own background) AND a positive world-z. A
-scene with only one signal — a Legend lifted to z=10, or an Axis whose
-theme sets `clear=true` at z=0 — is layered for rendering only and does
-not claim pointer input.
+Whether `scene` claims the pointer, blocking input to the scenes it overlaps.
 
-Scenes that paint a translucent backdrop via plots instead of an opaque
-`clear = true` background (e.g. a modal dialog's overlay) can opt in
-explicitly with `scene.captures_mouse = true`.
+A scene claims the pointer only by opting in explicitly with
+`scene.captures_mouse = true` (e.g. a modal dialog's translucent overlay).
+Coverage is deliberately *not* inferred from rendering properties like
+`clear` or world-z: those are unreliable across backends (`clear` behaves
+differently per backend) and meaningless in 3D (z ≠ depth), so a scene that
+merely paints on top does not silently swallow input.
 """
 function covers_pointer(scene::Scene)
-    scene.visible[] || return false
-    scene.captures_mouse && return true
-    return scene.clear[] && z_world(scene) > 0
+    return scene.visible[] && scene.captures_mouse
 end
 
 "World z = accumulated z-translation along the ancestor chain."
