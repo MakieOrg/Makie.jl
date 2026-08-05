@@ -829,7 +829,8 @@ function create_test_plot()
     text!(ax, 5, 6, text = "∫∂∇αβγ←→€¥", fontsize = 40, align = (:center, :center))
     text!(ax, 5, 4, text = "◆●▲½⅓∞≈", fontsize = 40, color = :darkred, strokewidth = 2, strokecolor = :white, align = (:center, :center))
     str = "abcdefg"
-    cols = resample_cmap(:turbo, length(str))
+    # one more sample than glyphs: the stored reference mapped `color = 1:8` over 7 chars
+    cols = resample_cmap(:turbo, length(str) + 1)
     per_char = rich((rich(string(c); color = col) for (c, col) in zip(str, cols))...)
     text!(ax, 5, 2, text = per_char, fontsize = 60, align = (:center, :center), font = assetpath("fonts", "blkchcry.ttf"))
     return f
