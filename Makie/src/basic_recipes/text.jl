@@ -356,14 +356,6 @@ display_independent_layout(::AbstractString) = true
 display_independent_layout(::LaTeXString) = false
 display_independent_layout(@nospecialize(x)) = false
 
-"""
-    bakes_display_attributes(handler, text) -> Bool
-
-Whether laying `text` out resolves the display attributes, so that changing one has to
-lay it out again. A handler is assumed to bake, since it may rasterize.
-"""
-bakes_display_attributes(handler, text) = handler !== nothing || !display_independent_layout(text)
-
 ################################################################################
 ### text_handler extension
 ################################################################################
@@ -459,7 +451,10 @@ function register_baked_display_attributes!(attr::ComputeGraph)
         for (name, value) in [(:color, color), (:strokecolor, strokecolor), (:strokewidth, strokewidth)]
             validate_per_string(name, value, length(text))
         end
-        any(str -> bakes_display_attributes(handler, str), text) || return nothing
+        # a handler is assumed to bake the display attributes into its layout, since
+        # it may rasterize; plain strings take them per glyph downstream instead
+        baked = !isempty(text) && (handler !== nothing || !all(display_independent_layout, text))
+        baked || return nothing
         return (color, strokecolor, strokewidth)
     end
     # the value alternates between `nothing` and a tuple as the text type changes
@@ -536,7 +531,7 @@ function register_glyph_display!(attr::ComputeGraph)
             (RGBAf[], RGBAf[], Float32[]) : empty!.(values(cached))
 
         for (i, block) in enumerate(text_blocks)
-            if bakes_display_attributes(text_handler, input_text[i])
+            if text_handler !== nothing || !display_independent_layout(input_text[i])
                 append!(colors, view(layout_colors, block))
                 append!(strokecolors, view(layout_strokecolors, block))
                 append!(strokewidths, view(layout_strokewidths, block))
