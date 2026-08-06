@@ -86,13 +86,6 @@ nonzero_wings(wing_indices, wing_widths, corner) =
         @test inner_lines.color[] == Float32[1, 2, 3, 4, 5, 1, 1, 2, 3, 4, 5]
     end
 
-    @testset "closed meshes have no boundary edges despite seam float noise" begin
-        m = Makie.convert_arguments(Makie.Mesh, Sphere(Point3f(0), 1.0f0))[1]
-        gl_faces = decompose(GLTriangleFace, m)
-        widths, _, _ = Makie.stroke_edge_data(m, gl_faces, :all)
-        @test !any(w -> w == 1.0f0, reinterpret(Float32, widths))
-    end
-
     @testset "wings masked by equally wide own edges are dropped" begin
         ps = Point3f[(1, 1, 1), (1, -1, -1), (-1, 1, -1), (-1, -1, 1)]
         fs = GLTriangleFace[(1, 3, 2), (1, 2, 4), (1, 4, 3), (2, 3, 4)]

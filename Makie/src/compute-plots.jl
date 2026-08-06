@@ -1011,42 +1011,12 @@ function register_mesh_decomposition!(attr)
     end
 end
 
-# Duplicated vertices can carry float noise, e.g. the wrap-around seam of a UV sphere
-# evaluates the parametrization at 0 and 2pi, so positions are matched with a tolerance
-# relative to the mesh extent. Without this, seam edges count as two boundary edges and
-# get stroked at full width from both sides. Points are bucketed into grid cells; since
-# the noise is far smaller than the cell size, a near-duplicate can only end up in the
-# neighboring cell closest to the point's fractional position, so those are probed too.
+# Note: bit-exact matching means duplicated vertices with float noise stay separate,
+# e.g. a UV sphere seam evaluated at both 0 and 2pi gets classified as two boundary
+# edges. Such meshes should be fixed at generation time to share seam positions exactly.
 function canonical_vertex_ids(positions)
-    lo = Vec3d(mapreduce(p -> to_ndim(Point3d, p, 0), (a, b) -> min.(a, b), positions))
-    hi = Vec3d(mapreduce(p -> to_ndim(Point3d, p, 0), (a, b) -> max.(a, b), positions))
-    scale = maximum(hi - lo)
-    quantum = (isfinite(scale) && scale > 0) ? 1.0e-6 * scale : 1.0
-
-    cells = Dict{NTuple{3, Int64}, Int}()
-    nonfinite = Dict{Vec3d, Int}()
-    ids = Vector{Int}(undef, length(positions))
-    for (i, p) in enumerate(positions)
-        p3 = Vec3d(to_ndim(Point3d, p, 0))
-        if !all(isfinite, p3)
-            ids[i] = get!(nonfinite, p3, i)
-            continue
-        end
-        pq = p3 ./ quantum
-        base = (floor(Int64, pq[1]), floor(Int64, pq[2]), floor(Int64, pq[3]))
-        step = ntuple(d -> pq[d] - base[d] < 0.5 ? -1 : 1, 3)
-        id = 0
-        for dz in (0, step[3]), dy in (0, step[2]), dx in (0, step[1])
-            id = get(cells, (base[1] + dx, base[2] + dy, base[3] + dz), 0)
-            id == 0 || break
-        end
-        if id == 0
-            id = i
-            cells[base] = i
-        end
-        ids[i] = id
-    end
-    return ids
+    canonical = Dict{eltype(positions), Int}()
+    return Int[get!(canonical, p, i) for (i, p) in enumerate(positions)]
 end
 
 function count_mesh_edges(faces, canonical_ids)
