@@ -352,6 +352,8 @@ attributes (color, strokecolor, strokewidth). Plain strings apply those per-glyp
 and recompute. Custom text types default to `false` (conservative).
 """
 display_independent_layout(::AbstractString) = true
+# LaTeXString <: AbstractString, but its layout bakes color into glyphs and rule specs
+display_independent_layout(::LaTeXString) = false
 display_independent_layout(@nospecialize(x)) = false
 
 """

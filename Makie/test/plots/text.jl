@@ -228,6 +228,17 @@ end
     @test handler.calls[] == layouts + 2
 end
 
+@testset "latex layout follows the plot color" begin
+    scene = Scene(camera = campixel!)
+    p = text!(scene, Point2f(100, 100), text = L"\frac{a}{b}", color = :red, fontsize = 20)
+    @test all(==(to_color(:red)), p.glyph_colors[])
+    @test only(p.text_specs[]).kwargs[:color] == to_color(:red)
+
+    p.color = :blue
+    @test all(==(to_color(:blue)), p.glyph_colors[])
+    @test only(p.text_specs[]).kwargs[:color] == to_color(:blue)
+end
+
 struct WrappedText
     value::String
 end
