@@ -1,5 +1,5 @@
 import * as THREE from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
-import { create_line, add_line_attributes } from "./Lines.js";
+import { create_line, add_line_attributes, tube_rmf_normals } from "./Lines.js";
 import {
     find_interleaved_attribute,
     re_create_geometry,
@@ -269,6 +269,8 @@ export class Lines extends Plot {
         this.ndims = {};
         this.scene = scene;
         this.mesh = create_line(this);
+        const tube = this.deserialized_uniforms.tube;
+        this.is_tube = !!(tube && tube.value);
         this.init_mesh();
     }
 
@@ -276,6 +278,22 @@ export class Lines extends Plot {
         const dict = Object.fromEntries(data_key_value_array.map(([k, v]) => [k, expand_compressed(v)]));
         const line_attr = Object.entries(add_line_attributes(this, dict));
         super.update(line_attr);
+        // A tube's rotation-minimizing frame is derived from the point positions, so it must be
+        // recomputed whenever the positions change — otherwise animated tubes keep the frame (and,
+        // at degenerate seed positions, the NaN normals) baked in at construction time.
+        if (this.is_tube && "positions_transformed_f32c" in dict) {
+            const geom = this.mesh.geometry;
+            const posbuf = geom.interleaved_attributes["positions_transformed_f32c"];
+            const nbuf = geom.interleaved_attributes["tube_normal"];
+            if (posbuf && nbuf) {
+                const normals = tube_rmf_normals(posbuf.array, this.ndims["positions_transformed_f32c"] || 3);
+                if (normals.length === nbuf.array.length) {
+                    nbuf.set(normals);
+                    nbuf.count = posbuf.count;
+                    nbuf.needsUpdate = true;
+                }
+            }
+        }
     }
     dispose() {
         this.scene.wgl_camera.on_update.delete(this.uuid);

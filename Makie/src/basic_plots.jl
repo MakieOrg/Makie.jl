@@ -482,6 +482,16 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     "Sets the minimum inner join angle below which miter joins truncate. See also `Makie.miter_distance_to_angle`."
     miter_limit = @inherit miter_limit
     """
+    Renders the line as an actual 3D tube instead of a screen-space line. `false`
+    (the default) draws a normal line; `true` draws a tube whose radius is `linewidth`,
+    interpreted in data units and allowed to vary per vertex (pass a `linewidth` vector).
+    The tube geometry is materialized by the backend (in-shader for GLMakie/WGLMakie), so
+    only line-amount of data is uploaded.
+    """
+    tube = false
+    "Number of sides of the tube cross-section when `tube` is enabled."
+    tube_sides = 12
+    """
     Sets which attributes to cycle when creating multiple plots. The values to
     cycle through are defined by the parent Theme. Multiple cycled attributes can
     be set by passing a vector. Elements can
@@ -518,6 +528,16 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
     linestyle = nothing
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 1 linewidth extrusion) or :round."
     linecap = @inherit linecap
+    """
+    Renders each segment as an actual 3D tube instead of a screen-space line. `false`
+    (the default) draws normal segments; `true` draws a tube whose radius is `linewidth`,
+    interpreted in data units and allowed to vary per vertex (pass a `linewidth` vector).
+    The tube geometry is materialized by the backend (in-shader for GLMakie/WGLMakie), so
+    only line-amount of data is uploaded.
+    """
+    tube = false
+    "Number of sides of the tube cross-section when `tube` is enabled."
+    tube_sides = 12
     """
     Sets which attributes to cycle when creating multiple plots. The values to
     cycle through are defined by the parent Theme. Multiple cycled attributes can

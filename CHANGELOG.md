@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added the `streaklets` recipe: animated pathline-trail visualization of (possibly time-dependent) 3D vector fields. Frames are precomputed over `times` and selected with the `time` attribute, so animation/scrubbing is a cheap backend-agnostic lookup. Supports importance seeding, `:kill`/`:wrap` boundaries, and per-vertex color via a `(point, t) -> Real` callback.
+- Added a `tube` option to `lines` (with `tube_sides`): renders a line as a real 3D tube whose geometry is materialized in the backend, so only line-amount of data is uploaded. Radius is the existing `linewidth` (scalar or per-vertex), and each line end is closed with a flat cap (taper the linewidth to a point for a spiked head). In WGLMakie the tube's rotation-minimizing frame is recomputed whenever the positions change, so animated tubes (e.g. driven by an observable) stay correct instead of baking in the frame — and NaN normals at degenerate initial positions — from construction time.
 - `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
   `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
 - Scope the CairoMakie precompile workload's figures inside `let`, so rendered `Screen`s and their pixel buffers are no longer serialized into the package image (~150 MB smaller pkgimage) [#5692](https://github.com/MakieOrg/Makie.jl/pull/5692).

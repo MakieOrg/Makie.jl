@@ -690,6 +690,9 @@ function create_lines_data(islines, attr)
         :picking => false,
         :linecap => attr.linecap,
         :scene_origin => attr.scene_origin,
+        # tube rendering: draw the line as a 3D tube whose radius is `linewidth` (data units)
+        :tube => (attr.tube != false),
+        :tube_sides => Int32(attr.tube_sides),
     )
 
     if islines
@@ -744,6 +747,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :linecap, :uniform_linewidth, :uniform_pattern, :uniform_pattern_length,
         :space, :scene_origin, :model_f32c, :depth_shift, :transparency, :visible,
         :uniform_clip_planes, :uniform_num_clip_planes,
+        :tube, :tube_sides,
     ]
 
     map!(attr, [:uniform_color, :vertex_color], :line_color) do uc, vc

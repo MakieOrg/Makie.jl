@@ -1313,7 +1313,261 @@ export function add_line_attributes(plot, attributes) {
 }
 
 
+// ── Tube rendering ──────────────────────────────────────────────────────────
+// Reuses the exact per-segment instanced buffers as lines (start/end/color), but
+// swaps the flat screen-space quad template for a ring cross-section and expands
+// each segment into a real 3D tube in the vertex shader — so the same amount of
+// data is uploaded as for a line and the geometry is generated on the GPU.
+function create_tube_instance_geometry(nsides) {
+    const geometry = new THREE.InstancedBufferGeometry();
+    geometry.interleaved_attributes = {};
+    const pos = [];
+    const cap = [];   // 0 = tube wall, 1 = start-end disk (t=0), 2 = far-end disk (t=1)
+    // tube wall: quad between the start ring (t=0) and end ring (t=1)
+    for (let i = 0; i < nsides; i++) {
+        const a0 = (2 * Math.PI * i) / nsides;
+        const a1 = (2 * Math.PI * (i + 1)) / nsides;
+        const c0 = Math.cos(a0), s0 = Math.sin(a0);
+        const c1 = Math.cos(a1), s1 = Math.sin(a1);
+        // per template vertex: (t along segment in {0,1}, cos θ, sin θ)
+        pos.push(0, c0, s0,  1, c0, s0,  1, c1, s1,   0, c0, s0,  1, c1, s1,  0, c1, s1);
+        for (let k = 0; k < 6; k++) cap.push(0);
+    }
+    // flat end-cap disks: a triangle fan (center → rim) at each terminal ring, so tubes read as
+    // closed solids (|===) instead of hollow pipes. Each cap only draws when its segment is the
+    // first/last of a line (neighbour is NaN); otherwise the shader collapses it off-screen.
+    for (const [kind, t] of [[1, 0], [2, 1]]) {
+        for (let i = 0; i < nsides; i++) {
+            const a0 = (2 * Math.PI * i) / nsides;
+            const a1 = (2 * Math.PI * (i + 1)) / nsides;
+            const c0 = Math.cos(a0), s0 = Math.sin(a0);
+            const c1 = Math.cos(a1), s1 = Math.sin(a1);
+            // wind the start disk to face −tangent and the far disk to face +tangent
+            if (kind === 1) pos.push(t, 0, 0,  t, c1, s1,  t, c0, s0);
+            else            pos.push(t, 0, 0,  t, c0, s0,  t, c1, s1);
+            cap.push(kind, kind, kind);
+        }
+    }
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    geometry.setAttribute("tube_cap", new THREE.Float32BufferAttribute(cap, 1));
+    geometry.boundingSphere = new THREE.Sphere();
+    geometry.boundingSphere.radius = 1e13;
+    geometry.frustumCulled = false;
+    return geometry;
+}
+
+function tube_color_info(uniforms, attributes) {
+    // line_color_start/_end exist either as per-vertex attributes or as uniforms
+    // (uniform color) — same names in both cases, so mix() works uniformly.
+    const type = attribute_type(attributes.line_color_start) || uniform_type(uniforms.line_color_start) || "vec4";
+    const expr = "mix(line_color_start, line_color_end, t)";
+    return { type, expr };
+}
+
+function tube_vertex_shader(uniforms, attributes) {
+    const attribute_decl = attributes_to_type_declaration(attributes);
+    const uniform_decl = uniforms_to_type_declaration(uniforms);
+    const color = tube_color_info(uniforms, attributes);
+    // tube radius = linewidth (data units). uniform_linewidth_start/_end always exist — as
+    // uniforms for a scalar linewidth, as attributes for a per-vertex vector — so mix() covers both.
+    const radius = "mix(uniform_linewidth_start, uniform_linewidth_end, t)";
+    return `precision highp float;
+        precision highp int;
+        precision highp sampler2D;
+        precision highp sampler3D;
+
+        ${attribute_decl}
+        ${uniform_decl}
+
+        out vec3 f_normal;
+        out ${color.type} f_color;
+
+        vec4 clip_space(vec3 point) { return projectionview * model_f32c * vec4(point, 1.0); }
+
+        // bisector tangent of two adjacent segment directions, NaN/degenerate-safe
+        // (so the ring at a shared joint is computed identically by both segments)
+        vec3 joint_tangent(vec3 a, vec3 b) {
+            bool na = isnan(a.x) || dot(a, a) < 1e-20;
+            bool nb = isnan(b.x) || dot(b, b) < 1e-20;
+            if (na && nb) return vec3(0.0, 0.0, 1.0);
+            if (na) return normalize(b);
+            if (nb) return normalize(a);
+            vec3 t = normalize(a) + normalize(b);
+            return dot(t, t) < 1e-10 ? normalize(a) : normalize(t);
+        }
+
+        void main() {
+            vec3 pp = positions_transformed_f32c_prev;
+            vec3 p0 = positions_transformed_f32c_start;
+            vec3 p1 = positions_transformed_f32c_end;
+            vec3 pn = positions_transformed_f32c_next;
+            // drop NaN separators and degenerate segments off-screen
+            if (isnan(p0.x) || isnan(p1.x) || distance(p0, p1) < 1e-12) {
+                gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return;
+            }
+            // flat end caps (tube_cap 1 = line start at t=0, 2 = line end at t=1): a disk that
+            // only draws when this segment is terminal (its outward neighbour is a NaN break).
+            if (tube_cap > 0.5) {
+                bool is_start = tube_cap < 1.5;
+                // a line terminus is marked by a NaN break or a duplicated phantom endpoint
+                // (prev==start at a start, next==end at an end — see nan_free_points_indices)
+                bool terminal = is_start ? (isnan(pp.x) || distance(pp, p0) < 1e-9)
+                                         : (isnan(pn.x) || distance(pn, p1) < 1e-9);
+                if (!terminal) {
+                    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return;
+                }
+                float t = is_start ? 0.0 : 1.0;
+                vec3 center = mix(p0, p1, t);
+                vec3 tangent = normalize(p1 - p0);
+                vec3 rmf = mix(tube_normal_start, tube_normal_end, t);
+                vec3 nrm = normalize(rmf - dot(rmf, tangent) * tangent);
+                vec3 bin = cross(tangent, nrm);
+                vec3 ring = position.y * nrm + position.z * bin;
+                gl_Position = clip_space(center + (${radius}) * ring);
+                f_normal = mat3(model_f32c) * (is_start ? -tangent : tangent);
+                f_color = ${color.expr};
+                return;
+            }
+            float t = position.x;
+            vec3 center = mix(p0, p1, t);
+            // tangent = bisector of the segments meeting at this vertex → seamless joints
+            vec3 tangent = (t < 0.5) ? joint_tangent(p0 - pp, p1 - p0)
+                                     : joint_tangent(p1 - p0, pn - p1);
+            // rotation-minimizing normal, computed in JS from the same points (no extra
+            // data uploaded), re-orthogonalized against the joint tangent → no twist pinch
+            vec3 rmf = mix(tube_normal_start, tube_normal_end, t);
+            vec3 nrm = normalize(rmf - dot(rmf, tangent) * tangent);
+            vec3 bin = cross(tangent, nrm);
+            vec3 ring = position.y * nrm + position.z * bin;
+            vec3 world = center + (${radius}) * ring;
+            gl_Position = clip_space(world);
+            f_normal = mat3(model_f32c) * ring;
+            f_color = ${color.expr};
+        }`;
+}
+
+function tube_fragment_shader(uniforms, attributes) {
+    const uniform_decl = uniforms_to_type_declaration(uniforms);
+    const color = tube_color_info(uniforms, attributes);
+    const to_vec4 = color.type === "vec4" ? "f_color"
+        : color.type === "vec3" ? "vec4(f_color, 1.0)" : "vec4(vec3(f_color), 1.0)";
+    // use the scene's lighting when present (so tubes match meshes), else a fixed key light
+    const shade = uniforms.light_direction
+        ? "ambient + light_color * abs(dot(N, normalize(light_direction)))"
+        : "vec3(0.45 + 0.55 * abs(dot(N, normalize(vec3(0.35, 0.25, 0.9)))))";
+    return `precision highp float;
+        precision highp int;
+        precision highp sampler2D;
+        precision highp sampler3D;
+
+        ${uniform_decl}
+
+        in vec3 f_normal;
+        in ${color.type} f_color;
+        out vec4 fragment_color;
+
+        void main() {
+            vec3 N = normalize(f_normal);
+            vec3 shade = ${shade};   // two-sided (abs) so back faces of the tube also shade
+            vec4 col = ${to_vec4};
+            if (col.a <= 0.0) discard;
+            fragment_color = vec4(col.rgb * shade, col.a);
+        }`;
+}
+
+function create_tube_material(uniforms_des, attributes) {
+    const mat = new THREE.RawShaderMaterial({
+        uniforms: uniforms_des,
+        glslVersion: THREE.GLSL3,
+        vertexShader: tube_vertex_shader(uniforms_des, attributes),
+        fragmentShader: tube_fragment_shader(uniforms_des, attributes),
+        transparent: true,
+        blending: THREE.CustomBlending,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneMinusSrcAlphaFactor,
+        blendSrcAlpha: THREE.ZeroFactor,
+        blendDstAlpha: THREE.OneFactor,
+        blendEquation: THREE.AddEquation,
+        side: THREE.DoubleSide,
+    });
+    mat.uniforms.object_id = { value: 1 };
+    return mat;
+}
+
+// Per-point rotation-minimizing normal via parallel transport — computed in JS from the
+// points that are ALREADY in the browser (nothing extra sent from Julia). This is the
+// twist-free frame the shader can't build per-segment; the shader just reads it.
+export function tube_rmf_normals(P, nd) {
+    const n = (P.length / nd) | 0;
+    const out = new Float32Array(n * 3);
+    const get = (i) => [P[i * nd], P[i * nd + 1], P[i * nd + 2]];
+    const isn = (p) => isNaN(p[0]) || isNaN(p[1]) || isNaN(p[2]);
+    const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+    const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const scl = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+    const nrm = (a) => { const l = Math.hypot(a[0], a[1], a[2]); return l < 1e-12 ? [0, 0, 0] : [a[0] / l, a[1] / l, a[2] / l]; };
+    const perp = (t) => nrm(cross(t, Math.abs(t[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0]));
+    const tang = (i) => {
+        const a = (i > 0 && !isn(get(i - 1))) ? sub(get(i), get(i - 1)) : [0, 0, 0];
+        const b = (i < n - 1 && !isn(get(i + 1))) ? sub(get(i + 1), get(i)) : [0, 0, 0];
+        const t = add(nrm(a), nrm(b));
+        if (Math.hypot(t[0], t[1], t[2]) < 1e-9) { const c = nrm(a); return (c[0] || c[1] || c[2]) ? c : nrm(b); }
+        return nrm(t);
+    };
+    let prevN = null, prevT = null;
+    for (let i = 0; i < n; i++) {
+        if (isn(get(i))) { prevN = null; prevT = null; continue; }   // reset frame at line breaks
+        const T = tang(i);
+        let N;
+        if (prevN === null) {
+            N = perp(T);
+        } else {
+            const v = cross(prevT, T), s = Math.hypot(v[0], v[1], v[2]), c = dot(prevT, T);
+            if (s < 1e-8) {
+                N = prevN;
+            } else {                                                 // Rodrigues rotation prevT→T
+                const ax = scl(v, 1 / s);
+                N = add(add(scl(prevN, c), scl(cross(ax, prevN), s)), scl(ax, dot(ax, prevN) * (1 - c)));
+            }
+        }
+        N = nrm(sub(N, scl(T, dot(N, T))));                          // re-orthogonalize
+        if (!(N[0] || N[1] || N[2])) N = perp(T);
+        out[i * 3] = N[0]; out[i * 3 + 1] = N[1]; out[i * 3 + 2] = N[2];
+        prevN = N; prevT = T;
+    }
+    return out;
+}
+
+function create_tube(plot_object) {
+    const u = plot_object.deserialized_uniforms;
+    const nsides = Math.max(3, Math.round((u.tube_sides && u.tube_sides.value) || 12));
+    const geometry = create_tube_instance_geometry(nsides);
+    const buffers = {};
+    const { plot_data } = plot_object;
+    const attrs = add_line_attributes(plot_object, plot_data.attributes);
+    create_line_buffers(geometry, buffers, attrs, plot_object.is_segments);
+    // twist-free frame from the already-present points, attached as a client-side buffer
+    const pos = attrs.positions_transformed_f32c;
+    const normals = tube_rmf_normals(pos.flat, pos.type_length);
+    attach_interleaved_line_buffer("tube_normal", geometry, normals, 3, plot_object.is_segments, false);
+    const material = create_tube_material(
+        add_line_attributes(plot_object, plot_object.deserialized_uniforms),
+        geometry.attributes
+    );
+    material.depthTest = !plot_data.overdraw;
+    material.depthWrite = !plot_data.transparency;
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.geometry.instanceCount = geometry.attributes.positions_transformed_f32c_start.count;
+    return mesh;
+}
+
 export function create_line(plot_object) {
+    const _tube = plot_object.deserialized_uniforms.tube;
+    if (_tube && _tube.value) {
+        return create_tube(plot_object);
+    }
     const geometry = create_line_instance_geometry();
     const buffers = {};
     const {plot_data} = plot_object;
