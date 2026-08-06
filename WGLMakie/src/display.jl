@@ -286,7 +286,7 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T <: MIME}
 end
 
 function Base.close(screen::Screen; from_close = false)
-    return lock(screen.lock) do
+    return @lock screen.lock begin
         scene = screen.scene
         session = nothing
         if !isnothing(screen.session) && isopen(screen.session) && !from_close
@@ -357,7 +357,7 @@ function get_screen_session(
         Bonito.isclosed(session) && return :closed
         isready(screen.plot_initialized)
     end
-    # session closed inbetween, nothing can be done
+    # session closed in-between, nothing can be done
     success === :closed && return nothing
     # Throw error if error message specified
     if success !== :success || !isopen(session)

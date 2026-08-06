@@ -1,39 +1,3 @@
-function inherit(scene, attr::Symbol, default_value)
-    return if haskey(scene.theme, attr)
-        Observable(to_value(scene.theme[attr]))
-    else
-        inherit(scene.parent, attr, default_value)
-    end
-end
-
-function inherit(::Nothing, attr::Symbol, default_value)
-    return default_value
-end
-
-inherit(scene, attr::NTuple{1, <:Symbol}, default_value) = inherit(scene, attr[begin], default_value)
-
-
-function inherit(scene, attr::NTuple{N, <:Symbol}, default_value) where {N}
-    current_dict = scene.theme
-    for i in 1:(N - 1)
-        if haskey(current_dict, attr[i])
-            current_dict = current_dict[attr[i]]
-        else
-            break
-        end
-    end
-
-    if haskey(current_dict, attr[N])
-        return lift(identity, current_dict[attr[N]])
-    else
-        return inherit(scene.parent, attr, default_value)
-    end
-end
-
-function inherit(::Nothing, attr::NTuple{N, Symbol}, default_value::T) where {N, T}
-    return default_value
-end
-
 function generic_plot_attributes(::Type{LineAxis})
     return Attributes(
         endpoints = (Point2f(0, 0), Point2f(100, 0)),
@@ -68,7 +32,11 @@ function generic_plot_attributes(::Type{LineAxis})
         minortickwidth = 1.0f0,
         minortickcolor = :black,
         minorticks = Makie.automatic,
+        minorticksused = false,
         scale = identity,
+        unit_in_ticklabel = true,
+        suffix_formatter = "",
+        unit_in_label = false,
     )
 end
 
@@ -77,7 +45,7 @@ function attributenames(::Type{LegendEntry})
     return (
         :label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
         :patchsize, :patchstrokecolor, :patchstrokewidth, :patchcolor,
-        :linepoints, :linewidth, :linecolor, :linestyle, :linecolorrange, :linecolormap,
+        :linepoints, :linewidth, :linecolor, :linestyle, :linecap, :joinstyle, :linecolorrange, :linecolormap,
         :markerpoints, :markersize, :markerstrokewidth, :markercolor, :markerstrokecolor, :markercolorrange, :markercolormap,
         :polypoints, :polystrokewidth, :polycolor, :polystrokecolor, :polycolorrange, :polycolormap, :alpha,
     )
@@ -93,12 +61,14 @@ function extractattributes(attributes::Attributes, typ::Type)
     return extracted
 end
 
-function extractattributes(leg::Legend, typ::Type)
+function extractattributes(attributes::ComputeGraph, typ::Type)
     extracted = Attributes()
     for name in attributenames(typ)
-        if hasproperty(leg, name)
-            extracted[name] = getproperty(leg, name)
+        if haskey(attributes, name)
+            extracted[name] = ComputePipeline.get_observable!(attributes[name])
         end
     end
     return extracted
 end
+
+extractattributes(leg::Legend, typ::Type) = extractattributes(leg.attributes, typ)

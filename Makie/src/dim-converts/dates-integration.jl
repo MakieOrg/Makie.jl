@@ -35,10 +35,10 @@ For DateTimes `PlotUtils.optimize_datetime_ticks` is used for getting the conver
 ```julia
 date_time = DateTime("2021-10-27T11:11:55.914")
 date_time_range = range(date_time, step=Week(5), length=10)
-# Automatically chose xticks as DateTeimeTicks:
+# Automatically choose xticks as DateTimeTicks:
 scatter(date_time_range, 1:10)
 
-# explicitly chose DateTimeConversion and use it to plot unitful values into it and display in the `Time` format:
+# explicitly choose DateTimeConversion and use it to plot unitful values into it and display in the `Time` format:
 using Makie.Unitful
 conversion = Makie.DateTimeConversion(Time)
 scatter(1:4, (1:4) .* u"s", axis=(dim2_conversion=conversion,))
@@ -59,7 +59,6 @@ end
 expand_dimensions(::PointBased, y::AbstractVector{<:Dates.AbstractTime}) = (keys(y), y)
 needs_tick_update_observable(conversion::DateTimeConversion) = conversion.type
 create_dim_conversion(::Type{<:Dates.AbstractTime}) = DateTimeConversion()
-should_dim_convert(::Type{<:Dates.AbstractTime}) = true
 
 
 function convert_dim_value(conversion::DateTimeConversion, value::Dates.TimeType)
@@ -85,7 +84,12 @@ function convert_dim_value(conversion::DateTimeConversion, attr, values, previou
     return date_to_number.(conversion.type[], values)
 end
 
-function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax)
+# TODO: Is there a point in allowing Date ticks to not be displayed?
+# What would be shown instead?
+# show_dim_convert_in_ticklabel(::DateTimeConversion, ::Bool) = true
+show_dim_convert_in_ticklabel(::DateTimeConversion) = true
+
+function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     T = conversion.type[]
 
     # When automatic, we haven't actually plotted anything yet, so no unit chosen
@@ -424,13 +428,21 @@ function best_ticks(steptype::Type{Year}, start, stop, k_ideal)
     end
 end
 
+"""
+    aligned_range(start, stop, step)
+
+Generates a range that is aligned to multiples of step, i.e. start and stop are
+integer multiples of step. The returned range is strictly within the start..stop
+range.
+"""
+function aligned_range(start, stop, step)
+    from = cld(start, step) * step
+    to = fld(stop, step) * step
+    return from:step:to
+end
+
 function best_ticks(start, stop, stepsizes, k_ideal)
-    function _range(start, stop, step)
-        from = cld(start, step) * step
-        to = fld(stop, step) * step
-        return from:step:to
-    end
-    return argmin(_range(start, stop, step) for step in stepsizes) do rng
+    return argmin(aligned_range(start, stop, step) for step in stepsizes) do rng
         _cost(rng, k_ideal)
     end
 end
@@ -575,3 +587,12 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks, datetimes::Vector{<:D
         error("invalid kind $kind")
     end
 end
+
+# TODO: Consider reworking offset ticks so that the origin time stamp is in the label?
+# show_dim_convert_in_ticklabel(::DateTimeConversion) = true
+# get_label_suffix(dc::DateTimeConversion, format) = get_formatted_timestamp(dc)
+
+# This only makes sense for Time which goes through units, not Dates or DateTime
+show_dim_convert_in_axis_label(::DateTimeConversion) = false
+# show_dim_convert_in_axis_label(::DateTimeConversion, ::Bool) = false
+get_label_suffix(::DateTimeConversion) = error("Cannot produce a label suffix for Dates.")

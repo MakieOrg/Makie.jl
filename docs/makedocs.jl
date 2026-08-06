@@ -1,18 +1,15 @@
-ENV["JULIA_DEBUG"] = "Documenter"
-
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
 Pkg.instantiate()
 Pkg.precompile()
 
+using FFMPEG_jll
 using CairoMakie
 using GLMakie
 using WGLMakie
 using RPRMakie
 using Graphviz_jll
-
-##
 
 include("copy_changelog.jl")
 
@@ -41,155 +38,152 @@ unnest(vec::Vector) = collect(Iterators.flatten([unnest(el) for el in vec]))
 unnest(p::Pair) = p[2] isa String ? [p[2]] : unnest(p[2])
 unnest(s::String) = [s]
 
+
+plots_dir = joinpath(@__DIR__, "src/reference/plots")
+isdir(plots_dir) && rm(plots_dir; force = true, recursive = true)
+mkpath(plots_dir)
+plots = Makie.generate_plot_docs(plots_dir)
+filter!(p -> p != "timeseries", plots)
+plots = map(x -> "reference/plots/$(x).md", plots)
+
+open(joinpath(plots_dir, "overview.md"), "w") do file
+    content = """
+    # Overview
+
+    ```@example
+    using Markdown # hide
+    import ..MakieDocsHelpers # hide
+    MakieDocsHelpers.OverviewSection("plots") # hide
+    ```
+    """
+    println(file, content)
+end
+pushfirst!(plots, "reference/plots/overview.md")
+
 pages = [
     "Home" => "index.md",
     "Reference" => [
-        "Blocks" => [
-            "reference/blocks/overview.md",
-            "reference/blocks/axis.md",
-            "reference/blocks/axis3.md",
-            "reference/blocks/box.md",
-            "reference/blocks/button.md",
-            "reference/blocks/checkbox.md",
-            "reference/blocks/colorbar.md",
-            "reference/blocks/gridlayout.md",
-            "reference/blocks/intervalslider.md",
-            "reference/blocks/label.md",
-            "reference/blocks/legend.md",
-            "reference/blocks/lscene.md",
-            "reference/blocks/menu.md",
-            "reference/blocks/polaraxis.md",
-            "reference/blocks/slider.md",
-            "reference/blocks/slidergrid.md",
-            "reference/blocks/textbox.md",
-            "reference/blocks/toggle.md",
-        ],
-        "Plots" => [
-            "reference/plots/overview.md",
-            "reference/plots/ablines.md",
-            "reference/plots/annotation.md",
-            "reference/plots/arc.md",
-            "reference/plots/arrows.md",
-            "reference/plots/band.md",
-            "reference/plots/barplot.md",
-            "reference/plots/boxplot.md",
-            "reference/plots/bracket.md",
-            "reference/plots/contour.md",
-            "reference/plots/contour3d.md",
-            "reference/plots/contourf.md",
-            "reference/plots/crossbar.md",
-            "reference/plots/datashader.md",
-            "reference/plots/dendrogram.md",
-            "reference/plots/density.md",
-            "reference/plots/ecdf.md",
-            "reference/plots/errorbars.md",
-            "reference/plots/heatmap.md",
-            "reference/plots/hexbin.md",
-            "reference/plots/hist.md",
-            "reference/plots/hlines.md",
-            "reference/plots/hspan.md",
-            "reference/plots/image.md",
-            "reference/plots/lines.md",
-            "reference/plots/linesegments.md",
-            "reference/plots/mesh.md",
-            "reference/plots/meshscatter.md",
-            "reference/plots/pie.md",
-            "reference/plots/poly.md",
-            "reference/plots/qqnorm.md",
-            "reference/plots/qqplot.md",
-            "reference/plots/rainclouds.md",
-            "reference/plots/rangebars.md",
-            "reference/plots/scatter.md",
-            "reference/plots/scatterlines.md",
-            "reference/plots/series.md",
-            "reference/plots/spy.md",
-            "reference/plots/stairs.md",
-            "reference/plots/stem.md",
-            "reference/plots/stephist.md",
-            "reference/plots/streamplot.md",
-            "reference/plots/surface.md",
-            "reference/plots/text.md",
-            "reference/plots/textlabel.md",
-            "reference/plots/tooltip.md",
-            "reference/plots/tricontourf.md",
-            "reference/plots/triplot.md",
-            "reference/plots/violin.md",
-            "reference/plots/vlines.md",
-            "reference/plots/volume.md",
-            "reference/plots/volumeslices.md",
-            "reference/plots/voronoiplot.md",
-            "reference/plots/voxels.md",
-            "reference/plots/vspan.md",
-            "reference/plots/waterfall.md",
-            "reference/plots/wireframe.md",
-        ],
-        "Generic Concepts" => [
-            "reference/generic/clip_planes.md",
-            "reference/generic/transformations.md",
-            "reference/generic/space.md",
-        ],
-        "Scene" => [
-            "reference/scene/lighting.md",
-            "reference/scene/matcap.md",
-            "reference/scene/SSAO.md",
-        ],
+        "Blocks" => joinpath.(
+            "reference", "blocks", [
+                "overview.md",
+                "axis.md",
+                "axis3.md",
+                "box.md",
+                "button.md",
+                "checkbox.md",
+                "colorbar.md",
+                "gridlayout.md",
+                "intervalslider.md",
+                "label.md",
+                "legend.md",
+                "lscene.md",
+                "menu.md",
+                "paramform.md",
+                "polaraxis.md",
+                "slider.md",
+                "slidergrid.md",
+                "table.md",
+                "textbox.md",
+                "toggle.md",
+            ]
+        ),
+        "Plots" => plots,
+        "Generic Concepts" => joinpath.(
+            "reference", "generic", [
+                "clip_planes.md",
+                "transformations.md",
+                "space.md",
+            ]
+        ),
+        "Scene" => joinpath.(
+            "reference", "scene", [
+                "lighting.md",
+                "matcap.md",
+                "SSAO.md",
+            ]
+        ),
     ],
-    "Tutorials" => [
-        "tutorials/getting-started.md",
-        "tutorials/aspect-tutorial.md",
-        "tutorials/layout-tutorial.md",
-        "tutorials/scenes.md",
-        "tutorials/wrap-existing-recipe.md",
-        "tutorials/pixel-perfect-rendering.md",
-        "tutorials/inset-plot-tutorial.md",
-    ],
+    "Tutorials" => joinpath.(
+        "tutorials", [
+            "getting-started.md",
+            "aspect-tutorial.md",
+            "layout-tutorial.md",
+            "scenes.md",
+            "wrap-existing-recipe.md",
+            "pixel-perfect-rendering.md",
+            "inset-plot-tutorial.md",
+        ]
+    ),
     "Explanations" => [
-        "Backends" => [
-            "explanations/backends/backends.md",
-            "explanations/backends/cairomakie.md",
-            "explanations/backends/glmakie.md",
-            "explanations/backends/raymakie.md",
-            "explanations/backends/wglmakie.md",
-        ],
-        "explanations/animation.md",
-        "explanations/architecture.md",
-        "explanations/blocks.md",
-        "explanations/cameras.md",
-        "explanations/conversion_pipeline.md",
-        "explanations/colors.md",
-        "explanations/dim-converts.md",
-        "explanations/events.md",
-        "explanations/figure.md",
-        "explanations/faq.md",
-        "explanations/fonts.md",
-        "explanations/layouting.md",
-        "explanations/headless.md",
-        "explanations/inspector.md",
-        "explanations/latex.md",
-        "explanations/observables.md",
-        "explanations/plot_method_signatures.md",
-        "explanations/recipes.md",
-        "explanations/scenes.md",
-        "explanations/specapi.md",
-        "Theming" => [
-            "explanations/theming/themes.md",
-            "explanations/theming/predefined_themes.md",
-        ],
-        "explanations/transparency.md",
-        "explanations/compute-pipeline.md",
-        "explanations/transformations.md",
+        "Backends" => joinpath.(
+            "explanations", "backends", [
+                "backends.md",
+                "cairomakie.md",
+                "glmakie.md",
+                "raymakie.md",
+                "rprmakie.md",
+                "wglmakie.md",
+            ]
+        ),
+        joinpath.(
+            "explanations", [
+                "animation.md",
+                "architecture.md",
+                "blocks.md",
+                "cameras.md",
+                "conversion_pipeline.md",
+                "colors.md",
+                "dim-converts.md",
+                "events.md",
+                "figure.md",
+                "faq.md",
+                "fonts.md",
+                "layouting.md",
+                "headless.md",
+                "DataInspector.md",
+                "latex.md",
+                "observables.md",
+                "plot_method_signatures.md",
+                "recipes.md",
+                "scenes.md",
+                "specapi.md",
+            ]
+        )...,
+        "Theming" => joinpath.(
+            "explanations", "theming", [
+                "themes.md",
+                "predefined_themes.md",
+                "block_colors.md",
+            ]
+        ),
+        joinpath.(
+            "explanations", [
+                "transparency.md",
+                "compute-pipeline.md",
+                "transformations.md",
+            ]
+        )...,
     ],
-    "How-Tos" => [
-        "how-to/match-figure-size-font-sizes-and-dpi.md",
-        "how-to/draw-boxes-around-subfigures.md",
-        "how-to/save-figure-with-transparency.md",
-    ],
+    "How-Tos" => joinpath.(
+        "how-to", [
+            "match-figure-size-font-sizes-and-dpi.md",
+            "draw-boxes-around-subfigures.md",
+            "save-figure-with-transparency.md",
+        ]
+    ),
     "Resources" => [
         "API" => "api.md",
         "Changelog" => "changelog.md",
         "Ecosystem" => "ecosystem.md",
     ],
+    "Dev Docs" => [
+        "devdocs/render_pipeline.md",
+    ],
 ]
+
+##
+# Generate plot documentation from full_docs()
+
 
 function make_docs(; pages)
     empty!(MakieDocsHelpers.FIGURES)

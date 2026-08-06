@@ -742,6 +742,11 @@ end
     barplot(fig[1, 1], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3, direction = :x)
     barplot(fig[1, 2], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3)
 
+    rlab1 = rich("D", subscript("1"))
+    rlab2 = rich("D", superscript("2"))
+    barplot(fig[2, 1], [1, 2], [0.5, 0.2], bar_labels = [rlab1, rlab2], flip_labels_at = 0.3, direction = :x, label_size = 24)
+    barplot(fig[2, 2], [1, 2], [0.5, 0.2], bar_labels = :y, flip_labels_at = 0.3, label_size = 24, label_formatter = x -> rich("v=", superscript("$(round(x; digits = 1))")))
+
     fig
 end
 

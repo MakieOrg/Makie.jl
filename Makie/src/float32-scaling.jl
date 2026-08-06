@@ -64,6 +64,8 @@ function f32_convert_matrix(ls::LinearScaling)
     translation = to_ndim(Vec3d, ls.offset, 0)
     return transformationmatrix(translation, scale)
 end
+inv_f32_convert_matrix(ls::LinearScaling) = f32_convert_matrix(inv(ls))
+
 function f32_convert_matrix(ls::LinearScaling, space::Symbol)
     return is_data_space(space) ? f32_convert_matrix(ls) : Mat4d(I)
 end
@@ -129,7 +131,7 @@ function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::Vec
 
     low = linscale(mini)
     high = linscale(maxi)
-    @assert all(low .<= high) # TODO: Axis probably does that
+    @assert all(low .<= high) "$low .<= $high must be true" # TODO: Axis probably does that
 
     delta = high - low
     max_eps = Float64(eps(Float32)) * max.(abs.(low), abs.(high))

@@ -1,0 +1,94 @@
+# Entry point for slash commands written as pull request comments (e.g.
+# `/benchmark 100`). Runs from the default branch only.
+#
+# Its single responsibility is the security gate. It fires for any PR comment
+# that starts with `/` and dispatches command-router.yaml on the PR's head ref,
+# forwarding the raw comment body — but only if the commenter has write access.
+# Everything that decides what a command does lives in the router and the
+# per-command workflows, which run from the head ref and are therefore editable
+# and testable within a PR. Because the gate is enforced here, on the default
+# branch, an outside contributor can never cause any of those head-ref workflows
+# to run.
+#
+# Commands over fork PRs are deliberately unsupported, and must stay that way.
+# This is enforced twice: workflow_dispatch can only target a ref in this repo
+# (a fork's branch is not one), and the dispatch step below also rejects any PR
+# whose head is a fork. Do not loosen either guard. Running a command against a
+# fork would mean executing fork-controlled content while a privileged, secret-
+# bearing run is in flight, which is the classic pwn-request hole; a fork owner
+# could also force-push between a maintainer's review and the command to swap in
+# code that was never reviewed. If a maintainer needs to benchmark (or otherwise
+# run a command against) contributor code, they copy that branch into this repo
+# and push it to a dedicated PR, which makes them the trusted author of the ref
+# the command runs on.
+name: Command Trigger
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  dispatch:
+    if: >
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write         # dispatch the router workflow
+      # Reacting to a PR-conversation comment requires pull-requests: write even
+      # though the API path is /issues/comments/{id}/reactions — GitHub gates
+      # this on the comment's parent (a PR), not the URL surface.
+      pull-requests: write
+    steps:
+      - name: Check write access
+        id: perm
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENTER: ${{ github.event.comment.user.login }}
+        run: |
+          set -euo pipefail
+          # Use the legacy `.permission` field on purpose: it collapses the role
+          # set to admin/write/read/none, and `write` already covers the maintain
+          # role. Do not switch to `.role_name` without updating these values.
+          # `|| echo none` keeps the gate fail-closed if the API call errors.
+          level=$(gh api "/repos/${{ github.repository }}/collaborators/$COMMENTER/permission" --jq '.permission' 2>/dev/null || echo none)
+          case "$level" in
+            admin|write) echo "authorized=true" >> "$GITHUB_OUTPUT" ;;
+            *)           echo "authorized=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Acknowledge command
+        if: steps.perm.outputs.authorized == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/issues/comments/$COMMENT_ID/reactions" \
+            -f "content=eyes"
+
+      - name: Dispatch router
+        if: steps.perm.outputs.authorized == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          data=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER")
+          # Forks are intentionally unsupported (see file header); push the branch
+          # into this repo and open a dedicated PR to run commands against it.
+          if [ "$(echo "$data" | jq -r .head.repo.full_name)" != "${{ github.repository }}" ]; then
+            echo "::error::Slash commands only run on branches in ${{ github.repository }}, not forks. Push the branch here and open a PR to benchmark it."
+            exit 1
+          fi
+          gh workflow run command-router.yaml \
+            --repo "${{ github.repository }}" \
+            --ref "$(echo "$data" | jq -r .head.ref)" \
+            -f comment_body="$COMMENT_BODY" \
+            -f comment_id="$COMMENT_ID" \
+            -f pr_number="$PR_NUMBER" \
+            -f head_sha="$(echo "$data" | jq -r .head.sha)" \
+            -f base_ref="$(echo "$data" | jq -r .base.ref)"

@@ -6,18 +6,21 @@ struct DNode
 end
 
 """
-    dendrogram(positions, merges)
-    dendrogram(x, y, merges)
-
-Draw a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram) with leaf nodes
+Draws a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram) with leaf nodes
 specified by `positions` and parent nodes identified by `merges`.
 
-`merges` contain pairs of indices `(i, j)` which connect to a new parent node.
-That node is then added to the list and can be merged with another.
-
 Note that this recipe is still experimental and subject to change in the future.
+
+## Arguments
+
+- `positions, merges` Defines the `positions` of leaf nodes with an `AbstractVector{<:VecTypes{2, <:Real}}`
+    (Point, Vec or Tuple). Their parents are defined by `merges`, which is an
+    `AbstractVector{<:Tuple{<:Integer, <:Integer}}` marking nodes which should merge into a parent
+    node by index. Any node created by `merges` will be pushed to the node array after leaf nodes
+    and can be referred to by index in `merges`.
+-`x, y, merges` Specifies positions per dimension as `AbstractVector{<:Real}` with `x, y`
 """
-@recipe Dendrogram (nodes,) begin
+@recipe Dendrogram (nodes::Vector{DNode},) begin
     """
     Specifies how node connections are drawn. Can be `:tree` for direct lines or `:box` for
     rectangular lines. Other styles can be defined by overloading
@@ -248,11 +251,15 @@ function find_merge(n1::DNode, n2::DNode; height = 1, index = max(n1.idx, n2.idx
     return DNode(index, Point2d(newx, newy), (n1.idx, n2.idx))
 end
 
+# TODO: What about rotation? Does this make sense with units/categorical in the first place?
+argument_dims(::Type{<:Dendrogram}, x, y, merges) = (1, 2)
+argument_dims(::Type{<:Dendrogram}, xy, merges) = ((1, 2),)
+
 function convert_arguments(::Type{<:Dendrogram}, x::RealVector, y::RealVector, merges::Vector{<:Tuple{<:Integer, <:Integer}})
     return convert_arguments(Dendrogram, convert_arguments(PointBased(), x, y)[1], merges)
 end
 
-function convert_arguments(::Type{<:Dendrogram}, leaves::Vector{<:VecTypes{2}}, merges::Vector{<:Tuple{<:Integer, <:Integer}})
+function convert_arguments(::Type{<:Dendrogram}, leaves::Vector{<:VecTypes{2, <:Real}}, merges::Vector{<:Tuple{<:Integer, <:Integer}})
     nodes = [DNode(i, n, nothing) for (i, n) in enumerate(leaves)]
     for m in merges
         push!(nodes, find_merge(nodes[m[1]], nodes[m[2]]; index = length(nodes) + 1))

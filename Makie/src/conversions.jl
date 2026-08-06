@@ -1,7 +1,6 @@
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
-const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Real, Real}}
 
 function convert_arguments(CT::ConversionTrait, args...)
     expanded = expand_dimensions(CT, args...)
@@ -11,7 +10,7 @@ function convert_arguments(CT::ConversionTrait, args...)
     return args
 end
 
-function convert_arguments(T::Type{<:AbstractPlot}, args...; kw...)
+function convert_arguments(T::Type{<:Union{AbstractPlot, Block}}, args...; kw...)
     # landing here means, that there is no matching `convert_arguments` method for the plot type
     # Meaning, it needs to be a conversion trait, or it needs single_convert_arguments or expand_dimensions
     CT = conversion_trait(T, args...)
@@ -191,6 +190,20 @@ end
 #     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
 # end
 
+################################################################################
+#                                PointBased2D                                  #
+################################################################################
+
+"""
+PointBased2D uses the same conversion methods as PointBased, so we delegate all
+convert_arguments calls to PointBased.
+"""
+convert_arguments(::PointBased2D, args...) = convert_arguments(PointBased(), args...)
+
+################################################################################
+#                               3D Rect conversions                            #
+################################################################################
+
 function convert_arguments(::PointBased, rect::Rect3{T}) where {T}
     return (decompose(Point3{float_type(T)}, rect),)
 end
@@ -369,7 +382,7 @@ Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges
 with size(z, 1/2).
 """
 function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix{<:Union{Real, Colorant}})
-    return convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+    return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
 function convert_arguments(
@@ -378,6 +391,9 @@ function convert_arguments(
     )
     return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), el32convert(z))
 end
+
+# for dim_converts
+to_endpoints(x::Tuple{<:Any, <:Any}) = x
 
 function to_endpoints(x::Tuple{<:Real, <:Real})
     T = float_type(x...)
@@ -438,6 +454,7 @@ function convert_arguments(
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
+# Note: used by dim_converts to normalize xs, ys, so no eltype on RangeLike
 function convert_arguments(
         ::ImageLike, xs::RangeLike, ys::RangeLike,
         data::AbstractMatrix{<:Union{Real, Colorant}}
@@ -490,10 +507,14 @@ end
 #                                  VolumeLike                                  #
 ################################################################################
 
-function convert_arguments(
-        ::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
-        data::RealArray{3}
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::VolumeDataType)
+    return (
+        to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+        to_endpoints(z, "z", VolumeLike), data,
     )
+end
+
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::RealArray{3})
     return (
         to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
         to_endpoints(z, "z", VolumeLike), el32convert(data),
@@ -502,7 +523,10 @@ end
 
 # TODO: Consider using RGB(A){N0f8} for all of these
 # RGBA/Vec4 is the native data type for :absorptionrgba, :additive
-function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<:Union{VecTypes{3}, VecTypes{4}, RGB, RGBA}, 3})
+function convert_arguments(
+        ::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
+        data::Array{<:Union{VecTypes{3}, VecTypes{4}, RGB, RGBA}, 3}
+    )
     return (
         to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
         to_endpoints(z, "z", VolumeLike), el32convert(data),
@@ -652,9 +676,9 @@ accepted types.
 """
 function convert_arguments(
         ::Type{<:Mesh},
-        vertices::AbstractArray,
+        vertices::AbstractArray{<:Union{VecTypes{N, <:Real}, <:Real}},
         indices::AbstractArray
-    )
+    ) where {N}
     vs = to_vertices(vertices)
     fs = to_triangles(indices)
     if eltype(vs) <: Point{3}
@@ -701,14 +725,14 @@ function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVe
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
 
-    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., el32convert.(f.(_x, _y, _z)))
+    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., smallfloat_convert.(f.(_x, _y, _z)))
 end
 
-function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
+function convert_arguments(P::Type{<:Union{AbstractPlot, Block}}, r::RealVector, f::Function)
     return convert_arguments(P, r, map(f, r))
 end
 
-function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
+function convert_arguments(P::Type{<:Union{AbstractPlot, Block}}, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     return convert_arguments(P, x, y)
 end
@@ -734,6 +758,7 @@ end
 ################################################################################
 
 to_linspace(interval::Interval, N) = range(leftendpoint(interval), stop = rightendpoint(interval), length = N)
+to_linspace(x::AbstractVector, N) = x
 to_linspace(x, N) = range(first(x), stop = last(x), length = N)
 
 """
@@ -803,6 +828,12 @@ el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 el32convert(x::Mat{X, Y, T}) where {X, Y, T} = Mat{X, Y, Float32}(x)
 
+smallfloat_convert(x::N0f8) = x
+smallfloat_convert(x::Float16) = x
+smallfloat_convert(x::Real) = Float32(x)
+smallfloat_convert(x::VecTypes) = smallfloat_convert.(x)
+smallfloat_convert(x::Color) = RGB(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)))
+smallfloat_convert(x::TransparentColor) = RGBA(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)), smallfloat_convert(alpha(x)))
 
 """
     to_triangles(indices)
@@ -920,14 +951,10 @@ end
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
-# Normalize for cycle to be nothing if there's nothing to cycle!
-convert_attribute(cycle::Vector, ::key"cycle") = isempty(cycle) ? nothing : Cycle(cycle)
-convert_attribute(cycle::Nothing, ::key"cycle") = cycle
 convert_attribute(cycle, ::key"cycle") = Cycle(cycle)
 
 
 convert_attribute(font, ::key"font") = to_font(font)
-convert_attribute(align, ::key"align") = to_align(align)
 
 convert_attribute(x::Automatic, ::key"color") = x
 convert_attribute(color, ::key"color") = to_color(color)
@@ -943,6 +970,9 @@ convert_attribute(x, ::key"colorscale") = Ref{Any}(x)
 
 # TODO: is it worth typing this as Ref{Union{Automatic, VecTypes{2}, Tuple{<: Real, <: Real}}} ?
 convert_attribute(x::Automatic, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{<:Any, Automatic}, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{Automatic, <:Any}, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{Automatic, Automatic}, ::key"colorrange") = Ref{Any}(first(x))
 convert_attribute(x, ::key"colorrange") = Ref{Any}(to_colorrange(x))
 to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
@@ -969,6 +999,7 @@ to_color(c::VecTypes{4}) = RGBAf(c[1], c[2], c[3], c[4])
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
 to_color(c::AbstractArray) = to_color.(c)
+#to_color(c::Observable) = lift(to_color, c)
 to_color(c::AbstractArray{<:Colorant, N}) where {N} = convert(Array{RGBAf, N}, c)
 to_color(p::AbstractPattern) = p
 function to_color(c::Tuple{<:Any, <:Number})
@@ -1464,18 +1495,18 @@ to_font(x::Vector{String}) = to_font.(x)
 to_font(x::NativeFont) = x
 to_font(x::Vector{NativeFont}) = x
 
-function to_font(fonts::Attributes, s::Symbol)
+function to_font(fonts::Union{Dict, Attributes}, s::Symbol)
     if haskey(fonts, s)
-        f = fonts[s][]
+        f = to_value(fonts[s])
         if f isa Symbol
             error("The value for font $(repr(s)) was Symbol $(repr(f)), which is not allowed. The value for a font in the fonts collection cannot be another Symbol and must be resolvable via `to_font(x)`.")
         end
-        return to_font(fonts[s][])
+        return to_font(to_value(fonts[s]))
     end
     error("The symbol $(repr(s)) is not present in the fonts collection:\n$fonts.")
 end
 
-to_font(fonts::Attributes, x) = to_font(x)
+to_font(fonts::Union{Dict, Attributes}, x) = to_font(x)
 
 to_font(::Automatic) = defaultfont()
 
@@ -1690,6 +1721,8 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
         end, k
     )
 end
+
+convert_attribute(value, ::key"samples", ::key"volume") = Int32(value)
 
 #=
 The below is the output from:
@@ -2344,6 +2377,7 @@ end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
+convert_attribute(value, ::key"shininess") = Float32(value)
 
 convert_attribute(value, ::key"backlight") = Float32(value)
 
@@ -2399,3 +2433,5 @@ to_lrbt_padding(pad::VecTypes{4}) = to_ndim(Vec4f, pad, 0)
 
 convert_attribute(x::Plane, ::key"clip_planes") = Plane3f[x]
 convert_attribute(x::Vector{<:Plane}, ::key"clip_planes") = Plane3f.(x)
+
+convert_attribute(x, ::key"inspector_label") = Ref{Any}(x)

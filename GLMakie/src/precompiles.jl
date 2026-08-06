@@ -21,9 +21,7 @@ let
             close(screen)
             destroy!(screen)
 
-            base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
-            shared_precompile = joinpath(base_path, "shared-precompile.jl")
-            include(shared_precompile)
+            include(Makie.SHARED_PRECOMPILE_PATH)
             try
                 display(plot(x); visible = false)
             catch
@@ -60,7 +58,7 @@ let
 end
 
 precompile(Screen, (Scene, ScreenConfig))
-precompile(GLFramebuffer, (NTuple{2, Int},))
+precompile(FramebufferManager, (NTuple{2, Int},))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{Float32}))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBAf}))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBf}))

@@ -1214,10 +1214,10 @@ end
     f, ax, l = lines(0 .. 9, sin; axis = (; xgridvisible = false, ygridvisible = false))
     ylims!(ax, -1.5, 1.5)
 
-    bracket!(pi / 2, 1, 5pi / 2, 1, offset = 5, text = "Period length", style = :square)
+    bracket!(pi / 2, 1, 5pi / 2, 1, offset = 5, text = L"\text{Period length}\,\mathcal{T} = 2\pi", style = :square)
 
     bracket!(
-        pi / 2, 1, pi / 2, -1, text = "Amplitude", orientation = :down,
+        pi / 2, 1, pi / 2, -1, text = rich(rich("Amp", color = :red, font = :bold), rich("litude", color = :darkred)), orientation = :down,
         linestyle = :dash, rotation = 0, align = (:right, :center), textoffset = 4, linewidth = 2, color = :red, textcolor = :red
     )
 
@@ -1361,6 +1361,42 @@ end
 @reference_test "Stephist" begin
     stephist(RNG.rand(10000))
     current_figure()
+end
+
+@reference_test "MultiHist" begin
+    data1 = RNG.rand(100) .* 2.0 .- 1.0
+    data2 = RNG.randn(150)
+    data = vcat(data1, data2)
+    groups = vcat(fill(1, 100), fill(2, 150))
+
+    fig = Figure(size = (400, 600))
+    hist(
+        fig[1, 1], data; stack = groups,
+        color = :stack, colormap = :Set3_10,
+    )
+    hist(
+        fig[1, 2], [data1, data2]; dodge = [1, 2],
+        color = :dodge, colormap = :Set3_10,
+    )
+    hist(
+        fig[2, 1], data; dodge = groups,
+        color = [:red, :lightgreen], strokewidth = 2, strokecolor = :blue
+    )
+    hist(
+        fig[2, 2], [data1, data2]; stack = [1, 2],
+        color = :values, strokewidth = 2, strokecolor = :red
+    )
+    hist(
+        fig[3, 1], [data1, data2]; stack = [1, 2],
+        weights = [abs.(data1), abs.(data2)],
+        color = :stack,
+    )
+    hist(
+        fig[3, 2], [data1, data2]; dodge = [1, 2],
+        weights = [abs.(data1), abs.(data2)], bins = 15,
+        color = vcat(1:15, 36:50), colormap = :RdBu
+    )
+    fig
 end
 
 @reference_test "LaTeXStrings linesegment offsets" begin
@@ -2171,6 +2207,75 @@ end
     st
 end
 
+@reference_test "LinePattern in recipes" begin
+    lp_diag = Makie.LinePattern(
+        direction = Vec2f(1, 1),
+        width = 1.1f0,
+        tilesize = (10, 10),
+        linecolor = (:black, 0.9),
+        backgroundcolor = (:gold, 0.25),
+    )
+    lp_horiz = Makie.LinePattern(
+        direction = Vec2f(1, 0),
+        width = 1.0f0,
+        tilesize = (8, 8),
+        linecolor = (:navy, 0.9),
+        backgroundcolor = (:skyblue, 0.3),
+    )
+    lp_cross = Makie.LinePattern(
+        direction = [Vec2f(1, 1), Vec2f(1, -1)],
+        width = 1.0f0,
+        tilesize = (10, 10),
+        linecolor = (:purple, 0.85),
+        backgroundcolor = (:plum, 0.25),
+    )
+
+    f = Figure(size = (900, 700))
+
+    ax_poly = Axis(f[1, 1], title = "poly")
+    poly!(
+        ax_poly,
+        Point2f[
+            (0.05, 0.05), (0.45, 0.08), (0.35, 0.35), (0.48, 0.58), (0.28, 0.88),
+            (0.12, 0.62), (0.02, 0.45), (0.16, 0.28), (0.05, 0.05),
+        ],
+        color = lp_diag,
+    )
+    poly!(
+        ax_poly,
+        Point2f[
+            (0.58, 0.1), (0.92, 0.1), (0.92, 0.3), (0.76, 0.3), (0.76, 0.9),
+            (0.58, 0.9), (0.58, 0.1),
+        ],
+        color = lp_horiz,
+    )
+    xlims!(ax_poly, 0, 1)
+    ylims!(ax_poly, 0, 1)
+
+    ax_bar = Axis(f[1, 2], title = "barplot")
+    barplot!(ax_bar, 1:4, [2, 4, 3, 5], color = lp_horiz)
+
+    ax_band = Axis(f[2, 1], title = "band")
+    x = range(0, 2pi, length = 80)
+    y = 0.5 .* sin.(x)
+    band!(ax_band, x, y .- 0.2, y .+ 0.2, color = lp_cross)
+
+    ax_text = Axis(f[2, 2], title = "textlabel")
+    textlabel!(
+        ax_text,
+        Point2f(0.5, 0.5),
+        text = "LinePattern",
+        background_color = lp_diag,
+        cornerradius = 8,
+        cornervertices = 10,
+        padding = 8,
+    )
+    xlims!(ax_text, 0, 1)
+    ylims!(ax_text, 0, 1)
+
+    f
+end
+
 @reference_test "Transformed 2D Arrows" begin
     ps = [Point2f(i, 2^i) for i in 1:10]
     vs = [Vec2f(1, 100) for _ in 1:10]
@@ -2425,6 +2530,20 @@ end
         ax, 7, -0.5, 3pi / 2, -1.0,
         text = "Corner", path = Ann.Paths.Corner(), labelspace = :data,
         linewidth = 3, shrink = (0, 30)
+    )
+    annotation!(
+        ax, 0, -100, 10, sin(10),
+        style = Ann.Styles.LineArrow(),
+    )
+    ylims!(ax, -1.5, 1.8)
+    annotation!(
+        ax, pi / 2, 1.0, 5pi / 2, 1.0,
+        text = "", style = Ann.Styles.WithText(
+            Ann.Styles.LineArrow();
+            text = "one period", fontsize = 12
+        ),
+        path = Ann.Paths.Arc(0.3), labelspace = :data,
+        color = :purple, shrink = (5.0, 5.0),
     )
 
     f

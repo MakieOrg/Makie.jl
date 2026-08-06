@@ -39,6 +39,7 @@ baremodule Ann # bare for cleanest tab-completion behavior
         using Base
 
         using ..Arrows: Arrows
+        using ...Makie: Makie
 
         struct Line end
 
@@ -47,23 +48,52 @@ baremodule Ann # bare for cleanest tab-completion behavior
             tail = nothing
         end
 
+        """
+            Ann.Styles.WithText(style; text, ...)
+
+        Wraps another annotation `style` and additionally draws `text` along the
+        connection path using `pathtext`. The inner `style` is rendered first,
+        then the text is layered on top so it follows the same curve.
+        """
+        struct WithText
+            style::Any
+            text::Any
+            fontsize::Float64
+            align::Any
+            offset::Float64
+            color::Any
+        end
+        function WithText(
+                style;
+                text = "",
+                fontsize = 12.0,
+                align = (:center, :bottom),
+                offset = 4.0,
+                color = Makie.automatic,
+            )
+            return WithText(style, text, Float64(fontsize), align, Float64(offset), color)
+        end
+
     end
 end
 
 using .Ann
 
 """
-    annotation(x_target, y_target)
-    annotation(x_label, y_label, x_target, y_target)
-    annotation(points_target)
-    annotation(points_label, points_target)
-
 Annotate one or more target points with a combination of optional text labels and
 connections between labels and targets, typically in the form of an arrow.
 
 If no label positions are given, they will be determined automatically such
 that overlaps between labels and data points are reduced. In this mode, the labels should
 be very close to their associated data points so connection plots are typically not visible.
+
+## Arguments
+
+* `xs_target, ys_target` Target positions defined per dimension (each a `Real` or
+    `AbstractVector{<:Real}`). Can also be given as `points_target` (a `VecTypes{2, <:Real}` like
+    `Point2`, `Vec2`, `Tuple` of `Real`, or an `AbstractVector{<:VecTypes{2, <:Real}}`).
+* `xs_label, ys_label, xs_target, ys_target` Label positions specified on top of target positions
+    per dimension. Can also be given as `points_label, points_target`.
 """
 @recipe Annotation (label_offsets_or_positions::Vector{<:Vec2}, target_positions::Vector{<:Point2}) begin
     """
@@ -167,11 +197,18 @@ function closest_point_on_rectangle(r::Rect2, p)
     return argmin(c -> norm(c - p), candidates)
 end
 
+argument_dims(::Type{<:Annotation}, x, y) = (1, 2)
+argument_dims(::Type{<:Annotation}, ::VecTypes{2}) = ((1, 2),)
+argument_dims(::Type{<:Annotation}, ::VecTypesVector{2}) = ((1, 2),)
+argument_dims(::Type{<:Annotation}, ::VecTypes{2}, ::VecTypes{2}) = ((1, 2), (1, 2))
+argument_dims(::Type{<:Annotation}, ::VecTypesVector{2}, ::VecTypesVector{2}) = ((1, 2), (1, 2))
+argument_dims(::Type{<:Annotation}, x, y, x2, y2) = (1, 2, 1, 2)
+
 function convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
     return [Vec2d(NaN)], [Vec2d(x, y)]
 end
 
-function convert_arguments(::Type{<:Annotation}, p::VecTypes{2})
+function convert_arguments(::Type{<:Annotation}, p::VecTypes{2, <:Real})
     return [Vec2d(NaN)], [Point2d(p...)]
 end
 
@@ -179,16 +216,16 @@ function convert_arguments(::Type{<:Annotation}, x::Real, y::Real, x2::Real, y2:
     return [Vec2d(x, y)], [Point2d(x2, y2)]
 end
 
-function convert_arguments(::Type{<:Annotation}, p1::VecTypes{2}, p2::VecTypes{2})
+function convert_arguments(::Type{<:Annotation}, p1::VecTypes{2, <:Real}, p2::VecTypes{2, <:Real})
     return [Vec2d(p1...)], [Point2d(p2...)]
 end
 
-function convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2, <:Real}})
     N = length(v)
     return fill(Vec2d(NaN), N), Point2d.(getindex.(v, 1), getindex.(v, 2))
 end
 
-function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:VecTypes{2}}, v2::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:VecTypes{2, <:Real}}, v2::AbstractVector{<:VecTypes{2, <:Real}})
     return Vec2d.(getindex.(v1, 1), getindex.(v1, 2)), Point2d.(getindex.(v2, 1), getindex.(v2, 2))
 end
 
@@ -200,6 +237,10 @@ end
 function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real}, v3::AbstractVector{<:Real}, v4::AbstractVector{<:Real})
     return Vec2d.(v1, v2), Point2d.(v3, v4)
 end
+
+# still without offset
+# Empty strings produce non-finite Rect3d() bounding boxes, replace with zero-size rects
+_guard_nonfinite(bb) = isfinite_rect(bb) ? bb : Rect2d(0, 0, 0, 0)
 
 function plot!(p::Annotation)
     map!(default_automatic, p, [:textcolor, :color], :computed_textcolor)
@@ -229,9 +270,8 @@ function plot!(p::Annotation)
         output_name = :screenpoints_target, output_space = :pixel
     )
 
-    # still without offset
     map!(p, [txt.raw_string_boundingboxes, p.screenpoints_target], :text_bbs) do bboxes, px_pos
-        return Rect2d.(bboxes) .+ px_pos
+        return _guard_nonfinite.(Rect2d.(bboxes)) .+ px_pos
     end
 
     register_camera_matrix!(p, :data, :pixel)
@@ -258,6 +298,7 @@ function plot!(p::Annotation)
 
     add_input!(p.attributes, :viewport, parent_scene(p).compute[:viewport])
     add_input!(p.attributes, :__advance_optimization, 0)
+    p.attributes.inputs[:__advance_optimization].force_update = true
 
     # To make offsets accessible in plot attributes and get good synchronization
     # we create a compute node here and an Observable later
@@ -440,8 +481,9 @@ function calculate_best_offsets!(
         center = minimum(bbox) .+ 0.5 .* widths(bbox)
         for i in eachindex(offset_bbs)
             bb_center = minimum(offset_bbs[i]) .+ 0.5 .* widths(offset_bbs[i])
-            v = normalize(center - bb_center)
-            offsets[i] = 0.1 * algorithm.repel * v
+            v = center - bb_center
+            n = norm(v)
+            offsets[i] = n > 0 ? (0.1 * algorithm.repel / n * v) : zero(eltype(offsets))
         end
     end
 
@@ -934,8 +976,8 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
 
     # Helper function to find intersection of two line segments
     function segment_intersection(p1::Point2, p2::Point2, q1::Point2, q2::Point2)
-        x1, y1 = p1
-        x2, y2 = p2
+        local x1, y1 = p1
+        local x2, y2 = p2
         x3, y3 = q1
         x4, y4 = q2
 
@@ -1019,6 +1061,20 @@ function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2;
     ]
 end
 
+function annotation_style_plotspecs(s::Ann.Styles.WithText, path::BezierPath, p1, p2; color, linewidth)
+    specs = annotation_style_plotspecs(s.style, path, p1, p2; color, linewidth)
+    textcolor = s.color === automatic ? color : s.color
+    push!(
+        specs,
+        PlotSpec(
+            :PathText, path;
+            text = s.text, fontsize = s.fontsize, align = s.align,
+            offset = s.offset, color = textcolor, space = :pixel,
+        ),
+    )
+    return specs
+end
+
 _auto(x::Automatic, default) = default
 _auto(x, default) = x
 
@@ -1055,74 +1111,5 @@ function plotspecs(h::Ann.Arrows.Head, pos; rotation, color, linewidth)
     ]
 end
 
-function attribute_examples(::Type{Annotation})
-    return Dict(
-        :shrink => [
-            Example(
-                code = raw"""
-                fig = Figure()
-                ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false)
-                shrinks = [(0, 0), (5, 5), (10, 10), (20, 20), (5, 20), (20, 5)]
-                for (i, shrink) in enumerate(shrinks)
-                    annotation!(ax, -200, 0, 0, i; text = "shrink = $shrink", shrink, style = Ann.Styles.LineArrow())
-                    scatter!(ax, 0, i)
-                end
-                fig
-                """
-            ),
-        ],
-        :style => [
-            Example(
-                code = raw"""
-                fig = Figure()
-                ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3), xgridvisible = false, ygridvisible = false)
-                annotation!(-200, 0, 0, 0, style = Ann.Styles.Line())
-                annotation!(-200, 0, 0, -1, style = Ann.Styles.LineArrow())
-                annotation!(-200, 0, 0, -2, style = Ann.Styles.LineArrow(head = Ann.Arrows.Head()))
-                annotation!(-200, 0, 0, -3, style = Ann.Styles.LineArrow(tail = Ann.Arrows.Line(length = 20)))
-                fig
-                """
-            ),
-        ],
-        :path => [
-            Example(
-                code = raw"""
-                fig = Figure()
-                ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3), xgridvisible = false, ygridvisible = false)
-                scatter!(ax, fill(0, 4), 0:-1:-3)
-                annotation!(-200, 0, 0, 0, path = Ann.Paths.Line(), text = "Line()")
-                annotation!(-200, 0, 0, -1, path = Ann.Paths.Arc(height = 0.1), text = "Arc(height = 0.1)")
-                annotation!(-200, 0, 0, -2, path = Ann.Paths.Arc(height = 0.3), text = "Arc(height = 0.3)")
-                annotation!(-200, 30, 0, -3, path = Ann.Paths.Corner(), text = "Corner()")
-                fig
-                """
-            ),
-        ],
-        :labelspace => [
-            Example(
-                code = raw"""
-                g(x) = cos(6x) * exp(x)
-                xs = 0:0.01:4
-                ys = g.(xs)
-
-                f, ax, _ = lines(xs, ys; axis = (; xgridvisible = false, ygridvisible = false))
-
-                annotation!(ax, 1, 20, 2.1, g(2.1),
-                    text = "(1, 20)\nlabelspace = :data",
-                    path = Ann.Paths.Arc(0.3),
-                    style = Ann.Styles.LineArrow(),
-                    labelspace = :data
-                )
-
-                annotation!(ax, -100, -100, 2.65, g(2.65),
-                    text = "(-100, -100)\nlabelspace = :relative_pixel",
-                    path = Ann.Paths.Arc(-0.3),
-                    style = Ann.Styles.LineArrow()
-                )
-
-                f
-                """
-            ),
-        ],
-    )
-end
+# attribute_examples for Annotation has been moved to documentation/plots/annotation.md
+# under the "## Attributes" section and is now loaded automatically.

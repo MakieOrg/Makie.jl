@@ -2,19 +2,14 @@ import Format
 import Animations
 using GridLayoutBase
 using GridLayoutBase: GridSubposition
-import Showoff
 
 const FPS = Observable(30)
-const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))
-const COLOR_ACCENT_DIMMED = Ref(RGBf(((174, 192, 230) ./ 255)...))
 
 include("blocks.jl")
 include("geometrybasics_extension.jl")
 include("mousestatemachine.jl")
 include("types.jl")
 include("helpers.jl")
-include("ticklocators/linear.jl")
-include("ticklocators/wilkinson.jl")
 include("defaultattributes.jl")
 include("lineaxis.jl")
 include("interactions.jl")
@@ -33,29 +28,26 @@ include("blocks/toggle.jl")
 include("blocks/legend.jl")
 include("blocks/scene.jl")
 include("blocks/menu.jl")
+include("blocks/table.jl")
 include("blocks/textbox.jl")
+include("blocks/container.jl")
+include("blocks/subfigure.jl")
+include("blocks/card.jl")
+include("blocks/tabs.jl")
+include("blocks/modal.jl")
+include("blocks/paramform.jl")
+# HoverMenu type is defined in types.jl; its implementation is in GUI/hovermenu.jl
 
-export Axis
-export Axis3
-export PolarAxis
-export Slider
-export SliderGrid
-export IntervalSlider
-export Button
-export Checkbox
-export Colorbar
-export Label
-export Box
-export Toggle
-export Legend, axislegend
+export @Block, Block
+export axislegend, axiscolorbar
+export open!, close!
+export card_accessory, filter_cards!
+export Between, OneOf, FilePath, convert_form_input
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
-export LScene
-export Menu
-export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!, reset_limits!, rlims!, thetalims!
-export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks, AngularTicks
+export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks, AngularTicks, PseudologTicks, SymlogTicks
 export hidexdecorations!, hideydecorations!, hidezdecorations!, hidedecorations!, hidespines!
 export hiderdecorations!, hidethetadecorations!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!

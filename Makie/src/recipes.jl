@@ -78,9 +78,10 @@ function default_theme end
 """
 # Plot Recipes in `Makie`
 
-There's two types of recipes. *Type recipes* define a simple mapping from a
-user defined type to an existing plot type. *Full recipes* can customize the
-theme and define a custom plotting function.
+There are three types of recipes:
+- **Type recipes** which convert user given data to a usable format for an existing plot type.
+- **Full recipes** which define custom plots consisting of other plots.
+- **Complex/Block recipes** which define a layout of blocks which may also include plots.
 
 ## Type recipes
 
@@ -92,103 +93,177 @@ pipeline. This can be done for all plot types or for a subset of plot types:
     # Only for scatter plots
     convert_arguments(P::Type{<:Scatter}, x::MyType) = convert_arguments(P, rand(10, 10))
 
-Optionally you may define the default plot type so that `plot(x::MyType)` will
-use this:
+Optionally you may define the default plot type so that `plot(x::MyType)` and
+`plot!(..., x::MyType)` will use it:
 
     plottype(::MyType) = Surface
 
 ## Full recipes with the `@recipe` macro
 
-A full recipe for `MyPlot` comes in two parts. First is the plot type name,
-arguments and theme definition which are defined using the `@recipe` macro.
-Second is a custom `plot!` for `MyPlot`, implemented in terms of the atomic
-plotting functions.
+A full recipe for `MyPlot` comes in two parts. The first defines the plots name,
+converted arguments and attributes using the `@recipe` macro. The second part is a custom
+`plot!` method for new plot type, implemented in terms of other plotting functions.
 
 We use an example to show how this works:
 
-    # arguments (x, y, z) && theme are optional
-    @recipe(MyPlot, x, y, z) do scene
-        Attributes(
-            plot_color = :red
-        )
+    \"\"\"
+    myplot documentation
+    \"\"\"
+    @recipe MyPlot (position::Vector{Point2f},) begin
+        "color attribute documentation"
+        color = :red
+        "linewidth which inherits from the parent theme"
+        linewidth = @inherit linewidth
+
+        "nested attributes"
+        group = @attributes begin
+            "color attribute within the nested group"
+            color = :blue
+        end
+
+        Makie.mixin_colormap_attributes()...
     end
 
-This macro expands to several things. Firstly a type definition:
+### Type Definition
 
-    const MyPlot{ArgTypes} = Plot{myplot, ArgTypes}
-
-The type parameter of `Plot` contains the function instead of e.g. a
-symbol. This way the mapping from `MyPlot` to `myplot` is safer and simpler.
-(The downside is we always need a function `myplot` - TODO: is this a problem?)
-
-The following signatures are defined to make `MyPlot` nice to use:
+The plot type `MyPlot` defines both the type name of the plot as well as its
+plot functions:
 
     myplot(args...; kw_args...) = ...
-    myplot!(scene, args...; kw_args...) = ...
-    myplot(kw_args::Dict, args...) = ...
-    myplot!(scene, kw_args::Dict, args...) = ...
-    #etc (not 100% settled what signatures there will be)
+    myplot!(scenelike, args...; kw_args...) = ...
+    myplot(attributes, args...) = ...
+    myplot!(scenelike, attributes, args...) = ...
+    const MyPlot{ArgTypes} = Plot{myplot, ArgTypes}
 
-A specialization of `argument_names` is emitted if you have an argument list
-`(x,y,z)` provided to the recipe macro:
+In this context `scenelike` can be a `Scene` or a axis-like `Block` that can be
+plotted to. The syntax with attributes can be used to pass along attributes of
+one plot to another.
 
-    argument_names(::Type{<: MyPlot}) = (:x, :y, :z)
+### Converted Argument Definition
 
-This is optional but it will allow the use of `plot_object[:x]` to
-fetch the first argument from the call
-`plot_object = myplot(rand(10), rand(10), rand(10))`, for example.
-Alternatively you can always fetch the `i`th argument using `plot_object[i]`,
-and if you leave out the `(x,y,z)`, the default version of `argument_names`
-will provide `plot_object[:arg1]` etc.
+The second component of `@recipe` is an optional definition of the converted
+argument names and their types. If the names are defined a method
 
-The theme given in the body of the `@recipe` invocation is inserted into a
-specialization of `default_theme` which inserts the theme into any scene that
-plots `MyPlot`:
+    argument_names(::Type{<: MyPlot}, N) = (:positions,)
 
-    function default_theme(scene, ::MyPlot)
-        Attributes(
-            plot_color = :red
-        )
-    end
+is generated which will make the converted arguments available as
+`plot.positions`. This will restrict the output of `convert_arguments()` to
+match the number of converted arguments defined here.
 
-As the second part of defining `MyPlot`, you should implement the actual
-plotting of the `MyPlot` object by specializing `plot!`:
+If the converted argument names have type annotations, the output of
+`convert_arguments` will be further restricted to match the given type. This is
+then used to error-check arguments during plot construction. It is also used to
+reason about dim converts. (Reaching the required type implies that dim converts
+should not apply. Without this, the recipe may not be usable by another recipe
+when dim converts are involved.)
 
-    function plot!(plot::MyPlot)
+If converted arguments are not given, converted argument names default to
+`converted_1, converted_2, ...` based on the number of converted arguments found
+during plot construction.
+
+#### Conversion Traits
+
+Note that argument conversion can also be implemented using conversion traits.
+This may be useful if a set of conversion can be reused across multiple plot types.
+To define a new conversion trait, it needs to be a subtype of `Makie.ConversionTrait`:
+
+    struct MyTrait <: Makie.ConversionTrait end
+
+`convert_argument` methods can then be define with trait instead of a plot type
+
+    Makie.convert_argument(::MyTrait, x::Vector{<:Real}, y::Vector{<:Real}) = Point2f.(x, y)
+
+The trait can then be registered to the plot. This can optionally be restricted
+to specific argument signatures:
+
+    Makie.conversion_trait(::Type{MyPlot}) = MyTrait()
+    Makie.conversion_trait(::Type{MyPlot}, x, y) = MyTrait()
+
+Makie itself defines a few traits, the most useful being `PointBased()`. Using
+it will add various conversions to `Vector{Point{D, T}}` where D is 2 or 3 and
+T is Float32 or Float64.
+
+### Attributes
+
+Plot Attributes are defined within a `begin ... end` block. The block is
+mandatory but can be empty. Note that even if it is empty, Makie will add some
+mandatory inputs to `plot.attributes`.
+
+The syntax for attributes is the same as in `@DocumentedAttributes`. Check
+`?@DocumentedAttributes` for more information.
+
+After evaluating `@recipe` the attributes are saved as `DocumentedAttributes` in
+`Makie.documented_attributes(MyPlot)`. When constructing the plot they will be
+merged with parent scenes theme, the global theme, `theme[:MyPlot]` (if it
+exists) and the keyword arguments passed to the plot. They are also be used to
+validate keyword arguments and to generate attribute docs.
+
+### `@recipe` documentation
+
+If a docstring is given above `@recipe` it will be used to build the docstring
+for `?myplot` and `?MyPlot`. The final docstring will include several sections:
+
+1. Automatically generated header with call signatures for the new plot type.
+2. \"myplot documentation\" from the `@recipe` docstring
+3. Argument docs which is either extracted from an \"## Attributes\" section in
+    the `@recipe` docstring, given by the conversion trait of the plot or
+    generated from its converted arguments.
+4. An optional example section which shows the first example from a markdown
+    file saved at `Makie.path_to_plot_examples(MyPlot)`. See
+    `Makie/src/documentation/plots`
+5. Attribute docs generated using all the attribute names defined in `@recipe`.
+    These are grouped based on `Makie.attribute_groups(MyPlot)`
+
+### `plot!()` Method
+
+After creating a new plot type with `@recipe` we now need to define what the
+plot looks like. This is done by implementing a `plot!(::MyPlot)` method:
+
+    function Makie.plot!(plot::MyPlot)
         # normal plotting code, building on any previously defined recipes
         # or atomic plotting operations, and adding to the combined `plot`:
-        lines!(plot, rand(10), color = plot[:plot_color])
-        plot!(plot, plot[:x], plot[:y])
-        plot
+        lines!(plot, rand(10), color = plot.color, linewidth = plot.linewidth)
+        plot!(plot, plot.positions)
+        return
     end
 
-It's possible to add specializations here, depending on the argument *types*
-supplied to `myplot`. For example, to specialize the behavior of `myplot(a)`
-when `a` is a 3D array of floating point numbers:
+If `@recipe` defines no converted argument types or a `Union` of types, it is
+possible to add specializations based on the converted argument types here:
 
     const MyVolume = MyPlot{Tuple{<:AbstractArray{<: AbstractFloat, 3}}}
-    argument_names(::Type{<: MyVolume}) = (:volume,) # again, optional
-    function plot!(plot::MyVolume)
+    Makie.argument_names(::Type{<: MyVolume}) = (:volume,) # optional
+
+    function Makie.plot!(plot::MyVolume)
         # plot a volume with a colormap going from fully transparent to plot_color
-        volume!(plot, plot[:volume], colormap = :transparent => plot[:plot_color])
+        map!(c -> [:transparent, c], plot, :color, :vol_colormap)
+        volume!(plot, plot.volume, colormap = plot.vol_colormap)
         plot
     end
 
-The docstring given to the recipe will be transferred to the functions it generates.
+## Complex/Block Recipes
 
+Block recipes define a new Block as a layout of other Blocks rather than a new
+plot as a combination of other plots. They are documented in `@Block`.
 """
 macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
+    Base.depwarn("`@recipe $Tsym $args do scene ... end` is deprecated in favor of `@recipe $Tsym $args begin ... end`", :recipe)
     funcname_sym = to_func_name(Tsym)
     funcname! = esc(Symbol("$(funcname_sym)!"))
     PlotType = esc(Tsym)
     funcname = esc(funcname_sym)
+    attr_expr = convert_old_attributes_expr(theme_func) # why does this one not want to esc?
+    attr_placeholder = Symbol("#__", funcname_sym, "_attr_placeholder")
+
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname, $(esc(:ArgType))}
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
         ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
-        $(Makie).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
+
+        const $attr_placeholder = $attr_expr
+        $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
+
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
     end
@@ -204,177 +279,8 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     return expr
 end
 
-function attribute_names end
-function documented_attributes end # this can be used for inheriting from other recipes
-
-attribute_names(_) = nothing
-
-Base.@kwdef struct AttributeMetadata
-    docstring::Union{Nothing, String}
-    default_value::Any
-    default_expr::String # stringified expression, just needed for docs purposes
-end
-
-update_metadata(am1::AttributeMetadata, am2::AttributeMetadata) = AttributeMetadata(
-    am2.docstring === nothing ? am1.docstring : am2.docstring,
-    am2.default_value,
-    am2.default_expr # TODO: should it be possible to overwrite only a docstring by not giving a default expr?
-)
-
-struct DocumentedAttributes
-    d::Dict{Symbol, AttributeMetadata}
-end
-
-Base.copy(d::DocumentedAttributes) = DocumentedAttributes(copy(d.d))
-Base.pop!(d::DocumentedAttributes, key::Symbol) = pop!(d.d, key)
-
-function filter_attributes(attr::DocumentedAttributes; kwargs...)
-    return filter_attributes!(copy(attr); kwargs...)
-end
-function filter_attributes!(attr::DocumentedAttributes; allow = tuple(), exclude = tuple())
-    !isempty(allow) && filter!(p -> p[1] in allow, attr.d)
-    !isempty(exclude) && filter!(p -> !(p[1] in exclude), attr.d)
-    return attr
-end
-
-struct Inherit
-    key::Symbol
-    fallback::Any
-end
-
-function lookup_default(meta::AttributeMetadata, theme)
-    default = meta.default_value
-    if default isa Inherit
-        if haskey(theme, default.key)
-            to_value(theme[default.key]) # only use value of theme entry
-        else
-            if isnothing(default.fallback)
-                error("Inherited key $(default.key) not found in theme with no fallback given.")
-            else
-                return default.fallback
-            end
-        end
-    else
-        return default
-    end
-end
-
-function get_default_expr(default)
-    if default isa Expr && default.head === :macrocall && default.args[1] === Symbol("@inherit")
-        if length(default.args) ∉ (3, 4)
-            error("@inherit works with 1 or 2 arguments, expression was $default")
-        end
-        if !(default.args[3] isa Symbol)
-            error("Argument 1 of @inherit must be a Symbol, got $(default.args[3])")
-        end
-        key = default.args[3]
-        _default = get(default.args, 4, :(nothing))
-        # first check scene theme
-        # then default value
-        return :($(Makie.Inherit)($(QuoteNode(key)), $(esc(_default))))
-    else
-        return esc(default)
-    end
-end
-
-macro DocumentedAttributes(expr::Expr)
-    if !(expr isa Expr && expr.head === :block)
-        throw(ArgumentError("Argument is not a begin end block"))
-    end
-
-    metadata_exprs = []
-    closure_exprs = []
-    mixin_exprs = Expr[]
-
-    mixin_idx = 0
-    for arg in expr.args
-        arg isa LineNumberNode && continue
-
-        has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
-
-        if has_docs
-            docs = arg.args[3]
-            attr = arg.args[4]
-        else
-            docs = nothing
-            attr = arg
-        end
-
-        is_attr_line = attr isa Expr && attr.head === :(=) && length(attr.args) == 2
-        is_mixin_line = attr isa Expr && attr.head === :(...) && length(attr.args) == 1
-        if !(is_attr_line || is_mixin_line)
-            error("$attr is neither a valid attribute line like `x = default_value` nor a mixin line like `some_mixin...`")
-        end
-
-        if is_attr_line
-            sym = attr.args[1]
-            default = attr.args[2]
-            if !(sym isa Symbol)
-                error("$sym should be a symbol")
-            end
-            qsym = QuoteNode(sym)
-            metadata = quote
-                am = AttributeMetadata(;
-                    docstring = $docs,
-                    default_value = $(get_default_expr(default)),
-                    default_expr = $(default_expr_string(default))
-                )
-                if haskey(d, $(qsym))
-                    d[$(qsym)] = update_metadata(d[$(qsym)], am)
-                else
-                    d[$(qsym)] = am
-                end
-            end
-            push!(metadata_exprs, metadata)
-        elseif is_mixin_line
-            mixin_idx += 1
-            mixin = only(attr.args)
-            push!(
-                mixin_exprs, quote
-                    mixins[$mixin_idx] = $(esc(mixin))
-                    if !(mixins[$mixin_idx] isa DocumentedAttributes)
-                        error("Mixin was not a DocumentedAttributes but $(mixins[$mixin_idx])")
-                    end
-                end
-            )
-
-            # docstrings and default expressions of the mixed in
-            # DocumentedAttributes are inserted
-            metadata_exp = quote
-                for (key, value) in mixins[$mixin_idx].d
-                    if haskey(d, key)
-                        error("Mixin `$($(QuoteNode(mixin)))` had the key :$key which already existed. It's not allowed for mixins to overwrite keys to avoid accidental overwrites. Drop those keys from the mixin first.")
-                    end
-                    d[key] = value
-                end
-            end
-            push!(metadata_exprs, metadata_exp)
-        else
-            error("Unreachable")
-        end
-    end
-
-    return quote
-        mixins = Dict{Int, DocumentedAttributes}()
-        $(mixin_exprs...)
-        d = Dict{Symbol, AttributeMetadata}()
-        $(metadata_exprs...)
-        DocumentedAttributes(d)
-    end
-end
-
-function is_attribute(T::Type{<:Plot}, sym::Symbol)
-    return sym in attribute_names(T)
-end
-
-function attribute_default_expressions(T::Type{<:Plot})
-    return Dict(k => v.default_expr for (k, v) in documented_attributes(T).d)
-end
-
-function _attribute_docs(T::Type{<:Plot})
-    return Dict(k => v.docstring for (k, v) in documented_attributes(T).d)
-end
-
+# this can be used for inheriting from other recipes
+documented_attributes(::Any) = DocumentedAttributes()
 
 function create_args_type_expr(PlotType, args::Nothing)
     return [], :()
@@ -409,59 +315,27 @@ macro recipe(Tsym::Symbol, attrblock)
     return create_recipe_expr(Tsym, nothing, attrblock)
 end
 
+"""
+    @recipe_internal MyPlot ...
+
+Like `@recipe`, but does not `export` the generated `MyPlot` type alias or the
+`myplot` / `myplot!` constructors. Use for recipes whose API is still being
+worked out and which should only be reachable via the qualified `Makie.…` form
+until they stabilise.
+"""
+macro recipe_internal(Tsym::Symbol, attrblock)
+    return create_recipe_expr(Tsym, nothing, attrblock, false)
+end
+
+macro recipe_internal(Tsym::Symbol, args, attrblock)
+    return create_recipe_expr(Tsym, args, attrblock, false)
+end
+
 macro recipe(Tsym::Symbol, args, attrblock)
     return create_recipe_expr(Tsym, args, attrblock)
 end
 
 function types_for_plot_arguments end
-
-documented_attributes(_) = nothing
-filtered_attributes(T; kwargs...) = filter_attributes(documented_attributes(T); kwargs...)
-
-function attribute_names(T::Type{<:Plot})
-    attr = documented_attributes(T)
-    isnothing(attr) && return nothing
-    return keys(attr.d)
-end
-
-
-function plot_attributes(scene, T)
-    plot_attr = Makie.documented_attributes(T)
-    if isnothing(plot_attr)
-        return merge(default_theme(scene, T), default_theme(T))
-    else
-        return plot_attr.d
-    end
-end
-
-function lookup_default(::Type{T}, scene, attribute::Symbol) where {T <: Plot}
-    thm = theme(scene)
-    metas = plot_attributes(scene, T)
-    psym = plotsym(T)
-    if haskey(thm, psym)
-        overwrite = thm[psym]
-        if haskey(overwrite, attribute)
-            return to_value(overwrite[attribute])
-        end
-    end
-    if haskey(metas, attribute)
-        return lookup_default(metas[attribute], thm)
-    else
-        return nothing
-    end
-end
-
-function default_theme(scene, T::Type{<:Plot})
-    metas = documented_attributes(T)
-    attr = Attributes()
-    isnothing(metas) && return attr
-    thm = theme(scene)
-    _attr = attr.attributes
-    for (k, meta) in metas.d
-        _attr[k] = lookup_default(meta, thm)
-    end
-    return attr
-end
 
 function extract_docstring(str)
     if VERSION >= v"1.11" && str isa Base.Docs.DocStr
@@ -471,7 +345,41 @@ function extract_docstring(str)
     end
 end
 
-function create_recipe_expr(Tsym, args, attrblock)
+function extract_arguments_section(doc::Markdown.MD)
+    # Somehow the doc markdown is super nested, so we need to flatten it:
+    doc_flat = Markdown.parse(string(doc))
+    # Find the "## Arguments" header
+    idx = findfirst(doc_flat.content) do x
+        x isa Markdown.Header{2} && !isempty(x.text) && x.text[1] == "Arguments"
+    end
+
+    if isnothing(idx)
+        return Markdown.MD()
+    end
+    return Markdown.MD(doc_flat.content[(idx + 1):end])
+end
+
+function extract_before_arguments_section(doc::Markdown.MD)
+    # Somehow the doc markdown is super nested, so we need to flatten it:
+    doc_flat = Markdown.parse(string(doc))
+    # Find the "## Arguments" header
+    idx = findfirst(doc_flat.content) do x
+        x isa Markdown.Header{2} && !isempty(x.text) && x.text[1] == "Arguments"
+    end
+    if isnothing(idx)
+        return doc_flat
+    end
+    return Markdown.MD(doc_flat.content[1:(idx - 1)])
+end
+
+function argument_docs end
+
+# TODO:
+# If this reruns with an `## Arguments` section in the user-written docstring of
+# a @recipe, another empty `## Arguments` section will be added to the final
+# docstring. Any changes from the user-written docstring will not make it into
+# the new docstring. (Until Julia restart)
+function create_recipe_expr(Tsym, args, attrblock, export_recipe = true)
     funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
     funcname! = esc(funcname!_sym)
@@ -482,8 +390,6 @@ function create_recipe_expr(Tsym, args, attrblock)
     if !(attrblock isa Expr && attrblock.head === :block)
         throw(ArgumentError("Last argument is not a begin end block"))
     end
-    # attrblock = expand_mixins(attrblock)
-    # attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
 
     docs_placeholder = Symbol("#__", funcname_sym, "_docs_placeholder")
     attr_placeholder = Symbol("#__", funcname_sym, "_attr_placeholder")
@@ -504,22 +410,17 @@ function create_recipe_expr(Tsym, args, attrblock)
             delete!(Docs.meta(@__MODULE__), binding)
             _docstring
         else
-            "No docstring defined.\n"
+            # \n just gets printed as is...
+            md"No docstring defined.
+
+            "
         end
 
 
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname, $(esc(:ArgType))}
 
-        # This weird syntax is so that the output of the macrocall can be escaped because it
-        # contains user expressions, without escaping what's passed to the macro because that
-        # messes with its transformation logic. Because we escape the whole block with the macro,
-        # we don't reference it by symbol but splice in the macro itself into the AST
-        # with `var"@DocumentedAttributes"`
-        const $attr_placeholder = $(
-            esc(Expr(:macrocall, var"@DocumentedAttributes", LineNumberNode(@__LINE__), attrblock))
-        )
-
+        const $attr_placeholder = $(build_documented_attributes(attrblock))
         $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
@@ -536,11 +437,35 @@ function create_recipe_expr(Tsym, args, attrblock)
 
         $(arg_type_func)
 
-        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)), user_docstring)
-        @doc docstring_modified $funcname_sym
-        @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $Tsym
-        @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $funcname!_sym
-        export $PlotType, $funcname, $funcname!
+        # Check if user_docstring contains an "## Arguments" section
+        # If so, generate an argument_docs override for this plot type
+        _args_section = $(Makie).extract_arguments_section(user_docstring)
+        if !isempty(_args_section.content)
+            # Define argument_docs override for this specific plot type
+            function $(Makie).argument_docs(::Type{<:$(PlotType)})
+                return _args_section
+            end
+        end
+
+        # Override Docs.getdoc to generate comprehensive documentation
+        function Base.Docs.getdoc(::Type{T}; max_examples = 1, full_attributes = false) where {T <: $(PlotType)}
+            return $(Makie).document_recipe(
+                T, user_docstring; max_examples = max_examples, full_attributes = full_attributes
+            )
+        end
+
+        # For the function symbol, forward to the plot type
+        function Base.Docs.getdoc(::typeof($funcname))
+            return Base.Docs.getdoc($(PlotType))
+        end
+
+        # Simple docstrings for mutating function and type
+        @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Use `?$($(string(funcname_sym)))` for detailed documentation." $Tsym
+        @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Use `?$($(string(funcname_sym)))` for detailed documentation." $funcname!_sym
+    end
+
+    if export_recipe
+        push!(q.args, :(export $PlotType, $funcname, $funcname!))
     end
 
     if !isempty(syms)
@@ -554,98 +479,6 @@ function create_recipe_expr(Tsym, args, attrblock)
     end
 
     return q
-end
-
-
-function make_recipe_docstring(P::Type{<:Plot}, Tsym, funcname_sym, docstring)
-    io = IOBuffer()
-
-    attr_docstrings = _attribute_docs(P)
-
-    print(io, docstring)
-
-    println(io, "## Plot type")
-    println(io, "The plot type alias for the `$funcname_sym` function is `$Tsym`.")
-
-    println(io, "## Attributes")
-    println(io)
-
-    names = sort(collect(attribute_names(P)))
-    exprdict = attribute_default_expressions(P)
-    for name in names
-        default = exprdict[name]
-        print(io, "**`", name, "`** = ", " `", default, "`  — ")
-        println(io, something(attr_docstrings[name], "*No docs available.*"))
-        println(io)
-    end
-
-    return String(take!(io))
-end
-
-# from MacroTools
-isline(ex) = (ex isa Expr && ex.head === :line) || isa(ex, LineNumberNode)
-rmlines(x) = x
-function rmlines(x::Expr)
-    # Do not strip the first argument to a macrocall, which is
-    # required.
-    return if x.head === :macrocall && length(x.args) >= 2
-        Expr(x.head, x.args[1], nothing, filter(x -> !isline(x), x.args[3:end])...)
-    else
-        Expr(x.head, filter(x -> !isline(x), x.args)...)
-    end
-end
-
-default_expr_string(x) = string(rmlines(x))
-default_expr_string(x::String) = repr(x)
-
-function extract_attribute_metadata(arg)
-    has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
-
-    if has_docs
-        docs = arg.args[3]
-        attr = arg.args[4]
-    else
-        docs = nothing
-        attr = arg
-    end
-
-    if !(attr isa Expr && attr.head === :(=) && length(attr.args) == 2)
-        error("$attr is not a valid attribute line like :x[::Type] = default_value")
-    end
-    left = attr.args[1]
-    default = attr.args[2]
-    if left isa Symbol
-        attr_symbol = left
-        type = Any
-    else
-        if !(left isa Expr && left.head === :(::) && length(left.args) == 2)
-            error("$left is not a Symbol or an expression such as x::Type")
-        end
-        attr_symbol = left.args[1]::Symbol
-        type = left.args[2]
-    end
-
-    return (docs = docs, symbol = attr_symbol, type = type, default = default)
-end
-
-function expand_mixins(attrblock::Expr)
-    return Expr(:block, mapreduce(expand_mixin, vcat, attrblock.args)...)
-end
-
-expand_mixin(x) = x
-function expand_mixin(e::Expr)
-    if e.head === :macrocall && e.args[1] === Symbol("@mixin")
-        if length(e.args) != 3 && e.args[2] isa LineNumberNode && e.args[3] isa Symbol
-            error("Invalid mixin, needs to be of the format `@mixin some_mixin`, got $e")
-        end
-        mixin_ex = getproperty(Makie, e.args[3])()::Expr
-        if (mixin_ex.head !== :block)
-            error("Expected mixin to be a block expression (such as generated by `quote`)")
-        end
-        return mixin_ex.args
-    else
-        e
-    end
 end
 
 """
@@ -710,9 +543,9 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true
 
     lens = length.(v) # for unicode ligatures etc this won't work, but we don't use those for attribute names
     function col_widths(ncols; rows_first)
+        local nrows = ceil(Int, length(v) / ncols)
         max_widths = zeros(Int, ncols)
         for (i, len) in enumerate(lens)
-            nrows = ceil(Int, length(v) / ncols)
             j = rows_first ? fld1(i, nrows) : mod1(i, ncols)
             max_widths[j] = max(max_widths[j], len)
         end
@@ -825,10 +658,12 @@ end
 function find_nearby_attributes(attributes, candidates)
     d = Vector{Tuple{String, Bool}}(undef, length(attributes))
     any_close = false
-    for (i, attr) in enumerate(attributes)
-        candidate, valid = _levsort(String(attr), candidates)
-        any_close = any_close || valid
-        d[i] = (candidate, valid)
+    if !isempty(candidates)
+        for (i, attr) in enumerate(attributes)
+            candidate, valid = _levsort(String(attr), candidates)
+            any_close = any_close || valid
+            d[i] = (candidate, valid)
+        end
     end
     return d, any_close
 end
@@ -888,7 +723,7 @@ function Base.showerror(io::IO, err::InvalidAttributeError)
     print(io, " for $(err.object_name) type ")
     printstyled(io, err.type; color = :blue, bold = true)
     println(io, ".")
-    nameset = sort(string.(collect(attribute_names(err.type))))
+    nameset = sort(string.(flattened_keys(documented_attributes(err.type))))
     attrs = string.(collect(err.attributes))
     possible_cands, any_close = find_nearby_attributes(attrs, nameset)
     any_close && println(io)
@@ -934,15 +769,29 @@ function attribute_name_allowlist()
 end
 
 function validate_attribute_keys(plot::P) where {P <: Plot}
-    nameset = attribute_names(P)
-    nameset === nothing && return
     allowlist = attribute_name_allowlist()
     deprecations = deprecated_attributes(P)::Tuple{Vararg{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}}
     kw = plot.kw
-    unknown = setdiff(keys(kw), nameset, allowlist, first.(deprecations))
-    if !isempty(unknown)
-        throw(InvalidAttributeError(P, unknown))
+    attr = documented_attributes(P)
+
+    invalid_names = Symbol[]
+    for (k, v) in kw
+        if k in allowlist || k in deprecations
+            continue
+        end
+
+        # TODO: maybe worth flattening kwargs early and just setdiff here?
+        if !(k in root_keys(attr))
+            push!(invalid_names, k)
+            continue
+        end
+        collect_invalid_nested_attributes!(invalid_names, attr, (k,), v)
     end
+
+    if !isempty(invalid_names)
+        throw(InvalidAttributeError(P, Set(invalid_names)))
+    end
+
     for (deprecated, message, should_error) in deprecations
         if haskey(kw, deprecated)
             full_message = "Keyword `$deprecated` is deprecated for plot type $P. $message"
@@ -954,4 +803,29 @@ function validate_attribute_keys(plot::P) where {P <: Plot}
         end
     end
     return
+end
+
+function collect_invalid_nested_attributes!(invalid_names, attr, keys, @nospecialize(local_kwargs), idx = 1)
+    # keys is the path to local_kwargs
+    # mark as error if last(keys) does not exist in nesting
+    key = last(keys)
+    if !haskey(attr.nesting.keytables[idx], key)
+        push!(invalid_names, ComputePipeline.merged_key(keys...))
+        return
+    end
+
+    # This will be the next layer we look at
+    idx = attr.nesting.keytables[idx][key]
+    if idx < 0
+        # addresses a leaf attribute which accepts Attributes, Dict, etc too
+        return
+    elseif idx > 0 && applicable(getindex, local_kwargs, key)
+        # addresses a nesting layer and local_kwargs can nest, go deeper
+        for (k, v) in pairs(local_kwargs)
+            collect_invalid_nested_attributes!(invalid_names, attr, (keys..., k), v, idx)
+        end
+    else
+        # addresses a nesting layer that's not present in local_kwargs, mark for error
+        push!(invalid_names, ComputePipeline.merged_key(keys...))
+    end
 end

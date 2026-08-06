@@ -2,7 +2,7 @@
 ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Test
 using LinearAlgebra
-
+using Markdown
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics
@@ -32,8 +32,13 @@ end
         include("isolated/observables.jl")
         include("isolated/timing.jl")
         include("isolated/Plane.jl")
+        include("isolated/render_pipeline.jl")
         include("isolated/texture_atlas.jl")
         include("isolated/datetime_ticks.jl")
+        include("isolated/argument_docs.jl")
+        include("isolated/recipes.jl") # @recipe, @Block generated code
+        include("isolated/showoff.jl")
+        include("isolated/derive_colors.jl")
     end
 
     @testset "Plots" begin
@@ -41,8 +46,10 @@ end
         include("plots/generic_attributes.jl")
         include("plots/text.jl")
         include("plots/barplot.jl")
+        include("plots/bracket.jl")
         include("plots/hist.jl")
         include("plots/poly.jl")
+        include("plots/contourf.jl")
         include("plots/voronoiplot.jl")
     end
 
@@ -50,7 +57,13 @@ end
         include("SceneLike/scenes.jl")
         include("SceneLike/figures.jl")
         include("SceneLike/makielayout.jl")
+        include("SceneLike/card.jl")
         include("SceneLike/PolarAxis.jl")
+        include("events_isolation.jl")
+    end
+
+    @testset "GUI" begin
+        include("gui.jl")
     end
 
     @testset "Conversion & Projection Pipeline" begin
@@ -76,6 +89,7 @@ end
         include("interactivity/Axis.jl")
         include("interactivity/Axis3.jl")
         include("interactivity/DataInspector.jl")
+        include("interactivity/EditableText.jl")
     end
 
     include("boundingboxes.jl")

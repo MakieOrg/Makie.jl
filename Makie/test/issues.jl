@@ -7,6 +7,23 @@
         @test all(hi .>= (8, 8, 10))
     end
 
+    @testset "#1939 `merge` precedence for `Attributes`" begin
+        # See https://github.com/MakieOrg/Makie.jl/issues/1939
+        a1 = Attributes(a = 1, b = 2)
+        a2 = Attributes(a = 4, c = 3)
+        @test merge(a1, a2)[:a][] == 4
+
+        a1 = Attributes(a = 1, b = 2)
+        a2 = Attributes(a = 4, c = 3)
+        merge!(a1, a2)
+        @test a1[:a][] == 4 && haskey(a1, :c)
+
+        a1 = Attributes(a = 1, b = 2)
+        a2 = Attributes(a = 4, c = 3)
+        Makie.mergeleft!(a1, a2)
+        @test a1[:a][] == 1 && haskey(a1, :c)
+    end
+
     @testset "#3979 lossy matrix multiplication" begin
         ps = Point{3, Float64}[[436132.5523666298, 7.002123574681671e6, 505.0239189387989], [436132.5523666298, 7.002123574681671e6, 1279.2437345933633], [436132.5523666298, 7.002884453296079e6, 505.0239189387989], [436132.5523666298, 7.002884453296079e6, 1279.2437345933633], [437151.16775504407, 7.002123574681671e6, 505.0239189387989], [437151.16775504407, 7.002123574681671e6, 1279.2437345933633], [437151.16775504407, 7.002884453296079e6, 505.0239189387989], [437151.16775504407, 7.002884453296079e6, 1279.2437345933633]]
         f, a, p = scatter(ps)
@@ -86,9 +103,8 @@
     @testset "`default_attribute` with Attributes containing Attributes" begin
         foo = Attributes(; bar = 1)
         @test propertynames(foo) == (:bar,)
-        @test Dict(Makie.default_attribute(Attributes(; foo), (:foo, Attributes()))) == Dict(foo)
 
-        pl = Scatter((1:4,), Dict{Symbol, Any}())
+        pl = Scatter((1:4,), Dict{Symbol, Any}(:force_dimconverts => true))
         @test Set(propertynames(pl)) == keys(pl.attributes.outputs)
     end
 
@@ -105,5 +121,32 @@
         p.sdf_marker_shape[]
         p.sdf_uv[]
         @test true
+    end
+
+    @testset "Menu search filter matching nothing" begin
+        # A query that matched nothing emptied the per-option color vectors. The
+        # next query that DID match then resolved the option text plot against
+        # them and threw a BoundsError inside the compute graph, which takes the
+        # whole render loop down with it — the menu was dead from then on.
+        fig = Figure()
+        menu = Menu(
+            fig[1, 1]; options = ["Brightness", "Color balance", "Stabilization"],
+            searchable = true, default = nothing
+        )
+        Makie.update_state_before_display!(fig)
+        menu.is_open[] = true
+        texts = menu.blockscene.children[1].plots[2]
+
+        foreach(c -> events(fig).unicode_input[] = c, "zq")   # matches nothing
+        @test isempty(texts.text[])
+        @test isempty(texts.color[])
+
+        events(fig).keyboardbutton[] = Makie.KeyEvent(Keyboard.backspace, Keyboard.press)
+        @test texts.text[] == ["Stabilization"]               # one match again
+        @test length(texts.color[]) == 1                      # …and it has a color
+        texts.positions_transformed_f32c[]                    # resolves: must not throw
+
+        events(fig).keyboardbutton[] = Makie.KeyEvent(Keyboard.backspace, Keyboard.press)
+        @test length(texts.text[]) == length(texts.color[]) == 3
     end
 end

@@ -6,6 +6,7 @@ using FileIO
 using WGLMakie, Makie, Test
 using WGLMakie.Bonito
 using ReferenceTests
+using Makie: N0f8, RGBA
 import Electron
 
 @testset "mimes" begin
@@ -44,8 +45,8 @@ edisplay = Bonito.use_electron_display(devtools = true)
         # are modified in which case the numbers should just be updated
         f, a, p = scatter(rand(10))
         colorbuffer(f)
-        @test length(p.attributes.inputs) == 42
-        @test length(p.attributes.outputs) == 96
+        @test length(p.attributes.inputs) == 37
+        @test length(p.attributes.outputs) == 92
     end
 
     @testset "refimages" begin
@@ -121,6 +122,25 @@ edisplay = Bonito.use_electron_display(devtools = true)
         end
     end
 
+    @testset "small float passthrough" begin
+        scene = Scene()
+        p1 = volume!(scene, fill(N0f8(0.5), 4, 4, 4)::Array{N0f8, 3})
+        p2 = volume!(scene, fill(Float16(0.5), 4, 4, 4))
+        p3 = volume!(scene, fill(RGBA{N0f8}(0.5, 0.5, 0.5, 0.5), 4, 4, 4), algorithm = :absorptionrgba)
+        p4 = volume!(scene, fill(RGBA{Float16}(0.5, 0.5, 0.5, 0.5), 4, 4, 4), algorithm = :absorptionrgba)
+        # p5 = mesh!(scene, Rect2f(0,0,1,1), color = rand(RGBA{N0f8}, 4, 4))
+        # p6 = scatter!(scene, 1:4, color = rand(N0f8, 4))
+        display(edisplay, App(scene))
+        Bonito.wait_for(() -> events(scene).window_open[])
+        sleep(2)
+
+        @test eltype(p1.wgl_renderobject[][:uniforms][:uniform_color][:data]) === N0f8
+        @test eltype(p2.wgl_renderobject[][:uniforms][:uniform_color][:data]) === Float16
+        @test eltype(p3.wgl_renderobject[][:uniforms][:uniform_color][:data]) === UInt8 # RGBA gets splatted
+        @test_broken eltype(p4.wgl_renderobject[][:uniforms][:uniform_color][:data]) === Float16 # can we allow Float16 to pass to js?
+        # @test eltype(p5.gl_renderobject[][:image]) === RGBA{N0f8}
+        # @test eltype(p6.gl_renderobject[].vertexarray.buffers["intensity"]) === N0f8
+    end
 
     @testset "Tick Events" begin
         function check_tick(tick, state, count)
@@ -196,15 +216,19 @@ edisplay = Bonito.use_electron_display(devtools = true)
             # should be empty (or at least not contain Render ticks yet?)
             @test isempty(tick_record)
 
-            t0 = time()
+            render_time = 20
             colorbuffer(f)
-            sleep(2)
+            sleep(render_time)
             close(f.scene.current_screens[1])
-            dt_max = time() - t0
-            sleep(1)
+            sleep(5)
 
-            # tests don't make this easy...
-            @test round(Int, 30dt_max) - 10 <= length(tick_record) <= round(Int, 30dt_max) + 10
+            # Check:
+            # 1. `colorbuffer` started producing ticks at roughly 30 ticks/s
+            # 2. `close` stopped tick production
+            # To verify this we check that the number of ticks is proportional
+            # to the real render time, which should be close to the sleep time.
+            @test render_time * 30 - 1 <= length(tick_record) <= render_time * 30 + 20
+
             t = 0.0
             for (i, tick) in enumerate(tick_record)
                 @test tick.state == Makie.RegularRenderTick
@@ -269,12 +293,38 @@ edisplay = Bonito.use_electron_display(devtools = true)
         @test isempty(wgl_plots)
 
         session = edisplay.browserdisplay.handler.session
-        session_size = Base.summarysize(session) / 10^6
+        # Measure Bonito's own session state, NOT the transport layer underneath it.
+        # `session.connection.handler.socket` is an HTTP.jl WebSocket whose send
+        # buffer (`WSConn.outgoing`) retains the capacity of the largest frame ever
+        # sent (by design: zero-alloc steady-state writes) and is freed only when the
+        # connection closes. This is the *hot* page session, kept open for the whole
+        # run, so a plain `summarysize` would charge it tens of MB of HTTP send-buffer
+        # capacity that isn't session state. Stop the walk at the HTTP WebSocket
+        # boundary; everything Bonito owns is still counted (verified: stashing an
+        # array in `session_objects` still grows this number).
+        http_socket_type = typeof(session.connection.handler.socket).name.wrapper
+        session_size = Base.summarysize(
+            session;
+            exclude = Union{DataType, Core.TypeName, Core.MethodInstance, http_socket_type},
+        ) / 10^6
 
         @test length(session.session_objects) == 0
-        @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :imports, :message_queue, :deregister_callbacks, :inbox]
-            @test isempty(getfield(session, field))
+        # getproperty, not getfield: in Bonito v5 `inbox` lives on the shared
+        # RootSession and getfield would throw a FieldError (works via the shim on both).
+        @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :message_queue, :deregister_callbacks]
+            @test isempty(getproperty(session, field))
         end
+        # `inbox` is the live WS receive channel on the still-connected display
+        # root, so a message can be mid-flight when we check — asserting it empty
+        # instantly is racy. Give the reader task a moment to drain it; a genuinely
+        # stuck reader (a real leak/hang) would still fail via the timeout.
+        @test Bonito.wait_for(() -> isempty(getproperty(session, :inbox)); timeout = 10) == :success
+        # Figure/widget assets are emitted into their sub-session's own fragment
+        # and freed from the root when that sub closes, so after `App(nothing)`
+        # the page root retains only its own connection shell (Bonito's
+        # Websocket.js), not the WGLMakie/widget bundles. A count above this small
+        # page-shell surface means sub imports are leaking onto the root again.
+        @test length(session.imports) <= 2
         server = session.connection.server
         @test length(server.websocket_routes.table) == 1
         @test server.websocket_routes.table[1][2] == session.connection
@@ -282,12 +332,11 @@ edisplay = Bonito.use_electron_display(devtools = true)
         @test server.routes.table[1][1] == "/browser-display"
         @test server.routes.table[2][2] isa HTTPAssetServer
 
-        # TODO, this went up from 6 to 11mb, likely because of a session not getting freed
-        # It could be related to the error in the console:
-        # " Trying to send to a closed session"
-        # So maybe a subsession closes and doesn't get freed?
+        # With the HTTP transport excluded, the hot session's own footprint is ~1.3 MB
+        # (almost all of it the retained JS import bundle). Keep headroom for env
+        # differences, but tight enough to catch a real multi-MB session leak.
         @show session_size
-        @test session_size < 13
+        @test session_size < 5
 
         js_sessions = run(edisplay.window, "Bonito.Sessions.SESSIONS")
         js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")

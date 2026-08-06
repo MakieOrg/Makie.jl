@@ -65,8 +65,8 @@ end
         algorithm = :mip,  # maximum-intensity-projection
         colorrange = (0, 1),
     )
-    ax.scene[OldAxis].names[].textcolor = :lightgray # let axis labels be seen on dark background
-    ax.scene[OldAxis].ticks[].textcolor = :gray # let axis ticks be seen on dark background
+    ax.scene[OldAxis].names.textcolor = :lightgray # let axis labels be seen on dark background
+    ax.scene[OldAxis].ticks.textcolor = :gray # let axis ticks be seen on dark background
     ax.scene.backgroundcolor[] = to_color(:black)
     ax.scene.clear[] = true
 
@@ -87,7 +87,7 @@ end
     f = Figure(size = (600, 300))
     r = range(-5, 5, length = 31)
     data = [cos(x * x + y * y + z * z)^2 for x in r, y in r, z in r]
-    absorption = 5.0
+    absorption = 2.0
     volume(f[1, 1], data, algorithm = :absorption; absorption)
     volume(f[1, 2], 128 .+ 120 .* data, algorithm = :indexedabsorption; absorption)
     volume(f[1, 3], HSV.(180 .* data, 0.8, 0.9), algorithm = :absorptionrgba; absorption)
@@ -107,13 +107,13 @@ end
         f[1, 1], -10 .. 10, -10 .. 10, -10 .. 10, data;
         algorithm = :iso, isovalue = 0.5, isorange = 0.1
     )
-    volume(f[2, 1], -10 .. 10, -10 .. 10, -10 .. 10, data, algorithm = :absorption)
+    volume(f[2, 1], -10 .. 10, -10 .. 10, -10 .. 10, data, algorithm = :absorption, absorption = 2)
     volume(f[1, 2], -10 .. 10, -10 .. 10, -10 .. 10, data; algorithm = :mip)
-    volume(f[2, 2], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data; algorithm = :absorptionrgba)
-    volume(f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, add_data; algorithm = :additive, alpha = 0.05)
+    volume(f[2, 2], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data; algorithm = :absorptionrgba, absorption = 2)
+    volume(f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, add_data; algorithm = :additive, absorption = 10)
     volume(
         f[2, 3], -10 .. 10, -10 .. 10, -10 .. 10, index_data;
-        algorithm = :indexedabsorption, colormap = Makie.resample(to_colormap(:viridis), N)
+        algorithm = :indexedabsorption, colormap = Makie.resample(to_colormap(:viridis), N), absorption = 2
     )
 
     for ls in f.content
@@ -209,7 +209,7 @@ end
     rotation = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
     meshscatter(
         f[1, 1], pts; markersize, rotation, color = :white,
-        diffuse = Vec3f(-2, 0, 4), specular = Vec3f(4, 0, -2)
+        diffuse = Vec3d(-2, 0, 4), specular = Vec3d(4, 0, -2)
     )
 
     mesh(f[1, 2], Sphere(Point3f(0), 1.0f0), color = :orange, shading = NoShading)
@@ -388,7 +388,7 @@ end
 
     # You can access nested attributes likes this:
     axis[:names, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
-    tstyle = axis[:names][] # or just get the nested attributes and work directly with them
+    tstyle = axis[:names] # or just get the nested attributes and work directly with them
 
     tstyle[:fontsize] = 10
     tstyle[:textcolor] = (:red, :green, :black)
@@ -773,7 +773,7 @@ end
     rgba_data = [RGBAf(cos(x^2)^2, cos(y^2)^2, cos(z^2)^2, 0.5 + 0.5 * sin(x^2 + y^2 + z^2)) for x in r, y in r, z in r]
 
     clip_planes = [Plane3f(Vec3f(-1), 0.0)]
-    attr = (clip_planes = clip_planes, axis = (show_axis = false,))
+    attr = (clip_planes = clip_planes, axis = (show_axis = false,), absorption = 5.0)
 
     volume(
         f[1, 1], -10 .. 10, -10 .. 10, -10 .. 10, data; attr...,
@@ -793,10 +793,9 @@ end
         algorithm = :absorptionrgba
     )
 
-    # TODO: doesn't work as intended anymore?
     volume(
         f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data; attr...,
-        algorithm = :additive, alpha = 0.01
+        algorithm = :additive
     )
     volume(
         f[2, 3], -10 .. 10, -10 .. 10, -10 .. 10, index_data; attr...,
@@ -886,6 +885,37 @@ end
     endpoints = Makie.apply_transform_and_model(p, ps + ps)
     meshscatter!(a, startpoints, color = :red)
     meshscatter!(a, endpoints, color = :red)
+
+    f
+end
+
+@reference_test "Volume lowclip highclip" begin
+    data = [(x * x + y * y - z * z) for x in 0:10, y in 10:-1:0, z in 0:10]
+    f = Figure()
+
+    # mip is a bit special because colorrange affects value sampling
+    volume(
+        f[1, 1], data, algorithm = :mip,
+        colorrange = (10, 30), lowclip = :transparent, highclip = :transparent,
+    )
+    volume(
+        f[1, 2], data, algorithm = :mip,
+        colorrange = (10, 30), lowclip = :red, highclip = :transparent,
+    )
+    volume(
+        f[1, 3], data, algorithm = :mip,
+        colorrange = (10, 30), lowclip = :transparent, highclip = :red,
+    )
+
+    volume(
+        f[2, 1], data, algorithm = :absorption,
+        colorrange = (10, 30), lowclip = :transparent, highclip = :transparent,
+        absorption = 10, transparency = true
+    )
+    contour(
+        f[2, 2], data,
+        colorrange = (-30, 50), lowclip = :transparent, highclip = :transparent,
+    )
 
     f
 end

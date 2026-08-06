@@ -1,17 +1,3 @@
-struct RichText
-    type::Symbol
-    children::Vector{Union{RichText, String}}
-    attributes::Dict{Symbol, Any}
-    function RichText(type::Symbol, children...; kwargs...)
-        cs = Union{RichText, String}[children...]
-        return new(type, cs, Dict(kwargs))
-    end
-end
-
-Base.:(==)(a::RichText, b::RichText) = a.type == b.type && a.children == b.children && a.attributes == b.attributes
-
-Base.hash(a::RichText, b::UInt) = hash(a.type, hash(a.children, hash(a.attributes, b)))
-
 function check_textsize_deprecation(@nospecialize(dictlike))
     return if haskey(dictlike, :textsize)
         throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
@@ -25,7 +11,27 @@ conversion_trait(::Type{<:Text}, args...) = PointBased()
 convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
 # text also allows :baseline and resolves it later
-convert_attribute(align, ::key"align", ::key"text") = Ref{Any}(align)
+function convert_attribute(align, ::key"align", ::key"text")
+    validate_text_align(align)
+    return Ref{Any}(align)
+end
+
+function validate_text_align(al::Union{Tuple, StaticVector})
+    if length(al) != 2
+        error("Text align must be a two-element tuple, got $(repr(al))")
+    end
+    if !(al[1] isa Real || al[1] in (:left, :right, :center))
+        error("Horizontal text align must be a Real or :left, :right, :center. Got $(repr(al[1]))")
+    end
+    if !(al[2] isa Real || al[2] in (:top, :bottom, :center, :baseline))
+        error("Vertical text align must be a Real or :top, :bottom, :center, :baseline. Got $(repr(al[2]))")
+    end
+    return
+end
+
+validate_text_align(als::AbstractVector) = foreach(validate_text_align, als)
+
+validate_text_align(al) = error("Text align must be a two-element tuple, got $(repr(al))")
 
 # Positions are always vectors so text should be too
 convert_attribute(str::AbstractString, ::key"text", ::key"text") = Ref{Any}([str]) # don't fix string type
@@ -37,7 +43,7 @@ to_string_arr(text) = [text]
 
 function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_args)
     # Set up Inputs
-    inputs = _register_input_arguments!(Text, attr, input_args)
+    inputs = _register_input_arguments!(attr, input_args)
 
     # User arguments can be PointBased(), String-like or mixed, with the
     # position and text attributes supplementing data not in arguments.
@@ -67,10 +73,10 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     end
 
     # Continue with _register_expand_arguments with adjusted input names
-    _register_expand_arguments!(Text, attr, [:_positions], true)
+    expanded = _register_expand_arguments!(Text, attr, [:_positions], attr._positions[], true)
 
     # And the rest of it
-    _register_argument_conversions!(Text, attr, user_kw)
+    _register_argument_conversions!(Text, attr, user_kw, expanded)
 
     return
 end
@@ -170,14 +176,27 @@ end
 #####################################
 # New stuff
 
+# a stand-in for a per-string attribute that has no value to sample yet
+blockfallback(::Type{T}) where {T} = zero(T)
+blockfallback(::Type{<:Quaternion}) = Quaternionf(0, 0, 0, 1)
+
 function per_glyph_block(data, block_idx, N_blocks, block::UnitRange)
     block_length = length(block)
     if isscalar(data)
         return fill(data, block_length)
     elseif length(data) == N_blocks
         return fill(data[block_idx], block_length)
-    else
+    elseif checkbounds(Bool, data, block)
         return view(data, block)
+    else
+        # Transiently inconsistent update: the text grew before its per-string
+        # attribute vector did (updating a Menu's options resolves the text plot
+        # eagerly mid-cascade, before the recolor lands). Clamp instead of
+        # erroring — the consistent state resolves right after and re-renders.
+        # An error here is thrown inside the compute graph and takes the whole
+        # render loop down with it, so an empty vector must not throw either.
+        isempty(data) && return fill(blockfallback(eltype(data)), block_length)
+        return fill(data[min(block_idx, length(data))], block_length)
     end
 end
 
@@ -448,7 +467,6 @@ function tex_linesegments!(plot)
     ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes, space
         isempty(linesegments) && return Point3f[]
         markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
-        # TODO: avoid repeated apply_transform and use block_idx?
         return map(linesegments, indices) do seg, (block_idx, glyph_idx)
             return seg + markerspace_positions[block_idx]
         end
@@ -871,57 +889,6 @@ end
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
 
-function Base.String(r::RichText)
-    fn(io, x::RichText) = foreach(x -> fn(io, x), x.children)
-    fn(io, s::String) = print(io, s)
-    return sprint() do io
-        fn(io, r)
-    end
-end
-
-function Base.show(io::IO, ::MIME"text/plain", r::RichText)
-    return print(io, "RichText: \"$(String(r))\"")
-end
-
-"""
-    rich(args...; kwargs...)
-
-Create a `RichText` object containing all elements in `args`.
-"""
-rich(args...; kwargs...) = RichText(:span, args...; kwargs...)
-"""
-    subscript(args...; kwargs...)
-
-Create a `RichText` object representing a superscript containing all elements in `args`.
-"""
-subscript(args...; kwargs...) = RichText(:sub, args...; kwargs...)
-"""
-    superscript(args...; kwargs...)
-
-Create a `RichText` object representing a superscript containing all elements in `args`.
-"""
-superscript(args...; kwargs...) = RichText(:sup, args...; kwargs...)
-"""
-    subsup(subscript, superscript; kwargs...)
-
-Create a `RichText` object representing a right subscript/superscript combination,
-where both scripts are left-aligned against the preceding text.
-"""
-subsup(args...; kwargs...) = RichText(:subsup, args...; kwargs...)
-"""
-    left_subsup(subscript, superscript; kwargs...)
-
-Create a `RichText` object representing a left subscript/superscript combination,
-where both scripts are right-aligned against the following text.
-"""
-left_subsup(args...; kwargs...) = RichText(:leftsubsup, args...; kwargs...)
-
-Base.:*(x::RichText, y::AbstractString) = rich(x, y)
-Base.:*(x::AbstractString, y::RichText) = rich(x, y)
-Base.:*(x::RichText, y::RichText) = rich(x, y)
-
-export rich, subscript, superscript, subsup, left_subsup
-
 struct GlyphState
     x::Float32
     baseline::Float32
@@ -936,7 +903,7 @@ struct GlyphInfo
     origin::Point2f
     extent::GlyphExtent
     size::Vec2f
-    rotation::Quaternion
+    rotation::Quaternionf
     color::RGBAf
     strokecolor::RGBAf
     strokewidth::Float32
@@ -1123,8 +1090,6 @@ function right_align!(line1::Vector{GlyphInfo}, line2::Vector{GlyphInfo})
     isempty(line1) || isempty(line2) && return
     xmax1, xmax2 = map((line1, line2)) do line
         maximum(line; init = 0.0f0) do ginfo
-            # TODO: typo?
-            GlyphInfo
             ginfo.origin[1] + ginfo.size[1] * (ginfo.extent.ink_bounding_box.origin[1] + ginfo.extent.ink_bounding_box.widths[1])
         end
     end

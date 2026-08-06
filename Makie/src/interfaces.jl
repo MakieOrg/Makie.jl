@@ -212,20 +212,3 @@ function plot!(scene::SceneLike, plot::Plot)
     push!(scene, plot)
     return plot
 end
-
-function apply_theme!(scene::Scene, plot::P) where {P <: Plot}
-    raw_attr = attributes(plot.attributes)
-    plot_theme = default_theme(scene, P)
-    plot_sym = plotsym(P)
-    if haskey(theme(scene), plot_sym)
-        merge_without_obs_reverse!(plot_theme, theme(scene, plot_sym))
-    end
-    for (k, v) in plot.kw
-        if v isa NamedTuple
-            raw_attr[k] = Attributes(v)
-        else
-            raw_attr[k] = convert(Observable{Any}, v)
-        end
-    end
-    return merge!(plot.attributes, plot_theme)
-end

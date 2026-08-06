@@ -3,6 +3,7 @@ const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, Ve
 convert_arguments(::Type{<:Poly}, v::AbstractVector{<:PolyElements}) = (v,)
 convert_arguments(::Type{<:Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
 
+argument_dims(::Type{<:Poly}, vertices::VecTypesVector{N}, indices) where {N} = (1:N,)
 
 function convert_pointlike(args...)
     return convert_arguments(PointBased(), args...)
@@ -24,7 +25,11 @@ function convert_arguments(::Type{<:Poly}, path::AbstractMatrix{<:Number})
     return convert_pointlike(path)
 end
 
-function convert_arguments(::Type{<:Poly}, vertices::AbstractArray, indices::AbstractArray)
+function convert_arguments(::Type{<:Poly}, vertices::RealArray, indices::AbstractArray)
+    return convert_arguments(Mesh, vertices, indices)
+end
+
+function convert_arguments(::Type{<:Poly}, vertices::AbstractArray{<:VecTypes}, indices::AbstractArray)
     return convert_arguments(Mesh, vertices, indices)
 end
 
@@ -48,7 +53,8 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         inspectable = plot.inspectable,
         transparency = plot.transparency,
         space = plot.space,
-        depth_shift = plot.depth_shift
+        depth_shift = plot.depth_shift,
+        clip_planes = plot.clip_planes
     )
     wireframe!(
         plot, plot[1],
@@ -56,7 +62,8 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         linewidth = plot.strokewidth, linecap = plot.linecap,
         visible = plot.visible, overdraw = plot.overdraw,
         inspectable = plot.inspectable, transparency = plot.transparency,
-        colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift
+        colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift,
+        clip_planes = plot.clip_planes
     )
     return plot
 end
@@ -175,19 +182,25 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         transparency = plot.transparency,
         inspectable = plot.inspectable,
         space = plot.space,
-        depth_shift = plot.depth_shift
+        depth_shift = plot.depth_shift,
+        clip_planes = plot.clip_planes
     )
 
     map!(to_lines, plot, :polygon, [:outline, :increment_at])
-    map!(plot, [:outline, :increment_at, :strokecolor, :meshes], :computed_strokecolor) do outline, increment_at, sc, meshes
-        if !(meshes isa Mesh) && meshes isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes)
+    map!(to_color, plot, :strokecolor, :rgb_strokecolor)
+    map!(plot, [:outline, :increment_at, :rgb_strokecolor, :meshes], :computed_strokecolor) do outline, increment_at, sc, meshes
+        if meshes isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes)
+            new_colors = similar(sc, length(outline))
             mesh_idx = 1
-            return map(eachindex(outline)) do point_idx
-                if point_idx == increment_at[mesh_idx]
+            next_switch = isempty(increment_at) ? -1 : increment_at[1]
+            for point_idx in eachindex(outline)
+                if point_idx == next_switch
                     mesh_idx += 1
+                    next_switch = increment_at[mesh_idx]
                 end
-                return sc[mesh_idx]
+                new_colors[point_idx] = sc[mesh_idx]
             end
+            return new_colors
         else
             return sc
         end
@@ -200,6 +213,7 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
         space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
-        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift
+        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift,
+        clip_planes = plot.clip_planes
     )
 end

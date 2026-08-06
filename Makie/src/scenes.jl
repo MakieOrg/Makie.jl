@@ -1,21 +1,43 @@
+"""
+    struct SSAO
+
+Settings for Screen Space Ambient Occlusion.
+
+Screen Space Ambient Occlusion darkens corners and creases. To do this, each
+pixel samples depth values from its surrounding area and compares them to itself.
+The more samples are in front of the pixel, the more occluded it is. The
+occlusion information gets blurred with neighboring pixels before being applied
+to reduce aliasing.
+
+Settings:
+- `radius`: Controls the sample range, in world space units.
+- `bias`: Sets the minimum difference in depth required to treat a sample as
+    "in front". This is needed to differentiate smoothly curved surfaces from
+    corners and creases.
+- `blur`: Sets the range of blurring.
+
+Note: SSAO is only implemented in GLMakie and needs to be explicitly turned on
+with `GLMakie.activate!(ssao = true)`, `display(figure/scene, ssao = true)` or
+by setting the render pipeline to one that includes SSAO.
+"""
 struct SSAO
     """
-    sets the range of SSAO. You may want to scale this up or
-    down depending on the limits of your coordinate system
+    Sets the range of SSAO, i.e. how far away a sample point can be from the
+    point whose occlusion is getting calculated. This should be scaled to the
+    scene so that only nearby points are considered.
     """
     radius::Observable{Float32}
 
     """
-    sets the minimum difference in depth required for a pixel to
-    be occluded. Increasing this will typically make the occlusion
-    effect stronger.
+    Sets the minimum difference in depth required for a pixel to be occluded.
+    Decreasing this will strengthen the occlusion effect but may also add
+    occlusion to smoothly varying surfaces.
     """
     bias::Observable{Float32}
 
     """
-    sets the (pixel) range of the blur applied to the occlusion texture.
-    The texture contains a (random) pattern, which is washed out by
-    blurring. Small `blur` will be faster, sharper and more patterned.
+    Sets the (pixel) range of the blur applied to the occlusion texture to
+    decrease aliasing. Small `blur` will be faster, sharper and more aliased.
     Large `blur` will be slower and smoother. Typically `blur = 2` is
     a good compromise.
     """
@@ -26,7 +48,8 @@ function Base.show(io::IO, ssao::SSAO)
     println(io, "SSAO:")
     println(io, "    radius: ", ssao.radius[])
     println(io, "    bias:   ", ssao.bias[])
-    return println(io, "    blur:   ", ssao.blur[])
+    println(io, "    blur:   ", ssao.blur[])
+    return
 end
 
 function SSAO(; radius = nothing, bias = nothing, blur = nothing)
@@ -93,8 +116,16 @@ mutable struct Scene <: AbstractScene
 
     conversions::DimConversions
     isclosed::Bool
-    # Cant type this, dont have the type yet
+    # Can't type this, don't have the type yet
     data_inspector::Any
+
+    """
+    Pointer-routing opt-in: when `true`, this scene claims the pointer for its
+    subtree while visible (see `covers_pointer`/`receives_events`), regardless
+    of `clear`/z. For overlays that paint a translucent backdrop via plots
+    (e.g. a modal dialog) instead of an opaque `clear = true` background.
+    """
+    captures_mouse::Bool
 
     function Scene(
             parent::Union{Nothing, Scene},
@@ -114,6 +145,7 @@ mutable struct Scene <: AbstractScene
             lights::Vector;
             deregister_callbacks = Observables.ObserverFunction[]
         )
+        replace_computed_with_obs!(theme)
         scene = new(
             parent,
             events,
@@ -134,11 +166,14 @@ mutable struct Scene <: AbstractScene
             ComputeGraph(),
             DimConversions(),
             false,
-            nothing
+            nothing,
+            false
         )
         add_camera_computation!(scene.compute, scene)
         add_light_computation!(scene.compute, scene, lights)
-        add_input!((k, v) -> Ref{Any}(v), scene.compute, :transform_func, transformation.transform_func)
+        add_input!(scene.compute, :transform_func, transformation.transform_func)
+        ComputePipeline.set_type!(scene.compute.transform_func, Any)
+        add_input!(scene.compute, :cycle_counters, Dict{Symbol, Int}())
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true
@@ -157,6 +192,15 @@ mutable struct Scene <: AbstractScene
         end
         return scene
     end
+end
+
+function replace_computed_with_obs!(theme::Union{Dict, Attributes})
+    for (key, val) in theme
+        if val isa Computed
+            theme[key] = ComputePipeline.get_observable!(val)
+        end
+    end
+    return
 end
 
 isclosed(scene::Scene) = scene.isclosed
@@ -259,17 +303,19 @@ function Scene(;
     bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values = true)
 
     wasnothing = isnothing(viewport)
-    if wasnothing
+    scene_viewport = if wasnothing
         sz = if haskey(m_theme, :resolution)
             @warn "Found `resolution` in the theme when creating a `Scene`. The `resolution` keyword for `Scene`s and `Figure`s has been deprecated. Use `Figure(; size = ...` or `Scene(; size = ...)` instead, which better reflects that this is a unitless size and not a pixel resolution. The key could also come from `set_theme!` calls or related theming functions."
             m_theme.resolution[]
         else
             m_theme.size[]
         end
-        viewport = Observable(Recti(0, 0, sz); ignore_equal_values = true)
+        Observable(Recti(0, 0, sz); ignore_equal_values = true)
+    else
+        viewport
     end
 
-    cam = camera isa Camera ? camera : Camera(viewport)
+    cam = camera isa Camera ? camera : Camera(scene_viewport)
     _lights = lights isa Automatic ? AbstractLight[] : lights
 
     if lights isa Automatic
@@ -304,7 +350,7 @@ function Scene(;
         clear = convert(Observable{Bool}, clear)
     end
     scene = Scene(
-        parent, events, viewport, clear, cam, camera_controls,
+        parent, events, scene_viewport, clear, cam, camera_controls,
         transformation, plots, m_theme,
         children, current_screens, bg, visible, ssao, _lights;
         deregister_callbacks = deregister_callbacks
@@ -313,8 +359,8 @@ function Scene(;
 
     if wasnothing
         on(events.window_area, priority = typemax(Int)) do w_area
-            if !any(x -> x ≈ 0.0, widths(w_area)) && viewport[] != w_area
-                viewport[] = w_area
+            if !any(x -> x ≈ 0.0, widths(w_area)) && scene_viewport[] != w_area
+                scene_viewport[] = w_area
             end
             return Consume(false)
         end
@@ -341,7 +387,7 @@ function Scene(
     child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values = true)
     deregister_callbacks = Observables.ObserverFunction[]
     _visible = Observable(true)
-    if visible isa Observable
+    if visible isa Union{Computed, Observable}
         listener = on(visible; update = true) do v
             _visible[] = v
         end
@@ -349,7 +395,7 @@ function Scene(
     elseif visible isa Bool
         _visible[] = visible
     else
-        error("Unsupported typer visible: $(typeof(visible))")
+        error("Unsupported type visible: $(typeof(visible))")
     end
     child = Scene(;
         events = events,
@@ -400,6 +446,54 @@ function root(scene::Scene)
     return scene
 end
 parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
+
+"""
+    scene_visible(scene::Scene)
+
+Effective visibility of `scene`: `true` only if `scene` and all of its ancestors
+are visible. Unlike `scene.visible[]`, this cascades down the scene tree, so a
+scene nested under an invisible ancestor counts as hidden even when its own
+`visible[]` is `true` (as happens when a `Block` force-shows its own scene).
+"""
+function scene_visible(scene::Scene)
+    while true
+        scene.visible[] || return false
+        isroot(scene) && return true
+        scene = parent(scene)
+    end
+    return
+end
+
+"""
+    effective_clip(scene::Scene)::Rect2i
+
+Intersection of `scene`'s own viewport with every ancestor's viewport.
+Backends use this as the scissor rectangle, so a scene is rendered only within
+the bounds shared by itself and all of its parents. Including the scene's own
+viewport keeps the scissor a subset of it (some drivers require `scissor ⊆
+viewport`), while intersecting the ancestors is what clips content that has
+scrolled or been positioned outside an enclosing region (e.g. a `Subfigure`).
+
+For the root scene this is just its own viewport, so the scissor matches the
+window.
+"""
+function effective_clip(scene::Scene)
+    rect = viewport(scene)[]
+    s = scene
+    while !isroot(s)
+        s = parent(s)
+        rect = intersect(rect, viewport(s)[])
+    end
+    # `intersect` on `Rect2i` returns negative widths for disjoint rects, which
+    # turns `glScissor` into `GL_INVALID_VALUE` (and Cairo's clip into a no-op).
+    # Clamp to an empty rect at the intersection origin so callers get a sane
+    # "draw nothing" instead.
+    w = widths(rect)
+    if w[1] < 0 || w[2] < 0
+        return Rect2i(minimum(rect), Vec2i(0, 0))
+    end
+    return rect
+end
 
 GeometryBasics.widths(scene::Scene) = widths(to_value(viewport(scene)))
 
@@ -669,6 +763,12 @@ not_in_data_space(p) = !is_data_space(p)
 function center!(scene::Scene, padding = 0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
     w = widths(bb)
+    # An empty scene (or one whose data hasn't laid out yet) has an undefined
+    # bounding box - boundingbox falls back to a zero-width / Inf-width Rect.
+    # Re-centering off that produces an Inf near/far plane and crashes
+    # perspectiveprojection. Skip silently; once the scene has data a later
+    # camera/limit update will recenter properly.
+    (any(!isfinite, w) || any(!isfinite, minimum(bb)) || iszero(w)) && return scene
     pad = w .* padding
     bb = Rect3d(minimum(bb) .- pad, w .+ 2pad)
     update_cam!(scene, bb)
@@ -677,6 +777,7 @@ end
 
 parent_scene(x) = parent_scene(get_scene(x))
 parent_scene(x::Plot) = parent_scene(parent(x))::Scene
+parent_scene(x::Block) = parent_scene(x.blockscene)::Scene
 parent_scene(x::Scene) = x
 parent_scene(::Nothing) = nothing
 
@@ -694,18 +795,45 @@ is2d(lims::Rect3) = widths(lims)[3] == 0.0
 ##### Figure type
 #####
 
+"""
+    GUIState
+
+Stores the configuration and state of GUI elements for a Figure.
+Created during Figure construction with normalized options from figure attributes and theme.
+
+## Fields
+Options (nothing = disabled, Dict = enabled with options):
+- `hovermenu_options::Union{Nothing, Dict{Symbol,Any}}`: Options for the hover menu bar
+- `legend_options::Union{Nothing, Dict{Symbol,Any}}`: Options for the legend overlay
+- `colorbar_options::Union{Nothing, Dict{Symbol,Any}}`: Options for the colorbar overlay
+
+Created elements (nothing until added):
+- `hovermenu::Union{Nothing, Any}`: Reference to the hover menu elements if created
+- `legend::Union{Nothing, Block}`: Reference to the legend if created
+- `colorbar::Union{Nothing, Block}`: Reference to the colorbar if created
+"""
+mutable struct GUIState
+    # Options (nothing = disabled)
+    hovermenu_options::Union{Nothing, Dict{Symbol, Any}}
+    legend_options::Union{Nothing, Dict{Symbol, Any}}
+    colorbar_options::Union{Nothing, Dict{Symbol, Any}}
+    # Created elements
+    hovermenu::Union{Nothing, Any}
+    legend::Union{Nothing, Block}
+    colorbar::Union{Nothing, Block}
+end
+
+function GUIState(; hovermenu_options = nothing, legend_options = nothing, colorbar_options = nothing)
+    return GUIState(hovermenu_options, legend_options, colorbar_options, nothing, nothing, nothing)
+end
+
 struct Figure
     scene::Scene
     layout::GridLayoutBase.GridLayout
     content::Vector
     attributes::Attributes
     current_axis::Ref{Any}
-
-    function Figure(args...)
-        f = new(args...)
-        current_figure!(f)
-        return f
-    end
+    gui_state::GUIState
 end
 
 struct FigureAxisPlot
@@ -714,7 +842,21 @@ struct FigureAxisPlot
     plot::AbstractPlot
 end
 
-const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+struct FigureBlock
+    figure::Figure
+    block::Block
+end
+
+const FigureAxis = FigureBlock
+function Base.getproperty(fb::FigureBlock, name::Symbol)
+    if name === :axis
+        return getfield(fb, :block)
+    else
+        return getfield(fb, name)
+    end
+end
+
+const FigureLike = Union{Scene, Figure, FigureAxisPlot, FigureBlock}
 
 """
     is_atomic_plot(plot::Plot)

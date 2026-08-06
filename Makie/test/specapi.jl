@@ -59,23 +59,23 @@ end
         newspec = S.Scatter(1:4; color = :red, cycle = [])
         updated = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec
-        @test updated == Dict(:color => to_color(:red))
+        @test updated == [:color => to_color(:red)]
         @test s.plots[1].changed[] == Dict(:color => to_color(:red), :raw_color => to_color(:red), :scaled_color => to_color(:red))
         newspec = S.Scatter(1:4; color = :green, cycle = [])
         updated = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec
-        @test updated == Dict(:color => to_color(:green))
+        @test updated == [:color => to_color(:green)]
         @test s.plots[1].changed[] == Dict(:color => to_color(:green), :raw_color => to_color(:green), :scaled_color => to_color(:green))
         newspec = S.Scatter(1:5; color = :green, cycle = [])
         updates = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec
-        @test s.plots[1].args[][1] == updates[:arg1]
+        @test s.plots[1].args[][1] == Dict(updates)[:arg1]
         oldspec = S.Scatter(1:5; color = :green, marker = :rect, cycle = [])
         newspec = S.Scatter(1:4; color = :red, marker = :circle, cycle = [])
         p = Makie.to_plot_object(oldspec)
         s = Scene()
         plot!(s, p)
-        updates = Makie.update_plot!(p, oldspec, newspec)
+        updates = Dict(Makie.update_plot!(p, oldspec, newspec))
         @test updates[:arg1] == p.arg1[]
         @test updates[:color] == p.color[]
         @test Makie.to_spritemarker(updates[:marker]) == p.marker[]
@@ -153,7 +153,9 @@ function Makie.convert_arguments(::Type{Lines}, ::ForwardAllAttributes; kwargs..
     return S.Lines([1, 2, 3], [1, 2, 3]; kwargs...)
 end
 
-Makie.used_attributes(T::Type{<:Plot}, ::ForwardAllAttributes) = (Makie.attribute_names(T)...,)
+function Makie.used_attributes(T::Type{<:Plot}, ::ForwardAllAttributes)
+    return (Makie.flattened_keys(Makie.documented_attributes(T))...,)
+end
 
 @testset "Forward all attribute without error" begin
     f, ax, pl = lines(ForwardAllAttributes(); color = :red)
@@ -312,4 +314,141 @@ end
             Set(ax.yaxislinks) == (i == 1 ? Set(v) : Set([]))
         end
     end
+end
+
+@testset "GridLayout deletion" begin
+    # this should not error
+    @test begin
+        obs = Observable(
+            S.GridLayout(
+                [
+                S.Box(color = :red) S.GridLayout([S.Box(color = :blue)])
+                ]
+            )
+        )
+        f, a, p = plot(obs)
+        obs[] = S.GridLayout([S.Box(color = :lightgray)])
+        true
+    end
+end
+
+@testset "SpecApi in Blocks" begin
+    obs = Observable{Any}(S.Box())
+    fig, block = Block(obs)
+    @test !isnothing(block.layout)
+    @test length(block.layout.content) == 1
+    box = block.layout.content[1].content
+    @test box isa Box
+    @test block.blocks == [box]
+
+    obs[] = S.GridLayout([S.Label(text = "a") S.Label(text = "b")])
+    @test length(block.layout.content) == 2
+    lbl1, lbl2 = map(x -> x.content, block.layout.content)
+    @test lbl1 isa Label
+    @test lbl2 isa Label
+    @test block.blocks == [lbl1, lbl2]
+end
+
+function collect_cycle_indices(plots, indices = Int[])
+    for p in plots
+        if p isa PlotList
+            collect_cycle_indices(p.plots, indices)
+        else
+            # Pulling plot.cycle_index is what initializes cycling and increments
+            # the scenes cycle counter(s). If we do it here we will not catch
+            # incorrect initialization.
+            cycle = p.cycle[]
+            for key in Makie.attrsyms(cycle)
+                p.attributes[key][]
+            end
+            if Makie.ComputePipeline.isdirty(p.cycle_index)
+                push!(indices, -1)
+            else
+                push!(indices, p.cycle_index[])
+            end
+        end
+    end
+    return indices
+end
+
+@testset "plotlist cycling" begin
+    inputs = [
+        [S.Scatter(fill(i + 1, 5), 1:5) for i in 1:3],
+        [S.Scatter(fill(i + 1, 5), 1:5) for i in 1:7],
+        [S.Scatter(fill(i + 1, 5), 1:5) for i in 1:3],
+        [S.Scatter(fill(i + 1, 5), 1:5) for i in 1:2],
+        [S.Scatter(fill(i + 1, 5), 1:5) for i in 1:3],
+    ]
+
+    f = Figure(size = (500, 1000))
+
+    pls = []
+    for j in 1:5
+        # later update
+        scatter(f[j, 1], fill(1, 5), (1:5), marker = Rect)
+        p = plotlist!(inputs[1])
+        push!(pls, p)
+        scatter!(fill(9, 5), (1:5), marker = Rect)
+
+        # direct init
+        scatter(f[j, 2], fill(1, 5), (1:5), marker = Rect)
+        plotlist!(inputs[j])
+        scatter!(fill(9, 5), (1:5), marker = Rect)
+    end
+
+    # update column
+    for i in 1:5
+        indices = collect_cycle_indices(f.content[2i - 1].scene.plots)
+        @test indices == [1, 2, 3, 4, 5]
+    end
+
+    # init column
+    # indices will collect from: [scatter, plotlist.plots..., scatter]
+    indices = collect_cycle_indices(f.content[2].scene.plots)
+    @test indices == [1, 2, 3, 4, 5]
+    indices = collect_cycle_indices(f.content[4].scene.plots)
+    @test indices == collect(1:9)
+    indices = collect_cycle_indices(f.content[6].scene.plots)
+    @test indices == [1, 2, 3, 4, 5]
+    indices = collect_cycle_indices(f.content[8].scene.plots)
+    @test indices == [1, 2, 3, 4]
+    indices = collect_cycle_indices(f.content[10].scene.plots)
+    @test indices == [1, 2, 3, 4, 5]
+
+    # successively update plotlists to check how they affect cycle indices
+    for i in 1:5
+        for j in i:5
+            pls[j].arg1 = inputs[i]
+        end
+    end
+
+    # update column
+    indices = collect_cycle_indices(f.content[1].scene.plots)
+    @test indices == [1, 2, 3, 4, 5]
+    indices = collect_cycle_indices(f.content[3].scene.plots)
+    @test indices == [1, 2, 3, 4, 6, 7, 8, 9, 5]
+    # ^ 5 existed before and we currently don't update other cycle indices as
+    # side effects, so we get a jump from 4 -> 6 in the plotlist plots
+    indices = collect_cycle_indices(f.content[5].scene.plots)
+    @test indices == [1, 2, 3, 4, 5]
+    indices = collect_cycle_indices(f.content[7].scene.plots)
+    @test indices == [1, 2, 3, 5]
+    indices = collect_cycle_indices(f.content[9].scene.plots)
+    @test indices == [1, 2, 3, 6, 5]
+    # ^ would be nice if this was 1:5 again, but the plotlist currently doesn't
+    # know that 4 is available
+
+    # init column - should be unaffected
+    indices = collect_cycle_indices(f.content[2].scene.plots)
+    @test indices == [1, 2, 3, 4, 5]
+    indices = collect_cycle_indices(f.content[4].scene.plots)
+    @test indices == collect(1:9)
+    indices = collect_cycle_indices(f.content[6].scene.plots)
+    @test indices == [1, 2, 3, 4, 5]
+    indices = collect_cycle_indices(f.content[8].scene.plots)
+    @test indices == [1, 2, 3, 4]
+    indices = collect_cycle_indices(f.content[10].scene.plots)
+    @test indices == [1, 2, 3, 4, 5]
+
+    f
 end

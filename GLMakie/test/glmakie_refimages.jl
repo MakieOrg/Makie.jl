@@ -187,3 +187,159 @@ end
 
     scene
 end
+
+# The kernel uses random which creates differences between CI runs without using
+# StableRNG
+function ssao_pipeline()
+    pipeline = Makie.default_pipeline(ssao = true)
+    attr = pipeline.stages[3].attributes
+    attr[:kernel] = Makie.generate_ssao_kernel(
+        attr[:N_samples][], attr[:lerp_min][], attr[:lerp_max][], RNG.STABLE_RNG
+    )
+    return pipeline
+end
+
+@reference_test "render stage parameters with SSAO postprocessor" begin
+    GLMakie.activate!(render_pipeline = ssao_pipeline())
+    f = Figure()
+    ps = [Point3f(x, y, sin(x * y + y - x)) for x in range(-2, 2, length = 21) for y in range(-2, 2, length = 21)]
+    for (i, ssao) in zip(1:2, (false, true))
+        for (j, fxaa) in zip(1:2, (false, true))
+            for (k, transparency) in zip(1:2, (false, true))
+                Label(f[2i - 1, k + 2(j - 1)], "$ssao, $fxaa, $transparency", tellwidth = false)
+                a, p = meshscatter(
+                    f[2i, k + 2(j - 1)], ps, marker = Rect3f(Point3f(-0.5), Vec3f(1)),
+                    markersize = 1, color = :white; ssao, fxaa, transparency
+                )
+            end
+        end
+    end
+    f
+end
+
+@reference_test "render stage parameters without SSAO postprocessor" begin
+    GLMakie.activate!(ssao = false)
+    f = Figure()
+    ps = [Point3f(x, y, sin(x * y + y - x)) for x in range(-2, 2, length = 21) for y in range(-2, 2, length = 21)]
+    for (i, ssao) in zip(1:2, (false, true))
+        for (j, fxaa) in zip(1:2, (false, true))
+            for (k, transparency) in zip(1:2, (false, true))
+                Label(f[2i - 1, k + 2(j - 1)], "$ssao, $fxaa, $transparency", tellwidth = false)
+                a, p = meshscatter(
+                    f[2i, k + 2(j - 1)], ps, marker = Rect3f(Point3f(-0.5), Vec3f(1)),
+                    markersize = 1, color = :white; ssao, fxaa, transparency
+                )
+            end
+        end
+    end
+    f
+end
+
+@reference_test "Custom stage in render pipeline" begin
+    function GLMakie.construct(::Val{:Tint}, screen, framebuffer, inputs, parent)
+        frag_shader = """
+        {{GLSL_VERSION}}
+
+        in vec2 frag_uv;
+        out vec4 fragment_color;
+
+        uniform sampler2D color_buffer; // \$(name of input)_buffer
+        uniform mat3 color_transform;   // from Stage attributes
+
+        void main(void) {
+            vec4 c = texture(color_buffer, frag_uv).rgba;
+            fragment_color = vec4(color_transform * c.rgb, c.a);
+            // fragment_color = vec4(1,0,0, c.a);
+        }
+        """
+
+        shader = GLMakie.LazyShader(
+            screen.shader_cache,
+            GLMakie.loadshader("postprocessing/fullscreen.vert"),
+            GLMakie.ShaderSource(frag_shader, :frag)
+        )
+
+        inputs[:color_transform] = parent.attributes[:color_transform]
+
+        robj = GLMakie.PostProcessRenderObject(screen, inputs, shader)
+
+        return GLMakie.RenderPass{:Tint}(framebuffer, robj)
+    end
+
+    function GLMakie.run_stage(screen, glscene, stage::GLMakie.RenderPass{:Tint})
+        resize!(stage.framebuffer, screen.framebuffer_manager.size)
+        # Blend transparent onto opaque
+        wh = size(stage.framebuffer)
+        GLMakie.set_draw_buffers(stage.framebuffer)
+        GLMakie.glViewport(0, 0, wh[1], wh[2])
+        GLMakie.GLAbstraction.render(stage.robj)
+        return
+    end
+
+
+    begin
+        # Pipeline matches test_pipeline_2D up to color_tint
+        pipeline = Makie.RenderPipeline()
+
+        render1 = push!(pipeline, Makie.PlotRenderStage(transparency = false, fxaa = true))
+        render2 = push!(pipeline, Makie.TransparentPlotRenderStage())
+        oit = push!(pipeline, Makie.OITStage())
+        fxaa = push!(pipeline, Makie.FXAAStage(filter_in_shader = false))
+        render3 = push!(pipeline, Makie.PlotRenderStage(transparency = false, fxaa = false))
+        color_tint = push!(
+            pipeline, Makie.RenderStage(
+                :Tint,
+                inputs = [:color => Makie.BufferFormat()], # defaults to 4x N0f8, i.e. 32Bit color
+                outputs = [:color => Makie.BufferFormat()],
+                color_transform = Observable(
+                    Makie.Mat3f(
+                        # sepia filter
+                        0.393, 0.349, 0.272,
+                        0.769, 0.686, 0.534,
+                        0.189, 0.168, 0.131
+                    )
+                )
+            )
+        )
+        display_stage = push!(pipeline, Makie.DisplayStage())
+
+        connect!(pipeline, render1, fxaa)
+        connect!(pipeline, render1, display_stage, :objectid)
+        connect!(pipeline, render1, display_stage, :depth)
+        connect!(pipeline, render2, oit)
+        connect!(pipeline, render2, display_stage, :objectid)
+        connect!(pipeline, render2, display_stage, :depth)
+        connect!(pipeline, oit, fxaa, :color)
+        connect!(pipeline, fxaa, color_tint, :color)
+        connect!(pipeline, render3, color_tint, :color)
+        connect!(pipeline, render3, display_stage, :objectid)
+        connect!(pipeline, render3, display_stage, :depth)
+        connect!(pipeline, color_tint, display_stage, :color)
+    end
+
+
+    GLMakie.activate!(render_pipeline = pipeline)
+    cow = load(Makie.assetpath("cow.png"))
+    f, a, p = image(rotr90(cow))
+end
+
+# activate!() changes the default, so we need a reset here
+GLMakie.activate!(render_pipeline = Makie.automatic)
+
+@reference_test "Dynamic Render Pipeline replacement" begin
+    scene = Scene(size = (300, 300))
+    meshscatter!(scene, Rect2f(-0.5, -0.5, 1, 1), alpha = 0.5, markersize = Vec3f(0.4, 0.6, 0.5), transparency = true)
+    meshscatter!(scene, [0, 0], [-0.5, 0.5], [0.5, -0.5], alpha = 0.5, markersize = 0.2, transparency = true)
+    screen = display(scene, render_pipeline = Makie.minimal_render_pipeline(), visible = false)
+    img1 = copy(colorbuffer(screen))
+    id = screen.renderlist[1][3].id
+    screen = display(scene, render_pipeline = Makie.default_pipeline(), visible = false)
+    img2 = copy(colorbuffer(screen))
+    # renderobjects should not get destroyed here, so ids should persist
+    @test id == screen.renderlist[1][3].id
+
+    scene = Scene(size = (600, 300), camera = campixel!)
+    image!(scene, 0 .. 300, 0 .. 300, img1)
+    image!(scene, 300 .. 600, 0 .. 300, img2)
+    scene
+end

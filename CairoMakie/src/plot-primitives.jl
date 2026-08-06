@@ -8,6 +8,11 @@
 
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::Screen, scene::Scene)
+    # So animations based on tick events can finish
+    screen.last_render_time = Makie.next_tick!(
+        events(scene).tick, Makie.OneTimeRenderTick, screen.creation_time, screen.last_render_time
+    )
+
     Cairo.save(screen.context)
     draw_background(screen, scene)
 
@@ -27,7 +32,7 @@ function cairo_draw(screen::Screen, scene::Scene)
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
         pparent = Makie.parent_scene(p)::Scene
-        pparent.visible[]::Bool || continue
+        Makie.scene_visible(pparent) || continue
         if pparent != last_scene
             Cairo.restore(screen.context)
             Cairo.save(screen.context)
@@ -87,21 +92,26 @@ function prepare_for_scene(screen::Screen, scene::Scene)
 
     # get the root area to correct for its size when translating
     root_area_height = widths(Makie.root(scene))[2]
+
+    # Clip to the intersection of all ancestor viewports — `effective_clip`
+    # — so the scene only renders within the bounds its parents share.
+    # The scene's own viewport is excluded from the intersection, so e.g.
+    # axis markers near a spine extend past the plot scene into the axis's
+    # decoration area (which is clipped at the figure / container edge).
+    clip_area = Makie.effective_clip(scene)
+    clip_x, clip_y_makie = origin(clip_area)
+    clip_w, clip_h = widths(clip_area)
+    clip_top = root_area_height - clip_y_makie - clip_h
+    Cairo.rectangle(screen.context, clip_x, clip_top, clip_w, clip_h)
+    Cairo.clip(screen.context)
+
+    # Translate so scene-local (0, 0) corresponds to the scene's window origin.
+    # Cairo's y goes down, Makie's goes up, hence the parent-height correction.
     scene_area = viewport(scene)[]
-    scene_height = widths(scene_area)[2]
     scene_x_origin, scene_y_origin = scene_area.origin
-
-    # we need to translate x by the origin, so distance from the left
-    # but y by the distance from the top, which is not the origin, but can
-    # be calculated using the parent's height, the scene's height and the y origin
-    # this is because y goes downwards in Cairo and upwards in Makie
-
+    scene_height = widths(scene_area)[2]
     top_offset = root_area_height - scene_height - scene_y_origin
     Cairo.translate(screen.context, scene_x_origin, top_offset)
-
-    # clip the scene to its viewport
-    Cairo.rectangle(screen.context, 0, 0, widths(scene_area)...)
-    Cairo.clip(screen.context)
 
     return
 end
@@ -114,7 +124,7 @@ end
 function draw_background(screen::Screen, scene::Scene, root_h)
     cr = screen.context
     Cairo.save(cr)
-    if scene.clear[]
+    if scene.clear[] && Makie.scene_visible(scene)
         bg = scene.backgroundcolor[]
         Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg))
         r = viewport(scene)[]

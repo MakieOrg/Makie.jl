@@ -52,10 +52,10 @@ end
     cb = Colorbar(fig[1, 2], hm)
 
     @test hm.scaled_colorrange[] == Vec(-0.5, 0.5)
-    @test cb.limits[] == Vec(-0.5, 0.5)
+    @test cb.resolved_colorrange[] == Vec(-0.5, 0.5)
 
     hm.colorrange = Float32.((-1, 1))
-    @test cb.limits[] == Vec(-1, 1)
+    @test cb.resolved_colorrange[] == Vec(-1, 1)
 
     # TODO: This doesn't work anymore because colorbar doesn't use the same observable
     # cb.limits[] = Float32.((-2, 2))
@@ -65,7 +65,8 @@ end
 @testset "Axis limits basics" begin
     f = Figure()
     ax = Axis(f[1, 1], limits = (nothing, nothing))
-    ax.targetlimits[] = BBox(0, 10, 0, 20)
+    ax.localxlimits[] = (0.0, 10.0)
+    ax.localylimits[] = (0.0, 20.0)
     @test ax.finallimits[] == BBox(0, 10, 0, 20)
     @test ax.limits[] == (nothing, nothing)
     xlims!(ax, -10, 10)
@@ -104,22 +105,22 @@ end
     @test ax.targetlimits[] == BBox(0, 5, 0, 6)
     @test ax.finallimits[] == BBox(0, 5, 0, 6)
     xlims!(ax, [-10, 10])
-    @test ax.limits[] == ([-10, 10], nothing)
+    @test ax.limits[] == ((-10, 10), nothing)
     @test ax.targetlimits[] == BBox(-10, 10, 0, 6)
     @test ax.finallimits[] == BBox(-10, 10, 0, 6)
     scatter!(Point2f(11, 12))
     reset_limits!(ax)
-    @test ax.limits[] == ([-10, 10], nothing)
+    @test ax.limits[] == ((-10, 10), nothing)
     @test ax.targetlimits[] == BBox(-10, 10, 0, 12)
     @test ax.finallimits[] == BBox(-10, 10, 0, 12)
     autolimits!(ax)
     ylims!(ax, [5, 7])
-    @test ax.limits[] == (nothing, [5, 7])
+    @test ax.limits[] == (nothing, (5, 7))
     @test ax.targetlimits[] == BBox(0, 11, 5, 7)
     @test ax.finallimits[] == BBox(0, 11, 5, 7)
     scatter!(Point2f(-5, -7))
     reset_limits!(ax)
-    @test ax.limits[] == (nothing, [5, 7])
+    @test ax.limits[] == (nothing, (5, 7))
     @test ax.targetlimits[] == BBox(-5, 11, 5, 7)
     @test ax.finallimits[] == BBox(-5, 11, 5, 7)
     @test_throws MethodError limits!(f[1, 1], -1, 1, -1, 1)
@@ -182,13 +183,13 @@ end
 end
 
 @testset "Colorbar plot object kwarg clash" begin
-    for attr in (:colormap, :limits)
+    for attr in (:colormap, :colorrange, :limits)
         f, ax, p = scatter(1:10, 1:10, color = 1:10, colorrange = (1, 10))
         Colorbar(f[2, 1], p)
         @test_throws ErrorException Colorbar(f[2, 1], p; Dict(attr => nothing)...)
     end
 
-    for attr in (:colormap, :limits, :highclip, :lowclip)
+    for attr in (:colormap, :colorrange, :limits, :highclip, :lowclip)
         for F in (heatmap, contourf)
             f, ax, p = F(1:10, 1:10, randn(10, 10))
             Colorbar(f[1, 2], p)
@@ -219,6 +220,191 @@ end
 
         @test get_ticks(WilkinsonTicks(5), identity, automatic, 1, 5) == ([1, 2, 3, 4, 5], ["1", "2", "3", "4", "5"])
     end
+end
+
+@testset "Automatic ticks for pseudolog10" begin
+    automatic = Makie.automatic
+    cases = [
+        (-10.0, 10.0) => (
+            [-10.0, 0.0, 10.0],
+            ["−101", "0", "101"],
+        ),
+        (-100.0, 100.0) => (
+            [-100.0, -10.0, 0.0, 10.0, 100.0],
+            ["−102", "−101", "0", "101", "102"],
+        ),
+        (-1000.0, 1000.0) => (
+            [-1000.0, -100.0, -10.0, 0.0, 10.0, 100.0, 1000.0],
+            ["−103", "−102", "−101", "0", "101", "102", "103"],
+        ),
+        (-1.0e6, 1.0e6) => (
+            [-1.0e6, -1000.0, 0.0, 1000.0, 1.0e6],
+            ["−106", "−103", "0", "103", "106"],
+        ),
+        (0.0, 100.0) => (
+            [0.0, 10.0, 100.0],
+            ["0", "101", "102"],
+        ),
+        (0.0, 10000.0) => (
+            [0.0, 10.0, 100.0, 1000.0, 10000.0],
+            ["0", "101", "102", "103", "104"],
+        ),
+        (-10.0, 1000.0) => (
+            [-10.0, 0.0, 10.0, 100.0, 1000.0],
+            ["−101", "0", "101", "102", "103"],
+        ),
+        (-100.0, 1.0e6) => (
+            [-100.0, 0.0, 100.0, 10000.0, 1.0e6],
+            ["−102", "0", "102", "104", "106"],
+        ),
+        (1.0, 1000.0) => (
+            [1.0, 10.0, 100.0, 1000.0],
+            ["100", "101", "102", "103"],
+        ),
+        (10.0, 1.0e6) => (
+            [10.0, 100.0, 1000.0, 10000.0, 100000.0, 1.0e6],
+            ["101", "102", "103", "104", "105", "106"],
+        ),
+        (-1000.0, -10.0) => (
+            [-1000.0, -100.0, -10.0],
+            ["−103", "−102", "−101"],
+        ),
+        (-1.0e6, -10.0) => (
+            [-1.0e6, -100000.0, -10000.0, -1000.0, -100.0, -10.0],
+            ["−106", "−105", "−104", "−103", "−102", "−101"],
+        ),
+        (0.0, 0.01) => (
+            [0.0, 0.005, 0.01],
+            ["0.000", "0.005", "0.010"],
+        ),
+        (-0.5, 0.5) => (
+            [-0.5, 0.0, 0.5],
+            ["−0.5", "0.0", "0.5"],
+        ),
+        (-100.0, -50.0) => (
+            [-100.0, -90.0, -80.0, -70.0, -60.0, -50.0],
+            ["−100", "−90", "−80", "−70", "−60", "−50"],
+        ),
+        (0.0, 99.0) => (
+            [0.0, 20.0, 40.0, 60.0, 80.0],
+            ["0", "20", "40", "60", "80"],
+        ),
+        # Prime kmax = 7: stride 3 doesn't divide 7 but reaches k = 6 cleanly with 5 ticks,
+        # better than the divisor-only options (s=1 → 15 ticks, s=7 → 3 ticks).
+        (-1.0e7, 1.0e7) => (
+            [-1.0e6, -1000.0, 0.0, 1000.0, 1.0e6],
+            ["−106", "−103", "0", "103", "106"],
+        ),
+        (10.0, 1.0e8) => (
+            [10.0, 1000.0, 100000.0, 1.0e7],
+            ["101", "103", "105", "107"],
+        ),
+    ]
+    for ((lo, hi), (expected_ticks, expected_labels)) in cases
+        ticks, labels = Makie.get_ticks(automatic, Makie.pseudolog10, automatic, lo, hi)
+        @test ticks == expected_ticks
+        @test string.(labels) == expected_labels
+    end
+end
+
+@testset "Automatic ticks for Symlog10" begin
+    automatic = Makie.automatic
+    s10 = Makie.Symlog10(10.0)
+    s100 = Makie.Symlog10(100.0)
+    s5 = Makie.Symlog10(5.0)
+    s_asym = Makie.Symlog10(-5.0, 50.0)
+    s10_ls2 = Makie.Symlog10(-10.0, 10.0; linscale = 2.0)
+
+    cases = [
+        (s10, -100.0, 100.0) => (
+            [-100.0, -10.0, 0.0, 10.0, 100.0],
+            ["−102", "−101", "0", "101", "102"],
+        ),
+        (s10, -1000.0, 1000.0) => (
+            [-1000.0, -100.0, -10.0, 0.0, 10.0, 100.0, 1000.0],
+            ["−103", "−102", "−101", "0", "101", "102", "103"],
+        ),
+        (s10, -1.0e6, 1.0e6) => (
+            [-1.0e6, -1000.0, 0.0, 1000.0, 1.0e6],
+            ["−106", "−103", "0", "103", "106"],
+        ),
+        (s10, 0.0, 1000.0) => (
+            [0.0, 10.0, 100.0, 1000.0],
+            ["0", "101", "102", "103"],
+        ),
+        (s10, -10.0, 10.0) => (
+            [-10.0, -5.0, 0.0, 5.0, 10.0],
+            ["−10", "−5", "0", "5", "10"],
+        ),
+        (s10, 10.0, 1000.0) => (
+            [10.0, 100.0, 1000.0],
+            ["101", "102", "103"],
+        ),
+        (s10, -1000.0, -10.0) => (
+            [-1000.0, -100.0, -10.0],
+            ["−103", "−102", "−101"],
+        ),
+        (s100, -1000.0, 1000.0) => (
+            [-1000.0, 0.0, 1000.0],
+            ["−103", "0", "103"],
+        ),
+        (s5, -100.0, 100.0) => (
+            [-100.0, -10.0, 0.0, 10.0, 100.0],
+            ["−102", "−101", "0", "101", "102"],
+        ),
+        (s_asym, -50.0, 500.0) => (
+            [0.0, 200.0, 400.0],
+            ["0", "200", "400"],
+        ),
+        (s10_ls2, -100.0, 100.0) => (
+            [-100.0, -10.0, 0.0, 10.0, 100.0],
+            ["−102", "−101", "0", "101", "102"],
+        ),
+        (s10, -50.0, 50.0) => (
+            [-10.0, 0.0, 10.0],
+            ["−101", "0", "101"],
+        ),
+    ]
+    for ((scale, lo, hi), (expected_ticks, expected_labels)) in cases
+        ticks, labels = Makie.get_ticks(automatic, scale, automatic, lo, hi)
+        @test ticks == expected_ticks
+        @test string.(labels) == expected_labels
+    end
+end
+
+@testset "PseudologTicks/SymlogTicks n_ideal parameter" begin
+    automatic = Makie.automatic
+
+    auto_t, auto_l = Makie.get_ticks(automatic, Makie.pseudolog10, automatic, -1.0e6, 1.0e6)
+    explicit_t, explicit_l = Makie.get_ticks(PseudologTicks(), Makie.pseudolog10, automatic, -1.0e6, 1.0e6)
+    @test auto_t == explicit_t
+    @test string.(auto_l) == string.(explicit_l)
+
+    sparse_t, _ = Makie.get_ticks(PseudologTicks(3), Makie.pseudolog10, automatic, -1.0e6, 1.0e6)
+    @test sparse_t == [-1.0e6, 0.0, 1.0e6]
+
+    dense_t, _ = Makie.get_ticks(PseudologTicks(15), Makie.pseudolog10, automatic, -1.0e6, 1.0e6)
+    @test dense_t == [
+        -1.0e6, -100000.0, -10000.0, -1000.0, -100.0, -10.0,
+        0.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1.0e6,
+    ]
+
+    sym_auto, _ = Makie.get_ticks(automatic, Makie.Symlog10(10.0), automatic, -1.0e6, 1.0e6)
+    sym_explicit, _ = Makie.get_ticks(SymlogTicks(), Makie.Symlog10(10.0), automatic, -1.0e6, 1.0e6)
+    @test sym_auto == sym_explicit
+end
+
+@testset "Custom formatter applied to pseudolog10/Symlog10 ticks" begin
+    automatic = Makie.automatic
+    formatter = vs -> [string(Int(v)) for v in vs]
+
+    ticks, labels = Makie.get_ticks(automatic, Makie.pseudolog10, formatter, -1000.0, 1000.0)
+    @test ticks == [-1000.0, -100.0, -10.0, 0.0, 10.0, 100.0, 1000.0]
+    @test labels == ["-1000", "-100", "-10", "0", "10", "100", "1000"]
+
+    ticks, labels = Makie.get_ticks(automatic, Makie.Symlog10(10.0), formatter, -1000.0, 1000.0)
+    @test ticks == [-1000.0, -100.0, -10.0, 0.0, 10.0, 100.0, 1000.0]
+    @test labels == ["-1000", "-100", "-10", "0", "10", "100", "1000"]
 end
 
 @testset "Minor tick skip" begin
@@ -259,7 +445,7 @@ end
         # https://github.com/MakieOrg/Makie.jl/issues/2278
         fig = Figure()
         cbar = Colorbar(fig[1, 1], colormap = :viridis, colorrange = Vec2f(0, 1))
-        ticklabel_strings = first.(cbar.axis.elements[:ticklabels].arg1[])
+        ticklabel_strings = cbar.axis.elements[:ticklabels].text[]
         @test ticklabel_strings[1] == "0.0"
         @test ticklabel_strings[end] == "1.0"
     end
@@ -274,13 +460,13 @@ end
     @testset "Recipes" begin
         f, ax, pl = barplot(1:3; color = 1:3)
         cbar = Colorbar(f[1, 2], pl)
-        @test cbar.limits[] == Vec(1.0, 3.0)
+        @test cbar.resolved_colorrange[] == Vec(1.0, 3.0)
 
         let data = fill(1.0, 2, 2, 2)
             data[1] = 3.0
             f, ax, pl = volumeslices(1:2, 1:2, 1:2, data)
             cbar = Colorbar(f[1, 2], pl)
-            @test cbar.limits[] == Vec(1.0, 3.0)
+            @test cbar.resolved_colorrange[] == Vec(1.0, 3.0)
         end
     end
 end
@@ -534,6 +720,46 @@ end
     @test make_fig(linesegments!, rand(8)) isa Figure
 end
 
+@testset "Joint legend data gathering" begin
+    f = Figure()
+    ax1 = Axis(f[1, 1])
+    l1a = lines!(ax1, rand(10), label = "test a")
+    l1b = lines!(ax1, rand(10), label = "test b")
+    ax2 = Axis(f[1, 2])
+    l2a = lines!(ax2, rand(10), label = "test a")
+    leg = Legend(f[1, 3], [ax1, ax2], merge = true)
+
+    @test f isa Figure
+    # The joint legend has two entries
+    @test length(leg.entrygroups[][1][2]) == 2
+    # The first entry has two linked plots
+    @test length(leg.entrygroups[][1][2][1].elements) == 2
+    # The two linked plots are the plots from two different axes
+    @test leg.entrygroups[][1][2][1].plots[1] == l1a
+    @test leg.entrygroups[][1][2][1].plots[2] == l2a
+end
+
+@testset "Legend linecap and joinstyle" begin
+    # The value stored on the LineElement may already be converted by the plot's
+    # compute graph (Int32) or kept as the original Symbol (override path), so
+    # we compare against both possible forms.
+    matches(stored, sym, key) = stored == sym || stored == Makie.convert_attribute(sym, Makie.Key{key}())
+
+    f = Figure()
+    ax = Axis(f[1, 1])
+    lines!(ax, 1:10, label = "a", linecap = :round, joinstyle = :round)
+    linesegments!(ax, [Point2f(0, 0), Point2f(1, 1)], label = "b", linecap = :square)
+    lines!(ax, 1:10, label = "c" => (; linecap = :square, joinstyle = :bevel))
+    leg = Legend(f[1, 2], ax)
+
+    entries = leg.entrygroups[][][2]
+    @test matches(entries[1].elements[1].attributes[:linecap][], :round, :linecap)
+    @test matches(entries[1].elements[1].attributes[:joinstyle][], :round, :joinstyle)
+    @test matches(entries[2].elements[1].attributes[:linecap][], :square, :linecap)
+    @test matches(entries[3].elements[1].attributes[:linecap][], :square, :linecap)
+    @test matches(entries[3].elements[1].attributes[:joinstyle][], :bevel, :joinstyle)
+end
+
 @testset "ReversibleScale" begin
     @test ReversibleScale(identity).inverse === identity
     @test ReversibleScale(log).inverse === exp
@@ -640,5 +866,123 @@ end
         else
             @test isempty(a.scene.plots)
         end
+    end
+end
+
+# See Makie#5588
+@testset "Color Updates of interactive elements" begin
+    f = Figure()
+    m = Menu(f[1, 1], options = ['a', 'b'], selection_cell_color_inactive = :red, cell_color_hover = :orange)
+    t = Toggle(f[2, 1], framecolor_inactive = to_color(:red), framecolor_active = to_color(:orange))
+    s = Slider(
+        f[3, 1], range = -100:100,
+        color_inactive = :red, color_active_dimmed = :orange, color_active = :black,
+    )
+    set_close_to!(s, 0)
+    c = Checkbox(
+        f[4, 1],
+        checkboxcolor_unchecked = :red, checkboxcolor_checked = :orange,
+        checkboxstrokecolor_unchecked = :blue, checkboxstrokecolor_checked = :cyan,
+        checkmarkcolor_unchecked = :white, checkmarkcolor_checked = :black,
+    )
+    f
+    Makie.update_state_before_display!(f)
+
+    @testset "Menu" begin
+        p = m.blockscene.plots[1]::Poly
+        @test to_color(p.color[]) == to_color(:red)
+        m.selection_cell_color_inactive = :blue
+        @test to_color(p.color[]) == to_color(:blue)
+
+        events(f).mouseposition[] = (300.0, 275.0)
+        @test to_color(p.color[]) == to_color(:orange)
+        m.cell_color_hover = :green
+        @test to_color(p.color[]) == to_color(:green)
+    end
+
+    @testset "Toggle" begin
+        p = t.blockscene.plots[1]::Poly
+        @test to_color(p.color[]) == to_color(:red)
+        t.framecolor_inactive = to_color(:blue)
+        @test to_color(p.color[]) == to_color(:blue)
+
+        events(f).mouseposition[] = (300.0, 225.0)
+        events(f).mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+        events(f).mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+        events(f).tick[] = Makie.Tick(Makie.SkippedRenderTick, 1, 0.1, 0.1)
+        events(f).tick[] = Makie.Tick(Makie.SkippedRenderTick, 2, 0.2, 0.1)
+        @test to_color(p.color[]) == to_color(:orange)
+        t.framecolor_active = to_color(:green)
+        @test to_color(p.color[]) == to_color(:green)
+    end
+
+    @testset "Slider" begin
+        p1 = s.blockscene.plots[1]::LineSegments
+        p2 = s.blockscene.plots[2]::Scatter
+        @test to_color(p1.color[]) == to_color([:orange, :red])
+        @test to_color(p2.color[]) == to_color(:black)
+        s.color_inactive = :blue
+        s.color_active_dimmed = :green
+        s.color_active = :cyan
+        @test to_color(p1.color[]) == to_color([:green, :blue])
+        @test to_color(p2.color[]) == to_color(:cyan)
+    end
+
+    @testset "Checkbox" begin
+        p1 = c.blockscene.plots[1]::Poly
+        p2 = c.blockscene.plots[2]::Scatter
+        events(f).mouseposition[] = (300.0, 165.0)
+        @test to_color(p1.color[]) == to_color(:red)
+        @test to_color(p1.strokecolor[]) == to_color(:blue)
+        @test to_color(p2.color[]) == to_color(:white)
+
+        c.checked = true
+
+        @test to_color(p1.color[]) == to_color(:orange)
+        @test to_color(p1.strokecolor[]) == to_color(:cyan)
+        @test to_color(p2.color[]) == to_color(:black)
+
+        c.checkboxcolor_unchecked = :green
+        c.checkboxcolor_checked = :purple
+        c.checkboxstrokecolor_unchecked = :yellow
+        c.checkboxstrokecolor_checked = :gray
+        c.checkmarkcolor_unchecked = :lightgreen
+        c.checkmarkcolor_checked = :pink
+
+        # still checked
+        @test to_color(p1.color[]) == to_color(:purple)
+        @test to_color(p1.strokecolor[]) == to_color(:gray)
+        @test to_color(p2.color[]) == to_color(:pink)
+
+        c.checked = false
+
+        @test to_color(p1.color[]) == to_color(:green)
+        @test to_color(p1.strokecolor[]) == to_color(:yellow)
+        @test to_color(p2.color[]) == to_color(:lightgreen)
+    end
+end
+
+# issue 2415
+@testset "themeable axislegend" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    lines!(ax, 1:10, label = "A line")
+    leg = @test_nowarn axislegend(ax)
+    @test leg.margin[] == (6, 6, 6, 6)
+    with_theme(Theme(Legend = (; margin = (1, 2, 3, 4)))) do
+        leg = @test_nowarn axislegend(ax)
+        @test leg.margin[] == (1, 2, 3, 4)
+
+        # Kwargs override theme
+        leg = @test_nowarn axislegend(ax; margin = (4, 3, 2, 1))
+        @test leg.margin[] == (4, 3, 2, 1)
+    end
+    with_theme(Theme(Legend = (;))) do
+        leg = @test_nowarn axislegend(ax)
+        @test leg.margin[] == (6, 6, 6, 6)
+
+        # Kwargs override theme
+        leg = @test_nowarn axislegend(ax; margin = (4, 3, 2, 1))
+        @test leg.margin[] == (4, 3, 2, 1)
     end
 end

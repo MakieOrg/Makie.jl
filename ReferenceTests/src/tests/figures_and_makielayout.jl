@@ -64,6 +64,29 @@ end
     fig
 end
 
+@reference_test "table" begin
+    fig = Figure(size = (600, 400))
+
+    data = (
+        name = ["Alice", "Bob", "Charlie", "Diana", "Eve"],
+        age = [28, 35, 42, 31, 25],
+        city = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"],
+    )
+
+    t = Table(
+        fig[1, 1];
+        data = data,
+        header_color = RGBf(0.2, 0.4, 0.6),
+        header_textcolor = :white,
+        cell_color_even = RGBf(0.95, 0.95, 1.0),
+        cell_color_odd = RGBf(0.9, 0.9, 0.95),
+        cell_color_selected = RGBf(0.7, 0.85, 1.0),
+        i_selected = 3
+    )
+
+    fig
+end
+
 @reference_test "Label with text wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     fig = Figure(size = (1000, 660))
@@ -196,7 +219,8 @@ end
 
     li = lines!(
         1:10,
-        label = "Line" => (; linewidth = 4, color = :gray60, linestyle = :dot),
+        linecap = :round,
+        label = "Line" => (; linewidth = 8, color = :gray60, linestyle = :dot),
     )
     sc = scatter!(
         1:10,
@@ -209,16 +233,16 @@ end
             label => (; markersize = 30, color = i) for (i, label) in enumerate(["blue", "green", "yellow"])
         ]
     )
-    Legend(f[1, 2], ax)
+    Legend(f[1, 2], ax, patchsize = (60, 30))
     Legend(
         f[1, 3],
         [
             sc => (; markersize = 30, alpha = 0.3),
-            [li => (; color = :red, alpha = 0.3, linewidth = 4), sc => (; color = :cyan)],
-            [li, sc] => Dict(:color => :cyan),
+            [li => (; color = :red, alpha = 0.3, linewidth = 8), sc => (; color = :cyan)],
+            [li, sc] => Dict(:color => :cyan, :linecap => :butt),
         ],
         ["Scatter", "Line and Scatter", "Another"],
-        patchsize = (40, 20)
+        patchsize = (60, 30)
     )
     f
 end
@@ -257,8 +281,8 @@ end
     ax = Axis(f[1, 1])
     lb = lines!(ax, 0:4, 0:4, linewidth = 10, color = :blue, label = "lines 1")
     lo = lines!(ax, 0:4, -4:0, linewidth = 10, color = :orange, label = "lines 2")
-    sb = scatter!(ax, range(0, 4, length = 10), fill(3, 10), markersize = 10, color = :blue, label = "scatter 1")
-    so = scatter!(ax, range(0, 4, length = 10), fill(2, 10), markersize = 10, color = :orange, label = "scatter 2")
+    sb = stem!(ax, range(0, 4, length = 10), fill(3, 10), color = :blue, label = "stem 1")
+    so = stem!(ax, range(0.25, 3.75, length = 9), fill(2, 9), color = :orange, label = "stem 2")
     x = LinRange(0, 4, 100)
     slb = band!(ax, x, cos.(x) .- 1, cos.(x) .- 2, color = :blue, label = "band 1")
     slo = band!(ax, x, sin.(x) .- 1, sin.(x) .- 2, color = :orange, label = "band 2")
@@ -273,7 +297,7 @@ end
     l2 = Legend(
         f[2, 2],
         [
-            PolyElement(plots = [lb, sb, slb, bb], color = :blue),
+            [lb, sb, slb, bb] => PolyElement(color = :blue),
             PolyElement(plots = [lo, so, slo, bo], color = :orange),
         ],
         ["blue", "orange"], "Colors"
@@ -731,32 +755,43 @@ end
     Makie.focus!(tb1)
     click(e, 297, 221)
     Makie.defocus!(tb1)
+    @test tb1.stored_string[] == "1234567890qwertyuiop"
 
     tb2 = Makie.Textbox(f[2, 1], width = 100)
     Makie.set!(tb2, "1234567890qwertyuiop")
-    tb2.cursorindex[] = 20
+    tb2.editor.cursors[] = [Makie.EditCursor(20)]
     Makie.focus!(tb2)
     send(e, Keyboard.backspace)
     Makie.defocus!(tb2)
+    @test tb2.stored_string[] == "1234567890qwertyuiop"
+    # should defocus!() or clicking away really not commit the change?
+    # send(e, Keyboard.enter)
+    # @test tb2.stored_string[] == "1234567890qwertyuio"
 
     tb3 = Makie.Textbox(f[3, 1], width = 100)
     Makie.set!(tb3, "1234567890qwertyuiop")
-    tb3.cursorindex[] = 20
+    tb3.editor.cursors[] = [Makie.EditCursor(20)]
     Makie.focus!(tb3)
     click(e, 259, 173) # between 7 and 8
     send(e, Keyboard.left)
     send(e, Keyboard.left)
     Makie.defocus!(tb3)
+    @test tb3.stored_string[] == "1234567890qwertyuiop"
+    # send(e, Keyboard.enter)
+    # @test tb3.stored_string[] == "1234567890qwertyuiop"
 
     tb4 = Makie.Textbox(f[4, 1], width = 100)
     Makie.set!(tb4, "1234567890qwertyuiop")
-    tb4.cursorindex[] = 20
-    tb4.cursorindex[] = 10
+    tb4.editor.cursors[] = [Makie.EditCursor(20)]
+    tb4.editor.cursors[] = [Makie.EditCursor(10)]
     Makie.focus!(tb4)
     for _ in 1:8
         send(e, Keyboard.backspace)
     end
     Makie.defocus!(tb4)
+    @test tb4.stored_string[] == "1234567890qwertyuiop"
+    # send(e, Keyboard.enter)
+    # @test tb4.stored_string[] == "12qwertyuiop"
 
     f
 end

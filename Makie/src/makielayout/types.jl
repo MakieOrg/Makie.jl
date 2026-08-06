@@ -8,36 +8,68 @@ end
 struct DataAspect end
 
 struct Cycle
-    cycle::Vector{Pair{Vector{Symbol}, Symbol}}
+    attribute_lookup::Dict{Symbol, Int}
+    palette_keys::Vector{Symbol}
     covary::Bool
 end
-Base.:(==)(a::Cycle, b::Cycle) = a.covary == b.covary && a.cycle == b.cycle
+
+function Base.:(==)(a::Cycle, b::Cycle)
+    return a.covary == b.covary &&
+        a.palette_keys == b.palette_keys &&
+        a.attribute_lookup == b.attribute_lookup
+end
 
 Cycle(cycle::Cycle) = cycle
-Cycle(cycle; covary = false) = Cycle(to_cycle(cycle), covary)
+Cycle(cycle; covary = false) = Cycle(cycle, covary)
+function Cycle(cycle, covary)
+    attribute_lookup = Dict{Symbol, Int}()
+    palette_keys = Symbol[] # keep order
+    flatten_cycle!(attribute_lookup, palette_keys, cycle)
+    return Cycle(attribute_lookup, palette_keys, covary)
+end
 
-palettesyms(cycle::Cycle) = [c[2] for c in cycle.cycle]
-attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
+# convert input to internal format
+function unique_push!(vec, val)
+    idx = findfirst(==(val), vec)
+    if isnothing(idx)
+        push!(vec, val)
+        return length(vec)
+    else
+        return idx
+    end
+end
 
-to_cycle(single) = [to_cycle_single(single)]
-to_cycle(::Nothing) = []
-to_cycle(symbolvec::Vector) = map(to_cycle_single, symbolvec)
-to_cycle_single(sym::Symbol) = [sym] => sym
-to_cycle_single(pair::Pair{Symbol, Symbol}) = [pair[1]] => pair[2]
-to_cycle_single(pair::Pair{Vector{Symbol}, Symbol}) = pair
+flatten_cycle!(lookup, keys, ::Nothing) = nothing
+function flatten_cycle!(lookup, keys, s::Symbol)
+    lookup[s] = unique_push!(keys, s)
+    return
+end
+function flatten_cycle!(lookup, keys, p::Pair{Symbol, Symbol})
+    lookup[p[1]] = unique_push!(keys, p[2])
+    return
+end
+function flatten_cycle!(lookup, keys, p::Pair{Vector{Symbol}, Symbol})
+    idx = unique_push!(keys, p[2])
+    foreach(k -> lookup[k] = idx, first(p))
+    return
+end
+flatten_cycle!(lookup, keys, v::Vector) = foreach(x -> flatten_cycle!(lookup, keys, x), v)
+
+attrsyms(cycle::Cycle) = keys(cycle.attribute_lookup)
+palettesyms(cycle::Cycle) = cycle.palette_keys
 
 function get_cycle_attribute(palettes, attribute::Symbol, index::Int, cycle::Cycle)
-    cyclepalettes = [palettes[sym][] for sym in palettesyms(cycle)]
-    isym = findfirst(syms -> attribute in syms, attrsyms(cycle))
-    palette = cyclepalettes[isym]
+    palette_idx = cycle.attribute_lookup[attribute]
+    palette_key = cycle.palette_keys[palette_idx]
+    palette = to_value(palettes[palette_key])
     if cycle.covary
         return palette[mod1(index, length(palette))]
     else
-        cis = CartesianIndices(Tuple(length(p) for p in cyclepalettes))
+        cis = CartesianIndices(Tuple(length(to_value(palettes[s])) for s in palettesyms(cycle)))
         n = length(cis)
         k = mod1(index, n)
         idx = Tuple(cis[k])
-        return palette[idx[isym]]
+        return palette[idx[palette_idx]]
     end
 end
 
@@ -144,6 +176,31 @@ struct LogTicks{T}
 end
 
 """
+    PseudologTicks(n_ideal::Int = 5)
+
+Tick finder for axes using `Makie.pseudolog10`. Picks decade ticks (`±10ᵏ`) with a step
+chosen so that roughly `n_ideal` ticks are produced overall, anchors zero when it is in the
+visible range, and falls back to `WilkinsonTicks` when no decade fits the window.
+"""
+struct PseudologTicks
+    n_ideal::Int
+end
+PseudologTicks() = PseudologTicks(5)
+
+"""
+    SymlogTicks(n_ideal::Int = 5)
+
+Tick finder for axes using `Makie.Symlog10`. Picks decade ticks (`±10ᵏ`) outside the scale's
+linear region, anchors zero when it is in the visible range, and falls back to
+`WilkinsonTicks` inside the linear region. The `n_ideal` parameter is a soft target for the
+total number of ticks produced.
+"""
+struct SymlogTicks
+    n_ideal::Int
+end
+SymlogTicks() = SymlogTicks(5)
+
+"""
     IntervalsBetween(n::Int, mirror::Bool = true)
 
 Indicates to create n-1 minor ticks between every pair of adjacent major ticks.
@@ -158,17 +215,14 @@ struct IntervalsBetween
 end
 IntervalsBetween(n) = IntervalsBetween(n, true)
 
+include("ticklocators/linear.jl")
+include("ticklocators/wilkinson.jl")
 
 mutable struct LineAxis
     parent::Scene
-    protrusion::Observable{Float32}
     attributes::Attributes
+    graph::ComputePipeline.ComputeGraphView
     elements::Dict{Symbol, Any}
-    tickpositions::Observable{Vector{Point2f}}
-    tickvalues::Observable{Vector{Float32}}
-    ticklabels::Observable{Vector{Any}}
-    minortickpositions::Observable{Vector{Point2f}}
-    minortickvalues::Observable{Vector{Float32}}
 end
 
 struct LimitReset end
@@ -281,9 +335,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2d}
-    finallimits::Observable{Rect2d}
-    block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
@@ -300,6 +351,29 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         Global state for the y dimension conversion.
         """
         dim2_conversion = nothing
+
+        "Controls whether the x dim_convert is shown in ticklabels."
+        x_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in ticklabels."
+        y_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the x dim_convert is shown in the xlabel."
+        x_unit_in_label::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in the ylabel."
+        y_unit_in_label::Union{Bool, Automatic} = automatic
+        """
+        Formatter for the xlabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        label suffix generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        xlabel_suffix = "[{}]"
+        """
+        Formatter for the ylabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        label suffix generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        ylabel_suffix = "[{}]"
 
         """
         The content of the x axis label.
@@ -759,7 +833,8 @@ end
 function RectangleZoom(ax::Axis; kw...)
     return RectangleZoom(ax; kw...) do newlims
         if !(0 in widths(newlims))
-            ax.targetlimits[] = newlims
+            ax.localxlimits[] = (left(newlims), right(newlims))
+            ax.localylimits[] = (bottom(newlims), top(newlims))
         end
         return
     end
@@ -815,7 +890,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "Format for ticks."
         tickformat = Makie.automatic
         "The space reserved for the tick labels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
-        ticklabelspace = Makie.automatic
+        ticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
         "The gap between tick labels and tick marks."
         ticklabelpad = 3.0f0
         "The alignment of the tick marks relative to the axis spine (0 = out, 1 = in)."
@@ -867,16 +942,24 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
         "The colormap that the colorbar uses."
         colormap = @inherit(:colormap, :viridis)
+        "Deprecated in favor of `colorrange`. (The range of values depicted in the colorbar.)"
+        limits = automatic
         "The range of values depicted in the colorbar."
-        limits = nothing
-        "The range of values depicted in the colorbar."
-        colorrange = nothing
+        colorrange = automatic
+        """
+        Sets the color values of the Colorbar. The number of unique color values will set the number
+        of categories for a categorical colormap. If `colorrange` is not given, this will set a
+        default colorrange.
+        """
+        values = [0, 1]
         "The color of the high clip triangle."
-        highclip = nothing
+        highclip = automatic
         "The color of the low clip triangle."
-        lowclip = nothing
+        lowclip = automatic
         "The axis scale"
         scale = identity
+        "Sets the alpha value of the colormap."
+        alpha = 1.0
 
 
         "The align mode of the colorbar in its parent GridLayout."
@@ -898,7 +981,16 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         minorticks = IntervalsBetween(5)
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
         size = 12
+        "The additional space between the colorbar content and its suggested boundingbox. Only used for overlay positioning."
+        margin = (0.0f0, 0.0f0, 0.0f0, 0.0f0)
     end
+end
+
+# TODO: not used
+function deprecated_attributes(::Type{Colorbar})
+    return (
+        (; attribute = :limits, message = "`limits` has been removed in favor of `colorrange` in Makie v0.25.", error = true),
+    )
 end
 
 @Block Label begin
@@ -999,11 +1091,11 @@ end
         "The width of the slider line"
         linewidth::Float32 = 10
         "The color of the slider when the mouse hovers over it."
-        color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
+        color_active_dimmed::RGBAf = @inherit((:colors, :accent_subtle))
         "The color of the slider when the mouse clicks and drags the slider."
-        color_active::RGBAf = COLOR_ACCENT[]
+        color_active::RGBAf = @inherit((:colors, :accent))
         "The color of the slider when it is not interacted with."
-        color_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
+        color_inactive::RGBAf = @inherit((:colors, :surface))
         "Controls if the slider has a horizontal orientation or not."
         horizontal::Bool = true
         "The align mode of the slider in its parent GridLayout."
@@ -1101,11 +1193,11 @@ end
         "The width of the slider line"
         linewidth::Float64 = 10.0
         "The color of the slider when the mouse hovers over it."
-        color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
+        color_active_dimmed::RGBAf = @inherit((:colors, :accent_subtle))
         "The color of the slider when the mouse clicks and drags the slider."
-        color_active::RGBAf = COLOR_ACCENT[]
+        color_active::RGBAf = @inherit((:colors, :accent))
         "The color of the slider when it is not interacted with."
-        color_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
+        color_inactive::RGBAf = @inherit((:colors, :surface))
         "Controls if the slider has a horizontal orientation or not."
         horizontal::Bool = true
         "The align mode of the slider in its parent GridLayout."
@@ -1146,17 +1238,17 @@ end
         "The color of the button border."
         strokecolor = :transparent
         "The color of the button."
-        buttoncolor = RGBf(0.94, 0.94, 0.94)
+        buttoncolor = @inherit((:colors, :surface))
         "The color of the label."
         labelcolor = @inherit(:textcolor, :black)
         "The color of the label when the mouse hovers over the button."
-        labelcolor_hover = :black
+        labelcolor_hover = @inherit((:colors, :text))
         "The color of the label when the mouse clicks the button."
-        labelcolor_active = :white
+        labelcolor_active = @inherit((:colors, :text_on_accent))
         "The color of the button when the mouse clicks the button."
-        buttoncolor_active = COLOR_ACCENT[]
+        buttoncolor_active = @inherit((:colors, :accent))
         "The color of the button when the mouse hovers over the button."
-        buttoncolor_hover = COLOR_ACCENT_DIMMED[]
+        buttoncolor_hover = @inherit((:colors, :accent_subtle))
         "The number of clicks that have been registered by the button."
         clicks = 0
         "The align mode of the button in its parent GridLayout."
@@ -1197,17 +1289,17 @@ const CHECKMARK_BEZIER = scale(
         "The strokewidth of the checkbox poly."
         checkboxstrokewidth = 1.5
         "The color of the checkbox background when checked."
-        checkboxcolor_checked = COLOR_ACCENT[]
+        checkboxcolor_checked = @inherit((:colors, :accent))
         "The color of the checkbox background when unchecked."
         checkboxcolor_unchecked = @inherit(:backgroundcolor, :white)
         "The strokecolor of the checkbox background when checked."
-        checkboxstrokecolor_checked = COLOR_ACCENT[]
+        checkboxstrokecolor_checked = @inherit((:colors, :accent))
         "The strokecolor of the checkbox background when unchecked."
-        checkboxstrokecolor_unchecked = COLOR_ACCENT[]
+        checkboxstrokecolor_unchecked = @inherit((:colors, :accent))
         "The color of the checkmark when unchecked."
         checkmarkcolor_unchecked = :transparent
         "The color of the checkmark when the mouse clicks the checkbox."
-        checkmarkcolor_checked = :white
+        checkmarkcolor_checked = @inherit((:colors, :text_on_accent))
         "The align mode of the checkbox in its parent GridLayout."
         alignmode = Inside()
         "If the checkbox is currently checked. This value should not be modified directly."
@@ -1257,12 +1349,12 @@ end
         # strokewidth = 2f0
         # strokecolor = :transparent
         "The color of the border when the toggle is inactive."
-        framecolor_inactive = RGBf(0.94, 0.94, 0.94)
+        framecolor_inactive = @inherit((:colors, :surface))
         "The color of the border when the toggle is hovered."
-        framecolor_active = COLOR_ACCENT_DIMMED[]
+        framecolor_active = @inherit((:colors, :accent_subtle))
         # buttoncolor = RGBf(0.2, 0.2, 0.2)
         "The color of the toggle button."
-        buttoncolor = COLOR_ACCENT[]
+        buttoncolor = @inherit((:colors, :accent))
         "Indicates if the toggle is active or not."
         active = false
         "The duration of the toggle animation."
@@ -1349,17 +1441,17 @@ end
         "Is the menu showing the available options"
         is_open = false
         "Cell color when hovered"
-        cell_color_hover = COLOR_ACCENT_DIMMED[]
+        cell_color_hover = @inherit((:colors, :accent_subtle))
         "Cell color when active"
-        cell_color_active = COLOR_ACCENT[]
+        cell_color_active = @inherit((:colors, :accent))
         "Cell color when inactive even"
-        cell_color_inactive_even = RGBf(0.97, 0.97, 0.97)
+        cell_color_inactive_even = @inherit((:colors, :surface_subtle))
         "Cell color when inactive odd"
-        cell_color_inactive_odd = RGBf(0.97, 0.97, 0.97)
+        cell_color_inactive_odd = @inherit((:colors, :surface_subtle))
         "Selection cell color when inactive"
-        selection_cell_color_inactive = RGBf(0.94, 0.94, 0.94)
+        selection_cell_color_inactive = @inherit((:colors, :surface))
         "Color of the dropdown arrow"
-        dropdown_arrow_color = (:black, 0.2)
+        dropdown_arrow_color = @inherit((:colors, :text_muted))
         "Size of the dropdown arrow"
         dropdown_arrow_size = 10
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
@@ -1369,13 +1461,311 @@ end
         "Padding of entry texts"
         textpadding = (8, 10, 8, 8)
         "Color of entry texts"
-        textcolor = :black
+        textcolor = @inherit(:textcolor, :black)
+        "Color of entry text in the currently selected row of the open dropdown."
+        textcolor_active = @inherit((:colors, :text_on_accent))
         "The opening direction of the menu (:up or :down)"
         direction = automatic
         "The default message prompting a selection when i == 0"
         prompt = "Select..."
         "Speed of scrolling in large Menu lists."
         scroll_speed = 15.0
+        "If `true`, typing while the dropdown is open filters the options by `filter(query, label)` (API as in MakieOrg/Makie.jl#5642). Honored only at construction time."
+        searchable = false
+        "Placeholder shown in place of the prompt while the searchable dropdown is open and the query is empty."
+        search_placeholder = "Search…"
+        "Predicate `(query::String, label::String) -> Bool` deciding whether an option matches the search. Used only when `searchable = true`."
+        filter = (q, s) -> occursin(lowercase(q), lowercase(s))
+    end
+end
+
+
+"""
+    Subfigure(fig_or_scene; kwargs...)
+
+A clipped, scrollable region with its own `Scene` paired with a
+`GridLayout` — the same shape as a `Figure`, scoped to a sub-region. Place
+blocks via `Axis(subfig[1, 1])` etc., or plot directly into
+`content_scene(subfig)` (in viewport-local pixel coords).
+
+The `visible::Observable{Bool}` attribute controls whether the subfigure is
+shown. When hidden it renders nothing and, because the scene-stacking event
+router (`receives_events`) treats hidden subtrees as inert, receives no
+mouse or keyboard input either.
+
+Content larger than the subfigure scrolls vertically and horizontally;
+scrollbars appear only when there is overflow. Content size is derived
+from the inner `GridLayout`'s determinable size, so setting fixed row /
+column sizes makes the subfigure overflow and scroll.
+
+`Tabs` is built on `Subfigure` — one per tab, with
+`visible = (tabs.active == i)`. Use `Subfigure` directly for scrollable
+scientific-figure panels, sidebars, dialog regions, etc.
+"""
+@Block Subfigure begin
+    scene::Scene
+    scroll::Observable{Vec2f}
+    contentsize::Observable{Vec2f}
+    @attributes begin
+        "Whether the subfigure is shown. When `false` it renders nothing and receives no input."
+        visible = true
+        "Padding (in pixels) around the content, as a number or a (left, right, bottom, top) tuple."
+        contentpadding = 10
+        "Background color of the content area."
+        backgroundcolor = :transparent
+        "Whether wheel/trackpad scroll inside the subfigure scrolls its content."
+        scrollable = true
+        "Speed of wheel/trackpad scrolling."
+        scroll_speed = 15.0
+        "Thickness in pixels of the scrollbar thumbs shown when content overflows."
+        scrollbar_size = 6
+        "Background color of the scrollbar track (default transparent — only the thumb is drawn)."
+        scrollbar_color = RGBAf(0, 0, 0, 0)
+        "Color of the scrollbar thumb (the draggable handle)."
+        scrollbar_thumb_color = RGBAf(0, 0, 0, 0.3)
+        "Color of the scrollbar thumb when hovered or dragged."
+        scrollbar_thumb_color_active = RGBAf(0, 0, 0, 0.5)
+        # halign / valign / alignmode match the block layout mixin defaults and
+        # are added automatically; only the ones that differ are set here.
+        "The height setting of the subfigure."
+        height = nothing
+        "The width setting of the subfigure."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = false
+    end
+end
+
+
+"""
+Resolved metrics of a tab label's font, in EM units (multiply by fontsize for
+pixels). Used to size and baseline-align the close `×`.
+"""
+struct TabFontMetrics
+    ascent::Float32
+    descent::Float32
+    x_height::Float32
+end
+
+"""
+Per-tab state for [`Tabs`](@ref): the tab's [`Subfigure`](@ref), its label and
+closability, and the observables backing its header rendering. One `TabData`
+exists per live tab, so closing a tab in the middle is a single `deleteat!` with
+nothing to keep in sync. Mutate via [`add_tab!`](@ref), [`remove_tab!`](@ref),
+[`set_tab!`](@ref) rather than directly.
+"""
+struct TabData
+    subfigure::Subfigure
+    label::Observable{Any}
+    closable::Observable{Bool}
+    visible::Observable{Bool}
+    rect::Observable{Rect2f}
+    bgcolor::Observable{RGBAf}
+    labelpos::Observable{Point2f}
+    labelcolor::Observable{RGBAf}
+    labelboundingboxes::Observable
+    close_segments::Observable{Vector{Point2f}}
+    close_color::Observable{RGBAf}
+    close_rect::Observable{Rect2f}
+    close_visible::Observable{Bool}
+    plots::Tuple{Any, Any, Any}  # (poly, label, close) for deletion
+end
+
+"""
+    Tabs(fig_or_scene, labels = ["Tab 1", "Tab 2"]; closable = true, kwargs...)
+
+A tabbed container. Each tab is backed by a [`Subfigure`](@ref): place blocks
+with `tabs[i][row, col] = Axis(...)` or plot directly into
+`content_scene(tabs, i)`. Only the active tab is visible, and because hidden
+scenes are inert to the event router, only the active tab receives mouse /
+keyboard events. Content larger than the visible area scrolls vertically and
+horizontally.
+
+`labels` (a positional argument) and the `closable` keyword seed the initial
+tabs; they are not reactive attributes. Change the set of tabs afterwards with
+the setter functions [`add_tab!`](@ref), [`remove_tab!`](@ref) and
+[`set_tab!`](@ref). `closable` may be a single `Bool` (applied to every initial
+tab) or a `Vector{Bool}` (one entry per tab; tabs beyond its length are not
+closable). The active tab is the scalar `active` attribute.
+"""
+@Block Tabs begin
+    tabs::Vector{TabData}
+    content_area::Observable{Rect2i}
+    headerheight::Observable{Float64}
+    separator_path::Observable{Vector{Point2f}}
+    hovered::Observable{Int}
+    close_hovered::Observable{Int}
+    font_metrics::Observable{TabFontMetrics}
+    font_metrics_captured::Bool
+    @attributes begin
+        "Index of the active (visible) tab, or `0` when there are no tabs."
+        active = 1
+        "Height of the tab header strip in pixels, or `automatic` to derive it from the label size."
+        tabheight = automatic
+        "Font size of the tab labels."
+        fontsize = @inherit(:fontsize, 16.0f0)
+        "Font of the tab labels."
+        font = :regular
+        "Padding (left, right, bottom, top) around each tab label in pixels."
+        tabpadding = (12, 12, 8, 8)
+        "Corner radius of the tab header backgrounds."
+        cornerradius = 0
+        "Number of vertices used to render rounded tab corners."
+        cornersegments = 10
+        "Background color of the active tab header."
+        tabcolor_active = :white
+        "Background color of inactive tab headers."
+        tabcolor_inactive = :white
+        "Background color of a hovered, inactive tab header (brief gray feedback while pointing/clicking)."
+        tabcolor_hover = RGBf(0.92, 0.92, 0.92)
+        "Color of the active tab label."
+        labelcolor_active = :black
+        "Color of inactive tab labels."
+        labelcolor_inactive = RGBf(0.4, 0.4, 0.4)
+        "Color of the close (×) icon when idle."
+        closecolor = RGBf(0.5, 0.5, 0.5)
+        "Color of the close (×) icon when hovered."
+        closecolor_hover = RGBf(0, 0, 0)
+        "Gap in pixels between adjacent tab headers."
+        tabgap = 0
+        "Color of the thin separator line drawn under the header strip (broken under the active tab)."
+        separator_color = RGBf(0.82, 0.82, 0.82)
+        "Thickness in pixels of the header bottom separator."
+        separator_thickness = 1
+        "Padding (in pixels) forwarded to each tab's content area."
+        contentpadding = 10
+        "The height setting of the tabs block."
+        height = nothing
+        "The width setting of the tabs block."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = false
+        "The horizontal alignment of the block in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the block in its suggested bounding box."
+        valign = :center
+        "The alignment of the block in its suggested bounding box."
+        alignmode = Inside()
+    end
+end
+
+
+"""
+    Table(fig_or_scene; kwargs...)
+
+A table widget for displaying tabular data with interactive features like row selection,
+column sorting, and scrolling.
+
+## Example
+
+```julia
+fig = Figure()
+data = (name = ["Alice", "Bob", "Charlie"], age = [25, 30, 35], city = ["NYC", "LA", "Chicago"])
+t = Table(fig[1,1]; data = data)
+
+# Listen to selection changes
+on(t.selection) do sel
+    println("Selected: ", sel)
+end
+```
+
+## Attributes
+"""
+@Block Table begin
+    @attributes begin
+        # Only `width` differs from the block layout mixin defaults; the rest
+        # (height, tellwidth, tellheight, halign, valign, alignmode) are added
+        # automatically with the same values.
+        "The width setting of the table."
+        width = nothing
+
+        "The tabular data to display. Can be a NamedTuple or Dict{Symbol, Any} where each value is a column vector."
+        data = (a = [1, 2, 3], b = ["x", "y", "z"])
+        "Custom column names to display. If `automatic`, uses the data's keys."
+        column_names = automatic
+        "Column widths. Can be `:auto` (equal widths), `:fit` (auto-fit to content), a number (all same width), or a vector of widths."
+        column_widths = :auto
+        "Row heights. Can be `automatic` (uniform using row_height), a number, or a vector of heights per row."
+        row_heights = automatic
+
+        "Index of the currently selected row. 0 means no selection."
+        i_selected = 0
+        "The data of the currently selected row as a NamedTuple. This is the output observable to listen to."
+        selection = nothing
+        "Selected cell as (row, col) tuple. (0, 0) means no cell selection."
+        i_selected_cell = (0, 0)
+        "The data of the currently selected cell. This is the output observable for cell-level selection."
+        cell_selection = nothing
+
+        "Index of the column to sort by. 0 means no sorting."
+        sort_column = 0
+        "Sort direction, either `:ascending` or `:descending`."
+        sort_direction = :ascending
+        "Whether clicking column headers enables sorting."
+        sortable = true
+
+        "Maximum number of visible rows. If `nothing`, shows all rows."
+        max_visible_rows = nothing
+        "Current scroll offset (row index to start displaying from)."
+        scroll_offset = 0
+        "Scroll speed multiplier for mouse wheel scrolling."
+        scroll_speed = 3.0
+
+        "Background color of the header row."
+        header_color = RGBf(0.2, 0.2, 0.2)
+        "Text color of the header row."
+        header_textcolor = :white
+        "Font size of the header text."
+        header_fontsize = 14.0f0
+        "Height of the header row in pixels."
+        header_height = 30.0
+        "Whether to show sort direction indicator (↑/↓) in the header."
+        show_sort_indicator = true
+
+        "Per-cell background colors as a Matrix. If `automatic`, uses even/odd coloring."
+        cell_color = automatic
+        "Background color of even-numbered data rows (when cell_color is automatic)."
+        cell_color_even = RGBf(0.98, 0.98, 0.98)
+        "Background color of odd-numbered data rows (when cell_color is automatic)."
+        cell_color_odd = RGBf(0.94, 0.94, 0.94)
+        "Background color of the hovered row."
+        cell_color_hover = @inherit((:colors, :accent_subtle))
+        "Background color of the selected row."
+        cell_color_selected = @inherit((:colors, :accent))
+        "Text color of data cells."
+        cell_textcolor = :black
+        "Font size of data cell text."
+        cell_fontsize = 12.0f0
+        "Height of each data row in pixels."
+        row_height = 25.0
+        "Padding inside cells as (left, right, bottom, top)."
+        cell_padding = (8, 8, 4, 4)
+
+        "Whether to show grid lines."
+        show_grid = true
+        "Color of grid lines."
+        grid_color = RGBf(0.8, 0.8, 0.8)
+        "Width of grid lines."
+        grid_linewidth = 1.0
+        "Whether to show vertical grid lines."
+        show_vertical_lines = true
+        "Whether to show horizontal grid lines."
+        show_horizontal_lines = true
+
+        "Callback function `(table, row_index, row_data) -> nothing` called on row click."
+        on_row_click = nothing
+        "Callback function `(table, row_index, row_data) -> nothing` called on row double-click."
+        on_row_doubleclick = nothing
+        "Callback function `(table, column_index, direction) -> nothing` called when sort changes."
+        on_sort_change = nothing
+        "Callback function `(table, row, col, cell_data) -> nothing` called on cell click."
+        on_cell_click = nothing
+        "Callback function `(table, row, col, cell_data) -> nothing` called on cell right-click."
+        on_cell_rightclick = nothing
     end
 end
 
@@ -1383,52 +1773,42 @@ end
 abstract type LegendElement end
 
 struct LineElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MarkerElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct PolyElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct ImageElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MeshElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MeshScatterElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
-function get_plots(le::LegendElement)
-    if hasfield(typeof(le), :plots)
-        return le.plots
-    else
-        @warn """LegendElements should now keep track of the plots they represent in a `plots` field.
-        This can be `nothing` or a `Vector{Plot}`. Without this, the Legend won't be able to
-        toggle visibility of the associated plots. The `plots` field is missing in: $(le)
-        """
-        return Plot[]
-    end
+struct SurfaceElement <: LegendElement
+    attributes::Attributes
 end
 
 struct LegendEntry
+    plots::Vector{AbstractPlot}
     elements::Vector{LegendElement}
     attributes::Attributes
-end
 
+    function LegendEntry(plots::Vector, elements::Vector, attr::Attributes)
+        return new(plots, elements, attr)
+    end
+end
 
 const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
@@ -1522,6 +1902,10 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         linecolorrange = automatic
         "The default line style used for LineElements"
         linestyle = :solid
+        "The default line cap used for LineElements"
+        linecap = theme(scene, :linecap)
+        "The default join style used for LineElements"
+        joinstyle = theme(scene, :joinstyle)
 
         "The default marker color for MarkerElements"
         markercolor = theme(scene, :markercolor)
@@ -1665,8 +2049,9 @@ end
 end
 
 @Block Textbox begin
-    cursorindex::Observable{Int}
-    cursoranimtask
+    # `editor` exposes the embedded `EditableText` recipe so tests / advanced
+    # consumers can drive cursor and selection state directly. Internal.
+    editor::Any
     @attributes begin
         "The height setting of the textbox."
         height = Auto()
@@ -1686,8 +2071,6 @@ end
         placeholder = "Click to edit..."
         "The currently stored string."
         stored_string = nothing
-        "The currently displayed string (for internal use)."
-        displayed_string = nothing
         "Controls if the displayed text is reset to the stored text when defocusing the textbox without submitting."
         reset_on_defocus = false
         "Controls if the textbox is defocused when a string is submitted."
@@ -1697,7 +2080,7 @@ end
         "Text color."
         textcolor = @inherit(:textcolor, :black)
         "Text color for the placeholder."
-        textcolor_placeholder = RGBf(0.5, 0.5, 0.5)
+        textcolor_placeholder = @inherit((:colors, :text_muted))
         "Font family."
         font = :regular
         "Color of the box."
@@ -1709,11 +2092,11 @@ end
         "Color of the box when hovered."
         boxcolor_hover = :transparent
         "Color of the box border."
-        bordercolor = RGBf(0.8, 0.8, 0.8)
+        bordercolor = @inherit((:colors, :border))
         "Color of the box border when hovered."
-        bordercolor_hover = COLOR_ACCENT_DIMMED[]
+        bordercolor_hover = @inherit((:colors, :accent_subtle))
         "Color of the box border when focused."
-        bordercolor_focused = COLOR_ACCENT[]
+        bordercolor_focused = @inherit((:colors, :accent))
         "Color of the box border when focused and invalid."
         bordercolor_focused_invalid = RGBf(1, 0, 0)
         "Width of the box border."
@@ -1731,7 +2114,7 @@ end
         "Restricts the allowed unicode input via is_allowed(char, restriction)."
         restriction = nothing
         "The color of the cursor."
-        cursorcolor = :transparent
+        cursorcolor = @inherit((:colors, :accent))
     end
 end
 
@@ -1757,6 +2140,41 @@ end
         Global state for the z dimension conversion.
         """
         dim3_conversion = nothing
+
+        "Controls whether the x dim_convert is shown in ticklabels."
+        x_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in ticklabels."
+        y_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the z dim_convert is shown in ticklabels."
+        z_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the x dim_convert is shown in the xlabel."
+        x_unit_in_label::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in the ylabel."
+        y_unit_in_label::Union{Bool, Automatic} = automatic
+        "Controls whether the z dim_convert is shown in the zlabel."
+        z_unit_in_label::Union{Bool, Automatic} = automatic
+        """
+        Formatter for the xlabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        label suffix generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        xlabel_suffix = "[{}]"
+        """
+        Formatter for the ylabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        label suffix generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        ylabel_suffix = "[{}]"
+        """
+        Formatter for the zlabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        label suffix generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        zlabel_suffix = "[{}]"
+
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -2205,7 +2623,7 @@ end
         "The fontsize of the `r` tick labels."
         rticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `r` tick labels."
-        rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, "default"))
         "The color of the `r` tick labels."
         rticklabelcolor = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
         "The width of the outline of `r` ticks. Setting this to 0 will remove the outline."
@@ -2267,7 +2685,7 @@ end
         "The fontsize of the `theta` tick labels."
         thetaticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `theta` tick labels."
-        thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, "default"))
         "The color of the `theta` tick labels."
         thetaticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
         "Padding of the `theta` ticks label."
@@ -2336,7 +2754,7 @@ end
         "The fontsize of the title."
         titlesize::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> 1.2x, inherit(scene, :fontsize, 16)))
         "The font of the title."
-        titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, Makie.defaultfont()))
+        titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, "default"))
         "The color of the title."
         titlecolor = inherit(scene, (:Axis, :titlecolor), inherit(scene, :textcolor, :black))
         "Controls if the title is visible."
@@ -2366,5 +2784,138 @@ end
         reset_button::IsPressedInputType = Keyboard.left_control & Mouse.left
         "Sets whether the axis orientation (changed with the axis_rotation_button) gets reset when resetting the axis. If set to false only the limits will reset."
         reset_axis_orientation::Bool = false
+    end
+end
+
+"""
+An empty block which does nothing on its own. It is used as a target for
+`Block(::BlockSpec)` and `Block(::GridLayoutSpec)`. It can also be used as a
+container for an inner `GridLayout()`, i.e. as an alternative to
+
+```julia
+gl = fig[i, j] = GridLayout()
+SomeBlock(gl[1, 1], ...)
+# or
+SomeBlock(fig[i, j][1, 1], ...)
+```
+"""
+@Block Container
+
+@Block HoverMenu begin
+    @forwarded_layout
+    box::Box
+    save_button::Button
+    copy_button::Button
+    reset_button::Button
+    @attributes begin
+        "The horizontal alignment of the HoverMenu bar"
+        halign = :center
+        "The vertical alignment of the HoverMenu bar"
+        valign = :top
+        "The width of the HoverMenu bar"
+        width = 220
+        "The height of the HoverMenu bar"
+        height = 40
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = false
+        "The background color of the bar"
+        bar_color = @inherit((:colors, :surface))
+        "The stroke color of the bar"
+        bar_strokecolor = @inherit((:colors, :border))
+        "The corner radius of the bar"
+        corner_radius = 8
+        "The button background color"
+        button_color = @inherit((:colors, :surface))
+        "The button hover color"
+        button_color_hover = @inherit((:colors, :accent_subtle))
+        "The button color while pressed"
+        button_color_active = @inherit((:colors, :accent))
+        "The button label color"
+        label_color = @inherit((:colors, :text))
+        "The button label color while pressed"
+        label_color_active = @inherit((:colors, :text_on_accent))
+        "The button font"
+        font = :regular
+        "The button font size"
+        fontsize = 12
+        "The axis to reset when clicking the reset button"
+        target_axis = nothing
+    end
+end
+
+"""
+    Modal(fig; title = "", kwargs...)
+
+A modal dialog floating above the figure: a translucent backdrop dims and
+blocks pointer input to everything underneath, while a centered body holds a
+`GridLayout` for content. Place content with `modal[row, col] = ...` (or
+`Axis(modal[1, 1])` etc.), then show it with `open!(modal)` and hide it with
+`close!(modal)` (also triggered by the × button and — unless
+`dismiss_on_backdrop_click = false` — by clicking the backdrop).
+
+The body auto-sizes to its content (floored at `min_size`); pass numbers for
+`width`/`height` to fix the body size instead, in which case overflowing
+content scrolls (the content area is a [`Subfigure`](@ref)).
+
+Pointer isolation uses the scene-stacking event router: the overlay scene is
+marked `captures_mouse = true`, so while the modal is open only its own
+subtree receives events.
+"""
+@Block Modal begin
+    overlay::Scene
+    subfigure::Subfigure
+    @attributes begin
+        "Title shown in the modal's header."
+        title = ""
+        "Whether the modal is currently shown. Use `open!`/`close!` or set directly."
+        open = false
+        "Color of the backdrop dimming the figure behind the modal."
+        backdrop_color = (:black, 0.35)
+        "Background color of the modal body."
+        color = @inherit((:colors, :background))
+        "Border color of the modal body."
+        strokecolor = @inherit((:colors, :border))
+        "Border line width of the modal body."
+        strokewidth = 1.0
+        "Corner radius of the modal body."
+        cornerradius = 8
+        "Number of vertices used per rounded corner."
+        cornersegments = 10
+        "Font size of the title."
+        titlesize = 16.0f0
+        "Font of the title."
+        titlefont = :bold
+        "Color of the title."
+        titlecolor = @inherit((:colors, :text))
+        "Color of the separator line under the header."
+        separator_color = @inherit((:colors, :border))
+        "Color of the close (×) icon when idle."
+        closecolor = @inherit((:colors, :text_muted))
+        "Color of the close (×) icon when hovered."
+        closecolor_hover = @inherit((:colors, :text))
+        "Whether clicking the backdrop (outside the body) closes the modal."
+        dismiss_on_backdrop_click = true
+        "Padding in pixels between the body border and the content layout."
+        contentpadding = 16
+        "Height in pixels of the title header strip."
+        header_height = 40
+        "Minimum body size (width, height) in pixels when auto-sizing."
+        min_size = (280, 140)
+        "Body width in pixels, or `Auto()` to size to the content."
+        width = Auto()
+        "Body height in pixels, or `Auto()` to size to the content."
+        height = Auto()
+        "The horizontal alignment of the block in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the block in its suggested bounding box."
+        valign = :center
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = false
+        "The alignment of the block in its suggested bounding box."
+        alignmode = Inside()
     end
 end

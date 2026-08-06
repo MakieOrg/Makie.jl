@@ -119,11 +119,9 @@ Returns true if the current mouseposition is inside the given scene.
 """
 is_mouseinside(x) = is_mouseinside(get_scene(x))
 function is_mouseinside(scene::Scene)
-    return scene.visible[] && in(Vec(scene.events.mouseposition[]), viewport(scene)[])
-    # Check that mouse is not inside any other screen
-    # for child in scene.children
-    #     is_mouseinside(child) && return false
-    # end
+    scene.visible[] || return false
+    in(Vec(scene.events.mouseposition[]), viewport(scene)[]) || return false
+    return receives_events(scene)
 end
 
 
@@ -357,10 +355,10 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     add_input!(plot_graph, :viewport, scene_graph[:viewport]::Computed)
     for key in [:resolution, :scene_origin]
         haskey(plot_graph.inputs, key) && continue
-        add_input!((k, v) -> Vec2f(v), plot_graph, key, getindex(scene_graph, key)::Computed)
+        add_input!(Vec2f, plot_graph, key, getindex(scene_graph, key)::Computed)
     end
     for key in [:eyeposition, :upvector, :view_direction]
-        add_input!((k, v) -> Vec3f(v), plot_graph, key, getindex(scene_graph, key)::Computed)
+        add_input!(Vec3f, plot_graph, key, getindex(scene_graph, key)::Computed)
     end
 
     return

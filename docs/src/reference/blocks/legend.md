@@ -87,8 +87,31 @@ end
 f
 ```
 
+To create a joint legend for multiple axes it is also possible to pass a `Vector` of axis objects. Together with the `merge` keyword this can be useful for legend interactivity spanning multiple axes.
+
+```@figure
+
+f = Figure()
+
+ax1 = Axis(f[1, 1])
+ax2 = Axis(f[1, 2])
+
+xs = range(0, 4pi, length = 31)
+lines!(ax1, xs, sin, label = "sin", color = :blue)
+lines!(ax2, xs, cos, label = "cos", color = :red)
+scatter!(ax1, xs, sin, label = "Points", color = :black)
+scatter!(ax2, xs, cos, label = "Points", color = :black)
+
+f[0, 1:2] = Legend(f, [ax1, ax2], "Automatic Joint Legend", merge = true, orientation = :horizontal, tellheight = true)
+
+f
+```
 
 ## Legend Inside An Axis
+
+There are two ways to place a legend inside an axis: `axislegend` and `Legend(ax; position=...)`.
+
+### Using axislegend
 
 The `axislegend` function is a quick way to add a legend to an Axis.
 You can pass a selected axis plus arguments which are forwarded to the `Legend` constructor, or the current axis is used by default.
@@ -117,6 +140,21 @@ axislegend(ax, [sc1, sc2], ["One", "Two"], "Selected Dots", position = :rb,
 
 f
 ```
+
+### Using Legend(ax; position=...)
+
+You can also use the `Legend(ax; position=...)` constructor to place a legend inside an axis. This is equivalent to `axislegend` but uses position symbols like `:lt` (left-top), `:rt` (right-top), `:lb` (left-bottom), `:rb` (right-bottom), etc.
+
+```@figure
+fig, ax, pl = scatter(rand(10), label="Points")
+lines!(ax, rand(10), label="Line")
+
+# Create legend inside axis at left-top
+Legend(ax; position=:lt)
+fig
+```
+
+### Manual positioning
 
 Alternatively, you can simply add a Legend to the same layout slot
 that an axis lives in. As long as the axis is bigger than the legend you can
@@ -339,7 +377,8 @@ The Legend can be interacted with to show or hide connected plots.
 A left click on a specific element will toggle the visibility of the connected plots.
 A right click anywhere in the Legend will toggle the visibility of all plots associated with every element.
 A middle click will toggle all plots if they have the same visibility state or make all visible if they do not.
-Note that if you construct elements (MarkerElement, PolyElement, etc.) yourself, you need to also pass a plot or vector of plots as the first argument to enable these interactions.
+Note that if you construct elements (MarkerElement, PolyElement, etc.) yourself and want them to toggle specific plots, these plots need to be included with the elements.
+This can be done by passing pairs `[plot1, plot2, ...] => SomeElement(...)` or including the plots in the element constructor `SomeElement(plots = [plot1, plot2, ...], ...)`.
 
 ```@example legend_interaction
 using GLMakie

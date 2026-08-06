@@ -28,6 +28,68 @@ end
 
 const DEFAULT_PALETTES = generate_default_palette()
 
+const DEFAULT_ACCENT_COLOR = RGBf((79, 122, 214) ./ 255...)
+
+# Rec. 709 / sRGB luminance coefficients.
+_relative_luminance(c) = 0.2126f0 * red(c) + 0.7152f0 * green(c) + 0.0722f0 * blue(c)
+
+"""
+    derive_colors(; accent = Makie.DEFAULT_ACCENT_COLOR,
+                    gray = automatic,
+                    background = :white)
+
+Derive a complete set of UI role colors from a small set of user inputs. The
+result is a `NamedTuple` of nine `RGBf` values that Block defaults can pull
+from via the theme's nested `colors` block.
+
+Inputs:
+- `accent`: primary accent color used for active, checked, and focused states.
+- `gray`: the "contrast pole" mixed with `background` to produce neutrals.
+  `automatic` picks pure black for light backgrounds and pure white for dark
+  ones. Pass a tinted color (e.g. a slightly warm dark) to bias all neutrals
+  toward that hue.
+- `background`: the canvas background. Its luminance also selects the default
+  contrast pole when `gray = automatic`.
+
+Returns roles: `background`, `surface`, `surface_subtle`, `border`, `text`,
+`text_muted`, `text_on_accent`, `accent`, `accent_subtle`. State conventions
+across Blocks: idle uses `surface`, hover uses `accent_subtle`, and
+active/checked/focused uses `accent`.
+
+Mixing happens in Oklab so equal weights between `background` and `gray`/
+`accent` give perceptually-even steps. The weights are picked to give a
+familiar light-mode appearance (≈92% surface, ≈74% border, ≈50% muted text)
+while remaining well-balanced when `gray` or `background` is tinted.
+"""
+function derive_colors(;
+        accent = DEFAULT_ACCENT_COLOR,
+        gray = automatic,
+        background = :white,
+    )
+    bg = RGBf(to_color(background))
+    a = RGBf(to_color(accent))
+    auto_pole = _relative_luminance(bg) >= 0.5f0 ? RGBf(0, 0, 0) : RGBf(1, 1, 1)
+    g = RGBf(to_color(default_automatic(gray, auto_pole)))
+
+    # Text on an accent fill must contrast with the accent itself, not with the
+    # page background — pick by accent luminance regardless of `gray`.
+    text_on_accent = _relative_luminance(a) >= 0.5f0 ? RGBf(0, 0, 0) : RGBf(1, 1, 1)
+
+    return (
+        background = bg,
+        surface = lerp_oklab(bg, g, 0.06),
+        surface_subtle = lerp_oklab(bg, g, 0.03),
+        border = lerp_oklab(bg, g, 0.2),
+        text = g,
+        text_muted = lerp_oklab(bg, g, 0.4),
+        text_on_accent = text_on_accent,
+        accent = a,
+        accent_subtle = lerp_oklab(bg, a, 0.45),
+    )
+end
+
+const DEFAULT_COLORS = derive_colors()
+
 const MAKIE_DEFAULT_THEME = Attributes(
     palette = DEFAULT_PALETTES,
     font = :regular,
@@ -37,6 +99,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         italic = "TeX Gyre Heros Makie Italic",
         bold_italic = "TeX Gyre Heros Makie Bold Italic",
     ),
+    colors = Attributes(DEFAULT_COLORS),
     fontsize = 14,
     textcolor = :black,
     padding = Vec3f(0.05),
@@ -64,6 +127,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     visible = true,
     Axis = Attributes(),
     Axis3 = Attributes(),
+    Figure = Attributes(),
     legend = Attributes(),
     axis_type = automatic,
     camera = automatic,
@@ -98,9 +162,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         visible = true,
         start_renderloop = false,
         pdf_version = nothing
-    ),
-
-    GLMakie = Attributes(
+    ), GLMakie = Attributes(
         # Renderloop
         renderloop = automatic,
         pause_renderloop = false,
@@ -124,6 +186,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         oit = true,
         fxaa = true,
         ssao = false,
+        render_pipeline = automatic,
         # This adjusts a factor in the rendering shaders for order independent
         # transparency. This should be the same for all of them (within one rendering
         # pipeline) otherwise depth "order" will be broken.
@@ -131,9 +194,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # maximum number of lights with shading = MultiLightShading
         max_lights = 64,
         max_light_parameters = 5 * 64
-    ),
-
-    WGLMakie = Attributes(
+    ), WGLMakie = Attributes(
         framerate = 30.0,
         resize_to = nothing,
         # DEPRECATED in favor of resize_to
@@ -174,7 +235,12 @@ function merge_without_obs!(result::Attributes, theme::Attributes)
     dict = attributes(result)
     for (key, value) in theme
         if !haskey(dict, key)
-            dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+            if value isa Attributes
+                dict[key] = Attributes()
+                merge_without_obs!(dict[key], value)
+            else
+                dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+            end
         else
             current_value = result[key]
             if value isa Attributes && current_value isa Attributes
@@ -189,17 +255,27 @@ end
 
 # Same as above, but second argument gets priority so, `merge_without_obs_reverse!(Attributes(a=22), Attributes(a=33)) -> Attributes(a=33)`
 function merge_without_obs_reverse!(result::Attributes, priority::Attributes)
-    result_dict = attributes(result)
+    dict = attributes(result)
     for (key, value) in priority
-        if !haskey(result_dict, key)
-            result_dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+        if !haskey(dict, key)
+            if value isa Attributes
+                dict[key] = Attributes()
+                merge_without_obs!(dict[key], value)
+            else
+                dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+            end
         else
             current_value = result[key]
             if value isa Attributes && current_value isa Attributes
                 # if nested attribute, we merge recursively
                 merge_without_obs_reverse!(current_value, value)
             else
-                result_dict[key] = Observable{Any}(to_value(value))
+                if value isa Attributes
+                    dict[key] = Attributes()
+                    merge_without_obs!(dict[key], value)
+                else
+                    dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+                end
             end
         end
     end
@@ -222,9 +298,9 @@ as keyword arguments.
 function set_theme!(new_theme = Attributes(); kwargs...)
     lock(THEME_LOCK) do
         empty!(CURRENT_DEFAULT_THEME)
-        new_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
-        new_theme = merge!(Theme(kwargs), new_theme)
-        merge!(CURRENT_DEFAULT_THEME, new_theme)
+        resolved_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
+        resolved_theme = mergeleft!(Theme(kwargs), resolved_theme)
+        merge!(CURRENT_DEFAULT_THEME, resolved_theme)
     end
     return
 end
@@ -297,7 +373,7 @@ update_theme!(Theme(colormap=:greys))
 """
 function update_theme!(with_theme = Attributes(); kwargs...)
     return lock(THEME_LOCK) do
-        new_theme = merge!(with_theme, Attributes(kwargs))
+        new_theme = mergeleft!(with_theme, Attributes(kwargs))
         _update_attrs!(CURRENT_DEFAULT_THEME, new_theme)
         return
     end

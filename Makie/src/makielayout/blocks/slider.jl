@@ -88,14 +88,14 @@ function initialize_block!(sl::Slider)
         [ca, ci]
     end
 
-    endbuttons = scatter!(
-        topscene, endpoints, color = linecolors,
-        markersize = sl.linewidth, strokewidth = 0, inspectable = false, marker = Circle
-    )
-
+    # This was previously linecap = :butt (default) + Circle scatter to generate
+    # round endpoints.
+    # If this causes visual issues due to the rounded linecaps under the button
+    # we could also use lines with [left, middle, middle, right] points and
+    # [left, left, right, right] colors
     linesegs = linesegments!(
         topscene, linepoints, color = linecolors,
-        linewidth = sl.linewidth, inspectable = false
+        linewidth = sl.linewidth, inspectable = false, linecap = :round
     )
 
     button_magnification = Observable(1.0)
@@ -165,7 +165,7 @@ function initialize_block!(sl::Slider)
     end
 
     # trigger autosize through linewidth for first layout
-    notify(sl.linewidth)
+    notify(ComputePipeline.get_observable!(sl.linewidth))
     return sl
 end
 

@@ -20,7 +20,6 @@ using Makie: to_native
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 using Makie: BudgetedTimer, reset!
 import Makie: to_font, el32convert, Shape, CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
-import Makie: RelocatableFolders
 
 using ShaderAbstractions
 using FreeTypeAbstraction
@@ -48,13 +47,44 @@ struct ShaderSource
     typ::GLenum
     source::String
     name::String
+    last_modified::Float64
 end
 
-function ShaderSource(path)
+"""
+    ShaderSource(filepath::String)
+
+Loads the source code from the given filepath. The shader type is derived from
+the file extension (.vert, .frag, .geom or .comp).
+"""
+function ShaderSource(path::String)
     typ = GLAbstraction.shadertype(splitext(path)[2])
     source = read(path, String)
     name = String(path)
-    return ShaderSource(typ, source, name)
+    last_modified = mtime(path)
+    return ShaderSource(typ, source, name, last_modified)
+end
+
+# To speed up hashing shader compilation, look at mtime(file) (last modified)
+# instead of hashing the entire content.
+Base.hash(x::ShaderSource, h::UInt) = hash(x.name, hash(x.last_modified, h))
+
+const shader_counter = Ref(0)
+function next_shader_num()
+    shader_counter[] = shader_counter[] + 1
+    return shader_counter[]
+end
+
+"""
+    ShaderSource(code::String, type::Symbol[, name])
+
+Bundles the given source code with a shader type for later shader compilation.
+`type` can be :vert, :frag, :geom or :comp.
+
+Use `loadshader(filename)` to load a cached shader from GLMakie's assets folder.
+"""
+function ShaderSource(source::String, type::Symbol, name = "inline_shader$(next_shader_num())")
+    type2gltype = (comp = GL_COMPUTE_SHADER, vert = GL_VERTEX_SHADER, frag = GL_FRAGMENT_SHADER, geom = GL_GEOMETRY_SHADER)
+    return ShaderSource(type2gltype[type], source, name, 0.0)
 end
 
 const SHADER_DIR = normpath(joinpath(@__DIR__, "..", "assets", "shader"))
@@ -96,9 +126,51 @@ WARN_ON_LOAD[] = true
 
 function __init__()
     activate!()
+    macos_set_dock_visible(false)
     # trigger OpenGL cleanup to avoid errors in debug mode
     return atexit(GLMakie.closeall)
 end
+
+function macos_set_dock_visible(visible::Bool)
+    Sys.isapple() || return
+    return try
+        nsapp_class = @ccall objc_getClass("NSApplication"::Cstring)::Ptr{Cvoid}
+        shared_app_sel = @ccall sel_registerName("sharedApplication"::Cstring)::Ptr{Cvoid}
+        set_policy_sel = @ccall sel_registerName("setActivationPolicy:"::Cstring)::Ptr{Cvoid}
+        nsapp = @ccall objc_msgSend(nsapp_class::Ptr{Cvoid}, shared_app_sel::Ptr{Cvoid})::Ptr{Cvoid}
+
+        NSApplicationActivationPolicyRegular = 0
+        NSApplicationActivationPolicyAccessory = 1
+        val = visible ? NSApplicationActivationPolicyRegular : NSApplicationActivationPolicyAccessory
+        @ccall objc_msgSend(nsapp::Ptr{Cvoid}, set_policy_sel::Ptr{Cvoid}, val::Clong)::Ptr{Cvoid}
+
+        if visible
+            macos_set_dock_icon(Makie.assetpath("icon_transparent.png"))
+        end
+    catch e
+        @warn "Failed to set dock visibility" e
+    end
+end
+
+function macos_set_dock_icon(path::String)
+    Sys.isapple() || return
+    nsstring_class = @ccall objc_getClass("NSString"::Cstring)::Ptr{Cvoid}
+    str_sel = @ccall sel_registerName("stringWithUTF8String:"::Cstring)::Ptr{Cvoid}
+    path_nsstr = @ccall objc_msgSend(nsstring_class::Ptr{Cvoid}, str_sel::Ptr{Cvoid}, path::Cstring)::Ptr{Cvoid}
+
+    nsimage_class = @ccall objc_getClass("NSImage"::Cstring)::Ptr{Cvoid}
+    alloc_sel = @ccall sel_registerName("alloc"::Cstring)::Ptr{Cvoid}
+    init_file_sel = @ccall sel_registerName("initWithContentsOfFile:"::Cstring)::Ptr{Cvoid}
+    image = @ccall objc_msgSend(nsimage_class::Ptr{Cvoid}, alloc_sel::Ptr{Cvoid})::Ptr{Cvoid}
+    image = @ccall objc_msgSend(image::Ptr{Cvoid}, init_file_sel::Ptr{Cvoid}, path_nsstr::Ptr{Cvoid})::Ptr{Cvoid}
+
+    nsapp_class = @ccall objc_getClass("NSApplication"::Cstring)::Ptr{Cvoid}
+    shared_app_sel = @ccall sel_registerName("sharedApplication"::Cstring)::Ptr{Cvoid}
+    nsapp = @ccall objc_msgSend(nsapp_class::Ptr{Cvoid}, shared_app_sel::Ptr{Cvoid})::Ptr{Cvoid}
+    set_icon_sel = @ccall sel_registerName("setApplicationIconImage:"::Cstring)::Ptr{Cvoid}
+    return @ccall objc_msgSend(nsapp::Ptr{Cvoid}, set_icon_sel::Ptr{Cvoid}, image::Ptr{Cvoid})::Ptr{Cvoid}
+end
+
 
 include("precompiles.jl")
 

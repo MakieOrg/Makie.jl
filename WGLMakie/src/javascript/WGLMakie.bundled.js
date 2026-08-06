@@ -23122,7 +23122,7 @@ class Plot {
     update(data) {
         const { mesh  } = this;
         if (!mesh) {
-            console.log(`Updating plot ${this.name} (${this.uuid}) with data:`);
+            return;
         }
         const { geometry  } = mesh;
         const { attributes , interleaved_attributes  } = geometry;
@@ -23206,6 +23206,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
     if (is_linesegments) {
         return `precision highp float;
             precision highp int;
+            precision highp sampler2D;
+            precision highp sampler3D;
 
             ${attribute_decl}
 
@@ -23401,6 +23403,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
     } else {
         return `precision highp float;
             precision highp int;
+            precision highp sampler2D;
+            precision highp sampler3D;
 
             ${attribute_decl}
 
@@ -23897,8 +23901,8 @@ function lines_fragment_shader(uniforms, attributes) {
 
     precision highp int;
     precision highp float;
-    precision mediump sampler2D;
-    precision mediump sampler3D;
+    precision highp sampler2D;
+    precision highp sampler3D;
 
     in highp vec3 f_quad_sdf;
     in vec2 f_truncation;
@@ -24919,14 +24923,14 @@ function add_canvas_events(screen, comm, resize_to) {
     }
 }
 function threejs_module(canvas) {
-    let context = canvas.getContext("webgl2", {
-        preserveDrawingBuffer: true
-    });
+    const context_options = {
+        preserveDrawingBuffer: true,
+        failIfMajorPerformanceCaveat: false
+    };
+    let context = canvas.getContext("webgl2", context_options);
     if (!context) {
         console.warn("WebGL 2.0 not supported by browser, falling back to WebGL 1.0 (Volume plots will not work)");
-        context = canvas.getContext("webgl", {
-            preserveDrawingBuffer: true
-        });
+        context = canvas.getContext("webgl", context_options);
     }
     if (!context) {
         return;
@@ -25006,8 +25010,8 @@ function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit
         const init_scene = (scene_data)=>{
             try {
                 create_scene(wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height, framerate, resize_to, px_per_unit, scalefactor);
-                done_init.notify(true);
                 spinner?.remove();
+                requestAnimationFrame(()=>requestAnimationFrame(()=>done_init.notify(true)));
             } catch (e) {
                 Bonito.Connection.send_error("error initializing scene", e);
                 done_init.notify(e);
@@ -25059,6 +25063,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
     if (!renderer) {
         const warning = getWebGLErrorMessage();
         wrapper.appendChild(warning);
+        return;
     }
     const camera = new mod.PerspectiveCamera(45, 1, 0, 100);
     camera.updateProjectionMatrix();
@@ -25084,11 +25089,16 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
     start_renderloop(three_scene);
     canvas_width.on((w_h)=>{
         set_render_size(screen, ...w_h);
+        queueMicrotask(()=>{
+            if (screen.root_scene) {
+                render_scene(screen.root_scene);
+            }
+        });
     });
     const gl = renderer.getContext();
     const err = gl.getError();
     if (err != gl.NO_ERROR) {
-        throw new Error("WebGL error: " + WGL.wglerror(gl, err));
+        throw new Error("WebGL error: " + wglerror(gl, err));
     }
     return renderer;
 }
@@ -25162,6 +25172,7 @@ function pick_native(scene, _x, _y, _w, _h, apply_ppu = true) {
         _h
     ];
     renderer.setRenderTarget(picking_target);
+    renderer.clear();
     set_picking_uniforms(scene, 1, true);
     const rendered = render_scene(scene, true);
     if (!rendered) {
@@ -25207,6 +25218,7 @@ function get_picking_buffer(scene) {
         picking_target.height
     ];
     renderer.setRenderTarget(picking_target);
+    renderer.clear();
     set_picking_uniforms(scene, 1, true);
     const rendered = render_scene(scene, true);
     if (!rendered) {

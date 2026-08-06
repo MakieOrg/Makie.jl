@@ -10,22 +10,25 @@ export LeftClick
 export LeftDown
 export LeftUp
 export RightClick, MiddleClick
+export TypeText
+export KeyPress
+export KeyDown, KeyUp
 export Lazy
 export Wait
+export Scroll
 export relative_pos
+export textbox_offset_pos
 
-@recipe(Cursor) do scene
-    Theme(
-        color = :black,
-        strokecolor = :white,
-        strokewidth = 1,
-        width = 10,
-        notch = 2,
-        shaftwidth = 2.5,
-        shaftlength = 4,
-        headlength = 12,
-        multiplier = 1,
-    )
+@recipe Cursor begin
+    color = :black
+    strokecolor = :white
+    strokewidth = 1
+    width = 10
+    notch = 2
+    shaftwidth = 2.5
+    shaftlength = 4
+    headlength = 12
+    multiplier = 1
 end
 
 function Makie.plot!(p::Cursor)
@@ -95,6 +98,16 @@ end
 
 duration(w::Wait, prev_position) = w.duration
 
+# Wait until `pred()` returns true (records frames meanwhile), up to `timeout`
+# seconds. Use for load-dependent async work (e.g. a GPU analysis whose duration
+# varies with recording overhead) instead of guessing a fixed Wait.
+struct WaitUntil
+    pred::Function
+    timeout::Float64
+end
+WaitUntil(pred; timeout = 60.0) = WaitUntil(pred, Float64(timeout))
+duration(w::WaitUntil, prev_position) = w.timeout
+
 struct LeftClick end
 
 duration(::LeftClick, _) = 0.15
@@ -123,6 +136,101 @@ duration(::MiddleClick, _) = 0.15
 mouseevents_start(l::MiddleClick) = [Makie.MouseButtonEvent(Mouse.middle, Mouse.press)]
 mouseevents_end(l::MiddleClick) = [Makie.MouseButtonEvent(Mouse.middle, Mouse.release)]
 
+"""
+    TypeText(text; char_duration = 0.06)
+
+Emits each character of `text` as a `unicode_input` event, spaced `char_duration`
+seconds apart. Total event duration is `length(text) * char_duration`.
+"""
+struct TypeText
+    text::String
+    char_duration::Float64
+end
+TypeText(text::AbstractString; char_duration = 0.06) = TypeText(String(text), char_duration)
+duration(t::TypeText, _) = max(length(t.text) * t.char_duration, 0.05)
+
+function unicode_inputs_frame(t::TypeText, time, prev_time)
+    chars = Char[]
+    for (i, c) in enumerate(t.text)
+        scheduled = (i - 0.5) * t.char_duration
+        if prev_time < scheduled <= time
+            push!(chars, c)
+        end
+    end
+    return chars
+end
+
+"""
+    KeyPress(key; duration = 0.08)
+
+Presses `key` at the start of the event and releases it at the end.
+"""
+struct KeyPress
+    key::Keyboard.Button
+    duration::Float64
+end
+KeyPress(key::Keyboard.Button; duration = 0.08) = KeyPress(key, duration)
+duration(k::KeyPress, _) = k.duration
+keyboardevents_start(k::KeyPress) = [Makie.KeyEvent(k.key, Keyboard.press)]
+keyboardevents_end(k::KeyPress) = [Makie.KeyEvent(k.key, Keyboard.release)]
+
+"""
+    KeyDown(key)
+
+Presses `key` without releasing it. Use to hold a modifier across subsequent
+events; pair with [`KeyUp`](@ref).
+"""
+struct KeyDown
+    key::Keyboard.Button
+end
+duration(::KeyDown, _) = 0.0
+keyboardevents_start(k::KeyDown) = [Makie.KeyEvent(k.key, Keyboard.press)]
+
+"""
+    KeyUp(key)
+
+Releases a key previously held with [`KeyDown`](@ref).
+"""
+struct KeyUp
+    key::Keyboard.Button
+end
+duration(::KeyUp, _) = 0.0
+keyboardevents_start(k::KeyUp) = [Makie.KeyEvent(k.key, Keyboard.release)]
+
+
+"""
+    Scroll(delta; duration = 0.8)
+
+Emits `events.scroll` events over `duration` seconds so that the totals sum to
+`delta` (a `(dx, dy)` tuple in scroll units). Use to animate a wheel/trackpad
+scroll over a scrollable container.
+"""
+struct Scroll
+    delta::Tuple{Float64, Float64}
+    duration::Float64
+end
+Scroll(delta; duration = 0.8) = Scroll(Tuple(Float64.(delta)), duration)
+duration(s::Scroll, _) = s.duration
+
+function scrollevents_frame(s::Scroll, time, prev_time)
+    s.duration <= 0 && return []
+    frac = (time - prev_time) / s.duration
+    frac <= 0 && return []
+    return [Tuple(frac .* s.delta)]
+end
+
+"""
+    DropFiles(paths...)
+
+Delivers `paths` as an `events.dropped_files` event — what GLFW emits when
+the user drags files from a file manager onto the window.
+"""
+struct DropFiles
+    files::Vector{String}
+end
+DropFiles(paths::AbstractString...) = DropFiles(collect(String, paths))
+duration(::DropFiles, _) = 0.1
+droppedfiles_start(d::DropFiles) = d.files
 
 mouseevents_start(obj) = []
 mouseevents_end(obj) = []
@@ -130,6 +238,11 @@ mouseevents_frame(obj, t) = []
 mousepositions_start(obj, startpos) = []
 mousepositions_end(obj, startpos) = []
 mousepositions_frame(obj, startpos, t) = []
+keyboardevents_start(obj) = []
+keyboardevents_end(obj) = []
+unicode_inputs_frame(obj, time, prev_time) = []
+scrollevents_frame(obj, time, prev_time) = []
+droppedfiles_start(obj) = String[]
 
 function alpha_blend(fg::Makie.RGBA, bg::Makie.RGB)
     r = (fg.r * fg.alpha + bg.r * (1 - fg.alpha))
@@ -210,22 +323,38 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
             for mouseevent in mouseevents
                 content_scene.events.mousebutton[] = mouseevent
             end
+            for keyevent in keyboardevents_start(event)
+                content_scene.events.keyboardbutton[] = keyevent
+            end
+            dropped = droppedfiles_start(event)
+            isempty(dropped) || (content_scene.events.dropped_files[] = dropped)
             mousepositions = mousepositions_start(event, event_startposition)
             for mouseposition in mousepositions
                 content_scene.events.mouseposition[] = tuple(mouseposition...)
                 cursor_position[] = mouseposition
             end
 
+            prev_t_in_event = 0.0
             while t < t_event + current_duration
-                mouseevents = mouseevents_frame(event, t - t_event)
+                # WaitUntil ends as soon as its predicate holds (timeout = current_duration)
+                event isa WaitUntil && event.pred() && break
+                t_in_event = t - t_event
+                mouseevents = mouseevents_frame(event, t_in_event)
                 for mouseevent in mouseevents
                     content_scene.events.mousebutton[] = mouseevent
                 end
-                mousepositions = mousepositions_frame(event, event_startposition, t - t_event)
+                mousepositions = mousepositions_frame(event, event_startposition, t_in_event)
                 for mouseposition in mousepositions
                     content_scene.events.mouseposition[] = tuple(mouseposition...)
                     cursor_position[] = mouseposition
                 end
+                for c in unicode_inputs_frame(event, t_in_event, prev_t_in_event)
+                    content_scene.events.unicode_input[] = c
+                end
+                for sc in scrollevents_frame(event, t_in_event, prev_t_in_event)
+                    content_scene.events.scroll[] = sc
+                end
+                prev_t_in_event = t_in_event
 
                 func(i_frame, t)
                 # img[] = rotr90(Makie.colorbuffer(figlike, update = false))
@@ -252,6 +381,9 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
             for mouseevent in mouseevents
                 content_scene.events.mousebutton[] = mouseevent
             end
+            for keyevent in keyboardevents_end(event)
+                content_scene.events.keyboardbutton[] = keyevent
+            end
             mousepositions = mousepositions_end(event, event_startposition)
             for mouseposition in mousepositions
                 content_scene.events.mouseposition[] = tuple(mouseposition...)
@@ -265,8 +397,42 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
     return
 end
 
-interaction_record(figlike, filepath, events::AbstractVector; kwargs...) = interaction_record((args...,) -> nothing, figlike, filepath, events; kwargs...)
+interaction_record(figlike, filepath, events::AbstractVector; kwargs...) = interaction_record((args...) -> nothing, figlike, filepath, events; kwargs...)
 
 relative_pos(block, rel) = Point2f(block.layoutobservables.computedbbox[].origin .+ rel .* block.layoutobservables.computedbbox[].widths)
+
+"""
+    textbox_offset_pos(tb::Textbox, offset::Int)
+
+Pixel position of cursor `offset` (0-based) inside `tb`'s text. Suitable for
+[`MouseTo`](@ref) inside a [`Lazy`](@ref) so that the textbox's glyph layout is
+queried at recording time.
+"""
+function textbox_offset_pos(tb, offset::Integer)
+    editor = tb.editor
+    text_plot = first(p for p in editor.plots if p isa Makie.Text)
+    origins = text_plot.glyph_origins[]
+    n = length(origins)
+    bbox = tb.layoutobservables.computedbbox[]
+    sa_origin = round.(Int, Tuple(bbox.origin))
+    block_local = Tuple(only(text_plot.markerspace_positions[]))[1:2]
+    if n == 0
+        y = bbox.origin[2] + 0.5 * bbox.widths[2]
+        x = sa_origin[1] + block_local[1]
+        return Point2f(x, y)
+    end
+    off = clamp(Int(offset), 0, n)
+    glyph_idx = off < n ? off + 1 : n
+    local_x = if off < n
+        origins[off + 1][1]
+    else
+        adv = Float32(text_plot.glyph_extents[][n].hadvance) * text_plot.text_scales[][n][1]
+        origins[n][1] + adv
+    end
+    local_y = origins[glyph_idx][2]
+    x = sa_origin[1] + block_local[1] + local_x
+    y = sa_origin[2] + block_local[2] + local_y
+    return Point2f(x, y)
+end
 
 end
