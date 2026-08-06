@@ -1011,9 +1011,42 @@ function register_mesh_decomposition!(attr)
     end
 end
 
+# Duplicated vertices can carry float noise, e.g. the wrap-around seam of a UV sphere
+# evaluates the parametrization at 0 and 2pi, so positions are matched with a tolerance
+# relative to the mesh extent. Without this, seam edges count as two boundary edges and
+# get stroked at full width from both sides. Points are bucketed into grid cells; since
+# the noise is far smaller than the cell size, a near-duplicate can only end up in the
+# neighboring cell closest to the point's fractional position, so those are probed too.
 function canonical_vertex_ids(positions)
-    canonical = Dict{eltype(positions), Int}()
-    return Int[get!(canonical, p, i) for (i, p) in enumerate(positions)]
+    lo = Vec3d(mapreduce(p -> to_ndim(Point3d, p, 0), (a, b) -> min.(a, b), positions))
+    hi = Vec3d(mapreduce(p -> to_ndim(Point3d, p, 0), (a, b) -> max.(a, b), positions))
+    scale = maximum(hi - lo)
+    quantum = (isfinite(scale) && scale > 0) ? 1.0e-6 * scale : 1.0
+
+    cells = Dict{NTuple{3, Int64}, Int}()
+    nonfinite = Dict{Vec3d, Int}()
+    ids = Vector{Int}(undef, length(positions))
+    for (i, p) in enumerate(positions)
+        p3 = Vec3d(to_ndim(Point3d, p, 0))
+        if !all(isfinite, p3)
+            ids[i] = get!(nonfinite, p3, i)
+            continue
+        end
+        pq = p3 ./ quantum
+        base = (floor(Int64, pq[1]), floor(Int64, pq[2]), floor(Int64, pq[3]))
+        step = ntuple(d -> pq[d] - base[d] < 0.5 ? -1 : 1, 3)
+        id = 0
+        for dz in (0, step[3]), dy in (0, step[2]), dx in (0, step[1])
+            id = get(cells, (base[1] + dx, base[2] + dy, base[3] + dz), 0)
+            id == 0 || break
+        end
+        if id == 0
+            id = i
+            cells[base] = i
+        end
+        ids[i] = id
+    end
+    return ids
 end
 
 function count_mesh_edges(faces, canonical_ids)
@@ -1029,7 +1062,7 @@ function count_mesh_edges(faces, canonical_ids)
     return counts
 end
 
-function corner_wings(incident_edges, positions, v, o1, o2)
+function corner_wings(incident_edges, positions, v, o1, o2, own_min_width)
     at(u) = to_ndim(Point3d, positions[u], 0)
     direction(u) = normalize(Vec3d(at(u) - at(v)))
     d1 = direction(o1)
@@ -1044,6 +1077,11 @@ function corner_wings(incident_edges, positions, v, o1, o2)
         return !isnan(out_of_plane) && out_of_plane < 0.3
     end
     wings = filter(((u, _),) -> u != o1 && u != o2, incident_edges)
+    # A wing band can only enter this triangle by crossing one of the triangle's own
+    # edges at the corner. If those are themselves stroked at least as wide, the
+    # junction is already covered and the wing would only risk painting stray bands
+    # on curved surfaces (e.g. a triangle sphere with strokeedges = :all).
+    wings = filter(((_, width),) -> width > own_min_width, wings)
     wings = filter(is_in_plane, wings)
     length(wings) <= 2 && return wings
 
@@ -1114,7 +1152,8 @@ function stroke_edge_data(mesh, gl_faces, strokeedges::Symbol)
             v = corners[i]
             o1 = corners[mod1(i + 1, 3)]
             o2 = corners[mod1(i + 2, 3)]
-            wings = corner_wings(get(incident, v, no_wings), positions, v, o1, o2)
+            own_min_width = min(edge_widths[t][i], edge_widths[t][mod1(i + 2, 3)])
+            wings = corner_wings(get(incident, v, no_wings), positions, v, o1, o2, own_min_width)
             for (j, (u, width)) in enumerate(wings)
                 indices[2 * (i - 1) + j] = u
                 widths[2 * (i - 1) + j] = width

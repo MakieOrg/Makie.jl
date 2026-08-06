@@ -175,6 +175,11 @@ vec4 apply_stroke(vec4 color) {
     face_factor = min(face_factor, stroke_edge_factor(frag_px, corners[2], corners[0], c2.w));
 
     for (int i = 0; i < 3; i++) {
+        // Wings continue bands past their corner, so fragments further away don't need
+        // them. On curved surfaces a wing may project across the whole triangle, so
+        // without this gate it would paint a stray band far from the corner.
+        if (length(frag_px - corners[i]) > 2.0 * get_strokewidth())
+            continue;
         for (int k = 0; k < 2; k++) {
             vec4 wing = fetch_stroke_texel(base + 3 + 2 * i + k);
             if (wing.w > 0.0) {

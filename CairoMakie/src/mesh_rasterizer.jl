@@ -277,6 +277,10 @@ function stroke_face_factor(stroke::RasterStrokeData, t::Int, face, pixel_positi
         idx = wing_indices[j]
         idx == 0 && continue
         inv_ws[idx] > 0.0f0 || continue
+        # Wings continue bands past their corner, so fragments further away don't need
+        # them. On curved surfaces a wing may project across the whole triangle, so
+        # without this gate it would paint a stray band far from the corner.
+        norm(p - corners[i]) > 2.0f0 * stroke.width_px && continue
         factor = min(factor, edge_face_factor(stroke, p, corners[i], pixel_positions[idx], wing_widths[j]))
     end
     return factor
