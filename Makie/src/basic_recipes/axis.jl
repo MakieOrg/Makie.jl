@@ -347,8 +347,12 @@ function draw_axis3d(plot)
 
                 if !isempty(svtuple_getindex(axisnames, i))
                     font = to_font(fonts, svtuple_getindex(tfont, i))
+                    attrs = TextAttributes(
+                        font, fonts, to_2d_scale(tfontsize[i]), 1.0f0, 0.0f0, -1.0f0,
+                        RGBAf(0, 0, 0, 1), RGBAf(0, 0, 0, 0), 0.0f0
+                    )
                     tick_widths = maximum(ticklabels[i]) do label
-                        widths(text_bb(label, font, tfontsize[i]))[1]
+                        widths(layout_text(nothing, label, attrs).bbox)[1]
                     end / scale[j]
                     pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
                     push!(textbuffer, UnicodeFun.to_latex(svtuple_getindex(axisnames, i)))
