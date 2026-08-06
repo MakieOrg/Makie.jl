@@ -7,7 +7,7 @@ jobs:
     name: Relocatability ${{ matrix.backend }}
     env:
       MODERNGL_DEBUGGING: "true"
-      JULIA_NUM_PRECOMPILE_TAKS: 1
+      JULIA_NUM_PRECOMPILE_TASKS: 1
       JULIA_NUM_THREADS: 1
       JULIA_IMAGE_THREADS: 2
     runs-on: ${{ matrix.os }}
