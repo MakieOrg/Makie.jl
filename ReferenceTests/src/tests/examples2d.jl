@@ -881,7 +881,7 @@ end
 
     ax, tr = tricontourf(f[3, 1][1, 1], x, y, z .^ 2, colorscale = sqrt, colormap = :terrain)
     Colorbar(f[3, 1][1, 2], tr)
-    ax, tr = tricontourf(f[3, 2][1, 1], x, y, z .^ 2, colorscale = sqrt, levels = (2:0.5:5).^2)
+    ax, tr = tricontourf(f[3, 2][1, 1], x, y, z .^ 2, colorscale = sqrt, levels = (2:0.5:5) .^ 2)
     Colorbar(f[3, 2][1, 2], tr)
 
     # Reference plots - the above should look the same (with different Colorbar limits, spacing)
@@ -1032,9 +1032,9 @@ end
     )
     Colorbar(f[2, 2][1, 2], tr4)
 
-    ax, tr = tricontour(f[3, 1][1, 1], x, y, z.^2; levels = 8, linewidth = 5, colorscale = sqrt)
+    ax, tr = tricontour(f[3, 1][1, 1], x, y, z .^ 2; levels = 8, linewidth = 5, colorscale = sqrt)
     Colorbar(f[3, 1][1, 2], tr)
-    ax, tr = tricontour(f[3, 2][1, 1], x, y, z.^2; levels = (0:0.5:3.5).^2, linewidth = 5, colorscale = sqrt)
+    ax, tr = tricontour(f[3, 2][1, 1], x, y, z .^ 2; levels = (0:0.5:3.5) .^ 2, linewidth = 5, colorscale = sqrt)
     Colorbar(f[3, 2][1, 2], tr)
 
     # Reference: above should match colors and shapes (not Colorbar ticks)

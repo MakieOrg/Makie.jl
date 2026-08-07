@@ -27,6 +27,7 @@
 - Added padding for 0-width limits for `LScene` to make sure the axis generates correctly. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
 - Added `resetlimitskey`, `recomputelimitskey` and `resetrotationkey` to `Axis` and `Axis3`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
 - Added `colorrange` to `tricontourf` and `contourf` and `alpha` to `contourf`. Fixed passthrough of `visible`, `fxaa`, `clip_planes`, `overdraw` and `depth_shift`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Fixed colorscale handling in `tricontourf` and `contourf`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
 - Fixed specialized `args_preferred_axis` methods getting skipped by less specialized Makie defaults [#5722](https://github.com/MakieOrg/Makie.jl/pull/5722)
 - Fixed `Axis3(..., title = rich(...))` not working [#5729](https://github.com/MakieOrg/Makie.jl/pull/5729)
 
