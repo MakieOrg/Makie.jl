@@ -653,11 +653,14 @@ end
     )
     Colorbar(fig[2, 3][1, 2], hm; ticks = -1:0.25:1)
 
+    signed_sqrt(x) = sign(x) * sqrt(abs(x))
+    signed_square(x) = sign(x) * x * x
+    Makie.inverse_transform(::typeof(signed_sqrt)) = signed_square
     ax, hm = contourf(
         fig[3, :][1, 1], xs, ys, zs;
-        colormap = :Spectral, colorscale = x -> sign(x) * sqrt(abs(x)), levels = [0, 0.25, 0.5, 1]
+        colormap = :Spectral, colorscale = signed_sqrt, levels = [0, 0.25, 0.5, 1]
     )
-    Colorbar(fig[3, :][1, 2], hm; width = 200)
+    cb = Colorbar(fig[3, :][1, 2], hm; width = 200)
 
     fig
 end

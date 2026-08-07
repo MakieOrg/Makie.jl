@@ -60,7 +60,13 @@ function extract_colormap(plot::Union{Contourf, Tricontourf})
     levels = map(plot.colorscale, plot.computed_levels) do scale, levels
         return apply_scale(inverse_transform(scale), levels)
     end
-    limits = map(l -> (l[1], l[end]), levels)
+    limits = map(plot.colorscale, plot.computed_colorrange) do scale, cr
+        return apply_scale(inverse_transform(scale), cr)
+    end
+    colormap = map(plot.colorscale, plot.computed_colormap) do scale, cm
+        vals = apply_scale(inverse_transform(scale), cm.values)
+        return PlotUtils.CategoricalColorGradient(cm.colors, vals)
+    end
     function extend_color(color, computed)
         color === nothing && return automatic
         color == :auto || color == automatic && return computed
@@ -69,7 +75,7 @@ function extract_colormap(plot::Union{Contourf, Tricontourf})
     elow = lift(extend_color, plot.extendlow, plot.computed_lowcolor)
     ehigh = lift(extend_color, plot.extendhigh, plot.computed_highcolor)
     return ColorMapping(
-        levels[], levels, plot.computed_colormap, limits,
+        levels[], levels, colormap, limits,
         plot.colorscale, Observable(1.0), elow, ehigh, plot.nan_color
     )
 end
