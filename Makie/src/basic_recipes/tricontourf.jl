@@ -9,8 +9,8 @@ vertical positions `ys`. A `Triangulation` from DelaunayTriangulation.jl can als
 for specifying the triangles, otherwise an unconstrained triangulation of `xs` and `ys` is computed.
 """
 @recipe Tricontourf begin
-    # tricontourf stacks layers onto itself, so alpha doesn't work as expected
-    mixin_colormap_attributes(exclude = (:lowclip, :highclip, :alpha))...
+    # tricontourf stacks layers onto itself, so alpha doesn't (always) work as expected
+    mixin_colormap_attributes(exclude = (:lowclip, :highclip))...
     """
     Can be either an `Int` which results in n bands delimited by n+1 equally spaced
     levels, or it can be an `AbstractVector{<:Real}` that lists n consecutive edges
