@@ -1032,6 +1032,29 @@ end
     end
 end
 
+"""
+    Spinner(figposition; message = "Working…", running = false)
+
+Braille-frame busy indicator. Set `sp.running = true`/`false` to
+start/stop the frame animation.
+"""
+@Block Spinner begin
+    @attributes begin
+        message = "Working…"
+        running::Bool = false
+        fontsize::Float32 = @inherit(:fontsize, 20.0f0)
+        color::RGBAf = @inherit((:colors, :accent), :black)
+        frames::Vector{String} = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        frame_interval::Float32 = 0.09f0
+        halign = :center
+        valign = :center
+        tellwidth::Bool = false
+        tellheight::Bool = false
+        alignmode = Inside()
+        visible::Bool = true
+    end
+end
+
 @Block Box begin
     @attributes begin
         "Controls if the rectangle is visible."
