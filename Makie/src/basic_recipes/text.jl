@@ -703,6 +703,13 @@ function register_text_computations!(attr::ComputeGraph)
     # the `Glyphs` child inherits only the model and does not transform again. The float
     # type is kept so Float64 positions survive until the child's float32 rescaling.
     map!(attr, [:positions_transformed, :text_blocks], :per_glyph_positions) do positions, blocks
+        if length(blocks) != length(positions)
+            error(
+                "Text blocks and positions have different lengths: $(length(blocks)) != " *
+                    "$(length(positions)). Please use `update!(plot_object; arg1/arg2/text/" *
+                    "position/color/etc...)` to update multiple attributes together."
+            )
+        end
         PT = Point3{eltype(eltype(positions))}
         return PT[to_ndim(PT, sv_getindex(positions, i), 0) for (i, r) in enumerate(blocks) for _ in r]
     end

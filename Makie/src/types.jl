@@ -393,7 +393,19 @@ end
 """
     GlyphExtent
 
-Store information about the bounding box of a single glyph.
+The measurement data for one glyph, at unit scale: every field is multiplied by the
+glyph's scale (fontsize) downstream.
+
+`ascender`, `descender` and `hadvance` should be the *font's* line metrics, not the
+glyph's ink bounds. All string measurement (alignment, bounding boxes, tick label
+sizes) treats a glyph as the box `(0, descender)` to `(hadvance, ascender)`, so that
+a block's height does not depend on which characters it happens to contain. A layout
+engine reporting ink-derived values here makes text alignment content-dependent; pad
+with the ink bounds only where a glyph genuinely exceeds the font's line box (an
+oversized radical or integral sign, say).
+
+`ink_bounding_box` is the tight box around what is actually drawn. It is used to
+size render quads, not for measurement.
 """
 struct GlyphExtent
     ink_bounding_box::Rect2f
