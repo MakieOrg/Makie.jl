@@ -36,20 +36,20 @@ function initialize_block!(sp::Spinner)
         return
     end
 
-    # Each `running = true` bumps `gen`; the loop reads its own captured
-    # generation and exits when a newer animator takes over, so rapid
-    # true/false/true toggles can't leave overlapping tasks running.
-    gen = Ref(0)
-    start_animator! = () -> begin
-        gen[] += 1
-        my_gen = gen[]
-        @async while sp.running[] && gen[] == my_gen
-            sp.visible[] && (frame_idx[] = frame_idx[] + 1)
-            sleep(sp.frame_interval[])
+    # Advance the frame on ticks (matches record framerate; no async).
+    accum = Ref(0.0)
+    on(events(topscene).tick) do tick
+        if sp.running[]
+            accum[] += tick.delta_time
+            if accum[] >= sp.frame_interval[]
+                accum[] = 0.0
+                frame_idx[] = frame_idx[] + 1
+            end
+        else
+            accum[] = 0.0
         end
+        return
     end
-    on(r -> r && start_animator!(), sp.running)
-    sp.running[] && start_animator!()
 
     notify(displayed)
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
