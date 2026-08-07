@@ -45,6 +45,8 @@ Plots a 3-dimensional OldAxis.
     clip_planes = Plane3f[]
     "Sets the font name lookup for the axis. This sets what :regular, :bold, etc. lowers to."
     fonts = @inherit :fonts
+    "The text handler used to lay out the axis labels, see `text`."
+    text_handler = @inherit text_handler
 
     "Controls the displayed axis labels."
     names = @attributes begin
@@ -300,14 +302,14 @@ function draw_axis3d(plot)
             :fonts, attr.ticks.font, :tickfontsize, :titlegap, attr.ticks.textcolor,
             attr.ticks.rotation, attr.ticks.align,
             :axisnames_fontsize, attr.names.textcolor, attr.names.rotation,
-            attr.names.align, attr.names.font, :scene_scale,
+            attr.names.align, attr.names.font, :scene_scale, :text_handler,
         ],
         [:text_positions, :text_strings, :text_color, :text_rotation, :text_fontsize, :text_align, :text_font]
     ) do lims, showticks, ranges, tgap, ticklabels, axisnames,
             fonts, tfont, tfontsize, titlegap, ttextcolor,
             trotation, talign,
             axisnames_size, axisnames_color, axisrotation,
-            axisalign, axisnames_font, scale
+            axisalign, axisnames_font, scale, text_handler
 
         positionbuffer = Point3f[]
         textbuffer = String[]
@@ -347,12 +349,9 @@ function draw_axis3d(plot)
 
                 if !isempty(svtuple_getindex(axisnames, i))
                     font = to_font(fonts, svtuple_getindex(tfont, i))
-                    attrs = TextAttributes(
-                        font, fonts, to_2d_scale(tfontsize[i]), 1.0f0, 0.0f0, -1.0f0,
-                        RGBAf(0, 0, 0, 1), RGBAf(0, 0, 0, 0), 0.0f0
-                    )
+                    attrs = TextAttributes(; font, fonts, fontsize = tfontsize[i])
                     tick_widths = maximum(ticklabels[i]) do label
-                        widths(layout_text(nothing, label, attrs).bbox)[1]
+                        widths(layout_text(text_handler, label, attrs).bbox)[1]
                     end / scale[j]
                     pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
                     push!(textbuffer, UnicodeFun.to_latex(svtuple_getindex(axisnames, i)))
@@ -372,7 +371,7 @@ function draw_axis3d(plot)
     text!(
         plot, plot.text_positions, text = plot.text_strings, color = plot.text_color,
         rotation = plot.text_rotation, fontsize = plot.text_fontsize,
-        align = plot.text_align, font = plot.text_font,
+        align = plot.text_align, font = plot.text_font, text_handler = plot.text_handler,
         transparency = true, markerspace = :data, inspectable = plot.inspectable,
         visible = plot.visible
     )

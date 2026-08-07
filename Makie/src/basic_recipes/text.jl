@@ -238,21 +238,36 @@ function append_text_layout!(buffer::GlyphBuffer, layout::TextLayout)
 end
 
 """
-    TextAttributes
+    TextAttributes(; font, kwargs...)
 
 Everything about one text block except the string itself, as handed to
 [`layout_text`](@ref). The values are already resolved for that block: an attribute given
 per string is indexed, `fontsize` is a `Vec2f`, and `justification` is a fraction in 0..1
 (`automatic` folded in against `halign`).
 
+- `font::NativeFont`, `fonts`: the resolved font and the font family lookup it came from.
+- `fontsize::Vec2f`: the glyph scale in `markerspace` units, one value per axis.
+- `lineheight::Float32`: a multiplier of the font's own line height
+  (`font.height / font.units_per_EM`), not a distance.
+- `justification::Float32`: fraction in 0..1 that short lines are shifted by within the
+  block's width.
+- `word_wrap_width::Float32`: line width limit in `markerspace` units; zero or negative
+  means no wrapping.
+- `color::RGBAf`, `strokecolor::RGBAf`, `strokewidth::Float32`: display attributes, see
+  [`layout_text`](@ref) for when to bake them in.
+
 `align`, `rotation` and `offset` are deliberately absent. They are applied by a downstream
 placement node, so a handler works in the block's own layout frame and changing them
 re-runs placement rather than the handler.
 
 This is a struct rather than a long argument list so that a new attribute can be added
-without breaking existing handlers. Destructure the ones you need:
+without breaking existing handlers. Construct it with keywords (everything but `font` has
+a default) and destructure the ones you need:
 
 ```julia
+attrs = Makie.TextAttributes(font = Makie.to_font("TeX Gyre Heros Makie"), fontsize = 20)
+width = widths(Makie.layout_text(nothing, "some text", attrs).bbox)[1]
+
 function Makie.layout_text(::MyHandler, str::AbstractString, attributes)
     (; fontsize, color) = attributes
     # ...
@@ -269,6 +284,16 @@ struct TextAttributes
     color::RGBAf
     strokecolor::RGBAf
     strokewidth::Float32
+end
+
+function TextAttributes(;
+        font, fonts = nothing, fontsize = 12, lineheight = 1, justification = 0,
+        word_wrap_width = -1, color = :black, strokecolor = (:black, 0), strokewidth = 0
+    )
+    return TextAttributes(
+        to_font(font), fonts, to_2d_scale(fontsize), lineheight, justification,
+        word_wrap_width, to_color(color), to_color(strokecolor), strokewidth
+    )
 end
 
 # Makie's own text layout is just the `handler === nothing` implementation of
