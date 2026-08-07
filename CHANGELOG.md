@@ -23,6 +23,7 @@
 - Adjusted `linestyle = :solid` to be treated as patterned line in backends, allowing it to be used with other patterned lines. `linestyle = nothing` continues to use the un-patterned fast paths. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
 - Added padding for 0-width limits for `LScene` to make sure the axis generates correctly. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
 - Added `resetlimitskey`, `recomputelimitskey` and `resetrotationkey` to `Axis` and `Axis3`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Added `colorrange` to `tricontourf` and `contourf` and `alpha` to `contourf`. Fixed passthrough of `visible`, `fxaa`, `clip_planes`, `overdraw` and `depth_shift`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
 
 ## [0.24.13] - 2026-07-02
 
