@@ -192,16 +192,17 @@ function handle_transformation!(plot, parent)
     # TODO: Consider removing Transformation() and handling this in compute graph
     # connect updates
     # TODO: These should not be added as inputs. But how do we update them otherwise?
-    # A `model` keyword drives the input directly and permanently: the transformation
-    # then only supplies `transform_func` and the z value CairoMakie sorts by, so such
-    # a plot is placed and re-placed through plain `model` updates, which is how `text`
-    # places its spec children.
-    user_model = pop!(plot.kw, :model, nothing)
+    # A `model` matrix keyword drives the input directly and permanently: the
+    # transformation then only supplies `transform_func` and the z value CairoMakie
+    # sorts by, so such a plot is placed and re-placed through plain `model` updates,
+    # which is how `text` places its spec children. Non-matrix values (`automatic`
+    # forwarded by recipes) mean the transformation drives the model as usual.
+    user_model = to_value(pop!(plot.kw, :model, nothing))
     if haskey(plot, :model) && haskey(plot.attributes.inputs, :model)
-        if user_model === nothing
-            on(model -> update!(plot, model = model), plot, transformationmatrix(plot), update = true)
-        else
+        if user_model isa AbstractMatrix
             update!(plot, model = Mat4d(user_model))
+        else
+            on(model -> update!(plot, model = model), plot, transformationmatrix(plot), update = true)
         end
     else
         add_input!(plot.attributes, :model, transformationmatrix(plot))
