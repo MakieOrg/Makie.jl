@@ -748,6 +748,11 @@ end
 # has no children and no render objects.
 function add_text_specs!(plot)
     register_model_clip_planes!(plot.attributes)
+    # One shared transformation for all spec children. Their placement flows through
+    # the `model` keyword, which shuts off the transformation's model sync, so this
+    # only carries what else a transformation provides: the z value CairoMakie sorts
+    # drawing by, inherited from the text plot, and an identity transform_func.
+    spec_transformation = Transformation(plot; transform_func = identity)
     map!(
         plot.attributes,
         [
@@ -766,7 +771,7 @@ function add_text_specs!(plot)
             # plot type works as a spec; `transformation = :nothing` keeps the child's
             # transformation from overwriting it
             kw[:model] = translationmatrix(to_ndim(Vec3d, ms_positions[bidx], 0)) * spec_model
-            kw[:transformation] = :nothing
+            kw[:transformation] = spec_transformation
             # rotate scatter-like markers with the block instead of billboarding them
             if has_flat_key(documented_attributes(plottype(spec)), :transform_marker)
                 get!(kw, :transform_marker, true)
