@@ -539,15 +539,22 @@ is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
 is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
 """
-    rasterize_marker_for_gpu(marker, markersize) -> Union{Nothing, Matrix, Vector{Matrix}}
+    rasterize_marker_for_gpu(marker, markersize, px_per_unit) -> Union{Nothing, Matrix, Vector{Matrix}}
 
 Extension hook for GPU backends (GLMakie / WGLMakie) to rasterize an opaque scatter
 marker into an image (or one image per marker) at upload time. Returns `nothing` by
 default, deferring to the existing SDF / image-matrix paths. CairoMakie ignores the
 resulting image and dispatches `draw_marker` on the original marker type instead, so a
 handler can render the same marker as vectors on Cairo and as a raster on the GPU.
+
+The image is drawn at `markersize`, so it should span `markersize * px_per_unit` pixels
+per axis to be sharp at the target resolution. `px_per_unit` is 1 where the resolution
+is unknown; GLMakie re-rasterizes a single marker per screen with that screen's
+`px_per_unit`, including when it changes for a high-resolution `save`. A `Vector` of
+markers keeps the `px_per_unit = 1` rasterization, since its uv packing happens
+upstream of the backends.
 """
-rasterize_marker_for_gpu(@nospecialize(marker), @nospecialize(markersize)) = nothing
+rasterize_marker_for_gpu(@nospecialize(marker), @nospecialize(markersize), @nospecialize(px_per_unit)) = nothing
 
 function compute_marker_attributes((atlas, marker, font, scale), changed, last)
     # Note: Careful, changed[2] is not always called marker
@@ -555,7 +562,7 @@ function compute_marker_attributes((atlas, marker, font, scale), changed, last)
     # [atlas_sym, :marker, :font, :markersize]
     # [:sdf_marker_shape, :sdf_uv, :image]
     if !(marker isa Matrix{<:Colorant} || marker isa Vector{<:Matrix{<:Colorant}})
-        raster = rasterize_marker_for_gpu(marker, scale)
+        raster = rasterize_marker_for_gpu(marker, scale, 1)
         raster === nothing || (marker = raster)
     end
     if marker isa Matrix{<:Colorant} # single image marker

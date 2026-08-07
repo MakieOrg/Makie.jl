@@ -537,3 +537,25 @@ end
     # @test eltype(p5.gl_renderobject[][:image]) === RGBA{N0f8}
     # @test eltype(p6.gl_renderobject[].vertexarray.buffers["intensity"]) === N0f8
 end
+
+struct RasterizedMarker end
+
+Makie.to_spritemarker(m::RasterizedMarker) = m
+
+function Makie.rasterize_marker_for_gpu(::RasterizedMarker, markersize, px_per_unit)
+    n = max(2, round(Int, first(Makie.to_2d_scale(markersize)) * px_per_unit))
+    return fill(RGBAf(1, 0, 0, 1), n, n)
+end
+
+@testset "markers rasterize at the screen's px_per_unit" begin
+    s = Scene(camera = campixel!, size = (100, 100))
+    p = scatter!(s, Point2f(50, 50), marker = RasterizedMarker(), markersize = 20)
+    screen = display(GLMakie.Screen(visible = false, px_per_unit = 2), s)
+    @test size(p.gl_image[]) == (40, 40)
+
+    screen.px_per_unit[] = 4
+    @test size(p.gl_image[]) == (80, 80)
+    colorbuffer(screen)
+
+    GLMakie.closeall()
+end
