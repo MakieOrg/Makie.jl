@@ -162,6 +162,14 @@ for the whole block.
 Each one needs its visual bounding box in `spec_bboxes`, which only the handler
 knows: a spec's positions don't imply its extent (a scatter marker covers far more
 than the point it sits on).
+
+A spec's first positional argument must be its positions (point-like values in the
+layout frame), since that is what placement shifts and rotates; plot types whose
+first argument is something else cannot be text specs. A `rotation` keyword composes
+with the plot's `rotation`. `space` is overridden with the plot's `markerspace` and
+`visible` is combined with the plot's `visible`; the other render attributes
+(`depth_shift`, `transparency`, ...) default to the plot's values but a spec can
+override them.
 """
 struct TextLayout{I, F, O, E, S, C, SC, SW}
     glyphindices::I
@@ -749,16 +757,25 @@ function add_text_specs!(plot)
         [
             :text_specs, :text_spec_block_indices, :preprojection, :model_f32c,
             :positions_transformed_f32c, :model_clip_planes, :space, :markerspace, :visible,
+            :depth_shift, :transparency, :fxaa, :overdraw, :inspectable,
         ],
         :_shifted_text_specs,
-    ) do specs, block_indices, preprojection, model_f32c, positions, clip_planes, space, markerspace, visible
+    ) do specs, block_indices, preprojection, model_f32c, positions, clip_planes, space, markerspace, visible,
+            depth_shift, transparency, fxaa, overdraw, inspectable
         isempty(specs) && return PlotSpec[]
         ms_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
         return map(specs, block_indices) do spec, bidx
             shifted = transform_text_spec(spec, p -> p + ms_positions[bidx])
             kw = copy(shifted.kwargs)
+            # the layout frame the spec positions live in only makes sense in markerspace
             kw[:space] = markerspace
-            kw[:visible] = visible
+            kw[:visible] = visible && get(kw, :visible, true)
+            for (name, value) in (
+                    (:depth_shift, depth_shift), (:transparency, transparency),
+                    (:fxaa, fxaa), (:overdraw, overdraw), (:inspectable, inspectable),
+                )
+                get!(kw, name, value)
+            end
             return PlotSpec(shifted.type, shifted.args...; kw...)
         end
     end

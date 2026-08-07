@@ -398,8 +398,13 @@ end
 
     p.depth_shift = 0.25f0
     @test glyphs.depth_shift[] == 0.25f0
+    @test only(specs.plots).depth_shift[] == 0.25f0
     p.transparency = true
     @test glyphs.transparency[] == true
+    @test only(specs.plots).transparency[] == true
+    p.inspectable = false
+    @test glyphs.inspectable[] == false
+    @test only(specs.plots).inspectable[] == false
 
     # `alpha` is folded into the glyph colors, so passing it on would apply it twice
     p.alpha = 0.5
