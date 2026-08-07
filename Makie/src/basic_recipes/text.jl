@@ -748,11 +748,11 @@ function add_glyphs!(plot)
         # excluded because it is already folded into the glyph colors.
         shared_attributes(
             plot, Glyphs;
-            drop = [:color, :alpha, :strokecolor, :strokewidth, :rotation, :marker_offset]
+            drop = [:color, :alpha, :font, :strokecolor, :strokewidth, :rotation, :marker_offset]
         ),
         plot.per_glyph_positions;
-        glyphindices = plot.glyph_indices,
-        font_per_char = plot.glyph_fonts,
+        glyph_indices = plot.glyph_indices,
+        font = plot.glyph_fonts,
         marker_offset = plot.marker_offset,
         scale = plot.glyph_scales,
         color = plot.glyph_colors,

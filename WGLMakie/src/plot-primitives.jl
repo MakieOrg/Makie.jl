@@ -336,10 +336,10 @@ function get_glyph_data(scene::Scene, glyphs, fonts)
 end
 
 function register_glyph_computation!(attr, scene)
-    map!(attr, [:scale, :glyphindices], :glyph_scales) do scale, gi
+    map!(attr, [:scale, :glyph_indices], :glyph_scales) do scale, gi
         return Vec2f[Vec2f(Makie.to_2d_scale(Makie.sv_getindex(scale, i))) for i in eachindex(gi)]
     end
-    return register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs, fonts, glyph_scales), changed, last
+    return register_computation!(attr, [:glyph_indices, :font, :glyph_scales], [:glyph_data]) do (glyphs, fonts, glyph_scales), changed, last
         hashes, updates = get_glyph_data(scene, glyphs, fonts)
         dict = Dict(
             :glyph_hashes => hashes,

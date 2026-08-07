@@ -674,11 +674,11 @@ function plot!(p::PathText)
         # apply it a second time
         shared_attributes(
             p, Glyphs;
-            drop = [:color, :alpha, :strokecolor, :strokewidth, :rotation, :space, :markerspace]
+            drop = [:color, :alpha, :font, :strokecolor, :strokewidth, :rotation, :space, :markerspace]
         ),
         p._pathtext_positions;
-        glyphindices = p._pathtext_glyphindices,
-        font_per_char = p._pathtext_fonts,
+        glyph_indices = p._pathtext_glyphindices,
+        font = p._pathtext_fonts,
         scale = p._pathtext_scales,
         marker_offset = p._pathtext_marker_offsets,
         rotation = p._pathtext_rotations,

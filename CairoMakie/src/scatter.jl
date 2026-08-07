@@ -42,7 +42,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Glyphs)
         add_input!(attr, :cam_view, scene.compute.view) # different from plot.view
     end
     inputs = [
-        :font_per_char, :glyphindices, :marker_offset, :rotation,
+        :font, :glyph_indices, :marker_offset, :rotation,
         :scale, :strokewidth, :strokecolor, :markerspace,
         :color, :glowwidth, :glowcolor,
         :positions_in_markerspace, :projectionview, :eye_to_clip, :cam_view, :resolution,
@@ -140,8 +140,8 @@ end
 
 function draw_glyphs(ctx, attr::NamedTuple)
     positions = attr.positions_in_markerspace
-    font_per_char = attr.font_per_char
-    glyphindices = attr.glyphindices
+    fonts = attr.font
+    glyph_indices = attr.glyph_indices
     marker_offset = attr.marker_offset
     rotations = attr.rotation
     scales = attr.scale
@@ -169,16 +169,16 @@ function draw_glyphs(ctx, attr::NamedTuple)
     # Glow pass: build combined glyph path once, stroke with decreasing widths
     if glowwidth > 0 && glow_a > 0
         Cairo.save(ctx)
-        for glyph_idx in eachindex(glyphindices)
+        for glyph_idx in eachindex(glyph_indices)
             glyph_idx in valid_indices || continue
-            glyph = glyphindices[glyph_idx]
+            glyph = glyph_indices[glyph_idx]
             glyph == 0 && continue
             gp3 = positions[glyph_idx] .+ size_model * marker_offset[glyph_idx]
             any(isnan, gp3) && continue
             scale = Makie.sv_getindex(scales, glyph_idx)
             rotation = Makie.sv_getindex(rotations, glyph_idx)
             pos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
-            cairoface = set_ft_font(ctx, font_per_char[glyph_idx])
+            cairoface = set_ft_font(ctx, fonts[glyph_idx])
             set_font_matrix(ctx, mat)
             glyph_path(ctx, glyph, pos...)
             cairo_font_face_destroy(cairoface)
@@ -196,14 +196,14 @@ function draw_glyphs(ctx, attr::NamedTuple)
         Cairo.restore(ctx)
     end
 
-    for glyph_idx in eachindex(glyphindices)
+    for glyph_idx in eachindex(glyph_indices)
         glyph_idx in valid_indices || continue
 
-        glyph = glyphindices[glyph_idx]
+        glyph = glyph_indices[glyph_idx]
         glyph == 0 && continue
 
         offset = marker_offset[glyph_idx]
-        font = font_per_char[glyph_idx]
+        font = fonts[glyph_idx]
         rotation = Makie.sv_getindex(rotations, glyph_idx)
         color = Makie.sv_getindex(colors, glyph_idx)
         strokewidth = Makie.sv_getindex(strokewidths, glyph_idx)

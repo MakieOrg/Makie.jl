@@ -659,9 +659,9 @@ in `markerspace`. `Glyphs` has no notion of strings or lines; that layout lives 
 """
 @recipe Glyphs (positions,) begin
     "Index of each glyph within its font."
-    glyphindices = UInt64[]
+    glyph_indices = UInt64[]
     "Font of each glyph."
-    font_per_char = NativeFont[]
+    font = NativeFont[]
     "Per-glyph offset from `position`, in `markerspace` units."
     marker_offset = Point3f[]
     "Per-glyph size (fontsize), in `markerspace` units."
@@ -670,9 +670,13 @@ in `markerspace`. `Glyphs` has no notion of strings or lines; that layout lives 
     color = :black
     "Rotation of each glyph."
     rotation = 0.0
+    "Color of the outline around each glyph."
     strokecolor = (:black, 0.0)
+    "Width of the outline around each glyph. The GL backends only support one width for all glyphs."
     strokewidth = 0
+    "Color of the glow effect around each glyph."
     glowcolor = (:black, 0.0)
+    "Size of the glow effect around each glyph."
     glowwidth = 0.0
     "Space in which `scale` and `marker_offset` act. See `Makie.spaces()`."
     markerspace = :pixel

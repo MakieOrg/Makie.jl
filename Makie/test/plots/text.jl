@@ -451,7 +451,7 @@ end
 
     glyphs = only(p.plots)
     @test glyphs isa Makie.Glyphs
-    @test glyphs.glyphindices[] == FreeTypeAbstraction.glyph_index.(font, ['a', 'b'])
+    @test glyphs.glyph_indices[] == FreeTypeAbstraction.glyph_index.(font, ['a', 'b'])
     @test glyphs.scale[] == fill(Vec2f(20), 2)
     # the positions are the glyph origins, so nothing is left for marker_offset
     @test glyphs.marker_offset[] == fill(Point3f(0), 2)

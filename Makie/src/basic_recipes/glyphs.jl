@@ -9,12 +9,12 @@ function calculated_attributes!(::Type{Glyphs}, plot::Plot)
     add_constant!(attr, :sdf_marker_shape, Cint(DISTANCEFIELD))
     add_constant!(attr, :atlas, get_texture_atlas())
 
-    map!(attr, [:atlas, :glyphindices, :font_per_char], :sdf_uv) do atlas, gi, fonts
+    map!(attr, [:atlas, :glyph_indices, :font], :sdf_uv) do atlas, gi, fonts
         return glyph_uv_width!.((atlas,), gi, fonts)
     end
 
     map!(
-        attr, [:atlas, :glyphindices, :font_per_char, :scale],
+        attr, [:atlas, :glyph_indices, :font, :scale],
         [:quad_offset, :quad_scale]
     ) do atlas, gi, fonts, scale
         quad_offsets = Vec2f[]
