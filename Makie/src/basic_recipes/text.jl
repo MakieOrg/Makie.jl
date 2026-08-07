@@ -349,7 +349,9 @@ Whether a text value's laid-out glyph geometry is independent of the display
 attributes (color, strokecolor, strokewidth). Plain strings apply those per-glyph
 *after* layout, so their geometry can be reused when only display attributes change.
 `RichText` and `LaTeXString` bake color into their layout, so they return `false`
-and recompute. Custom text types default to `false` (conservative).
+and recompute. Custom text types default to `false` (conservative). A block a
+`text_handler` claims always recomputes, since the handler may rasterize; this trait
+only decides for text laid out by Makie itself.
 """
 display_independent_layout(::AbstractString) = true
 # LaTeXString <: AbstractString, but its layout bakes color into glyphs and rule specs
@@ -393,6 +395,21 @@ attributes in [`TextAttributes`](@ref) are there because a handler may either ba
 arrays.
 """
 layout_text(handler, src, attributes) = layout_text(nothing, src, attributes)
+
+# The fallback above makes `hasmethod` always true, so whether a handler claims a
+# text type is answered by which method a call would hit.
+const LAYOUT_TEXT_FALLBACK = which(layout_text, Tuple{Any, Any, TextAttributes})
+
+handler_claims(::Nothing, str) = false
+function handler_claims(handler, str)
+    return which(layout_text, Tuple{typeof(handler), typeof(str), TextAttributes}) !== LAYOUT_TEXT_FALLBACK
+end
+
+# A claimed block is assumed to bake the display attributes into its layout, since
+# the handler may rasterize; a fall-through block behaves as if there were no handler.
+function bakes_display_attributes(handler, str)
+    return handler_claims(handler, str) || !display_independent_layout(str)
+end
 
 # Pick out block `i`'s value from each attribute.
 function block_attributes(
@@ -451,9 +468,7 @@ function register_baked_display_attributes!(attr::ComputeGraph)
         for (name, value) in [(:color, color), (:strokecolor, strokecolor), (:strokewidth, strokewidth)]
             validate_per_string(name, value, length(text))
         end
-        # a handler is assumed to bake the display attributes into its layout, since
-        # it may rasterize; plain strings take them per glyph downstream instead
-        baked = !isempty(text) && (handler !== nothing || !all(display_independent_layout, text))
+        baked = !isempty(text) && any(str -> bakes_display_attributes(handler, str), text)
         baked || return nothing
         return (color, strokecolor, strokewidth)
     end
@@ -531,7 +546,7 @@ function register_glyph_display!(attr::ComputeGraph)
             (RGBAf[], RGBAf[], Float32[]) : empty!.(values(cached))
 
         for (i, block) in enumerate(text_blocks)
-            if text_handler !== nothing || !display_independent_layout(input_text[i])
+            if bakes_display_attributes(text_handler, input_text[i])
                 append!(colors, view(layout_colors, block))
                 append!(strokecolors, view(layout_strokecolors, block))
                 append!(strokewidths, view(layout_strokewidths, block))

@@ -267,6 +267,38 @@ end
     @test p.text_spec_block_indices[] == [2]
 end
 
+struct ClaimCountingHandler
+    calls::Base.RefValue{Int}
+end
+
+function Makie.layout_text(h::ClaimCountingHandler, str::WrappedText, attributes)
+    h.calls[] += 1
+    return Makie.layout_text(WrappedTextHandler(), str, attributes)
+end
+
+@testset "recoloring relayouts only when the handler claims a block" begin
+    handler = ClaimCountingHandler(Ref(0))
+    scene = Scene(camera = campixel!)
+
+    p = text!(scene, [Point2f(0, 0), Point2f(100, 0)], text = ["ab", "cd"], color = :red, text_handler = handler)
+    @test p.baked_display_attributes[] === nothing
+    @test all(==(to_color(:red)), p.glyph_colors[])
+    p.color = :blue
+    @test all(==(to_color(:blue)), p.glyph_colors[])
+    @test handler.calls[] == 0
+
+    p2 = text!(
+        scene, [Point2f(0, 0), Point2f(100, 0)];
+        text = Any["ab", WrappedText("cde")], color = :red, text_handler = handler,
+    )
+    @test p2.baked_display_attributes[] !== nothing
+    @test all(==(to_color(:red)), p2.glyph_colors[])
+    @test handler.calls[] == 1
+    p2.color = :blue
+    @test all(==(to_color(:blue)), p2.glyph_colors[])
+    @test handler.calls[] == 2
+end
+
 @testset "per block placement attributes" begin
     scene = Scene(camera = campixel!)
 
