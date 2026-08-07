@@ -8,6 +8,8 @@ DelaunayTriangulation.jl can also be provided instead of `xs` and `ys`, otherwis
 unconstrained Delaunay triangulation of `xs` and `ys` is computed.
 """
 @recipe Tricontour begin
+    mixin_colormap_attributes()...
+    filtered_attributes(Lines, allow = (:linestyle, :linewidth, :joinstyle, :miter_limit))...
     """
     Can be either an `Int` which results in n equally-spaced isolines between the
     minimum and maximum of `zs`, or an `AbstractVector{<:Real}` that lists explicit
@@ -21,12 +23,6 @@ unconstrained Delaunay triangulation of `xs` and `ys` is computed.
     color = nothing
     "Sets the colormap from which isoline colors are sampled when `color` is `nothing`."
     colormap = @inherit colormap
-    "Color transform function."
-    colorscale = identity
-    "Sets the width of the contour lines."
-    linewidth = 1.5
-    "Sets the dash pattern of the contour lines. See `?lines`."
-    linestyle = nothing
     """
     The mode with which the points in `xs` and `ys` are triangulated.
     Passing `DelaunayTriangulation()` performs a Delaunay triangulation.
@@ -36,6 +32,7 @@ unconstrained Delaunay triangulation of `xs` and `ys` is computed.
     """
     triangulation = DelaunayTriangulation()
     mixin_generic_plot_attributes()...
+    fxaa = false
 end
 
 function used_attributes(::Type{<:Tricontour}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
@@ -98,11 +95,23 @@ function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:
         return _get_tricontour_levels(zs, levels)
     end
 
-    map!(c, [:computed_levels, :converted_2], :computed_colorrange) do levels, zs
-        isempty(levels) || return extrema_nan(levels)
-        c = Float32(first(zs))
-        delta = max(one(c), abs(c))
-        return (c - delta, c + delta)
+    map!(c, [:colorrange, :computed_levels, :converted_2], :computed_colorrange) do colorrange, levels, zs
+        if colorrange isa Union{Automatic, Tuple{Automatic, <:Any}, Tuple{<:Any, Automatic}}
+            if isempty(levels)
+                c = Float32(first(zs))
+                delta = max(one(c), abs(c))
+                return (c - delta, c + delta)
+            else
+                lcr = extrema_nan(levels)
+                if colorrange === automatic
+                    return lcr
+                else
+                    return default_automatic.(colorrange, lcr)
+                end
+            end
+        else
+            return colorrange
+        end
     end
 
     register_computation!(
@@ -126,15 +135,8 @@ function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:
     end
 
     lines!(
-        c, c.line_xs, c.line_ys;
-        color = c.final_color,
-        colormap = c.colormap,
-        colorscale = c.colorscale,
-        colorrange = c.computed_colorrange,
-        linewidth = c.linewidth,
-        linestyle = c.linestyle,
-        inspectable = c.inspectable,
-        transparency = c.transparency
+        c, c.attributes, c.line_xs, c.line_ys;
+        color = c.final_color, colorrange = c.computed_colorrange,
     )
 
     return c

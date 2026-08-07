@@ -41,7 +41,7 @@ similar to how [`surface`](@ref) works.
     extendhigh = nothing
     mixin_generic_plot_attributes()...
     # TODO, Isoband doesn't seem to support nans?
-    mixin_colormap_attributes(allow = (:colormap, :colorscale, :nan_color))...
+    mixin_colormap_attributes(exclude = (:lowclip, :highclip))...
 end
 
 # these attributes are computed dynamically and needed for colorbar e.g.
@@ -211,7 +211,14 @@ function register_contourf_computations!(graph, argname)
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    map!(extrema_nan, graph, :computed_levels, :computed_colorrange)
+    map!(graph, [:colorrange, :computed_levels], :computed_colorrange) do colorrange, levels
+        lcr = extrema_nan(levels)
+        if colorrange === automatic
+            return lcr
+        else
+            return default_automatic.(colorrange, lcr)
+        end
+    end
     map!(compute_contourf_colormap, graph, [:computed_levels, :colormap, :extendlow, :extendhigh], :computed_colormap)
     map!(compute_lowcolor, graph, [:extendlow, :colormap], :computed_lowcolor)
     map!(compute_highcolor, graph, [:extendhigh, :colormap], :computed_highcolor)
@@ -255,19 +262,15 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
     end
 
     return poly!(
-        c,
-        c.polys,
+        c, c.attributes, c.polys,
         colormap = c.computed_colormap,
         colorrange = c.computed_colorrange,
         highclip = c.computed_highcolor,
         lowclip = c.computed_lowcolor,
-        nan_color = c.nan_color,
         color = c.computed_colors,
         strokewidth = 0,
         strokecolor = :transparent,
         shading = NoShading,
-        inspectable = c.inspectable,
-        transparency = c.transparency
     )
 end
 
