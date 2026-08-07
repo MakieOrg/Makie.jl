@@ -655,7 +655,7 @@ end
 
     ax, hm = contourf(
         fig[3, :][1, 1], xs, ys, zs;
-        colormap = :Spectral, colorscale = sqrt, levels = [0, 0.25, 0.5, 1]
+        colormap = :Spectral, colorscale = x -> sign(x) * sqrt(abs(x)), levels = [0, 0.25, 0.5, 1]
     )
     Colorbar(fig[3, :][1, 2], hm; width = 200)
 
