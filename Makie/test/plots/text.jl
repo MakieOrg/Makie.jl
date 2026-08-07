@@ -164,9 +164,9 @@ end
     @test colors == fill(RGBAf(1, 0, 0, 1), 4)
 
     p2 = text!(scene, Point2f(0), text = L"\frac{1}{2}")
-    @test length(p2.text_specs[]) == 1
+    @test length(p2.layout_specs[]) == 1
     p2.fontsize = 30
-    @test length(p2.text_specs[]) == 1
+    @test length(p2.layout_specs[]) == 1
     @test length(p2.text_spec_block_indices[]) == 1
     @test length(p2.text_spec_bboxes[]) == 1
 end
@@ -232,11 +232,11 @@ end
     scene = Scene(camera = campixel!)
     p = text!(scene, Point2f(100, 100), text = L"\frac{a}{b}", color = :red, fontsize = 20)
     @test all(==(to_color(:red)), p.glyph_colors[])
-    @test only(p.text_specs[]).kwargs[:color] == to_color(:red)
+    @test only(p.layout_specs[]).kwargs[:color] == to_color(:red)
 
     p.color = :blue
     @test all(==(to_color(:blue)), p.glyph_colors[])
-    @test only(p.text_specs[]).kwargs[:color] == to_color(:blue)
+    @test only(p.layout_specs[]).kwargs[:color] == to_color(:blue)
 end
 
 struct WrappedText

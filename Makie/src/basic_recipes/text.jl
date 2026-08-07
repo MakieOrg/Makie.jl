@@ -164,13 +164,13 @@ Each one needs its visual bounding box in `spec_bboxes`, which only the handler
 knows: a spec's positions don't imply its extent (a scatter marker covers far more
 than the point it sits on).
 
-A spec's first positional argument must be its positions (point-like values in the
-layout frame), since that is what placement shifts and rotates; plot types whose
-first argument is something else cannot be text specs. A `rotation` keyword composes
-with the plot's `rotation`. `space` is overridden with the plot's `markerspace` and
-`visible` is combined with the plot's `visible`; the other render attributes
-(`depth_shift`, `transparency`, ...) default to the plot's values but a spec can
-override them.
+A spec's arguments live in the block's layout frame; placement (align, rotation,
+offset and the anchor position) is applied through the spec plot's `model` matrix,
+so any plot type can be a spec, including `:Image`. Because of that, `model`,
+`transformation` and `space` on a spec are controlled by Makie; `transform_marker`
+defaults to `true` where it exists, so markers rotate with the block; `visible` is
+combined with the plot's `visible`; the other render attributes (`depth_shift`,
+`transparency`, ...) default to the plot's values but a spec can override them.
 """
 struct TextLayout{I, F, O, E, S, C, SC, SW}
     glyphindices::I
@@ -468,14 +468,6 @@ function validate_per_string(
     return error("Expected a scalar $name or one value per string ($n_strings), got $(length(value)). $hint")
 end
 
-# Apply a per-point transform to a spec's positional data (its first positional arg).
-function transform_text_spec(spec::PlotSpec, f)
-    new_positions = Point3f[f(p) for p in first(spec.args)]
-    new_args = copy(spec.args)
-    new_args[1] = new_positions
-    return PlotSpec(spec.type, new_args...; spec.kwargs...)
-end
-
 # `align` only reaches text layout through this: automatic justification follows
 # halign, everything else about alignment is applied after layout. Resolving it to
 # a number here means an align change that leaves justification alone (a different
@@ -610,15 +602,11 @@ function block_alignment_shift(bbox::Rect2f, baseline::Real, align)
     return Vec3f(xshift, yshift, 0)
 end
 
-compose_spec_rotation(rotation, r::AbstractVector) = Quaternionf[rotation * to_rotation(x) for x in r]
-compose_spec_rotation(rotation, r) = rotation * to_rotation(r)
-
-function place_spec(spec::PlotSpec, rotation, shift, offset)
-    placed = transform_text_spec(spec, p -> rotation * (to_ndim(Point3f, p, 0) - shift) + offset)
-    if haskey(placed.kwargs, :rotation)
-        placed.kwargs[:rotation] = compose_spec_rotation(rotation, placed.kwargs[:rotation])
-    end
-    return placed
+# The matrix taking a spec from its block's layout frame to the block's anchor:
+# align (via `shift`), `rotation` and `offset`, like glyph placement applies to origins.
+function spec_placement_matrix(rotation, shift, offset)
+    return translationmatrix(to_ndim(Vec3d, offset, 0) - rotation * to_ndim(Vec3d, shift, 0)) *
+        Mat4d(rotationmatrix4(rotation))
 end
 
 """
@@ -636,7 +624,7 @@ function register_glyph_placement!(attr::ComputeGraph)
         :validated_align, :rotation, :converted_offset,
         :layout_specs, :layout_spec_bboxes, :text_spec_block_indices,
     ]
-    outputs = [:glyph_origins, :glyph_rotations, :text_specs, :text_spec_bboxes]
+    outputs = [:glyph_origins, :glyph_rotations, :text_spec_models, :text_spec_bboxes]
     return register_computation!(attr, inputs, outputs) do inputs, changed, cached
         (; glyph_layout_origins, text_blocks, block_bboxes, block_baselines) = inputs
         (; rotation, layout_specs, layout_spec_bboxes, text_spec_block_indices) = inputs
@@ -647,8 +635,8 @@ function register_glyph_placement!(attr::ComputeGraph)
             "Glyphs within a string share one rotation."
         )
 
-        origins, rotations, specs, spec_bboxes = if cached === nothing
-            (Point3f[], Quaternionf[], PlotSpec[], Rect3d[])
+        origins, rotations, spec_models, spec_bboxes = if cached === nothing
+            (Point3f[], Quaternionf[], Mat4d[], Rect3d[])
         else
             empty!.(values(cached))
         end
@@ -665,14 +653,14 @@ function register_glyph_placement!(attr::ComputeGraph)
             end
         end
 
-        for (spec, bbox, i) in zip(layout_specs, layout_spec_bboxes, text_spec_block_indices)
+        for (bbox, i) in zip(layout_spec_bboxes, text_spec_block_indices)
             rot = to_rotation(sv_getindex(rotation, i))
             off = to_ndim(Vec3f, sv_getindex(converted_offset, i), 0)
-            push!(specs, place_spec(spec, rot, shifts[i], off))
+            push!(spec_models, spec_placement_matrix(rot, shifts[i], off))
             push!(spec_bboxes, rotate_bbox(bbox - to_ndim(Vec3d, shifts[i], 0), rot) + off)
         end
 
-        return (origins, rotations, specs, spec_bboxes)
+        return (origins, rotations, spec_models, spec_bboxes)
     end
 end
 
@@ -763,19 +751,27 @@ function add_text_specs!(plot)
     map!(
         plot.attributes,
         [
-            :text_specs, :text_spec_block_indices, :preprojection, :model_f32c,
+            :layout_specs, :text_spec_models, :text_spec_block_indices, :preprojection, :model_f32c,
             :positions_transformed_f32c, :model_clip_planes, :space, :markerspace, :visible,
             :depth_shift, :transparency, :fxaa, :overdraw, :inspectable,
         ],
-        :_shifted_text_specs,
-    ) do specs, block_indices, preprojection, model_f32c, positions, clip_planes, space, markerspace, visible,
+        :_placed_text_specs,
+    ) do specs, spec_models, block_indices, preprojection, model_f32c, positions, clip_planes, space, markerspace, visible,
             depth_shift, transparency, fxaa, overdraw, inspectable
         isempty(specs) && return PlotSpec[]
         ms_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
-        return map(specs, block_indices) do spec, bidx
-            shifted = transform_text_spec(spec, p -> p + ms_positions[bidx])
-            kw = copy(shifted.kwargs)
-            # the layout frame the spec positions live in only makes sense in markerspace
+        return map(specs, spec_models, block_indices) do spec, spec_model, bidx
+            kw = copy(spec.kwargs)
+            # placement goes through `model` rather than the spec's arguments, so any
+            # plot type works as a spec; `transformation = :nothing` keeps the child's
+            # transformation from overwriting it
+            kw[:model] = translationmatrix(to_ndim(Vec3d, ms_positions[bidx], 0)) * spec_model
+            kw[:transformation] = :nothing
+            # rotate scatter-like markers with the block instead of billboarding them
+            if has_flat_key(documented_attributes(plottype(spec)), :transform_marker)
+                get!(kw, :transform_marker, true)
+            end
+            # the layout frame the specs live in only makes sense in markerspace
             kw[:space] = markerspace
             kw[:visible] = visible && get(kw, :visible, true)
             for (name, value) in (
@@ -784,10 +780,10 @@ function add_text_specs!(plot)
                 )
                 get!(kw, name, value)
             end
-            return PlotSpec(shifted.type, shifted.args...; kw...)
+            return PlotSpec(spec.type, spec.args...; kw...)
         end
     end
-    return plotlist!(plot, plot._shifted_text_specs)
+    return plotlist!(plot, plot._placed_text_specs)
 end
 
 function add_glyphs!(plot)
