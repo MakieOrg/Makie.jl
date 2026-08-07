@@ -126,7 +126,7 @@ function plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<
 
     register_computation!(
         graph,
-        [:converted_1, :converted_2, :computed_levels, :computed_lowcolor, :computed_highcolor],
+        [:converted_1, :scaled_zs, :computed_levels, :computed_lowcolor, :computed_highcolor],
         [:polys, :computed_colors]
     ) do (tri, zs, levels, low, high), changed, cached
         is_extended_low = !isnothing(low)
@@ -147,6 +147,7 @@ function plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<
         c.polys,
         colormap = c.computed_colormap,
         colorrange = c.computed_colorrange,
+        colorscale = identity,
         highclip = c.computed_highcolor,
         lowclip = c.computed_lowcolor,
         color = c.computed_colors,

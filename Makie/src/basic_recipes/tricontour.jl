@@ -61,11 +61,14 @@ function convert_arguments(
     return (tri, z)
 end
 
-function _get_tricontour_levels(zs, levels)
-    levels isa Integer || return Float32.(levels)
-    zmin, zmax = extrema_nan(zs)
-    isapprox(zmin, zmax) && return Float32[]
-    return Float32.(range(zmin, zmax; length = levels))
+function _get_tricontour_levels(zs, scale, levels)
+    if levels isa Integer
+        zmin, zmax = extrema_nan(zs)
+        isapprox(zmin, zmax) && return Float32[]
+        return Float32.(range(zmin, zmax; length = levels))
+    else
+        return Float32.(apply_scale(scale, levels))
+    end
 end
 
 function _calculate_tricontour_lines!(xs_out, ys_out, colors, triangulation, zs, levels)
@@ -91,32 +94,25 @@ function _calculate_tricontour_lines!(xs_out, ys_out, colors, triangulation, zs,
 end
 
 function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
-    map!(c, [:converted_2, :levels], :computed_levels) do zs, levels
-        return _get_tricontour_levels(zs, levels)
-    end
+    map!(apply_scale, c, [:colorscale, :converted_2], :scaled_zs)
+    map!(_get_tricontour_levels, c, [:scaled_zs, :colorscale, :levels], :computed_levels)
 
-    map!(c, [:colorrange, :computed_levels, :converted_2], :computed_colorrange) do colorrange, levels, zs
-        if colorrange isa Union{Automatic, Tuple{Automatic, <:Any}, Tuple{<:Any, Automatic}}
-            if isempty(levels)
-                c = Float32(first(zs))
-                delta = max(one(c), abs(c))
-                return (c - delta, c + delta)
-            else
-                lcr = extrema_nan(levels)
-                if colorrange === automatic
-                    return lcr
-                else
-                    return default_automatic.(colorrange, lcr)
-                end
-            end
+    map!(
+        c, [:colorrange, :colorscale, :computed_levels, :scaled_zs], :computed_colorrange
+    ) do colorrange, scale, levels, zs
+        autorange = if isempty(levels)
+            c = Float32(first(zs))
+            delta = max(one(c), abs(c))
+            (c - delta, c + delta)
         else
-            return colorrange
+            extrema_nan(levels)
         end
+        return combined_colorrange(scale, colorrange, autorange)
     end
 
     register_computation!(
         c,
-        [:converted_1, :converted_2, :computed_levels],
+        [:converted_1, :scaled_zs, :computed_levels],
         [:line_xs, :line_ys, :line_colors]
     ) do (tri, zs, levels), _, cached
         if isnothing(cached)
@@ -137,6 +133,7 @@ function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:
     lines!(
         c, c.attributes, c.line_xs, c.line_ys;
         color = c.final_color, colorrange = c.computed_colorrange,
+        colorscale = identity
     )
 
     return c

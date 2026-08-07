@@ -856,7 +856,7 @@ end
     y = RNG.randn(50)
     z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
 
-    f = Figure()
+    f = Figure(size = (500, 600))
     ax, tr = tricontourf(f[1, 1][1, 1], x, y, z, clip_planes = [Plane3f(Vec3f(0, 1, 0), 0.0f0)])
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
     Colorbar(f[1, 1][1, 2], tr)
@@ -875,6 +875,20 @@ end
     )
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
     Colorbar(f[2, 2][1, 2], tr)
+
+    # TODO: Why does 1 .- z or just using z look like it's missing/occluding levels?
+    z .= 5 .+ z
+
+    ax, tr = tricontourf(f[3, 1][1, 1], x, y, z .^ 2, colorscale = sqrt, colormap = :terrain)
+    Colorbar(f[3, 1][1, 2], tr)
+    ax, tr = tricontourf(f[3, 2][1, 1], x, y, z .^ 2, colorscale = sqrt, levels = (2:0.5:5).^2)
+    Colorbar(f[3, 2][1, 2], tr)
+
+    # Reference plots - the above should look the same (with different Colorbar limits, spacing)
+    # ax, tr = tricontourf(f[4, 1][1, 1], x, y, abs.(z), colormap = :terrain)
+    # Colorbar(f[4, 1][1, 2], tr)
+    # ax, tr = tricontourf(f[4, 2][1, 1], x, y, abs.(z), levels = 2:0.5:5)
+    # Colorbar(f[4, 2][1, 2], tr)
 
     f
 end
@@ -1000,8 +1014,8 @@ end
     y2 = RNG.rand(30)
     z2 = sin.(2π .* x2) .* cos.(2π .* y2)
 
-    f = Figure()
-    ax1, tr1 = tricontour(f[1, 1][1, 1], x, y, z; levels = 8, linewidth = 2)
+    f = Figure(size = (500, 600))
+    ax1, tr1 = tricontour(f[1, 1][1, 1], x, y, z; levels = 8, linewidth = 3)
     scatter!(ax1, x, y; color = z, strokewidth = 1, strokecolor = :black)
     Colorbar(f[1, 1][1, 2], tr1)
 
@@ -1017,6 +1031,17 @@ end
         colorrange = (-0.6, 0.6), lowclip = :cyan, highclip = :orange, alpha = 0.5
     )
     Colorbar(f[2, 2][1, 2], tr4)
+
+    ax, tr = tricontour(f[3, 1][1, 1], x, y, z.^2; levels = 8, linewidth = 5, colorscale = sqrt)
+    Colorbar(f[3, 1][1, 2], tr)
+    ax, tr = tricontour(f[3, 2][1, 1], x, y, z.^2; levels = (0:0.5:3.5).^2, linewidth = 5, colorscale = sqrt)
+    Colorbar(f[3, 2][1, 2], tr)
+
+    # Reference: above should match colors and shapes (not Colorbar ticks)
+    # ax, tr = tricontour(f[4, 1][1, 1], x, y, abs.(z); levels = 8, linewidth = 5)
+    # Colorbar(f[4, 1][1, 2], tr)
+    # ax, tr = tricontour(f[4, 2][1, 1], x, y, abs.(z); levels = 0:0.5:3.5, linewidth = 5)
+    # Colorbar(f[4, 2][1, 2], tr)
 
     f
 end
@@ -1080,7 +1105,8 @@ end
     ys = [y + 10cos(x / 40) for x in x, y in y]
     zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
     levels = 0:4:20
-    fig, ax, ctr = contourf(xs, ys, zs; levels = levels)
+    fig = Figure(size = (500, 600))
+    ax, ctr = contourf(fig[1, 1], xs, ys, zs; levels = levels)
 
     # contourf bug #3683 + clip planes
     x = y = LinRange(0, 1, 4)
@@ -1092,16 +1118,35 @@ end
     Colorbar(fig[1, 2][1, 2], cof)
 
     # colormapping tests
+    # ... with irregularly space levels
     x = y = range(-2, 2, length = 31)
     z = [sqrt(sin(x - 1)^2 + cos(y)^2) for x in x, y in y]
-    ax, cof = contourf(fig[2, 1][1, 1], x, y, z, levels = 0.2:0.2:1.3, extendlow = :red, extendhigh = :blue)
+    ax, cof = contourf(
+        fig[2, 1][1, 1], x, y, z, levels = sqrt.(range(0.04, 1.9, 8)),
+        extendlow = :red, extendhigh = :blue
+    )
     Colorbar(fig[2, 1][1, 2], cof)
 
+    # ... with regularly spaced levels
     _, cof = contourf(
         fig[2, 2][1, 1], x, y, z, extendlow = :red, extendhigh = :blue,
         colormap = :magma, colorrange = (0.2, 1.3), alpha = 0.5
     )
     Colorbar(fig[2, 2][1, 2], cof)
+
+    # colorscale + levels
+    _, cof = contourf(fig[3, 1][1, 1], x, y, (1 .+ z) .^ 2, colorscale = sqrt, colormap = :thermal)
+    Colorbar(fig[3, 1][1, 2], cof)
+
+    _, cof = contourf(fig[3, 2][1, 1], x, y, (1 .+ z) .^ 2, levels = (1:0.15:2.5) .^ 2, colorscale = sqrt)
+    Colorbar(fig[3, 2][1, 2], cof)
+
+    # references - the above should match these
+    # _, cof = contourf(fig[4, 1][1, 1], x, y, 1 .+ z, colormap = :thermal)
+    # Colorbar(fig[4, 1][1, 2], cof)
+
+    # _, cof = contourf(fig[4, 2][1, 1], x, y, 1 .+ z, levels = 1:0.15:2.5)
+    # Colorbar(fig[4, 2][1, 2], cof)
 
     fig
 end
