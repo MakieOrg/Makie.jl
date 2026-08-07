@@ -299,6 +299,13 @@ end
     @test handler.calls[] == 2
 end
 
+@testset "multi-line rich text anchors on the last baseline" begin
+    scene = Scene(camera = campixel!)
+    p = text!(scene, Point2f(0, 0), text = rich("ab\ncd"))
+    # rich text line height is currently fixed at 20
+    @test p.block_baselines[] == [-20.0f0]
+end
+
 @testset "per block placement attributes" begin
     scene = Scene(camera = campixel!)
 

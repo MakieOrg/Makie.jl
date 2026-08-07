@@ -154,7 +154,8 @@ end
 
 The layout result for one scalar text value. `origins` are in the layout frame,
 described by `bbox` (the box `align` positions) and `baseline` (the y that
-`valign = :baseline` puts on the anchor). `glyphindices`, `origins` and `extents`
+`valign = :baseline` puts on the anchor; for multi-line text Makie's built-in
+layout uses the last line's baseline). `glyphindices`, `origins` and `extents`
 are per glyph; the remaining glyph attributes are either per glyph or one value
 for the whole block.
 
@@ -1260,10 +1261,10 @@ function layout_richtext(rt::RichText, ts, f, fset, jus, lh, col)
 
     process_rt_node!(lines, gs, rt, fset)
 
-    apply_lineheight!(lines, lh)
+    last_baseline = apply_lineheight!(lines, lh)
     bbox = apply_justification!(lines, jus)
 
-    return glyph_arrays(reduce(vcat, lines), bbox, 0.0f0)
+    return glyph_arrays(reduce(vcat, lines), bbox, last_baseline)
 end
 
 # Flatten laid-out glyphs into the parallel arrays a glyph block is pushed from.
@@ -1282,17 +1283,19 @@ function glyph_arrays(infos::Vector{GlyphInfo}, bbox::Rect2f, baseline::Real)
     )
 end
 
+# Returns the last line's baseline, which is what `valign = :baseline` anchors.
 function apply_lineheight!(lines, lh)
+    # TODO: Lineheight
+    lineheight = 20
     for (i, line) in enumerate(lines)
         for j in eachindex(line)
             l = line[j]
             ox, oy = l.origin
-            # TODO: Lineheight
-            l = GlyphInfo(l; origin = Point2f(ox, oy - (i - 1) * 20))
+            l = GlyphInfo(l; origin = Point2f(ox, oy - (i - 1) * lineheight))
             line[j] = l
         end
     end
-    return
+    return Float32(-(length(lines) - 1) * lineheight)
 end
 
 function max_x_advance(glyph_infos::Vector{GlyphInfo})::Float32
