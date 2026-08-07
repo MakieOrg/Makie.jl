@@ -856,31 +856,26 @@ end
     y = RNG.randn(50)
     z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
 
-    f, ax, tr = tricontourf(x, y, z)
+    f = Figure()
+    ax, tr = tricontourf(f[1, 1][1, 1], x, y, z, clip_planes = [Plane3f(Vec3f(0, 1, 0), 0.0f0)])
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
-    Colorbar(f[1, 2], tr)
-    f
-end
+    Colorbar(f[1, 1][1, 2], tr)
 
-@reference_test "tricontourf extendhigh extendlow" begin
-    x = RNG.randn(50)
-    y = RNG.randn(50)
-    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
-
-    f, ax, tr = tricontourf(x, y, z, levels = -1.8:0.2:-0.4, extendhigh = :red, extendlow = :orange)
+    ax, tr = tricontourf(f[1, 2][1, 1], x, y, z, levels = -1.8:0.2:-0.4, extendhigh = :red, extendlow = :orange)
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
-    Colorbar(f[1, 2], tr)
-    f
-end
+    Colorbar(f[1, 2][1, 2], tr)
 
-@reference_test "tricontourf relative mode" begin
-    x = RNG.randn(50)
-    y = RNG.randn(50)
-    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
-
-    f, ax, tr = tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1, colormap = :batlow)
+    ax, tr = tricontourf(f[2, 1][1, 1], x, y, z, mode = :relative, levels = 0.2:0.1:1, colormap = :batlow)
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black, colormap = :batlow)
-    Colorbar(f[1, 2], tr)
+    Colorbar(f[2, 1][1, 2], tr)
+
+    ax, tr = tricontourf(
+        f[2, 2][1, 1], x, y, z, levels = -2.2:0.2:-0.2,
+        colorrange = (-1.8, -0.4), extendhigh = :red, extendlow = :orange
+    )
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+    Colorbar(f[2, 2][1, 2], tr)
+
     f
 end
 
@@ -1005,15 +1000,24 @@ end
     y2 = RNG.rand(30)
     z2 = sin.(2π .* x2) .* cos.(2π .* y2)
 
-    f = Figure(size = (900, 300))
-    ax1, tr1 = tricontour(f[1, 1], x, y, z; levels = 8)
+    f = Figure()
+    ax1, tr1 = tricontour(f[1, 1][1, 1], x, y, z; levels = 8, linewidth = 2)
     scatter!(ax1, x, y; color = z, strokewidth = 1, strokecolor = :black)
-    Colorbar(f[1, 2], tr1)
+    Colorbar(f[1, 1][1, 2], tr1)
 
-    ax2, tr2 = tricontour(f[1, 3], x, y, z; levels = 8, color = :black, linewidth = 2)
+    ax2, tr2 = tricontour(f[1, 2], x, y, z; levels = 8, color = :black, clip_planes = [Plane3f(Vec3f(-1, 1, 0), -1)])
 
-    ax3, tr3 = tricontour(f[1, 4], x2, y2, z2; levels = 6, colormap = :RdBu)
-    Colorbar(f[1, 5], tr3)
+    ax3, tr3 = tricontour(
+        f[2, 1][1, 1], x2, y2, z2; levels = -0.9:0.2:0.9, colormap = :RdBu, linewidth = 2,
+    )
+    Colorbar(f[2, 1][1, 2], tr3)
+
+    ax4, tr4 = tricontour(
+        f[2, 2][1, 1], x2, y2, z2; levels = -0.9:0.2:0.9, colormap = :RdBu, linewidth = 4,
+        colorrange = (-0.6, 0.6), lowclip = :cyan, highclip = :orange, alpha = 0.5
+    )
+    Colorbar(f[2, 2][1, 2], tr4)
+
     f
 end
 
@@ -1068,24 +1072,36 @@ end
     fig
 end
 
-@reference_test "filled contour 2d with curvilinear grid" begin
+@reference_test "contourf" begin
+    # filled contour 2d with curvilinear grid
     x = -10:10
     y = -10:10
-    # The curvilinear grid:
     xs = [x + 0.01y^3 for x in x, y in y]
     ys = [y + 10cos(x / 40) for x in x, y in y]
-
-    # Now, for simplicity, we calculate the `Z` values to be
-    # the radius from the center of the grid (0, 10).
     zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
-
-    # We can use Makie's tick finders to get some nice looking contour levels.
-    # This could also be Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
-    # but it's more stable as a test if we hardcode it.
     levels = 0:4:20
-
-    # and now, we plot!
     fig, ax, ctr = contourf(xs, ys, zs; levels = levels)
+
+    # contourf bug #3683 + clip planes
+    x = y = LinRange(0, 1, 4)
+    ymin, ymax = 0.4, 0.6
+    steepness = 0.1
+    foo(x, y) = (tanh((y - ymin) / steepness) - tanh((y - ymax) / steepness) - 1)
+    z = [foo(_x, _y) for _x in x, _y in y]
+    ax, cof = contourf(fig[1, 2][1, 1], x, y, z, levels = 2, clip_planes = [Plane3f(Vec3f(1, 1, 0), 0.2f0)])
+    Colorbar(fig[1, 2][1, 2], cof)
+
+    # colormapping tests
+    x = y = range(-2, 2, length = 31)
+    z = [sqrt(sin(x - 1)^2 + cos(y)^2) for x in x, y in y]
+    ax, cof = contourf(fig[2, 1][1, 1], x, y, z, levels = 0.2:0.2:1.3, extendlow = :red, extendhigh = :blue)
+    Colorbar(fig[2, 1][1, 2], cof)
+
+    _, cof = contourf(
+        fig[2, 2][1, 1], x, y, z, extendlow = :red, extendhigh = :blue,
+        colormap = :magma, colorrange = (0.2, 1.3), alpha = 0.5
+    )
+    Colorbar(fig[2, 2][1, 2], cof)
 
     fig
 end
@@ -1777,18 +1793,6 @@ end
     fig = Figure(size = (227, 170))
     ax = Axis(fig[1, 1]; yticks = 0:0.2:1, yminorticksvisible = true)
     ylims!(ax, 0, 1)
-    fig
-end
-
-@reference_test "contourf bug #3683" begin
-    x = y = LinRange(0, 1, 4)
-    ymin, ymax = 0.4, 0.6
-    steepness = 0.1
-    f(x, y) = (tanh((y - ymin) / steepness) - tanh((y - ymax) / steepness) - 1)
-    z = [f(_x, _y) for _x in x, _y in y]
-
-    fig, ax, cof = contourf(x, y, z, levels = 2)
-    Colorbar(fig[1, 2], cof)
     fig
 end
 

@@ -74,11 +74,10 @@ end
 
 function extract_colormap(plot::Tricontour)
     levels = ComputePipeline.get_observable!(plot.computed_levels)
-    colorrange = ComputePipeline.get_observable!(plot.computed_colorrange)
     return ColorMapping(
-        levels[], levels, plot.colormap, colorrange,
+        levels[], levels, plot.colormap, plot.computed_colorrange,
         plot.colorscale, Observable(1.0),
-        Observable(automatic), Observable(automatic), Observable(:transparent)
+        plot.lowclip, plot.highclip, plot.nan_color
     )
 end
 
