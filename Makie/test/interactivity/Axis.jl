@@ -238,6 +238,32 @@
             @test scroll_axis.targetlimits[] == original_limits
         end
 
+        @testset "Log-scale pan limits" begin
+            fig = Figure()
+            pan_axis = Axis(fig[1, 1]; yscale = log10)
+            lines!(pan_axis, 0:1, [1.0, 2.0])
+            Makie.update_state_before_display!(fig)
+
+            # This range is still valid for log10, but a full-height pan makes
+            # its transformed lower bound underflow on inverse transformation.
+            pan_axis.targetlimits[] = Rect2(-20, 1.0e-318, 50, 1.0e245)
+            original_limits = pan_axis.targetlimits[]
+            axis_box = viewport(pan_axis.scene)[]
+            drag_event = MouseEvent(
+                Makie.to_drag_event(pan_axis.panbutton[]),
+                1.0,
+                Point2d(0, 0),
+                Point2f(axis_box.origin + axis_box.widths),
+                0.0,
+                Point2d(0, 0),
+                Point2f(axis_box.origin),
+            )
+            dragpan = pan_axis.interactions[:dragpan][2]
+
+            @test_nowarn Makie.process_interaction(dragpan, drag_event, pan_axis)
+            @test pan_axis.targetlimits[] == original_limits
+        end
+
         @test init == Makie._PICK_COUNTER[]
 
         # Ctrl-click to restore

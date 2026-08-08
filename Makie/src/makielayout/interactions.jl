@@ -364,7 +364,10 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
     inv_transf = Makie.inverse_transform(transf)
     newrect_trans = Rectd(Vec2(xori, yori), widths(tlimits_trans))
-    tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
+    newlimits = Makie.apply_transform(inv_transf, newrect_trans)
+    if _axis_limits_are_valid(ax, newlimits)
+        tlimits[] = newlimits
+    end
 
     return Consume(true)
 end
