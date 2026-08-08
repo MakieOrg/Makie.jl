@@ -117,7 +117,15 @@ function _chosen_limits(rz, ax)
     if rz.restrict_y || !ax.yrectzoom[]
         r = Rect2(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2])
     end
-    return r
+    return _clamp_rectanglezoom_limits(r, lims)
+end
+
+function _clamp_rectanglezoom_limits(selection::Rect2, visible_limits::Rect2)
+    selection_min, selection_max = extrema(selection)
+    visible_min, visible_max = extrema(visible_limits)
+    clamped_min = clamp.(selection_min, visible_min, visible_max)
+    clamped_max = clamp.(selection_max, visible_min, visible_max)
+    return Rect2(Point2(clamped_min), Vec2(clamped_max .- clamped_min))
 end
 
 function _selection_vertices(ax_scene, outer, inner)
@@ -141,6 +149,12 @@ function _selection_vertices(ax_scene, outer, inner)
     return [proj(obl), proj(obr), proj(otr), proj(otl), proj(ibl), proj(ibr), proj(itr), proj(itl)]
 end
 
+function _rectanglezoom_data_position(ax::Axis, point, transform, inverse_transform)
+    transformed_limits = Makie.apply_transform(transform, ax.finallimits[])
+    clamped_point = rectclamp(point, transformed_limits)
+    return Makie.apply_transform(inverse_transform, clamped_point)
+end
+
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     # only rectangle zoom if modifier is pressed (defaults to true)
     ispressed(ax.scene, r.modifier) || return Consume(false)
@@ -157,8 +171,8 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     end
 
     if event.type === MouseEventTypes.leftdragstart
-        data = Makie.apply_transform(inv_transf, event.data)
-        prev_data = Makie.apply_transform(inv_transf, event.prev_data)
+        data = _rectanglezoom_data_position(ax, event.data, transf, inv_transf)
+        prev_data = _rectanglezoom_data_position(ax, event.prev_data, transf, inv_transf)
 
         r.from = prev_data
         r.to = data
@@ -167,9 +181,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         return Consume(true)
 
     elseif event.type === MouseEventTypes.leftdrag
-        # clamp mouse data to shown limits
-        rect = Makie.apply_transform(transf, ax.finallimits[])
-        data = Makie.apply_transform(inv_transf, rectclamp(event.data, rect))
+        data = _rectanglezoom_data_position(ax, event.data, transf, inv_transf)
 
         r.to = data
         r.rectnode[] = _chosen_limits(r, ax)
@@ -286,7 +298,10 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
             Rectd(newxorigin, newyorigin, newxwidth, newywidth)
         end
         inv_transf = Makie.inverse_transform(transf)
-        tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
+        newlimits = Makie.apply_transform(inv_transf, newrect_trans)
+        if _axis_limits_are_valid(ax, newlimits)
+            tlimits[] = newlimits
+        end
     end
 
     # NOTE this might be problematic if if we add scrolling to something like Menu
@@ -349,7 +364,10 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
     inv_transf = Makie.inverse_transform(transf)
     newrect_trans = Rectd(Vec2(xori, yori), widths(tlimits_trans))
-    tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
+    newlimits = Makie.apply_transform(inv_transf, newrect_trans)
+    if _axis_limits_are_valid(ax, newlimits)
+        tlimits[] = newlimits
+    end
 
     return Consume(true)
 end
