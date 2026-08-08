@@ -177,12 +177,12 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         # isosurfaces
         # GLMakie texture size is typically limited 8192+
         # WGLMakie texture size may be limited to 4096+
-        N = ceil(Int, 2.5 * (max - min) / isorange)
-        if N > 4096
+        N_raw = ceil(Int, 2.5 * (max - min) / isorange)
+        if N_raw > 4096
             min_isorange = (max - min) / 4096
             @warn "Isorange maybe too small to resolve iso surfaces. Try `isorange > $min_isorange`"
         end
-        N = clamp(N, 100, 4096)
+        N = clamp(N_raw, 100, 4096)
 
         clip_range = tight_colorrange[1] - isorange .. tight_colorrange[2] + isorange
         return map(1:N) do i
@@ -257,6 +257,8 @@ end
 function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     map!(nan_extrema, plot, :converted_3, :zrange)
     map!(plot, [:levels, :zrange], :zlevels) do levels, zrange
+        zmin, zmax = zrange
+        isapprox(zmin, zmax) && return eltype(zrange)[]
         if levels isa AbstractVector{<:Number}
             return levels
         elseif levels isa Integer
@@ -265,7 +267,12 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
             error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
         end
     end
-    map!(default_automatic, plot, [:colorrange, :zrange], :computed_colorrange)
+    map!(plot, [:colorrange, :zrange], :computed_colorrange) do colorrange, zrange
+        zmin, zmax = default_automatic(colorrange, zrange)
+        isapprox(zmin, zmax) || return (zmin, zmax)
+        delta = max(one(zmin), abs(zmin))
+        return (zmin - delta, zmax + delta)
+    end
 
     map!(
         color_per_level, plot,

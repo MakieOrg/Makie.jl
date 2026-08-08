@@ -22,6 +22,8 @@ function record_events(f, scene::Scene, path::String)
     end
 end
 
+_set_event!(scene, field, value) = getfield(scene.events, field)[] = value
+
 """
     replay_events(f, scene::Scene, path::String)
     replay_events(scene::Scene, path::String)
@@ -35,9 +37,7 @@ function replay_events(f, scene::Scene, path::String)
     for i in 1:length(events)
         t1, (field, value) = events[i]
         (field === :mousebuttonstate || field === :keyboardstate) && continue
-        Base.invokelatest() do
-            return getfield(scene.events, field)[] = value
-        end
+        Base.invokelatest(_set_event!, scene, field, value)
         f()
         if i < length(events)
             t2, (field, value) = events[i + 1]

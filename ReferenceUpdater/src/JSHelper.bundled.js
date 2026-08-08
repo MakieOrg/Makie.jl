@@ -3,34 +3,45 @@
 // This code was bundled using `deno bundle` and it's not recommended to edit it manually
 
 function filterByScore(threshold) {
-    const t = parseFloat(threshold) || 0;
+    const t = parseFloat(threshold) || -1;
     const cards = document.querySelectorAll('.ref-card');
     cards.forEach((card)=>{
-        const score = parseFloat(card.dataset.score) || 0;
-        card.dataset.hidden = score >= t ? 'false' : 'true';
+        const score = parseFloat(card.dataset.score) + 1 || Infinity;
+        card.dataset.hidden = score - 1 >= t ? 'false' : 'true';
     });
 }
 function setupImageCycleButton(buttonContainer, mediaRecorded, mediaReference, mediaGlmakie) {
     const button = buttonContainer.querySelector('button');
+    const cycle_checkbox = document.querySelectorAll('.cycle-checkbox')[0];
     if (!button) return;
-    button.addEventListener('click', ()=>{
+    const media = [
+        [
+            mediaRecorded,
+            'recorded'
+        ],
+        [
+            mediaReference,
+            'reference'
+        ],
+        [
+            mediaGlmakie,
+            'glmakie'
+        ]
+    ].filter(([el])=>el);
+    const cycle = ()=>{
         const getZ = (el)=>parseInt(el.style.zIndex || window.getComputedStyle(el).zIndex || '0');
-        if (getZ(mediaRecorded) > getZ(mediaReference) && getZ(mediaRecorded) > getZ(mediaGlmakie)) {
-            mediaRecorded.style.zIndex = '1';
-            mediaReference.style.zIndex = '3';
-            mediaGlmakie.style.zIndex = '2';
-            button.textContent = 'Showing: reference';
-        } else if (getZ(mediaReference) > getZ(mediaRecorded) && getZ(mediaReference) > getZ(mediaGlmakie)) {
-            mediaRecorded.style.zIndex = '2';
-            mediaReference.style.zIndex = '1';
-            mediaGlmakie.style.zIndex = '3';
-            button.textContent = 'Showing: glmakie';
-        } else {
-            mediaRecorded.style.zIndex = '3';
-            mediaReference.style.zIndex = '2';
-            mediaGlmakie.style.zIndex = '1';
-            button.textContent = 'Showing: recorded';
-        }
+        const active = media.filter(([, label])=>label !== 'glmakie' || cycle_checkbox.checked);
+        const current = media.reduce((a, b)=>getZ(b[0]) > getZ(a[0]) ? b : a);
+        const [nextEl, nextLabel] = active[(active.indexOf(current) + 1) % active.length];
+        media.forEach(([el])=>{
+            el.style.zIndex = '1';
+        });
+        nextEl.style.zIndex = '3';
+        button.textContent = 'Showing: ' + nextLabel;
+    };
+    button.addEventListener('click', cycle);
+    media.forEach(([el])=>{
+        if (el.tagName === 'IMG') el.addEventListener('click', cycle);
     });
 }
 function sortByBackend(grid, backend) {
@@ -88,7 +99,7 @@ function compareToGLMakie(grid, selectedBackend) {
                 grid.appendChild(card);
             });
         });
-        grid.style.gridTemplateColumns = '1fr 1fr 1fr';
+        grid.style.gridTemplateColumns = '';
         return;
     }
     const groups = new Map();
@@ -126,7 +137,7 @@ function collectCheckedFiles() {
         if (checkbox && checkbox.checked) {
             const filepath = card.dataset.filepath;
             if (filepath) {
-                const isMissingSection = card.closest('.section')?.querySelector('h2')?.textContent?.includes('Missing');
+                const isMissingSection = card.closest('.section')?.querySelector('h2')?.textContent?.includes('Old reference images without recordings');
                 if (isMissingSection) {
                     deleteFiles.push(filepath);
                 } else {
@@ -139,6 +150,17 @@ function collectCheckedFiles() {
         uploadFiles,
         deleteFiles
     };
+}
+function toggleFiles(grid) {
+    const cards = Array.from(grid.children).filter((c)=>c.classList.contains('ref-card'));
+    cards.forEach((card)=>{
+        const checkbox = card.querySelector('.checkbox-input');
+        if (checkbox && card.dataset.hidden == 'false') {
+            checkbox.checked = !checkbox.checked;
+        }
+    });
+    updateSelectionCounts();
+    return;
 }
 function updateSelectionCounts() {
     const { uploadFiles , deleteFiles  } = collectCheckedFiles();
@@ -184,6 +206,7 @@ export { setupImageCycleButton as setupImageCycleButton };
 export { sortByBackend as sortByBackend };
 export { compareToGLMakie as compareToGLMakie };
 export { collectCheckedFiles as collectCheckedFiles };
+export { toggleFiles as toggleFiles };
 export { updateSelectionCounts as updateSelectionCounts };
 export { setupSelectionCountUpdates as setupSelectionCountUpdates };
 

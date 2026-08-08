@@ -87,7 +87,7 @@ end
     f = Figure(size = (600, 300))
     r = range(-5, 5, length = 31)
     data = [cos(x * x + y * y + z * z)^2 for x in r, y in r, z in r]
-    absorption = 5.0
+    absorption = 2.0
     volume(f[1, 1], data, algorithm = :absorption; absorption)
     volume(f[1, 2], 128 .+ 120 .* data, algorithm = :indexedabsorption; absorption)
     volume(f[1, 3], HSV.(180 .* data, 0.8, 0.9), algorithm = :absorptionrgba; absorption)
@@ -107,13 +107,13 @@ end
         f[1, 1], -10 .. 10, -10 .. 10, -10 .. 10, data;
         algorithm = :iso, isovalue = 0.5, isorange = 0.1
     )
-    volume(f[2, 1], -10 .. 10, -10 .. 10, -10 .. 10, data, algorithm = :absorption)
+    volume(f[2, 1], -10 .. 10, -10 .. 10, -10 .. 10, data, algorithm = :absorption, absorption = 2)
     volume(f[1, 2], -10 .. 10, -10 .. 10, -10 .. 10, data; algorithm = :mip)
-    volume(f[2, 2], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data; algorithm = :absorptionrgba)
-    volume(f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, add_data; algorithm = :additive, alpha = 0.05)
+    volume(f[2, 2], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data; algorithm = :absorptionrgba, absorption = 2)
+    volume(f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, add_data; algorithm = :additive, absorption = 10)
     volume(
         f[2, 3], -10 .. 10, -10 .. 10, -10 .. 10, index_data;
-        algorithm = :indexedabsorption, colormap = Makie.resample(to_colormap(:viridis), N)
+        algorithm = :indexedabsorption, colormap = Makie.resample(to_colormap(:viridis), N), absorption = 2
     )
 
     for ls in f.content
@@ -201,15 +201,24 @@ end
 end
 
 @reference_test "Basic Shading" begin
-    f = Figure(size = (500, 300))
+    f = Figure(size = (500, 500))
 
     # see PR #3722
     pts = Point3f[[0, 0, 0], [1, 0, 0]]
     markersize = Vec3f[[0.5, 0.2, 0.5], [0.5, 0.2, 0.5]]
     rotation = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
-    meshscatter(f[1, 1], pts; markersize, rotation, color = :white, diffuse = Vec3f(-2, 0, 4), specular = Vec3f(4, 0, -2))
+    meshscatter(
+        f[1, 1], pts; markersize, rotation, color = :white,
+        diffuse = Vec3d(-2, 0, 4), specular = Vec3d(4, 0, -2)
+    )
 
     mesh(f[1, 2], Sphere(Point3f(0), 1.0f0), color = :orange, shading = NoShading)
+
+    markersize = Vec3f[[0.5, 0.0, 0.5], [0.5, 0.2, 0.0]]
+    meshscatter(
+        f[2, 1], pts; markersize, rotation, color = :white,
+        diffuse = Vec3f(-2, 0, 4), specular = Vec3f(4, 0, -2), backlight = 1
+    )
 
     f
 end
@@ -294,37 +303,33 @@ end
 end
 
 
-@reference_test "Image on Surface Sphere" begin
+@reference_test "Surface tests" begin
     n = 20
     θ = [0;(0.5:(n - 0.5)) / n;1]
     φ = [(0:(2n - 2)) * 2 / (2n - 1);2]
     x = [cospi(φ) * sinpi(θ) for θ in θ, φ in φ]
     y = [sinpi(φ) * sinpi(θ) for θ in θ, φ in φ]
     z = [cospi(θ) for θ in θ, φ in φ]
-    pts = vec(Point3f.(x, y, z))
-    f, ax, p = surface(x, y, z, color = Makie.logo(), transparency = true)
-end
 
-@reference_test "Arrows on Sphere" begin
-    n = 20
+    fig = Figure(size = (800, 800))
+    surface(fig[1, 1], x, y, z, color = Makie.logo(), transparency = true)
+
     f = (x, y, z) -> x * exp(cos(y) * z)
     ∇f = (x, y, z) -> Point3f(exp(cos(y) * z), -sin(y) * z * x * exp(cos(y) * z), x * cos(y) * exp(cos(y) * z))
     ∇ˢf = (x, y, z) -> ∇f(x, y, z) - Point3f(x, y, z) * dot(Point3f(x, y, z), ∇f(x, y, z))
 
-    θ = [0;(0.5:(n - 0.5)) / n;1]
-    φ = [(0:(2n - 2)) * 2 / (2n - 1);2]
-    x = [cospi(φ) * sinpi(θ) for θ in θ, φ in φ]
-    y = [sinpi(φ) * sinpi(θ) for θ in θ, φ in φ]
-    z = [cospi(θ) for θ in θ, φ in φ]
-
     pts = vec(Point3f.(x, y, z))
     ∇ˢF = vec(∇ˢf.(x, y, z)) .* 0.1f0
-    surface(x, y, z)
+    surface(fig[1, 2], x, y, z)
     arrows!(
         pts, ∇ˢF,
         arrowsize = 0.03, linecolor = (:white, 0.6), linewidth = 0.03
     )
-    current_figure()
+
+    a, p = surface(fig[2, 1], x, y, z)
+    Makie.rotate!(p, Vec3f(0, 1, 1), pi / 2)
+
+    fig
 end
 
 @reference_test "surface + contour3d" begin
@@ -764,7 +769,7 @@ end
     rgba_data = [RGBAf(cos(x^2)^2, cos(y^2)^2, cos(z^2)^2, 0.5 + 0.5 * sin(x^2 + y^2 + z^2)) for x in r, y in r, z in r]
 
     clip_planes = [Plane3f(Vec3f(-1), 0.0)]
-    attr = (clip_planes = clip_planes, axis = (show_axis = false,))
+    attr = (clip_planes = clip_planes, axis = (show_axis = false,), absorption = 5.0)
 
     volume(
         f[1, 1], -10 .. 10, -10 .. 10, -10 .. 10, data; attr...,
@@ -784,10 +789,9 @@ end
         algorithm = :absorptionrgba
     )
 
-    # TODO: doesn't work as intended anymore?
     volume(
         f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data; attr...,
-        algorithm = :additive, alpha = 0.01
+        algorithm = :additive
     )
     volume(
         f[2, 3], -10 .. 10, -10 .. 10, -10 .. 10, index_data; attr...,
@@ -936,4 +940,35 @@ end
     # check that aspect ratio changes of scenes are correctly picked up
     resize!(fig.scene, 800, 700)
     fig
+end
+
+@reference_test "Volume lowclip highclip" begin
+    data = [(x * x + y * y - z * z) for x in 0:10, y in 10:-1:0, z in 0:10]
+    f = Figure()
+
+    # mip is a bit special because colorrange affects value sampling
+    volume(
+        f[1, 1], data, algorithm = :mip,
+        colorrange = (10, 30), lowclip = :transparent, highclip = :transparent,
+    )
+    volume(
+        f[1, 2], data, algorithm = :mip,
+        colorrange = (10, 30), lowclip = :red, highclip = :transparent,
+    )
+    volume(
+        f[1, 3], data, algorithm = :mip,
+        colorrange = (10, 30), lowclip = :transparent, highclip = :red,
+    )
+
+    volume(
+        f[2, 1], data, algorithm = :absorption,
+        colorrange = (10, 30), lowclip = :transparent, highclip = :transparent,
+        absorption = 10, transparency = true
+    )
+    contour(
+        f[2, 2], data,
+        colorrange = (-30, 50), lowclip = :transparent, highclip = :transparent,
+    )
+
+    f
 end

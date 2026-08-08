@@ -300,30 +300,21 @@ function create_shader(scene::Scene, plot::Scatter)
     return create_wgl_renderobject(scatter_program, attr, inputs)
 end
 
-const SCENE_ATLASES = Dict{Session, Set{UInt32}}()
-const SCENE_ATLAS_LOCK = ReentrantLock()
-
 function get_atlas_tracker(f, scene::Scene)
-    return lock(SCENE_ATLAS_LOCK) do
-        for (s, _) in SCENE_ATLASES
-            Bonito.isclosed(s) && delete!(SCENE_ATLASES, s)
-        end
-        screen = Makie.getscreen(scene, WGLMakie)
-        if isnothing(screen) || isnothing(screen.session)
-            @warn "No session found, returning empty atlas tracker"
-            # TODO, it's not entirely clear in which case this can happen,
-            # which is why we don't just error, but just assume there isn't anything tracked
-            return f(Set{UInt32}())
-        end
-        session = Bonito.root_session(screen.session)
-        if haskey(SCENE_ATLASES, session)
-            return f(SCENE_ATLASES[session])
-        else
-            atlas = Set{UInt32}()
-            SCENE_ATLASES[session] = atlas
-            return f(atlas)
-        end
+    screen = Makie.getscreen(scene, WGLMakie)
+    if isnothing(screen) || isnothing(screen.session)
+        @warn "No session found, returning empty atlas tracker"
+        # TODO, it's not entirely clear in which case this can happen,
+        # which is why we don't just error, but just assume there isn't anything tracked
+        return f(Set{UInt32}())
     end
+    session = screen.session
+    atlas = Bonito.get_metadata(session, :wglmakie_scene_atlas, nothing)
+    if isnothing(atlas)
+        atlas = Set{UInt32}()
+        Bonito.set_metadata!(session, :wglmakie_scene_atlas, atlas)
+    end
+    return f(atlas)
 end
 
 function get_scatter_data(scene::Scene, markers, fonts)
@@ -654,6 +645,7 @@ function create_volume_shader(attr)
         :shininess => attr.shininess,
         :model => attr.uniform_model,
         :depth_shift => attr.depth_shift,
+        :samples => attr.samples,
 
         # these get filled in later by serialization, but we need them
         # as dummy values here, so that the correct uniforms are emitted
@@ -685,6 +677,7 @@ function create_shader(scene::Scene, plot::Volume)
         :diffuse, :specular, :shininess, :backlight, :depth_shift,
         :lowclip_color, :highclip_color, :nan_color,
         :uniform_model, :uniform_num_clip_planes, :uniform_clip_planes, :visible,
+        :samples,
     ]
     return create_wgl_renderobject(create_volume_shader, attr, inputs)
 end

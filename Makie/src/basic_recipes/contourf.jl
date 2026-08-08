@@ -201,6 +201,13 @@ end
 
 function register_contourf_computations!(graph, argname)
     map!(graph, [argname, :levels, :mode], :computed_levels) do zs, levels, mode
+        if levels isa Integer
+            mi, ma = extrema_nan(vec(zs))
+            if isapprox(mi, ma)
+                delta = max(one(mi), abs(mi))
+                return Float32.(range(mi - delta, ma + delta; length = levels + 1))
+            end
+        end
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
@@ -212,22 +219,23 @@ function register_contourf_computations!(graph, argname)
     return
 end
 
+function _calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
+    levels = copy(levels)
+    @assert issorted(levels)
+    is_extended_low && pushfirst!(levels, -Inf)
+    is_extended_high && push!(levels, Inf)
+    lows = levels[1:(end - 1)]
+    highs = levels[2:end]
+
+    calculate_contourf_polys!(polys, colors, xs, ys, zs, lows, highs)
+    return
+end
+
 function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}, <:Tuple{<:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}}}})
     graph = c.attributes
 
     register_contourf_computations!(graph, :z)
 
-    function calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
-        levels = copy(levels)
-        @assert issorted(levels)
-        is_extended_low && pushfirst!(levels, -Inf)
-        is_extended_high && push!(levels, Inf)
-        lows = levels[1:(end - 1)]
-        highs = levels[2:end]
-
-        calculate_contourf_polys!(polys, colors, xs, ys, zs, lows, highs)
-        return
-    end
 
     register_computation!(
         graph,
@@ -242,7 +250,7 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
         else
             polys, colors = empty!.(values(cached))
         end
-        calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
+        _calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
         return (polys, colors)
     end
 
@@ -263,6 +271,16 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
     )
 end
 
+# `inner` ⊆ `outer` iff any vertex or edge-midpoint is strictly inside (midpoints catch vertices shared on `outer`'s boundary, #5651)
+function _is_ring_contained(inner, outer)
+    any(p -> PolygonOps.inpolygon(p, outer) == 1, inner) && return true
+    @inbounds for i in firstindex(inner):(lastindex(inner) - 1)
+        mid = (inner[i] .+ inner[i + 1]) ./ 2
+        PolygonOps.inpolygon(mid, outer) == 1 && return true
+    end
+    return false
+end
+
 """
     _group_polys(points, ids)
 
@@ -277,13 +295,9 @@ function _group_polys(points, ids)
 
     polys_lastdouble = [push!(p, first(p)) for p in polys]
 
-    # this matrix stores whether poly i is contained in j
-    # because the marching squares algorithm won't give us any
-    # intersecting or overlapping polys, it should be enough to
-    # check if a single point is contained, saving some computation time
+    # whether poly i is contained in j (marching squares yields no intersecting polys)
     containment_matrix = [
-        p1 != p2 &&
-            PolygonOps.inpolygon(first(p1), p2) == 1
+        p1 !== p2 && _is_ring_contained(p1, p2)
             for p1 in polys_lastdouble, p2 in polys_lastdouble
     ]
 

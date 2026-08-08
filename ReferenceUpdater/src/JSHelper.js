@@ -7,50 +7,50 @@
  * @param {number} threshold - Minimum score to show
  */
 export function filterByScore(threshold) {
-    const t = parseFloat(threshold) || 0;
+    const t = parseFloat(threshold) || -1;
     const cards = document.querySelectorAll('.ref-card');
     cards.forEach(card => {
-        const score = parseFloat(card.dataset.score) || 0;
-        card.dataset.hidden = score >= t ? 'false' : 'true';
+        // 0 maps to false, but should be hidden if it's smaller than t
+        const score = (parseFloat(card.dataset.score) + 1) || Infinity;
+        card.dataset.hidden = score - 1 >= t ? 'false' : 'true';
     });
 }
 
 /**
- * Setup image cycling button for a card
+ * Setup image cycling for a card, triggered by the button or by clicking the image
  * Cycles through: recorded -> reference -> glmakie -> recorded
  * @param {HTMLElement} buttonContainer - Container with the button and images
  * @param {HTMLElement} mediaRecorded - Recorded image element
  * @param {HTMLElement} mediaReference - Reference image element
- * @param {HTMLElement} mediaGlmakie - GLMakie reference image element
+ * @param {HTMLElement|null} mediaGlmakie - GLMakie reference image element, null if it doesn't exist
  */
 export function setupImageCycleButton(buttonContainer, mediaRecorded, mediaReference, mediaGlmakie) {
     const button = buttonContainer.querySelector('button');
+    const cycle_checkbox = document.querySelectorAll('.cycle-checkbox')[0];
+
     if (!button) return;
 
-    button.addEventListener('click', () => {
-        // Get current z-index to determine state
-        const getZ = (el) => parseInt(el.style.zIndex || window.getComputedStyle(el).zIndex || '0');
+    const media = [
+        [mediaRecorded, 'recorded'],
+        [mediaReference, 'reference'],
+        [mediaGlmakie, 'glmakie'],
+    ].filter(([el]) => el);
 
-        // Cycle: recorded -> reference -> glmakie -> recorded
-        if (getZ(mediaRecorded) > getZ(mediaReference) && getZ(mediaRecorded) > getZ(mediaGlmakie)) {
-            // Currently showing recorded, switch to reference
-            mediaRecorded.style.zIndex = '1';
-            mediaReference.style.zIndex = '3';
-            mediaGlmakie.style.zIndex = '2';
-            button.textContent = 'Showing: reference';
-        } else if (getZ(mediaReference) > getZ(mediaRecorded) && getZ(mediaReference) > getZ(mediaGlmakie)) {
-            // Currently showing reference, switch to glmakie
-            mediaRecorded.style.zIndex = '2';
-            mediaReference.style.zIndex = '1';
-            mediaGlmakie.style.zIndex = '3';
-            button.textContent = 'Showing: glmakie';
-        } else {
-            // Currently showing glmakie, switch to recorded
-            mediaRecorded.style.zIndex = '3';
-            mediaReference.style.zIndex = '2';
-            mediaGlmakie.style.zIndex = '1';
-            button.textContent = 'Showing: recorded';
-        }
+    const cycle = () => {
+        const getZ = (el) => parseInt(el.style.zIndex || window.getComputedStyle(el).zIndex || '0');
+        const active = media.filter(([, label]) => label !== 'glmakie' || cycle_checkbox.checked);
+        const current = media.reduce((a, b) => getZ(b[0]) > getZ(a[0]) ? b : a);
+        // indexOf is -1 if glmakie is showing but its checkbox was just unchecked, wrapping to recorded
+        const [nextEl, nextLabel] = active[(active.indexOf(current) + 1) % active.length];
+        media.forEach(([el]) => { el.style.zIndex = '1'; });
+        nextEl.style.zIndex = '3';
+        button.textContent = 'Showing: ' + nextLabel;
+    };
+
+    button.addEventListener('click', cycle);
+    // only images cycle on click, videos need their clicks for the playback controls
+    media.forEach(([el]) => {
+        if (el.tagName === 'IMG') el.addEventListener('click', cycle);
     });
 }
 
@@ -136,7 +136,7 @@ export function compareToGLMakie(grid, selectedBackend) {
             });
         });
 
-        grid.style.gridTemplateColumns = '1fr 1fr 1fr';
+        grid.style.gridTemplateColumns = '';
         return;
     }
 
@@ -193,7 +193,7 @@ export function collectCheckedFiles() {
             const filepath = card.dataset.filepath;
             if (filepath) {
                 // Check if this is from the missing files section (for deletion)
-                const isMissingSection = card.closest('.section')?.querySelector('h2')?.textContent?.includes('Missing');
+                const isMissingSection = card.closest('.section')?.querySelector('h2')?.textContent?.includes('Old reference images without recordings');
                 if (isMissingSection) {
                     deleteFiles.push(filepath);
                 } else {
@@ -204,6 +204,22 @@ export function collectCheckedFiles() {
     });
 
     return { uploadFiles, deleteFiles };
+}
+
+export function toggleFiles(grid) {
+    const cards = Array.from(grid.children).filter(c => c.classList.contains('ref-card'));
+
+    cards.forEach(card => {
+        const checkbox = card.querySelector('.checkbox-input');
+        if (checkbox && card.dataset.hidden == 'false')
+        {
+            checkbox.checked = !checkbox.checked;
+        }
+    });
+
+    updateSelectionCounts();
+
+    return;
 }
 
 /**

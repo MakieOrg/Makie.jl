@@ -14,6 +14,7 @@ FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
@@ -21,13 +22,18 @@ ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
 ghr_jll = "07c12ed4-43bc-5495-8a2a-d5838ef8d533"
 
 [compat]
-Bonito = "3, 4"
+Bonito = "3, 4, 5"
 Colors = "0.12, 0.13.0"
 DelimitedFiles = "1.9.1"
 FFMPEG_jll = "6.1.2, 7, 8"
 FileIO = "1.16.6"
-HTTP = "1"
-Statistics = "1.11.1"
+HTTP = "1, 2"
+Statistics = "1"
 
-[apps]
-reference_updater = {}
+[apps.reference_updater]
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

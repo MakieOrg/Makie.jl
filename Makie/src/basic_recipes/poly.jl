@@ -48,7 +48,8 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         inspectable = plot.inspectable,
         transparency = plot.transparency,
         space = plot.space,
-        depth_shift = plot.depth_shift
+        depth_shift = plot.depth_shift,
+        clip_planes = plot.clip_planes
     )
     wireframe!(
         plot, plot[1],
@@ -56,7 +57,8 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         linewidth = plot.strokewidth, linecap = plot.linecap,
         visible = plot.visible, overdraw = plot.overdraw,
         inspectable = plot.inspectable, transparency = plot.transparency,
-        colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift
+        colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift,
+        clip_planes = plot.clip_planes
     )
     return plot
 end
@@ -124,24 +126,53 @@ function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, tr
     end
 end
 
+"""
+    outline_dim(::Type)
+
+Dimensionality of the points that a poly input decomposes into.
+
+This is resolved from the *type* rather than from the data so that `to_lines` is type
+stable. `GeometryBasics.AbstractGeometry{N}` covers `Polygon`, `MultiPolygon`,
+`LineString`, `MultiLineString`, `MultiPoint`, `Rect`, `Circle` and `Mesh` in one method;
+the `AbstractVector` method recurses, so a vector of any of those (or of points) resolves
+too. The fallback of 3 is safe because `to_ndim` pads missing dimensions with zeros.
+"""
+outline_dim(::Type{<:VecTypes{N}}) where {N} = N
+outline_dim(::Type{<:GeometryBasics.AbstractGeometry{N}}) where {N} = N
+outline_dim(::Type{<:AbstractVector{T}}) where {T} = outline_dim(T)
+outline_dim(::Type) = 3
+
+# An outline of width 0 is not rasterized, so there is no reason to build it. Returning a
+# single NaN point keeps the type of `:outline` identical to the normal path, so toggling
+# `strokewidth` at runtime does not change types in the compute graph or in the backends.
+# `data_limits` of an all-NaN line is the empty interval, so axis limits still come from
+# the mesh.
+has_stroke(strokewidth::Real) = !iszero(strokewidth)
+has_stroke(strokewidth::AbstractVector{<:Real}) = any(!iszero, strokewidth)
+has_stroke(@nospecialize(strokewidth)) = true
+
+function to_lines(polygon, strokewidth)
+    has_stroke(strokewidth) && return to_lines(polygon)
+    PT = Point{outline_dim(typeof(polygon)), Float64}
+    return (PT[PT(NaN)], Int[])
+end
+
 to_lines(polygon) = (convert_arguments(Lines, polygon)[1], [typemax(Int)])
 # Need to explicitly overload for Mesh, since otherwise, Mesh will dispatch to AbstractVector
 to_lines(polygon::GeometryBasics.Mesh) = (convert_arguments(PointBased(), polygon)[1], [typemax(Int)])
 
 function to_lines(meshes::AbstractVector)
-    get_dim(::AbstractVector{<:VecTypes{N}}) where {N} = N
-    get_dim(::Any) = 3
-    N = mapreduce(get_dim, max, meshes, init = 2)
-    line = Point{N, Float64}[]
+    PT = Point{outline_dim(typeof(meshes)), Float64}
+    line = PT[]
     separation_indices = Int[]
     for (i, mesh) in enumerate(meshes)
-        points = to_ndim.(Point{N, Float64}, to_lines(mesh)[1], 0)
+        points = to_ndim.(PT, to_lines(mesh)[1], 0)
         append!(line, points)
         push!(separation_indices, length(line) + 1)
         # push!(line, points[1])
         # dont need to separate the last line segment
         if i != length(meshes)
-            push!(line, Point{N, Float64}(NaN))
+            push!(line, PT(NaN))
         end
     end
     return (line, separation_indices)
@@ -175,19 +206,24 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         transparency = plot.transparency,
         inspectable = plot.inspectable,
         space = plot.space,
-        depth_shift = plot.depth_shift
+        depth_shift = plot.depth_shift,
+        clip_planes = plot.clip_planes
     )
 
-    map!(to_lines, plot, :polygon, [:outline, :increment_at])
+    map!(to_lines, plot, [:polygon, :strokewidth], [:outline, :increment_at])
     map!(plot, [:outline, :increment_at, :strokecolor, :meshes], :computed_strokecolor) do outline, increment_at, sc, meshes
-        if !(meshes isa Mesh) && meshes isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes)
+        if meshes isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes)
+            new_colors = similar(sc, length(outline))
             mesh_idx = 1
-            return map(eachindex(outline)) do point_idx
-                if point_idx == increment_at[mesh_idx]
+            next_switch = isempty(increment_at) ? -1 : increment_at[1]
+            for point_idx in eachindex(outline)
+                if point_idx == next_switch
                     mesh_idx += 1
+                    next_switch = increment_at[mesh_idx]
                 end
-                return sc[mesh_idx]
+                new_colors[point_idx] = sc[mesh_idx]
             end
+            return new_colors
         else
             return sc
         end
@@ -200,6 +236,7 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
         space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
-        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift
+        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift,
+        clip_planes = plot.clip_planes
     )
 end

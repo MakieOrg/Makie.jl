@@ -49,7 +49,7 @@ using ComputePipeline
 
 import Unitful
 import UnicodeFun
-import RelocatableFolders
+using RelocatableFolders: @path
 import StatsBase
 import Distributions
 import KernelDensity
@@ -84,7 +84,7 @@ import InverseFunctions
 
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
-export Pixel, px, Unit, plotkey, attributes, used_attributes
+export plotkey, attributes, used_attributes
 export Linestyle
 assetpath(files...) = normpath(joinpath(artifact"MakieAssets", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))
@@ -115,6 +115,8 @@ include("basic_plots.jl")
 include("conversion.jl")
 include("bezier.jl")
 include("types.jl")
+include("richtext.jl")
+include("tick_format.jl")
 include("utilities/Plane.jl")
 include("utilities/timing.jl")
 include("utilities/texture_atlas.jl")
@@ -137,7 +139,6 @@ include("float32-scaling.jl")
 
 include("interfaces.jl")
 include("compute-plots.jl")
-include("units.jl")
 include("shorthands.jl")
 
 # camera types + functions
@@ -177,6 +178,7 @@ include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/tricontourf.jl")
+include("basic_recipes/tricontour.jl")
 include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/voronoiplot.jl")
@@ -184,6 +186,7 @@ include("basic_recipes/voxels.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/textlabel.jl")
+include("basic_recipes/editabletext.jl")
 include("basic_recipes/tooltip.jl")
 
 include("basic_recipes/makiecore_examples/scatter.jl")
@@ -289,10 +292,6 @@ export DateTimeTicks
 # Transformations
 export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, data_limits
-
-# Spaces for widths and markers
-const PixelSpace = Pixel
-export SceneSpace, PixelSpace, Pixel
 
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, StageCamera, cam2d!, cam2d
@@ -403,6 +402,9 @@ function __init__()
         @warn "The global configuration file is no longer supported." *
             "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
+    # Register atexit for runtime cleanup (when Julia exits normally)
+    # Note: This doesn't affect precompilation since __init__ doesn't run during precompile
+    atexit(cleanup_globals)
     return
 end
 
@@ -414,6 +416,7 @@ include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
+include("basic_recipes/pathtext.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
@@ -429,6 +432,26 @@ export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, 
 export FastPixel
 export update!
 export Ann
+
+"""
+    cleanup_globals()
+
+Cleans up global state (figures, tasks, caches) for precompilation compatibility.
+On Julia 1.11+, this is called automatically via atexit (which runs before serialization).
+On Julia 1.10, this must be called manually after precompilation workloads.
+"""
+function cleanup_globals()
+    cleanup_current_figure()
+    cleanup_tasks()
+    empty!(FONT_CACHE)
+    empty!(DEFAULT_FONT)
+    empty!(ALTERNATIVE_FONTS)
+    return
+end
+
+export cleanup_globals
+
+const SHARED_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile.jl")
 
 include("precompiles.jl")
 

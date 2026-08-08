@@ -409,6 +409,22 @@ macro recipe(Tsym::Symbol, attrblock)
     return create_recipe_expr(Tsym, nothing, attrblock)
 end
 
+"""
+    @recipe_internal MyPlot ...
+
+Like `@recipe`, but does not `export` the generated `MyPlot` type alias or the
+`myplot` / `myplot!` constructors. Use for recipes whose API is still being
+worked out and which should only be reachable via the qualified `Makie.…` form
+until they stabilise.
+"""
+macro recipe_internal(Tsym::Symbol, attrblock)
+    return create_recipe_expr(Tsym, nothing, attrblock; export_recipe = false)
+end
+
+macro recipe_internal(Tsym::Symbol, args, attrblock)
+    return create_recipe_expr(Tsym, args, attrblock; export_recipe = false)
+end
+
 macro recipe(Tsym::Symbol, args, attrblock)
     return create_recipe_expr(Tsym, args, attrblock)
 end
@@ -471,7 +487,7 @@ function extract_docstring(str)
     end
 end
 
-function create_recipe_expr(Tsym, args, attrblock)
+function create_recipe_expr(Tsym, args, attrblock; export_recipe::Bool = true)
     funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
     funcname! = esc(funcname!_sym)
@@ -540,7 +556,7 @@ function create_recipe_expr(Tsym, args, attrblock)
         @doc docstring_modified $funcname_sym
         @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $Tsym
         @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $funcname!_sym
-        export $PlotType, $funcname, $funcname!
+        $(export_recipe ? :(export $PlotType, $funcname, $funcname!) : nothing)
     end
 
     if !isempty(syms)
@@ -710,9 +726,9 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true
 
     lens = length.(v) # for unicode ligatures etc this won't work, but we don't use those for attribute names
     function col_widths(ncols; rows_first)
+        local nrows = ceil(Int, length(v) / ncols)
         max_widths = zeros(Int, ncols)
         for (i, len) in enumerate(lens)
-            nrows = ceil(Int, length(v) / ncols)
             j = rows_first ? fld1(i, nrows) : mod1(i, ncols)
             max_widths[j] = max(max_widths[j], len)
         end
