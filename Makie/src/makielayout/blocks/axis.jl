@@ -584,6 +584,12 @@ function initialize_block!(ax::Axis; palette = nothing)
     return ax
 end
 
+"""
+    add_axis_limits!(plot)
+
+Adds `axis_limits` and `axis_limits_transformed` as nodes to the plot graph.
+This is only available with `Axis`.
+"""
 function add_axis_limits!(plot)
     scene = parent_scene(plot)
     if !haskey(scene.compute, :axis_limits)
