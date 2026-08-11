@@ -891,14 +891,13 @@ end
     function testscene(gridpos; kwargs...)
         lscene = LScene(gridpos, show_axis = false, scenekw = (; camera = stage_cam!))
 
-        # Add a floor plane
-        floor_mesh = mesh!(lscene,
+        mesh!(
+            lscene,
             Rect3f(Vec3f(-5, -5, 0), Vec3f(10, 10, 0.1)),
             color = :lightgray,
             alpha = 0.8
         )
 
-        # Add several boxes of different sizes and colors
         boxes = [
             (pos = Vec3f(-0.5, -0.5, 0), size = Vec3f(1, 1, 1), color = :red),
             (pos = Vec3f(2, 1, 0), size = Vec3f(0.5, 0.5, 1.5), color = :blue),
@@ -908,26 +907,29 @@ end
         ]
 
         for box in boxes
-            mesh!(lscene,
+            mesh!(
+                lscene,
                 Rect3f(box.pos, box.size),
                 color = box.color,
             )
         end
 
-        text!(lscene, 0, 1, text = join(["$k = $v" for (k, v) in pairs(kwargs)], "\n"),
-            space = :relative, align = (:left, :top), offset = (5, -5))
+        text!(
+            lscene, 0, 1, text = join(["$k = $v" for (k, v) in pairs(kwargs)], "\n"),
+            space = :relative, align = (:left, :top), offset = (5, -5)
+        )
 
-        # Set up StageCamera with initial parameters
-        scene = lscene.scene
-        Makie.stage_cam!(scene; azimuth = 45.0,
+        Makie.stage_cam!(
+            lscene.scene; azimuth = 45.0,
             elevation = 30.0,
             stage_size = 8.0,
             lookat = (0, 0, 1),
-            mm = haskey(kwargs, :fov) ? nothing : 50.0,  # Normal lens
-            zoom = 1.0, kwargs...)
+            mm = haskey(kwargs, :fov) ? nothing : 50.0,
+            crop_factor = 1.0, kwargs...
+        )
         return
     end
-    
+
     testscene(fig[1, 1])
     testscene(fig[1, 2], azimuth = 90, elevation = 45)
     testscene(fig[2, 1], stage_size = 12)
@@ -936,9 +938,13 @@ end
     testscene(fig[3, 2], mm = 100)
     testscene(fig[4, 1], fov = 30)
     testscene(fig[4, 2], fov = 90)
+    testscene(fig[5, 1], crop_factor = 1.5)
+    testscene(fig[5, 2], elevation = 90)
+    testscene(fig[6, 1], relative_offset = (0.5, 0))
+    testscene(fig[6, 2], relative_offset = (-0.3, 0.3))
 
     # check that aspect ratio changes of scenes are correctly picked up
-    resize!(fig.scene, 800, 700)
+    resize!(fig.scene, 800, 1050)
     fig
 end
 
