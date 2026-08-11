@@ -2926,6 +2926,8 @@ subtree receives events.
         header_height = 40
         "Minimum body size (width, height) in pixels when auto-sizing."
         min_size = (280, 140)
+        "Maximum body size (width, height) in pixels when auto-sizing; content beyond this scrolls."
+        max_size = (Inf, Inf)
         "Body width in pixels, or `Auto()` to size to the content."
         width = Auto()
         "Body height in pixels, or `Auto()` to size to the content."

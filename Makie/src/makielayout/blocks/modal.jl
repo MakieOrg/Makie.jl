@@ -34,10 +34,13 @@ function initialize_block!(m::Modal)
     modaloffset(a::Real, avail, sz, margin) = clamp(round(Float32(a) * (avail - sz)), 0.0f0, max(avail - sz, 0.0f0))
     body_rect = lift(
         blockscene, blockscene.viewport, content_autosize,
-        m.width, m.height, m.min_size, m.contentpadding, m.header_height, m.halign, m.valign
-    ) do vp, asz, w, h, msz, pad, hh, ha, va
+        m.width, m.height, m.min_size, m.max_size, m.contentpadding, m.header_height,
+        m.halign, m.valign
+    ) do vp, asz, w, h, msz, xsz, pad, hh, ha, va
         bw = w isa Number ? Float32(w) : max(Float32(msz[1]), asz[1] + 2pad)
         bh = h isa Number ? Float32(h) : max(Float32(msz[2]), asz[2] + hh + 2pad)
+        bw = min(bw, Float32(xsz[1]))
+        bh = min(bh, Float32(xsz[2]))
         bw = min(bw, Float32(widths(vp)[1]))
         bh = min(bh, Float32(widths(vp)[2]))
         x = vp.origin[1] + modaloffset(ha, widths(vp)[1], bw, 2pad)
@@ -133,6 +136,37 @@ function initialize_block!(m::Modal)
 end
 
 content_scene(m::Modal) = content_scene(m.subfigure)
+
+"""
+    replace_content!(f, m::Modal)
+
+Clear the modal's content and rebuild it by calling `f(subfigure)`, then
+resize the modal to the new content.
+
+Deleting blocks leaves their rows and columns behind, so rebuilding
+content in place accumulates empty tracks that push the remaining content
+around. This removes the old content, trims those tracks, and refreshes
+the size that `width`/`height = Auto()` depends on.
+
+```julia
+replace_content!(modal) do sf
+    for (i, name) in enumerate(names)
+        Button(sf.layout[i, 1]; label = name)
+    end
+end
+```
+"""
+function replace_content!(f, m::Modal)
+    sf = m.subfigure
+    layout = sf.layout
+    for c in copy(contents(layout))
+        delete_layoutable!(c)
+    end
+    trim!(layout)
+    f(sf)
+    refresh_contentsize!(sf)
+    return m
+end
 
 "Show the modal."
 open!(m::Modal) = (m.open = true; nothing)
