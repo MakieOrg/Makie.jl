@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed `arrows3d` component alignment (tail, shaft, tip) when `normalize = true`. [#5711](https://github.com/MakieOrg/Makie.jl/issues/5711)
 - WGLMakie: fixed a `Cannot destructure property 'geometry' of 'mesh'` JS error when a plot received an attribute update after it was disposed (e.g. during re-display or resize); the update is now skipped instead of throwing.
 - Adjusted cycled attributes to be marked as `:cycled` instead of `nothing` so that `nothing` doesn't get overridden. This allows e.g. `linestyle = nothing` to be set when `linestyle` is cycled. [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267)
 
