@@ -51,9 +51,9 @@ edisplay = Bonito.use_electron_display(devtools = true)
 
     @testset "refimages" begin
         ReferenceTests.mark_broken_tests(excludes)
-        recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl" joinpath(@__DIR__, "html_widgets_refimages.jl")
-        missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")
-        ReferenceTests.test_comparison(scores; threshold = 0.05)
+        attempted_tests, recording_dir = @include_reference_tests WGLMakie "refimages.jl" joinpath(@__DIR__, "html_widgets_refimages.jl")
+        missing_images, scores, exempt = ReferenceTests.record_comparison(recording_dir, "WGLMakie"; attempted_tests)
+        ReferenceTests.test_comparison(scores; threshold = 0.05, exempt)
     end
 
     @testset "js texture atlas" begin
@@ -216,15 +216,19 @@ edisplay = Bonito.use_electron_display(devtools = true)
             # should be empty (or at least not contain Render ticks yet?)
             @test isempty(tick_record)
 
+            render_time = 20
             colorbuffer(f)
-            sleep(2)
+            sleep(render_time)
             close(f.scene.current_screens[1])
-            sleep(1)
+            sleep(5)
 
-            # Calibrate against the tick clock's own runtime, not wall-clock:
-            # `colorbuffer`/`close` add dead-time where no ticks fire.
-            tick_runtime = last(tick_record).time
-            @test round(Int, 30 * tick_runtime) - 10 <= length(tick_record) <= round(Int, 30 * tick_runtime) + 10
+            # Check:
+            # 1. `colorbuffer` started producing ticks at roughly 30 ticks/s
+            # 2. `close` stopped tick production
+            # To verify this we check that the number of ticks is proportional
+            # to the real render time, which should be close to the sleep time.
+            @test render_time * 30 - 1 <= length(tick_record) <= render_time * 30 + 20
+
             t = 0.0
             for (i, tick) in enumerate(tick_record)
                 @test tick.state == Makie.RegularRenderTick
