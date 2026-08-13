@@ -136,12 +136,11 @@ jobs:
       - name: Save status data for the chained status workflow
         env:
           STATE: ${{ steps.build.outputs.state }}
-          N_CHANGED: ${{ steps.build.outputs.n_changed }}
-          N_APPROVED: ${{ steps.build.outputs.n_approved }}
+          DESCRIPTION: ${{ steps.build.outputs.description }}
           REVIEW_ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
         run: >
-          printf '{"state":"%s","n_changed":%s,"n_approved":%s,"review_artifact_id":%s}\n'
-          "$STATE" "$N_CHANGED" "$N_APPROVED" "$REVIEW_ARTIFACT_ID" > refimage_status.json
+          jq -n --arg state "$STATE" --arg description "$DESCRIPTION" --argjson review_artifact_id "$REVIEW_ARTIFACT_ID"
+          '{state: $state, description: $description, review_artifact_id: $review_artifact_id}' > refimage_status.json
       - name: Upload status data
         uses: actions/upload-artifact@v7
         with:
