@@ -2206,6 +2206,11 @@ end
 end
 
 @reference_test "Mesh Pattern Continuity" begin
+    img = fill(RGBf(1, 1, 1), 16, 16)
+    img[1:8, 1:8] .= RGBf(1, 0, 0)
+    img[12:16, 1:8] .= RGBf(0, 1, 0)
+    img[1:8, 12:16] .= RGBf(0, 0, 1)
+
     scene = Scene(size = (400, 500))
     sub = Scene(scene, viewport = Rect2f(0, 0, 200, 250))
     mesh!(sub, Rect2f(-1, -1, 1, 1), color = Makie.ImagePattern(img))
