@@ -147,6 +147,7 @@ include("camera/camera.jl")
 include("camera/camera2d.jl")
 include("camera/camera3d.jl")
 include("camera/old_camera3d.jl")
+include("camera/stagecamera.jl")
 
 include("utilities/projection_utils.jl")
 
@@ -293,8 +294,8 @@ export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, data_limits
 
 # camera related
-export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
-export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!
+export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, StageCamera, cam2d!, cam2d
+export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!, stage_cam!
 export update_cam!, rotate_cam!, translate_cam!, zoom!
 export viewport, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
