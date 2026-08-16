@@ -84,3 +84,33 @@ using StatsBase
     @test all(p.plots[1].z[].data .≈ extrema(h.edges[3]))
     @test p.plots[1].chunk[] ≈ h.weights
 end
+
+@testset "missing in step/hist" begin
+    v = [missing, 1, 2, 2, 1, 1, missing, 2]
+    w = [2, 2, 1, 1, 2, 2, 1, 1]
+    g = [1, 1, 1, 1, 2, 2, 2, 2]
+
+    f, a, p = stephist(v, bins = 3)
+    @test p.points[] ≈ Point2f.([1, 4/3, 5/3, 2, 2], [0, 3, 0, 3, 0])
+    @test p.computed_colors[] isa Makie.Colorant
+
+    f, a, p = stephist(v, bins = 3, weights = w)
+    @test p.points[] ≈ Point2f.([1, 4/3, 5/3, 2, 2], [0, 6, 0, 3, 0])
+    @test p.computed_colors[] isa Makie.Colorant
+
+    f, a, p = hist(v, bins = 3)
+    @test p.points[] ≈ Point2f.([7/6, 1.5, 11/6], [3, 0, 3])
+    @test p.computed_colors[] isa Makie.Colorant
+
+    f, a, p = hist(v, bins = 3, weights = w)
+    @test p.points[] ≈ Point2f.([7/6, 1.5, 11/6], [6, 0, 3])
+    @test p.computed_colors[] isa Makie.Colorant
+
+    f, a, p = hist(v, bins = 3, stack = g, color = :stack)
+    @test p.points[] ≈ Point2f.(1 .+ [1, 3, 5, 1, 3, 5] ./ 6, [1, 0, 2, 2, 0, 1])
+    @test p.computed_colors[] == [1, 1, 1, 2, 2, 2]
+
+    f, a, p = hist(v, bins = 3, dodge = g, color = :dodge)
+    @test p.points[] ≈ Point2f.(1 .+ [1, 3, 5, 1, 3, 5] ./ 6, [1, 0, 2, 2, 0, 1])
+    @test p.computed_colors[] == [1, 1, 1, 2, 2, 2]
+end
