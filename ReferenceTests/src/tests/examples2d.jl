@@ -2205,6 +2205,19 @@ end
     f
 end
 
+@reference_test "Mesh Pattern Continuity" begin
+    scene = Scene(size = (400, 500))
+    sub = Scene(scene, viewport = Rect2f(0, 0, 200, 250))
+    mesh!(sub, Rect2f(-1, -1, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(0, 0, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(-1, 0, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(0, -1, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(200, 0, 200, 250)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(0, 250, 200, 250)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(200, 250, 200, 250)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+    scene
+end
+
 @reference_test "Color patterns in recipes" begin
     pattern = Makie.Pattern('x', linecolor = :darkgreen, backgroundcolor = RGBf(0.7, 0.8, 0.5))
 

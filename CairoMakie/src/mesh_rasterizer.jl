@@ -76,9 +76,9 @@ end
 struct PatternSampler
     image::Matrix{RGBAf}
     uv_transform::Mat{2, 3, Float32}
-    pixel_origin::Vec2f
+    viewport::Rect2f
+    local_origin::Vec2f
     inv_px_scale::Float32
-    viewport_height::Float32
 end
 
 wrap_index(i, n, repeat::Bool) = repeat ? mod(i - 1, n) + 1 : clamp(i, 1, n)
@@ -188,8 +188,17 @@ function fragment_color(s::MatcapSampler, face, weights, frag_px)
 end
 
 function fragment_color(s::PatternSampler, face, weights, frag_px)
-    window_x = (s.pixel_origin[1] + frag_px[1]) * s.inv_px_scale
-    window_y = s.viewport_height - (s.pixel_origin[2] + frag_px[2]) * s.inv_px_scale
+    # frag_px use super sampled and px_per_unit scaled units
+    # local_origin moves from scaled framebuffer units to scaled scene.viewport
+    # units (removing shifts from matching the framebuffer to the mesh bbox)
+    # inv_px_scale maps the scaled (supersampling + px_per_unit) units to the
+    # units used in scene.viewport
+    # viewport is the (unscaled) scene.viewport which is needed to invert the y
+    # direction (map top origin to bottom origin) and get to window relative
+    # pixel coordinates
+    scene_x = (s.local_origin[1] + frag_px[1]) * s.inv_px_scale
+    scene_y = widths(s.viewport)[2] - (s.local_origin[2] + frag_px[2]) * s.inv_px_scale
+    window_x, window_y = origin(s.viewport) .+ (scene_x, scene_y)
     uv = s.uv_transform * Vec3f(window_x, window_y, 1)
     return sample_texture(s.image, uv, true, true)
 end
@@ -562,7 +571,7 @@ function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph; 
     color_sampler = if plot.fetch_pixel[]::Bool
         PatternSampler(
             pattern_tile(compute_colors(plot)), uv_transform::Mat{2, 3, Float32, 6},
-            Vec2f(x0, y0), 1.0f0 / px_scale, resolution[2]
+            scene.viewport[], Vec2f(x0, y0), 1.0f0 / px_scale
         )
     elseif matcap !== nothing && meshnormals !== nothing
         view = plot.view[]::Mat4f
