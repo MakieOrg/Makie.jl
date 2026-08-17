@@ -1051,8 +1051,8 @@ function corner_wings(incident_edges, positions, v, o1, o2, own_min_width)
     # edges at the corner. If those are themselves stroked at least as wide, the
     # junction is already covered and the wing would only risk painting stray bands
     # on curved surfaces (e.g. a triangle sphere with strokeedges = :all).
-    wings = filter(((_, width),) -> width > own_min_width, wings)
-    wings = filter(is_in_plane, wings)
+    wings = filter!(((_, width),) -> width > own_min_width, wings)
+    wings = filter!(is_in_plane, wings)
     length(wings) <= 2 && return wings
 
     function wedge_closeness((u, _))
@@ -1107,6 +1107,8 @@ function stroke_edge_data(mesh, gl_faces, strokeedges::Symbol)
     edge_widths = Vector{Vec3f}(undef, length(gl_faces))
     wing_indices = Vector{Vec{6, Int32}}(undef, length(gl_faces))
     wing_widths = Vector{Vec{6, Float32}}(undef, length(gl_faces))
+    indices = zeros(Int32, 6)
+    widths = zeros(Float32, 6)
 
     for (t, f) in enumerate(gl_faces)
         corners = (canonical_ids[f[1]], canonical_ids[f[2]], canonical_ids[f[3]])
@@ -1116,8 +1118,8 @@ function stroke_edge_data(mesh, gl_faces, strokeedges::Symbol)
             end
         )
 
-        indices = zeros(Int32, 6)
-        widths = zeros(Float32, 6)
+        indices .= 0
+        widths .= 0f0
         for i in 1:3
             v = corners[i]
             o1 = corners[mod1(i + 1, 3)]
