@@ -110,7 +110,7 @@ Base.length(pipeline::GLRenderGraph) = length(pipeline.stages)
 Base.eltype(::Type{GLRenderGraph}) = GLRenderStage
 
 # render each stage
-function render_frame(screen, glscene, pipeline::GLRenderGraph)
+function render_frame(screen, glscenes, pipeline::GLRenderGraph)
     for stage in pipeline
         require_context(screen.glscreen)
         run_stage(screen, glscenes, stage)
