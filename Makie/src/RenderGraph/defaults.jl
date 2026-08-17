@@ -122,7 +122,7 @@ function SSAOStage(; kwargs...)
     ]
     stage2 = RenderStage(:SSAO2, inputs, [:color => BufferFormat()]; kwargs...)
 
-    pipeline = RenderPipeline(stage1, stage2)
+    pipeline = RenderGraph(stage1, stage2)
     connect!(pipeline, stage1, 1, stage2, 1)
 
     return pipeline
@@ -160,7 +160,7 @@ function FXAAStage(; kwargs...)
         kwargs...
     )
 
-    pipeline = RenderPipeline(stage1, stage2)
+    pipeline = RenderGraph(stage1, stage2)
     connect!(pipeline, stage1, 1, stage2, 1)
 
     return pipeline
@@ -209,7 +209,7 @@ Sets up the default render pipeline. Keyword arguments can be used to turn
 on different postprocessing effects.
 """
 function default_pipeline(; ssao = false, fxaa = true, oit = true)
-    pipeline = RenderPipeline()
+    pipeline = RenderGraph()
     push!(pipeline, SortStage())
     clear = push!(pipeline, SceneClearStage())
 
@@ -261,7 +261,7 @@ end
 Constructs the minimal pipeline needed for rendering.
 """
 function minimal_render_pipeline()
-    pipeline = RenderPipeline()
+    pipeline = RenderGraph()
     clear = push!(pipeline, SceneClearStage())
     render = push!(pipeline, PlotRenderStage())
     display = push!(pipeline, DisplayStage())

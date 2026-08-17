@@ -86,28 +86,28 @@ function initialize_attachments!(manager::FramebufferManager, formats::Vector{Ma
 end
 
 """
-    gl_render_pipeline!(screen, pipeline::Makie.RenderPipeline)
+    gl_render_pipeline!(screen, pipeline::Makie.RenderGraph)
 
-Constructs a new `GLRenderPipeline` from a `Makie.RenderPipeline` and adds it
-to the given `screen`. If a `GLRenderPipeline` already exists, it is destroyed
+Constructs a new `GLRenderGraph` from a `Makie.RenderGraph` and adds it
+to the given `screen`. If a `GLRenderGraph` already exists, it is destroyed
 and replaced. This will also reset the `FramebufferManager`.
 """
-function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
-    pipeline.stages[end].name === :Display || error("RenderPipeline must end with a Display stage")
+function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderGraph)
+    pipeline.stages[end].name === :Display || error("RenderGraph must end with a Display stage")
 
     # Exit early if the pipeline is already up to date
-    lowered_pipeline = Makie.LoweredRenderPipeline(pipeline)
+    lowered_pipeline = Makie.LoweredRenderGraph(pipeline)
     screen.render_pipeline.parent == pipeline && return
 
     return gl_render_pipeline!(screen, lowered_pipeline)
 end
 
-function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeline)
+function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderGraph)
     # Reset GL renderpipeline
     ShaderAbstractions.switch_context!(screen.glscreen)
     manager = screen.framebuffer_manager
     previous_pipeline = screen.render_pipeline
-    screen.render_pipeline = GLRenderPipeline()
+    screen.render_pipeline = GLRenderGraph()
 
     # Generate all the necessary attachments in the order given above so the
     # correct GLFramebuffers can be generated
@@ -144,7 +144,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
     # buffers must be preserved.
     foreach(i -> destroy!(previous_pipeline.stages[i]), needs_cleanup)
 
-    screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
+    screen.render_pipeline = GLRenderGraph(pipeline, render_pipeline)
 
     reinitialize_renderobjects!(screen)
 
