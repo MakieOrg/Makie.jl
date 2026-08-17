@@ -524,6 +524,8 @@ function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph; 
         yhi = max(yhi, p[2])
     end
     isfinite(xlo) && isfinite(ylo) || return
+    # one downsampled pixel of padding keeps a transparent ring around the mesh, so
+    # EXTEND_PAD and Cairo's filtering fade the silhouette out instead of smearing it
     x0 = clamp(floor(Int, xlo) - ss, 0, ceil(Int, viewport_w))
     y0 = clamp(floor(Int, ylo) - ss, 0, ceil(Int, viewport_h))
     x1 = clamp(ceil(Int, xhi) + ss, 0, ceil(Int, viewport_w))
