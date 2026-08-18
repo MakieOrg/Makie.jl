@@ -26,12 +26,13 @@ Bonito.export_static(joinpath(build_dir, "index.html"), app)
 @info "Self-contained review page written to $build_dir"
 
 coverage = ReferenceUpdater.approval_coverage(root_path)
-state = coverage.n_approved == coverage.n_changed ? "success" : "failure"
-@info "Approval coverage: $(coverage.n_approved)/$(coverage.n_changed) approved (state=$state)"
+state = ReferenceUpdater.fully_approved(coverage) ? "success" : "failure"
+summary = ReferenceUpdater.coverage_summary(coverage)
+description = ReferenceUpdater.total_images(coverage) == 0 ? summary : summary * ", view them under Details"
+@info "$description (state=$state)"
 if haskey(ENV, "GITHUB_OUTPUT")
     open(ENV["GITHUB_OUTPUT"], "a") do io
-        println(io, "n_changed=", coverage.n_changed)
-        println(io, "n_approved=", coverage.n_approved)
+        println(io, "description=", description)
         println(io, "state=", state)
     end
 end
