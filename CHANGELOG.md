@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed WGLMakie relocatability: shader assets are again loaded via RelocatableFolders instead of being read from the package directory at runtime, which does not exist for relocated PackageCompiler/juliac apps [#XXXX](https://github.com/MakieOrg/Makie.jl/pull/XXXX).
 - Added `StageCamera` (`stage_cam!`), a 3D camera with photographic settings that keeps a stage of a given size in view [#5472](https://github.com/MakieOrg/Makie.jl/pull/5472).
 - `Menu` is now searchable: typing while it is open filters the options. Set `searchable = false` for the old behavior [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
 - Added `textcolor_active` and `textcolor_hover` attributes to `Menu`, with the selected entry now white by default [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
