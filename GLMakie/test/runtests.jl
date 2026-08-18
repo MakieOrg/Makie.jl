@@ -41,16 +41,16 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         # are modified in which case the numbers should just be updated
         f, a, p = scatter(rand(10))
         colorbuffer(f)
-        @test length(p.attributes.inputs) == 40
-        @test length(p.attributes.outputs) == 85
+        @test length(p.attributes.inputs) == 37
+        @test length(p.attributes.outputs) == 83
     end
 
     @testset "Reference Tests" begin
         @testset "refimages" begin
             ReferenceTests.mark_broken_tests()
-            recorded_files, recording_dir = @include_reference_tests GLMakie "refimages.jl" joinpath(@__DIR__, "glmakie_refimages.jl")
-            missing_images, scores = ReferenceTests.record_comparison(recording_dir, "GLMakie")
-            ReferenceTests.test_comparison(scores; threshold = 0.05)
+            attempted_tests, recording_dir = @include_reference_tests GLMakie "refimages.jl" joinpath(@__DIR__, "glmakie_refimages.jl")
+            missing_images, scores, exempt = ReferenceTests.record_comparison(recording_dir, "GLMakie"; attempted_tests)
+            ReferenceTests.test_comparison(scores; threshold = 0.05, exempt)
         end
 
         GLMakie.closeall()

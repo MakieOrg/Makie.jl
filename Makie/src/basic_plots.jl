@@ -294,6 +294,18 @@ preferred for large, regularly spaced grids.
     mixin_colormap_attributes()...
 end
 
+# Allow lower precision than just Float32, i.e. Float16, N0f8
+const VolumeFloatTypes = Union{Float32, Float16, N0f8}
+# densities, RGB colors or RGBA colors
+const VolumeElTypes = Union{
+    VolumeFloatTypes,
+    Vec3{<:VolumeFloatTypes},
+    Vec4{<:VolumeFloatTypes},
+    RGB{<:VolumeFloatTypes},
+    RGBA{<:VolumeFloatTypes},
+}
+const VolumeDataType = Array{<:VolumeElTypes, 3}
+
 """
 Plots a volume with optional physical dimensions `x, y, z`.
 
@@ -301,15 +313,62 @@ All volume plots are derived from casting rays for each drawn pixel. These rays
 intersect with the volume data to derive some color, usually based on the given
 colormap. How exactly the color is derived depends on the algorithm used.
 """
-@recipe Volume (x, y, z, volume) begin
+@recipe Volume (
+    x::EndPoints,
+    y::EndPoints,
+    z::EndPoints,
+    volume::VolumeDataType,
+) begin
     """
-    Sets the volume algorithm that is used. Available algorithms are:
-    * `:iso`: Shows an isovalue surface within the given float data. For this only samples within `isovalue - isorange .. isovalue + isorange` are included in the final color of a pixel.
-    * `:absorption`: Accumulates color based on the float values sampled from volume data. At each ray step (starting from the front) a value is sampled from the volume data and then used to sample the colormap. The resulting color is weighted by the ray step size and blended the previously accumulated color. The weight of each step can be adjusted with the multiplicative `absorption` attribute.
-    * `:mip`: Shows the maximum intensity projection of the given float data. This derives the color of a pixel from the largest value sampled from the respective ray.
-    * `:absorptionrgba`: This algorithm matches :absorption, but samples colors directly from RGBA volume data. For each ray step a color is sampled from the data, weighted by the ray step size and blended with the previously accumulated color. Also considers `absorption`.
-    * `:additive`: Accumulates colors using `accumulated_color = 1 - (1 - accumulated_color) * (1 - sampled_color)` where `sampled_color` is a sample of volume data at the current ray step.
-    * `:indexedabsorption`: This algorithm acts the same as :absorption, but interprets the volume data as indices. They are used as direct indices to the colormap. Also considers `absorption`.
+    Sets the volume algorithm that is used.
+
+    #### `algorithm = :iso`
+
+    Shows the surface where each `volume` data sample matches `isovalue` with a tolerance of `±isorange`.
+    This algorithm expects float data.
+
+    #### `algorithm = :mip`
+
+    Shows the maximum intensity projection of the given float `volume` data. This derives the color of
+    each  pixel from the largest value sampled along the respective ray.
+
+    #### `algorithm = :absorption`
+
+    `:absorption` may be thought of as a simple cloud or smoke rendering algorithm. This version
+    uses float `volume` data to sample the `colormap`. The resulting RGBA color defines smoke/cloud
+    color with the RGB component and the particle density with the alpha component. The `absorption`
+    attribute can be used to globally scale the particle density.
+
+    More specifically, the algorithm does the following. For each pixel a light ray is generated from
+    the viewer/camera, which samples the volume front to back. Each sample acquires a color (RGB) and
+    particle density (alpha) as explained above. The particle density is weighted by the ray step size
+    and `absorption` to define the fraction of light that is reflected. A proportional amount of the
+    sampled color is then added to the pixels color and the light intensity is reduced accordingly.
+
+    Note that this is very simplified compared to reality. The algorithm does not consider the
+    scene-set light source(s), changes in light color or any scattering beyond total reflection.
+
+    #### `algorithm = :absorptionrgba`
+
+    This algorithm skips the colormapping and instead directly samples colors (RGB) and particle
+    densities (alpha) from RGBA `volume` data. Beyond that, the algorithm behaves the same as
+    `:absorption`.
+
+    #### `algorithm = :indexedabsorption`
+
+    This algorithm replaces the float based colormapping of `:absorption` with direct indexing of
+    the `colormap`.
+
+    #### `algorithm = :additive`
+
+    Accumulates colors along ray using `accumulated_color = 1 - (1 - accumulated_color) * (1 - sampled_color)`
+    where `sampled_color` is a sample of volume data at the current ray step. `absorption` may be used to
+    scale all `sampled_color` values. This algorithm expects RGBA `volume` data.
+
+    Note that this algorithm can compute colors beyond `RGBA(1,1,1,1)`. These will then appear white.
+    To fix this, try setting `absorption` to a value between 0 and 1 to scale down the intensity. If
+    the intensity is too low the render will become dark or transparent. It might be helpful to do
+    this on a dark background.
     """
     algorithm = :mip
     "Sets the target value for the :iso algorithm. `accepted = isovalue - isorange < value < isovalue + isorange`"
@@ -324,8 +383,14 @@ colormap. How exactly the color is derived depends on the algorithm used.
     (and contours) it is based on the front most surface rendered.
     """
     enable_depth = true
-    "Absorption multiplier for algorithm = :absorption, :absorptionrgba and :indexedabsorption. This changes how much light each voxel absorbs."
-    absorption = 1.0f0
+    """
+    Absorption is a scaling multiplier for the density (alpha) values sampled by `algorithm = :absorption`, `:absorptionrgba`
+    and `:indexedabsorption`. Increasing it will increase the light absorbed by each sample.
+    It is also used with `additive` as scaling prefactor for samples.
+    """
+    absorption = 1.0
+    "Sets how many samples are taken along each ray through the volume."
+    samples = 200
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...

@@ -207,7 +207,7 @@ end
 end
 ```
 
-All the attributes defined in `@recipe` are eventually collected in `default_theme(scene, ::Type{<:MyPlot})`.
+All the attributes defined in `@recipe` are eventually collected in `documented_attributes(::Type{<:MyPlot})`.
 The function resolves the inherited attributes and returns the final set of default attributes.
 
 #### Axis Utilities
@@ -328,7 +328,7 @@ It is also possible to overwrite `Makie.argument_docs_md(::Type{<:MyPlot})` to r
 
 The next part of the docstring is an example, which is usually sourced from a markdown file in the `src/documentation/plots` directory in Makie.
 To include an externally defined example file, you can add a method of `Makie.path_to_plot_examples(::Type{<:MyPlot})` pointing to a markdown file.
-It should structured like this
+It should be structured like this
 
 ```
 # myplot
@@ -776,8 +776,7 @@ import SomePackage: someplot, someplot!
 
 Makie.convert_single_argument(v::SomeVector) = v.v
 
-@recipe(SomePlot) do scene
-    Theme()
+@recipe SomePlot begin
 end
 
 function Makie.plot!(p::SomePlot)

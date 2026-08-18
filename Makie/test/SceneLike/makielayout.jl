@@ -20,6 +20,109 @@ using InteractiveUtils: subtypes
     @test true
 end
 
+@testset "Searchable Menu" begin
+    fig = Figure()
+    m = Menu(fig[1, 1], options = ["Apple", "Apricot", "Banana"], searchable = true)
+    @test m.selection[] === "Apple"
+    m.i_selected[] = 2
+    @test m.selection[] == "Apricot"
+    # option mutation preserves selection by value+label
+    m.options[] = ["Banana", "Apricot", "Cherry"]
+    @test m.i_selected[] == 2
+    @test m.selection[] == "Apricot"
+    # custom filter attribute is honored
+    m2 = Menu(
+        fig[1, 2], options = ["sin", "sinh", "cos"], searchable = true,
+        filter = (q, s) -> startswith(s, q)
+    )
+    @test m2.filter[]("sin", "sinh") == true
+    @test m2.filter[]("sinh", "sin") == false
+end
+
+@testset "Searchable Menu filtering" begin
+    fig = Figure()
+    m = Menu(fig[1, 1], options = ["Apple", "Apricot", "Banana"], searchable = true)
+    Makie.update_state_before_display!(fig)
+    e = events(fig)
+
+    bbox = m.layoutobservables.computedbbox[]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(bbox) .+ widths(bbox) ./ 2))
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+
+    optiontexts = m.blockscene.children[1].plots[2]::Makie.Text
+    e.unicode_input[] = 'p'
+    @test optiontexts.text[] == ["Apple", "Apricot"]
+    @test length(optiontexts.color[]) == 2
+
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.backspace, Keyboard.press)
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.backspace, Keyboard.release)
+    @test optiontexts.text[] == ["Apple", "Apricot", "Banana"]
+    @test length(optiontexts.color[]) == 3
+
+    m.i_selected[] = 2
+    e.unicode_input[] = 'p'
+    @test optiontexts.text[] == ["Apple", "Apricot"]
+    e.mouseposition[] = (1.0, 1.0)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    @test !m.is_open[]
+    @test m.i_selected[] == 2
+    @test m.selection[] == "Apricot"
+    @test optiontexts.text[] == ["Apple", "Apricot", "Banana"]
+end
+
+@testset "Menu option text colors" begin
+    fig = Figure()
+    m = Menu(fig[1, 1], options = ["a", "b", "c"], default = "b", textcolor_hover = :red)
+    Makie.update_state_before_display!(fig)
+    e = events(fig)
+
+    bbox = m.layoutobservables.computedbbox[]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(bbox) .+ widths(bbox) ./ 2))
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+
+    menuscene = m.blockscene.children[1]
+    optionpolys = menuscene.plots[1]::Poly
+    optiontexts = menuscene.plots[2]::Makie.Text
+    @test optiontexts.color[] == to_color.([:black, :white, :black])
+
+    option = optionpolys.converted[][1][3]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(option) .+ widths(option) ./ 2 .+ Makie.origin(viewport(menuscene)[])))
+    @test optiontexts.color[] == to_color.([:black, :white, :red])
+end
+
+@testset "Menu selection box hover color" begin
+    fig = Figure()
+    m = Menu(fig[1, 1], options = ["a", "b", "c"], selection_cell_color_inactive = :red, cell_color_hover = :orange)
+    Makie.update_state_before_display!(fig)
+    selectionpoly = m.blockscene.plots[1]::Poly
+    e = events(fig)
+    click() = (
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press);
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    )
+
+    bbox = m.layoutobservables.computedbbox[]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(bbox) .+ widths(bbox) ./ 2))
+    @test to_color(selectionpoly.color[]) == to_color(:orange)
+
+    click()
+    @test m.is_open[]
+    @test to_color(selectionpoly.color[]) == to_color(:red)
+
+    menuscene = m.blockscene.children[1]
+    option = menuscene.plots[1].converted[][1][2]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(option) .+ widths(option) ./ 2 .+ Makie.origin(viewport(menuscene)[])))
+    @test to_color(selectionpoly.color[]) == to_color(:red)
+
+    click()
+    @test !m.is_open[]
+    @test m.selection[] == "b"
+    @test to_color(selectionpoly.color[]) == to_color(:red)
+end
+
 @testset "Generic Block functionality" begin
     for T in subtypes(Makie.Block)
         T === Makie.AbstractAxis && continue
@@ -52,10 +155,10 @@ end
     cb = Colorbar(fig[1, 2], hm)
 
     @test hm.scaled_colorrange[] == Vec(-0.5, 0.5)
-    @test cb.limits[] == Vec(-0.5, 0.5)
+    @test cb.resolved_colorrange[] == Vec(-0.5, 0.5)
 
     hm.colorrange = Float32.((-1, 1))
-    @test cb.limits[] == Vec(-1, 1)
+    @test cb.resolved_colorrange[] == Vec(-1, 1)
 
     # TODO: This doesn't work anymore because colorbar doesn't use the same observable
     # cb.limits[] = Float32.((-2, 2))
@@ -167,6 +270,32 @@ end
     @test ax.limits[] == ((0, 1), (0, 2), (nothing, nothing))
 end
 
+function Base.isapprox(a::Makie.Plane, b::Makie.Plane; kwargs...)
+    return isapprox(a.normal, b.normal; kwargs...) && isapprox(a.distance, b.distance; kwargs...)
+end
+
+@testset "Axis3 plot clip" begin
+    f = Figure()
+    ax3 = Axis3(f[1, 1])
+    sc = scatter!(ax3, Rect3f(0, 0, 0, 1, 1, 1))
+    expected = [
+        Plane3f(Vec3f(1, 0, 0), -1), Plane3f(Vec3f(0, 1, 0), -1), Plane3f(Vec3f(0, 0, 1), -2 / 3),
+        Plane3f(Vec3f(-1, 0, 0), -1), Plane3f(Vec3f(0, -1, 0), -1), Plane3f(Vec3f(0, 0, -1), -2 / 3),
+    ]
+    @test all(ax3.scene.theme.clip_planes[] .≈ expected)
+    # check plot init
+    @test all(sc.clip_planes[] .≈ expected)
+
+    # check update
+    ax3.aspect[] = :data
+    expected = [
+        Plane3f(Vec3f(1, 0, 0), -1), Plane3f(Vec3f(0, 1, 0), -1), Plane3f(Vec3f(0, 0, 1), -1),
+        Plane3f(Vec3f(-1, 0, 0), -1), Plane3f(Vec3f(0, -1, 0), -1), Plane3f(Vec3f(0, 0, -1), -1),
+    ]
+    @test all(ax3.scene.theme.clip_planes[] .≈ expected)
+    @test all(sc.clip_planes[] .≈ expected)
+end
+
 @testset "Axis limits intervals" begin
     fig = Figure()
     ax = Axis(fig[1, 1], limits = (0 .. 600, 0 .. 15))
@@ -183,13 +312,13 @@ end
 end
 
 @testset "Colorbar plot object kwarg clash" begin
-    for attr in (:colormap, :limits)
+    for attr in (:colormap, :colorrange, :limits)
         f, ax, p = scatter(1:10, 1:10, color = 1:10, colorrange = (1, 10))
         Colorbar(f[2, 1], p)
         @test_throws ErrorException Colorbar(f[2, 1], p; Dict(attr => nothing)...)
     end
 
-    for attr in (:colormap, :limits, :highclip, :lowclip)
+    for attr in (:colormap, :colorrange, :limits, :highclip, :lowclip)
         for F in (heatmap, contourf)
             f, ax, p = F(1:10, 1:10, randn(10, 10))
             Colorbar(f[1, 2], p)
@@ -460,13 +589,13 @@ end
     @testset "Recipes" begin
         f, ax, pl = barplot(1:3; color = 1:3)
         cbar = Colorbar(f[1, 2], pl)
-        @test cbar.limits[] == Vec(1.0, 3.0)
+        @test cbar.resolved_colorrange[] == Vec(1.0, 3.0)
 
         let data = fill(1.0, 2, 2, 2)
             data[1] = 3.0
             f, ax, pl = volumeslices(1:2, 1:2, 1:2, data)
             cbar = Colorbar(f[1, 2], pl)
-            @test cbar.limits[] == Vec(1.0, 3.0)
+            @test cbar.resolved_colorrange[] == Vec(1.0, 3.0)
         end
     end
 end
@@ -645,6 +774,7 @@ end
             SliderGrid(
                 scene,
                 (label = "Amplitude", range = 0:0.1:10, startvalue = 5),
+                (label = "Band", type = IntervalSlider, range = 0:0.1:10, startvalues = (2.0, 8.0)),
                 (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
                 (
                     label = "Phase", range = 0:0.01:2pi,
@@ -666,6 +796,40 @@ end
         end
         @test isempty(d)
     end
+end
+
+@testset "SliderGrid with IntervalSlider" begin
+    fig = Figure()
+    sg = SliderGrid(
+        fig[1, 1],
+        (label = "Amplitude", range = 0:0.1:10, startvalue = 5.0),
+        (label = "Band", type = IntervalSlider, range = 0:0.1:10, startvalues = (2.0, 8.0)),
+        (label = "Frequency", range = 0:0.5:50, startvalue = 10.0),
+    )
+
+    @test sg.sliders[1] isa Slider
+    @test sg.sliders[2] isa IntervalSlider
+    @test sg.sliders[3] isa Slider
+
+    @test sg.sliders[1].value[] == 5.0
+    @test sg.sliders[2].interval[] == (2.0, 8.0)
+    @test sg.sliders[3].value[] == 10.0
+
+    @test sg.valuelabels[1].text[] == "5.0"
+    @test sg.valuelabels[2].text[] == "(2.0, 8.0)"
+    @test sg.valuelabels[3].text[] == "10.0"
+
+    set_close_to!(sg.sliders[1], 7.5)
+    @test sg.sliders[1].value[] == 7.5
+    @test sg.valuelabels[1].text[] == "7.5"
+
+    set_close_to!(sg.sliders[2], 3.0, 6.0)
+    @test sg.sliders[2].interval[] == (3.0, 6.0)
+    @test sg.valuelabels[2].text[] == "(3.0, 6.0)"
+
+    set_close_to!(sg.sliders[3], 25.0)
+    @test sg.sliders[3].value[] == 25.0
+    @test sg.valuelabels[3].text[] == "25.0"
 end
 
 @testset "Legend with rich text" begin
@@ -866,5 +1030,123 @@ end
         else
             @test isempty(a.scene.plots)
         end
+    end
+end
+
+# See Makie#5588
+@testset "Color Updates of interactive elements" begin
+    f = Figure()
+    m = Menu(f[1, 1], options = ['a', 'b'], selection_cell_color_inactive = :red, cell_color_hover = :orange)
+    t = Toggle(f[2, 1], framecolor_inactive = to_color(:red), framecolor_active = to_color(:orange))
+    s = Slider(
+        f[3, 1], range = -100:100,
+        color_inactive = :red, color_active_dimmed = :orange, color_active = :black,
+    )
+    set_close_to!(s, 0)
+    c = Checkbox(
+        f[4, 1],
+        checkboxcolor_unchecked = :red, checkboxcolor_checked = :orange,
+        checkboxstrokecolor_unchecked = :blue, checkboxstrokecolor_checked = :cyan,
+        checkmarkcolor_unchecked = :white, checkmarkcolor_checked = :black,
+    )
+    f
+    Makie.update_state_before_display!(f)
+
+    @testset "Menu" begin
+        p = m.blockscene.plots[1]::Poly
+        @test to_color(p.color[]) == to_color(:red)
+        m.selection_cell_color_inactive = :blue
+        @test to_color(p.color[]) == to_color(:blue)
+
+        events(f).mouseposition[] = (300.0, 275.0)
+        @test to_color(p.color[]) == to_color(:orange)
+        m.cell_color_hover = :green
+        @test to_color(p.color[]) == to_color(:green)
+    end
+
+    @testset "Toggle" begin
+        p = t.blockscene.plots[1]::Poly
+        @test to_color(p.color[]) == to_color(:red)
+        t.framecolor_inactive = to_color(:blue)
+        @test to_color(p.color[]) == to_color(:blue)
+
+        events(f).mouseposition[] = (300.0, 225.0)
+        events(f).mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+        events(f).mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+        events(f).tick[] = Makie.Tick(Makie.SkippedRenderTick, 1, 0.1, 0.1)
+        events(f).tick[] = Makie.Tick(Makie.SkippedRenderTick, 2, 0.2, 0.1)
+        @test to_color(p.color[]) == to_color(:orange)
+        t.framecolor_active = to_color(:green)
+        @test to_color(p.color[]) == to_color(:green)
+    end
+
+    @testset "Slider" begin
+        p1 = s.blockscene.plots[1]::LineSegments
+        p2 = s.blockscene.plots[2]::Scatter
+        @test to_color(p1.color[]) == to_color([:orange, :red])
+        @test to_color(p2.color[]) == to_color(:black)
+        s.color_inactive = :blue
+        s.color_active_dimmed = :green
+        s.color_active = :cyan
+        @test to_color(p1.color[]) == to_color([:green, :blue])
+        @test to_color(p2.color[]) == to_color(:cyan)
+    end
+
+    @testset "Checkbox" begin
+        p1 = c.blockscene.plots[1]::Poly
+        p2 = c.blockscene.plots[2]::Scatter
+        events(f).mouseposition[] = (300.0, 165.0)
+        @test to_color(p1.color[]) == to_color(:red)
+        @test to_color(p1.strokecolor[]) == to_color(:blue)
+        @test to_color(p2.color[]) == to_color(:white)
+
+        c.checked = true
+
+        @test to_color(p1.color[]) == to_color(:orange)
+        @test to_color(p1.strokecolor[]) == to_color(:cyan)
+        @test to_color(p2.color[]) == to_color(:black)
+
+        c.checkboxcolor_unchecked = :green
+        c.checkboxcolor_checked = :purple
+        c.checkboxstrokecolor_unchecked = :yellow
+        c.checkboxstrokecolor_checked = :gray
+        c.checkmarkcolor_unchecked = :lightgreen
+        c.checkmarkcolor_checked = :pink
+
+        # still checked
+        @test to_color(p1.color[]) == to_color(:purple)
+        @test to_color(p1.strokecolor[]) == to_color(:gray)
+        @test to_color(p2.color[]) == to_color(:pink)
+
+        c.checked = false
+
+        @test to_color(p1.color[]) == to_color(:green)
+        @test to_color(p1.strokecolor[]) == to_color(:yellow)
+        @test to_color(p2.color[]) == to_color(:lightgreen)
+    end
+end
+
+# issue 2415
+@testset "themeable axislegend" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    lines!(ax, 1:10, label = "A line")
+    leg = @test_nowarn axislegend(ax)
+    @test leg.margin[] == (6, 6, 6, 6)
+    with_theme(Theme(Legend = (; margin = (1, 2, 3, 4)))) do
+        leg = @test_nowarn axislegend(ax)
+        @test leg.margin[] == (1, 2, 3, 4)
+
+        # Kwargs override theme
+        leg = @test_nowarn axislegend(ax; margin = (4, 3, 2, 1))
+        @test leg.margin[] == (4, 3, 2, 1)
+    end
+    with_theme(Theme(Legend = (;))) do
+        leg = @test_nowarn axislegend(ax)
+        @test leg.margin[] == (6, 6, 6, 6)
+
+        # Kwargs override theme
+        leg = @test_nowarn axislegend(ax; margin = (4, 3, 2, 1))
+        @test leg.margin[] == (4, 3, 2, 1)
     end
 end

@@ -179,11 +179,10 @@ function compute_minor_ticks(
     end
 end
 
-function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label, use_short_units)
+function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label)
     should_show = show_dim_convert_in_axis_label(dim_convert, show_unit_in_label)
     if should_show
-        suffix = get_label_suffix(dim_convert, formatter, use_short_units)
-        return isempty(label) ? suffix : rich("$label ", suffix)
+        return add_label_suffix(label, dim_convert, formatter)
     else
         return label
     end
@@ -197,8 +196,8 @@ function _extract_computed(graph::ComputePipeline.AbstractComputeGraph, dictlike
     elseif entry isa Union{Attributes, ComputePipeline.AbstractComputeGraph}
         error("$name::$(typeof(entry)) is not supported in @extract_computed")
     else
-        # to_recipe_attribute does Ref{Any} wrapping (in case types can change)
-        add_input!(to_recipe_attribute, graph, name, entry)
+        add_input!(graph, name, entry)
+        ComputePipeline.set_type!(graph[name], Any)
         return graph[name]
     end
 end
@@ -240,7 +239,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         trimspine, flip_vertical_label, reversed,
         minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor,
         minorticks, minorticksused,
-        unit_in_ticklabel, suffix_formatter, unit_in_label, use_short_unit,
+        unit_in_ticklabel, suffix_formatter, unit_in_label,
     )
 
     map!(calculate_horizontal_extends, graph, endpoints, [:position, :extents, :horizontal])
@@ -502,7 +501,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     # label + dim convert suffix
     map!(
         build_label_with_unit_suffix, graph,
-        [dim_convert, suffix_formatter, label, unit_in_label, use_short_unit],
+        [dim_convert, suffix_formatter, label, unit_in_label],
         :label_with_suffix
     )
     ComputePipeline.set_type!(graph.label_with_suffix, Any)

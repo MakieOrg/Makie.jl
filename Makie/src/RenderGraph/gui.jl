@@ -1,4 +1,4 @@
-# An attempt at a graphical editor for RenderPipeline
+# An attempt at a graphical editor for RenderGraph
 
 function pipeline_gui!(ax, pipeline)
     width = 5

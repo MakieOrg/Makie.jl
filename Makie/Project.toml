@@ -63,13 +63,11 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 TriplotBase = "981d1d27-644d-49a2-9326-4793e63143c3"
 UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+Latexify = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
 
 [weakdeps]
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 FFMPEG_jll = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
-
-[sources]
-ComputePipeline = {path = "../ComputePipeline"}
 
 [extensions]
 MakieDynamicQuantitiesExt = "DynamicQuantities"
@@ -131,9 +129,12 @@ SignedDistanceFields = "0.4"
 SparseArrays = "1.0, 1.6"
 Statistics = "1, 1.6"
 StatsBase = "0.31, 0.32, 0.33, 0.34"
-StatsFuns = "0.9, 1.0"
+StatsFuns = "0.9, 1.0, 2"
 StructArrays = "0.3, 0.4, 0.5, 0.6, 0.7"
 TriplotBase = "=0.1.0"
 UnicodeFun = "0.4"
 Unitful = "1"
 julia = "1.10"
+
+[sources.ComputePipeline]
+path = "../ComputePipeline"

@@ -120,6 +120,34 @@ end
     @test pl2.scaled_color[] == cpalette[1]
 end
 
+@testset "explicit attributes override the cycle (#5267)" begin
+    # When a cycle is active for an attribute, an explicitly set value must always
+    # win over the cycle -- even when that value happens to equal the "derive from
+    # cycle" default. The tricky case is `linestyle`: a solid line is represented
+    # by `nothing`, which used to double as the "not set, derive from cycle" marker.
+    # `Legend` runs into this because it creates its line elements with an explicit
+    # `linestyle = nothing` (solid). See
+    # https://github.com/MakieOrg/Makie.jl/issues/5267
+    f = Figure()
+    ax = Axis(f[1, 1])
+    # The default linestyle palette is [nothing, :dash, :dot, :dashdot, :dashdotdot],
+    # so without an explicit value the second cycling line would get `:dash`.
+    pl1 = lines!(ax, 1:4; cycle = [:linestyle])
+    pl2 = lines!(ax, 1:4; cycle = [:linestyle], linestyle = nothing)
+    pl3 = lines!(ax, 1:4; cycle = [:linestyle], linestyle = :solid)
+    pl4 = lines!(ax, 1:4; cycle = [:linestyle])
+    # The first line cycles and stays solid (palette index 1 is `nothing`).
+    @test pl1.linestyle[] === nothing
+    # The explicitly set solid linestyles must not be overridden by the cycle.
+    @test pl2.linestyle[] === nothing
+    @test pl3.linestyle[] === nothing
+    # Because `pl2` and `pl3` set `linestyle` explicitly, they must not count as
+    # cycling and thus must not advance the cycle. `pl4` is therefore only the
+    # second *cycling* line and gets palette index 2, i.e. `:dash`.
+    expected_dash = Makie.convert_attribute(:dash, Makie.Key{:linestyle}(), Makie.Key{:lines}())
+    @test pl4.linestyle[] == expected_dash
+end
+
 function test_default(arg)
     _, _, pl1 = plot(arg)
 
@@ -148,10 +176,7 @@ end
     @test all(x -> x isa Volume, plots)
 end
 
-import Makie:
-    InvalidAttributeError,
-    attribute_names
-import Makie: _attribute_docs
+import Makie: InvalidAttributeError
 
 @testset "validated attributes" begin
     @test_throws InvalidAttributeError heatmap(zeros(10, 10); does_not_exist = 123)
@@ -166,11 +191,11 @@ import Makie: _attribute_docs
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
 end
 
-import Makie: find_nearby_attributes, attribute_names, textdiff
+import Makie: find_nearby_attributes, flattened_keys, documented_attributes, textdiff
 
 @testset "attribute suggestions" begin
-    @test find_nearby_attributes(Set([:clr]), sort(string.(collect(attribute_names(Lines))))) == ([("color", true)], true)
-    triplot_attrs = sort(string.(collect(attribute_names(Triplot))))
+    @test find_nearby_attributes(Set([:clr]), sort(string.(flattened_keys(documented_attributes(Lines))))) == ([("color", true)], true)
+    triplot_attrs = sort(string.(flattened_keys(documented_attributes(Triplot))))
     attrs = [:recompute_centres, :clr, :strokecolour, :blahblahblahblahblah]
     suggestions = find_nearby_attributes(attrs, triplot_attrs)
     @test suggestions == ([("recompute_centers", 1), ("marker", 0), ("strokecolor", 1), ("convex_hull_color", 0)], true)
@@ -193,9 +218,9 @@ end
 
 @testset "recipe attribute checking" begin
     # TODO, this has become harder since attributes(p) contains now more than just the attributes
-    # And if p.colour isn't explicitly part of the attribute, it won't get passed
-    # @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour=:red)
-    @test testrecipe(1:4, 1:4, color = :red) isa Makie.FigureAxisPlot
+    # And if p.color isn't explicitly part of the attribute, it won't get passed
+    @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour = :red)
+    # @test testrecipe(1:4, 1:4, color = :red) isa Makie.FigureAxisPlot
 end
 
 @testset "validated attributes for blocks" begin
@@ -204,7 +229,6 @@ end
 
     err = InvalidAttributeError(Axis, Set{Symbol}())
     @test err.object_name == "block"
-    @test attribute_names(Axis3) == keys(_attribute_docs(Axis3))
 
     fig = Figure()
     @test_throws InvalidAttributeError Axis(fig[1, 1], does_not_exist = 123)
@@ -228,10 +252,10 @@ end
     @test Menu(fig[1, 2], default = nothing) isa Menu
     @test Legend(fig[1, 3], entrygroups = []) isa Legend
     @test PolarAxis(fig[1, 4], palette = nothing) isa PolarAxis
-    @test :palette in attribute_names(Axis)
-    @test :default in attribute_names(Menu)
-    @test :entrygroups in attribute_names(Legend)
-    @test :palette in attribute_names(PolarAxis)
+    @test :palette in Makie.block_kwargs(Axis)
+    @test :default in Makie.block_kwargs(Menu)
+    @test :entrygroups in Makie.block_kwargs(Legend)
+    @test :palette in Makie.block_kwargs(PolarAxis)
 end
 
 @testset "func2string" begin

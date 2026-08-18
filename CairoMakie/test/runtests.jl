@@ -170,8 +170,8 @@ end
     # are modified in which case the numbers should just be updated
     f, a, p = scatter(rand(10))
     colorbuffer(f)
-    @test length(p.attributes.inputs) == 40
-    @test length(p.attributes.outputs) == 85
+    @test length(p.attributes.inputs) == 37
+    @test length(p.attributes.outputs) == 83
 end
 
 excludes = Set(
@@ -217,9 +217,9 @@ functions = [:volume, :volume!, :uv_mesh]
 @testset "refimages" begin
     CairoMakie.activate!(type = "png", px_per_unit = 1)
     ReferenceTests.mark_broken_tests(excludes, functions = functions)
-    recorded_files, recording_dir = @include_reference_tests CairoMakie "refimages.jl" joinpath(@__DIR__, "cairo_refimages.jl")
-    missing_images, scores = ReferenceTests.record_comparison(recording_dir, "CairoMakie")
-    ReferenceTests.test_comparison(scores; threshold = 0.05)
+    attempted_tests, recording_dir = @include_reference_tests CairoMakie "refimages.jl" joinpath(@__DIR__, "cairo_refimages.jl")
+    missing_images, scores, exempt = ReferenceTests.record_comparison(recording_dir, "CairoMakie"; attempted_tests)
+    ReferenceTests.test_comparison(scores; threshold = 0.05, exempt)
 end
 
 @testset "PdfVersion" begin

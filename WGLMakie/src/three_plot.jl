@@ -24,11 +24,16 @@ function Bonito.print_js_code(io::IO, plot::AbstractPlot, context::Bonito.JSSour
 end
 
 function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceContext)
+    # Some large scenes can initialize slowly in app mode; allow configurable retry window.
+    retry_delay_ms = max(1, something(tryparse(Int, get(ENV, "WGLMAKIE_SCENE_RETRY_DELAY_MS", "100")), 100))
+    total_wait_ms = max(retry_delay_ms, something(tryparse(Int, get(ENV, "WGLMAKIE_SCENE_RETRY_TOTAL_MS", "60000")), 60000))
+    max_retries = max(100, cld(total_wait_ms, retry_delay_ms))
+
     code = js"""$(WGL).then(WGL=> {
         function try_find_scene(_retries) {
             let retries = _retries || 0;
-            const max_retries = 100;
-            const retry_delay = 100;
+            const max_retries = $(max_retries);
+            const retry_delay = $(retry_delay_ms);
             const scene = WGL.find_scene($(js_uuid(scene)));
             if (scene) {
                 return Promise.resolve(scene);
@@ -71,24 +76,18 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         # Since we can't do any round trip communication
         scene_serialized[] = serialize_scene(scene)
     else
-        scene_serialized_task = Makie.async_tracked() do alive
-            alive[] || return nothing
-            return serialize_scene(scene)
-        end
-        # Wait for real size to be determined, then resize scene and serialize
+        # Query the real canvas size (resize_to) from JS first, resize the scene to
+        # it, THEN serialize — so the browser renders at the final size directly
+        # instead of rendering at `initial_size` and re-laying-out via observable
+        # updates afterwards (which caused a visible resize + a race on capture).
         on(session, real_size) do size_arr
             Makie.async_tracked() do should_close
                 try
                     size_tuple = (round.(Int, (size_arr))...,)
-                    # Resize the scene to the actual canvas size before serialization
-                    serialized = fetch(scene_serialized_task)
                     if size_tuple != initial_size
-                        # resize before sending - since all changes should be captured in the serialized observables
-                        # We dont need to serialize again!
                         resize!(scene, size_tuple...)
                     end
-                    # Now serialize with the correct size
-                    scene_serialized[] = serialized
+                    scene_serialized[] = serialize_scene(scene)
                 catch e
                     @warn "Error resizing/serializing scene" exception = (e, catch_backtrace())
                     done_init[] = e

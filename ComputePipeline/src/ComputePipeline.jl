@@ -124,11 +124,9 @@ mutable struct Computed
     parent_idx::Int # index of parent.outputs this value refers to
     Computed(name) = new(name, false)
     function Computed(name, value::RefValue)
-        validate_node_value(value)
         return new(name, false, value)
     end
     function Computed(name, value::RefValue, parent::AbstractEdge, idx::Integer)
-        validate_node_value(value)
         return new(name, false, value, parent, idx)
     end
     function Computed(name, edge::AbstractEdge, idx::Integer)
@@ -275,8 +273,7 @@ end
 Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of an ::Input to an Observable is not allowed")
 Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
-function Input(graph, name, value, f, output, force_update = false)
-    validate_node_value(value)
+function Input(graph, name, @nospecialize(value), f, output, force_update = false)
     return Input{ComputeGraph}(
         graph, name, value, f, output, true, ComputeEdge[], force_update
     )
@@ -319,13 +316,6 @@ struct ComputeGraph <: AbstractComputeGraph
     should_deepcopy::Set{Symbol}
     observerfunctions::Vector{Observables.ObserverFunction}
     obs_to_update::Vector{Observable}
-end
-
-validate_node_value(x) = nothing
-validate_node_value(x::RefValue) = isassigned(x) ? validate_node_value(x[]) : nothing
-# shouldn't have those in input.value or computed.value[]
-function validate_node_value(::Union{T, RefValue{T}}) where {T <: Union{Computed, Input, ComputeGraph, ComputeEdge}}
-    error("The value of a compute node is not allowed to be of type ::$T.")
 end
 
 is_node_value_valid(x) = true
@@ -451,8 +441,6 @@ function ComputeGraph()
     return graph
 end
 
-_first_arg(args, changed, last) = (args[1],)
-
 """
     alias!(graph::ComputeGraph, input::Symbol, output::Symbol)
 
@@ -460,7 +448,7 @@ Creates `output` as an alias of `input`.
 """
 function alias!(attr::ComputeGraph, key::Symbol, alias_key::Symbol)
     # TODO: more efficient implementation!
-    register_computation!(_first_arg, attr, [key], [alias_key])
+    register_computation!(compute_identity, attr, [key], [alias_key])
     return attr
 end
 
@@ -651,15 +639,12 @@ function _update!(attr::ComputeGraph, values)
     return attr
 end
 
-function Base.haskey(attr::ComputeGraph, key::Symbol)
-    return haskey(attr.outputs, key) || haskey(attr.nesting.keytables[1], key)
-end
-function Base.haskey(graph::ComputeGraph, key::Symbol, keys::Symbol...)
-    return haskey(graph.nesting, key, keys...)
-end
-function Base.haskey(graph::ComputeGraph, keys::Tuple{Vararg{Symbol}})
-    return haskey(graph, keys...)
-end
+Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.outputs, key) || haskey(attr.nesting, key)
+Base.haskey(graph::ComputeGraph, key::Symbol, keys::Symbol...) = haskey(graph.nesting, key, keys...)
+Base.haskey(graph::ComputeGraph, keys::Tuple{Vararg{Symbol}}) = haskey(graph, keys...)
+
+has_nested_key(graph::ComputeGraph, key::Symbol) = haskey(graph.nesting, key)
+has_leaf_key(graph::ComputeGraph, key::Symbol) = haskey(graph.outputs, key)
 
 Base.get(attr::ComputeGraph, key::Symbol, default) = get(attr.outputs, key, default)
 Base.keys(graph::ComputeGraph) = keys(graph.outputs)
@@ -745,7 +730,7 @@ function Base.show(io::IO, ::MIME"text/plain", view::ComputeGraphView)
     print(io, "Nested view of ComputeGraph at graph.$base_key containing:")
     for (key, val) in level_dict
         full_key = Symbol(base_key, :(.), key)
-        if val == -1
+        if is_final_level(val)
             node = get(attr.inputs, full_key, attr.outputs[full_key])
             print(io, "\n  ", key, " => ", node)
         else
@@ -760,9 +745,12 @@ end
 
 Base.keys(view::ComputeGraphView) = keys(view.nested_trace)
 recursive_keys(view::ComputeGraphView) = recursive_keys(view.nested_trace)
+merged_key(view::ComputeGraphView) = merged_key(view.nested_trace)
 
 Base.haskey(view::ComputeGraphView, keys::Symbol...) = haskey(view.nested_trace, keys...)
 Base.haskey(view::ComputeGraphView, keys::Tuple{Vararg{Symbol}}) = haskey(view.nested_trace, keys...)
+
+has_leaf_key(view::ComputeGraphView, key::Symbol) = isfinal(view.nested_trace[key])
 
 # Generates pairs for `foo(; kwargs...)`
 function Base.iterate(view::ComputeGraphView)
@@ -808,6 +796,10 @@ end
 function Base.getproperty(attr::ComputeGraphView, key::Symbol)
     hasfield(ComputeGraphView, key) && return getfield(attr, key)
     return getindex(attr, key)
+end
+
+function Base.getindex(attr::AbstractComputeGraph, keys::Tuple{Vararg{Symbol}})
+    return getindex(attr, keys...)
 end
 
 function Base.getindex(attr::AbstractComputeGraph, key1::Symbol, key2::Symbol, keys::Symbol...)
@@ -1540,7 +1532,7 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
         @assert hasparent(input) "Computed should be guaranteed to have a parent edge, but does not"
         # Edges can have multiple outputs so multiple inputs of this edge could
         # come from the same edge
-        any(x -> x === new_edge, input.parent.dependents) && continue
+        any(x -> x === new_edge, input.parent.dependents::Vector{ComputeEdge{ComputeGraph}}) && continue
         push!(input.parent.dependents, new_edge)
     end
 
@@ -1561,6 +1553,8 @@ struct MapFunctionWrapper{pack, FT} <: Function
     user_func::FT
     MapFunctionWrapper(f::FT, pack = true) where {FT} = new{pack, FT}(f)
 end
+
+MapFunctionWrapper(::typeof(compute_identity), pack = true) = compute_identity
 
 function (x::MapFunctionWrapper{true})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)

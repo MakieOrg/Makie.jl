@@ -648,10 +648,14 @@ end
 #                                  VolumeLike                                  #
 ################################################################################
 
-function convert_arguments(
-        ::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
-        data::RealArray{3}
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::VolumeDataType)
+    return (
+        to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+        to_endpoints(z, "z", VolumeLike), data,
     )
+end
+
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::RealArray{3})
     return (
         to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
         to_endpoints(z, "z", VolumeLike), el32convert(data),
@@ -660,7 +664,10 @@ end
 
 # TODO: Consider using RGB(A){N0f8} for all of these
 # RGBA/Vec4 is the native data type for :absorptionrgba, :additive
-function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<:Union{VecTypes{3}, VecTypes{4}, RGB, RGBA}, 3})
+function convert_arguments(
+        ::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
+        data::Array{<:Union{VecTypes{3}, VecTypes{4}, RGB, RGBA}, 3}
+    )
     return (
         to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
         to_endpoints(z, "z", VolumeLike), el32convert(data),
@@ -859,7 +866,7 @@ function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVe
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
 
-    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., el32convert.(f.(_x, _y, _z)))
+    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., smallfloat_convert.(f.(_x, _y, _z)))
 end
 
 function convert_arguments(P::Type{<:Union{AbstractPlot, Block}}, r::RealVector, f::Function)
@@ -962,6 +969,12 @@ el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 el32convert(x::Mat{X, Y, T}) where {X, Y, T} = Mat{X, Y, Float32}(x)
 
+smallfloat_convert(x::N0f8) = x
+smallfloat_convert(x::Float16) = x
+smallfloat_convert(x::Real) = Float32(x)
+smallfloat_convert(x::VecTypes) = smallfloat_convert.(x)
+smallfloat_convert(x::Color) = RGB(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)))
+smallfloat_convert(x::TransparentColor) = RGBA(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)), smallfloat_convert(alpha(x)))
 
 """
     to_triangles(indices)
@@ -1079,9 +1092,6 @@ end
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
-# Normalize for cycle to be nothing if there's nothing to cycle!
-convert_attribute(cycle::Vector, ::key"cycle") = isempty(cycle) ? nothing : Cycle(cycle)
-convert_attribute(cycle::Nothing, ::key"cycle") = cycle
 convert_attribute(cycle, ::key"cycle") = Cycle(cycle)
 
 
@@ -1626,18 +1636,18 @@ to_font(x::Vector{String}) = to_font.(x)
 to_font(x::NativeFont) = x
 to_font(x::Vector{NativeFont}) = x
 
-function to_font(fonts::Attributes, s::Symbol)
+function to_font(fonts::Union{Dict, Attributes}, s::Symbol)
     if haskey(fonts, s)
-        f = fonts[s][]
+        f = to_value(fonts[s])
         if f isa Symbol
             error("The value for font $(repr(s)) was Symbol $(repr(f)), which is not allowed. The value for a font in the fonts collection cannot be another Symbol and must be resolvable via `to_font(x)`.")
         end
-        return to_font(fonts[s][])
+        return to_font(to_value(fonts[s]))
     end
     error("The symbol $(repr(s)) is not present in the fonts collection:\n$fonts.")
 end
 
-to_font(fonts::Attributes, x) = to_font(x)
+to_font(fonts::Union{Dict, Attributes}, x) = to_font(x)
 
 to_font(::Automatic) = defaultfont()
 
@@ -1852,6 +1862,8 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
         end, k
     )
 end
+
+convert_attribute(value, ::key"samples", ::key"volume") = Int32(value)
 
 #=
 The below is the output from:

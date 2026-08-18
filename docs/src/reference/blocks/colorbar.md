@@ -77,6 +77,41 @@ fig
 
 We can't use `cgrad(...; categorical=true)` for this, since it has an ambiguous meaning for true categorical values.
 
+### Interfacing with Recipes
+
+To create a Colorbar from a plot various colormapping attributes need to be extracted.
+This is done by the `Makie.extract_colormap(plot)` function.
+The default implementation will look up `color`, `colormap`, `colorrange`, `colorscale`, `lowclip` and `highclip` in the given plot.
+If all of them are available, the Colorbar will be constructed using them.
+Otherwise, they will be extracted from the plots child plot if only one child exists.
+
+If this process returns incorrect attributes (for example if `color` is not used for color mapping) or fails to generate a complete set of attributes a custom overload for `Makie.extract_colormap` is necessary.
+The method should simply return a `Dict{Symbol, Any}()` containing the relevant attributes.
+
+```julia
+function Makie.extract_colormap(plot::MyPlot)
+    return Dict{Symbol, Any}(
+        :color => plot.my_color,
+        :colormap => plot.my_colormap,
+        :colorrange => plot.my_colorrange,
+        :colorscale => plot.colorscale,
+        :lowclip => plot.lowclip,
+        :highclip => plot.highclip,
+    )
+end
+```
+
+The attributes that use their default names (here: colorscale, lowclip and highclip) can also be added with `Makie.add_default_colorbar_attributes(dict, plot)`.
+Alternatively, a method for `Makie._extract_colormap(plot)` can be implemented without them.
+This will cause the default method for `extract_colormap` to be called, which automatically adds attributes with default names.
+(Attributes that already have an entry in the dict will not be overwritten.)
+
+Plots with multiple may implement something like `Makie.extract_colormap(p::MyPlot) = Makie.extract_colormap(p.plots[1])` to specify which child plot to extract attributes from.
+
+!!! note
+    Prior to Makie 0.25 `extract_colormap` was expected to return a `Makie.ColorMapping`.
+    This still works but is now deprecated.
+
 ## Attributes
 
 ```@attrdocs

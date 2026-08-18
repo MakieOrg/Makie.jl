@@ -26,8 +26,12 @@
     - `update_indicator_plot!()` for drawing indicator plots
     - removed `inspector_clear` and `inspector_hover` attributes which are now handled by `update_indicator_plot!()`
   - Added functionality for persistent tooltips
-- Added a system to simulate nesting in compute graphs to allow for nested attributes.
-  - **minor breaking** `nested_attributes = Attributes(...)` in `@recipe` are now mapped to nested nodes in a compute graph. As a result `plot.nested_attributes[]` is of type `::ComputeGraphView` instead of `::Attributes`. The contents can still be handled like before, i.e. `map/on/lift(..., plot.nested_attributes[].attribute)`.
+- Added support for nested attributes [#5482](https://github.com/MakieOrg/Makie.jl/pull/5482), [#5620](https://github.com/MakieOrg/Makie.jl/pull/5620)
+  - ComputePipeline now has a system for simulating nested nodes, e.g. `add_input!(graph, :outer, :inner, 1); graph.outer.inner` [#5482](https://github.com/MakieOrg/Makie.jl/pull/5482)
+  - `@recipe ... begin ... end`, `@Block` and `@DocumentedAttributes` now support nesting via `key = @attributes begin ... end` blocks. These can also be documented and allow `mixin()...` expressions [#5620](https://github.com/MakieOrg/Makie.jl/pull/5620)
+  - `@recipe ... do scene ... end` supports nested attributes via `key = Attributes(...)` [#5620](https://github.com/MakieOrg/Makie.jl/pull/5620)
+  - `@recipe ... do scene ... end` is now marked as deprecated [#5620](https://github.com/MakieOrg/Makie.jl/pull/5620)
+  - **mildly breaking** Internal attribute processing for plots and blocks has been reworked and merged, which includes the removal of various unexported functions [#5620](https://github.com/MakieOrg/Makie.jl/pull/5620)
 - Fixed the precedence of keys in `Base.merge!` and `Base.merge` for `Attributes` arguments [#5332](https://github.com/MakieOrg/Makie.jl/pull/5332)
 - Reworked `Block/@Block` infrastructure to support complex/block recipes. The infrastructure mostly mirrors the `@recipe` infrastructure from plots: [#5465](https://github.com/MakieOrg/Makie.jl/pull/5465)
   - The names (and types) of converted arguments can be defined in `@Block MyBlock (arg1::Vector, arg2)`.
@@ -41,6 +45,9 @@
 - Refactored `Axis` to use the compute graph [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
   - **minor breaking** Custom interactions that manipulated `ax.targetlimits` should now update `ax.localxlimits` and `ax.localylimits` instead and read from either `ax.targetlimits` or `sharedxlimits` and `sharedylimits`. Otherwise they will not correctly update linked axes.
   - Redisplaying a figure after emptying an axis now resets its limits if they aren't set to specific values.
+- Refactored `Colorbar` to use the compute graph [#5678](https://github.com/MakieOrg/Makie.jl/pull/5678)
+  - **minor breaking** `extract_colormap(plot)` is now expected to return a `Dict` containing the `color`, `colormap`, `colorrange`, `colorscale`, `lowclip` and `highclip` attributes of the given plot. Returning a `Makie.ColorMapping` still works but is considered deprecated.
+  - **minor breaking** The `limits` attribute has been deprecated in favor of `colorrange`
 - Fixed an issue where Observable outputs of compute nodes that cycle back into the compute graph could discard updates of other Observable outputs. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
 - Added `ComputePipeline.set_type!(node, type)` for initializing the type of a compute graph node [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
 - Added `ExplicitUpdate` wrapper to control update propagation for computations in the compute graph. Also added an option for forcefully propagate updates from input nodes. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
@@ -48,17 +55,67 @@
 - Updated how documentation for plots is generated [#5389](https://github.com/MakieOrg/Makie.jl/pull/5389)
   - **minor breaking** This may lead to duplicate call signatures, attribute and argument information, and examples as those are now added automatically.
 - Updated CairoMakie to allow LinePatterns to be vectorized [#5534](https://github.com/MakieOrg/Makie.jl/pull/5534)
+- **minor breaking** Reworked cycling internals for improved performance when adding many plots. This changes cycling behavior in some edge cases, e.g. when adding plot specs to a `plotlist`, after removing plots from a scene/axis or when leaving cycled attributes unset in recipes. Also allows `:cycle` to be themed via `theme[:PlotName][:cycle]` and cycled attributes to be overwritten by `theme[:Plot][...]`. [#5636](https://github.com/MakieOrg/Makie.jl/pull/5636)
 
 ## Unreleased
 
+- `Menu` is now searchable: typing while it is open filters the options. Set `searchable = false` for the old behavior [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
+- Added `textcolor_active` and `textcolor_hover` attributes to `Menu`, with the selected entry now white by default [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
+- Fixed `Menu` erroring on hover when `cell_color_hover` or `cell_color_active` were not `RGBA` values [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
+- Added support for `IntervalSlider`s in `SliderGrid` via the `type` keyword
+- `poly` no longer builds the stroke outline when `strokewidth` is `0`, and no longer widens 2D input to 3D points when computing the outline. For a `poly` of 457k points this cuts allocations from 94 MiB to 32 MiB when unstroked (`strokewidth` defaults to `0`) and to 87 MiB when stroked [#5713](https://github.com/MakieOrg/Makie.jl/pull/5713).
+- Fixed `volume` and 3D `contour` plots losing parts of the interior when rendered with mirrored or left-handed transforms, such as with one or three reversed axes in `Axis3`. [#5649](https://github.com/MakieOrg/Makie.jl/issues/5649)
+- Added `tricontour` recipe for plotting isolines on unstructured/scattered data, analogous to `tricontourf`. Supports `Colorbar(fig[1,2], tr)` [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Added `Colorbar(fig[1,2], plt)` support for 2D `contour` plots [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Fixed crashes when plotting constant scalar fields: `contourf`/`tricontourf` now produce evenly-spaced bands around the constant value; `contour` produces no lines; `heatmap` and all colormapped plots no longer error on `colorrange=(c,c)` [#5682](https://github.com/MakieOrg/Makie.jl/pull/5682).
+- Added an `absolute` attribute to `dendrogram` that keeps the input leaf positions instead of translating the root to `origin`, making it easy to align leaves to e.g. heatmap rows or columns [#5666](https://github.com/MakieOrg/Makie.jl/pull/5666).
+- `WGLMakie.ToolTip` can now be styled with `class` and `css` keyword arguments, and ships a
+  `DATAINSPECTOR_CSS` preset that matches the GLMakie `DataInspector` look [#5664](https://github.com/MakieOrg/Makie.jl/pull/5664).
+- Scope the CairoMakie precompile workload's figures inside `let`, so rendered `Screen`s and their pixel buffers are no longer serialized into the package image (~150 MB smaller pkgimage) [#5692](https://github.com/MakieOrg/Makie.jl/pull/5692).
+- `tooltip` now inherits `fontsize` from the theme, sets its default outline `linewidth` to `1.0` to match axis spines, reduces its default `triangle_size` from `10` to `7`, and uses slightly wider horizontal `textpadding` [#5698](https://github.com/MakieOrg/Makie.jl/pull/5698).
+- Fixed plots in `Axis3` not clipping in the correct place when changing aspect due to plot `clip_planes` not getting updated [#5723](https://github.com/MakieOrg/Makie.jl/pull/5723)
+- Fixed `surface` normals sometimes being `NaN` in GLMakie (when vertices collapse to single point on the edge of a surface) [#5725](https://github.com/MakieOrg/Makie.jl/pull/5725)
+- Fixed specialized `args_preferred_axis` methods getting skipped by less specialized Makie defaults [#5722](https://github.com/MakieOrg/Makie.jl/pull/5722)
+- Fixed `Axis3(..., title = rich(...))` not working [#5729](https://github.com/MakieOrg/Makie.jl/pull/5729)
+
+## [0.24.13] - 2026-07-02
+
+- WGLMakie: made scene lookup retry timing configurable via `WGLMAKIE_SCENE_RETRY_DELAY_MS` and `WGLMAKIE_SCENE_RETRY_TOTAL_MS` to avoid timeout failures for slow scene initialization. [#5693](https://github.com/MakieOrg/Makie.jl/pull/5693)
+- WGLMakie: fixed a `Cannot destructure property 'geometry' of 'mesh'` JS error and allow `Bonito@v5` [#5683](https://github.com/MakieOrg/Makie.jl/pull/5683)
+- Adjusted cycled attributes to be marked as `:cycled` instead of `nothing` so that `nothing` doesn't get overridden. This allows e.g. `linestyle = nothing` to be set when `linestyle` is cycled. [#5267](https://github.com/MakieOrg/Makie.jl/issues/5267)
+
+## [0.24.12] - 2026-06-18
+
+- `text` now validates `align` and errors with a clear message for invalid values like `align = :center` [#4651](https://github.com/MakieOrg/Makie.jl/pull/4651).
+- Fixed `contourf` not rendering non-closed contours [#5651](https://github.com/MakieOrg/Makie.jl/issues/5651).
+- Fixed WGLMakie flickering while continuously resizing a canvas by re-rendering right after the resize.
+- Fixed WGLMakie crashing on a `null` WebGL context; it now shows the WebGL error message and requests the context with `failIfMajorPerformanceCaveat: false`.
+- Updated `volume` colormapping to include `lowclip`, `highclip` and `nancolor`. This affects `:absorption`, `:mip` and `:iso` algorithms as well as 3D `contour` plots. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
+- Fixed some errors with the color accumulation of `:absorption`, `:absorptionrgba` and `:indexedabsorption` algorithms in `volume` plots. Renders should no longer over sample thin regions (corners and edges of the volume bounding box) and otherwise be brighter. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
+- Added `samples` as a `volume` attribute for controlling the number of ray samples and added `absorption` as a multiplier for sampled colors with `:additive`. [#5656](https://github.com/MakieOrg/Makie.jl/pull/5656)
+- Adjusted `volume` conversions to preserve `N0f8` and `Float16` types (numbers and color eltypes). This allows users to reduce (v)ram usage by choosing smaller types. [#5660](https://github.com/MakieOrg/Makie.jl/pull/5660)
+- Adjusted volume `algorithm = :additive` to include the ray step size as a weight. This should allow additive volumes to render without downscaling volume data [#5662](https://github.com/MakieOrg/Makie.jl/pull/5662)
+- Adjusted `PolarAxis` defaults to match `Axis`: lightened grid colors (fallback major grid is now `RGBAf(0, 0, 0, 0.12)`, was black at 50%; minor grid is now `RGBAf(0, 0, 0, 0.05)`, was black at 20%), reduced the default `spinewidth` from `2` to `1`, and matched the title `titlefont` (now `:bold`), `titlesize` fallback (now the plain `fontsize` instead of `1.2 × fontsize`), and `titlegap` (now `4`, and correctly inheriting `(:Axis, :titlegap)` instead of `(:Axis, :titlesize)`).
+
+## [0.24.11] - 2026-05-30
+
+- Menu and Toggle now immediately changed their color when updated via an Observable [5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
+- Added `convert_arguments` method for one dimensional `StatsBase.Histogram` for `Stairs` [#5631](https://github.com/MakieOrg/Makie.jl/pull/5631)
+- Added an `Base.iterate` for `FigureAxis` so that can be splashed in code as well [#5646](https://github.com/MakieOrg/Makie.jl/pull/5646).
+- Fixed `center!` (and therefore `reset_limits!` in `LScene`) crashing with empty, NaN or zero-width content [#5634](https://github.com/MakieOrg/Makie.jl/pull/5634).
+- Fixed `FastPixel` scatter crash when markers are clipped in GLMakie [#5634](https://github.com/MakieOrg/Makie.jl/pull/5634).
+- Fixed WGLMakie scatter/sprite markers disappearing in 3D scenes when camera distances produce uniform values outside `mediump` (f16) range. WGLMakie now forces `highp` precision for all vertex/fragment uniforms. [#5640](https://github.com/MakieOrg/Makie.jl/pull/5640)
 - Reworked `Textbox` with selections, multi-cursor, copy / cut / paste, and word / line navigation [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
 - A trailing `'\n'` in a `text!` string now contributes a full empty line to the layout and bounding box (previously `"abc\n"` was laid out identically to `"abc"`) [#5627](https://github.com/MakieOrg/Makie.jl/pull/5627)
 - Added decade-aware automatic ticks for `pseudolog10` and `Symlog10` axes via new `PseudologTicks` and `SymlogTicks` types. `LogTicks` is no longer accepted with these scales (it placed ticks at wrong positions). `Symlog10` is now a callable struct exposing its `lower`/`upper`/`linscale` parameters. Closes [#5270](https://github.com/MakieOrg/Makie.jl/issues/5270) [#5625](https://github.com/MakieOrg/Makie.jl/pull/5625)
-- Default linear tick labels now render scientific notation (e.g. `1×10⁻⁵`) as `RichText` with a real superscript span, the same way log tick labels are constructed. Previously the exponent used unicode superscript glyphs which Makie's default font does not fully cover, causing missing-glyph boxes for some exponents. The fractional `.0` padding is stripped only when every base reduces to a whole number; mixed-precision tick sets keep the padding for alignment. The small subset of `Showoff.jl` Makie used has been vendored into Makie and the `Showoff` dependency has been dropped. [#5626](https://github.com/MakieOrg/Makie.jl/pull/5626)
+- Adjusted linear ticks with scientific notation to skip unnecessary `.0` padding and render more consistently using rich text. Also removed `Showoff.jl` dependency. [#5626](https://github.com/MakieOrg/Makie.jl/pull/5626)
 - Fixed `lines` rendering a phantom segment between the first and last point on macOS for line plots above ~2.4M points [#5622](https://github.com/MakieOrg/Makie.jl/pull/5622)
 - Fixed `Legend` not reflecting `linecap` and `joinstyle` set on `lines!`/`linesegments!` plots [#5621](https://github.com/MakieOrg/Makie.jl/pull/5621)
 - Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
 - GLMakie no longer shows a dock icon on macOS when only used for file export; the icon appears with the Makie logo when an interactive window is opened [#5223](https://github.com/MakieOrg/Makie.jl/pull/5223)
+- Fixed `plot(StatsBase.Histogram(...))` not working with `Vector` edges, incorrect alignment for 2D histograms and switches the 3D representation from `volume` to `voxels`. [#5630](https://github.com/MakieOrg/Makie.jl/pull/5630)
+- Make `margin` in `axislegend` themable [#5624](https://github.com/MakieOrg/Makie.jl/pull/5624)
+- Added `preferred_axis_attributes(AxisType, [plot], [args...])` as an interface function for specifying default axis attributes when creating an axis with the non-mutating `plot()` functions. Also refactored `preferred_axis_type()` to have a clear hierarchy of methods. [#5375](https://github.com/MakieOrg/Makie.jl/pull/5375)
 
 ## [0.24.10] - 2026-04-27
 
@@ -73,7 +130,6 @@
 - CairoMakie now batches glyphs from the same text string into a single PDF/SVG text object, so that text can be selected and edited as a unit in vector editors like Inkscape and Illustrator [#5561](https://github.com/MakieOrg/Makie.jl/pull/5561)
 - Fixed `annotation` not showing lines/arrows when `text` is blank [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
 - Fixed error/nan offsets in `annotation!()` when an annotation is perfectly centered [#5568](https://github.com/MakieOrg/Makie.jl/pull/5568)
-- Added `preferred_axis_attributes(AxisType, [plot], [args...])` as an interface function for specifying default axis attributes when creating an axis with the non-mutating `plot()` functions. Also refactored `preferred_axis_type()` to have a clear hierarchy of methods. [#5375](https://github.com/MakieOrg/Makie.jl/pull/5375)
 
 ## [0.24.9] - 2026-03-04
 
@@ -1065,7 +1121,10 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.10...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...HEAD
+[0.24.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.12...v0.24.13
+[0.24.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...v0.24.12
+[0.24.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.10...v0.24.11
 [0.24.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.9...v0.24.10
 [0.24.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.8...v0.24.9
 [0.24.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.7...v0.24.8

@@ -622,4 +622,22 @@ end
     ys = rand(10)
     merges = [(i, i + 1) for i in 1:20]
     @test Makie.convert_arguments(Dendrogram, xs, ys, merges) == Makie.convert_arguments(Dendrogram, Point2.(xs, ys), merges)
+
+    @testset "absolute positioning" begin
+        leaves = Point2f[(1, 0), (2, 0), (3, 0), (4, 0)]
+        merges = [(1, 2), (3, 4), (5, 6)]
+
+        # absolute = true keeps the input leaf coordinates (default rotation is identity)
+        p = dendrogram(leaves, merges; absolute = true).plot
+        @test Makie.dendrogram_node_positions(p)[][1:4] == Point2d[(1, 0), (2, 0), (3, 0), (4, 0)]
+
+        # default behavior translates the tree so the root sits at the origin
+        p2 = dendrogram(leaves, merges).plot
+        @test Makie.dendrogram_node_positions(p2)[][end] == Point2d(0, 0)
+        @test Makie.dendrogram_node_positions(p2)[][1:4] != Point2d[(1, 0), (2, 0), (3, 0), (4, 0)]
+
+        # origin still offsets in absolute mode
+        p3 = dendrogram(leaves, merges; absolute = true, origin = Point2f(10, 5)).plot
+        @test Makie.dendrogram_node_positions(p3)[][1:4] == Point2d[(11, 5), (12, 5), (13, 5), (14, 5)]
+    end
 end

@@ -623,8 +623,7 @@ function calculated_attributes!(::Type{Heatmap}, plot::HeatmapShader)
     return
 end
 
-extract_colormap_recursive(plot::HeatmapShader) = extract_colormap_recursive(plot.plots[1])
-
+extract_colormap(plot::HeatmapShader) = extract_colormap(plot.plots[1])
 
 function resample_image(x, y, image, max_resolution, limits)
     # extent of the image in data coordinates (same as limits)

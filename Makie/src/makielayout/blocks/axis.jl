@@ -121,6 +121,7 @@ function compute_protrusions(
     return GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
 end
 
+block_kwargs(::Type{Axis}) = Set([:palette])
 function initialize_block!(ax::Axis; palette = nothing)
     blockscene = ax.blockscene
     elements = Dict{Symbol, Any}()
@@ -223,7 +224,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
         minorticksused = ax.xminorgridvisible,
         unit_in_ticklabel = ax.x_unit_in_ticklabel, unit_in_label = ax.x_unit_in_label,
-        suffix_formatter = ax.xlabel_suffix, use_short_unit = ax.use_short_x_units
+        suffix_formatter = ax.xlabel_suffix
     )
 
     ax.xaxis = xaxis
@@ -242,7 +243,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
         minorticksused = ax.yminorgridvisible,
         unit_in_ticklabel = ax.y_unit_in_ticklabel, unit_in_label = ax.y_unit_in_label,
-        suffix_formatter = ax.ylabel_suffix, use_short_unit = ax.use_short_y_units
+        suffix_formatter = ax.ylabel_suffix
     )
 
     ax.yaxis = yaxis
@@ -531,11 +532,11 @@ end
 ################################################################################
 # Limits
 
-function add_attributes!(T::Type{<:Axis}, graph, attributes)
-    limits = pop!(attributes, :limits)
-    add_input!(convert_limit_attribute, graph, :limits, limits)
+function add_attributes!(::Type{<:Axis}, graph, flattened_defaults)
+    attr = documented_attributes(Axis)
+    _, default = get_typed_default(attr, flattened_defaults, :limits)
+    add_input!(convert_limit_attribute, graph, :limits, default)
     ComputePipeline.set_type!(graph.limits, Any)
-    _add_attributes!(T, graph, attributes)
     return
 end
 

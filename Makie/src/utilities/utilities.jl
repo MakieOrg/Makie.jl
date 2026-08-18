@@ -374,12 +374,6 @@ function peaks(n = 49)
     return 3 * (1 .- x') .^ 2 .* exp.(-(x' .^ 2) .- (y .+ 1) .^ 2) .- 10 * (x' / 5 .- x' .^ 3 .- y .^ 5) .* exp.(-x' .^ 2 .- y .^ 2) .- 1 / 3 * exp.(-(x' .+ 1) .^ 2 .- y .^ 2)
 end
 
-
-# function attribute_names(PlotType)
-#     # TODO, have all plot types store their attribute names
-#     return keys(default_theme(nothing, PlotType))
-# end
-
 get_dim(x, ind, dim, size) = get_dim(LinRange(extrema(x)..., size[dim]), ind, dim, size)
 get_dim(x::AbstractVector, ind, dim, size) = x[Tuple(ind)[dim]]
 get_dim(x::AbstractMatrix, ind, dim, size) = x[ind]
@@ -539,7 +533,7 @@ Returns an array of all available plotting functions.
 """
 function available_plotting_methods()
     meths = []
-    for m1 in methods(Makie.default_theme)
+    for m1 in methods(plotsym)
         params = m1.sig.parameters
         if length(params) == 3 && params[3] isa UnionAll
             push!(meths, Makie.plotfunc(params[3].var.ub))
@@ -598,28 +592,105 @@ function linestyle_to_sdf(linestyle::AbstractVector{<:Real}, resolution::Real = 
 end
 
 """
-    shared_attributes(plot::Plot, target::Type{<:Plot})
+    shared_attributes(plot::Plot, target::Type{<:Plot}[; drop])
 
 Extracts all attributes from `plot` that are shared with the `target` plot type.
+
+Optionally, `drop` can be specified for attributes to exclude. If it is given
+as a `Vector{Symbol}` or `Set{Symbol}` it only applies to top level attributes.
+If it is given as a `Dict` or `NamedTuple` values may point to another `Dict` or
+`NamedTuple` to exclude specific nested attributes. If it does not, the key is
+treated as an attribute or nested collection of attributes to exclude.
 """
-function shared_attributes(plot::Plot, target::Type{<:Plot}; drop::Vector{Symbol} = Symbol[])
-    # TODO: This currently happens for ComputeGraph passthrough already
-    valid_attributes = attribute_names(target)
-    existing_attributes = keys(plot.attributes.outputs)
-    to_drop = setdiff(existing_attributes, valid_attributes)
-    # Model is always shared, but should not be shared and therefore dropped
-    push!(to_drop, :model)
-    union!(to_drop, drop)
-    return drop_attributes(plot, to_drop)
+function shared_attributes(plot::Plot, target::Type{<:Plot}; drop = Symbol[])
+    if drop isa Union{Vector, Set}
+        push!(drop, :model)
+    elseif drop isa Dict
+        get!(drop, :model, nothing)
+    else
+        drop = (model = nothing, drop...)
+    end
+
+    return shared_attributes!(Attributes(), plot.attributes, documented_attributes(target), drop)
 end
 
-function drop_attributes(plot::Plot, to_drop::Symbol...)
-    return drop_attributes(plot, Set(to_drop))
+function shared_attributes!(
+        output::Attributes, graph::ComputePipeline.AbstractComputeGraph,
+        allowed::DocumentedAttributes, exclude::Union{Vector{Symbol}, Set{Symbol}}
+    )
+    for k in allowed.merged_keys
+        if ComputePipeline.has_leaf_key(graph, k) && !in(k, exclude)
+            output[k] = graph[k]
+        end
+    end
+    return output
 end
 
-function drop_attributes(plot::Plot, to_drop::Set{Symbol})
-    attr = plot.attributes.outputs
-    return Attributes([k => v for (k, v) in attr if !(k in to_drop)])
+function shared_attributes!(
+        output::Attributes, graph::ComputePipeline.AbstractComputeGraph,
+        allowed::DocumentedAttributes, exclude::Union{Dict, NamedTuple}, layer = 1
+    )
+    for (key, idx) in allowed.nesting.keytables[layer]
+        is_excluded = haskey(exclude, key) && !isa(exclude[key], Union{Dict, NamedTuple})
+        if haskey(graph, key) && !is_excluded
+            if idx > 0
+                shared_attributes!(output, graph[key], allowed, get(exclude, key, NamedTuple()), idx)
+            elseif ComputePipeline.has_leaf_key(graph, key)
+                fullkey = allowed.merged_keys[-idx]
+                output[fullkey] = graph[fullkey]
+            end
+        end
+    end
+    return output
+end
+
+function shared_attributes(attr::Attributes, target::Type{<:Plot}; drop = Symbol[])
+    if drop isa Union{Vector, Set}
+        push!(drop, :model)
+    elseif drop isa Dict
+        get!(drop, :model, nothing)
+    else
+        drop = (model = nothing, drop...)
+    end
+
+    return shared_attributes!(Attributes(), attr, documented_attributes(target), drop)
+end
+
+function shared_attributes!(
+        output::Attributes, attr::Attributes, allowed::DocumentedAttributes,
+        exclude::Union{Dict, NamedTuple}, layer = 1
+    )
+    for (key, idx) in allowed.nesting.keytables[layer]
+        is_excluded = haskey(exclude, key) && !isa(exclude[key], Union{Dict, NamedTuple})
+        if !is_excluded && haskey(attr, key)
+            if idx > 0
+                shared_attributes!(output, attr[key], allowed, get(exclude, key, NamedTuple()), idx)
+            else
+                fullkey = allowed.merged_keys[-idx]
+                output[fullkey] = attr[key]
+            end
+        end
+    end
+    return output
+end
+
+function shared_attributes!(
+        output::Attributes, attr::Attributes, allowed::DocumentedAttributes,
+        exclude::Union{Vector{Symbol}, Set{Symbol}}, layer = 1
+    )
+    for (key, idx) in allowed.nesting.keytables[layer]
+        if haskey(attr, key)
+            if idx > 0
+                shared_attributes!(output, attr[key], allowed, exclude, idx)
+            else
+                fullkey = allowed.merged_keys[-idx]
+                if !(fullkey in exclude)
+                    output[fullkey] = attr[key]
+                end
+            end
+        end
+    end
+    return output
 end
 
 isscalar(x::StaticVector) = true

@@ -1,28 +1,4 @@
 ################################################################################
-### Attribute Documentation
-################################################################################
-
-"""
-    attribute_docs(::Type{<:Plot})
-
-Returns all attribute documentation for a plot type as a `DocumentedAttributes` object.
-Falls back to `documented_attributes(PlotType)`.
-"""
-attribute_docs(::Type{T}) where {T <: Plot} = documented_attributes(T)
-
-"""
-    attribute_docs(::Type{<:Plot}, attr::Symbol)
-
-Returns the documentation for a specific attribute of a plot type.
-Returns `nothing` if the attribute is not documented.
-"""
-function attribute_docs(::Type{T}, attr::Symbol) where {T <: Plot}
-    attrs = documented_attributes(T)
-    isnothing(attrs) && return nothing
-    return get(attrs.d, attr, nothing)
-end
-
-################################################################################
 ### Attribute Examples
 ################################################################################
 
@@ -272,26 +248,18 @@ function argument_docs(::NoConversion)
     return Markdown.MD()  # Return empty markdown
 end
 
-
-function Base.show(io::IO, attr_meta::AttributeMetadata)
-    println(io, "**Default:** `$(attr_meta.default_expr)`\n")
-    return if !isnothing(attr_meta.docstring)
-        println(io, attr_meta.docstring)
-    end
-end
-
 ################################################################################
 ### Main Documentation Function
 ################################################################################
 
 # Consider making a dedicated group for DataInspector?
 const DEFAULT_ATTRIBUTE_GROUPS = let
-    generic = collect(keys(Makie.mixin_generic_plot_attributes().d))
+    generic = copy(Makie.mixin_generic_plot_attributes().merged_keys)
     push!(generic, :cycle)
     inspector = [:inspectable, :inspector_label]
     filter!(name -> !in(name, inspector), generic)
-    colormapping = collect(keys(Makie.mixin_colormap_attributes().d))
-    shading = collect(keys(Makie.mixin_shading_attributes().d))
+    colormapping = copy(Makie.mixin_colormap_attributes().merged_keys)
+    shading = copy(Makie.mixin_shading_attributes().merged_keys)
 
     Pair{String, Vector{Symbol}}[
         "Generic Attributes" => sort!(generic),
@@ -317,11 +285,18 @@ the plot type.
 """
 function uncategorized_attributes(::Type{PT}) where {PT <: AbstractPlot}
     groups = attribute_groups(PT)
-    all_names = collect(attribute_names(PT))
-    foreach(groups) do (name, entrylist)
-        filter!(name -> !in(name, entrylist), all_names)
+    attr = documented_attributes(PT)
+    keys_used = fill(false, length(attr.merged_keys))
+    for (name, entrylist) in groups
+        for entry in entrylist
+            if has_nested_key(attr, entry)
+                for idx in nested_indices(attr, entry)
+                    keys_used[idx] = true
+                end
+            end
+        end
     end
-    return all_names
+    return attr.merged_keys[.!keys_used]
 end
 
 """
@@ -334,7 +309,7 @@ This function is meant to be extended to refine attribute groups for recipes.
 `default_attribute_groups()` can be used to get the default groups.
 
 ```
-function Makie.attribute_names(::Type{<:MyPlot})
+function Makie.attribute_groups(::Type{<:MyPlot})
     groups = Makie.default_attribute_groups()
     push!(groups, "My Attributes" => [:myattrib1, :myattrib2])
     return groups
@@ -347,67 +322,75 @@ be skipped. If every attribute does not exist, the group will not be printed.
 """
 attribute_groups(::Type{<:AbstractPlot}) = Makie.DEFAULT_ATTRIBUTE_GROUPS
 
-function get_attribute_docs(::Type{PT}; full = false) where {PT <: Plot}
+function get_attribute_docs(::Type{T}; full = false) where {T}
     # Build attributes section
-    attrs = documented_attributes(PT)
-    attr_names = attribute_names(PT)
+    attrs = documented_attributes(T)
     # Show detailed attribute documentation
-    if isnothing(attr_names) || isempty(attr_names)
+    if isempty(attrs)
         return Markdown.parse("## Attributes\n\nNo attributes available.")
     else
         io = IOBuffer()
         println(io, "## Attributes\n")
-        sorted_names = sort!(collect(attr_names))
-        write_attribute_docs!(io, PT, attrs, sorted_names, full)
+        write_attribute_docs!(io, T, attrs, full)
         return Markdown.parse(String(take!(io)))
     end
 end
 
-function write_attribute_docs!(io, PT, attrs, sorted_names, full)
-    # Print groups first (assume attributes in each group are sorted)
-    for (groupname, attribute_names) in attribute_groups(PT)
-        if any(name -> name in sorted_names, attribute_names)
-            # Try to order attributes to minimize scrolling:
-            # full docs: unique attributes closer to the top of the page
-            # docstring: unique attributes at the bottom, where the terminal input is
-            if full
-                println(io, "### $groupname\n")
-                for name in attribute_names
-                    idx = findfirst(==(name), sorted_names)
-                    if !isnothing(idx)
-                        examples = attribute_examples(PT, name)
-                        write_full_single_attribute_docs!(io, attrs, examples, name)
-                        deleteat!(sorted_names, idx)
+function write_attribute_docs!(io, PT, attr, full::Bool)
+    groups = attribute_groups(PT)
+    keys_used = fill(false, length(attr.merged_keys))
+    examples = attribute_examples(PT)
+
+    current_indices = Int[]
+
+    for (groupname, entries) in groups
+        if any(entry -> has_nested_key(attr, entry), entries)
+            print(io, full ? "### $groupname\n\n" : "**$groupname**: ")
+            has_prev = false
+            for entry in entries
+                has_nested_key(attr, entry) || continue
+                if full
+                    # This currently skips over nested levels and just collects indices
+                    # for leaf nodes. To treat intermediate keys we would need to
+                    # map any idx > 0 found in nested_indices (after keys get resolved)
+                    # to `attr.nested_docstring` and any idx < 0 like we do here.
+                    nested_indices!(current_indices, attr, entry)
+                    sort!(current_indices, by = i -> attr.merged_keys[i])
+                    for idx in current_indices
+                        keys_used[idx] && continue
+                        write_full_single_attribute_docs!(io, attr, examples, idx)
+                        keys_used[idx] = true
                     end
+                    empty!(current_indices)
+                else
+                    has_prev && print(io, ", ")
+                    write_short_nested_attribute_docs!(io, attr, entry, keys_used)
+                    has_prev = true
                 end
-            else
-                print(io, "**", groupname, "**: ")
-                has_prev = false
-                for name in attribute_names
-                    idx = findfirst(==(name), sorted_names)
-                    if !isnothing(idx)
-                        has_prev && print(io, ", ")
-                        print(io, '`', name, '`')
-                        has_prev = true
-                        deleteat!(sorted_names, idx)
-                    end
-                end
-                println(io, "\n")
             end
+            full || print(io, "\n\n")
         end
     end
 
+    leftover_indices = eachindex(attr.merged_keys)[.!keys_used]
+    sort(leftover_indices, by = i -> attr.merged_keys[i])
+
     # Print the rest as plot specific attributes
-    if !isempty(sorted_names)
-        if full
-            for attr in sorted_names
-                examples = attribute_examples(PT, attr)
-                write_full_single_attribute_docs!(io, attrs, examples, attr)
+    if !isempty(leftover_indices)
+        # TODO: short
+        kind = PT <: Plot ? "Plot" : "Block"
+        print(io, full ? "### $kind Attributes\n\n" : "**$kind Attributes**: ")
+        has_prev = false
+        for idx in leftover_indices
+            if full
+                write_full_single_attribute_docs!(io, attr, examples, idx)
+            else
+                has_prev && print(io, ", ")
+                print(io, '`', attr.merged_keys[idx], '`')
+                has_prev = true
             end
-        else
-            str = mapreduce(name -> "`$name`", (a, b) -> "$a, $b", sorted_names)
-            println(io, "**Plot Attributes**: ", str, "\n")
         end
+        full || print(io, "\n\n")
     end
 
     if !full
@@ -417,30 +400,75 @@ function write_attribute_docs!(io, PT, attrs, sorted_names, full)
         else
             "?$typename.attribute"
         end
-        println(io, "For more information and examples on specific attributes check `$info`.")
+        println(
+            io,
+            "For more information and examples on specific attributes check `$info`.",
+            " For nested attributes check `help($typename, :outer, :inner)`."
+        )
+    end
+
+    return io
+end
+
+function write_full_single_attribute_docs!(io, attrs, all_examples, idx::Int)
+    merged_name = attrs.merged_keys[idx]
+    docstring = attrs.leaf_docstring[idx]
+    default_expr = attrs.default_expr[idx]
+
+    println(io, "#### `$merged_name`\n")
+    println(io, "**Default:** `$default_expr`\n")
+    if !isnothing(docstring)
+        println(io, docstring)
+    end
+
+    # Add example if available
+    if haskey(all_examples, merged_name)
+        examples = all_examples[merged_name]
+        println(io, "**Example:**\n")
+        for (i, ex) in enumerate(examples)
+            show(io, ex)
+            if i < length(examples)
+                println(io)
+            end
+        end
+        println(io)
+    end
+
+    return
+end
+
+function write_short_nested_attribute_docs!(io, attr, entry, keys_used)
+    # TODO: Maybe should add checks to skip repeated pre-leaf attributes?
+    # I.e. not just check leaf nodes with keys_used, but also intermediate ones
+    layer = unchecked_nested_key_to_index(attr, entry)
+    if layer > 0 # nested
+        print(io, '`', ComputePipeline.merged_key(entry), '.', '`')
+        write_short_nested_attribute_docs!(io, attr, layer, keys_used)
+    else # leaf node
+        print(io, '`', ComputePipeline.merged_key(entry), '`')
+        keys_used[-layer] = true
     end
     return
 end
 
-function write_full_single_attribute_docs!(io, attrs, examples, attribute)
-    attr_meta = get(attrs.d, attribute, nothing)
-    println(io, "#### `$attribute`\n")
-    if !isnothing(attr_meta)
-        println(io, attr_meta)
-        # Add example if available
-        if !isempty(examples)
-            println(io, "**Example:**\n")
-            for (i, ex) in enumerate(examples)
-                show(io, ex)
-                if i < length(examples)
-                    println(io)
-                end
-            end
-            println(io)
+function write_short_nested_attribute_docs!(io, attr, layer::Int, keys_used)
+    keytable = attr.nesting.keytables[layer]
+    keys_sorted = sort(keys(keytable))
+    print(io, '(')
+    has_prev = false
+    for key in keys_sorted
+        idx = keytable[key]
+        has_prev && print(io, ", ")
+        print(io, '`', key, '`')
+        if idx > 0 # nested
+            print(io, '.')
+            write_short_nested_attribute_docs!(io, attr, idx, keys_used)
+        else # leaf
+            keys_used[-idx] = true
         end
-    else
-        println(io, "*No documentation available.*\n")
+        has_prev = true
     end
+    print(io, ')')
     return
 end
 
@@ -629,25 +657,38 @@ end
 ################################################################################
 
 
-function field_docs(::Type{T}, attr::Symbol) where {T <: Plot}
-    attr_meta = attribute_docs(T, attr)
+function field_docs(::Type{T}, names::Symbol...) where {T <: Union{Plot, Block}}
+    return field_docs(T, documented_attributes(T), names...)
+end
 
-    if isnothing(attr_meta)
-        return Markdown.parse("No documentation available for attribute `$attr` of plot type `$T`.")
+function field_docs(::Type{T}, attr::DocumentedAttributes, names::Symbol...) where {T <: Union{Plot, Block}}
+    idx = unchecked_nested_key_to_index(attr, names)
+
+    if idx > 0 # more nesting
+        merged_key = ComputePipeline.merged_key(names...)
+        no_doc = "No documentation available for attribute `$merged_key` of plot type `$T`."
+        docstring = something(attr.nested_docstring[idx], no_doc)
+        default_expr = "@attributes begin ... end"
+        # Probably won't have examples for intermediate nesting levels?
+        # E.g. if a plot has `plot.scatter.markersize`, we probably won't have
+        # attribute examples for plot.scatter?
+    else # leaf attribute
+        merged_key = attr.merged_keys[-idx]
+        no_doc = "No documentation available for attribute `$merged_key` of plot type `$T`."
+        docstring = something(attr.leaf_docstring[-idx], no_doc)
+        default_expr = attr.default_expr[-idx]
     end
 
     # Build documentation string
     io = IOBuffer()
 
     # Attribute name and default
-    println(io, "**`$attr`** = `$(attr_meta.default_expr)`")
+    println(io, "**`$merged_key`** = `$default_expr`")
     println(io)
 
     # Docstring
-    if !isnothing(attr_meta.docstring)
-        println(io, attr_meta.docstring)
-        println(io)
-    end
+    println(io, docstring)
+    println(io)
 
     # Example
     examples_dict = try
@@ -655,12 +696,11 @@ function field_docs(::Type{T}, attr::Symbol) where {T <: Plot}
     catch
         nothing
     end
-
-    if examples_dict isa Dict && haskey(examples_dict, attr)
-        examples = examples_dict[attr]
+    if examples_dict isa Dict && haskey(examples_dict, merged_key)
+        examples = examples_dict[merged_key]
         if examples isa Vector && !isempty(examples)
-            println(io, "### Example\n")
             for (i, ex) in enumerate(examples)
+                println(io, "### Example $I\n")
                 if ex isa Example
                     if !isnothing(ex.caption) && !isempty(ex.caption)
                         println(io, "**$(ex.caption)**\n")
@@ -676,15 +716,42 @@ function field_docs(::Type{T}, attr::Symbol) where {T <: Plot}
         end
     end
 
+    if idx > 0 # there is further nesting
+        println(io, "\n Nested Attribute `$merged_key` contains:")
+        write_nested_attributes_docs!(io, attr, idx)
+        sym = plotsym(T)
+        println(io, "See `help($sym, :outer, :inner[, ...])` for detailed documentation on nested attributes.")
+    end
+
     return Markdown.parse(String(take!(io)))
 end
 
+function write_nested_attributes_docs!(io, attr, layer, tab = 0)
+    for (key, idx) in attr.nesting.keytables[layer]
+        if idx > 0 # more nesting
+            print(io, "  "^tab, "- `.$key = @attributes begin ... end`")
+            docstring = attr.nested_docstring[idx]
+            # write_nested_attributes_docs!(io, attr, idx, tab+1)
+        else # leaf attribute
+            print(io, "  "^tab, "- `.$key = $(attr.default_expr[-idx])`")
+            docstring = attr.leaf_docstring[-idx]
+        end
+        print(io, ": ", something(docstring, "No docstring available"))
+        println(io)
+    end
+    return
+end
+
+# overrides `?Axis.xticks`, `?Scatter.color` and similar lookups in the REPL
 # This does not work for paramtric types pre 1.12.2 (i.e. not for Plots)
-function REPL.fielddoc(::Type{T}, attr::Symbol) where {T <: Plot}
+function REPL.fielddoc(::Type{T}, attr::Symbol) where {T <: Union{Plot, Block}}
+    if !is_attribute(T, attr)
+        return Markdown.parse("`$attr` is not an attribute of type `$T`. Type `?$T` in the REPL to see the list of available attributes.")
+    end
     return field_docs(T, attr)
 end
 
 # autocomplete for `Scatter.attr...`
 function Base.propertynames(::Type{T}) where {T <: AbstractPlot}
-    return collect(attribute_names(T))
+    return collect(root_keys(documented_attributes(T)))
 end

@@ -1,5 +1,4 @@
 abstract type AbstractCamera end
-abstract type Block end
 abstract type AbstractAxis <: Block end
 
 # placeholder if no camera is present
