@@ -91,19 +91,19 @@ end
     g = [1, 1, 1, 1, 2, 2, 2, 2]
 
     f, a, p = stephist(v, bins = 3)
-    @test p.points[] ≈ Point2f.([1, 4/3, 5/3, 2, 2], [0, 3, 0, 3, 0])
+    @test p.points[] ≈ Point2f.([1, 4 / 3, 5 / 3, 2, 2], [0, 3, 0, 3, 0])
     @test p.computed_colors[] isa Makie.Colorant
 
     f, a, p = stephist(v, bins = 3, weights = w)
-    @test p.points[] ≈ Point2f.([1, 4/3, 5/3, 2, 2], [0, 6, 0, 3, 0])
+    @test p.points[] ≈ Point2f.([1, 4 / 3, 5 / 3, 2, 2], [0, 6, 0, 3, 0])
     @test p.computed_colors[] isa Makie.Colorant
 
     f, a, p = hist(v, bins = 3)
-    @test p.points[] ≈ Point2f.([7/6, 1.5, 11/6], [3, 0, 3])
+    @test p.points[] ≈ Point2f.([7 / 6, 1.5, 11 / 6], [3, 0, 3])
     @test p.computed_colors[] isa Makie.Colorant
 
     f, a, p = hist(v, bins = 3, weights = w)
-    @test p.points[] ≈ Point2f.([7/6, 1.5, 11/6], [6, 0, 3])
+    @test p.points[] ≈ Point2f.([7 / 6, 1.5, 11 / 6], [6, 0, 3])
     @test p.computed_colors[] isa Makie.Colorant
 
     f, a, p = hist(v, bins = 3, stack = g, color = :stack)
