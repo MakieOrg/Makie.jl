@@ -132,9 +132,12 @@ vec4 fetch_stroke_texel(int idx) {
     return texelFetch(stroke_data, ivec2(idx % width, idx / width), 0);
 }
 
-vec2 stroke_screen_space(vec3 position) {
+// screen position in logical pixels, NDC depth (including depth_shift, like
+// gl_FragCoord.z) in z
+vec3 stroke_screen_space(vec3 position) {
     vec4 clip = projection * view * model_f32c * vec4(position, 1);
-    return (0.5 * clip.xy / clip.w + 0.5) * resolution;
+    vec3 ndc = clip.xyz / clip.w;
+    return vec3((0.5 * ndc.xy + 0.5) * resolution, ndc.z + get_depth_shift());
 }
 
 float stroke_distance_to_segment(vec2 p, vec2 a, vec2 b) {
@@ -154,6 +157,31 @@ float stroke_edge_factor(vec2 frag_px, vec2 a, vec2 b, float width_multiplier) {
     return smoothstep(-aa_radius, aa_radius, stroke_distance_to_segment(frag_px, a, b) - width);
 }
 
+// A wing band may only paint fragments whose surface plane the wing edge actually
+// touches. A wing that merely projects nearby in screen space (the surface folding
+// back on itself, the far side of a curved shape) lies at a different depth than the
+// fragment's plane extrapolated to the same screen position, so it is rejected here.
+float stroke_wing_factor(vec2 frag_px, vec3 a, vec3 b, float width_multiplier, float frag_z, vec2 z_gradient) {
+    if (width_multiplier <= 0.0)
+        return 1.0;
+
+    vec2 ab = b.xy - a.xy;
+    float len2 = dot(ab, ab);
+    float t = len2 < 1e-20 ? 0.0 : clamp(dot(frag_px - a.xy, ab) / len2, 0.0, 1.0);
+    vec2 closest = a.xy + t * ab;
+    float dist = length(frag_px - closest);
+
+    float wing_z = mix(a.z, b.z, t);
+    float plane_z = frag_z + dot(z_gradient, closest - frag_px);
+    float z_tolerance = (abs(z_gradient.x) + abs(z_gradient.y)) * (dist + 1.0) + 1e-4;
+    if (abs(wing_z - plane_z) > z_tolerance)
+        return 1.0;
+
+    float aa_radius = 0.7;
+    float width = width_multiplier * get_strokewidth();
+    return smoothstep(-aa_radius, aa_radius, dist - width);
+}
+
 vec4 apply_stroke(vec4 color) {
     if (get_strokewidth() <= 0.0)
         return color;
@@ -162,29 +190,29 @@ vec4 apply_stroke(vec4 color) {
     vec4 c0 = fetch_stroke_texel(base + 0);
     vec4 c1 = fetch_stroke_texel(base + 1);
     vec4 c2 = fetch_stroke_texel(base + 2);
-    vec2 corners[3] = vec2[3](
+    vec3 corners[3] = vec3[3](
         stroke_screen_space(c0.xyz),
         stroke_screen_space(c1.xyz),
         stroke_screen_space(c2.xyz)
     );
     vec2 frag_px = gl_FragCoord.xy / px_per_unit - get_viewport_origin();
+    // gl_FragCoord.z interpolates the plane's NDC depth linearly in screen space,
+    // matching the wing endpoint depths from stroke_screen_space. The gradient is
+    // per physical pixel, so scale it to the logical pixels used for distances.
+    float frag_z = 2.0 * gl_FragCoord.z - 1.0;
+    vec2 z_gradient = px_per_unit * vec2(dFdx(frag_z), dFdy(frag_z));
 
     float face_factor = 1.0;
-    face_factor = min(face_factor, stroke_edge_factor(frag_px, corners[0], corners[1], c0.w));
-    face_factor = min(face_factor, stroke_edge_factor(frag_px, corners[1], corners[2], c1.w));
-    face_factor = min(face_factor, stroke_edge_factor(frag_px, corners[2], corners[0], c2.w));
+    face_factor = min(face_factor, stroke_edge_factor(frag_px, corners[0].xy, corners[1].xy, c0.w));
+    face_factor = min(face_factor, stroke_edge_factor(frag_px, corners[1].xy, corners[2].xy, c1.w));
+    face_factor = min(face_factor, stroke_edge_factor(frag_px, corners[2].xy, corners[0].xy, c2.w));
 
     for (int i = 0; i < 3; i++) {
-        // Wings continue bands past their corner, so fragments further away don't need
-        // them. On curved surfaces a wing may project across the whole triangle, so
-        // without this gate it would paint a stray band far from the corner.
-        if (length(frag_px - corners[i]) > 2.0 * get_strokewidth())
-            continue;
         for (int k = 0; k < 2; k++) {
             vec4 wing = fetch_stroke_texel(base + 3 + 2 * i + k);
             if (wing.w > 0.0) {
-                vec2 endpoint = stroke_screen_space(wing.xyz);
-                face_factor = min(face_factor, stroke_edge_factor(frag_px, corners[i], endpoint, wing.w));
+                vec3 endpoint = stroke_screen_space(wing.xyz);
+                face_factor = min(face_factor, stroke_wing_factor(frag_px, corners[i], endpoint, wing.w, frag_z, z_gradient));
             }
         }
     }

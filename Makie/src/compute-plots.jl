@@ -1119,7 +1119,7 @@ function stroke_edge_data(mesh, gl_faces, strokeedges::Symbol)
         )
 
         indices .= 0
-        widths .= 0f0
+        widths .= 0.0f0
         for i in 1:3
             v = corners[i]
             o1 = corners[mod1(i + 1, 3)]

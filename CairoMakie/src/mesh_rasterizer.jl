@@ -267,7 +267,32 @@ function edge_face_factor(stroke::RasterStrokeData, p::Vec2f, a::Vec2f, b::Vec2f
     return glsl_smoothstep(-stroke.aa_px, stroke.aa_px, distance_to_segment(p, a, b) - width)
 end
 
-function stroke_face_factor(stroke::RasterStrokeData, t::Int, face, pixel_positions, inv_ws, p::Vec2f)
+# A wing band may only paint fragments whose surface plane the wing edge actually
+# touches. A wing that merely projects nearby in screen space (the surface folding
+# back on itself, the far side of a curved shape) lies at a different depth than the
+# fragment's plane extrapolated to the same screen position, so it is rejected here.
+function wing_face_factor(
+        stroke::RasterStrokeData, p::Vec2f, a::Vec2f, b::Vec2f, width_multiplier::Float32,
+        za::Float32, zb::Float32, frag_z::Float32, z_gradient::Vec2f
+    )
+    width_multiplier <= 0.0f0 && return 1.0f0
+
+    ab = b - a
+    len2 = dot(ab, ab)
+    t = len2 < 1.0f-20 ? 0.0f0 : clamp(dot(p - a, ab) / len2, 0.0f0, 1.0f0)
+    closest = a + t * ab
+    dist = norm(p - closest)
+
+    wing_z = (1.0f0 - t) * za + t * zb
+    plane_z = frag_z + dot(z_gradient, closest - p)
+    z_tolerance = (abs(z_gradient[1]) + abs(z_gradient[2])) * (dist + 1.0f0) + 1.0f-4
+    abs(wing_z - plane_z) > z_tolerance && return 1.0f0
+
+    width = width_multiplier * stroke.width_px
+    return glsl_smoothstep(-stroke.aa_px, stroke.aa_px, dist - width)
+end
+
+function stroke_face_factor(stroke::RasterStrokeData, t::Int, face, pixel_positions, inv_ws, depths, p::Vec2f, frag_z::Float32)
     a = pixel_positions[face[1]]
     b = pixel_positions[face[2]]
     c = pixel_positions[face[3]]
@@ -278,6 +303,14 @@ function stroke_face_factor(stroke::RasterStrokeData, t::Int, face, pixel_positi
     factor = min(factor, edge_face_factor(stroke, p, b, c, widths[2]))
     factor = min(factor, edge_face_factor(stroke, p, c, a, widths[3]))
 
+    det = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1])
+    dzb = depths[face[2]] - depths[face[1]]
+    dzc = depths[face[3]] - depths[face[1]]
+    z_gradient = Vec2f(
+        (c[2] - a[2]) * dzb - (b[2] - a[2]) * dzc,
+        (b[1] - a[1]) * dzc - (c[1] - a[1]) * dzb,
+    ) / det
+
     wing_indices = stroke.wing_indices[t]
     wing_widths = stroke.wing_widths[t]
     corners = (a, b, c)
@@ -286,11 +319,13 @@ function stroke_face_factor(stroke::RasterStrokeData, t::Int, face, pixel_positi
         idx = wing_indices[j]
         idx == 0 && continue
         inv_ws[idx] > 0.0f0 || continue
-        # Wings continue bands past their corner, so fragments further away don't need
-        # them. On curved surfaces a wing may project across the whole triangle, so
-        # without this gate it would paint a stray band far from the corner.
-        norm(p - corners[i]) > 2.0f0 * stroke.width_px && continue
-        factor = min(factor, edge_face_factor(stroke, p, corners[i], pixel_positions[idx], wing_widths[j]))
+        factor = min(
+            factor,
+            wing_face_factor(
+                stroke, p, corners[i], pixel_positions[idx], wing_widths[j],
+                depths[face[i]], depths[idx], frag_z, z_gradient
+            )
+        )
     end
     return factor
 end
@@ -394,7 +429,7 @@ function rasterize_mesh!(
             end
 
             if stroke !== nothing
-                factor = stroke_face_factor(stroke, t, face, pixel_positions, inv_ws, p)
+                factor = stroke_face_factor(stroke, t, face, pixel_positions, inv_ws, depths, p, z)
                 color = mix_colors(stroke.color, color, factor)
             end
 
