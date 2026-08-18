@@ -17,7 +17,7 @@ base_branch = "master"
 
 # Package = "CairoMakie"
 # n_samples = 2
-# base_branch = "breaking-release"
+base_branch = "ff/breaking-0.25"
 
 @info("Benchmarking $(Package) against $(base_branch) with $(n_samples) samples")
 

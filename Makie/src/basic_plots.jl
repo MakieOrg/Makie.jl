@@ -19,6 +19,7 @@ default_theme(::Type{<:Plot}) = Attributes(
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `space::Symbol = :data` sets the transformation space for box encompassing the volume plot. See `Makie.spaces()` for possible inputs.
 - `clip_planes::Vector{Plane3f} = Plane3f[]`: allows you to specify up to 8 planes behind which plot objects get clipped (i.e. become invisible). By default clip planes are inherited from the parent plot or scene.
+- `zindex::Float64 = NaN`: Controls "when" a plot is drawn with larger numbers being drawn later, as opposed to "where" (in front/behind) which is determined from coordinates and transformations. Explicitly setting this can resolve issues with transparency/blending. Defaults to using the z-translation of the plot when set to `NaN`.
 """
 function generic_plot_attributes!(attr)
     attr[:transformation] = :automatic
@@ -31,6 +32,7 @@ function generic_plot_attributes!(attr)
     attr[:space] = :data
     attr[:inspector_label] = automatic
     attr[:clip_planes] = automatic
+    attr[:zindex] = NaN64
     return attr
 end
 
@@ -47,6 +49,7 @@ function generic_plot_attributes(attr)
         space = attr[:space],
         inspector_label = attr[:inspector_label],
         clip_planes = attr[:clip_planes],
+        zindex = attr[:zindex],
     )
 end
 
@@ -102,6 +105,13 @@ function mixin_generic_plot_attributes()
         parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
         """
         clip_planes = @inherit clip_planes automatic
+        """
+        `zindex::Float64 = NaN`: Controls "when" a plot is drawn with larger numbers being drawn later,
+        as opposed to "where" (in front/behind) which is determined from coordinates and transformations.
+        Explicitly setting this can resolve issues with transparency/blending. Defaults to using the
+        z-translation of the plot when set to `NaN`.
+        """
+        zindex = NaN64
     end
 end
 

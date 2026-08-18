@@ -333,6 +333,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
 """
 @Block Axis <: AbstractAxis begin
     scene::Scene
+    decoration_scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
     mouseeventhandle::MouseEventHandle
@@ -1437,6 +1438,7 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
 ```
 """
 @Block Menu begin
+    menuscene::Scene
     @attributes begin
         "The height setting of the menu."
         height = Auto()
