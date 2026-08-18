@@ -176,7 +176,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         shaders = vcat([[shader for shader in values(shaders)] for shaders in values(screen.shader_cache.shader_cache)]...)
         programs = [program for program in values(screen.shader_cache.program_cache)]
         pipeline = copy(screen.render_pipeline.stages)
-        robjs = [robj for glscene in screen.render_context.scenes for robj in glscene.renderobjects]
+        robjs = [robj for group in screen.render_context.groups for (_, robj) in group.renderobjects]
 
         GLMakie.destroy!(screen)
 

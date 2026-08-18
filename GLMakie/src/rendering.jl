@@ -42,7 +42,7 @@ function render_frame(screen::Screen; resize_buffers = true)
 
     prepare_frame(screen, resize_buffers)
 
-    render_frame(screen, screen.render_context.scenes, screen.render_pipeline)
+    render_frame(screen, screen.render_context.groups, screen.render_pipeline)
 
     GLAbstraction.require_context(to_native(screen))
 
