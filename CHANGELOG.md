@@ -19,6 +19,17 @@
 - `tooltip` now inherits `fontsize` from the theme, sets its default outline `linewidth` to `1.0` to match axis spines, reduces its default `triangle_size` from `10` to `7`, and uses slightly wider horizontal `textpadding` [#5698](https://github.com/MakieOrg/Makie.jl/pull/5698).
 - Fixed plots in `Axis3` not clipping in the correct place when changing aspect due to plot `clip_planes` not getting updated [#5723](https://github.com/MakieOrg/Makie.jl/pull/5723)
 - Fixed `surface` normals sometimes being `NaN` in GLMakie (when vertices collapse to single point on the edge of a surface) [#5725](https://github.com/MakieOrg/Makie.jl/pull/5725)
+- Fixed specialized `args_preferred_axis` methods getting skipped by less specialized Makie defaults. [#5722](https://github.com/MakieOrg/Makie.jl/pull/5722)
+- Fixed `contour` labels not working with rich text. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Added linestyle, joinstyle, linecap and miter_limit to `crossbar` and `boxplot` where appropriate. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Added `poly` conversion for `MetaMesh`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Fixed `poly` stroke colormapping in CairoMakie. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Adjusted `linestyle = :solid` to be treated as patterned line in backends, allowing it to be used with other patterned lines. `linestyle = nothing` continues to use the un-patterned fast paths. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Added padding for 0-width limits for `LScene` to make sure the axis generates correctly. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Added `resetlimitskey`, `recomputelimitskey` and `resetrotationkey` to `Axis` and `Axis3`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Added `colorrange` to `tricontourf` and `contourf` and `alpha` to `contourf`. Fixed passthrough of `visible`, `fxaa`, `clip_planes`, `overdraw` and `depth_shift`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Fixed colorscale handling in `tricontourf` and `contourf`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Fixed error when passing `missing` values to `hist` and `stephist` [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
 - Fixed specialized `args_preferred_axis` methods getting skipped by less specialized Makie defaults [#5722](https://github.com/MakieOrg/Makie.jl/pull/5722)
 - Fixed `Axis3(..., title = rich(...))` not working [#5729](https://github.com/MakieOrg/Makie.jl/pull/5729)
 

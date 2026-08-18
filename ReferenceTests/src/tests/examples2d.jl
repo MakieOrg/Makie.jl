@@ -27,12 +27,21 @@ end
 
 @reference_test "poly and colormap" begin
     # example by @Paulms from MakieOrg/Makie.jl#310
-    points = Point2f[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
+    points = Point2f[[0, 0], [1, 0], [1, 1], [0, 1]]
     colors = [0.0, 0.0, 0.5, 0.0]
-    fig, ax, polyplot = poly(points, color = colors, colorrange = (0.0, 1.0))
-    points = Point2f[[0.1, 0.1], [0.2, 0.1], [0.2, 0.2], [0.1, 0.2]]
+    fig, ax, polyplot = poly(points, color = colors, colorrange = (0.0, 1.0), colormap = :terrain)
+    points = Point2f[[1, 1], [2, 1], [2, 2], [1, 2]]
     colors = [0.5, 0.5, 1.0, 0.3]
     poly!(ax, points, color = colors, colorrange = (0.0, 1.0))
+
+    poly!(
+        [Rect(i, j, 0.25, 0.25) for i in 0.1:0.4:1.8 for j in 0.1:0.75:1.6],
+        color = :transparent,
+        strokewidth = 2,
+        strokecolor = 1:15,
+        strokecolormap = :matter,
+    )
+
     fig
 end
 
@@ -847,31 +856,40 @@ end
     y = RNG.randn(50)
     z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
 
-    f, ax, tr = tricontourf(x, y, z)
+    f = Figure(size = (500, 600))
+    ax, tr = tricontourf(f[1, 1][1, 1], x, y, z, clip_planes = [Plane3f(Vec3f(0, 1, 0), 0.0f0)])
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
-    Colorbar(f[1, 2], tr)
-    f
-end
+    Colorbar(f[1, 1][1, 2], tr)
 
-@reference_test "tricontourf extendhigh extendlow" begin
-    x = RNG.randn(50)
-    y = RNG.randn(50)
-    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
-
-    f, ax, tr = tricontourf(x, y, z, levels = -1.8:0.2:-0.4, extendhigh = :red, extendlow = :orange)
+    ax, tr = tricontourf(f[1, 2][1, 1], x, y, z, levels = -1.8:0.2:-0.4, extendhigh = :red, extendlow = :orange)
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
-    Colorbar(f[1, 2], tr)
-    f
-end
+    Colorbar(f[1, 2][1, 2], tr)
 
-@reference_test "tricontourf relative mode" begin
-    x = RNG.randn(50)
-    y = RNG.randn(50)
-    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
-
-    f, ax, tr = tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1, colormap = :batlow)
+    ax, tr = tricontourf(f[2, 1][1, 1], x, y, z, mode = :relative, levels = 0.2:0.1:1, colormap = :batlow)
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black, colormap = :batlow)
-    Colorbar(f[1, 2], tr)
+    Colorbar(f[2, 1][1, 2], tr)
+
+    ax, tr = tricontourf(
+        f[2, 2][1, 1], x, y, z, levels = -2.2:0.2:-0.2,
+        colorrange = (-1.8, -0.4), extendhigh = :red, extendlow = :orange
+    )
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+    Colorbar(f[2, 2][1, 2], tr)
+
+    # TODO: Why does 1 .- z or just using z look like it's missing/occluding levels?
+    z .= 5 .+ z
+
+    ax, tr = tricontourf(f[3, 1][1, 1], x, y, z .^ 2, colorscale = sqrt, colormap = :terrain)
+    Colorbar(f[3, 1][1, 2], tr)
+    ax, tr = tricontourf(f[3, 2][1, 1], x, y, z .^ 2, colorscale = sqrt, levels = (2:0.5:5) .^ 2)
+    Colorbar(f[3, 2][1, 2], tr)
+
+    # Reference plots - the above should look the same (with different Colorbar limits, spacing)
+    # ax, tr = tricontourf(f[4, 1][1, 1], x, y, abs.(z), colormap = :terrain)
+    # Colorbar(f[4, 1][1, 2], tr)
+    # ax, tr = tricontourf(f[4, 2][1, 1], x, y, abs.(z), levels = 2:0.5:5)
+    # Colorbar(f[4, 2][1, 2], tr)
+
     f
 end
 
@@ -996,15 +1014,35 @@ end
     y2 = RNG.rand(30)
     z2 = sin.(2π .* x2) .* cos.(2π .* y2)
 
-    f = Figure(size = (900, 300))
-    ax1, tr1 = tricontour(f[1, 1], x, y, z; levels = 8)
+    f = Figure(size = (500, 600))
+    ax1, tr1 = tricontour(f[1, 1][1, 1], x, y, z; levels = 8, linewidth = 3)
     scatter!(ax1, x, y; color = z, strokewidth = 1, strokecolor = :black)
-    Colorbar(f[1, 2], tr1)
+    Colorbar(f[1, 1][1, 2], tr1)
 
-    ax2, tr2 = tricontour(f[1, 3], x, y, z; levels = 8, color = :black, linewidth = 2)
+    ax2, tr2 = tricontour(f[1, 2], x, y, z; levels = 8, color = :black, clip_planes = [Plane3f(Vec3f(-1, 1, 0), -1)])
 
-    ax3, tr3 = tricontour(f[1, 4], x2, y2, z2; levels = 6, colormap = :RdBu)
-    Colorbar(f[1, 5], tr3)
+    ax3, tr3 = tricontour(
+        f[2, 1][1, 1], x2, y2, z2; levels = -0.9:0.2:0.9, colormap = :RdBu, linewidth = 2,
+    )
+    Colorbar(f[2, 1][1, 2], tr3)
+
+    ax4, tr4 = tricontour(
+        f[2, 2][1, 1], x2, y2, z2; levels = -0.9:0.2:0.9, colormap = :RdBu, linewidth = 4,
+        colorrange = (-0.6, 0.6), lowclip = :cyan, highclip = :orange, alpha = 0.5
+    )
+    Colorbar(f[2, 2][1, 2], tr4)
+
+    ax, tr = tricontour(f[3, 1][1, 1], x, y, z .^ 2; levels = 8, linewidth = 5, colorscale = sqrt)
+    Colorbar(f[3, 1][1, 2], tr)
+    ax, tr = tricontour(f[3, 2][1, 1], x, y, z .^ 2; levels = (0:0.5:3.5) .^ 2, linewidth = 5, colorscale = sqrt)
+    Colorbar(f[3, 2][1, 2], tr)
+
+    # Reference: above should match colors and shapes (not Colorbar ticks)
+    # ax, tr = tricontour(f[4, 1][1, 1], x, y, abs.(z); levels = 8, linewidth = 5)
+    # Colorbar(f[4, 1][1, 2], tr)
+    # ax, tr = tricontour(f[4, 2][1, 1], x, y, abs.(z); levels = 0:0.5:3.5, linewidth = 5)
+    # Colorbar(f[4, 2][1, 2], tr)
+
     f
 end
 
@@ -1059,24 +1097,56 @@ end
     fig
 end
 
-@reference_test "filled contour 2d with curvilinear grid" begin
+@reference_test "contourf" begin
+    # filled contour 2d with curvilinear grid
     x = -10:10
     y = -10:10
-    # The curvilinear grid:
     xs = [x + 0.01y^3 for x in x, y in y]
     ys = [y + 10cos(x / 40) for x in x, y in y]
-
-    # Now, for simplicity, we calculate the `Z` values to be
-    # the radius from the center of the grid (0, 10).
     zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
-
-    # We can use Makie's tick finders to get some nice looking contour levels.
-    # This could also be Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
-    # but it's more stable as a test if we hardcode it.
     levels = 0:4:20
+    fig = Figure(size = (500, 600))
+    ax, ctr = contourf(fig[1, 1], xs, ys, zs; levels = levels)
 
-    # and now, we plot!
-    fig, ax, ctr = contourf(xs, ys, zs; levels = levels)
+    # contourf bug #3683 + clip planes
+    x = y = LinRange(0, 1, 4)
+    ymin, ymax = 0.4, 0.6
+    steepness = 0.1
+    foo(x, y) = (tanh((y - ymin) / steepness) - tanh((y - ymax) / steepness) - 1)
+    z = [foo(_x, _y) for _x in x, _y in y]
+    ax, cof = contourf(fig[1, 2][1, 1], x, y, z, levels = 2, clip_planes = [Plane3f(Vec3f(1, 1, 0), 0.2f0)])
+    Colorbar(fig[1, 2][1, 2], cof)
+
+    # colormapping tests
+    # ... with irregularly space levels
+    x = y = range(-2, 2, length = 31)
+    z = [sqrt(sin(x - 1)^2 + cos(y)^2) for x in x, y in y]
+    ax, cof = contourf(
+        fig[2, 1][1, 1], x, y, z, levels = sqrt.(range(0.04, 1.9, 8)),
+        extendlow = :red, extendhigh = :blue
+    )
+    Colorbar(fig[2, 1][1, 2], cof)
+
+    # ... with regularly spaced levels
+    _, cof = contourf(
+        fig[2, 2][1, 1], x, y, z, extendlow = :red, extendhigh = :blue,
+        colormap = :magma, colorrange = (0.2, 1.3), alpha = 0.5
+    )
+    Colorbar(fig[2, 2][1, 2], cof)
+
+    # colorscale + levels
+    _, cof = contourf(fig[3, 1][1, 1], x, y, (1 .+ z) .^ 2, colorscale = sqrt, colormap = :thermal)
+    Colorbar(fig[3, 1][1, 2], cof)
+
+    _, cof = contourf(fig[3, 2][1, 1], x, y, (1 .+ z) .^ 2, levels = (1:0.15:2.5) .^ 2, colorscale = sqrt)
+    Colorbar(fig[3, 2][1, 2], cof)
+
+    # references - the above should match these
+    # _, cof = contourf(fig[4, 1][1, 1], x, y, 1 .+ z, colormap = :thermal)
+    # Colorbar(fig[4, 1][1, 2], cof)
+
+    # _, cof = contourf(fig[4, 2][1, 1], x, y, 1 .+ z, levels = 1:0.15:2.5)
+    # Colorbar(fig[4, 2][1, 2], cof)
 
     fig
 end
@@ -1771,18 +1841,6 @@ end
     fig
 end
 
-@reference_test "contourf bug #3683" begin
-    x = y = LinRange(0, 1, 4)
-    ymin, ymax = 0.4, 0.6
-    steepness = 0.1
-    f(x, y) = (tanh((y - ymin) / steepness) - tanh((y - ymax) / steepness) - 1)
-    z = [f(_x, _y) for _x in x, _y in y]
-
-    fig, ax, cof = contourf(x, y, z, levels = 2)
-    Colorbar(fig[1, 2], cof)
-    fig
-end
-
 @reference_test "Violin plots differently scaled" begin
     fig = Figure()
     xs = vcat([fill(i, i * 1000) for i in 1:4]...)
@@ -1909,7 +1967,7 @@ end
 end
 
 @reference_test "boxplot" begin
-    fig = Figure()
+    fig = Figure(size = (500, 900))
 
     categories = vcat(fill(1, 300), fill(2, 300), fill(3, 300))
     values = RNG.randn(900) .+ range(-1, 1, length = 900)
@@ -1940,13 +1998,24 @@ end
         ax_vert, categories, values, orientation = :vertical, weights = weights,
         gap = 0.5,
         show_notch = true, notchwidth = 0.75,
-        markersize = 5, strokewidth = 2.0, strokecolor = :black,
-        medianlinewidth = 5, mediancolor = :orange,
-        whiskerwidth = 1.0, whiskerlinewidth = 3, whiskercolor = :green,
-        outlierstrokewidth = 1.0, outlierstrokecolor = :red,
+        markersize = 5, outlierstrokewidth = 1.0, outlierstrokecolor = :red,
+        strokewidth = 2.0, strokecolor = :black, strokestyle = :dash,
+        medianlinewidth = 5, mediancolor = :orange, medianlinestyle = :dot,
+        whiskerwidth = 1.0, whiskerlinewidth = 3, whiskercolor = :green, whiskerlinestyle = :dot,
         width = 1.5,
     )
     boxplot!(ax_horiz, categories, values; orientation = :horizontal, width = categories ./ 3)
+
+    boxplot(
+        fig[3:4, 1:2], categories, values,
+        orientation = :vertical, weights = weights,
+        gap = 0.5, show_notch = true, notchwidth = 0.75,
+        show_outliers = false,
+        strokewidth = 10, strokecolor = :darkred, strokejoinstyle = :round,
+        medianlinewidth = 10, mediancolor = :green, medianlinecap = :round,
+        whiskerwidth = 1.0, whiskerlinewidth = 10, whiskercolor = :black, whiskerlinecap = :round,
+        width = 1.5,
+    )
 
     fig
 end
