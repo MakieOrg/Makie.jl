@@ -201,6 +201,13 @@ end
 
 function register_contourf_computations!(graph, argname)
     map!(graph, [argname, :levels, :mode], :computed_levels) do zs, levels, mode
+        if levels isa Integer
+            mi, ma = extrema_nan(vec(zs))
+            if isapprox(mi, ma)
+                delta = max(one(mi), abs(mi))
+                return Float32.(range(mi - delta, ma + delta; length = levels + 1))
+            end
+        end
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
