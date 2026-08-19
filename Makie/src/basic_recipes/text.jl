@@ -905,7 +905,6 @@ fast_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fa
 function register_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :glyph_boundingboxes)
         register_raw_glyph_boundingboxes!(plot)
-        register_markerspace_positions!(plot)
         map!(
             plot.attributes,
             [:raw_glyph_boundingboxes, :marker_offset, :glyph_rotations, :text_blocks, :markerspace_positions],
@@ -1021,7 +1020,6 @@ fast_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_f
 function register_string_boundingboxes!(plot)
     if !haskey(plot.attributes, :string_boundingboxes)
         register_fast_string_boundingboxes!(plot)
-        register_markerspace_positions!(plot)
         # project positions to markerspace, add them
         map!(
             plot.attributes,

@@ -372,7 +372,7 @@ end
     Makie.update_state_before_display!(f)
 
     # log10 runs once per string, and the two glyphs of "bb" share that anchor
-    @test p.per_glyph_positions[] == [Point3f(1, 1, 0), Point3f(3, 2, 0), Point3f(3, 2, 0)]
+    @test p.per_glyph_positions[] == Point2f[(1, 1), (3, 2), (3, 2)]
 
     # the child no longer transforms, so the model has to reach it
     glyphs = p.plots[1]
@@ -386,7 +386,7 @@ end
     ax = Axis(f[1, 1])
     p = text!(ax, [Point2(1.0e9, 1.0), Point2(1.0e9 + 1.0e-3, 2.0)], text = ["a", "b"])
     Makie.update_state_before_display!(f)
-    @test p.per_glyph_positions[] == [Point3d(1.0e9, 1, 0), Point3d(1.0e9 + 1.0e-3, 2, 0)]
+    @test p.per_glyph_positions[] == Point2d[(1.0e9, 1), (1.0e9 + 1.0e-3, 2)]
 end
 
 @testset "generic attributes reach the children" begin

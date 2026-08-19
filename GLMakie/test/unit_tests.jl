@@ -551,11 +551,14 @@ end
     s = Scene(camera = campixel!, size = (100, 100))
     p = scatter!(s, Point2f(50, 50), marker = RasterizedMarker(), markersize = 20)
     screen = display(GLMakie.Screen(visible = false, px_per_unit = 2), s)
-    @test size(p.gl_image[]) == (40, 40)
+    @test size(p.image[]) == (40, 40)
 
     screen.px_per_unit[] = 4
-    @test size(p.gl_image[]) == (80, 80)
-    colorbuffer(screen)
+    @test size(p.image[]) == (80, 80)
+
+    GLMakie.closeall()
+    screen = display(GLMakie.Screen(visible = false, px_per_unit = 1), s)
+    @test size(p.image[]) == (20, 20)
 
     GLMakie.closeall()
 end

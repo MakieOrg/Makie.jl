@@ -548,7 +548,6 @@ function plot!(plot::EditableText)
         space = plot.space, markerspace = :pixel,
         visible = plot.visible, inspectable = false,
     )
-    register_markerspace_positions!(text_plot, Point2f)
 
     # The block's projected pixel position. `text!` always renders one block
     # per position vector, so `only` matches that invariant — it errors if the
