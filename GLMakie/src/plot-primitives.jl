@@ -411,7 +411,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         # opening a new one) so we need to regenerate the Observable.on even if
         # plot.px_per_unit exists. (The screen clears px_per_unit listeners
         # when closed)
-        haskey(attr, :px_per_unit) || map!(() -> 1f0, attr, Symbol[], :px_per_unit)
+        haskey(attr, :px_per_unit) || map!(() -> 1.0f0, attr, Symbol[], :px_per_unit)
         attr.px_per_unit[] # init node so it can be overwritten
         on(ppu -> attr.px_per_unit[] = ppu, screen.px_per_unit, update = true)
         Makie.all_marker_computations!(attr)

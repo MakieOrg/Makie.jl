@@ -678,8 +678,8 @@ const PrimitivePlotTypes = Union{
 Returns true for plot types that opt in to using `convert_attribute`
 infrastructure. This is `false` by default for recipes.
 """
-uses_convert_attribute(::Type{<: PrimitivePlotTypes}) = true
-uses_convert_attribute(::Type{<: AbstractPlot}) = false
+uses_convert_attribute(::Type{<:PrimitivePlotTypes}) = true
+uses_convert_attribute(::Type{<:AbstractPlot}) = false
 
 function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, p.attributes, inputs, outputs)

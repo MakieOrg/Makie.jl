@@ -599,7 +599,7 @@ end
 
 function all_marker_computations!(attr, markername = :marker)
     add_constant!(attr, :atlas, get_texture_atlas())
-    haskey(attr, :px_per_unit) || map!(() -> 1f0, attr, Symbol[], :px_per_unit)
+    haskey(attr, :px_per_unit) || map!(() -> 1.0f0, attr, Symbol[], :px_per_unit)
     inputs = [:atlas, markername, :font, :markersize, :px_per_unit]
     outputs = [:sdf_marker_shape, :sdf_uv, :image]
     return register_computation!(
