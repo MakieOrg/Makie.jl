@@ -1,12 +1,13 @@
 function check_textsize_deprecation(@nospecialize(dictlike))
-    return if haskey(dictlike, :textsize)
+    if haskey(dictlike, :textsize)
         throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
     end
+    return
 end
 
 # We sort out position vs string(-like) vs mixed arguments before convert_arguments,
 # so that we only get positions here
-conversion_trait(::Type{<:Text}, args...) = PointBased()
+conversion_trait(::Type{<:Text}) = PointBased()
 
 convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
@@ -16,6 +17,8 @@ function convert_attribute(align, ::key"align", ::key"text")
     return Ref{Any}(align)
 end
 
+validate_text_align(als::AbstractVector) = foreach(validate_text_align, als)
+validate_text_align(al) = error("Text align must be a two-element tuple, got $(repr(al))")
 function validate_text_align(al::Union{Tuple, StaticVector})
     if length(al) != 2
         error("Text align must be a two-element tuple, got $(repr(al))")
@@ -28,10 +31,6 @@ function validate_text_align(al::Union{Tuple, StaticVector})
     end
     return
 end
-
-validate_text_align(als::AbstractVector) = foreach(validate_text_align, als)
-
-validate_text_align(al) = error("Text align must be a two-element tuple, got $(repr(al))")
 
 # Positions are always vectors so text should be too
 convert_attribute(str::AbstractString, ::key"text", ::key"text") = Ref{Any}([str]) # don't fix string type
@@ -63,9 +62,11 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     if !haskey(attr, :position)
         add_input!(AttributeConvert(:position, :text), attr, :position, get(user_kw, :position, (0.0, 0.0)))
     end
-    register_computation!(attr, inputs, [:_positions, :_text_update]) do inputs, changed, cached
+
+    register_computation!(attr, inputs, [:_positions, :_text_update]) do inputs, changed, @nospecialize(cached)
         a_pos, a_text, args... = values(inputs)
         _, text_changed, args_changed... = values(changed)
+
         # Note: Could add RichText
         if args isa Tuple{<:Union{AbstractString, RichText}}
             # position data will always be wrapped in a Vector, so strings should too
@@ -213,15 +214,15 @@ end
 
 function append_text_layout!(buffer::GlyphBuffer, layout::TextLayout)
     n = length(layout.glyphindices)
-    length(layout.origins) == n ||
+    if length(layout.origins) != n || length(layout.extents) != n
         error("Expected $n glyph origins, got $(length(layout.origins)).")
-    length(layout.extents) == n ||
-        error("Expected $n glyph extents, got $(length(layout.extents)).")
+    end
     for name in (:fonts, :scales, :colors, :strokecolors, :strokewidths)
         validate_glyph_value(name, getfield(layout, name), n)
     end
-    length(layout.specs) == length(layout.spec_bboxes) ||
-        error("Expected one bounding box per text spec.")
+    if length(layout.specs) != length(layout.spec_bboxes)
+        error("Expected one bounding box per text spec. Got $(length(layout.specs)) specs and $(length(layout.spec_bboxes)) boundinboxes.")
+    end
 
     offset = length(buffer.glyph_indices)
     push!(buffer.text_blocks, (offset + 1):(offset + n))
@@ -465,7 +466,8 @@ function validate_per_string(
         hint = "To style parts of a string differently, use `rich` text."
     )
     (isscalar(value) || length(value) == n_strings) && return
-    return error("Expected a scalar $name or one value per string ($n_strings), got $(length(value)). $hint")
+    error("Expected a scalar $name or one value per string ($n_strings), got $(length(value)). $hint")
+    return
 end
 
 # `align` only reaches text layout through this: automatic justification follows
@@ -474,7 +476,7 @@ end
 # valign, or halign on left-justified text) is filtered by `is_same` and never
 # triggers a relayout.
 function register_resolved_justification!(attr::ComputeGraph)
-    return map!(attr, [:input_text, :justification, :validated_align], :resolved_justification) do input_text, justification, align
+    map!(attr, [:input_text, :justification, :validated_align], :resolved_justification) do input_text, justification, align
         isscalar(justification) && isscalar(align) && return justification2float(justification, align[1])
         # per-block values, so `input_text` sets the count rather than either input
         return Float32[
@@ -482,6 +484,7 @@ function register_resolved_justification!(attr::ComputeGraph)
                 for i in eachindex(input_text)
         ]
     end
+    return
 end
 
 # The display attributes only reach layout when some text bakes them in; otherwise this
@@ -516,7 +519,7 @@ function register_glyph_layout!(attr::ComputeGraph)
         :baked_display_attributes,
     ]
     outputs = collect(fieldnames(GlyphBuffer))
-    return register_computation!(attr, inputs, outputs) do inputs, changed, cached
+    register_computation!(attr, inputs, outputs) do inputs, changed, cached
         (; input_text, text_handler, fontsize, selected_font, resolved_justification) = inputs
         (; lineheight, word_wrap_width, fonts, baked_display_attributes) = inputs
 
@@ -529,12 +532,10 @@ function register_glyph_layout!(attr::ComputeGraph)
         buffer = cached === nothing ? GlyphBuffer() : GlyphBuffer(cached)
         empty!(buffer)
         N = length(input_text)
-        for (name, value) in [
-                (:fontsize, fontsize), (:font, selected_font), (:lineheight, lineheight),
-                (:word_wrap_width, word_wrap_width),
-            ]
-            validate_per_string(name, value, N)
-        end
+        validate_per_string(:fontsize, fontsize, N)
+        validate_per_string(:font, selected_font, N)
+        validate_per_string(:lineheight, lineheight, N)
+        validate_per_string(:word_wrap_width, word_wrap_width, N)
 
         for (i, str) in enumerate(input_text)
             attributes = block_attributes(
@@ -547,6 +548,7 @@ function register_glyph_layout!(attr::ComputeGraph)
         return node_outputs(buffer)
     end
 
+    return
 end
 
 """
@@ -563,7 +565,7 @@ function register_glyph_display!(attr::ComputeGraph)
         :computed_color, :converted_strokecolor, :strokewidth,
     ]
     outputs = [:glyph_colors, :glyph_strokecolors, :glyph_strokewidths]
-    return register_computation!(attr, inputs, outputs) do inputs, changed, cached
+    register_computation!(attr, inputs, outputs) do inputs, changed, cached
         (; input_text, text_handler, text_blocks) = inputs
         (; layout_colors, layout_strokecolors, layout_strokewidths) = inputs
         (; computed_color, converted_strokecolor, strokewidth) = inputs
@@ -584,8 +586,10 @@ function register_glyph_display!(attr::ComputeGraph)
             end
         end
 
-        return (colors, strokecolors, strokewidths)
+        return colors, strokecolors, strokewidths
     end
+
+    return
 end
 
 """
@@ -680,11 +684,12 @@ function register_text_computations!(attr::ComputeGraph)
 
     register_glyph_placement!(attr)
 
+    # marker_offset is in marker_space
     map!(attr, [:glyph_origins, :converted_offset, :text_blocks], :marker_offset) do origins, offset, blocks
         return Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r]
     end
 
-    register_position_transforms!(attr, input_name = :positions, transformed_name = :positions_transformed)
+    register_position_transforms!(attr)
 
     # One anchor position per glyph, repeated within a string. `transform_func` is
     # applied before the repeat, so it runs once per string rather than once per glyph;
@@ -698,7 +703,7 @@ function register_text_computations!(attr::ComputeGraph)
                     "position/color/etc...)` to update multiple attributes together."
             )
         end
-        PT = Point3{eltype(eltype(positions))}
+        PT = float_type(positions)
         return PT[to_ndim(PT, sv_getindex(positions, i), 0) for (i, r) in enumerate(blocks) for _ in r]
     end
 
@@ -716,7 +721,6 @@ get_text_type(::T) where {T} = T
 
 function calculated_attributes!(::Type{Text}, plot::Plot)
     attr = plot.attributes
-
     # `Text` is a recipe, so its attributes arrive unconverted. Layout bakes colors into
     # the glyph arrays and placement needs a 3d offset, so it converts what it consumes;
     # what it forwards to the `Glyphs` child is converted there.
@@ -729,15 +733,29 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
         return align
     end
     register_colormapping!(attr, :converted_color)
-    register_text_computations!(attr)
     return
 end
 
 function plot!(plot::Text)
+    register_text_computations!(plot.attributes)
     # `add_text_specs!` projects each block's anchor position, which needs the camera.
     # Primitives get this from `connect_plot!`; a recipe asks for it.
     register_camera!(parent_scene(plot), plot)
-    add_glyphs!(plot)
+    glyphs!(
+        plot,
+        plot.attributes,
+        plot.per_glyph_positions;
+        glyph_indices = plot.glyph_indices,
+        font = plot.glyph_fonts,
+        marker_offset = plot.marker_offset,
+        scale = plot.glyph_scales,
+        color = plot.glyph_colors,
+        rotation = plot.glyph_rotations,
+        strokecolor = plot.glyph_strokecolors,
+        strokewidth = plot.glyph_strokewidths,
+        transformation = :inherit_model,
+        alpha = 1.0 # already included in color
+    )
     add_text_specs!(plot)
     return plot
 end
@@ -747,24 +765,26 @@ end
 # position (per camera) and render in markerspace. Empty for plain text, so the plotlist
 # has no children and no render objects.
 function add_text_specs!(plot)
-    register_model_clip_planes!(plot.attributes)
+    register_markerspace_positions!(plot)
+
     # One shared transformation for all spec children. Their placement flows through
     # the `model` keyword, which shuts off the transformation's model sync, so this
     # only carries what else a transformation provides: the z value CairoMakie sorts
     # drawing by, inherited from the text plot, and an identity transform_func.
     spec_transformation = Transformation(plot; transform_func = identity)
+
     map!(
         plot.attributes,
         [
-            :layout_specs, :text_spec_models, :text_spec_block_indices, :preprojection, :model_f32c,
-            :positions_transformed_f32c, :model_clip_planes, :space, :markerspace, :visible,
+            :layout_specs, :text_spec_models, :text_spec_block_indices,
+            :markerspace_positions, :markerspace, :visible,
             :depth_shift, :transparency, :fxaa, :overdraw, :inspectable,
         ],
         :_placed_text_specs,
-    ) do specs, spec_models, block_indices, preprojection, model_f32c, positions, clip_planes, space, markerspace, visible,
+    ) do specs, spec_models, block_indices, ms_positions, markerspace, visible,
             depth_shift, transparency, fxaa, overdraw, inspectable
+
         isempty(specs) && return PlotSpec[]
-        ms_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
         return map(specs, spec_models, block_indices) do spec, spec_model, bidx
             kw = copy(spec.kwargs)
             # placement goes through `model` rather than the spec's arguments, so any
@@ -789,29 +809,6 @@ function add_text_specs!(plot)
         end
     end
     return plotlist!(plot, plot._placed_text_specs)
-end
-
-function add_glyphs!(plot)
-    return glyphs!(
-        plot,
-        # everything not resolved per glyph below travels as is, so `visible`,
-        # `depth_shift`, `fxaa` and friends reach what actually draws. `alpha` is
-        # excluded because it is already folded into the glyph colors.
-        shared_attributes(
-            plot, Glyphs;
-            drop = [:color, :alpha, :font, :strokecolor, :strokewidth, :rotation, :marker_offset]
-        ),
-        plot.per_glyph_positions;
-        glyph_indices = plot.glyph_indices,
-        font = plot.glyph_fonts,
-        marker_offset = plot.marker_offset,
-        scale = plot.glyph_scales,
-        color = plot.glyph_colors,
-        rotation = plot.glyph_rotations,
-        strokecolor = plot.glyph_strokecolors,
-        strokewidth = plot.glyph_strokewidths,
-        transformation = :inherit_model,
-    )
 end
 
 ################################################################################

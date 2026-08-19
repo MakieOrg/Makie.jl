@@ -38,12 +38,10 @@ function calculated_attributes!(::Type{Glyphs}, plot::Plot)
     register_position_transforms!(attr)
 
     map!(
-        attr,
+        scatter_limits, attr,
         [:positions, :space, :markerspace, :quad_scale, :quad_offset, :rotation, :marker_offset],
         :data_limits
-    ) do positions, space, markerspace, quad_scale, quad_offset, rotation, marker_offset
-        return scatter_limits(positions, space, markerspace, quad_scale, quad_offset, rotation, marker_offset)
-    end
+    )
 
     return
 end
