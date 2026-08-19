@@ -556,13 +556,13 @@ upstream of the backends.
 """
 rasterize_marker_for_gpu(@nospecialize(marker), @nospecialize(markersize), @nospecialize(px_per_unit)) = nothing
 
-function compute_marker_attributes((atlas, marker, font, scale), changed, last)
+function compute_marker_attributes((atlas, marker, font, scale, ppu), changed, last)
     # Note: Careful, changed[2] is not always called marker
     # TODO, only calculate offset if needed
     # [atlas_sym, :marker, :font, :markersize]
     # [:sdf_marker_shape, :sdf_uv, :image]
     if !(marker isa Matrix{<:Colorant} || marker isa Vector{<:Matrix{<:Colorant}})
-        raster = rasterize_marker_for_gpu(marker, scale, 1)
+        raster = rasterize_marker_for_gpu(marker, scale, ppu)
         raster === nothing || (marker = raster)
     end
     if marker isa Matrix{<:Colorant} # single image marker
@@ -599,7 +599,8 @@ end
 
 function all_marker_computations!(attr, markername = :marker)
     add_constant!(attr, :atlas, get_texture_atlas())
-    inputs = [:atlas, markername, :font, :markersize]
+    haskey(attr, :px_per_unit) || map!(() -> 1f0, attr, Symbol[], :px_per_unit)
+    inputs = [:atlas, markername, :font, :markersize, :px_per_unit]
     outputs = [:sdf_marker_shape, :sdf_uv, :image]
     return register_computation!(
         compute_marker_attributes, attr, inputs, outputs

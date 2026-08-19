@@ -312,23 +312,6 @@ end
 ### Scatter
 ################################################################################
 
-# A marker that `Makie.rasterize_marker_for_gpu` claims is re-rasterized with the
-# screen's `px_per_unit`, so it stays sharp on hidpi screens and when a `save` at
-# higher resolution updates `screen.px_per_unit`. The compute graph's `image` was
-# rasterized at `px_per_unit = 1` and stays the fallback; a `Vector` of markers also
-# falls back, since its uv packing happens in the graph.
-function register_screen_rasterization!(attr, screen)
-    haskey(attr, :gl_image) && return
-    add_input!(attr, :screen_px_per_unit, screen.px_per_unit)
-    inputs = [:marker, :markersize, :screen_px_per_unit, :image]
-    register_computation!(attr, inputs, [:gl_image]) do (marker, markersize, ppu, image), changed, last
-        raster = Makie.rasterize_marker_for_gpu(marker, markersize, ppu)
-        return (raster isa Matrix ? raster : image,)
-    end
-    ComputePipeline.set_type!(attr[:gl_image], Any)
-    return
-end
-
 function assemble_scatter_robj!(data, screen::Screen, attr, args, input2glname)
     fast_pixel = attr[:marker][] isa FastPixel
     colormap = args.alpha_colormap
@@ -424,14 +407,20 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         ]
 
     else
+        # A plot may get attached to different screens (i.e. through closing an
+        # opening a new one) so we need to regenerate the Observable.on even if
+        # plot.px_per_unit exists. (The screen clears px_per_unit listeners
+        # when closed)
+        haskey(attr, :px_per_unit) || map!(() -> 1f0, attr, Symbol[], :px_per_unit)
+        attr.px_per_unit[] # init node so it can be overwritten
+        on(ppu -> attr.px_per_unit[] = ppu, screen.px_per_unit, update = true)
         Makie.all_marker_computations!(attr)
-        register_screen_rasterization!(attr, screen)
 
         # Simple forwards
         uniforms = [
             :positions_transformed_f32c,
             :sdf_uv, :quad_scale, :quad_offset,
-            :gl_image, :lowclip_color, :highclip_color, :nan_color,
+            :image, :lowclip_color, :highclip_color, :nan_color,
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :converted_rotation, :billboard, :transform_marker,
             :gl_indices, :gl_len, :marker_offset, :f32c_scale,
@@ -451,7 +440,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :sdf_marker_shape => :shape,
         :sdf_uv => :uv_offset_width,
         :gl_markerspace => :markerspace,
-        :gl_image => :image,
         :quad_scale => :scale,
         :strokecolor => :stroke_color, :strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,

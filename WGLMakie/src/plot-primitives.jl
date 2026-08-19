@@ -260,6 +260,7 @@ function create_shader(scene::Scene, plot::Scatter)
         end
         markersym = :fast_pixel_marker
     end
+    # TODO: This should be px_per_unit-aware for rasterized markers
     Makie.all_marker_computations!(attr, markersym)
     register_computation!(attr, [:sdf_marker_shape, :marker, :font], [:glyph_data]) do (shape, markers, fonts), changed, last
         shape != 3 && return nothing
@@ -268,7 +269,7 @@ function create_shader(scene::Scene, plot::Scatter)
         return (dict,)
     end
 
-    map!(attr, [:marker, :scaled_color], :scatter_color) do marker, color
+    map!(attr, [:image, :scaled_color], :scatter_color) do marker, color
         if marker isa AbstractMatrix
             return to_color(marker)
         else
@@ -292,7 +293,7 @@ function create_shader(scene::Scene, plot::Scatter)
         :lowclip_color, :pattern,
 
         :converted_rotation, :billboard, :quad_scale,
-        :quad_offset, :sdf_uv, :sdf_marker_shape, :image,
+        :quad_offset, :sdf_uv, :sdf_marker_shape,
         :strokewidth, :converted_strokecolor, :glowwidth,
         :glowcolor, :depth_shift, :atlas,
         :markerspace, :visible, :transform_marker, :f32c_scale,
