@@ -213,7 +213,7 @@ function register_colormapping_without_color!(attr::ComputeGraph)
     for key in (:lowclip, :highclip)
         sym = Symbol(key, :_color)
         map!(attr, [key, :alpha_colormap], sym) do input, cmap
-            if input === automatic
+            if input === automatic || input === nothing
                 return ifelse(key == :lowclip, first(cmap), last(cmap))
             else
                 return to_color(input)
@@ -262,7 +262,10 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         elseif last(colorrange) == automatic
             return Vec2f((first(colorrange), last(autorange)))
         else
-            return Vec2f(apply_scale(colorscale, colorrange))
+            lo, hi = apply_scale(colorscale, colorrange)
+            lo == hi || return Vec2f(lo, hi)
+            delta = max(0.5f0, abs(Float32(lo)))
+            return Vec2f(lo - delta, hi + delta)
         end
     end
 end
@@ -703,7 +706,7 @@ function (cc::CycleConvert)(value)
         cycle = cc.graph.cycle[]::Cycle
         x = get_cycle_attribute(cc.palettes, cc.key, value.i, cycle)
         return cc.callback(x)
-    elseif isnothing(value)
+    elseif value === :cycled
         cycle = cc.graph.cycle[]::Cycle
         cycle_index = cc.graph.cycle_index[]::Int
         x = get_cycle_attribute(cc.palettes, cc.key, cycle_index, cycle)
@@ -1148,7 +1151,10 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
         elseif last(colorrange) == automatic
             return Vec2f(first(colorrange), last(distinct_extrema_nan(color)))
         else
-            return Vec2f(colorrange)
+            lo, hi = Vec2f(colorrange)
+            lo == hi || return Vec2f(lo, hi)
+            delta = max(0.5f0, abs(lo))
+            return Vec2f(lo - delta, hi + delta)
         end
     end
 

@@ -49,6 +49,7 @@ end
         include("plots/hist.jl")
         include("plots/poly.jl")
         include("plots/contourf.jl")
+        include("plots/tricontour.jl")
         include("plots/voronoiplot.jl")
     end
 
