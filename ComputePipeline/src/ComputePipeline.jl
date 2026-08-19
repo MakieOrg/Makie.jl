@@ -973,14 +973,39 @@ end
 
 function locked_resolve!(edge::ComputeEdge)
     edge.got_resolved[] && return
-    foreach(locked_resolve!, edge.inputs)
-    if !isassigned(edge.typed_edge)
-        edge.typed_edge[] = TypedEdge(edge)
+
+    # special case to avoid resolving both options of an ifelse
+    # Note: dispatching on callback type is much slower than this
+    if edge.callback === ifelse
+        # resolve condition
+        locked_resolve!(edge.inputs[1])
+        edge.inputs_dirty[1] = false
+
+        # resolve and forward picked choice
+        idx = 1 + Int(edge.inputs[1][]::Bool)
+        locked_resolve!(edge.inputs[idx])
+        edge.inputs_dirty[idx] = false
+        new_value = edge.inputs[idx].value[]
+
+        output = edge.outputs[1]
+        if isdefined(output, :value) && isassigned(output.value)
+            output.dirty = is_same(output.value[], new_value)
+            output.value[] = new_value
+        else
+            output.dirty = true
+            output.value = RefValue(new_value)
+        end
     else
-        locked_resolve!(edge.typed_edge[])
+        foreach(locked_resolve!, edge.inputs)
+        if !isassigned(edge.typed_edge)
+            edge.typed_edge[] = TypedEdge(edge)
+        else
+            locked_resolve!(edge.typed_edge[])
+        end
+        fill!(edge.inputs_dirty, false)
     end
+
     edge.got_resolved[] = true
-    fill!(edge.inputs_dirty, false)
     for dep in edge.dependents
         mark_input_dirty!(edge, dep)
     end
@@ -1555,6 +1580,7 @@ struct MapFunctionWrapper{pack, FT} <: Function
 end
 
 MapFunctionWrapper(::typeof(compute_identity), pack = true) = compute_identity
+MapFunctionWrapper(::typeof(ifelse), pack = true) = ifelse
 
 function (x::MapFunctionWrapper{true})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)

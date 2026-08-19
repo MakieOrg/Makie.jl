@@ -47,3 +47,33 @@ unwrap_explicit_update(x) = x
 unwrap_explicit_update(x::ComputePipeline.ExplicitUpdate) = x.data
 
 export ExplicitUpdate, unwrap_explicit_update
+
+"""
+    pick_ifelse(graph, condition, choice1, choice2, output)
+
+Calls `map!(ifelse, graph, [condition, choice1, choice2], output)` which sets
+`output` to `choice1` or `choice2` based on `condition` when resolved.
+
+This uses a special path in `resolve!` to only evaluate one of the two branches.
+"""
+function pick_ifelse(graph, condition, choice1, choice2, output::Symbol)
+    map!(ifelse, graph, [condition, choice1, choice2], output)
+    return
+end
+
+"""
+    pick_ifelse(callback, graph, condition_inputs, choice1, choice2, output)
+
+Adds `map!(callback, graph, condition_inputs, anon_node)` to map the
+`condition_inputs` to a boolean node using `callback` and
+`map!(ifelse, graph, [anon_node, choice1, choice2], output)` to pick `choice1`
+or `choice2` based on the result.
+
+This uses a special path in `resolve!` to only evaluate one of the two branches.
+"""
+function pick_ifelse(callback, graph, condition_inputs, choice1, choice2, output::Symbol)
+    condition = Symbol(output, :_picker)
+    map!(callback, graph, condition_inputs, condition)
+    map!(ifelse, graph, [condition, choice1, choice2], output)
+    return
+end
