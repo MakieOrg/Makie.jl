@@ -11,12 +11,19 @@ if "$BACKEND" == "WGLMakie"
         disp = WGLMakie.Bonito.use_electron_display()
         display(disp, WGLMakie.Bonito.App(fig))
     end
-    # Offline export serializes the scene synchronously, so missing shader
-    # assets in a relocated install throw instead of being logged as a
-    # warning on the server task (the Electron display path defers
-    # serialization until JS reports the canvas size, which this app may
-    # exit before reaching).
-    _offline_check() = WGLMakie.Bonito.export_static(tempname() * ".html", WGLMakie.Bonito.App(scatter(1:4)))
+    # Rendering a figure into a NoConnection session takes the offline branch
+    # in three_display, which serializes the scene synchronously -- so missing
+    # shader assets in a relocated install throw here instead of being logged
+    # as a warning on the server task (the Electron display path defers
+    # serialization until JS reports the canvas size, which this app may exit
+    # before reaching). Deliberately does not render the page HTML: offline
+    # asset inlining reads non-relocatable asset files, a separate issue.
+    function _offline_check()
+        session = WGLMakie.Bonito.Session(WGLMakie.Bonito.NoConnection())
+        WGLMakie.Bonito.session_dom(session, WGLMakie.Bonito.App(scatter(1:4)))
+        close(session)
+        return
+    end
 else
     _display(fig) = display(fig)
     _offline_check() = nothing
@@ -83,7 +90,7 @@ exe = joinpath(pwd(), "executable", "bin", "MakieApp")
 function run_and_capture(cmd)
     logfile = tempname()
     p = open(logfile, "w") do io
-        run(pipeline(cmd; stdout = io, stderr = io))
+        run(pipeline(ignorestatus(cmd); stdout = io, stderr = io))
     end
     output = read(logfile, String)
     print(output)
