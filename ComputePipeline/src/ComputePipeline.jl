@@ -982,7 +982,7 @@ function locked_resolve!(edge::ComputeEdge)
         edge.inputs_dirty[1] = false
 
         # resolve and forward picked choice
-        idx = 1 + Int(edge.inputs[1][]::Bool)
+        idx = 2 + Int(!edge.inputs[1][]::Bool)
         locked_resolve!(edge.inputs[idx])
         edge.inputs_dirty[idx] = false
         new_value = edge.inputs[idx].value[]
