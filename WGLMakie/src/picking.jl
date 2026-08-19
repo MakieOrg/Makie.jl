@@ -85,13 +85,24 @@ function Makie.pick(::Scene, screen::Screen, r::Rect2)
 end
 
 """
-    ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover, class="popup",
-css=POPUP_CSS)
+    ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover, trigger=:click,
+range=0, class="popup", css=POPUP_CSS)
 
-Returns a Bonito DOM element, which creates a popup whenever you click on a plot element in
-`plots`.
-The content of the popup is filled with the return value of js_callback, which can be a string
-or `HTMLNode`.
+Returns a Bonito DOM element, which creates a popup whenever you interact with a plot
+element in `plots`. The content of the popup is filled with the return value of
+js_callback, which can be a string or `HTMLNode`.
+
+`trigger` controls what shows the popup:
+- `:click` (default): click on a plot element. Picking uses an exact 1×1 pixel hit test,
+  matching pre-existing click-to-inspect behavior.
+- `:hover`: move the mouse over a plot element; the popup follows the cursor and hides
+  again once you move off the element or press the mouse down.
+
+`range` sets the picking tolerance in pixels. `0` (the default) uses the exact 1×1 pick
+described above, regardless of `trigger`. Any value `> 0` switches to a tolerant
+"closest point within `range` pixels" pick instead — useful for `:hover` (and for `:click`
+on small or sparse markers), since requiring an exact hit under the cursor is impractical
+when following continuous mouse movement.
 
 The popup is styled via `class` (the CSS class on the popup `div`, default `"popup"`) and
 `css` (a stylesheet to load — any `jsrender`-able such as an `Asset`, `Styles` or DOM node;
@@ -134,15 +145,25 @@ struct ToolTip
     scene::Scene
     callback::Bonito.JSCode
     plot_uuids::Vector{String}
+    trigger::Symbol
+    range::Int
     class::String
     css::Any
-    function ToolTip(figlike, callback; plots = nothing, class = "popup", css = POPUP_CSS)
+    function ToolTip(
+            figlike,
+            callback;
+            plots = nothing,
+            trigger = :click,
+            range = 0,
+            class = "popup",
+            css = POPUP_CSS,
+        )
         scene = Makie.get_scene(figlike)
         if isnothing(plots)
             plots = scene.plots
         end
         all_plots = js_uuid.(filter!(x -> x.inspectable[], Makie.collect_atomic_plots(plots)))
-        return new(scene, callback, all_plots, class, css)
+        return new(scene, callback, all_plots, trigger, range, class, css)
     end
 end
 
@@ -176,10 +197,13 @@ function Bonito.jsrender(session::Session, tt::ToolTip)
     popup = DOM.div("", class = tt.class)
     Bonito.evaljs(
         session, js"""
-            $(scene).then(scene => {
+            Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => {
                 const plots_to_pick = new Set($(tt.plot_uuids));
                 const callback = $(tt.callback);
-                WGL.register_popup($popup, scene, plots_to_pick, callback)
+                WGL.register_popup($popup, scene, plots_to_pick, callback, {
+                    trigger: $(string(tt.trigger)),
+                    range: $(tt.range)
+                })
             })
         """
     )

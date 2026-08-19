@@ -511,4 +511,28 @@ using Electron, WGLMakie, Bonito, Test
         @test length(points[]) == initial_count + 1
         @test points[][end][1] ≈ 7.0  # X position should be slider value
     end
+
+    @testset "WGLMakie.ToolTip - trigger and range options" begin
+        fig = Figure()
+        ax = Axis(fig[1, 1])
+        sc = scatter!(ax, rand(10), rand(10))
+
+        # Default options
+        tt_default = WGLMakie.ToolTip(fig, js"(plot, index) => 'Point ' + index")
+        @test tt_default.trigger === :click
+        @test tt_default.range == 0
+        @test tt_default.class == "popup"
+
+        # Custom trigger and range
+        tt_custom = WGLMakie.ToolTip(
+            fig,
+            js"(plot, index) => 'Point ' + index",
+            trigger = :hover,
+            range = 15,
+            class = "custom-tooltip"
+        )
+        @test tt_custom.trigger === :hover
+        @test tt_custom.range == 15
+        @test tt_custom.class == "custom-tooltip"
+    end
 end
