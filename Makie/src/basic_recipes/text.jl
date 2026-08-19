@@ -478,12 +478,13 @@ end
 # valign, or halign on left-justified text) is filtered by `is_same` and never
 # triggers a relayout.
 function register_resolved_justification!(attr::ComputeGraph)
-    map!(attr, [:input_text, :justification, :align], :resolved_justification) do input_text, justification, align
+    map!(eachindex, attr, :input_text, :eachstring)
+    map!(attr, [:eachstring, :justification, :align], :resolved_justification) do eachstring, justification, align
         isscalar(justification) && isscalar(align) && return justification2float(justification, align[1])
         # per-block values, so `input_text` sets the count rather than either input
         return Float32[
             justification2float(sv_getindex(justification, i), sv_getindex(align, i)[1])
-                for i in eachindex(input_text)
+                for i in eachstring
         ]
     end
     return
