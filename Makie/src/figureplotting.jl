@@ -586,8 +586,6 @@ function plot!(ax::AbstractAxis, plot::AbstractPlot)
         reset_limits!(ax)
     end
 
-    ax.onplot[] = plot
-
     return plot
 end
 

@@ -516,8 +516,6 @@ function initialize_block!(ax::Axis; palette = nothing)
     add_input!(ax.scene.compute, :axis_limits, ax.attributes.finallimits)
     map!(apply_transform, ax.scene.compute, [:transform_func, :axis_limits], :axis_limits_transformed)
 
-    ax.onplot = Observable{Plot}()
-
     return ax
 end
 

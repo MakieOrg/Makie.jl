@@ -61,8 +61,8 @@ function initialize_block!(
     return initialize_block!(leg; entrygroups)
 end
 
-connect_sources!(l::Legend, ax::AbstractAxis) = on(p -> notify(l.sources), ax.onplot)
-connect_sources!(::Legend, ::AbstractScene) = nothing
+connect_sources!(l::Legend, ax::AbstractAxis) = connect_sources!(l, ax.scene)
+connect_sources!(l::Legend, scene::AbstractScene) = on(p -> notify(l.sources), l.blockscene, scene.onplot)
 connect_sources!(l::Legend, axs::AbstractArray) = foreach(ax -> connect_sources!(l, ax), axs)
 
 function initialize_block!(

@@ -309,8 +309,6 @@ function initialize_block!(ax::Axis3)
     register_interaction!(ax, :translation, DragPan(NaN))
     register_interaction!(ax, :cursorfocus, FocusOnCursor(length(ax.scene.plots)))
 
-    ax.onplot = Observable{Plot}()
-
     return
 end
 
