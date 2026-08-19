@@ -198,6 +198,10 @@ merged with parent scenes theme, the global theme, `theme[:MyPlot]` (if it
 exists) and the keyword arguments passed to the plot. They are also be used to
 validate keyword arguments and to generate attribute docs.
 
+After a plot type has been defined by `@recipe MyPlot ...` it can optionally
+opt-in to using `convert_attribute` methods by implementing
+`uses_convert_attribute(::Type{<:MyPlot}) = true`.
+
 ### `@recipe` documentation
 
 If a docstring is given above `@recipe` it will be used to build the docstring

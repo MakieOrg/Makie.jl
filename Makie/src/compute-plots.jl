@@ -667,12 +667,19 @@ function register_marker_computations!(attr::ComputeGraph)
     end
 end
 
-# Text is a container (Glyphs + plotlist children) and never rendered directly, but it
 const PrimitivePlotTypes = Union{
     Scatter, Lines, LineSegments, Glyphs, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume,
 }
 
+"""
+    uses_convert_attribute(::Type{<:Plot})
+
+Returns true for plot types that opt in to using `convert_attribute`
+infrastructure. This is `false` by default for recipes.
+"""
+uses_convert_attribute(::Type{<: PrimitivePlotTypes}) = true
+uses_convert_attribute(::Type{<: AbstractPlot}) = false
 
 function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, p.attributes, inputs, outputs)
@@ -855,7 +862,6 @@ end
 function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
     attr = documented_attributes(P)
     name = Makie.plotkey(P)
-    is_primitive = P <: PrimitivePlotTypes
 
     # Cycle is added here to allow `plot(..., cycle = Observable(...))`. Updating
     # cycle may only change which attribute maps to which, not which attributes
@@ -865,7 +871,7 @@ function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
         add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
     end
 
-    if is_primitive
+    if uses_convert_attribute(P)
         init_graph!(key -> AttributeConvert(key, name), graph, attr, true, kwargs, parent)
     else
         init_graph!(key -> compute_identity, graph, attr, false, kwargs, parent)

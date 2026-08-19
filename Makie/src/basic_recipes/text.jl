@@ -9,6 +9,8 @@ end
 # so that we only get positions here
 conversion_trait(::Type{<:Text}) = PointBased()
 
+uses_convert_attribute(::Type{<:Text}) = true
+
 convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
 # text also allows :baseline and resolves it later
@@ -476,7 +478,7 @@ end
 # valign, or halign on left-justified text) is filtered by `is_same` and never
 # triggers a relayout.
 function register_resolved_justification!(attr::ComputeGraph)
-    map!(attr, [:input_text, :justification, :validated_align], :resolved_justification) do input_text, justification, align
+    map!(attr, [:input_text, :justification, :align], :resolved_justification) do input_text, justification, align
         isscalar(justification) && isscalar(align) && return justification2float(justification, align[1])
         # per-block values, so `input_text` sets the count rather than either input
         return Float32[
@@ -490,7 +492,7 @@ end
 # The display attributes only reach layout when some text bakes them in; otherwise this
 # stays `nothing` from one evaluation to the next, so recoloring never marks layout dirty.
 function register_baked_display_attributes!(attr::ComputeGraph)
-    inputs = [:input_text, :text_handler, :computed_color, :converted_strokecolor, :strokewidth]
+    inputs = [:input_text, :text_handler, :computed_color, :strokecolor, :strokewidth]
     map!(attr, inputs, :baked_display_attributes) do text, handler, color, strokecolor, strokewidth
         # here rather than downstream so a bad length is reported when the plot is
         # created, not when its colors are first pulled
@@ -562,13 +564,13 @@ function register_glyph_display!(attr::ComputeGraph)
     inputs = [
         :input_text, :text_handler, :text_blocks,
         :layout_colors, :layout_strokecolors, :layout_strokewidths,
-        :computed_color, :converted_strokecolor, :strokewidth,
+        :computed_color, :strokecolor, :strokewidth,
     ]
     outputs = [:glyph_colors, :glyph_strokecolors, :glyph_strokewidths]
     register_computation!(attr, inputs, outputs) do inputs, changed, cached
         (; input_text, text_handler, text_blocks) = inputs
         (; layout_colors, layout_strokecolors, layout_strokewidths) = inputs
-        (; computed_color, converted_strokecolor, strokewidth) = inputs
+        (; computed_color, strokecolor, strokewidth) = inputs
 
         colors, strokecolors, strokewidths = cached === nothing ?
             (RGBAf[], RGBAf[], Float32[]) : empty!.(values(cached))
@@ -581,7 +583,7 @@ function register_glyph_display!(attr::ComputeGraph)
             else
                 n = length(block)
                 append_per_glyph!(colors, sv_getindex(computed_color, i), n)
-                append_per_glyph!(strokecolors, sv_getindex(converted_strokecolor, i), n)
+                append_per_glyph!(strokecolors, sv_getindex(strokecolor, i), n)
                 append_per_glyph!(strokewidths, sv_getindex(strokewidth, i), n)
             end
         end
@@ -625,14 +627,14 @@ and moving it.
 function register_glyph_placement!(attr::ComputeGraph)
     inputs = [
         :glyph_layout_origins, :text_blocks, :block_bboxes, :block_baselines,
-        :validated_align, :rotation, :converted_offset,
+        :align, :rotation, :offset,
         :layout_specs, :layout_spec_bboxes, :text_spec_block_indices,
     ]
     outputs = [:glyph_origins, :glyph_rotations, :text_spec_models, :text_spec_bboxes]
     return register_computation!(attr, inputs, outputs) do inputs, changed, cached
         (; glyph_layout_origins, text_blocks, block_bboxes, block_baselines) = inputs
         (; rotation, layout_specs, layout_spec_bboxes, text_spec_block_indices) = inputs
-        (; validated_align, converted_offset) = inputs
+        (; align, offset) = inputs
 
         validate_per_string(
             :rotation, rotation, length(text_blocks),
@@ -646,11 +648,11 @@ function register_glyph_placement!(attr::ComputeGraph)
         end
 
         shifts = map(eachindex(text_blocks)) do i
-            return block_alignment_shift(block_bboxes[i], block_baselines[i], sv_getindex(validated_align, i))
+            return block_alignment_shift(block_bboxes[i], block_baselines[i], sv_getindex(align, i))
         end
 
         for (i, block) in enumerate(text_blocks)
-            rot = to_rotation(sv_getindex(rotation, i))
+            rot = sv_getindex(rotation, i)
             for gi in block
                 push!(origins, rot * (glyph_layout_origins[gi] - shifts[i]))
                 push!(rotations, rot)
@@ -658,8 +660,8 @@ function register_glyph_placement!(attr::ComputeGraph)
         end
 
         for (bbox, i) in zip(layout_spec_bboxes, text_spec_block_indices)
-            rot = to_rotation(sv_getindex(rotation, i))
-            off = to_ndim(Vec3f, sv_getindex(converted_offset, i), 0)
+            rot = sv_getindex(rotation, i)
+            off = to_ndim(Vec3f, sv_getindex(offset, i), 0)
             push!(spec_models, spec_placement_matrix(rot, shifts[i], off))
             push!(spec_bboxes, rotate_bbox(bbox - to_ndim(Vec3d, shifts[i], 0), rot) + off)
         end
@@ -673,7 +675,7 @@ function register_text_computations!(attr::ComputeGraph)
 
     # Resolve colormapping to colors early. This allows rich text which returns
     # its own colors to be mixed with other text types which dont.
-    add_computation!(attr, Val(:computed_color); nan_color = :converted_nan_color)
+    add_computation!(attr, Val(:computed_color))
 
     register_resolved_justification!(attr)
 
@@ -685,7 +687,7 @@ function register_text_computations!(attr::ComputeGraph)
     register_glyph_placement!(attr)
 
     # marker_offset is in marker_space
-    map!(attr, [:glyph_origins, :converted_offset, :text_blocks], :marker_offset) do origins, offset, blocks
+    map!(attr, [:glyph_origins, :offset, :text_blocks], :marker_offset) do origins, offset, blocks
         return Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r]
     end
 
@@ -719,24 +721,8 @@ end
 get_text_type(x::AbstractVector) = eltype(x)
 get_text_type(::T) where {T} = T
 
-function calculated_attributes!(::Type{Text}, plot::Plot)
-    attr = plot.attributes
-    # `Text` is a recipe, so its attributes arrive unconverted. Layout bakes colors into
-    # the glyph arrays and placement needs a 3d offset, so it converts what it consumes;
-    # what it forwards to the `Glyphs` child is converted there.
-    map!(to_color, attr, :color, :converted_color)
-    map!(to_color, attr, :nan_color, :converted_nan_color)
-    map!(to_color, attr, :strokecolor, :converted_strokecolor)
-    map!(to_3d_offset, attr, :offset, :converted_offset)
-    map!(attr, :align, :validated_align) do align
-        validate_text_align(align)
-        return align
-    end
-    register_colormapping!(attr, :converted_color)
-    return
-end
-
 function plot!(plot::Text)
+    register_colormapping!(plot.attributes, :color)
     register_text_computations!(plot.attributes)
     # `add_text_specs!` projects each block's anchor position, which needs the camera.
     # Primitives get this from `connect_plot!`; a recipe asks for it.
