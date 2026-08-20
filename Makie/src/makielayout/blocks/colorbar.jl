@@ -315,9 +315,13 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
+    map!(cb, [:dim_conversion, :color_mapping_type], :merged_color_mapping_type) do dc, cmt
+        return (cmt === Makie.continuous) && isa(dc, CategoricalConversion) ? Makie.categorical : cmt
+    end
+
     map!(
         cb,
-        [:color_mapping, :color_mapping_type, :dc_values, :nsteps, :resolved_colorrange],
+        [:color_mapping, :merged_color_mapping_type, :dc_values, :nsteps, :resolved_colorrange],
         :cb_colors
     ) do mapping, mapping_type, values, n, limits
         if mapping_type === Makie.continuous
@@ -365,7 +369,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     map!(
         cb,
-        [:barbox, :vertical, :cb_colors, :scale, :color_mapping_type],
+        [:barbox, :vertical, :cb_colors, :scale, :merged_color_mapping_type],
         [:xrange, :yrange]
     ) do bb, vertical, colors, scale, mapping_type
         xmin, ymin = minimum(bb)
@@ -389,7 +393,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
     # for continuous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
     map!(
-        cb, [:vertical, :cb_colors, :color_mapping_type], :continuous_pixels
+        cb, [:vertical, :cb_colors, :merged_color_mapping_type], :continuous_pixels
     ) do vertical, colors, mapping_type
         if mapping_type !== Makie.categorical
             colors = (colors[1:(end - 1)] .+ colors[2:end]) ./ 2
@@ -400,7 +404,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     # TODO, implement interpolate = true for irregular grids in CairoMakie
     # Then, we can just use heatmap! and don't need the image plot!
-    map!(cb, :color_mapping_type, [:show_catigorical, :show_continuous]) do type
+    map!(cb, :merged_color_mapping_type, [:show_catigorical, :show_continuous]) do type
         return (type !== continuous, type === continuous)
     end
 
@@ -501,21 +505,19 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
-    map!(cb, [:cb_colors, :color_mapping_type, :ticks, :dim_conversion], :finalticks) do cs, type, ticks, dc
+    map!(cb, [:cb_colors, :merged_color_mapping_type, :ticks, :dim_conversion], :finalticks) do cs, type, ticks, dc
         # For categorical we just enumerate
-        if type === Makie.categorical
-            if isa(dc, CategoricalConversion)
-                return automatic # let dim convert generate categories (or use names of categories)
-            else
-                return (1:length(cs), string.(cs))
-            end
+        if dc isa CategoricalConversion
+            return automatic # let dim convert generate categories (or use names of categories)
+        elseif type === Makie.categorical
+            return (1:length(cs), string.(cs))
         else
             return ticks
         end
     end
     ComputePipeline.set_type!(cb.finalticks, Any)
 
-    map!(cb, [:cb_colors, :color_mapping_type, :resolved_colorrange], :ticklimits) do cs, type, limits
+    map!(cb, [:cb_colors, :merged_color_mapping_type, :resolved_colorrange], :ticklimits) do cs, type, limits
         return type === Makie.categorical ? (0.5, length(cs) + 0.5) : limits
     end
 
