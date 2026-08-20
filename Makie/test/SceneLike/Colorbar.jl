@@ -246,7 +246,7 @@ end
 
 @testset "Color dim converts" begin
     @testset "Unitful" begin
-        f,a,p = scatter(rand(10), color = (1:10) .* u"m")
+        f, a, p = scatter(rand(10), color = (1:10) .* u"m")
         @test p.color_dim_convert[] isa Makie.UnitfulConversion
         @test p.dc_color[] == 1:10 # something needs to activate the dc before we can check unit
         @test p.color_dim_convert[].unit[] == u"m"
@@ -264,20 +264,20 @@ end
         p2 = scatter!(rand(10), color = (1:10) .* u"mm"; p.color_dim_convert)
         @test p2.color_dim_convert[] === p.color_dim_convert[]
         @test p2.color_dim_convert[].unit[] == u"m"
-        @test p2.dc_color[] == collect((1:10) .* 1f-3)
+        @test p2.dc_color[] == collect((1:10) .* 1.0f-3)
         # Would be nice if the colorrange was shared but we need to figure out how
         # to do that first (and also: colormap, colorscale, lowclip, highclip, nan_color)
         @test p2.scaled_colorrange[] == Vec2f(0.001, 0.01)
 
         # Sanity check - if this fails we should pick another unit above to verify
         # that u"m" persists
-        f,a,p = scatter(rand(10), color = (1:10) .* u"mm")
+        f, a, p = scatter(rand(10), color = (1:10) .* u"mm")
         p.dc_color[]
         @test p.color_dim_convert[].unit[] == u"mm"
     end
 
     @testset "Categorical" begin
-        f,a,p = scatter(rand(3), color = Categorical(["A", "A", "B"]))
+        f, a, p = scatter(rand(3), color = Categorical(["A", "A", "B"]))
         @test p.color_dim_convert[] isa Makie.CategoricalConversion
         @test p.dc_color[] == [1.0, 1.0, 2.0]
         @test only(p.color_dim_convert[].sets)[2] == ["A", "B"]

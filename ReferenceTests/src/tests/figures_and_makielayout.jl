@@ -914,6 +914,5 @@ end
     Colorbar(f[2, 2][1, 0], p1, unit_in_label = false, unit_in_ticklabel = true)
     Colorbar(f[2, 2][1, 2], p2)
 
-
     f
 end
