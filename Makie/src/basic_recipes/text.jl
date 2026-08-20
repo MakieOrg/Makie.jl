@@ -1,12 +1,15 @@
 function check_textsize_deprecation(@nospecialize(dictlike))
-    return if haskey(dictlike, :textsize)
+    if haskey(dictlike, :textsize)
         throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
     end
+    return
 end
 
 # We sort out position vs string(-like) vs mixed arguments before convert_arguments,
 # so that we only get positions here
-conversion_trait(::Type{<:Text}, args...) = PointBased()
+conversion_trait(::Type{<:Text}) = PointBased()
+
+uses_convert_attribute(::Type{<:Text}) = true
 
 convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
@@ -16,6 +19,8 @@ function convert_attribute(align, ::key"align", ::key"text")
     return Ref{Any}(align)
 end
 
+validate_text_align(als::AbstractVector) = foreach(validate_text_align, als)
+validate_text_align(al) = error("Text align must be a two-element tuple, got $(repr(al))")
 function validate_text_align(al::Union{Tuple, StaticVector})
     if length(al) != 2
         error("Text align must be a two-element tuple, got $(repr(al))")
@@ -29,10 +34,6 @@ function validate_text_align(al::Union{Tuple, StaticVector})
     return
 end
 
-validate_text_align(als::AbstractVector) = foreach(validate_text_align, als)
-
-validate_text_align(al) = error("Text align must be a two-element tuple, got $(repr(al))")
-
 # Positions are always vectors so text should be too
 convert_attribute(str::AbstractString, ::key"text", ::key"text") = Ref{Any}([str]) # don't fix string type
 convert_attribute(rt::RichText, ::key"text", ::key"text") = Ref{Any}([rt])
@@ -40,6 +41,13 @@ convert_attribute(x::AbstractVector, ::key"text", ::key"text") = Ref{Any}(vec(x)
 
 to_string_arr(text::AbstractVector) = text
 to_string_arr(text) = [text]
+
+# The producer hands back the same array when the text is untouched, and `is_same`
+# reads an aliased array as changed because it cannot tell one from a mutated one.
+# Saying whether the text changed rather than leaving it to be guessed keeps a
+# position update from re-running layout, which for an image handler (LaTeX) is the
+# difference between moving a label and recompiling it.
+text_update(value, changed::Bool) = ExplicitUpdate(Ref{Any}(value), changed ? :force : :deny)
 
 function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_args)
     # Set up Inputs
@@ -56,21 +64,26 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     if !haskey(attr, :position)
         add_input!(AttributeConvert(:position, :text), attr, :position, get(user_kw, :position, (0.0, 0.0)))
     end
-    register_computation!(attr, inputs, [:_positions, :input_text]) do inputs, changed, cached
+
+    register_computation!(attr, inputs, [:_positions, :_text_update]) do inputs, changed, @nospecialize(cached)
         a_pos, a_text, args... = values(inputs)
+        _, text_changed, args_changed... = values(changed)
+
         # Note: Could add RichText
         if args isa Tuple{<:Union{AbstractString, RichText}}
             # position data will always be wrapped in a Vector, so strings should too
-            return ((a_pos,), Ref{Any}([args[1]]))
+            return ((a_pos,), text_update([args[1]], args_changed[1]))
         elseif args isa Tuple{<:AbstractVector{<:Union{AbstractString, RichText}}}
-            return ((a_pos,), Ref{Any}(args[1]))
+            return ((a_pos,), text_update(args[1], args_changed[1]))
         elseif args isa Tuple{<:AbstractVector{<:Tuple{<:Any, <:VecTypes}}}
             # [(text, pos), ...] argument
-            return ((last.(args[1]),), Ref{Any}(first.(args[1])))
+            return ((last.(args[1]),), text_update(first.(args[1]), args_changed[1]))
         else # assume position data
-            return (args, Ref{Any}(to_string_arr(a_text)))
+            return (args, text_update(to_string_arr(a_text), text_changed))
         end
     end
+
+    map!(unwrap_explicit_update, attr, :_text_update, :input_text)
 
     # Continue with _register_expand_arguments with adjusted input names
     expanded = _register_expand_arguments!(Text, attr, [:_positions], attr._positions[], true)
@@ -81,343 +94,620 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     return
 end
 
-function per_glyph_getindex(x, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi::Int)
-    if isscalar(x)
-        return x
-    elseif isa(x, AbstractVector)
-        N_strings = length(text_blocks)
-        if (N_strings > 0) && (length(x) == last(last(text_blocks)))
-            return x[gi] # use per glyph index
-        elseif length(x) == N_strings
-            return x[bi] # use per text block index
-        else
-            error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
-        end
-    else
-        return x
-    end
+"""
+    GlyphBuffer()
+
+The arrays behind the outputs of the `Text` plot's glyph layout node, in output
+order. The node reuses one buffer across evaluations (`empty!` + refill) so
+re-layouting text does not allocate a fresh set of arrays every time.
+
+Everything in here is in the layout frame: glyphs are shaped but not aligned,
+rotated or offset. `block_bboxes` and `block_baselines` describe that frame per
+text block, which is what the downstream placement node needs to apply `align`,
+`rotation` and `offset` (see [`register_glyph_placement!`](@ref)).
+
+One [`TextLayout`](@ref) is appended per input string, keeping `text_blocks`
+consistent with the parallel per-glyph and per-spec arrays.
+"""
+struct GlyphBuffer
+    glyph_indices::Vector{UInt64}
+    glyph_fonts::Vector{NativeFont}
+    glyph_layout_origins::Vector{Point3f}
+    glyph_extents::Vector{GlyphExtent}
+    text_blocks::Vector{UnitRange{Int64}}
+    layout_colors::Vector{RGBAf}
+    glyph_scales::Vector{Vec2f}
+    layout_strokewidths::Vector{Float32}
+    layout_strokecolors::Vector{RGBAf}
+    block_bboxes::Vector{Rect2f}
+    block_baselines::Vector{Float32}
+    layout_specs::Vector{PlotSpec}
+    layout_spec_bboxes::Vector{Rect3d}
+    text_spec_block_indices::Vector{Int}
 end
 
-function per_text_getindex(x, text_blocks::Vector{UnitRange{Int}}, bi::Int)
-    if isscalar(x)
-        return x
-    elseif isa(x, AbstractVector)
-        N_strings = length(text_blocks)
-        if (N_strings > 0) && (length(x) == last(last(text_blocks))) # data is per glyph
-            return view(x, text_blocks[bi]) # use per glyph index
-        elseif length(x) == N_strings
-            return x[bi] # use per text block index
-        else
-            error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
-        end
-    else
-        return x
-    end
+function GlyphBuffer()
+    return GlyphBuffer(
+        UInt64[], NativeFont[], Point3f[], GlyphExtent[], UnitRange{Int64}[],
+        RGBAf[], Vec2f[], Float32[], RGBAf[],
+        Rect2f[], Float32[], PlotSpec[], Rect3d[], Int[]
+    )
 end
 
-function per_text_block(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
-    _getindex(x, bi) = per_text_getindex(x, text_blocks, bi)
-    for block_idx in eachindex(text_blocks)
-        f(_getindex.(args, block_idx)...)
-    end
+# The node's outputs are named after the fields, so the cached outputs come back
+# in field order and rewrapping them hands the same arrays back for reuse.
+GlyphBuffer(cached::NamedTuple) = GlyphBuffer(values(cached)...)
+
+node_outputs(buffer::GlyphBuffer) = map(name -> getfield(buffer, name), fieldnames(GlyphBuffer))
+
+function Base.empty!(buffer::GlyphBuffer)
+    foreach(empty!, node_outputs(buffer))
+    return buffer
+end
+
+function append_per_glyph!(dest::Vector, value, n::Int)
+    isscalar(value) ? append!(dest, Iterators.repeated(value, n)) : append!(dest, value)
     return
 end
 
-function per_glyph_attributes(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
-    _getindex(x, gi, bi) = per_glyph_getindex(x, text_blocks, gi, bi)
-    glyph_idx = 1
-    for block_idx in eachindex(text_blocks)
-        for _ in text_blocks[block_idx]
-            f(_getindex.(args, glyph_idx, block_idx)...)
-            glyph_idx += 1
-        end
+"""
+    TextLayout(glyphindices, fonts, origins, extents; bbox, baseline, scales,
+        colors, strokecolors, strokewidths, specs = PlotSpec[],
+        spec_bboxes = Rect3d[])
+
+The layout result for one scalar text value. `origins` are in the layout frame,
+described by `bbox` (the box `align` positions) and `baseline` (the y that
+`valign = :baseline` puts on the anchor; for multi-line text Makie's built-in
+layout uses the last line's baseline). `glyphindices`, `origins` and `extents`
+are per glyph; the remaining glyph attributes are either per glyph or one value
+for the whole block.
+
+`specs` contains non-glyph plots such as LaTeX rules or a handler-rendered image.
+Each one needs its visual bounding box in `spec_bboxes`, which only the handler
+knows: a spec's positions don't imply its extent (a scatter marker covers far more
+than the point it sits on).
+
+A spec's arguments live in the block's layout frame; placement (align, rotation,
+offset and the anchor position) is applied through the spec plot's `model` matrix,
+so any plot type can be a spec, including `:Image`. Because of that, `model`,
+`transformation` and `space` on a spec are controlled by Makie; `transform_marker`
+defaults to `true` where it exists, so markers rotate with the block; `visible` is
+combined with the plot's `visible`; the other render attributes (`depth_shift`,
+`transparency`, ...) default to the plot's values but a spec can override them.
+"""
+struct TextLayout{I, F, O, E, S, C, SC, SW}
+    glyphindices::I
+    fonts::F
+    origins::O
+    extents::E
+    scales::S
+    colors::C
+    strokecolors::SC
+    strokewidths::SW
+    bbox::Rect2f
+    baseline::Float32
+    specs::Vector{PlotSpec}
+    spec_bboxes::Vector{Rect3d}
+end
+
+function TextLayout(
+        glyphindices, fonts, origins, extents;
+        bbox, baseline, scales, colors, strokecolors, strokewidths,
+        specs = PlotSpec[], spec_bboxes = Rect3d[]
+    )
+    return TextLayout(
+        glyphindices, fonts, origins, extents, scales, colors, strokecolors,
+        strokewidths, bbox, baseline, specs, spec_bboxes
+    )
+end
+
+function TextLayout(; bbox, baseline, specs = PlotSpec[], spec_bboxes = Rect3d[])
+    return TextLayout(
+        UInt64[], NativeFont[], Point3f[], GlyphExtent[];
+        bbox, baseline, scales = Vec2f[], colors = RGBAf[],
+        strokecolors = RGBAf[], strokewidths = Float32[], specs, spec_bboxes
+    )
+end
+
+function validate_glyph_value(name, value, n)
+    (isscalar(value) || length(value) == n) && return
+    error("Expected a scalar or $n values per glyph for $name, got $(length(value)).")
+end
+
+function append_text_layout!(buffer::GlyphBuffer, layout::TextLayout)
+    n = length(layout.glyphindices)
+    if length(layout.origins) != n || length(layout.extents) != n
+        error("Expected $n glyph origins, got $(length(layout.origins)).")
     end
+    for name in (:fonts, :scales, :colors, :strokecolors, :strokewidths)
+        validate_glyph_value(name, getfield(layout, name), n)
+    end
+    if length(layout.specs) != length(layout.spec_bboxes)
+        error("Expected one bounding box per text spec. Got $(length(layout.specs)) specs and $(length(layout.spec_bboxes)) boundinboxes.")
+    end
+
+    offset = length(buffer.glyph_indices)
+    push!(buffer.text_blocks, (offset + 1):(offset + n))
+    push!(buffer.block_bboxes, layout.bbox)
+    push!(buffer.block_baselines, layout.baseline)
+
+    append!(buffer.glyph_indices, layout.glyphindices)
+    append!(buffer.glyph_layout_origins, layout.origins)
+    append!(buffer.glyph_extents, layout.extents)
+    append_per_glyph!(buffer.glyph_fonts, layout.fonts, n)
+    append_per_glyph!(buffer.glyph_scales, layout.scales, n)
+    append_per_glyph!(buffer.layout_colors, layout.colors, n)
+    append_per_glyph!(buffer.layout_strokecolors, layout.strokecolors, n)
+    append_per_glyph!(buffer.layout_strokewidths, layout.strokewidths, n)
+
+    append!(buffer.layout_specs, layout.specs)
+    append!(buffer.layout_spec_bboxes, layout.spec_bboxes)
+    append!(
+        buffer.text_spec_block_indices,
+        Iterators.repeated(length(buffer.text_blocks), length(layout.specs))
+    )
     return
 end
 
-function map_per_glyph(text_blocks::Vector{UnitRange{Int}}, Typ, arg)
-    isscalar(arg) && return fill(arg, last(last(glyphs)))
-    result = Typ[]
-    per_glyph_attributes(text_blocks, (arg,)) do a
-        push!(result, a)
-    end
-    return result
+"""
+    TextAttributes(; font, kwargs...)
+
+Everything about one text block except the string itself, as handed to
+[`layout_text`](@ref). The values are already resolved for that block: an attribute given
+per string is indexed, `fontsize` is a `Vec2f`, and `justification` is a fraction in 0..1
+(`automatic` folded in against `halign`).
+
+- `font::NativeFont`, `fonts`: the resolved font and the font family lookup it came from.
+- `fontsize::Vec2f`: the glyph scale in `markerspace` units, one value per axis.
+- `lineheight::Float32`: a multiplier of the font's own line height
+  (`font.height / font.units_per_EM`), not a distance.
+- `justification::Float32`: fraction in 0..1 that short lines are shifted by within the
+  block's width.
+- `word_wrap_width::Float32`: line width limit in `markerspace` units; zero or negative
+  means no wrapping.
+- `color::RGBAf`, `strokecolor::RGBAf`, `strokewidth::Float32`: display attributes, see
+  [`layout_text`](@ref) for when to bake them in.
+
+`align`, `rotation` and `offset` are deliberately absent. They are applied by a downstream
+placement node, so a handler works in the block's own layout frame and changing them
+re-runs placement rather than the handler.
+
+This is a struct rather than a long argument list so that a new attribute can be added
+without breaking existing handlers. Construct it with keywords (everything but `font` has
+a default) and destructure the ones you need:
+
+```julia
+attrs = Makie.TextAttributes(font = Makie.to_font("TeX Gyre Heros Makie"), fontsize = 20)
+width = widths(Makie.layout_text(nothing, "some text", attrs).bbox)[1]
+
+function Makie.layout_text(::MyHandler, str::AbstractString, attributes)
+    (; fontsize, color) = attributes
+    # ...
+end
+```
+"""
+struct TextAttributes
+    font::NativeFont
+    fonts::Any
+    fontsize::Vec2f
+    lineheight::Float32
+    justification::Float32
+    word_wrap_width::Float32
+    color::RGBAf
+    strokecolor::RGBAf
+    strokewidth::Float32
 end
 
-
-function get_from_collection(glyphcollection::AbstractArray, name::Symbol, Typ)
-    result = Typ[]
-    for g in glyphcollection
-        arr = getfield(g, name)
-        if arr isa Vector
-            append!(result, arr)
-        else
-            _arr = arr.sv
-            if _arr isa Vector
-                append!(result, _arr)
-            else
-                append!(result, (_arr for i in 1:length(g.glyphs)))
-            end
-        end
-    end
-    return result
-end
-
-function get_text_blocks(gcs)
-    text_blocks = UnitRange{Int}[]
-    curr = 1
-    for g in gcs
-        push!(text_blocks, curr:(curr + length(g.glyphs)))
-        curr += length(g.glyphs)
-    end
-    return text_blocks
-end
-
-#####################################
-# New stuff
-
-function per_glyph_block(data, block_idx, N_blocks, block::UnitRange)
-    block_length = length(block)
-    if isscalar(data)
-        return fill(data, block_length)
-    elseif length(data) == N_blocks
-        return fill(data[block_idx], block_length)
-    else
-        return view(data, block)
-    end
-end
-
-function convert_text_string!(
-        outputs::NamedTuple,
-        input_text::AbstractString, i, N, fontsize, font, align, rotation, justification,
-        lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
+function TextAttributes(;
+        font, fonts = nothing, fontsize = 12, lineheight = 1, justification = 0,
+        word_wrap_width = -1, color = :black, strokecolor = (:black, 0), strokewidth = 0
     )
-
-    args = sv_getindex.((font, fontsize, align, lineheight, justification, word_wrap_width, rotation), i)
-    nt = glyph_collection(input_text, args...)
-    curr = length(outputs.glyphindices)
-    block = (curr + 1):(curr + length(nt.glyphindices))
-
-    push!(outputs.text_blocks, block)
-    append!(outputs.glyphindices, nt.glyphindices)
-    append!(outputs.font_per_char, nt.font_per_char)
-    append!(outputs.glyph_origins, nt.char_origins)
-    append!(outputs.glyph_extents, nt.glyph_extents)
-
-    scales = per_glyph_block(to_2d_scale(fontsize), i, N, block) # TODO: convert_attribute?
-    rotations = per_glyph_block(rotation, i, N, block)
-    colors = per_glyph_block(color, i, N, block)
-
-    # TODO: Should we get rid of this in general?
-    gc = GlyphCollection(
-        nt.glyphindices,
-        nt.font_per_char,
-        nt.char_origins,
-        nt.glyph_extents,
-        scales,
-        rotations,
-        colors,
-        RGBAf[],
-        Float32[]
+    return TextAttributes(
+        to_font(font), fonts, to_2d_scale(fontsize), lineheight, justification,
+        word_wrap_width, to_color(color), to_color(strokecolor), strokewidth
     )
-
-    push!(outputs.glyphcollections, gc)
-    append!(outputs.text_color, colors)
-    append!(outputs.text_rotation, rotations)
-    append!(outputs.text_scales, scales)
-
-    append!(outputs.text_strokecolor, per_glyph_block(strokecolor, i, N, block))
-    append!(outputs.text_strokewidth, per_glyph_block(strokewidth, i, N, block))
-
-    return
 end
 
-function convert_text_string!(
-        outputs::NamedTuple,
-        input_text::RichText, i, N, fontsize, font, align, rotation, justification,
-        lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
+# Makie's own text layout is just the `handler === nothing` implementation of
+# `layout_text`, so the built-in path and a `text_handler` go through one protocol.
+
+function layout_text(::Nothing, src, attributes::TextAttributes)
+    return error(
+        "`text` cannot lay out $(typeof(src)). Pass a `text_handler` with a " *
+            "`layout_text` method for it, or convert it to a String, `rich` text or a LaTeXString."
     )
-
-    args = sv_getindex.((fontsize, font, fonts, align, rotation, justification, lineheight, color), i)
-    gc = layout_text(input_text, args...)
-    curr = length(outputs.glyphindices)
-    n = length(gc.glyphs)
-
-    push!(outputs.glyphcollections, gc)
-    push!(outputs.text_blocks, (curr + 1):(curr + n))
-    append!(outputs.glyphindices, gc.glyphs)
-    append!(outputs.glyph_origins, gc.origins)
-    append!(outputs.glyph_extents, gc.extents)
-
-    append!(outputs.font_per_char, collect_vector(gc.fonts, n))
-    append!(outputs.text_color, collect_vector(gc.colors, n))
-    append!(outputs.text_strokecolor, collect_vector(gc.strokecolors, n))
-    append!(outputs.text_strokewidth, collect_vector(gc.strokewidths, n))
-    append!(outputs.text_rotation, collect_vector(gc.rotations, n))
-    append!(outputs.text_scales, collect_vector(gc.scales, n))
-
-    return
 end
 
-function convert_text_string!(
-        outputs::NamedTuple,
-        input_text::LaTeXString, i, N, fontsize, font, align, rotation, justification,
-        lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
+function layout_text(::Nothing, src::AbstractString, attributes::TextAttributes)
+    (; font, fontsize, lineheight, justification, word_wrap_width) = attributes
+    layout = layout_string(src, font, fontsize, lineheight, justification, word_wrap_width)
+
+    return TextLayout(
+        layout.glyphindices, layout.fonts, layout.origins, layout.extents;
+        bbox = layout.bbox, baseline = layout.baseline,
+        scales = fontsize, colors = attributes.color,
+        strokecolors = attributes.strokecolor, strokewidths = attributes.strokewidth,
     )
-
-    args = sv_getindex.((fontsize, align, rotation, color, strokecolor, strokewidth, word_wrap_width), i)
-    tex_elements, gc, tex_offsets = texelems_and_glyph_collection(input_text, args...)
-    curr = length(outputs.glyphindices)
-    n = length(gc.glyphs)
-
-    push!(outputs.glyphcollections, gc)
-    push!(outputs.text_blocks, (curr + 1):(curr + n))
-    append!(outputs.glyphindices, gc.glyphs)
-    append!(outputs.glyph_origins, gc.origins)
-    append!(outputs.glyph_extents, gc.extents)
-    append!(outputs.font_per_char, collect_vector(gc.fonts, n))
-    append!(outputs.text_color, collect_vector(gc.colors, n))
-    append!(outputs.text_strokecolor, collect_vector(gc.strokecolors, n))
-    append!(outputs.text_strokewidth, collect_vector(gc.strokewidths, n))
-    append!(outputs.text_rotation, collect_vector(gc.rotations, n))
-    append!(outputs.text_scales, collect_vector(gc.scales, n))
-
-    append_tex_linesegment_data!(
-        outputs, tex_offsets, tex_elements,
-        args[1], args[3], args[4], sv_getindex(offset, i)
-    )
-    # args = fontsize, rotation, color
-
-    return
 end
 
-function append_tex_linesegment_data!(
-        outputs::NamedTuple,
-        tex_offset, tex_elements, fontsize, rotation::Quaternion, color::RGBAf, offset::VecTypes{3}
+function layout_text(::Nothing, src::RichText, attributes::TextAttributes)
+    (; fontsize, font, fonts, justification, lineheight, color) = attributes
+    layout = layout_richtext(src, fontsize, font, fonts, justification, lineheight, color)
+
+    return TextLayout(
+        layout.glyphindices, layout.fonts, layout.origins, layout.extents;
+        bbox = layout.bbox, baseline = layout.baseline,
+        scales = layout.scales, colors = layout.colors,
+        strokecolors = layout.strokecolors, strokewidths = layout.strokewidths,
     )
+end
 
-    block_idx = length(outputs.text_blocks)
-    pos_idx = first(last(outputs.text_blocks))
+function layout_text(::Nothing, src::LaTeXString, attributes::TextAttributes)
+    (; fontsize, color, strokecolor, strokewidth, word_wrap_width) = attributes
+    tex_elements, layout = texelems_and_layout(src, fontsize, color, strokecolor, strokewidth, word_wrap_width)
+    # the rules share the glyphs' uniform size (`texelems_and_layout` takes the
+    # first component too)
+    spec = tex_linesegment_spec(tex_elements, fontsize[1], color)
+    # a rule's extent is its two end points, give or take its thickness
+    specs = spec === nothing ? PlotSpec[] : PlotSpec[spec]
+    spec_bboxes = Rect3d[Rect3d(first(s.args)) for s in specs]
 
+    return TextLayout(
+        layout.glyphindices, layout.fonts, layout.origins, layout.extents;
+        bbox = layout.bbox, baseline = layout.baseline,
+        scales = layout.scales, colors = layout.colors,
+        strokecolors = layout.strokecolors, strokewidths = layout.strokewidths,
+        specs, spec_bboxes,
+    )
+end
+
+function tex_linesegment_spec(tex_elements, fontsize, color::RGBAf)
+    points = Point3f[]
+    widths = Float32[]
     for (element, position, _) in tex_elements
-        if element isa MathTeXEngine.HLine
-            h = element
-            x, y = position
-            p0 = rotation * to_ndim(Point3f, fontsize .* Point2f(x, y) .- tex_offset, 0) .+ offset
-            p1 = rotation * to_ndim(Point3f, fontsize .* Point2f(x + h.width, y) .- tex_offset, 0) .+ offset
-            push!(outputs.linesegments, p0, p1)
-            push!(outputs.linewidths, fontsize * h.thickness, fontsize * h.thickness)
-            push!(outputs.linecolors, color, color)
-            push!(outputs.lineindices, block_idx => pos_idx, block_idx => pos_idx)
-        end
+        element isa MathTeXEngine.HLine || continue
+        h = element
+        x, y = position
+        push!(
+            points,
+            to_ndim(Point3f, fontsize .* Point2f(x, y), 0),
+            to_ndim(Point3f, fontsize .* Point2f(x + h.width, y), 0)
+        )
+        push!(widths, fontsize * h.thickness, fontsize * h.thickness)
     end
-    return nothing
+    isempty(points) && return nothing
+    return PlotSpec(:LineSegments, points; linewidth = widths, color = color)
 end
 
-function compute_glyph_collections!(attr::ComputeGraph)
+"""
+    display_independent_layout(text) -> Bool
+
+Whether a text value's laid-out glyph geometry is independent of the display
+attributes (color, strokecolor, strokewidth). Plain strings apply those per-glyph
+*after* layout, so their geometry can be reused when only display attributes change.
+`RichText` and `LaTeXString` bake color into their layout, so they return `false`
+and recompute. Custom text types default to `false` (conservative). A block a
+`text_handler` claims always recomputes, since the handler may rasterize; this trait
+only decides for text laid out by Makie itself.
+"""
+display_independent_layout(::AbstractString) = true
+# LaTeXString <: AbstractString, but its layout bakes color into glyphs and rule specs
+display_independent_layout(::LaTeXString) = false
+display_independent_layout(@nospecialize(x)) = false
+
+################################################################################
+### text_handler extension
+################################################################################
+
+
+"""
+    layout_text(handler, src, attributes::TextAttributes) -> TextLayout
+
+Lays out one text block with a `text_handler`. A handler claims an input type by having a
+method for it and returns one [`TextLayout`](@ref) per call:
+
+```julia
+struct MyHandler end
+
+function Makie.layout_text(::MyHandler, src::LaTeXString, attributes::Makie.TextAttributes)
+    (; fontsize, color) = attributes
+    # ...
+    return Makie.TextLayout(glyphindices, fonts, origins, extents; bbox, baseline, ...)
+end
+```
+
+Makie's own layout is the `handler === nothing` implementation of this same function, which
+is what `text_handler = nothing` means and where input types a handler has no method for
+end up, so handled and unhandled strings mix in one plot without the handler doing
+anything. A handler that only decides once it sees the content hands the block back with
+`layout_text(nothing, src, attributes)`.
+
+Note that `LaTeXString <: AbstractString`, so a method taking `AbstractString` claims LaTeX
+input as well and would lay out its raw source. Dispatch on `String` to leave it to Makie.
+
+The layout is in the block's own frame: `align`, `rotation` and `offset` are applied
+downstream, so changing them re-runs placement rather than the handler. The appearance
+attributes in [`TextAttributes`](@ref) are there because a handler may either bake them in
+(a rasterized image can't be recolored afterwards) or include them in the returned glyph
+arrays.
+"""
+layout_text(handler, src, attributes) = layout_text(nothing, src, attributes)
+
+# The fallback above makes `hasmethod` always true, so whether a handler claims a
+# text type is answered by which method a call would hit.
+const LAYOUT_TEXT_FALLBACK = which(layout_text, Tuple{Any, Any, TextAttributes})
+
+handler_claims(::Nothing, str) = false
+function handler_claims(handler, str)
+    return which(layout_text, Tuple{typeof(handler), typeof(str), TextAttributes}) !== LAYOUT_TEXT_FALLBACK
+end
+
+# A claimed block is assumed to bake the display attributes into its layout, since
+# the handler may rasterize; a fall-through block behaves as if there were no handler.
+function bakes_display_attributes(handler, str)
+    return handler_claims(handler, str) || !display_independent_layout(str)
+end
+
+# Pick out block `i`'s value from each attribute.
+function block_attributes(
+        i, fontsize, font, justification, lineheight, word_wrap_width,
+        fonts, color, strokecolor, strokewidth
+    )
+    return TextAttributes(
+        sv_getindex(font, i), fonts, to_2d_scale(sv_getindex(fontsize, i)),
+        sv_getindex(lineheight, i), sv_getindex(justification, i), sv_getindex(word_wrap_width, i),
+        sv_getindex(color, i), sv_getindex(strokecolor, i), sv_getindex(strokewidth, i)
+    )
+end
+
+# An attribute is either one value for all strings or one per string. Indexing per
+# glyph is not supported: shaping can merge code points into a single glyph, so
+# `rich` text is how parts of a string get styled differently.
+function validate_per_string(
+        name::Symbol, value, n_strings::Int,
+        hint = "To style parts of a string differently, use `rich` text."
+    )
+    (isscalar(value) || length(value) == n_strings) && return
+    error("Expected a scalar $name or one value per string ($n_strings), got $(length(value)). $hint")
+    return
+end
+
+# `align` only reaches text layout through this: automatic justification follows
+# halign, everything else about alignment is applied after layout. Resolving it to
+# a number here means an align change that leaves justification alone (a different
+# valign, or halign on left-justified text) is filtered by `is_same` and never
+# triggers a relayout.
+function register_resolved_justification!(attr::ComputeGraph)
+    map!(eachindex, attr, :input_text, :eachstring)
+    map!(attr, [:eachstring, :justification, :align], :resolved_justification) do eachstring, justification, align
+        isscalar(justification) && isscalar(align) && return justification2float(justification, align[1])
+        # per-block values, so `input_text` sets the count rather than either input
+        return Float32[
+            justification2float(sv_getindex(justification, i), sv_getindex(align, i)[1])
+                for i in eachstring
+        ]
+    end
+    return
+end
+
+# The display attributes only reach layout when some text bakes them in; otherwise this
+# stays `nothing` from one evaluation to the next, so recoloring never marks layout dirty.
+function register_baked_display_attributes!(attr::ComputeGraph)
+    inputs = [:input_text, :text_handler, :computed_color, :strokecolor, :strokewidth]
+    map!(attr, inputs, :baked_display_attributes) do text, handler, color, strokecolor, strokewidth
+        # here rather than downstream so a bad length is reported when the plot is
+        # created, not when its colors are first pulled
+        for (name, value) in [(:color, color), (:strokecolor, strokecolor), (:strokewidth, strokewidth)]
+            validate_per_string(name, value, length(text))
+        end
+        baked = !isempty(text) && any(str -> bakes_display_attributes(handler, str), text)
+        baked || return nothing
+        return (color, strokecolor, strokewidth)
+    end
+    # the value alternates between `nothing` and a tuple as the text type changes
+    ComputePipeline.set_type!(attr.baked_display_attributes, Any)
+    return
+end
+
+function register_glyph_layout!(attr::ComputeGraph)
     inputs = [
         :input_text,
+        :text_handler,
         :fontsize,
         :selected_font,
-        :align,
-        :rotation,
-        :justification,
+        :resolved_justification,
         :lineheight,
         :word_wrap_width,
-        :offset,
         :fonts,
-        :computed_color,
-        :strokecolor,
-        :strokewidth,
+        :baked_display_attributes,
     ]
-    outputs = [
-        :glyphcollections, :glyphindices,
-        :font_per_char,
-        :glyph_origins, :glyph_extents,
-        :text_blocks,
-        :text_color, :text_rotation, :text_scales,
-        :text_strokewidth, :text_strokecolor,
-        :linesegments, :linewidths, :linecolors, :lineindices,
-    ]
-    return register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
-        _outputs = (
-            glyphcollections = GlyphCollection[],
-            glyphindices = UInt64[],
-            font_per_char = NativeFont[],
-            glyph_origins = Point3f[],
-            glyph_extents = GlyphExtent[],
-            text_blocks = UnitRange{Int64}[],
-            text_color = RGBAf[],
-            text_rotation = Quaternionf[],
-            text_scales = Vec2f[],
-            text_strokewidth = Float32[],
-            text_strokecolor = RGBAf[],
-            linesegments = Point3f[],
-            linewidths = Float32[],
-            linecolors = RGBAf[],
-            lineindices = Pair{Int, Int}[],
-        )
-        # strokewidth = Float32[] # TODO: Skipped?
+    outputs = collect(fieldnames(GlyphBuffer))
+    register_computation!(attr, inputs, outputs) do inputs, changed, cached
+        (; input_text, text_handler, fontsize, selected_font, resolved_justification) = inputs
+        (; lineheight, word_wrap_width, fonts, baked_display_attributes) = inputs
 
-        N = length(input_texts)
-        for (block_index, str) in enumerate(input_texts)
-            convert_text_string!(_outputs, str, block_index, N, _inputs...)
+        # Placeholders when nothing bakes: what a layouter puts in its glyph arrays for
+        # those blocks is replaced by `register_glyph_display!` anyway.
+        color, strokecolor, strokewidth = something(
+            baked_display_attributes, (RGBAf(0, 0, 0, 1), RGBAf(0, 0, 0, 0), 0.0f0)
+        )
+
+        buffer = cached === nothing ? GlyphBuffer() : GlyphBuffer(cached)
+        empty!(buffer)
+        N = length(input_text)
+        validate_per_string(:fontsize, fontsize, N)
+        validate_per_string(:font, selected_font, N)
+        validate_per_string(:lineheight, lineheight, N)
+        validate_per_string(:word_wrap_width, word_wrap_width, N)
+
+        for (i, str) in enumerate(input_text)
+            attributes = block_attributes(
+                i, fontsize, selected_font, resolved_justification, lineheight,
+                word_wrap_width, fonts, color, strokecolor, strokewidth
+            )
+            append_text_layout!(buffer, layout_text(text_handler, str, attributes))
         end
 
-        return values(_outputs)
+        return node_outputs(buffer)
     end
 
+    return
+end
+
+"""
+    register_glyph_display!(attr::ComputeGraph)
+
+Expands `color`, `strokecolor` and `strokewidth` to one value per glyph. Text that bakes
+them keeps what its layouter resolved; everything else takes the plot's value for its
+string, which is why recoloring plain text costs an expansion rather than a layout.
+"""
+function register_glyph_display!(attr::ComputeGraph)
+    inputs = [
+        :input_text, :text_handler, :text_blocks,
+        :layout_colors, :layout_strokecolors, :layout_strokewidths,
+        :computed_color, :strokecolor, :strokewidth,
+    ]
+    outputs = [:glyph_colors, :glyph_strokecolors, :glyph_strokewidths]
+    register_computation!(attr, inputs, outputs) do inputs, changed, cached
+        (; input_text, text_handler, text_blocks) = inputs
+        (; layout_colors, layout_strokecolors, layout_strokewidths) = inputs
+        (; computed_color, strokecolor, strokewidth) = inputs
+
+        colors, strokecolors, strokewidths = cached === nothing ?
+            (RGBAf[], RGBAf[], Float32[]) : empty!.(values(cached))
+
+        for (i, block) in enumerate(text_blocks)
+            if bakes_display_attributes(text_handler, input_text[i])
+                append!(colors, view(layout_colors, block))
+                append!(strokecolors, view(layout_strokecolors, block))
+                append!(strokewidths, view(layout_strokewidths, block))
+            else
+                n = length(block)
+                append_per_glyph!(colors, sv_getindex(computed_color, i), n)
+                append_per_glyph!(strokecolors, sv_getindex(strokecolor, i), n)
+                append_per_glyph!(strokewidths, sv_getindex(strokewidth, i), n)
+            end
+        end
+
+        return colors, strokecolors, strokewidths
+    end
+
+    return
+end
+
+"""
+    block_alignment_shift(bbox, baseline, align)
+
+The point of a text block's layout frame that `align` puts on its anchor position,
+so subtracting it from a layout position aligns that position.
+"""
+function block_alignment_shift(bbox::Rect2f, baseline::Real, align)
+    halign, valign = align
+    xshift = interpolate_align(minimum(bbox)[1], maximum(bbox)[1], halign2num(halign))
+    yshift = valign === :baseline ? Float32(baseline) :
+        interpolate_align(minimum(bbox)[2], maximum(bbox)[2], valign2num(valign))
+    return Vec3f(xshift, yshift, 0)
+end
+
+# The matrix taking a spec from its block's layout frame to the block's anchor:
+# align (via `shift`), `rotation` and `offset`, like glyph placement applies to origins.
+function spec_placement_matrix(rotation, shift, offset)
+    return translationmatrix(to_ndim(Vec3d, offset, 0) - rotation * to_ndim(Vec3d, shift, 0)) *
+        Mat4d(rotationmatrix4(rotation))
+end
+
+"""
+    register_glyph_placement!(attr::ComputeGraph)
+
+Turns the layout frame that text layout produced into placed markerspace data by
+applying `align`, `rotation` and `offset` per text block. Keeping this separate
+means those three attributes never re-run layout, which for an expensive
+`text_handler` (a LaTeX engine, say) is the difference between recompiling a label
+and moving it.
+"""
+function register_glyph_placement!(attr::ComputeGraph)
+    inputs = [
+        :glyph_layout_origins, :text_blocks, :block_bboxes, :block_baselines,
+        :align, :rotation, :offset,
+        :layout_specs, :layout_spec_bboxes, :text_spec_block_indices,
+    ]
+    outputs = [:glyph_origins, :glyph_rotations, :text_spec_models, :text_spec_bboxes]
+    return register_computation!(attr, inputs, outputs) do inputs, changed, cached
+        (; glyph_layout_origins, text_blocks, block_bboxes, block_baselines) = inputs
+        (; rotation, layout_specs, layout_spec_bboxes, text_spec_block_indices) = inputs
+        (; align, offset) = inputs
+
+        validate_per_string(
+            :rotation, rotation, length(text_blocks),
+            "Glyphs within a string share one rotation."
+        )
+
+        origins, rotations, spec_models, spec_bboxes = if cached === nothing
+            (Point3f[], Quaternionf[], Mat4d[], Rect3d[])
+        else
+            empty!.(values(cached))
+        end
+
+        shifts = map(eachindex(text_blocks)) do i
+            return block_alignment_shift(block_bboxes[i], block_baselines[i], sv_getindex(align, i))
+        end
+
+        for (i, block) in enumerate(text_blocks)
+            rot = sv_getindex(rotation, i)
+            for gi in block
+                push!(origins, rot * (glyph_layout_origins[gi] - shifts[i]))
+                push!(rotations, rot)
+            end
+        end
+
+        for (bbox, i) in zip(layout_spec_bboxes, text_spec_block_indices)
+            rot = sv_getindex(rotation, i)
+            off = to_ndim(Vec3f, sv_getindex(offset, i), 0)
+            push!(spec_models, spec_placement_matrix(rot, shifts[i], off))
+            push!(spec_bboxes, rotate_bbox(bbox - to_ndim(Vec3d, shifts[i], 0), rot) + off)
+        end
+
+        return (origins, rotations, spec_models, spec_bboxes)
+    end
 end
 
 function register_text_computations!(attr::ComputeGraph)
-    add_constant!(attr, :atlas, get_texture_atlas())
-
     map!(to_font, attr, [:fonts, :font], :selected_font)
 
     # Resolve colormapping to colors early. This allows rich text which returns
     # its own colors to be mixed with other text types which dont.
     add_computation!(attr, Val(:computed_color))
 
-    # This computes :glyphindices, :font_per_char, :glyph_origins, :glyph_extents, :text_blocks
-    # And :glyphcollection if applicable
-    compute_glyph_collections!(attr)
+    register_resolved_justification!(attr)
 
-    map!(attr, [:atlas, :glyphindices, :font_per_char], :sdf_uv) do atlas, gi, fonts
-        return glyph_uv_width!.((atlas,), gi, fonts)
-    end
+    # one output per `GlyphBuffer` field
+    register_baked_display_attributes!(attr)
+    register_glyph_layout!(attr)
+    register_glyph_display!(attr)
 
+    register_glyph_placement!(attr)
+
+    # marker_offset is in marker_space
     map!(attr, [:glyph_origins, :offset, :text_blocks], :marker_offset) do origins, offset, blocks
         return Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r]
     end
 
-    map!(
-        attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :text_scales],
-        [:quad_offset, :quad_scale]
-    ) do atlas, gi, text_blocks, fonts, fontsize
+    register_position_transforms!(attr)
 
-        quad_offsets = Vec2f[]
-        quad_scales = Vec2f[]
-        pad = atlas.glyph_padding / atlas.pix_per_glyph
-        per_glyph_attributes(text_blocks, (gi, fonts, fontsize)) do g, f, fs
-            # These are tight to the glyph. They do not fill the full space
-            # a glyph takes within a string/layout.
-            bb = FreeTypeAbstraction.metrics_bb(g, f, fs)[1]
-            quad_offset = Vec2f(minimum(bb) .- fs .* pad)
-            quad_scale = Vec2f(widths(bb) .+ fs * 2pad)
-            push!(quad_offsets, quad_offset)
-            push!(quad_scales, quad_scale)
+    # One anchor position per glyph, repeated within a string. `transform_func` is
+    # applied before the repeat, so it runs once per string rather than once per glyph;
+    # the `Glyphs` child inherits only the model and does not transform again. The float
+    # type is kept so Float64 positions survive until the child's float32 rescaling.
+    map!(attr, [:positions_transformed, :text_blocks], :per_glyph_positions) do positions, blocks
+        if length(blocks) != length(positions)
+            error(
+                "Text blocks and positions have different lengths: $(length(blocks)) != " *
+                    "$(length(positions)). Please use `update!(plot_object; arg1/arg2/text/" *
+                    "position/color/etc...)` to update multiple attributes together."
+            )
         end
-        return (quad_offsets, quad_scales)
-    end
-    # TODO: remapping positions to be per glyph first generates quite a few
-    # redundant transform applications and projections in CairoMakie
-    register_position_transforms!(attr, input_name = :positions, transformed_name = :positions_transformed)
-
-    map!(attr, [:text_blocks, :positions_transformed_f32c], :per_char_positions_transformed_f32c) do blocks, pos
-        if length(blocks) != length(pos)
-            error("Text blocks and positions have different lengths: $(length(blocks)) != $(length(pos)). Please use `update!(plot_object; arg1/arg2/text/position/color/etc...) to update multiple attributes together.")
-        end
-        return [p for (b, p) in zip(blocks, pos) for i in b]
+        PT = float_type(positions)
+        return PT[to_ndim(PT, sv_getindex(positions, i), 0) for (i, r) in enumerate(blocks) for _ in r]
     end
 
     return
@@ -432,37 +722,80 @@ end
 get_text_type(x::AbstractVector) = eltype(x)
 get_text_type(::T) where {T} = T
 
-function calculated_attributes!(::Type{Text}, plot::Plot)
-    attr = plot.attributes
-
-    add_constant!(attr, :sdf_marker_shape, Cint(DISTANCEFIELD))
-
-    register_colormapping!(attr)
-    register_text_computations!(attr)
-    return tex_linesegments!(plot)
+function plot!(plot::Text)
+    register_colormapping!(plot.attributes, :color)
+    register_text_computations!(plot.attributes)
+    # `add_text_specs!` projects each block's anchor position, which needs the camera.
+    # Primitives get this from `connect_plot!`; a recipe asks for it.
+    register_camera!(parent_scene(plot), plot)
+    glyphs!(
+        plot,
+        plot.attributes,
+        plot.per_glyph_positions;
+        glyph_indices = plot.glyph_indices,
+        font = plot.glyph_fonts,
+        marker_offset = plot.marker_offset,
+        scale = plot.glyph_scales,
+        color = plot.glyph_colors,
+        rotation = plot.glyph_rotations,
+        strokecolor = plot.glyph_strokecolors,
+        strokewidth = plot.glyph_strokewidths,
+        transformation = :inherit_model,
+        alpha = 1.0 # already included in color
+    )
+    add_text_specs!(plot)
+    return plot
 end
 
-function tex_linesegments!(plot)
-    register_model_clip_planes!(plot.attributes)
+# Materialize the non-glyph text specs (LaTeX rules, handler images, ...) as a plotlist
+# child. Each spec is in its block's markerspace frame; here we add the block's projected
+# position (per camera) and render in markerspace. Empty for plain text, so the plotlist
+# has no children and no render objects.
+function add_text_specs!(plot)
+    register_markerspace_positions!(plot)
 
-    # Don't user register_markerspace_positions() here so we skip calculating them
-    # if no linesegments are needed
+    # One shared transformation for all spec children. Their placement flows through
+    # the `model` keyword, which shuts off the transformation's model sync, so this
+    # only carries what else a transformation provides: the z value CairoMakie sorts
+    # drawing by, inherited from the text plot, and an identity transform_func.
+    spec_transformation = Transformation(plot; transform_func = identity)
+
     map!(
         plot.attributes,
-        [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :model_clip_planes, :space],
-        :linesgments_shifted
-    ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes, space
-        isempty(linesegments) && return Point3f[]
-        markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
-        return map(linesegments, indices) do seg, (block_idx, glyph_idx)
-            return seg + markerspace_positions[block_idx]
+        [
+            :layout_specs, :text_spec_models, :text_spec_block_indices,
+            :markerspace_positions, :markerspace, :visible,
+            :depth_shift, :transparency, :fxaa, :overdraw, :inspectable,
+        ],
+        :_placed_text_specs,
+    ) do specs, spec_models, block_indices, ms_positions, markerspace, visible,
+            depth_shift, transparency, fxaa, overdraw, inspectable
+
+        isempty(specs) && return PlotSpec[]
+        return map(specs, spec_models, block_indices) do spec, spec_model, bidx
+            kw = copy(spec.kwargs)
+            # placement goes through `model` rather than the spec's arguments, so any
+            # plot type works as a spec; `transformation = :nothing` keeps the child's
+            # transformation from overwriting it
+            kw[:model] = translationmatrix(to_ndim(Vec3d, ms_positions[bidx], 0)) * spec_model
+            kw[:transformation] = spec_transformation
+            # rotate scatter-like markers with the block instead of billboarding them
+            if has_flat_key(documented_attributes(plottype(spec)), :transform_marker)
+                get!(kw, :transform_marker, true)
+            end
+            # the layout frame the specs live in only makes sense in markerspace
+            kw[:space] = markerspace
+            kw[:visible] = visible && get(kw, :visible, true)
+            for (name, value) in (
+                    (:depth_shift, depth_shift), (:transparency, transparency),
+                    (:fxaa, fxaa), (:overdraw, overdraw), (:inspectable, inspectable),
+                )
+                get!(kw, name, value)
+            end
+            return PlotSpec(spec.type, spec.args...; kw...)
         end
     end
-
-    return linesegments!(
-        plot, plot.linesgments_shifted; linewidth = plot.linewidths,
-        color = plot.linecolors, space = plot.markerspace
-    )
+    return plotlist!(plot, plot._placed_text_specs)
 end
 
 ################################################################################
@@ -523,7 +856,7 @@ Base.length(iter::PerCharIterator) = last(last(iter.blocks))
 
 function register_raw_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :raw_glyph_boundingboxes)
-        map!(gl_bboxes, plot.attributes, [:glyphindices, :text_scales, :glyph_extents], :raw_glyph_boundingboxes)
+        map!(gl_bboxes, plot.attributes, [:glyph_indices, :glyph_scales, :glyph_extents], :raw_glyph_boundingboxes)
     end
     return plot.raw_glyph_boundingboxes
 end
@@ -545,7 +878,7 @@ function register_fast_glyph_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:raw_glyph_boundingboxes, :marker_offset, :text_rotation],
+            plot.attributes, [:raw_glyph_boundingboxes, :marker_offset, :glyph_rotations],
             :fast_glyph_boundingboxes
         ) do bbs, origins, rotations
 
@@ -572,10 +905,9 @@ fast_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fa
 function register_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :glyph_boundingboxes)
         register_raw_glyph_boundingboxes!(plot)
-        register_markerspace_positions!(plot)
         map!(
             plot.attributes,
-            [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :text_blocks, :markerspace_positions],
+            [:raw_glyph_boundingboxes, :marker_offset, :glyph_rotations, :text_blocks, :markerspace_positions],
             :glyph_boundingboxes
         ) do bbs, origins, rotations, blocks, positions
 
@@ -608,9 +940,9 @@ function register_raw_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :linesegments, :linewidths, :lineindices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :glyph_rotations, :text_spec_bboxes, :text_spec_block_indices],
             :raw_string_boundingboxes
-        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
+        ) do blocks, bbs, origins, rotation, spec_bboxes, spec_block_indices
 
             text_bbs = map(blocks) do idxs
                 output = Rect3d()
@@ -623,8 +955,7 @@ function register_raw_string_boundingboxes!(plot)
                 return output
             end
 
-            for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
-                bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
+            for (block_idx, bb) in zip(spec_block_indices, spec_bboxes)
                 text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
             end
 
@@ -650,9 +981,9 @@ function register_fast_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :linesegments, :linewidths, :lineindices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :glyph_rotations, :text_spec_bboxes, :text_spec_block_indices],
             :fast_string_boundingboxes
-        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
+        ) do blocks, bbs, origins, rotation, spec_bboxes, spec_block_indices
 
             text_bbs = map(blocks) do idxs
                 output = Rect3d(Point3d(NaN), Vec3d(0))
@@ -665,8 +996,7 @@ function register_fast_string_boundingboxes!(plot)
                 return output
             end
 
-            for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
-                bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
+            for (block_idx, bb) in zip(spec_block_indices, spec_bboxes)
                 text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
             end
 
@@ -690,7 +1020,6 @@ fast_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_f
 function register_string_boundingboxes!(plot)
     if !haskey(plot.attributes, :string_boundingboxes)
         register_fast_string_boundingboxes!(plot)
-        register_markerspace_positions!(plot)
         # project positions to markerspace, add them
         map!(
             plot.attributes,
@@ -789,11 +1118,10 @@ data_limits_obs(plot::Text) = ComputePipeline.get_observable!(register_data_limi
 ######################
 
 
-function texelems_and_glyph_collection(
-        str::LaTeXString, fontscale_px, align,
-        rotation, color, strokecolor, strokewidth, word_wrap_width
+function texelems_and_layout(
+        str::LaTeXString, fontscale_px,
+        color, strokecolor, strokewidth, word_wrap_width
     )
-    halign, valign = align
     all_els = generate_tex_elements(str)
     els = filter(x -> x[1] isa TeXChar, all_els)
 
@@ -851,26 +1179,21 @@ function texelems_and_glyph_collection(
         end
         end
 
-    xshift = get_xshift(minimum(bb)[1], maximum(bb)[1], halign)
-    yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign, default = 0.0f0)
-
-    shift = Vec3f(xshift, yshift, 0)
-    positions = basepositions .- Ref(shift)
-    positions .= Ref(rotation) .* positions
-
-    pre_align_gl = GlyphCollection(
-        glyphindices,
-        fonts,
-        Point3f.(positions),
-        extents,
-        scales_2d,
-        rotation,
-        color,
-        strokecolor,
-        strokewidth
+    n = length(glyphindices)
+    layout = (
+        glyphindices = UInt64.(glyphindices),
+        fonts = fonts,
+        origins = Point3f.(basepositions),
+        extents = extents,
+        scales = scales_2d,
+        colors = fill(to_color(color), n),
+        strokecolors = fill(to_color(strokecolor), n),
+        strokewidths = fill(Float32(strokewidth), n),
+        bbox = bb,
+        baseline = 0.0f0,
     )
 
-    return all_els, pre_align_gl, Point2f(xshift, yshift)
+    return all_els, layout
 end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
@@ -890,7 +1213,6 @@ struct GlyphInfo
     origin::Point2f
     extent::GlyphExtent
     size::Vec2f
-    rotation::Quaternionf
     color::RGBAf
     strokecolor::RGBAf
     strokewidth::Float32
@@ -904,7 +1226,6 @@ function GlyphInfo(
         origin = gi.origin,
         extent = gi.extent,
         size = gi.size,
-        rotation = gi.rotation,
         color = gi.color,
         strokecolor = gi.strokecolor,
         strokewidth = gi.strokewidth
@@ -916,7 +1237,6 @@ function GlyphInfo(
         origin,
         extent,
         size,
-        rotation,
         color,
         strokecolor,
         strokewidth
@@ -924,49 +1244,48 @@ function GlyphInfo(
 end
 
 
-function GlyphCollection(v::Vector{GlyphInfo})
-    return GlyphCollection(
-        [i.glyph for i in v],
-        [i.font for i in v],
-        [Point3f(i.origin..., 0) for i in v],
-        [i.extent for i in v],
-        [i.size for i in v],
-        [i.rotation for i in v],
-        [i.color for i in v],
-        [i.strokecolor for i in v],
-        [i.strokewidth for i in v],
-    )
-end
-
-
-function layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
+function layout_richtext(rt::RichText, ts, f, fset, jus, lh, col)
     lines = [GlyphInfo[]]
 
     gs = GlyphState(0, 0, Vec2f(ts), f, col)
 
     process_rt_node!(lines, gs, rt, fset)
 
-    apply_lineheight!(lines, lh)
-    apply_alignment_and_justification!(lines, jus, al)
+    last_baseline = apply_lineheight!(lines, lh)
+    bbox = apply_justification!(lines, jus)
 
-    gc = GlyphCollection(reduce(vcat, lines))
-    gc.origins .= Ref(rot) .* gc.origins
-    @assert gc.rotations.sv isa Vector # should always be a vector because that's how the glyphcollection is created
-    gc.rotations.sv .= Ref(rot) .* gc.rotations.sv
-    return gc
+    return glyph_arrays(reduce(vcat, lines), bbox, last_baseline)
 end
 
+# Flatten laid-out glyphs into the parallel arrays a glyph block is pushed from.
+function glyph_arrays(infos::Vector{GlyphInfo}, bbox::Rect2f, baseline::Real)
+    return (
+        glyphindices = UInt64[i.glyph for i in infos],
+        fonts = NativeFont[i.font for i in infos],
+        origins = Point3f[to_ndim(Point3f, i.origin, 0) for i in infos],
+        extents = GlyphExtent[i.extent for i in infos],
+        scales = Vec2f[i.size for i in infos],
+        colors = RGBAf[i.color for i in infos],
+        strokecolors = RGBAf[i.strokecolor for i in infos],
+        strokewidths = Float32[i.strokewidth for i in infos],
+        bbox = bbox,
+        baseline = Float32(baseline),
+    )
+end
+
+# Returns the last line's baseline, which is what `valign = :baseline` anchors.
 function apply_lineheight!(lines, lh)
+    # TODO: Lineheight
+    lineheight = 20
     for (i, line) in enumerate(lines)
         for j in eachindex(line)
             l = line[j]
             ox, oy = l.origin
-            # TODO: Lineheight
-            l = GlyphInfo(l; origin = Point2f(ox, oy - (i - 1) * 20))
+            l = GlyphInfo(l; origin = Point2f(ox, oy - (i - 1) * lineheight))
             line[j] = l
         end
     end
-    return
+    return Float32(-(length(lines) - 1) * lineheight)
 end
 
 function max_x_advance(glyph_infos::Vector{GlyphInfo})::Float32
@@ -999,7 +1318,9 @@ function min_y_descender(glyph_infos::Vector{GlyphInfo})::Float32
     end
 end
 
-function apply_alignment_and_justification!(lines, ju, al)
+# Shifts each line by its share of the unused width and returns the layout box the
+# lines occupy. Alignment happens downstream, against that box.
+function apply_justification!(lines, justification::Real)
 
     max_xs = map(max_x_advance, lines)
     max_x = maximum(max_xs)
@@ -1008,30 +1329,14 @@ function apply_alignment_and_justification!(lines, ju, al)
     top_y = max_y_ascender(lines[1])
     bottom_y = min_y_descender(lines[end])
 
-    al_offset_x = get_xshift(0.0f0, max_x, al[1]; default = 0.0f0)
-    al_offset_y = get_yshift(bottom_y, top_y, al[2]; default = 0.0f0)
-
-    fju = float_justification(ju, al)
-
     for (i, line) in enumerate(lines)
-        ju_offset = fju * (max_x - max_xs[i])
+        ju_offset = justification * (max_x - max_xs[i])
         for j in eachindex(line)
             l = line[j]
-            o = l.origin
-            l = GlyphInfo(l; origin = o .- Point2f(al_offset_x - ju_offset, al_offset_y))
-            line[j] = l
+            line[j] = GlyphInfo(l; origin = l.origin .+ Point2f(ju_offset, 0))
         end
     end
-    return
-end
-
-function float_justification(ju, al)::Float32
-    halign = al[1]
-    return float_justification = if ju === automatic
-        get_xshift(0.0f0, 1.0f0, halign)
-    else
-        get_xshift(0.0f0, 1.0f0, ju; default = ju) # errors if wrong symbol is used
-    end
+    return Rect2f(0, bottom_y, max_x, top_y - bottom_y)
 end
 
 function process_rt_node!(lines, gs::GlyphState, rt::RichText, fonts)
@@ -1109,7 +1414,6 @@ function process_rt_node!(lines, gs::GlyphState, s::String, _)
                     ori,
                     gext,
                     gs.size,
-                    to_rotation(0),
                     gs.color,
                     RGBAf(0, 0, 0, 0),
                     0.0f0,
@@ -1190,20 +1494,4 @@ end
 
 iswhitespace(r::RichText) = iswhitespace(String(r))
 
-function get_xshift(lb, ub, align; default = 0.5f0)
-    if align isa Symbol
-        align = align === :left ? 0.0f0 :
-            align === :center ? 0.5f0 :
-            align === :right ? 1.0f0 : default
-    end
-    return lb * (1 - align) + ub * align |> Float32
-end
-
-function get_yshift(lb, ub, align; default = 0.5f0)
-    if align isa Symbol
-        align = align === :bottom ? 0.0f0 :
-            align === :center ? 0.5f0 :
-            align === :top ? 1.0f0 : default
-    end
-    return lb * (1 - align) + ub * align |> Float32
-end
+interpolate_align(lb, ub, fraction) = Float32(lb * (1 - fraction) + ub * fraction)

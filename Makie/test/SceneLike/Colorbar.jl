@@ -106,7 +106,8 @@ end
         f, a, p = vspan(0:2, 1:3, color = 1:3)
         verify_colorbar_defaults(f, p)
 
-        f, a, p = pathtext(1:3, [1, 2, 1], text = "123", color = 1:3)
+        # one color for the whole string, so the range has to be given
+        f, a, p = pathtext(1:3, [1, 2, 1], text = "123", color = 2, colorrange = (1, 3))
         verify_colorbar_defaults(f, p)
 
         f, a, p = pie(1:3, color = 1:3)

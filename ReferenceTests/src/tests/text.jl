@@ -555,11 +555,12 @@ end
     ax = Axis(f[1, 1]; limits = ((-0.2, 4.2), (-0.2, 3)))
     hidedecorations!(ax); hidespines!(ax)
     lines!(ax, bp; color = (:gray, 0.4), linewidth = 2)
-    # Plain string with per-char color vector, offset above the curve.
-    cols = resample_cmap(:viridis, 17)
+    str = "Text along a path"
+    cols = resample_cmap(:viridis, length(str))
+    per_char = rich((rich(string(c); color = col) for (c, col) in zip(str, cols))...)
     pathtext!(
-        ax, bp; text = "Text along a path", fontsize = 14,
-        align = (:center, :bottom), offset = 8, color = cols,
+        ax, bp; text = per_char, fontsize = 14,
+        align = (:center, :bottom), offset = 8,
     )
     # RichText with bold, color, sub/superscript, offset below the curve.
     rt = rich(

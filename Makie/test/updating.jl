@@ -46,8 +46,8 @@ end
     f, a, p = text(fill("aa", 10); position = rand(Point2f, 10), color = 1:10)
     p.colormap = :blues
     colors = to_colormap(:blues)
-    @test p.text_color[][1] == colors[1]
-    @test p.text_color[][end] == colors[2]
+    @test p.glyph_colors[][1] == colors[1]
+    @test p.glyph_colors[][end] == colors[2]
 end
 
 #=
