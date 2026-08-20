@@ -297,7 +297,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         cb.attributes,
         [:dim_conversion, :colorrange, :limits, :_derived_colorrange],
         [:resolved_colorrange]
-    ) do (dc, _colorrange, limits, autorange), changed, @nospecialize(cached)
+    ) do (dc, _colorrange, limits, _autorange), changed, @nospecialize(cached)
         colorrange = if changed.limits && (limits !== automatic)
             @warn("Colorbar :limits has been deprecated in favor of :colorrange.")
             limits
@@ -305,8 +305,9 @@ function initialize_block!(cb::Colorbar; kwargs...)
             _colorrange
         end
 
+        autorange = dc isa CategoricalConversion ? extrema(first.(dc.int_to_category)) : _autorange
         if colorrange === automatic || colorrange === nothing
-            return (autorange,)
+            return (Vec2d(autorange),)
         else
             # colorscale is processed later
             low = process_color_value(dc, identity, first(colorrange), first(autorange))
@@ -321,9 +322,9 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     map!(
         cb,
-        [:color_mapping, :merged_color_mapping_type, :dc_values, :nsteps, :resolved_colorrange],
+        [:color_mapping, :merged_color_mapping_type, :dim_conversion, :dc_values, :nsteps, :resolved_colorrange],
         :cb_colors
-    ) do mapping, mapping_type, values, n, limits
+    ) do mapping, mapping_type, dc, values, n, limits
         if mapping_type === Makie.continuous
             return convert(Vector{Float64}, LinRange(limits..., n))
         elseif mapping_type === Makie.banded
@@ -335,11 +336,12 @@ function initialize_block!(cb::Colorbar; kwargs...)
             end
         elseif mapping_type === Makie.categorical
             if isnothing(mapping)
+                _vals = dc isa CategoricalConversion ? first.(dc.int_to_category) : unique(values)
                 # First we find all unique values,
                 # then we throw out NaNs that are rendered independently anyway
                 # then we clamp the remaining values to the limits,
                 # remove remaining duplicates and sort
-                vals = sort(unique(clamp.(filter(!isnan, unique(values)), limits...)))
+                vals = sort(unique(clamp.(filter(!isnan, _vals), limits...)))
                 return convert(Vector{Float64}, vals)
             else # PlotUtils.ColorGradient
                 error("PlotUtils.ColorGradient should not be used for categorical colormaps")

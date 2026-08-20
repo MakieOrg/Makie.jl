@@ -234,10 +234,7 @@ function add_color_dim_convert!(attr::ComputeGraph, color)
                 return
             end
         end
-    else
-
     end
-
     return
 end
 
@@ -270,12 +267,12 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         [:dc_color, :colorscale, :alpha],
         [:raw_color, :scaled_color, :fetch_pixel, :auto_colorrange]
     ) do color, colorscale, alpha
-        auto_colorrange = nothing
         if color isa Union{AbstractArray{<:Real}, Real}
             scaled = smallfloat_convert.(apply_scale(colorscale, color))
             auto_colorrange = Vec2f(distinct_extrema_nan(scaled))
             T = eltype(scaled)
             val = clamp.(scaled, -floatmax(T), floatmax(T))
+            return color, val, false, auto_colorrange
         elseif color isa AbstractPattern
             val = ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
@@ -285,17 +282,20 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         else
             val = add_alpha(color, alpha)
         end
-        return (color, val, color isa AbstractPattern, auto_colorrange)
+        return color, val, color isa AbstractPattern, nothing
     end
 
     map!(
         attr,
-        [:color_dim_convert, :colorrange, :colorscale, :auto_colorrange], :scaled_colorrange
-    ) do dc, colorrange, colorscale, autorange
-        if isnothing(autorange) # colors are actual colors, so no colormapping
-            return nothing
-        elseif colorrange === automatic
-            return autorange
+        [:color_dim_convert, :colorrange, :colorscale, :auto_colorrange],
+        :scaled_colorrange
+    ) do dc, colorrange, colorscale, _autorange
+        # colors are actual colors, so no colormapping
+        isnothing(_autorange) && return nothing
+
+        autorange = dc isa CategoricalConversion ? extrema(first.(dc.int_to_category)) : _autorange
+        if colorrange === automatic
+            return Vec2f(autorange)
         else
             low = process_color_value(dc, colorscale, first(colorrange), first(autorange))
             high = process_color_value(dc, colorscale, last(colorrange), last(autorange))
