@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `datashader` is much faster: with 100M points, aggregating and displaying an update went from 47 ms to 26 ms, and per-update allocations from 9.2 MiB to 11 KiB [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
+- Fixed `datashader` counting points twice at thread chunk boundaries, and erroring or writing out of bounds for points exactly at the upper axis limits [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
+- `Makie.equalize_histogram` no longer errors on `NaN` or constant input [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
 - Added `StageCamera` (`stage_cam!`), a 3D camera with photographic settings that keeps a stage of a given size in view [#5472](https://github.com/MakieOrg/Makie.jl/pull/5472).
 - `Menu` is now searchable: typing while it is open filters the options. Set `searchable = false` for the old behavior [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
 - Added `textcolor_active` and `textcolor_hover` attributes to `Menu`, with the selected entry now white by default [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
