@@ -147,7 +147,7 @@ import InverseFunctions
 
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
-export Pixel, px, Unit, plotkey, attributes, used_attributes
+export plotkey, attributes, used_attributes
 export Linestyle
 assetpath(files...) = normpath(joinpath(artifact"MakieAssets", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))
@@ -196,12 +196,12 @@ include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
 
 # Note: This file could easily be moved out into a mini-package.
-include("RenderPipeline/BufferFormat.jl")
-include("RenderPipeline/RenderPipeline.jl")
-include("RenderPipeline/LoweredPipeline.jl")
-include("RenderPipeline/io.jl")
-include("RenderPipeline/defaults.jl")
-include("RenderPipeline/gui.jl")
+include("RenderGraph/BufferFormat.jl")
+include("RenderGraph/RenderGraph.jl")
+include("RenderGraph/LoweredRenderGraph.jl")
+include("RenderGraph/io.jl")
+include("RenderGraph/defaults.jl")
+include("RenderGraph/gui.jl")
 
 include("dim-converts/dim-converts.jl")
 include("dim-converts/unitful-integration.jl")
@@ -215,7 +215,6 @@ include("float32-scaling.jl")
 
 include("interfaces.jl")
 include("compute-plots.jl")
-include("units.jl")
 include("shorthands.jl")
 
 # camera types + functions
@@ -254,6 +253,7 @@ include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/tricontourf.jl")
+include("basic_recipes/tricontour.jl")
 include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/voronoiplot.jl")
@@ -468,10 +468,6 @@ export DateTimeTicks
 # Transformations
 export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, data_limits
-
-# Spaces for widths and markers
-const PixelSpace = Pixel
-export SceneSpace, PixelSpace, Pixel
 
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d

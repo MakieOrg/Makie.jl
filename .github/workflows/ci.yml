@@ -10,11 +10,19 @@ on:
     branches:
       - master
       - 'release-*'
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
+# PR runs cancel superseded runs; merge_group and push runs queue (never cancel) and key
+# on the base branch so reference-image promotions can't overlap.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+  group: >-
+    ${{ github.workflow }}-${{
+      github.event_name == 'merge_group' && github.event.merge_group.base_ref
+      || github.event_name == 'push' && github.ref
+      || github.head_ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   codespell:
@@ -35,6 +43,23 @@ jobs:
 
     uses: ./.github/workflows/_reference-tests.yml
 
+  promote-refimages:
+    name: Promote reference images
+    needs: [reference-tests]
+    # Branches allowed to promote reference images into their own refimages-vX.Y
+    # release. Promotion runs on push, i.e. after a PR lands on the branch; the
+    # merge_group condition additionally covers branches that merge through a queue.
+    # Add a branch's ref below (and to `on.push.branches` if not already covered)
+    # to opt it in.
+    if: >
+      (github.event_name == 'push' || github.event_name == 'merge_group') &&
+      contains(fromJSON('[
+      "refs/heads/master",
+      "refs/heads/ff/breaking-0.25"
+      ]'), github.event_name == 'merge_group' && github.event.merge_group.base_ref || github.ref)
+    uses: ./.github/workflows/_promote-refimages.yml
+    secrets: inherit
+
   rprmakie:
 
     uses: ./.github/workflows/_rprmakie.yml
@@ -52,7 +77,7 @@ jobs:
     name: CI result
     runs-on: ubuntu-latest
     if: always()
-    needs: [codespell, formatting, makie, compute-pipeline, reference-tests, rprmakie, relocatability, docs]
+    needs: [codespell, formatting, makie, compute-pipeline, reference-tests, promote-refimages, rprmakie, relocatability, docs]
     steps:
       - run: |
           results='${{ toJSON(needs.*.result) }}'

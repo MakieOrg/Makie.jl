@@ -78,11 +78,13 @@ const REFIMG_STYLES = Styles(
     CSS(
         ".page-header",
         "padding" => "32px 24px",
-        "background" => "linear-gradient(135deg, $PRIMARY_COLOR 0%, #357ABD 100%)",
-        "color" => "white",
+        "background" => "linear-gradient(135deg, #EAF2FB 0%, #F5F9FF 100%)",
+        "color" => TEXT_DARK,
+        "border" => "1px solid #D6E4F5",
+        "border-left" => "5px solid $PRIMARY_COLOR",
         "border-radius" => "12px",
         "margin-bottom" => "24px",
-        "box-shadow" => "0 4px 16px rgba(0,0,0,0.12)"
+        "box-shadow" => "0 2px 8px rgba(0,0,0,0.06)"
     ),
     CSS(
         ".page-title",
@@ -262,6 +264,44 @@ const REFIMG_STYLES = Styles(
         "margin" => "4px 8px 4px 0",
         "cursor" => "pointer"
     ),
+    CSS(
+        ".card-filename",
+        "font-family" => "monospace",
+        "font-size" => "12px",
+        "color" => TEXT_DARK,
+        "word-break" => "break-all",
+        "margin-bottom" => "4px"
+    ),
+    CSS(
+        ".pin-status",
+        "display" => "flex",
+        "align-items" => "center",
+        "gap" => "4px",
+        "font-size" => "12px",
+        "font-weight" => "700",
+        "margin-bottom" => "6px"
+    ),
+    CSS(".pin-status.pinned", "color" => SUCCESS_COLOR),
+    CSS(".pin-status.unpinned", "color" => WARNING_COLOR),
+    CSS(
+        ".pin-check",
+        "accent-color" => SUCCESS_COLOR,
+        "transform" => "scale(1.1)",
+        "cursor" => "default"
+    ),
+    CSS(
+        ".card-note",
+        "font-size" => "12px",
+        "color" => "#78909C",
+        "margin-bottom" => "6px"
+    ),
+    CSS(
+        ".failed-list",
+        "padding-left" => "24px",
+        "font-family" => "monospace",
+        "font-size" => "13px",
+        "color" => TEXT_DARK
+    ),
     # Text field styles
     CSS(
         ".textfield",
@@ -329,6 +369,22 @@ const REFIMG_STYLES = Styles(
         "width" => "100%",
         "height" => "auto",
         "grid-area" => "1 / 1"
+    ),
+    CSS(
+        ".media-container .media-img",
+        "cursor" => "pointer"
+    ),
+    # Card grid - one row per image, one column per backend
+    CSS(
+        ".card-grid",
+        "display" => "grid",
+        "grid-template-columns" => "1fr 1fr 1fr",
+        "gap" => "10px"
+    ),
+    CSS(
+        "@media (max-width: 1000px)",
+        CSS(".card-grid", "grid-template-columns" => "1fr"),
+        CSS(".card-base", "min-width" => "0")
     ),
     # Main container
     CSS(
@@ -405,6 +461,42 @@ const UPLOAD_BUTTON_STYLE = Styles(
 # Helper Functions
 # ============================================================================
 
+function pin_status_dom(pinned::Bool)
+    box = pinned ?
+        DOM.input(type = "checkbox", checked = true, disabled = true, class = "pin-check") :
+        DOM.input(type = "checkbox", disabled = true, class = "pin-check")
+    return DOM.div(
+        box,
+        DOM.span(pinned ? "pin file present" : "no pin file, needs adding", class = "pin-status-text"),
+        class = pinned ? "pin-status pinned" : "pin-status unpinned",
+    )
+end
+
+comparison_note_dom() = DOM.div("unchanged, shown for comparison", class = "card-note")
+
+"""
+    failed_recordings_section(root_path)
+
+Section listing the tests that errored instead of producing an image, or `nothing` if there
+are none. No images are shown since there is nothing to compare.
+"""
+function failed_recordings_section(root_path)
+    path = joinpath(root_path, "failed_recordings.txt")
+    isfile(path) || return nothing
+    names = sort!(unique(filter(!isempty, strip.(readlines(path)))))
+    isempty(names) && return nothing
+    return DOM.div(
+        DOM.h2("Tests that failed to record", class = "section-header"),
+        DOM.div(
+            "These tests errored, so no image was recorded and no comparison is possible. " *
+                "The stacktrace is in the log of the backend's reference test job.",
+            class = "section-description"
+        ),
+        DOM.ul((DOM.li(name) for name in names), class = "failed-list"),
+        class = "section",
+    )
+end
+
 function media_element(img_name, local_path, additional_classes = ""; kw...)
     filetype = split(img_name, ".")[end]
     css_class = additional_classes == "" ? "" : " $additional_classes"
@@ -419,6 +511,8 @@ function media_element(img_name, local_path, additional_classes = ""; kw...)
     end
     return dom
 end
+
+card_grid(cards) = DOM.div(cards, class = "card-grid")
 
 
 """
@@ -451,8 +545,10 @@ function build_card_grid(img_names, backends, should_include, card_builder)
     return cards
 end
 
-function create_simple_grid_content(root_path, filename, image_folder, backends)
-    files = readlines(joinpath(root_path, filename))
+function create_simple_grid_content(root_path, filename, image_folder, backends; extra_paths = String[], review_only::Bool = false, pinned_paths = nothing)
+    path = joinpath(root_path, filename)
+    files = unique(vcat(isfile(path) ? readlines(path) : String[], collect(extra_paths)))
+    filter!(!isempty, files)
     refimages = unique(
         map(files) do img
             replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
@@ -461,12 +557,19 @@ function create_simple_grid_content(root_path, filename, image_folder, backends)
 
     # Card builder for simple cards
     function simple_card_builder(img_name, backend, current_file)
-        # Plain HTML checkbox (no observables)
-        cb = DOM.div(
-            DOM.input(type = "checkbox", class = "checkbox-input"),
-            " $current_file",
-            class = "checkbox-label"
-        )
+        # Plain HTML checkbox (no observables); filename + pin status in review mode
+        cb = if review_only
+            DOM.div(
+                DOM.div(current_file, class = "card-filename"),
+                pin_status_dom(pinned_paths !== nothing && current_file in pinned_paths),
+            )
+        else
+            DOM.div(
+                DOM.input(type = "checkbox", class = "checkbox-input"),
+                " $current_file",
+                class = "checkbox-label"
+            )
+        end
         local_path = Bonito.Asset(normpath(joinpath(root_path, image_folder, backend, img_name)))
         media = media_element(img_name, local_path)
         return Card(
@@ -520,34 +623,44 @@ function get_score_class(score::Real, thresholds::Vector{Float64})
 end
 
 """
-    BackendCard(img_name, backend, score, root_path, score_thresholds)
+    BackendCard(img_name, backend, score, root_path, score_thresholds; status)
 
-Create a reference image card for a specific backend.
+Create a reference image card for a specific backend. Passing a `status` DOM element
+replaces the selection checkbox with the file name and that element, which is what the
+read-only review page uses.
 """
 function BackendCard(
         img_name::String,
         backend::String,
         score::Float64,
         root_path::String,
-        score_thresholds::Vector{Float64}
+        score_thresholds::Vector{Float64};
+        status = nothing
     )
     current_file = backend * "/" * img_name
 
-    # Checkbox (plain HTML, selection handled in JS)
-    cb = DOM.div(
-        DOM.input(type = "checkbox", class = "checkbox-input"),
-        " $current_file"
-    )
+    # Checkbox (plain HTML, selection handled in JS); filename + status in review mode
+    cb = if !isnothing(status)
+        DOM.div(
+            DOM.div(current_file, class = "card-filename"),
+            status,
+        )
+    else
+        DOM.div(
+            DOM.input(type = "checkbox", class = "checkbox-input"),
+            " $current_file"
+        )
+    end
 
-    # Create all three media paths
     recorded_path = Bonito.Asset(normpath(joinpath(root_path, "recorded", backend, img_name)))
     reference_path = Bonito.Asset(normpath(joinpath(root_path, "reference", backend, img_name)))
-    glmakie_ref_path = Bonito.Asset(normpath(joinpath(root_path, "reference", "GLMakie", img_name)))
+    # WGLMakie-only tests (e.g. HTML widgets) have no GLMakie reference to cycle to
+    glmakie_ref_file = normpath(joinpath(root_path, "reference", "GLMakie", img_name))
 
-    # Create three media elements (identical CSS and positioning)
     media_recorded = media_element(img_name, recorded_path; style = "z-index: 3")
     media_reference = media_element(img_name, reference_path; style = "z-index: 2")
-    media_glmakie = media_element(img_name, glmakie_ref_path; style = "z-index: 1")
+    media_glmakie = isfile(glmakie_ref_file) ?
+        media_element(img_name, Bonito.Asset(glmakie_ref_file); style = "z-index: 1") : nothing
 
     # Button container (for JS to find and update)
     path_button = Bonito.Button("Showing: recorded", style = BUTTON_STYLE)
@@ -559,9 +672,7 @@ function BackendCard(
 
     # Media container
     media_container = DOM.div(
-        media_recorded,
-        media_reference,
-        media_glmakie,
+        filter(!isnothing, [media_recorded, media_reference, media_glmakie]),
         class = "media-container"
     )
 
@@ -670,6 +781,91 @@ end
 const JSHelper = Bonito.ES6Module(normpath(joinpath(@__DIR__, "JSHelper.js")))
 
 """
+    review_content(root_path, backends, score_thresholds; display_threshold=0.05)
+
+Static, review-only page content: shows only images that differ (score above
+`display_threshold`) or have an active pin file, with a per-card before/after toggle
+and no tool controls. Used for the self-contained `export_static` per-PR page.
+"""
+function review_content(root_path, backends, score_thresholds; display_threshold = 0.05)
+    # inert pin files (their reference changed since the pin was taken) are left out
+    # entirely, since they neither exempt an image nor need any action
+    classified = classify_entries(read_manifest(joinpath(root_path, "refimage_updates")), joinpath(root_path, "reference"))
+    pinned_paths = union(classified.exempt_changed, classified.exempt_new, classified.to_delete)
+    pinned_names = Set(replace(path, r"(GLMakie|CairoMakie|WGLMakie)/" => "") for path in pinned_paths)
+    pinned_new = filter(path -> isfile(joinpath(root_path, "recorded", path)), sort!(collect(classified.exempt_new)))
+
+    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends; extra_paths = pinned_new, review_only = true, pinned_paths)
+    missing_cards = create_simple_grid_content(root_path, "missing_files.txt", "reference", backends; review_only = true, pinned_paths)
+
+    scores_imgs = readdlm(joinpath(root_path, "scores.tsv"), '\t')
+    lookup = Dict(scores_imgs[:, 2] .=> scores_imgs[:, 1])
+    imgs_with_score = unique(replace.(string.(scores_imgs[:, 2]), r"(GLMakie|CairoMakie|WGLMakie)/" => ""))
+    sort!(imgs_with_score; by = img -> get_score(lookup, backends, img), rev = true)
+    filter!(imgs_with_score) do img
+        get_score(lookup, backends, img) > display_threshold || img in pinned_names
+    end
+
+    function review_card(img_name, backend, current_file)
+        score = lookup[current_file]
+        state = review_pin_state(current_file, score, pinned_paths; threshold = display_threshold)
+        status = state === :unchanged ? comparison_note_dom() : pin_status_dom(state === :pinned)
+        return BackendCard(img_name, backend, round(score; digits = 3), root_path, score_thresholds; status)
+    end
+
+    updated_cards = build_card_grid(imgs_with_score, backends, file -> haskey(lookup, file), review_card)
+
+    cov = approval_coverage(root_path)
+    all_approved = cov.n_approved == cov.n_changed
+    summary = "$(cov.n_approved) of $(cov.n_changed) new/changed images approved by pin files" *
+        (all_approved ? "" : ", the rest still need to be added before merge")
+
+    cycle_controls = DOM.div(
+        DOM.input(type = "checkbox", class = "cycle-checkbox"),
+        " also cycle through the GLMakie reference",
+        class = "checkbox-label"
+    )
+
+    sections = Any[]
+    isempty(updated_cards) || push!(
+        sections, DOM.div(
+            DOM.h2("Changed images", class = "section-header"),
+            DOM.div("Each row shows one image per backend. Click an image or use the button on its card to toggle between the recorded image and its current reference.", class = "section-description"),
+            cycle_controls,
+            card_grid(updated_cards),
+            class = "section",
+        )
+    )
+    isempty(new_cards) || push!(
+        sections, DOM.div(
+            DOM.h2("New images without references", class = "section-header"),
+            DOM.div("These images have no current reference and are added when the PR merges.", class = "section-description"),
+            card_grid(new_cards),
+            class = "section",
+        )
+    )
+    isempty(missing_cards) || push!(
+        sections, DOM.div(
+            DOM.h2("Reference images without recordings", class = "section-header"),
+            DOM.div("A reference image exists but no image was recorded, so its test was deleted or renamed.", class = "section-description"),
+            card_grid(missing_cards),
+            class = "section",
+        )
+    )
+    failed_section = failed_recordings_section(root_path)
+    isnothing(failed_section) || push!(sections, failed_section)
+    isempty(sections) && push!(sections, DOM.div("No differing or pinned reference images.", class = "section-description"))
+
+    header = DOM.div(
+        DOM.h1("Reference image review", class = "page-title"),
+        DOM.p(summary, class = "page-subtitle"),
+        class = "page-header",
+    )
+
+    return DOM.div(REFIMG_STYLES, header, sections..., class = "main-container")
+end
+
+"""
     create_app_content(session, root_path)
 
 Creates the main ReferenceUpdater app content.
@@ -678,6 +874,9 @@ function create_app_content(session::Session, root_path::String)
     # Constants
     backends = ["GLMakie", "CairoMakie", "WGLMakie"]
     score_thresholds = [0.05, 0.03, 0.01]
+
+    # Static export (no live connection) renders the trimmed, review-only page
+    session.connection isa Bonito.NoConnection && return review_content(root_path, backends, score_thresholds)
 
     # Newly added Images
     new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends)
@@ -731,7 +930,8 @@ function create_app_content(session::Session, root_path::String)
 
     # Upload section
     tag_textfield = Bonito.TextField("$(last_major_version())", class = "textfield-tag")
-    upload_button = Bonito.Button("Update reference images with selection", style = UPLOAD_BUTTON_STYLE)
+    manifest_button = Bonito.Button("Add pin files for selection", style = UPLOAD_BUTTON_STYLE)
+    upload_button = Bonito.Button("Update reference images directly (maintainers)", style = BUTTON_STYLE)
 
     # Loading overlay
     loading_overlay = DOM.div(
@@ -745,12 +945,24 @@ function create_app_content(session::Session, root_path::String)
 
     # Observable to trigger upload with collected selections
     upload_trigger = Observable(Dict{Any, Any}("upload_files" => String[], "delete_files" => String[]))
+    manifest_trigger = Observable(Dict{Any, Any}("upload_files" => String[], "delete_files" => String[]))
 
     # Check if we're in a session (not static export)
     is_static = (session.connection isa Bonito.NoConnection)
     if is_static
         upload_button.attributes[:disabled] = true
+        manifest_button.attributes[:disabled] = true
     else
+        on(manifest_trigger) do selections
+            Threads.@async try
+                reference_folder = joinpath(root_path, "reference")
+                path = add_manifest_selection(selections["upload_files"], selections["delete_files"], reference_folder)
+                @info "Wrote reference image update manifest entries to $path"
+            catch e
+                @error "Failed to add selection to manifest." exception = (e, catch_backtrace())
+            end
+        end
+
         # Handle upload trigger from JS
         on(upload_trigger) do selections
             Threads.@async begin
@@ -782,6 +994,15 @@ function create_app_content(session::Session, root_path::String)
         });
         """
 
+    manifest_handler = is_static ? DOM.div() : js"""
+        $(manifest_button.value).on(clicked => {
+            $(JSHelper).then(mod => {
+                const { uploadFiles, deleteFiles } = mod.collectCheckedFiles();
+                $(manifest_trigger).notify({upload_files: uploadFiles, delete_files: deleteFiles});
+            });
+        });
+        """
+
     # JS to update selection counts on checkbox changes via JSHelper
     update_counts_js = is_static ? DOM.div() : js"""
         $(JSHelper).then(mod => {
@@ -800,7 +1021,7 @@ function create_app_content(session::Session, root_path::String)
     end
 
     # Main grid
-    main_grid = Grid(updated_cards, columns = "1fr 1fr 1fr")
+    main_grid = card_grid(updated_cards)
 
     # Setup JS filtering
     onjs(
@@ -821,7 +1042,7 @@ function create_app_content(session::Session, root_path::String)
     )
 
     toggle_all_new = Bonito.Button("Toggle all", style = BUTTON_STYLE)
-    new_grid = Grid(new_cards, columns = "1fr 1fr 1fr")
+    new_grid = card_grid(new_cards)
     onjs(
         session, toggle_all_new.value, js"""
         function(click) {
@@ -831,7 +1052,7 @@ function create_app_content(session::Session, root_path::String)
     )
 
     toggle_all_missing = Bonito.Button("Toggle all", style = BUTTON_STYLE)
-    missing_grid = Grid(missing_cards, columns = "1fr 1fr 1fr")
+    missing_grid = card_grid(missing_cards)
     onjs(
         session, toggle_all_missing.value, js"""
         function(click) {
@@ -897,10 +1118,12 @@ function create_app_content(session::Session, root_path::String)
     update_section = DOM.div(
         DOM.h2("Images to update", class = "section-header"),
         DOM.div(
-            "Pressing the button below will download the latest reference images for the selected version; add, update and/or remove the selected images listed below and then upload the changed reference image folder. See Julia terminal for progress updates.",
+            "Select the images to update below, then \"Add pin files for selection\" to write one pin file per image into ReferenceTests/refimage_updates/ (they get promoted into the release after the PR merges). \"Update reference images directly\" is the old maintainer path that overwrites the release tarball for the given version immediately. See Julia terminal for progress updates.",
             class = "section-description"
         ),
         DOM.div(
+            manifest_button,
+            manifest_handler,
             tag_textfield,
             upload_button,
             upload_handler,
@@ -974,6 +1197,8 @@ function create_app_content(session::Session, root_path::String)
         class = "section"
     )
 
+    failed_section = something(failed_recordings_section(root_path), DOM.div())
+
     return DOM.div(
         REFIMG_STYLES,
         loading_overlay,
@@ -982,6 +1207,7 @@ function create_app_content(session::Session, root_path::String)
         glmakie_compare_section,
         new_image_section,
         missing_recordings_section,
+        failed_section,
         main_section,
         class = "main-container"
     )

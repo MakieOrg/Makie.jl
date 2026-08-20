@@ -299,7 +299,12 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         else
             low = process_color_value(dc, colorscale, first(colorrange), first(autorange))
             high = process_color_value(dc, colorscale, last(colorrange), last(autorange))
-            return Vec2f(low, high)
+            if low < high
+                return Vec2f(low, high)
+            else
+                delta = max(0.5f0, abs(Float32(low)))
+                return Vec2f(low - delta, high + delta)
+            end
         end
     end
 
@@ -1003,16 +1008,6 @@ function collect_all_connected_nodes(computed::ComputePipeline.Computed, tracked
 end
 
 Observables.to_value(computed::ComputePipeline.Computed) = computed[]
-function Base.notify(computed::ComputePipeline.Computed)
-    nodes = collect_all_connected_nodes(computed)
-    graph = computed.parent.graph
-    to_notify = intersect(nodes, keys(graph.observables))
-    foreach(to_notify) do key
-        notify(graph.observables[key])
-    end
-    return
-end
-
 
 function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
     return map!(attr, [attribute, :positions], output_name) do vec, positions
@@ -1220,7 +1215,10 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
         elseif last(colorrange) == automatic
             return Vec2f(first(colorrange), last(distinct_extrema_nan(color)))
         else
-            return Vec2f(colorrange)
+            lo, hi = Vec2f(colorrange)
+            lo == hi || return Vec2f(lo, hi)
+            delta = max(0.5f0, abs(lo))
+            return Vec2f(lo - delta, hi + delta)
         end
     end
 

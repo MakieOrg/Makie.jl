@@ -42,6 +42,7 @@ end
 
 
 BLOCK_UPDATES = let
+    RNG.seed_rng!()
     block_types = [
         Axis, Axis3, PolarAxis,
         Legend, Colorbar, Menu, Makie.Button, Makie.Checkbox,
@@ -174,7 +175,7 @@ BLOCK_UPDATES = let
     # includes a bunch of layoutobservables, Legend entry defaults, formatters,
     # dim_converts, ...
     # not counted: skipped hotkey updates, visible updates from true to true
-    @test length(skipped) == 93 # out of 711
+    @test length(skipped) == 94 # out of 711
 
     settings
 end
