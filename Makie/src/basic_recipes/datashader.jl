@@ -273,16 +273,44 @@ module Aggregation
 end
 
 using ..Aggregation
-using ..Aggregation: Canvas, change_op!, aggregate!
+using ..Aggregation: Canvas, bin_scale, change_op!, aggregate!
 
 function equalize_histogram(matrix; nbins = 256)
-    h_eq = StatsBase.fit(StatsBase.Histogram, vec(matrix); nbins = nbins)
-    h_eq = normalize(h_eq; mode = :density)
-    cdf = cumsum(h_eq.weights)
-    cdf = cdf / cdf[end]
-    edg = h_eq.edges[1]
-    # TODO is this the correct linear interpolation?
-    return Makie.interpolated_getindex.((cdf,), matrix, (Vec2f(first(edg), last(edg)),))
+    # binning happens in the element type's own precision, so that the scaled offsets
+    # below stay within the range `bin_scale` was checked against
+    FT = float(eltype(matrix))
+    mini, maxi = FT(Inf), FT(-Inf)
+    @inbounds for x in matrix
+        if isfinite(x)
+            mini = min(mini, x)
+            maxi = max(maxi, x)
+        end
+    end
+    mini < maxi || return fill!(similar(matrix, Float32), 1.0f0)
+
+    binscale = bin_scale(nbins, maxi - mini)
+    # one bin of headroom, so the interpolation below can always read the following entry
+    counts = zeros(Float32, nbins + 1)
+    @inbounds for x in matrix
+        isfinite(x) || continue
+        counts[1 + unsafe_trunc(Int, binscale * (x - mini))] += 1
+    end
+    cdf = cumsum!(counts, counts)
+    cdf ./= cdf[end]
+
+    result = similar(matrix, Float32)
+    @inbounds for i in eachindex(matrix, result)
+        x = matrix[i]
+        if !isfinite(x)
+            result[i] = NaN32
+            continue
+        end
+        pos = binscale * (x - mini)
+        bin = unsafe_trunc(Int, pos)
+        low, high = cdf[bin + 1], cdf[bin + 2]
+        result[i] = low + (high - low) * (pos - bin)
+    end
+    return result
 end
 
 """

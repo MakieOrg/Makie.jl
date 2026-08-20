@@ -88,6 +88,27 @@ end
         end
     end
 
+    @testset "equalize_histogram" begin
+        values = Float32[0 0 0 0; 1 1 2 3]
+        eq = Makie.equalize_histogram(values; nbins = 4)
+        @test size(eq) == size(values)
+        # counts 4, 2, 1, 1 give a cdf of 0.5, 0.75, 0.875, 1, and each value is
+        # interpolated by how far it sits into its own bin
+        @test all(==(0.5f0), eq[1, :])
+        @test eq[2, 1] ≈ 0.75f0 + (0.875f0 - 0.75f0) / 3
+        @test eq[2, 2] == eq[2, 1]
+        @test eq[2, 3] ≈ 0.875f0 + (1.0f0 - 0.875f0) * 2 / 3
+        @test eq[2, 4] == 1.0f0
+
+        with_nan = Float32[0 NaN; 1 2]
+        eq_nan = Makie.equalize_histogram(with_nan; nbins = 4)
+        @test isnan(eq_nan[1, 2])
+        @test !any(isnan, eq_nan[[1, 2, 4]])
+
+        constant = fill(5.0f0, 3, 3)
+        @test Makie.equalize_histogram(constant) == fill(1.0f0, 3, 3)
+    end
+
     @testset "point_transform" begin
         points = [Point2f(0.5, -1.5), Point2f(2.0, 1.0)]
         expected = reference_aggregation(map(reverse, points), bounds, resolution, AggCount{Int}())
