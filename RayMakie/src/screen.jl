@@ -6,6 +6,35 @@
 const VolPath = Hikari.VolPath
 
 """
+The pixel reconstruction filter every RayMakie film is built with.
+
+`Gaussian(radius = 1.5, sigma = 0.5)` — pbrt-v4's default (`filters.cpp`:
+`xradius`/`yradius` 1.5, `sigma` 0.5, used whenever a scene names no Filter),
+and the default Hikari's own `VolPath` docstring documents.
+
+This was hardcoded as `LanczosSincFilter(Point2f(1), 3)` at three separate call
+sites. Radius 1 is tighter than any pbrt default and made RayMakie's
+reconstruction differ from the reference for every render — visible as soon as a
+render is compared against a pbrt EXR rather than eyeballed.
+"""
+PIXEL_FILTER() = Hikari.GaussianFilter(radius = Point2f(1.5f0, 1.5f0), sigma = 0.5f0)
+
+# The format of every surface RayMakie composites into: the offscreen framebuffer
+# `colorbuffer` reads back, and the swapchain the viewer presents.
+#
+# UNORM, not SRGB. Everything that reaches this stage is already display-referred
+# — `Hikari.postprocess!` has applied exposure, tonemapping and gamma to the
+# raytraced image, and Makie's plot colours are sRGB by definition. An `_SRGB`
+# attachment encodes what a shader writes, on the assumption that shaders emit
+# linear values, so it encoded these a SECOND time: `lines!(color = orange)`
+# asked for 0.647 in green and read back 0.825 = `1.055·0.647^(1/2.4) − 0.055`.
+# Pure red, green and blue are fixed points of that transform, which is why it
+# survived every primary-coloured test. It also made the raytraced pixels depend
+# on whether the scene happened to contain an overlay, since only then did
+# `colorbuffer` route through this framebuffer at all.
+const COMPOSITE_FORMAT = Vulkan.FORMAT_B8G8R8A8_UNORM
+
+"""
     ScreenConfig
 
 Configuration for RayMakie rendering.
@@ -79,6 +108,12 @@ mutable struct Screen <: Makie.MakieScreen
     state::Union{Nothing, RayMakieState}
     scene_states::Vector{RayMakieState}
     output_buffer::Union{Nothing, AbstractMatrix{RGBA{Float32}}}
+    # Where `output_buffer` comes from, and the only thing that gives it back.
+    # A resize replaces the buffer, so it has its own allocator rather than
+    # sharing a film's: `free!` here means "the previous size is no longer
+    # wanted", and the pool hands those bytes to the next allocation once the
+    # device is finished with them.
+    memory::Union{Nothing, Hikari.DeviceMemory}
     config::ScreenConfig
     # Render loop (vulkan_viewer)
     window::Any                 # Nothing or Lava.RenderWindow
@@ -103,7 +138,7 @@ mutable struct Screen <: Makie.MakieScreen
     gfx_pipelines::Dict{Symbol, GraphicsPipeline}
 
     function Screen(scene, state, config)
-        s = new(scene, state, RayMakieState[], nothing, config,
+        s = new(scene, state, RayMakieState[], nothing, nothing, config,   # …, output_buffer, memory, …
                 nothing, nothing, Threads.Atomic{Bool}(false), nothing,  # window, rendertask, stop, last_colorbuffer
                 nothing,           # uncovered_state
                 nothing, 0,        # cached_atlas
@@ -173,10 +208,10 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
         end
 
         film = Hikari.Film(resolution;
-            filter=Hikari.LanczosSincFilter(Point2f(1.0f0), 3.0f0),
+            filter=PIXEL_FILTER(),
             crop_bounds=Hikari.Bounds2(Point2f(0.0f0), Point2f(1.0f0)),
             diagonal=1.0f0, scale=1.0f0)
-        film = Raycore.Adapt.adapt(ka_backend, film)
+        film = Hikari.Film(ka_backend, film)
 
         state.film = film
 
@@ -188,19 +223,13 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
         state.needs_film_clear = true
     end
 
-    screen.output_buffer = KernelAbstractions.allocate(ka_backend, RGBA{Float32}, h, w)
+    # The previous size goes back first. No wait and no `finalize`: `free!`
+    # retires, so the bytes return to the pool when the device says so and the
+    # new buffer below can reuse them.
+    screen.memory === nothing || Hikari.free!(screen.memory)
+    screen.memory = Hikari.DeviceMemory(ka_backend)
+    screen.output_buffer = Hikari.alloc!(screen.memory, RGBA{Float32}, (Int(h), Int(w)))
     return nothing
-end
-
-# Flush GPU deferred frees — Lava-specific, no-op for other backends
-function flush_gpu!()
-    lava = get(Base.loaded_modules, Base.PkgId(Base.UUID("dab5e104-5754-42e4-af51-5044c2e3a8e0"), "Lava"), nothing)
-    lava === nothing && return
-    try
-        getfield(lava, :vk_flush!)()
-        getfield(lava, :flush_deferred_frees!)()
-    catch
-    end
 end
 
 function Base.isopen(screen::Screen)
@@ -216,8 +245,6 @@ function cleanup!(state::RayMakieState)
         state.integrator_state = nothing
     end
 
-    finalize(state.depth_flipped)
-
     return nothing
 end
 
@@ -231,14 +258,26 @@ function Base.close(screen::Screen)
     # Stop render loop if running
     screen.stop_renderloop[] = true
     if screen.rendertask !== nothing && !istaskdone(screen.rendertask)
-        try wait(screen) catch end
+        # `wait` rethrows whatever ended the loop. Closing a screen must not
+        # propagate that — but a render loop that died is worth saying so, and
+        # this used to be `try wait(screen) catch end`.
+        try
+            wait(screen)
+        catch e
+            @warn "RayMakie: the render loop ended with an exception" exception = (e, catch_backtrace())
+        end
         screen.rendertask = nothing
     end
     # Close GLFW window if open
     if screen.window !== nothing
+        # A window whose GLFW handle is already destroyed throws here, and that
+        # is the expected case when the user closed it. Anything else is not,
+        # so it gets reported rather than dropped.
         try
             isopen(screen.window) && close(screen.window)
-        catch end
+        catch e
+            @warn "RayMakie: closing the window failed" exception = (e, catch_backtrace())
+        end
         screen.window = nothing
     end
     # Idempotent — safe to call from explicit close
@@ -262,17 +301,28 @@ function Base.close(screen::Screen)
     screen.state = nothing
 
     # Free the output buffer and cached overlay buffers
-    if screen.output_buffer !== nothing
-        finalize(screen.output_buffer)
+    if screen.memory !== nothing
+        Hikari.free!(screen.memory)
+        screen.memory = nothing
         screen.output_buffer = nothing
     end
     # uncovered_overlay_buf and uncovered_depth_buf were removed from Screen struct
 
     close(screen.config.integrator)
 
-    # Flush deferred frees so GPU memory is actually released now
-    flush_gpu!()
+    # The graphics queue goes back. It drains on the way out, which is what
+    # retires everything the overlay pass recorded against it.
+    if screen.gfx_bq !== nothing
+        Lava.release_batch_queue!(screen.gfx_bq::Lava.BatchQueue)
+        screen.gfx_bq = nothing
+    end
 
+    # No flush, and nothing reaching into Lava. This used to call
+    # `vk_flush!` + `flush_deferred_frees!` through `Base.loaded_modules`,
+    # wrapped in a `try/catch` that swallowed whatever went wrong. Every
+    # allocation above is a pool region now: `free!` retires it, and the next
+    # allocation on this device reclaims it — including across screens, which
+    # is what the reach-through was approximating.
     return nothing
 end
 
@@ -391,43 +441,46 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
     return state.film
 end
 
-function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState; need_aux_buffers::Bool=true)
+function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     screen.state = scene_state
     film = scene_state.film
     config = screen.config
 
     if scene_state.overlay_only
-        # Overlay-only: fill postprocess with scene background color, set depth to max
+        # Overlay-only: the scene's own background is all this contributes, and
+        # the plots are drawn later by the overlay pass. Nothing reads this
+        # state's depth buffer — the overlay framebuffer has no depth attachment.
         bg = scene_state.makie_scene.backgroundcolor[]
         fill!(film.postprocess, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
-        if need_aux_buffers
-            fill!(film.depth, Float32(1e30))  # all overlays pass depth test
-        end
 
         # Poll compute graph for overlay data
         poll_all_plots(screen, scene_state.makie_scene)
-
-        # Overlay rendering is done separately via render_overlays_to_target!
-        # after the output_buffer is blitted to the window.
         return
     end
 
     camera = scene_state.camera[]
 
-    # Fill depth/normal/albedo for overlay depth testing and denoising.
-    # Skipped when need_aux_buffers=false (no overlays, no denoising).
-    if need_aux_buffers
-        tlas = scene_state.hikari_scene.accel
-        if Raycore.n_instances(tlas) > 0
-            lights = scene_state.hikari_scene.lights
-            has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
-            # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
-            # Must re-adapt per render so mesh mutations are visible.
-            adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
-            Hikari.fill_aux_buffers!(film, adapted_scene, camera; has_infinite_lights=has_inf)
-        else
-            fill!(film.depth, Float32(1e30))  # all overlays pass depth test
-        end
+    # Depth, normal and albedo. Unconditional: `postprocess!` below composites
+    # the background wherever `isinf(depth)`, so a frame that skips this reads a
+    # depth buffer of zeros, calls nothing escaped, and comes out on a BLACK
+    # background regardless of what the user asked for. This used to be gated on
+    # `need_aux_buffers = has_overlays || denoise`, which made the background
+    # colour of a plain 3D scene depend on whether it happened to contain a
+    # `lines!`. The denoiser is the only consumer of normal and albedo, but depth
+    # is not optional.
+    tlas = scene_state.hikari_scene.accel
+    if Raycore.n_instances(tlas) > 0
+        lights = scene_state.hikari_scene.lights
+        has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
+        # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
+        # Must re-adapt per render so mesh mutations are visible.
+        adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
+        Hikari.fill_aux_buffers!(film, adapted_scene, camera; has_infinite_lights=has_inf)
+    else
+        # Nothing to hit, so every ray escapes. `Inf`, not a large finite value:
+        # the test in `postprocess_kernel!` is `isinf`, and 1f30 failed it — an
+        # empty scene rendered black instead of showing its background.
+        fill!(film.depth, Inf32)
     end
 
     # Apply denoising if enabled (modifies framebuffer in-place)
@@ -486,54 +539,6 @@ function postprocess_and_composite_gpu!(screen::Screen)
     return screen.output_buffer
 end
 
-# Copy a renderable scene's film depth buffer into the root-sized depth buffer
-# at the correct viewport position.
-@kernel function _blit_depth_kernel!(dst, @Const(src),
-                                     dst_r0::Int32, dst_c0::Int32,
-                                     src_r0::Int32, src_c0::Int32)
-    ix, iy = @index(Global, NTuple)
-    dr = dst_r0 + Int32(ix) - Int32(1)
-    dc = dst_c0 + Int32(iy) - Int32(1)
-    sr = src_r0 + Int32(ix) - Int32(1)
-    sc = src_c0 + Int32(iy) - Int32(1)
-    @inbounds dst[dr, dc] = src[sr, sc]
-end
-
-function blit_depth_to_root!(root_depth, scene_state, root_scene, backend)
-    src_depth = scene_state.film.depth
-    out_h, out_w = size(root_depth)
-    vh, vw = size(src_depth)
-
-    if scene_state.makie_scene === root_scene
-        col_start = 1
-        row_start = 1
-    else
-        vp = Makie.viewport(scene_state.makie_scene)[]
-        vx, vy = vp.origin
-        fig_x = max(0f0, Float32(vx))
-        fig_y = max(0f0, Float32(vy))
-        col_start = Int(round(fig_x)) + 1
-        row_start = out_h - Int(round(fig_y)) - vh + 1
-    end
-
-    src_row_off = max(0, 1 - row_start)
-    src_col_off = max(0, 1 - col_start)
-    dst_r0 = max(1, row_start)
-    dst_c0 = max(1, col_start)
-    dst_r1 = min(out_h, row_start + vh - 1)
-    dst_c1 = min(out_w, col_start + vw - 1)
-
-    (dst_r0 > dst_r1 || dst_c0 > dst_c1) && return
-
-    ndrange = (dst_r1 - dst_r0 + 1, dst_c1 - dst_c0 + 1)
-    _blit_depth_kernel!(backend)(
-        root_depth, src_depth,
-        Int32(dst_r0), Int32(dst_c0),
-        Int32(src_row_off + 1), Int32(src_col_off + 1);
-        ndrange=ndrange,
-    )
-    KernelAbstractions.synchronize(backend)
-end
 
 @kernel function _scene_composite_kernel!(output, @Const(sub_image),
                                     dst_r0::Int32, dst_c0::Int32,
@@ -638,15 +643,19 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # blit to BGRA framebuffer, render overlays via graphics pipeline, readback,
     # and convert BGRA UInt8 back to RGBA Float32. Without overlays we skip all
     # that and download the GPU output_buffer directly.
-    has_overlays = any(ss -> ss.overlay_only, screen.scene_states)
-    need_aux = has_overlays || screen.config.denoise
+    # Whether anything will actually be drawn, not whether a scene happens to be
+    # 2D. `overlay_only` comes from `should_raytrace(camera_controls)`, so gating
+    # on it meant a RAYTRACED scene's overlays — every `lines!`, `scatter!` and
+    # `text!` in it, which is every decoration an `Axis3` is made of — were built
+    # and then never composited.
+    has_overlays = any(ss -> !isempty(collect_overlay_robjs(ss)), screen.scene_states)
 
     # Postprocess + composite into output_buffer (on GPU)
     bg = screen.scene.backgroundcolor[]
     fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
     for scene_state in screen.scene_states
         scene_state.overlay_only && continue
-        postprocess_scene_state!(screen, scene_state; need_aux_buffers=need_aux)
+        postprocess_scene_state!(screen, scene_state)
         composite_scene!(screen.output_buffer, scene_state, screen.scene)
     end
     KernelAbstractions.synchronize(screen.config.device)
@@ -654,7 +663,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     if has_overlays
         # Slow path: blit to offscreen framebuffer, render overlays on top, readback
         w, h = size(screen.output_buffer, 2), size(screen.output_buffer, 1)
-        fb = Lava.LavaFramebuffer(w, h; depth=false, color_format=Vulkan.FORMAT_B8G8R8A8_SRGB)
+        fb = Lava.LavaFramebuffer(w, h; depth=false, color_format=COMPOSITE_FORMAT)
         bq = get_gfx_bq!(screen)
         Lava.blit!(bq, Lava.OffscreenTarget(fb), screen.output_buffer; clear=false)
         for scene_state in screen.scene_states
@@ -755,7 +764,8 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
         @info "RayMakie: pipeline ready ($(round(time() - t0, digits=1))s) — opening window"
     end
 
-    win = Lava.RenderWindow(w, h; title=screen.config.title, vsync=screen.config.vsync)
+    win = Lava.RenderWindow(w, h; title=screen.config.title, vsync=screen.config.vsync,
+                            color_format=COMPOSITE_FORMAT)
     screen.window = win
     connect_glfw_events!(root_scene, win.handle, screen.stop_renderloop)
 
@@ -838,11 +848,15 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                 Lava.present_frame!(present_bq, win)
                 Lava.Vulkan.device_wait_idle(ctx.device)
 
-                # Cache composited frame for colorbuffer() to return without blocking
+                # Cache composited frame for colorbuffer() to return without blocking.
+                # A failed readback leaves the PREVIOUS frame in the cache, so
+                # swallowing it here meant `colorbuffer` quietly returned a stale
+                # image — the loop keeps going, but not silently.
                 try
                     cpu_buf = Array(screen.output_buffer)
                     screen.last_colorbuffer = map(c -> RGB{N0f8}(clamp01nan(c.r), clamp01nan(c.g), clamp01nan(c.b)), cpu_buf)
-                catch
+                catch e
+                    @warn "RayMakie: reading back the frame failed; colorbuffer will return the previous one" exception = (e, catch_backtrace())
                 end
 
                 yield()
@@ -853,8 +867,29 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             end
         finally
             screen.stop_renderloop[] = true
-            try Lava.Vulkan.device_wait_idle(ctx.device) catch end
-            try close(win) catch end
+            # Both are caught because this is a `finally`: throwing here would
+            # replace whatever actually ended the loop with a teardown error.
+            # Reported, though — a `device_wait_idle` that fails means the device
+            # is gone, which is the single most useful thing to know here and
+            # was exactly what `catch end` threw away.
+            try
+                Lava.Vulkan.device_wait_idle(ctx.device)
+            catch e
+                @error "RayMakie: device_wait_idle failed during render-loop teardown" exception = (e, catch_backtrace())
+            end
+            try
+                close(win)
+            catch e
+                @warn "RayMakie: closing the render window failed during teardown" exception = (e, catch_backtrace())
+            end
+            # Hand the presentation queue back. Dropping it instead leaks its
+            # command pool, timeline semaphore and argument slabs for the life of
+            # the device, and every start_renderloop! allocated a fresh one.
+            try
+                Lava.release_batch_queue!(present_bq)
+            catch e
+                @warn "RayMakie: releasing the presentation queue failed" exception = (e, catch_backtrace())
+            end
             screen.rendertask = nothing
         end
     end
@@ -907,9 +942,6 @@ function Base.delete!(screen::Screen, scene::Scene)
     screen.state = nothing
     # Also close the integrator to free its caches
     close(screen.config.integrator)
-    # Flush deferred frees so GPU memory is actually released
-    # (this can be called from Scene GC finalizer via @async)
-    flush_gpu!()
 end
 
 function free_state_gpu!(state::RayMakieState)
@@ -920,6 +952,9 @@ function free_state_gpu!(state::RayMakieState)
         set isa Raycore.MultiTypeSet || continue
         Raycore.free!(set)
     end
+    # `media_interfaces` is still a `KA.allocate` on the Hikari side, so this is
+    # still a `finalize`. It is the last one here; when Hikari's scene data moves
+    # onto a `DeviceMemory` it goes the way of the rest.
     finalize(state.hikari_scene.media_interfaces)
     state.hikari_scene = nothing
 end

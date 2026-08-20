@@ -376,9 +376,14 @@ end
 
 function mesh_overlay_color(plot, color_tex)
     c = to_value(plot.color)
+    # White is the documented fallback for a colour Makie cannot convert, and
+    # that is a legitimate outcome — but it is also what a genuinely broken
+    # colour looks like, so it says which one happened rather than rendering
+    # white and leaving the user to guess.
     try
         return RGBA{Float32}(Makie.to_color(c))
-    catch
+    catch e
+        @warn "RayMakie: could not convert $(typeof(c)) to a colour; the 2D overlay will be white" exception = (e, catch_backtrace()) maxlog = 1
         return RGBA{Float32}(1f0, 1f0, 1f0, 1f0)
     end
 end

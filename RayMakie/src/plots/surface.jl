@@ -18,12 +18,21 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
     hikari_scene = screen.state.hikari_scene
     state = screen.state
 
-    # Register Makie's surface position pipeline (transform_func + model + f32c)
-    Makie.add_computation!(attr, scene, Val(:surface_transform))
+    # Register Makie's surface position pipeline (transform_func + model + f32c).
+    # No `scene` argument: `add_computation!(attr, ::Val{:surface_transform})`
+    # takes the attributes alone, and passing a scene picked no method at all —
+    # so every `surface!` in a RayMakie scene died with a MethodError.
+    Makie.add_computation!(attr, Val(:surface_transform))
 
-    # 1. Pre-transformed positions → surface mesh (GB.Mesh)
-    register_computation!(attr, [:positions_transformed_f32c], [:trace_surface_mesh]) do args, changed, last
-        return (build_surface_mesh(args.positions_transformed_f32c),)
+    # 1. Pre-transformed positions → surface mesh (GB.Mesh).
+    #
+    # `:z` is an input because `positions_transformed_f32c` is a FLAT vector and
+    # carries no grid shape — Makie's own `add_computation!(::Val{:surface_as_mesh})`
+    # reshapes it the same way, via `surface2mesh(pos, size(z))`. Passing the
+    # vector straight through gave `MethodError: no method matching
+    # build_surface_mesh(::Vector{Point{3, Float32}})`.
+    register_computation!(attr, [:positions_transformed_f32c, :z], [:trace_surface_mesh]) do args, changed, last
+        return (build_surface_mesh(reshape(args.positions_transformed_f32c, size(args.z))),)
     end
 
     # 2. Color → Hikari texture (independent of mesh geometry)

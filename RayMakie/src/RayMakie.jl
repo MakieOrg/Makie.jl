@@ -22,7 +22,7 @@ import Lava: GraphicsPipeline, Premultiplied, TriangleList, NoCull, DepthOff,
              BatchQueue,
              allocate_batch_queue!,
              LavaDeviceArray, GeometryConfig,
-             LineListAdjacency, LineList, TriangleStrip, PointList,
+             LineListAdjacency, LineStripAdjacency, LineList, TriangleStrip, PointList,
              GfxTexture2D,
              geom_input, geom_input_position
 import Lava.Vulkan
@@ -46,8 +46,10 @@ mutable struct RayMakieState
     camera::Union{Observable, Nothing}
     hikari_scene::Union{Hikari.AbstractScene, Nothing}
     needs_film_clear::Bool
-    # Pre-allocated flipped depth buffer for overlay rendering
-    depth_flipped::AbstractMatrix{Float32}
+    # `depth_flipped` used to sit here — a 1x1 device allocation for an overlay
+    # path that flips the index in the kernel instead. Its own comment said it
+    # was unused; it existed to be allocated in two constructors and finalized
+    # in `cleanup!`.
     # Per-scene integrator state (e.g. VolPathState) — each scene accumulates independently
     integrator_state::Any
     # True for 2D scenes: only overlay rendering, no ray tracing
@@ -395,7 +397,7 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
 
     film = Hikari.Film(
         resolution;
-        filter=Hikari.LanczosSincFilter(Point2f(1.0f0), 3.0f0),
+        filter=PIXEL_FILTER(),
         crop_bounds=Hikari.Bounds2(Point2f(0.0f0), Point2f(1.0f0)),
         diagonal=1.0f0, scale=1.0f0,
     )
@@ -404,17 +406,15 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
     hikari_scene = Hikari.Scene(backend=ka_backend, hw_accel=hw_accel)
     init_lights!(hikari_scene, rscene, integrator)
 
-    # Convert film to GPU if backend is not Array
-    film = Raycore.Adapt.adapt(ka_backend, film)
+    # Onto the backend, in memory the film owns
+    film = Hikari.Film(ka_backend, film)
 
     # Create camera with screen_window for the visible sub-region
     camera = to_trace_camera(rscene, film; screen_window)
 
     # Clear film when Makie camera changes (rotation, zoom, pan)
-    # depth_flipped is unused (kernels flip index instead), but struct field still exists
-    depth_flipped = KernelAbstractions.allocate(ka_backend, Float32, 1, 1)
 
-    state = RayMakieState(rscene, film, camera, hikari_scene, false, depth_flipped, nothing, false, false)
+    state = RayMakieState(rscene, film, camera, hikari_scene, false, nothing, false, false)
     # Guard: only clear film when the projection matrix actually changes.
     # Makie's Observable fires on every notify(), even when the value is identical.
     # Without this guard, GLMakie re-renders (triggered by overlay image updates)
@@ -440,15 +440,13 @@ function create_overlay_only_state(scene::Makie.Scene, screen)
 
     film = Hikari.Film(
         resolution;
-        filter=Hikari.LanczosSincFilter(Point2f(1.0f0), 3.0f0),
+        filter=PIXEL_FILTER(),
         crop_bounds=Hikari.Bounds2(Point2f(0.0f0), Point2f(1.0f0)),
         diagonal=1.0f0, scale=1.0f0,
     )
-    film = Raycore.Adapt.adapt(ka_backend, film)
+    film = Hikari.Film(ka_backend, film)
 
-    depth_flipped = KernelAbstractions.allocate(ka_backend, Float32, 1, 1)
-
-    state = RayMakieState(scene, film, nothing, nothing, false, depth_flipped, nothing, true, false)
+    state = RayMakieState(scene, film, nothing, nothing, false, nothing, true, false)
     return state
 end
 
@@ -527,9 +525,25 @@ function init_scene!(screen, mscene::Makie.Scene)
         push!(screen.scene_states, state)
         screen.state = state
 
-        # Call draw_atomic on all plots — should_raytrace(scene, plot) decides RT vs overlay
-        Makie.for_each_atomic_plot(rscene) do p
-            haskey(p, :trace_renderobject) || draw_atomic(screen, rscene, p)
+        # Call draw_atomic on the plots THIS scene owns — should_raytrace(scene,
+        # plot) then decides RT vs overlay.
+        #
+        # `rscene.plots`, not `for_each_atomic_plot(rscene)`: the latter recurses
+        # into `scene.children` as well, so a parent claimed its CHILDREN's
+        # plots. In a `Figure` the root scene comes first, is `EmptyCamera` and
+        # therefore overlay-only with `hikari_scene === nothing`, and it drew
+        # every `Axis3`'s meshes against itself — where `draw_atomic` reads
+        # `!should_raytrace(scene, plot) || isnothing(hikari_scene)` and takes
+        # the raster path. The compute node caches that decision, and by the time
+        # the axis's own state came up the plot already had a
+        # `:trace_renderobject` and was skipped. Net effect: NOTHING in a Figure
+        # was ever raytraced — an `Axis3` sphere came out as a flat disc of the
+        # raw plot colour, with an empty TLAS and an all-zero film.
+        # `collect_overlay_robjs` already walks scenes this way.
+        for plot in rscene.plots
+            Makie.for_each_atomic_plot(plot) do p
+                haskey(p, :trace_renderobject) || draw_atomic(screen, rscene, p)
+            end
         end
 
         poll_all_plots(screen, rscene)
@@ -537,19 +551,41 @@ function init_scene!(screen, mscene::Makie.Scene)
         if is_rt
             Hikari.sync!(state.hikari_scene)
 
-            # Adjust near/far planes to encompass the scene geometry.
+            # Tell the camera how big the scene is, so its clip planes enclose
+            # the geometry.
+            #
+            # Via `bounding_sphere`, NOT `near`/`far`. Under `Camera3D`'s default
+            # `clipping_mode = :adaptive` those two are FACTORS, not distances:
+            # `near = view_dist * near` and
+            # `far = max(radius(bounding_sphere) / tand(fov/2), view_dist) * far`.
+            # Writing absolute distances into them (this used to set
+            # `near = dist - 2r`, `far = dist + 2r`) multiplies them by the view
+            # distance a second time, so a camera 6.7 units out got a near plane
+            # at 21.9 — past everything in the scene. The raytraced path never
+            # noticed, because `to_trace_camera(::Camera3D, …)` builds its
+            # `PerspectiveCamera` from eye/lookat/up/fov and ignores the
+            # projection matrix. The RASTER overlays use that matrix, and every
+            # `lines!`, `scatter!` and `text!` in a 3D scene was clipped away by
+            # it — including every part of an `Axis3`.
+            #
+            # `bounding_sphere` is what `:adaptive` already consults, and it only
+            # ever pushes `far` outwards, so a scene larger than its view
+            # distance stays visible and nothing gets clipped that was not
+            # clipped before.
+            #
             # Note: do NOT call Makie.center!(rscene) here — it resets the
             # camera position, overriding user-configured camera in create_scene.
             if rscene.camera_controls isa Makie.Camera3D
                 cc = rscene.camera_controls
                 bounds = state.hikari_scene.bounds[]
                 if bounds[1].p_min[1] < bounds[1].p_max[1]
-                    eye = cc.eyeposition[]
-                    center = bounds[2].center
-                    radius = bounds[2].r
-                    dist = sqrt(sum((eye .- center).^2))
-                    cc.near[] = max(0.01, dist - radius * 2)
-                    cc.far[] = dist + radius * 2
+                    sphere = bounds[2]
+                    cc.bounding_sphere[] = Sphere(Point3d(sphere.center), Float64(sphere.r))
+                    # bounding_sphere is not one of the observables Camera3D
+                    # listens on, so the matrices need rebuilding by hand. The
+                    # two-argument form only recomputes them; it does not move
+                    # the camera.
+                    Makie.update_cam!(rscene, cc)
                 end
                 state.needs_film_clear = true
             end
@@ -560,9 +596,11 @@ function init_scene!(screen, mscene::Makie.Scene)
         error("No renderable scenes found.")
     end
 
-    # Pre-allocate full-figure output buffer on backend
+    # Pre-allocate full-figure output buffer, from the pool the screen owns.
     root_w, root_h = size(mscene)
-    screen.output_buffer = KernelAbstractions.allocate(ka_backend, RGBA{Float32}, root_h, root_w)
+    screen.memory === nothing || Hikari.free!(screen.memory)
+    screen.memory = Hikari.DeviceMemory(ka_backend)
+    screen.output_buffer = Hikari.alloc!(screen.memory, RGBA{Float32}, (Int(root_h), Int(root_w)))
 
     screen.state = first(screen.scene_states)
     return screen.state

@@ -16,8 +16,19 @@ using Test
 #       has been freed; running GC after them segfaults
 #       (test_caching_gc_correctness.jl).
 # Run those individually in fresh sessions when needed.
+#
+# (4) is FIXED — `Lava.allocate_batch_queue!` now hands the context ownership of
+# every queue it returns, so a semaphore cannot be finalized while a buffer that
+# names it is still alive, and `release_batch_queue!` is the way back out. The
+# exclusion above stands only until someone re-checks
+# test_caching_gc_correctness.jl against it; see Lava's
+# test_batch_queue_lifetime.jl for the invariant.
 
 const TEST_FILES = [
+    # CPU-only (no render), so it fails fast and before anything touches a device.
+    "test_material_precedence.jl",
+    "test_overlay_compositing.jl",
+    "test_figure_scene_routing.jl",
     "test_lava_meshscatter_pervec.jl",
     "test_meshscatter_update_stress.jl",
     "test_mesh_update_stress.jl",

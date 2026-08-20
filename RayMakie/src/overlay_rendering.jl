@@ -7,24 +7,6 @@ function render_overlays!(screen, bq, target; scenes=nothing)
 end
 
 # =============================================================================
-# Helper: extract near/far from camera
-# =============================================================================
-
-function extract_near_far(scene::Makie.Scene, proj::Mat4f)
-    cc = scene.camera_controls
-    if hasproperty(cc, :near) && hasproperty(cc, :far)
-        near = Float32(cc.near[])
-        far = Float32(cc.far[])
-    else
-        A = proj[3, 3]; B = proj[3, 4]
-        near = B / (A - 1f0); far = B / (A + 1f0)
-        (!isfinite(near) || near <= 0f0) && (near = 0.1f0)
-        (!isfinite(far) || far <= near) && (far = 1000f0)
-    end
-    return near, far
-end
-
-# =============================================================================
 # Sub-scene backgrounds (GPU fill)
 # =============================================================================
 
@@ -118,26 +100,29 @@ end
 # =============================================================================
 
 """
-    render_overlays_gfx!(screen, target; scenes=nothing)
+    collect_overlay_robjs(state; scenes = nothing)
 
-Render overlay plots (scatter, lines, text, mesh) via the Lava graphics pipeline
-directly onto `target` (a `WindowTarget` or `OffscreenTarget`).
+Every raster render object the overlay pass would draw for `state`, each paired
+with the viewport rect it belongs in.
 
-When `scenes` is provided, only plots from those scenes are rendered (used for
-uncovered overlay rendering). Otherwise, uses the current screen state's scene.
+Shared with `colorbuffer`, which has to know whether there is anything to draw
+*before* it commits to the slow path (blit to a BGRA framebuffer, render, read
+back, convert). Asking one function both times is what stops "are there
+overlays?" and "which overlays?" from being different questions — they used to
+be, and the first one was answered by `overlay_only`, which is a property of the
+scene's CAMERA. So a 3D scene holding `lines!`, `scatter!` or `text!` built their
+render objects and then nobody drew them, which is also why an `Axis3` came out
+with no spines, ticks or labels.
 """
-function render_overlays_gfx!(screen, bq, target; scenes=nothing)
-    state = screen.state
-    scene = state.makie_scene
-
-    robjs = Tuple{LavaRenderObject, Any}[]
+function collect_overlay_robjs(state::RayMakieState; scenes = nothing)
+    robjs = Tuple{LavaRenderObject, NTuple{4, Float32}}[]
 
     overlay_scenes = if scenes !== nothing
         scenes
     elseif state.overlay_only
         collect_overlay_scenes(state.makie_scene)
     else
-        [scene]
+        [state.makie_scene]
     end
 
     root_w, root_h = size(state.makie_scene)
@@ -149,11 +134,38 @@ function render_overlays_gfx!(screen, bq, target; scenes=nothing)
             Makie.for_each_atomic_plot(p) do ap
                 haskey(ap, :trace_renderobject) || return nothing
                 ap.visible[] || return nothing
-                robj = try ap[:trace_renderobject][] catch; return nothing end
+                # A render object that exists but will not resolve is a BROKEN
+                # plot, not an absent one. This was `catch; return nothing`, which
+                # made a plot that fails to build indistinguishable from one that
+                # simply draws nothing. `maxlog` because this runs every frame.
+                robj = try
+                    ap[:trace_renderobject][]
+                catch e
+                    @error("RayMakie: an overlay render object failed to resolve; \
+                            this plot will not be drawn",
+                           plot = typeof(ap), exception = (e, catch_backtrace()), maxlog = 1)
+                    return nothing
+                end
                 robj isa LavaRenderObject && robj.visible && push!(robjs, (robj, vp_rect))
+                return nothing
             end
         end
     end
+    return robjs
+end
+
+"""
+    render_overlays_gfx!(screen, target; scenes=nothing)
+
+Render overlay plots (scatter, lines, text, mesh) via the Lava graphics pipeline
+directly onto `target` (a `WindowTarget` or `OffscreenTarget`).
+
+When `scenes` is provided, only plots from those scenes are rendered (used for
+uncovered overlay rendering). Otherwise, uses the current screen state's scene.
+"""
+function render_overlays_gfx!(screen, bq, target; scenes=nothing)
+    state = screen.state
+    robjs = collect_overlay_robjs(state; scenes)
 
     isempty(robjs) && return
 

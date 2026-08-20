@@ -41,30 +41,37 @@ end
 # Material merging — combine color texture with existing material
 # =============================================================================
 
+# Every one of these passes the material's fields positionally, so a field ADDED
+# to a Hikari material silently turns the call into a `MethodError` — and one
+# raised here surfaces as "failed to resolve trace_renderobject" from the compute
+# graph, several layers from the cause. `displacement` was added to all six and
+# none of them were updated, so every plot carrying a colour texture failed.
 function merge_color_with_material(color_tex, material::Hikari.Diffuse)
-    Hikari.Diffuse(color_tex, material.σ)
+    Hikari.Diffuse(color_tex, material.σ, material.displacement)
 end
 
 function merge_color_with_material(color_tex, material::Hikari.Mirror)
-    Hikari.Mirror(color_tex)
+    Hikari.Mirror(color_tex, material.displacement)
 end
 
 function merge_color_with_material(color_tex, material::Hikari.Dielectric)
     Hikari.Dielectric(
         material.Kr, color_tex,
         material.u_roughness, material.v_roughness,
-        material.index, material.remap_roughness
+        material.index, material.remap_roughness, material.displacement
     )
 end
 
 function merge_color_with_material(color_tex, material::Hikari.Conductor)
-    Hikari.Conductor(material.eta, material.k, material.roughness, color_tex, material.remap_roughness)
+    Hikari.Conductor(material.eta, material.k, material.roughness, color_tex,
+                     material.remap_roughness, material.displacement)
 end
 
 function merge_color_with_material(color_tex, material::Hikari.CoatedDiffuse)
     Hikari.CoatedDiffuse(
         color_tex, material.u_roughness, material.v_roughness, material.thickness,
-        material.eta, material.albedo, material.g, material.max_depth, material.n_samples, material.remap_roughness
+        material.eta, material.albedo, material.g, material.max_depth, material.n_samples,
+        material.remap_roughness, material.displacement
     )
 end
 
@@ -74,14 +81,15 @@ end
 
 function merge_color_with_material(color_tex, material::Hikari.DiffuseTransmission)
     Hikari.DiffuseTransmission(
-        color_tex, material.transmittance, material.scale
+        color_tex, material.transmittance, material.scale, material.displacement
     )
 end
 
 function merge_color_with_material(color_tex, material::Hikari.CoatedDiffuseTransmission)
     Hikari.CoatedDiffuseTransmission(
         color_tex, material.transmittance, material.u_roughness, material.v_roughness, material.thickness,
-        material.eta, material.albedo, material.g, material.max_depth, material.n_samples, material.remap_roughness
+        material.eta, material.albedo, material.g, material.max_depth, material.n_samples,
+        material.remap_roughness, material.displacement
     )
 end
 
@@ -104,6 +112,22 @@ end
 # Material extraction
 # =============================================================================
 
+"""
+    color_was_set(plot) -> Bool
+
+Whether the user actually gave this plot a `color`.
+
+`color` is a cycled attribute, so Makie always leaves a value in
+`attributes.inputs`: `resolve_cycled!` writes the symbol `:cycled` for every
+cycled attribute that was *not* assigned. Testing `!== nothing` therefore reports
+every plot as coloured.
+"""
+function color_was_set(plot::Plot)
+    haskey(plot.attributes.inputs, :color) || return false
+    value = plot.attributes.inputs[:color].value
+    return value !== nothing && value !== :cycled
+end
+
 function extract_material(plot::Plot, tex::Union{Hikari.Texture, Hikari.VertexColorTexture, Nothing})
     has_material = haskey(plot, :material) && !isnothing(to_value(plot.material))
     material = has_material ? to_value(plot.material) : nothing
@@ -123,13 +147,20 @@ function extract_material(plot::Plot, tex::Union{Hikari.Texture, Hikari.VertexCo
             return material
         end
         # Both material and color were provided in the constructor - merge them.
-        color_explicitly_set = haskey(plot.attributes.inputs, :color) && plot.attributes.inputs[:color].value !== nothing
+        #
+        # "Not set" is `:cycled`, not `nothing`: Makie's `resolve_cycled!` writes
+        # that symbol into every cycled attribute the user did NOT assign, so a
+        # `!== nothing` test calls an unset colour explicit and merges the palette
+        # colour over the material. That made `material = Diffuse(Kd = green)`
+        # silently render in the cycler's blue — the material was accepted,
+        # converted, uploaded, and then overwritten.
+        color_explicitly_set = color_was_set(plot)
         color_explicitly_set || return material
         return merge_color_with_material(tex, material)
     elseif material isa Hikari.Material
         return material
     elseif !isnothing(tex)
-        return Hikari.Diffuse(tex, Hikari.ConstTexture(0.0f0))
+        return Hikari.Diffuse(Kd = tex, σ = Hikari.ConstTexture(0.0f0))
     else
         error("Neither color nor material are defined for plot: $plot")
     end
@@ -238,7 +269,7 @@ function build_diffuse_material(mat_dict::Dict{String, Any})
             img = diffuse_map["image"]
             tex = Hikari.Texture(to_spectrum(img))
             # Textured materials use Diffuse (supports stochastic alpha pass-through)
-            return Hikari.Diffuse(tex, Hikari.ConstTexture(roughness * 90f0))
+            return Hikari.Diffuse(Kd = tex, σ = Hikari.ConstTexture(roughness * 90f0))
         end
     end
 
@@ -269,19 +300,25 @@ end
 # Per-instance material creation (for meshscatter)
 # =============================================================================
 
+# Keyword constructors where there is no template, positional-plus-`displacement`
+# where there is. Every one of these built a material by listing its fields, so
+# `displacement` being added to all of them turned each into a `MethodError` —
+# which reaches the user as "failed to resolve trace_renderobject", naming a
+# compute edge rather than the call.
 function create_material_with_color(color::Colorant, template::Nothing)
-    Hikari.Diffuse(Hikari.ConstTexture(to_spectrum(color)), Hikari.ConstTexture(0.0f0))
+    Hikari.Diffuse(Kd = Hikari.ConstTexture(to_spectrum(color)),
+                   σ = Hikari.ConstTexture(0.0f0))
 end
 
 function create_material_with_color(color::Colorant, template::Hikari.Diffuse)
-    Hikari.Diffuse(Hikari.ConstTexture(to_spectrum(color)), template.σ)
+    Hikari.Diffuse(Hikari.ConstTexture(to_spectrum(color)), template.σ, template.displacement)
 end
 
 function create_material_with_color(color::Colorant, template::Hikari.Conductor)
     Hikari.Conductor(
         template.eta, template.k, template.roughness,
         Hikari.ConstTexture(to_spectrum(color)),
-        template.remap_roughness
+        template.remap_roughness, template.displacement
     )
 end
 
@@ -291,7 +328,7 @@ function create_material_with_color(color::Colorant, template::Hikari.Dielectric
         template.Kr,
         Hikari.ConstTexture(to_spectrum(color)),
         template.u_roughness, template.v_roughness,
-        template.index, template.remap_roughness
+        template.index, template.remap_roughness, template.displacement
     )
 end
 
@@ -302,13 +339,13 @@ function create_material_with_color(color::Colorant, template::Hikari.CoatedDiff
         template.u_roughness, template.v_roughness,
         template.thickness, template.eta, template.albedo,
         template.g, template.max_depth, template.n_samples,
-        template.remap_roughness
+        template.remap_roughness, template.displacement
     )
 end
 
 # Mirror: per-instance color modulates reflectance (Kr)
 function create_material_with_color(color::Colorant, template::Hikari.Mirror)
-    Hikari.Mirror(Hikari.ConstTexture(to_spectrum(color)))
+    Hikari.Mirror(Hikari.ConstTexture(to_spectrum(color)), template.displacement)
 end
 
 # MediumInterface: return as-is (emission/medium properties don't map to colors)
@@ -318,7 +355,8 @@ end
 
 function create_material_with_color(color::Colorant, template::Hikari.Material)
     @warn "Unsupported material type $(typeof(template)) for per-instance colors, using Diffuse" maxlog=1
-    Hikari.Diffuse(Hikari.ConstTexture(to_spectrum(color)), Hikari.ConstTexture(0.0f0))
+    Hikari.Diffuse(Kd = Hikari.ConstTexture(to_spectrum(color)),
+                   σ = Hikari.ConstTexture(0.0f0))
 end
 
 # =============================================================================

@@ -461,10 +461,17 @@ function get_lines_pipeline!(screen)
         GraphicsPipeline(;
             vertex = lines_vertex,
             geometry = (lines_geometry, GeometryConfig(
-                input = LineListAdjacency(), output = TriangleStrip(), max_vertices = 4)),
+                input = LineStripAdjacency(), output = TriangleStrip(), max_vertices = 4)),
             fragment = lines_fragment,
             blend = Premultiplied(),
-            topology = LineListAdjacency(),
+            # STRIP, not list. `lines_generate_indices` is a port of GLMakie's
+            # `generate_indices`, which builds a GL_LINE_STRIP_ADJACENCY list:
+            # four points become `0 0 1 2 3 3`, and the strip form slides a
+            # 4-wide window over it to get one primitive per segment. Under the
+            # list form those six indices are a single primitive, so only the
+            # first segment of any polyline was ever drawn — a 4-point loop
+            # rendered as one edge, a sine curve as dashes.
+            topology = LineStripAdjacency(),
             cull = NoCull(),
             depth = DepthOff(),
         )
