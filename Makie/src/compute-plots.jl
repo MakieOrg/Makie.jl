@@ -293,7 +293,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         # colors are actual colors, so no colormapping
         isnothing(_autorange) && return nothing
 
-        autorange = dc isa CategoricalConversion ? extrema(first.(dc.int_to_category)) : _autorange
+        autorange = dc isa CategoricalConversion ? distinct_extrema_nan(first.(dc.int_to_category)) : _autorange
         if colorrange === automatic
             return Vec2f(autorange)
         else

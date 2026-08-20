@@ -197,7 +197,7 @@ using Unitful
 f, a, p1 = heatmap(10 .* rand(10, 10) .* u"K", colormap = :blues)
 p2 = scatter!(
     1:10,
-    color = Categorical(["A", "B", "B", "C", "C", "C", "A", "A", "B", "B", "C"]),
+    color = Categorical(["A", "B", "B", "C", "C", "C", "A", "A", "B", "B"]),
     colormap = :solar,
     markersize = 20, strokewidth = 1, strokecolor = :white
 )
@@ -212,6 +212,8 @@ This is because it is unclear which other attributes (e.g. `colormap`, `colorsca
 Instead of guessing we currently require sharing the dim convert as well as the relevant attributes explicitly.
 
 ```@figure
+using Unitful
+
 f = Figure()
 a = Axis(f[1, 1], title = "nothing shared")
 p = scatter!(a, 1:5, 1:5, color = (1:5) .* u"m")
