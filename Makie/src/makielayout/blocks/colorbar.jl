@@ -501,9 +501,17 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
-    map!(cb, [:cb_colors, :color_mapping_type, :ticks], :finalticks) do cs, type, ticks
+    map!(cb, [:cb_colors, :color_mapping_type, :ticks, :dim_conversion], :finalticks) do cs, type, ticks, dc
         # For categorical we just enumerate
-        return type === Makie.categorical ? (1:length(cs), string.(cs)) : ticks
+        if type === Makie.categorical
+            if isa(dc, CategoricalConversion)
+                return automatic # let dim convert generate categories (or use names of categories)
+            else
+                return (1:length(cs), string.(cs))
+            end
+        else
+            return ticks
+        end
     end
     ComputePipeline.set_type!(cb.finalticks, Any)
 

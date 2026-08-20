@@ -577,7 +577,7 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # Note that the order in dim_convert_names is important
     dim_convert_names = Symbol[]
     for i in 1:maxdim
-        push!(dim_convert_names, Symbol(:dim_convert_, i))
+        push!(dim_convert_names, i == 4 ? :color_dim_convert : Symbol(:dim_convert_, i))
         if i < 4 # 4 already got added if maxdim == 4
             obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
             converts_updated = map!(x -> dim_converts[i], Observable{Any}(), obs)
