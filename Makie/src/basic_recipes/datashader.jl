@@ -97,7 +97,6 @@ module Aggregation
         v0 = value(op, o0)
         aggbuffer = fill(o0, n_elements)
         pixelbuffer = fill(v0, n_elements)
-        # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
         return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, (v0, v0))
     end
 
