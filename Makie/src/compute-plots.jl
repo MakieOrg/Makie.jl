@@ -224,13 +224,13 @@ end
 
 function add_color_dim_convert!(attr::ComputeGraph, color)
     # may also be initialized by build_plot!() from kwargs
-    if !haskey(attr, :dim_convert_4)
+    if !haskey(attr, :color_dim_convert)
         init = dim_conversion_from_args(color)
-        add_constant!(attr, :dim_convert_4, init)
+        add_constant!(attr, :color_dim_convert, init)
         if !isa(init, Union{Nothing, NoDimConversion})
             on(needs_tick_update_observable(init)) do _
-                ComputePipeline.mark_dirty!(attr.dim_convert_4)
-                ComputePipeline.update_observables!(attr.dim_convert_4)
+                ComputePipeline.mark_dirty!(attr.color_dim_convert)
+                ComputePipeline.update_observables!(attr.color_dim_convert)
                 return
             end
         end
@@ -257,7 +257,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     color = attr[colorname][]
     add_color_dim_convert!(attr, color)
     if !isa(dim_conversion_from_args(color), Union{Nothing, NoDimConversion})
-        map!(attr, [:dim_convert_4, colorname], :dc_color) do dc, color
+        map!(attr, [:color_dim_convert, colorname], :dc_color) do dc, color
             converted = convert_dim_value(dc, attr, color, nothing)
             return to_color(converted)
         end
@@ -290,7 +290,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
 
     map!(
         attr,
-        [:dim_convert_4, :colorrange, :colorscale, :auto_colorrange], :scaled_colorrange
+        [:color_dim_convert, :colorrange, :colorscale, :auto_colorrange], :scaled_colorrange
     ) do dc, colorrange, colorscale, autorange
         if isnothing(autorange) # colors are actual colors, so no colormapping
             return nothing
@@ -931,13 +931,13 @@ end
 function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
     graph = ComputeGraph()
 
-    if haskey(user_attributes, :dim_convert_4)
-        init = to_value(pop!(user_attributes, :dim_convert_4))
-        add_constant!(graph, :dim_convert_4, init)
+    if haskey(user_attributes, :color_dim_convert)
+        init = to_value(pop!(user_attributes, :color_dim_convert))
+        add_constant!(graph, :color_dim_convert, init)
         if !isa(init, Union{Nothing, NoDimConversion})
             on(needs_tick_update_observable(init)) do _
-                ComputePipeline.mark_dirty!(graph.dim_convert_4)
-                ComputePipeline.update_observables!(graph.dim_convert_4)
+                ComputePipeline.mark_dirty!(graph.color_dim_convert)
+                ComputePipeline.update_observables!(graph.color_dim_convert)
                 return
             end
         end

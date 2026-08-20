@@ -18,7 +18,7 @@ function verify_colorbar_defaults(
         @test cb.lowclip.parent.inputs[1] == lowclip
         @test cb.highclip.parent.inputs[1] == highclip
         @test cb.color_mapping_type[] == color_mapping_type
-        # TODO: check dim_convert_4?
+        # TODO: check color_dim_convert?
     end
     return
 end

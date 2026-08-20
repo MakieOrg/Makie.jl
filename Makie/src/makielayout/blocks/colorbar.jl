@@ -28,12 +28,12 @@ attributes. These may include:
 - `:colorscale`: The colorscale of plot.
 - `:lowclip`: The lowclip of the plot.
 - `:highclip`: The highclip of the plot.
-- `:dim_convert_4`: The color dim convert of the plot.
+- `:color_dim_convert`: The color dim convert of the plot.
 
 If the returned dict is incomplete a parent plot may add missing attributes to
 it. This may lead to Colorbar attributes not being synchronized with the
 visuals of the plot, so a complete set of attributes is preferred. Note that
-this is not relevant for `dim_convert_4` as it only appears when it is used.
+this is not relevant for `color_dim_convert` as it only appears when it is used.
 
 To simplify this `Makie.add_default_colorbar_attributes!(dict, plot)` can be
 used to fill out attributes that use the default names. (I.e. the names listed
@@ -165,7 +165,7 @@ function add_default_colorbar_attributes(attr, @nospecialize(plot))
     return add_default_colorbar_attributes(Dict{Symbol, Any}(), attr, plot)
 end
 function add_default_colorbar_attributes(output, overwrites, @nospecialize(plot))
-    for name in [:colormap, :colorrange, :colorscale, :lowclip, :highclip, :dim_convert_4]
+    for name in [:colormap, :colorrange, :colorscale, :lowclip, :highclip, :color_dim_convert]
         if haskey(overwrites, name)
             output[name] = overwrites[name]
         elseif haskey(plot, name)
@@ -234,7 +234,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
     haskey(cmap, :colorscale) && (cmap[:scale] = pop!(cmap, :colorscale))
     haskey(cmap, :color) && (cmap[:values] = pop!(cmap, :color))
-    haskey(cmap, :dim_convert_4) && (cmap[:dim_conversion] = pop!(cmap, :dim_convert_4))
+    haskey(cmap, :color_dim_convert) && (cmap[:dim_conversion] = pop!(cmap, :color_dim_convert))
 
     cmap_keys = collect(keys(cmap))
     haskey(cmap, :colorrange) && push!(cmap_keys, :limits)

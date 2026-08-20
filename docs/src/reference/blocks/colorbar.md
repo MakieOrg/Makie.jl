@@ -82,8 +82,8 @@ We can't use `cgrad(...; categorical=true)` for this, since it has an ambiguous 
 To create a Colorbar from a plot various colormapping attributes need to be extracted.
 This is done by the `Makie.extract_colormap(plot)` function.
 The default implementation will error if the plot has multiple child plots and otherwise call `extract_colormap(only(plot.plots))`.
-This continues until a method explicitly extracts the `color`, `colormap`, `colorrange`, `colorscale`, `lowclip`, `highclip` and (optional) `dim_convert4` attributes.
-These will then be used to construct the Colorbar.
+This continues until a method explicitly extracts `color`, `colormap`, `colorrange`, `colorscale`, `lowclip`, `highclip` and (optionally) `color_dim_convert`.
+These attributes will then be used to construct the Colorbar.
 
 A custom method of `Makie.extract_colormap` is necessary if a plot has multiple child plots and may be necessary if it processes colormapping directly.
 The former case just requires identifying the relevant child plot:
