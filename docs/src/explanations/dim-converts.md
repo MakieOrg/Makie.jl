@@ -237,13 +237,13 @@ f, a, p = scatter(
     color = Categorical(["A" for _ in 1:50]),
     strokewidth = 1, strokecolor = :black, colormap = :heat
 )
-p2 = scatter!(
+scatter!(
     (2 .+ randn(50)), (2.5 .+ randn(50)),
     color = Categorical(["B" for _ in 1:50]),
     color_dim_convert = p.color_dim_convert,
     strokewidth = 1, strokecolor = :black, colormap = :heat
 )
-p3 = scatter!(
+scatter!(
     (3 .+ randn(50)), (5 .+ randn(50)),
     color = Categorical(["C" for _ in 1:50]),
     color_dim_convert = p.color_dim_convert,

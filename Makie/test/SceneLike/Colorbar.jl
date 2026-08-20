@@ -243,3 +243,73 @@ end
         verify_colorbar_defaults(f, p, color = p.chunk, colorrange = p.value_limits)
     end
 end
+
+@testset "Color dim converts" begin
+    @testset "Unitful" begin
+        f,a,p = scatter(rand(10), color = (1:10) .* u"m")
+        @test p.color_dim_convert[] isa Makie.UnitfulConversion
+        @test p.dc_color[] == 1:10 # something needs to activate the dc before we can check unit
+        @test p.color_dim_convert[].unit[] == u"m"
+        @test p.scaled_colorrange[] == Vec2f(1, 10)
+
+        cb = Colorbar(f[1, 2], p)
+        @test cb.dim_conversion[] === p.color_dim_convert[]
+        @test cb.color_mapping_type[] == Makie.continuous
+        @test cb.merged_color_mapping_type[] == Makie.continuous
+        @test cb.cb_colors[] ≈ collect(range(1.0, 10.0, cb.nsteps[]))
+        @test cb.attributes.axis.tickvalues[] == Float64.(collect(1:10))
+        @test cb.attributes.axis.tickstrings[] == string.(1:10)
+        @test cb.attributes.axis.label_with_suffix[] == rich("[", rich("m"), "]")
+
+        p2 = scatter!(rand(10), color = (1:10) .* u"mm"; p.color_dim_convert)
+        @test p2.color_dim_convert[] === p.color_dim_convert[]
+        @test p2.color_dim_convert[].unit[] == u"m"
+        @test p2.dc_color[] == collect((1:10) .* 1f-3)
+        # Would be nice if the colorrange was shared but we need to figure out how
+        # to do that first (and also: colormap, colorscale, lowclip, highclip, nan_color)
+        @test p2.scaled_colorrange[] == Vec2f(0.001, 0.01)
+
+        # Sanity check - if this fails we should pick another unit above to verify
+        # that u"m" persists
+        f,a,p = scatter(rand(10), color = (1:10) .* u"mm")
+        p.dc_color[]
+        @test p.color_dim_convert[].unit[] == u"mm"
+    end
+
+    @testset "Categorical" begin
+        f,a,p = scatter(rand(3), color = Categorical(["A", "A", "B"]))
+        @test p.color_dim_convert[] isa Makie.CategoricalConversion
+        @test p.dc_color[] == [1.0, 1.0, 2.0]
+        @test only(p.color_dim_convert[].sets)[2] == ["A", "B"]
+        @test p.scaled_colorrange[] == Vec2f(1, 2)
+        key = only(p.color_dim_convert[].sets)[1]
+
+        cb = Colorbar(f[1, 2], p)
+        @test cb.dim_conversion[] === p.color_dim_convert[]
+        @test cb.color_mapping_type[] == Makie.continuous
+        @test cb.merged_color_mapping_type[] == Makie.categorical
+        @test cb.cb_colors[] ≈ [1.0, 2.0]
+        @test cb.attributes.axis.tickvalues[] == [1.0, 2.0]
+        @test cb.attributes.axis.tickstrings[] == ["A", "B"]
+        @test cb.attributes.axis.label_with_suffix[] == ""
+
+        p2 = scatter!(1:3, color = Categorical(["B", "C", "C"]); p.color_dim_convert)
+        @test p2.color_dim_convert[] === p.color_dim_convert[]
+        @test p2.dc_color[] == [2.0, 3.0, 3.0]
+        @test length(p2.color_dim_convert[].sets) == 2
+        for (k, set) in p2.color_dim_convert[].sets
+            if k == key
+                @test set == ["A", "B"]
+            else
+                @test set == ["B", "C"]
+            end
+        end
+        @test p2.scaled_colorrange[] == Vec2f(1.0, 3.0)
+
+        # This one synchronizes automatic colorranges, so it'll update p and cb
+        @test p.scaled_colorrange[] == Vec2f(1.0, 3.0)
+        @test cb.cb_colors[] ≈ [1.0, 2.0, 3.0]
+        @test cb.attributes.axis.tickvalues[] == [1.0, 2.0, 3.0]
+        @test cb.attributes.axis.tickstrings[] == ["A", "B", "C"]
+    end
+end

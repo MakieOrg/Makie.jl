@@ -869,3 +869,51 @@ end
     end
     f
 end
+
+@reference_test "Color dim convert + Colorbar" begin
+    f = Figure()
+    a = Axis(f[1, 1][1, 1], title = "default colorrange")
+    p = scatter!(a, 1:5, 1:5, color = (1:5) .* u"m", markersize = 20)
+    scatter!(a, 6:10, 6:10, color = (6:10) .* u"m", markersize = 20; p.color_dim_convert)
+    Colorbar(f[1, 1][1, 2], p)
+
+    a2 = Axis(f[1, 2][1, 1], title = "set colorrange")
+    p2 = scatter!(a2, 1:5, 1:5, color = (1:5) .* u"m", markersize = 20, colorrange = (1, 10))
+    scatter!(a2, 6:10, 6:10, color = (6:10) .* u"m", markersize = 20; p2.color_dim_convert, colorrange = (1, 10))
+    Colorbar(f[1, 2][1, 2], p2, ticks = [1, 3, 5, 10])
+
+    a = Axis(f[2, 1][1, 1])
+    p = scatter!(
+        RNG.randn(50), RNG.randn(50),
+        color = Categorical(["A" for _ in 1:50]),
+        strokewidth = 1, strokecolor = :black, colormap = :heat
+    )
+    scatter!(
+        (2 .+ RNG.randn(50)), (2.5 .+ RNG.randn(50)),
+        color = Categorical(["B" for _ in 1:50]),
+        color_dim_convert = p.color_dim_convert,
+        strokewidth = 1, strokecolor = :black, colormap = :heat
+    )
+    scatter!(
+        (3 .+ RNG.randn(50)), (5 .+ RNG.randn(50)),
+        color = Categorical(["C" for _ in 1:50]),
+        color_dim_convert = p.color_dim_convert,
+        strokewidth = 1, strokecolor = :black, colormap = :heat
+    )
+    cb = Colorbar(f[2, 1][1, 2], p)
+
+    a = Axis(f[2, 2][1, 1])
+    hidedecorations!(a)
+    p1 = heatmap!(10 .* rand(10, 10) .* u"K", colormap = :blues)
+    p2 = scatter!(
+        1:10,
+        color = Categorical(["A", "B", "B", "C", "C", "C", "A", "A", "B", "B", "C"]),
+        colormap = :solar,
+        markersize = 20, strokewidth = 1, strokecolor = :white
+    )
+    Colorbar(f[2, 2][1, 0], p1, unit_in_label = false, unit_in_ticklabel = true)
+    Colorbar(f[2, 2][1, 2], p2)
+
+
+    f
+end
