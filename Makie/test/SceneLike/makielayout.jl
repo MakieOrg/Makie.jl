@@ -155,10 +155,10 @@ end
     cb = Colorbar(fig[1, 2], hm)
 
     @test hm.scaled_colorrange[] == Vec(-0.5, 0.5)
-    @test cb.limits[] == Vec(-0.5, 0.5)
+    @test cb.resolved_colorrange[] == Vec(-0.5, 0.5)
 
     hm.colorrange = Float32.((-1, 1))
-    @test cb.limits[] == Vec(-1, 1)
+    @test cb.resolved_colorrange[] == Vec(-1, 1)
 
     # TODO: This doesn't work anymore because colorbar doesn't use the same observable
     # cb.limits[] = Float32.((-2, 2))
@@ -168,7 +168,8 @@ end
 @testset "Axis limits basics" begin
     f = Figure()
     ax = Axis(f[1, 1], limits = (nothing, nothing))
-    ax.targetlimits[] = BBox(0, 10, 0, 20)
+    ax.localxlimits[] = (0.0, 10.0)
+    ax.localylimits[] = (0.0, 20.0)
     @test ax.finallimits[] == BBox(0, 10, 0, 20)
     @test ax.limits[] == (nothing, nothing)
     xlims!(ax, -10, 10)
@@ -207,22 +208,22 @@ end
     @test ax.targetlimits[] == BBox(0, 5, 0, 6)
     @test ax.finallimits[] == BBox(0, 5, 0, 6)
     xlims!(ax, [-10, 10])
-    @test ax.limits[] == ([-10, 10], nothing)
+    @test ax.limits[] == ((-10, 10), nothing)
     @test ax.targetlimits[] == BBox(-10, 10, 0, 6)
     @test ax.finallimits[] == BBox(-10, 10, 0, 6)
     scatter!(Point2f(11, 12))
     reset_limits!(ax)
-    @test ax.limits[] == ([-10, 10], nothing)
+    @test ax.limits[] == ((-10, 10), nothing)
     @test ax.targetlimits[] == BBox(-10, 10, 0, 12)
     @test ax.finallimits[] == BBox(-10, 10, 0, 12)
     autolimits!(ax)
     ylims!(ax, [5, 7])
-    @test ax.limits[] == (nothing, [5, 7])
+    @test ax.limits[] == (nothing, (5, 7))
     @test ax.targetlimits[] == BBox(0, 11, 5, 7)
     @test ax.finallimits[] == BBox(0, 11, 5, 7)
     scatter!(Point2f(-5, -7))
     reset_limits!(ax)
-    @test ax.limits[] == (nothing, [5, 7])
+    @test ax.limits[] == (nothing, (5, 7))
     @test ax.targetlimits[] == BBox(-5, 11, 5, 7)
     @test ax.finallimits[] == BBox(-5, 11, 5, 7)
     @test_throws MethodError limits!(f[1, 1], -1, 1, -1, 1)
@@ -311,13 +312,13 @@ end
 end
 
 @testset "Colorbar plot object kwarg clash" begin
-    for attr in (:colormap, :limits)
+    for attr in (:colormap, :colorrange, :limits)
         f, ax, p = scatter(1:10, 1:10, color = 1:10, colorrange = (1, 10))
         Colorbar(f[2, 1], p)
         @test_throws ErrorException Colorbar(f[2, 1], p; Dict(attr => nothing)...)
     end
 
-    for attr in (:colormap, :limits, :highclip, :lowclip)
+    for attr in (:colormap, :colorrange, :limits, :highclip, :lowclip)
         for F in (heatmap, contourf)
             f, ax, p = F(1:10, 1:10, randn(10, 10))
             Colorbar(f[1, 2], p)
@@ -573,7 +574,7 @@ end
         # https://github.com/MakieOrg/Makie.jl/issues/2278
         fig = Figure()
         cbar = Colorbar(fig[1, 1], colormap = :viridis, colorrange = Vec2f(0, 1))
-        ticklabel_strings = first.(cbar.axis.elements[:ticklabels].arg1[])
+        ticklabel_strings = cbar.axis.elements[:ticklabels].text[]
         @test ticklabel_strings[1] == "0.0"
         @test ticklabel_strings[end] == "1.0"
     end
@@ -588,13 +589,13 @@ end
     @testset "Recipes" begin
         f, ax, pl = barplot(1:3; color = 1:3)
         cbar = Colorbar(f[1, 2], pl)
-        @test cbar.limits[] == Vec(1.0, 3.0)
+        @test cbar.resolved_colorrange[] == Vec(1.0, 3.0)
 
         let data = fill(1.0, 2, 2, 2)
             data[1] = 3.0
             f, ax, pl = volumeslices(1:2, 1:2, 1:2, data)
             cbar = Colorbar(f[1, 2], pl)
-            @test cbar.limits[] == Vec(1.0, 3.0)
+            @test cbar.resolved_colorrange[] == Vec(1.0, 3.0)
         end
     end
 end
@@ -894,12 +895,12 @@ end
 
     @test f isa Figure
     # The joint legend has two entries
-    @test length(leg.entrygroups[][][2]) == 2
+    @test length(leg.entrygroups[][1][2]) == 2
     # The first entry has two linked plots
-    @test length(leg.entrygroups[][][2][1].elements) == 2
+    @test length(leg.entrygroups[][1][2][1].elements) == 2
     # The two linked plots are the plots from two different axes
-    @test leg.entrygroups[][][2][1].elements[1].plots[] == l1a
-    @test leg.entrygroups[][][2][1].elements[2].plots[] == l2a
+    @test leg.entrygroups[][1][2][1].plots[1] == l1a
+    @test leg.entrygroups[][1][2][1].plots[2] == l2a
 end
 
 @testset "Legend linecap and joinstyle" begin
@@ -1148,4 +1149,32 @@ end
         leg = @test_nowarn axislegend(ax; margin = (4, 3, 2, 1))
         @test leg.margin[] == (4, 3, 2, 1)
     end
+end
+
+@testset "Legend onplot updates" begin
+    f = Figure()
+    a = Axis(f[1, 1])
+    l = Legend(f[1, 2], a)
+    @test isempty(l.plots[])
+    @test isempty(l.labels[])
+
+    p = scatter!(a, rand(10))
+    @test isempty(l.plots[])
+    @test isempty(l.labels[])
+
+    p1 = scatter!(a, rand(10), label = "scatter 1")
+    @test l.plots[] == [p1]
+    @test l.labels[] == ["scatter 1"]
+
+    p2 = scatter!(a, rand(10), label = "scatter 2")
+    @test l.plots[] == [p1, p2]
+    @test l.labels[] == ["scatter 1", "scatter 2"]
+
+    delete!(a, p1)
+    @test l.plots[] == [p2]
+    @test l.labels[] == ["scatter 2"]
+
+    delete!(a, p)
+    @test l.plots[] == [p2]
+    @test l.labels[] == ["scatter 2"]
 end

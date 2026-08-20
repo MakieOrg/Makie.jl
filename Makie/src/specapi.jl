@@ -63,13 +63,24 @@ end
 
 
 struct BlockSpec
-    type::Symbol # Type as :Scatter, :BarPlot
+    type::Symbol
+    args::Vector{Any}
     kwargs::Dict{Symbol, Any}
     plots::Vector{PlotSpec}
     then_funcs::Set{Function}
     then_observers::Set{ObserverFunction}
-    function BlockSpec(type::Symbol, kwargs::Dict{Symbol, Any}, plots::Vector{PlotSpec} = PlotSpec[])
-        return new(type, kwargs, plots, Set{Function}(), Set{ObserverFunction}())
+
+    function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec} = PlotSpec[], kw...)
+        attr = Dict{Symbol, Any}(kw)
+        if typ == :Colorbar && !isempty(args)
+            if length(args) == 1 && args[1] isa PlotSpec
+                attr[:plotspec] = args[1]
+                args = ()
+            else
+                error("Only one argument `arg::PlotSpec` is supported for S.Colorbar. Found: $(args)")
+            end
+        end
+        return new(typ, Any[args...], attr, plots, Set{Function}(), Set{ObserverFunction}())
     end
 end
 
@@ -178,19 +189,15 @@ end
 
 plottype(p::PlotSpec) = symbol_to_plot(p.type)
 
-function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
-    args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
-    kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    println(io, "S.", spec.type, "($args; $kws)")
-    return
-end
+Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec) = show(io, spec)
 
 function Base.show(io::IO, spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    println(io, "S.", spec.type, "($args; $kws)")
+    print(io, "S.", spec.type, "($args; $kws)")
     return
 end
+
 ####################
 #### BlockSpec
 
@@ -207,31 +214,16 @@ function Base.getproperty(p::BlockSpec, k::Symbol)
 end
 Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
 
+function Base.show(io::IO, ::MIME"text/plain", spec::BlockSpec)
+    args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
+    kws = join([string(k, "::", typeof(v)) for (k, v) in spec.kwargs], ", ")
+    print(io, "S.", spec.type, "($args; $kws)")
+    return
+end
 
-function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec} = PlotSpec[], kw...)
-    attr = Dict{Symbol, Any}(kw)
-    if typ == :Legend
-        # TODO, this is hacky and works around the fact,
-        # that legend gets its legend elements from the positional arguments
-        # But we can only update them via legend.entrygroups
-        defaults = block_defaults(:Legend, attr, nothing)
-        entrygroups = to_entry_group(Attributes(defaults), args...)
-        attr[:entrygroups] = entrygroups
-        return BlockSpec(typ, attr, plots)
-    else
-        if typ == :Colorbar && !isempty(args)
-            if length(args) == 1 && args[1] isa PlotSpec
-                attr[:plotspec] = args[1]
-                args = ()
-            else
-                error("Only one argument `arg::PlotSpec` is supported for S.Colorbar. Found: $(args)")
-            end
-        end
-        if !isempty(args)
-            error("BlockSpecs, with an exception for Legend and Colorbar, don't support positional arguments yet.")
-        end
-        return BlockSpec(typ, attr, plots)
-    end
+function Base.show(io::IO, spec::BlockSpec)
+    print(io, "S.", spec.type, "(…)")
+    return
 end
 
 ######################
@@ -327,6 +319,9 @@ function distance_score(a::BlockSpec, b::BlockSpec, scores_dict; maxscore = Inf)
     (a.type !== b.type) && return 100.0 # Can't update when types dont match
     return get!(scores_dict, (a, b)) do
         hypot(
+            # TODO: Does this work for Legend?
+            # args are cheap to change for complex recipe style blocks
+            distance_score(a.args, b.args, scores_dict; maxscore = maxscore / 0.1) * 0.1,
             # keyword arguments are cheap to change
             distance_score(a.kwargs, b.kwargs, scores_dict; maxscore = maxscore / 0.1) * 0.1,
             # Creating plots in a new axis is expensive, so we rather move the axis around
@@ -422,6 +417,26 @@ rangeunion(r1, r2::UnitRange) = min(r1.start, r2.start):max(r1.stop, r2.stop)
 rangeunion(r1, r2::Int) = min(r1.start, r2):max(r1.stop, r2)
 rangeunion(r1, ::Colon) = r1
 
+Base.show(io::IO, ::MIME"text/plain", spec::GridLayoutSpec) = grid_layout_spec_print(io, spec)
+Base.show(io::IO, ::GridLayoutSpec) = print(io, "S.GridLayout()")
+
+function grid_layout_spec_print(io, spec::GridLayoutSpec, tab = 0)
+    print(io, "S.GridLayout()")
+    grid_layout_spec_print(io, spec.content, tab)
+    return
+end
+
+function grid_layout_spec_print(io, content_list::Vector, tab = 0)
+    N = length(content_list)
+    for (i, (pos, content)) in enumerate(content_list)
+        print(io, "\n", "  "^tab, (i == N ? " ┗━ " : " ┣━ "), pos, " => ")
+        grid_layout_spec_print(io, content, tab + 1)
+    end
+    return
+end
+
+grid_layout_spec_print(io, content, tab) = print(io, content)
+
 
 """
 See documentation for specapi.
@@ -456,44 +471,89 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     end
 end
 
-function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
-    oldspec.type === spec.type || error("PlotSpec type $(spec.type) does not match plot type $(plot.type).")
-    # Update args in plot `input_args` list
-    updates = Dict{Symbol, Any}()
-    for i in eachindex(spec.args)
+function batch_update!(target, old_spec, new_spec)
+    updates = Pair{Symbol, Any}[]
+    batch_update_arguments!(updates, old_spec.args, new_spec.args)
+    batch_update_attributes!(updates, target, old_spec.kwargs, new_spec.kwargs)
+    update!(target.attributes, updates)
+    return updates
+end
+
+function batch_update_arguments!(updates, old_args, new_args)
+    for (i, prev_val, new_val) in zip(eachindex(new_args), old_args, new_args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
-        prev_val = oldspec.args[i]
-        if is_different(prev_val, spec.args[i]) # only update if different
-            updates[Symbol(:arg, i)] = spec.args[i]
+        if is_different(prev_val, new_val) # only update if different
+            push!(updates, Symbol(:arg, i) => new_val)
         end
     end
-    scene = parent_scene(plot)
-    # Update attributes
-    for (attribute, new_value) in spec.kwargs
-        old_attr = plot[attribute]
-        # only update if different
-        if is_different(old_attr[], new_value)
-            updates[attribute] = new_value
-        end
-    end
+    return updates
+end
 
-    reset_to_default = setdiff(keys(oldspec.kwargs), keys(spec.kwargs))
-    filter!(x -> x != :cycle, reset_to_default) # dont reset cycle
-    if !isempty(reset_to_default)
-        for k in reset_to_default
-            old_attr = plot[k][]
-            new_value = lookup_default(typeof(plot), parent_scene(plot), k)
-            # In case of e.g. dim_conversions
-            isnothing(new_value) && continue
-            # only update if different
-            if is_different(old_attr, new_value)
-                updates[k] = new_value
+# TODO: This could probably be improved by keeping flattened kwargs lists/dicts.
+function batch_update_attributes!(updates, target::T, old_kwargs, new_kwargs) where {T}
+    scene = parent_scene(target)
+    name = T isa Block ? nameof(T) : plotsym(T)
+    attr = documented_attributes(T)
+
+    collect_updates_rec!(
+        updates, target.attributes, tuple(), old_kwargs, new_kwargs,
+        attr, scene, name
+    )
+
+    return updates
+end
+
+function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr, scene, name)
+    # updates old/default -> new
+    for (k, new_value) in new_kwargs
+        current_path = (path..., k)
+        current_value = graph[k]
+        if current_value isa ComputeGraphView
+            # both nest
+            collect_updates_rec!(
+                updates, current_value, current_path,
+                get(old_kwargs, k, NamedTuple()),
+                get(new_kwargs, k, NamedTuple()),
+                attr, scene, name
+            )
+        else
+            if is_different(current_value[], new_value)
+                push!(updates, get_merged_key(attr, current_path) => new_value)
             end
         end
     end
-    update!(plot, updates)
+
+    # updates old -> default
+    for k in setdiff(keys(old_kwargs), keys(new_kwargs))
+        # TODO: Should this check that k is a valid attribute or just fail down the line?
+        is_valid = !in(k, (:cycle, :dim_converts))
+        is_valid || continue
+
+        current_path = (path..., k)
+        current_value = graph[k]
+
+        if current_value isa ComputeGraphView
+            collect_updates_rec!(
+                updates, current_value, current_path,
+                get(old_kwargs, k, NamedTuple()),
+                get(new_kwargs, k, NamedTuple()),
+                attr, scene, name
+            )
+        else
+            default = lookup_default(attr, scene, name, NamedTuple(), current_path...)
+            if is_different(current_value[], default)
+                push!(updates, get_merged_key(attr, current_path) => default)
+            end
+        end
+    end
+
     return updates
+end
+
+function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
+    oldspec.type === spec.type || error("PlotSpec type $(spec.type) does not match plot type $(plot.type).")
+    return batch_update!(plot, oldspec, spec)
 end
 
 
@@ -531,11 +591,10 @@ plots[] = [
 ]
 ```
 """
-@recipe(PlotList, plotspecs) do scene
-    Attributes()
-end
+@recipe PlotList (plotspecs,) begin end
 
 is_atomic_plot(plot::PlotList) = false # is never atomic
+validate_attribute_keys(::PlotList) = true
 
 function Base.propertynames(pl::PlotList)
     inner_pnames = if length(pl.plots) == 1
@@ -578,7 +637,9 @@ plottype(::Type{<:Plot}, ::Union{GridLayoutSpec, BlockSpec}) = Plot{plot}
 
 function to_plot_object(ps::PlotSpec)
     P = plottype(ps)
-    return P((ps.args...,), copy(ps.kwargs))
+    attr = copy(ps.kwargs)
+    get!(attr, :force_dimconverts, false)
+    return P((ps.args...,), attr)
 end
 
 
@@ -588,16 +649,6 @@ function push_without_add!(scene::Scene, plot)
         Base.invokelatest(insert!, screen, scene, plot)
     end
     return
-end
-
-# PlotList children each get their own cycle position (unlike other recipes
-# where children inherit the recipe's position). The plotlist may not be in
-# scene.plots yet during initial creation, so we chain it onto the iterator;
-# the identity short-circuit in _cycle_position prevents double-counting
-# if it IS already there.
-function plot_cycle_index(parent::PlotList, plot::Plot)
-    scene = get_scene(parent)
-    return _cycle_position(plot, Iterators.flatten((scene.plots, (parent,))))
 end
 
 function diff_plotlist!(
@@ -625,7 +676,7 @@ function diff_plotlist!(
         if isnothing(reused_plot)
             @debug("Creating new plot for spec")
             plot_obj = to_plot_object(plotspec)
-            # connect_plot! sets cycle_index correctly via plot_cycle_index(parent, plot).
+            # connect_plot! sets cycle_index correctly.
             # We don't push to scene.plots when there's a plotlist — the scene should
             # only contain the PlotList itself, to avoid e.g. double legend entries.
             connect_plot!(parent, plot_obj)
@@ -640,12 +691,21 @@ function diff_plotlist!(
             @debug("updating old plot with spec")
             delete!(reusable_plots, old_spec)
             deleteat!(reusable_plots_sorted, idx)
-            pos = plot_cycle_index(parent, reused_plot)
-            if pos != reused_plot.cycle_index[]
-                reused_plot.cycle_index = pos
-            end
             update_plot!(reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
+        end
+    end
+    if !isempty(reusable_plots)
+        # To keep consistency when removing and adding back plots, decrement the
+        # cycle counters of each unused plot in the parent scene.
+        # Only do this when the spec plots are the latest plots affecting cycling
+        # so that we don't reuse indices that other (newer) plots are using.
+        lookup = scene.compute[:cycle_counters][]::Dict{Symbol, Int}
+        for (spec, plot) in reusable_plots_sorted
+            name = spec.type
+            if haskey(lookup, name) && lookup[name] == plot.cycle_index[]
+                lookup[name] -= 1
+            end
         end
     end
     return new_plots
@@ -752,7 +812,7 @@ function extract_colorbar_kw(legend::BlockSpec, scene::Scene)
                         return nan_extrema(color)
                     end
                 else
-                    lookup_default(pt, scene, k)
+                    return lookup_default(pt, scene, k)
                 end
             end
         end
@@ -771,9 +831,9 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::BlockSpec)
         # This means, we dont support a separate theme per scene
         # Which I think has been bitrotting anyways.
         kw = extract_colorbar_kw(spec, root(get_scene(fig)))
-        BType(fig; kw...)
+        BType(fig, spec.args...; kw...)
     else
-        BType(fig; spec.kwargs...)
+        BType(fig, spec.args...; spec.kwargs...)
     end
     parent[position...] = block
     for func in spec.then_funcs
@@ -802,6 +862,7 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::GridLayoutSpe
 end
 
 function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where {T <: Block}
+    # Without this we could just call batch_update!(block, old_spec, new_spec) directly...
     if spec.type === :Colorbar
         # To get plot defaults for Colorbar(specapi), we need a theme / scene
         # So we have to look up the kwargs here instead of the BlockSpec constructor.
@@ -811,25 +872,12 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         old_kw = old_spec.kwargs
         new_kw = spec.kwargs
     end
-    old_attr = keys(old_kw)
-    new_attr = keys(new_kw)
-    # attributes that have been set previously and need to get unset now
-    reset_to_defaults = setdiff(old_attr, new_attr)
-    if !isempty(reset_to_defaults)
-        default_attrs = default_attribute_values(T, block.blockscene)
-        for attr in reset_to_defaults
-            setproperty!(block, attr, default_attrs[attr])
-        end
-    end
-    # Attributes needing an update
-    to_update = setdiff(new_attr, reset_to_defaults)
-    for key in to_update
-        val = new_kw[key]
-        prev_val = to_value(getproperty(block, key))
-        if is_different(val, prev_val)
-            setproperty!(block, key, val)
-        end
-    end
+
+    updates = Pair{Symbol, Any}[]
+    batch_update_arguments!(updates, old_spec.args, spec.args)
+    batch_update_attributes!(updates, block, old_kw, new_kw)
+    update!(block.attributes, updates)
+
     if T <: AbstractAxis
         plot_obs[] = spec.plots
         score = distance_score(old_spec.plots, spec.plots, Dict())
@@ -850,7 +898,7 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         add_observer!(spec, observers)
     end
     unhide!(block) # in case we hid it before
-    return to_update, reset_to_defaults
+    return
 end
 
 function to_gl_key(key::Symbol)
@@ -900,6 +948,22 @@ function replace_links!(axis_links::Vector, new_links::Set)
     return true
 end
 
+function linked_limit_union(ax)
+    x0, x1 = ax.sharedxlimits[]
+    y0, y1 = ax.sharedylimits[]
+    for other in ax.xaxislinks
+        a, b = other.sharedxlimits[]
+        x0 = min(x0, a)
+        x1 = max(x1, b)
+    end
+    for other in ax.yaxislinks
+        a, b = other.sharedylimits[]
+        y0 = min(y0, a)
+        y1 = max(y1, b)
+    end
+    return (x0, x1), (y0, y1)
+end
+
 function update_axis_links!(gridspec, all_layoutables)
     # axes that should be linked
     axes = Dict{BlockSpec, Axis}()
@@ -928,6 +992,13 @@ function update_axis_links!(gridspec, all_layoutables)
     for (spec, ax) in axes
         unique!(ax.xaxislinks)
         unique!(ax.yaxislinks)
+    end
+
+    # trigger linking of axes
+    for (spec, ax) in axes
+        xlims, ylims = linked_limit_union(ax)
+        ax.localxlimits[] = xlims
+        ax.localylimits[] = ylims
     end
 
     return
@@ -1022,9 +1093,15 @@ function update_gridlayout!(
         # disconnect! all unused layoutables, so they dont show up anymore
         if block isa Block
             disconnect!(block)
+        elseif block isa GridLayout
+            isnothing(block.parent) && return
+            i = findfirst(x -> x.content === block, block.parent.content)
+            @assert !isnothing(i) "Could not find GridLayout() in its parent"
+            GridLayoutBase.remove_from_gridlayout!(block.parent.content[i])
         end
         return
     end
+
     layouts_to_update = Set{GridLayout}([target_layout])
     for (_, (content, _)) in new_layoutables
         if content isa GridLayout
@@ -1034,6 +1111,7 @@ function update_gridlayout!(
             push!(layouts_to_update, gc.parent)
         end
     end
+
     for l in layouts_to_update
         l.block_updates = false
         GridLayoutBase.update!(l)
@@ -1054,6 +1132,11 @@ function update_gridlayout!(
 end
 
 function update_fig!(fig::Union{Figure, GridPosition, GridSubposition}, layout_obs::Observable{GridLayoutSpec})
+    add_layout_updater!(get_topscene(fig), get_layout!(fig), layout_obs)
+    return fig
+end
+
+function add_layout_updater!(parent_scene::Scene, layout::GridLayout, layout_obs::Observable{GridLayoutSpec})
     # Global list of all layoutables. The LayoutableKey includes a nesting, so that we can keep even nested layouts in one global list.
     # Vector of Pairs should allow to have an identical key without overwriting the previous value
     unused_layoutables = Pair{LayoutableKey, Tuple{Layoutable, Observable{Vector{PlotSpec}}}}[]
@@ -1061,14 +1144,13 @@ function update_fig!(fig::Union{Figure, GridPosition, GridSubposition}, layout_o
     sizehint!(unused_layoutables, 50)
     sizehint!(new_layoutables, 50)
     l = Base.ReentrantLock()
-    layout = get_layout!(fig)
-    on(get_topscene(fig), layout_obs; update = true) do layout_spec
+    on(parent_scene, layout_obs; update = true) do layout_spec
         lock(l) do
             update_gridlayout!(layout, layout_spec, unused_layoutables, new_layoutables)
             return
         end
     end
-    return fig
+    return nothing
 end
 
 preferred_axis_type(::GridLayoutSpec) = FigureOnly

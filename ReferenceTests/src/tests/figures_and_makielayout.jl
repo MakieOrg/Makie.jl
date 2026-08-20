@@ -295,8 +295,8 @@ end
     ax = Axis(f[1, 1])
     lb = lines!(ax, 0:4, 0:4, linewidth = 10, color = :blue, label = "lines 1")
     lo = lines!(ax, 0:4, -4:0, linewidth = 10, color = :orange, label = "lines 2")
-    sb = scatter!(ax, range(0, 4, length = 10), fill(3, 10), markersize = 10, color = :blue, label = "scatter 1")
-    so = scatter!(ax, range(0, 4, length = 10), fill(2, 10), markersize = 10, color = :orange, label = "scatter 2")
+    sb = stem!(ax, range(0, 4, length = 10), fill(3, 10), color = :blue, label = "stem 1")
+    so = stem!(ax, range(0.25, 3.75, length = 9), fill(2, 9), color = :orange, label = "stem 2")
     x = LinRange(0, 4, 100)
     slb = band!(ax, x, cos.(x) .- 1, cos.(x) .- 2, color = :blue, label = "band 1")
     slo = band!(ax, x, sin.(x) .- 1, sin.(x) .- 2, color = :orange, label = "band 2")
@@ -311,7 +311,7 @@ end
     l2 = Legend(
         f[2, 2],
         [
-            PolyElement(plots = [lb, sb, slb, bb], color = :blue),
+            [lb, sb, slb, bb] => PolyElement(color = :blue),
             PolyElement(plots = [lo, so, slo, bo], color = :orange),
         ],
         ["blue", "orange"], "Colors"
@@ -769,6 +769,7 @@ end
     Makie.focus!(tb1)
     click(e, 297, 221)
     Makie.defocus!(tb1)
+    @test tb1.stored_string[] == "1234567890qwertyuiop"
 
     tb2 = Makie.Textbox(f[2, 1], width = 100)
     Makie.set!(tb2, "1234567890qwertyuiop")
@@ -776,6 +777,10 @@ end
     Makie.focus!(tb2)
     send(e, Keyboard.backspace)
     Makie.defocus!(tb2)
+    @test tb2.stored_string[] == "1234567890qwertyuiop"
+    # should defocus!() or clicking away really not commit the change?
+    # send(e, Keyboard.enter)
+    # @test tb2.stored_string[] == "1234567890qwertyuio"
 
     tb3 = Makie.Textbox(f[3, 1], width = 100)
     Makie.set!(tb3, "1234567890qwertyuiop")
@@ -785,6 +790,9 @@ end
     send(e, Keyboard.left)
     send(e, Keyboard.left)
     Makie.defocus!(tb3)
+    @test tb3.stored_string[] == "1234567890qwertyuiop"
+    # send(e, Keyboard.enter)
+    # @test tb3.stored_string[] == "1234567890qwertyuiop"
 
     tb4 = Makie.Textbox(f[4, 1], width = 100)
     Makie.set!(tb4, "1234567890qwertyuiop")
@@ -795,6 +803,9 @@ end
         send(e, Keyboard.backspace)
     end
     Makie.defocus!(tb4)
+    @test tb4.stored_string[] == "1234567890qwertyuiop"
+    # send(e, Keyboard.enter)
+    # @test tb4.stored_string[] == "12qwertyuiop"
 
     f
 end

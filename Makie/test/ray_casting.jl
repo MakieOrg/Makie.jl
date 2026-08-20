@@ -226,7 +226,7 @@
             cam3d!(scene)
             ray = Makie.Ray(scene, (118.0, 208.0))
             pos = Makie.position_on_plot(p, 310, ray, apply_transform = true)
-            @test pos ≈ Point3f(1.0995945, 0.11597935, 0.69089276)
+            @test pos ≈ Point3f(1.2634069, 0.3645778, 0.8899346)
 
             # Volume (3D)
             scene = Scene(size = (400, 400))

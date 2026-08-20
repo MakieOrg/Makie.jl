@@ -1,13 +1,15 @@
 """
-    tricontour(triangulation, zs; kwargs...)
-    tricontour(xs, ys, zs; kwargs...)
+Plots isolines of a scalar field on an unstructured triangular grid.
 
-Plots isolines of the scalar field `zs` at the horizontal positions `xs` and vertical
-positions `ys` on an unstructured triangular grid. A `Triangulation` from
-DelaunayTriangulation.jl can also be provided instead of `xs` and `ys`, otherwise an
-unconstrained Delaunay triangulation of `xs` and `ys` is computed.
+## Arguments
+
+* `xs, ys, zs` Plots isolines based on positions defined by `xs` and `ys`
+    (`AbstractVector{<:Real}`) and a scalar field defines by `zs`. An
+    unconstrained triangulation of `xs` and `ys` is computed automatically.
+* `triangles, zs` Plots isolines based on given `triangles` defined by a
+    `Triangulation` from DelaunayTriangulation.jl and a given scalar field `zs`.
 """
-@recipe Tricontour begin
+@recipe Tricontour (tri::DelTri.Triangulation, zs::RealVector) begin
     """
     Can be either an `Int` which results in n equally-spaced isolines between the
     minimum and maximum of `zs`, or an `AbstractVector{<:Real}` that lists explicit
@@ -94,11 +96,11 @@ function _calculate_tricontour_lines!(xs_out, ys_out, colors, triangulation, zs,
 end
 
 function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
-    map!(c, [:converted_2, :levels], :computed_levels) do zs, levels
+    map!(c, [:zs, :levels], :computed_levels) do zs, levels
         return _get_tricontour_levels(zs, levels)
     end
 
-    map!(c, [:computed_levels, :converted_2], :computed_colorrange) do levels, zs
+    map!(c, [:computed_levels, :zs], :computed_colorrange) do levels, zs
         isempty(levels) || return extrema_nan(levels)
         c = Float32(first(zs))
         delta = max(one(c), abs(c))
@@ -107,7 +109,7 @@ function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:
 
     register_computation!(
         c,
-        [:converted_1, :converted_2, :computed_levels],
+        [:tri, :zs, :computed_levels],
         [:line_xs, :line_ys, :line_colors]
     ) do (tri, zs, levels), _, cached
         if isnothing(cached)

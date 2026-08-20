@@ -100,6 +100,22 @@ function getProgramInfo(p::GLProgram)
     return @show info = glGetProgramiv(program, GL_TRANSFORM_FEEDBACK_VARYINGS)
 end
 
+const GENERIC_ERRORS = Dict(
+    GL_NO_ERROR => "No error has been recorded. The value of this symbolic constant is guaranteed to be 0.",
+    GL_INVALID_ENUM => "An unacceptable value is specified for an enumerated argument. The offending command is ignored and has no other side effect than to set the error flag.",
+    GL_INVALID_VALUE => "A numeric argument is out of range. The offending command is ignored and has no other side effect than to set the error flag.",
+    GL_INVALID_OPERATION => "The specified operation is not allowed in the current state. The offending command is ignored and has no other side effect than to set the error flag.",
+    GL_INVALID_FRAMEBUFFER_OPERATION => "The framebuffer object is not complete. The offending command is ignored and has no other side effect than to set the error flag.",
+    GL_OUT_OF_MEMORY => "There is not enough memory left to execute the command. The state of the GL is undefined, except for the state of the error flags, after this error is recorded.",
+)
+function warn_on_gl_error()
+    errorcode = glGetError()
+    if errorcode != GL_NO_ERROR
+        error("Failed to create texture: $(GENERIC_ERRORS[errorcode])")
+    end
+    return
+end
+
 const FAILED_FREE_COUNTER = Threads.Atomic{Int}(0)
 function verify_free(obj::T, name = T) where {T}
     return if obj.id != 0

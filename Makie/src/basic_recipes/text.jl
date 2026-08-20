@@ -43,7 +43,7 @@ to_string_arr(text) = [text]
 
 function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_args)
     # Set up Inputs
-    inputs = _register_input_arguments!(Text, attr, input_args)
+    inputs = _register_input_arguments!(attr, input_args)
 
     # User arguments can be PointBased(), String-like or mixed, with the
     # position and text attributes supplementing data not in arguments.
@@ -73,10 +73,10 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     end
 
     # Continue with _register_expand_arguments with adjusted input names
-    _register_expand_arguments!(Text, attr, [:_positions], true)
+    expanded = _register_expand_arguments!(Text, attr, [:_positions], attr._positions[], true)
 
     # And the rest of it
-    _register_argument_conversions!(Text, attr, user_kw)
+    _register_argument_conversions!(Text, attr, user_kw, expanded)
 
     return
 end
@@ -454,7 +454,6 @@ function tex_linesegments!(plot)
     ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes, space
         isempty(linesegments) && return Point3f[]
         markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
-        # TODO: avoid repeated apply_transform and use block_idx?
         return map(linesegments, indices) do seg, (block_idx, glyph_idx)
             return seg + markerspace_positions[block_idx]
         end
@@ -891,7 +890,7 @@ struct GlyphInfo
     origin::Point2f
     extent::GlyphExtent
     size::Vec2f
-    rotation::Quaternion
+    rotation::Quaternionf
     color::RGBAf
     strokecolor::RGBAf
     strokewidth::Float32
@@ -1078,8 +1077,6 @@ function right_align!(line1::Vector{GlyphInfo}, line2::Vector{GlyphInfo})
     isempty(line1) || isempty(line2) && return
     xmax1, xmax2 = map((line1, line2)) do line
         maximum(line; init = 0.0f0) do ginfo
-            # TODO: typo?
-            GlyphInfo
             ginfo.origin[1] + ginfo.size[1] * (ginfo.extent.ink_bounding_box.origin[1] + ginfo.extent.ink_bounding_box.widths[1])
         end
     end

@@ -1,10 +1,15 @@
 """
-    tooltip(position, string)
-    tooltip(x, y, string)
+Creates a tooltip pointing at a position displaying a given string.
 
-Creates a tooltip pointing at `position` displaying the given `string
+## Arguments
+
+* `position` Creates a tooltip at a given `position` of type `VecTypes` (`Point`, `Vec` or `Tuple`).
+* `x, y` Creates a tooltip at the given `x` and `y` coordinates of type `<:Real`.
 """
-@recipe Tooltip begin
+@recipe Tooltip (
+    positions::VecTypesVector{N, <:Real} where {N},
+    maybe_text::Union{AbstractVector, Nothing},
+) begin
     # General
     text = ""
     "Sets the offset between the given `position` and the tip of the triangle pointing at that position."
@@ -52,19 +57,72 @@ Creates a tooltip pointing at `position` displaying the given `string
 
     mixin_generic_plot_attributes()...
     inspectable = false
+    "If true the tooltip will be rendered at maximum z."
+    draw_on_top = false
+
+    # Only used for DataInspector
+    _formatter = nothing
 end
 
-function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real, str::AbstractString)
-    return (Point2{float_type(x, y)}(x, y), str)
-end
-function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real)
-    return (Point2{float_type(x, y)}(x, y),)
+function attribute_groups(::Type{<:Tooltip})
+    groups = default_attribute_groups()
+    attr = uncategorized_attributes(Text)
+    filter!(!=(:offset), attr)
+    push!(attr, :textcolor)
+    push!(groups, "Text" => attr)
+    return groups
 end
 
-function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
-    tooltip!(plot, Attributes(plot), plot[1]; text = plot[2])
-    return plot
+function convert_arguments(::Type{<:Tooltip}, xy, str::AbstractString)
+    return (convert_arguments(PointBased(), xy)[1], [str])
 end
+
+function convert_arguments(::Type{<:Tooltip}, x, y, str::AbstractString)
+    return (convert_arguments(PointBased(), x, y)[1], [str])
+end
+
+function convert_arguments(::Type{<:Tooltip}, x, y, z, str::AbstractString)
+    return (convert_arguments(PointBased(), x, y, z)[1], [str])
+end
+
+function convert_arguments(::Type{<:Tooltip}, xy, str::AbstractArray{<:AbstractString})
+    return (convert_arguments(PointBased(), xy)[1], str)
+end
+
+function convert_arguments(::Type{<:Tooltip}, x, y, str::AbstractArray{<:AbstractString})
+    return (convert_arguments(PointBased(), x, y)[1], str)
+end
+
+function convert_arguments(::Type{<:Tooltip}, x, y, z, str::AbstractArray{<:AbstractString})
+    return (convert_arguments(PointBased(), x, y, z)[1], str)
+end
+
+function convert_arguments(::Type{<:Tooltip}, xy::Union{VecTypesVector, VecTypes})
+    return convert_arguments(PointBased(), xy)[1], nothing
+end
+
+function convert_arguments(::Type{<:Tooltip}, x::Union{Real, AbstractVector{<:Real}}, y::Union{Real, AbstractVector{<:Real}})
+    return convert_arguments(PointBased(), x, y)[1], nothing
+end
+
+function convert_arguments(
+        ::Type{<:Tooltip},
+        x::Union{Real, AbstractVector{<:Real}},
+        y::Union{Real, AbstractVector{<:Real}},
+        z::Union{Real, AbstractVector{<:Real}}
+    )
+    return convert_arguments(PointBased(), x, y, z)[1], nothing
+end
+
+argument_dims(::Type{<:Tooltip}, x, y, z, s) = (1, 2, 3)
+argument_dims(::Type{<:Tooltip}, x, y, s::AbstractString) = (1, 2)
+argument_dims(::Type{<:Tooltip}, x, y, s::AbstractVector{<:AbstractString}) = (1, 2)
+argument_dims(::Type{<:Tooltip}, ps::VecTypes{N}, s::AbstractString) where {N} = (1:N,)
+argument_dims(::Type{<:Tooltip}, ps::VecTypesVector{N}, s::AbstractVector{<:AbstractString}) where {N} = (1:N,)
+argument_dims(::Type{<:Tooltip}, ps::VecTypes{N}) where {N} = (1:N,)
+argument_dims(::Type{<:Tooltip}, ps::VecTypesVector{N}) where {N} = (1:N,)
+argument_dims(::Type{<:Tooltip}, x, y) = (1, 2)
+argument_dims(::Type{<:Tooltip}, x, y, z) = (1, 2, 3)
 
 struct ToolTipShape
     placement::Symbol
@@ -125,7 +183,11 @@ function (tt::ToolTipShape)(origin::VecTypes{2}, size::VecTypes{2})
 end
 
 
-function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
+function plot!(p::Tooltip)
+
+    map!(p, [:maybe_text, :text], :extracted_text) do arg, text
+        return isnothing(arg) ? text : arg
+    end
 
     map!(ToolTipShape, p, [:placement, :align, :triangle_size], :shape)
 
@@ -164,12 +226,13 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     end
 
     p = textlabel!(
-        p, p[1], p.text, shape = p.shape,
+        p, p.positions,
+        text = p.extracted_text, shape = p.shape,
 
         padding = p.text_padding, justification = p.justification, text_align = p.text_align,
         offset = p.text_offset, fontsize = p.fontsize, font = p.font,
 
-        draw_on_top = false,
+        draw_on_top = p.draw_on_top,
 
         text_color = p.textcolor,
         text_strokewidth = p.strokewidth,

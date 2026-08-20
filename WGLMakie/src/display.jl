@@ -357,7 +357,7 @@ function get_screen_session(
         Bonito.isclosed(session) && return :closed
         isready(screen.plot_initialized)
     end
-    # session closed inbetween, nothing can be done
+    # session closed in-between, nothing can be done
     success === :closed && return nothing
     # Throw error if error message specified
     if success !== :success || !isopen(session)
