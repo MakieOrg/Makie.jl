@@ -28,17 +28,29 @@ module Aggregation
         # temporaries / results
         aggbuffer::Vector
         pixelbuffer::Vector
+        resultbuffer::Matrix
         data_extrema::Tuple{Float64, Float64}
     end
 
+    function result_buffer!(canvas::Canvas)
+        ET = eltype(canvas.pixelbuffer)
+        buffer = canvas.resultbuffer
+        if !(buffer isa Matrix{ET}) || size(buffer) != canvas.resolution
+            buffer = Matrix{ET}(undef, canvas.resolution)
+            canvas.resultbuffer = buffer
+        end
+        return buffer
+    end
+
     """
-        get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
+        get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=result_buffer!(canvas))
 
     Basically does `operation(map!(local_operation, result, canvas.pixelbuffer))`, but does the correct reshaping of the flat pixelbuffer and
     simplifies passing a local or global operation.
-    Allocates the result buffer every time and can be made non allocating by passing the correct result buffer.
+    By default this reuses a result buffer owned by the canvas, so the returned array is
+    overwritten by the next call for the same canvas. Pass `result` to write into your own buffer.
     """
-    function get_aggregation(canvas::Canvas; operation = equalize_histogram, local_operation = identity, result = similar(canvas.pixelbuffer, canvas.resolution))
+    function get_aggregation(canvas::Canvas; operation = equalize_histogram, local_operation = identity, result = result_buffer!(canvas))
         pix_reshaped = Base.ReshapedArray(canvas.pixelbuffer, canvas.resolution, ())
         # we want to make it easy to set local_operation or operation, without them clashing, while also being able to set both!
         if operation === Makie.automatic
@@ -46,7 +58,10 @@ module Aggregation
         else
             postfunc = operation
         end
-        return postfunc(map!(local_operation, result, pix_reshaped))
+        mapped = map!(local_operation, result, pix_reshaped)
+        # the default operation can run in place, which keeps the whole call allocation free
+        postfunc === Makie.equalize_histogram && return Makie.equalize_histogram!(mapped, mapped)
+        return postfunc(mapped)
     end
 
     Base.size(c::Canvas) = c.resolution
@@ -97,7 +112,8 @@ module Aggregation
         v0 = value(op, o0)
         aggbuffer = fill(o0, n_elements)
         pixelbuffer = fill(v0, n_elements)
-        return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, (v0, v0))
+        resultbuffer = Matrix{typeof(v0)}(undef, 0, 0)
+        return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, resultbuffer, (v0, v0))
     end
 
     n_threads(::AggSerial) = 1
@@ -275,7 +291,14 @@ end
 using ..Aggregation
 using ..Aggregation: Canvas, bin_scale, change_op!, aggregate!
 
-function equalize_histogram(matrix; nbins = 256)
+equalize_histogram(matrix; nbins = 256) = equalize_histogram!(similar(matrix, Float32), matrix; nbins = nbins)
+
+"""
+    equalize_histogram!(result::AbstractMatrix{Float32}, matrix; nbins = 256)
+
+In-place version of [`equalize_histogram`](@ref). `result` may alias `matrix`.
+"""
+function equalize_histogram!(result::AbstractMatrix{Float32}, matrix; nbins = 256)
     # binning happens in the element type's own precision, so that the scaled offsets
     # below stay within the range `bin_scale` was checked against
     FT = float(eltype(matrix))
@@ -286,7 +309,7 @@ function equalize_histogram(matrix; nbins = 256)
             maxi = max(maxi, x)
         end
     end
-    mini < maxi || return fill!(similar(matrix, Float32), 1.0f0)
+    mini < maxi || return fill!(result, 1.0f0)
 
     binscale = bin_scale(nbins, maxi - mini)
     # one bin of headroom, so the interpolation below can always read the following entry
@@ -298,7 +321,6 @@ function equalize_histogram(matrix; nbins = 256)
     cdf = cumsum!(counts, counts)
     cdf ./= cdf[end]
 
-    result = similar(matrix, Float32)
     @inbounds for i in eachindex(matrix, result)
         x = matrix[i]
         if !isfinite(x)

@@ -109,6 +109,23 @@ end
         @test Makie.equalize_histogram(constant) == fill(1.0f0, 3, 3)
     end
 
+    @testset "get_aggregation reuses the canvas result buffer" begin
+        canvas = Canvas(bounds; resolution = (16, 16), op = AggCount{Float32}())
+        aggregate!(canvas, [Point2f(0, 0), Point2f(1, 1), Point2f(1, 1)])
+        first_result = Makie.Aggregation.get_aggregation(canvas; operation = Makie.automatic)
+        second_result = Makie.Aggregation.get_aggregation(canvas; operation = Makie.automatic)
+        @test first_result === second_result
+        @test second_result == Makie.equalize_histogram(reshape(copy(canvas.pixelbuffer), canvas.resolution))
+        own_buffer = zeros(Float32, 16, 16)
+        @test Makie.Aggregation.get_aggregation(canvas; operation = Makie.automatic, result = own_buffer) === own_buffer
+    end
+
+    @testset "equalize_histogram! may alias its input" begin
+        values = Float32[0 0 0 0; 1 1 2 3]
+        aliased = copy(values)
+        @test Makie.equalize_histogram!(aliased, aliased; nbins = 4) == Makie.equalize_histogram(values; nbins = 4)
+    end
+
     @testset "point_transform" begin
         points = [Point2f(0.5, -1.5), Point2f(2.0, 1.0)]
         expected = reference_aggregation(map(reverse, points), bounds, resolution, AggCount{Int}())
