@@ -28,17 +28,29 @@ module Aggregation
         # temporaries / results
         aggbuffer::Vector
         pixelbuffer::Vector
+        resultbuffer::Matrix
         data_extrema::Tuple{Float64, Float64}
     end
 
+    function result_buffer!(canvas::Canvas)
+        ET = eltype(canvas.pixelbuffer)
+        buffer = canvas.resultbuffer
+        if !(buffer isa Matrix{ET}) || size(buffer) != canvas.resolution
+            buffer = Matrix{ET}(undef, canvas.resolution)
+            canvas.resultbuffer = buffer
+        end
+        return buffer
+    end
+
     """
-        get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
+        get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=result_buffer!(canvas))
 
     Basically does `operation(map!(local_operation, result, canvas.pixelbuffer))`, but does the correct reshaping of the flat pixelbuffer and
     simplifies passing a local or global operation.
-    Allocates the result buffer every time and can be made non allocating by passing the correct result buffer.
+    By default this reuses a result buffer owned by the canvas, so the returned array is
+    overwritten by the next call for the same canvas. Pass `result` to write into your own buffer.
     """
-    function get_aggregation(canvas::Canvas; operation = equalize_histogram, local_operation = identity, result = similar(canvas.pixelbuffer, canvas.resolution))
+    function get_aggregation(canvas::Canvas; operation = equalize_histogram, local_operation = identity, result = result_buffer!(canvas))
         pix_reshaped = Base.ReshapedArray(canvas.pixelbuffer, canvas.resolution, ())
         # we want to make it easy to set local_operation or operation, without them clashing, while also being able to set both!
         if operation === Makie.automatic
@@ -46,7 +58,10 @@ module Aggregation
         else
             postfunc = operation
         end
-        return postfunc(map!(local_operation, result, pix_reshaped))
+        mapped = map!(local_operation, result, pix_reshaped)
+        # the default operation can run in place, which keeps the whole call allocation free
+        postfunc === Makie.equalize_histogram && return Makie.equalize_histogram!(mapped, mapped)
+        return postfunc(mapped)
     end
 
     Base.size(c::Canvas) = c.resolution
@@ -97,8 +112,8 @@ module Aggregation
         v0 = value(op, o0)
         aggbuffer = fill(o0, n_elements)
         pixelbuffer = fill(v0, n_elements)
-        # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
-        return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, (v0, v0))
+        resultbuffer = Matrix{typeof(v0)}(undef, 0, 0)
+        return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, resultbuffer, (v0, v0))
     end
 
     n_threads(::AggSerial) = 1
@@ -140,6 +155,23 @@ module Aggregation
         return aggregation_implementation!(method, aggbuffer, pixelbuffer, c, c.op, points, point_transform)
     end
 
+    """
+        bin_scale(size::Integer, width::Real)
+
+    Scaling factor from a coordinate offset to a bin index, chosen so that
+    `bin_scale(size, width) * width < size` holds exactly in floating point.
+    That way `unsafe_trunc` of a scaled in-bounds offset can never reach `size`,
+    which lets the aggregation loop skip a bounds clamp per point.
+    """
+    function bin_scale(size::Integer, width::Real)
+        width > 0 || return zero(float(width))
+        scale = size / width
+        while scale * width >= size
+            scale = prevfloat(scale)
+        end
+        return scale
+    end
+
     function aggregation_implementation!(
             ::AggSerial,
             aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
@@ -148,9 +180,8 @@ module Aggregation
         )
         (xmin, ymin), (xmax, ymax) = extrema(c.bounds)
         xsize, ysize = size(c)
-        xwidth, ywidth = widths(c.bounds)
-        xscale = xsize / (xwidth + eps(xwidth))
-        yscale = ysize / (ywidth + eps(ywidth))
+        xscale = bin_scale(xsize, xmax - xmin)
+        yscale = bin_scale(ysize, ymax - ymin)
 
         @assert length(aggbuffer) == xsize * ysize
         @assert length(pixelbuffer) == xsize * ysize
@@ -158,23 +189,7 @@ module Aggregation
 
         # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
         out = Base.ReshapedArray(aggbuffer, (xsize, ysize), ())
-        for point in points
-            p = point_transform(point)
-            x = p[1]
-            y = p[2]
-            if length(p) > 2 # should compile away
-                z = p[3]
-            end
-            xmin ≤ x ≤ xmax || continue
-            ymin ≤ y ≤ ymax || continue
-            i = 1 + floor(Int, xscale * (x - xmin))
-            j = 1 + floor(Int, yscale * (y - ymin))
-            if length(p) == 2 # should compile away
-                out[i, j] = update(op, out[i, j])
-            elseif length(p) == 3
-                out[i, j] = update(op, out[i, j], z)
-            end
-        end
+        aggregate_points!(out, op, points, point_transform, xmin, xmax, ymin, ymax, xscale, yscale)
         mini, maxi = Inf, -Inf
 
         for i in eachindex(pixelbuffer, aggbuffer)
@@ -189,6 +204,31 @@ module Aggregation
         return c
     end
 
+    # point_transform is annotated so this stays specialized on it when called through
+    # aggregation_implementation!, which only passes it along
+    function aggregate_points!(out, op, points, point_transform::F, xmin, xmax, ymin, ymax, xscale, yscale) where {F}
+        @inbounds for point in points
+            p = point_transform(point)
+            x = p[1]
+            y = p[2]
+            if length(p) > 2 # should compile away
+                z = p[3]
+            end
+            xmin ≤ x ≤ xmax || continue
+            ymin ≤ y ≤ ymax || continue
+            # the bounds checks above make the scaled values non-negative and `bin_scale`
+            # keeps them below the axis length, so unsafe_trunc stays in range
+            i = 1 + unsafe_trunc(Int, xscale * (x - xmin))
+            j = 1 + unsafe_trunc(Int, yscale * (y - ymin))
+            if length(p) == 2 # should compile away
+                out[i, j] = update(op, out[i, j])
+            elseif length(p) == 3
+                out[i, j] = update(op, out[i, j], z)
+            end
+        end
+        return out
+    end
+
     function aggregation_implementation!(
             ::AggThreads,
             aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
@@ -197,63 +237,50 @@ module Aggregation
         )
         (xmin, ymin), (xmax, ymax) = extrema(c.bounds)
         xsize, ysize = size(c)
-        # by adding eps to width we can use the scaling factor plus floor directly to compute the bin indices
-        xwidth = xmax - xmin
-        xscale = xsize / (xwidth + eps(xwidth))
-        ywidth = ymax - ymin
-        yscale = ysize / (ywidth + eps(ywidth))
+        xscale = bin_scale(xsize, xmax - xmin)
+        yscale = bin_scale(ysize, ymax - ymin)
         # each thread reduces some of the data separately
         @assert length(aggbuffer) == Threads.nthreads() * xsize * ysize
         @assert length(pixelbuffer) == xsize * ysize
         @assert eltype(aggbuffer) === typeof(null(op)) "$(eltype(aggbuffer)) !== $(typeof(null(op)))"
 
-        # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
-        # https://stackoverflow.com/questions/41781621/resizing-a-matrix/41804908#41804908
-        out = Base.ReshapedArray(aggbuffer, (xsize, ysize, Threads.nthreads()), ())
-        out2 = Base.ReshapedArray(pixelbuffer, (xsize, ysize), ())
-
+        nthreads = Threads.nthreads()
+        npixel = xsize * ysize
         n = length(points)
-        chunks = round.(Int, range(1, n; length = Threads.nthreads() + 1))
+        chunks = round.(Int, range(0, n; length = nthreads + 1))
 
-        @threads for t in 1:Threads.nthreads()
-            from = chunks[t]
-            to = chunks[t + 1]
-            @inbounds for idx in from:to
-                p = point_transform(points[idx])
-                x = p[1]
-                y = p[2]
-                if length(p) > 2 # should compile away
-                    z = p[3]
-                end
-                xmin ≤ x ≤ xmax || continue
-                ymin ≤ y ≤ ymax || continue
-                i = 1 + floor(Int, xscale * (x - xmin))
-                j = 1 + floor(Int, yscale * (y - ymin))
-                if length(p) == 2 # should compile away
-                    out[i, j, t] = update(op, out[i, j, t])
-                elseif length(p) == 3
-                    out[i, j, t] = update(op, out[i, j, t], z)
+        @threads for t in 1:nthreads
+            # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
+            # https://stackoverflow.com/questions/41781621/resizing-a-matrix/41804908#41804908
+            out = Base.ReshapedArray(view(aggbuffer, ((t - 1) * npixel + 1):(t * npixel)), (xsize, ysize), ())
+            chunk = view(points, (chunks[t] + 1):chunks[t + 1])
+            aggregate_points!(out, op, chunk, point_transform, xmin, xmax, ymin, ymax, xscale, yscale)
+        end
+
+        # reduce the per-thread results into the first slice and finalize into the
+        # pixelbuffer, split over pixel ranges so this runs in parallel too
+        pixel_chunks = round.(Int, range(0, npixel; length = nthreads + 1))
+        extremas = fill((Inf, -Inf), nthreads)
+        @threads for t in 1:nthreads
+            pixels = (pixel_chunks[t] + 1):pixel_chunks[t + 1]
+            for s in 2:nthreads
+                offset = (s - 1) * npixel
+                @inbounds for idx in pixels
+                    aggbuffer[idx] = merge(op, aggbuffer[idx], aggbuffer[offset + idx])
                 end
             end
-        end
-        # reduce along the thread dimension
-        mini, maxi = Inf, -Inf
-        for j in 1:ysize
-            @inbounds for i in 1:xsize
-                val = out[i, j, 1]
-                for t in 2:Threads.nthreads()
-                    val = merge(op, val, out[i, j, t])
-                end
-                # update the value in out2 directly in this loop
-                final_value = value(op, val)
+            mini, maxi = Inf, -Inf
+            @inbounds for idx in pixels
+                final_value = value(op, aggbuffer[idx])
                 if isfinite(final_value)
                     mini = min(final_value, mini)
                     maxi = max(final_value, maxi)
                 end
-                out2[i, j] = final_value
+                pixelbuffer[idx] = final_value
             end
+            extremas[t] = (mini, maxi)
         end
-        c.data_extrema = (mini, maxi)
+        c.data_extrema = (minimum(first, extremas), maximum(last, extremas))
         return c
     end
 
@@ -262,16 +289,50 @@ module Aggregation
 end
 
 using ..Aggregation
-using ..Aggregation: Canvas, change_op!, aggregate!
+using ..Aggregation: Canvas, bin_scale, change_op!, aggregate!
 
-function equalize_histogram(matrix; nbins = 256)
-    h_eq = StatsBase.fit(StatsBase.Histogram, vec(matrix); nbins = nbins)
-    h_eq = normalize(h_eq; mode = :density)
-    cdf = cumsum(h_eq.weights)
-    cdf = cdf / cdf[end]
-    edg = h_eq.edges[1]
-    # TODO is this the correct linear interpolation?
-    return Makie.interpolated_getindex.((cdf,), matrix, (Vec2f(first(edg), last(edg)),))
+equalize_histogram(matrix; nbins = 256) = equalize_histogram!(similar(matrix, Float32), matrix; nbins = nbins)
+
+"""
+    equalize_histogram!(result::AbstractMatrix{Float32}, matrix; nbins = 256)
+
+In-place version of [`equalize_histogram`](@ref). `result` may alias `matrix`.
+"""
+function equalize_histogram!(result::AbstractMatrix{Float32}, matrix; nbins = 256)
+    # binning happens in the element type's own precision, so that the scaled offsets
+    # below stay within the range `bin_scale` was checked against
+    FT = float(eltype(matrix))
+    mini, maxi = FT(Inf), FT(-Inf)
+    @inbounds for x in matrix
+        if isfinite(x)
+            mini = min(mini, x)
+            maxi = max(maxi, x)
+        end
+    end
+    mini < maxi || return fill!(result, 1.0f0)
+
+    binscale = bin_scale(nbins, maxi - mini)
+    # one bin of headroom, so the interpolation below can always read the following entry
+    counts = zeros(Float32, nbins + 1)
+    @inbounds for x in matrix
+        isfinite(x) || continue
+        counts[1 + unsafe_trunc(Int, binscale * (x - mini))] += 1
+    end
+    cdf = cumsum!(counts, counts)
+    cdf ./= cdf[end]
+
+    @inbounds for i in eachindex(matrix, result)
+        x = matrix[i]
+        if !isfinite(x)
+            result[i] = NaN32
+            continue
+        end
+        pos = binscale * (x - mini)
+        bin = unsafe_trunc(Int, pos)
+        low, high = cdf[bin + 1], cdf[bin + 2]
+        result[i] = low + (high - low) * (pos - bin)
+    end
+    return result
 end
 
 """
