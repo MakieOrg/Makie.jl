@@ -86,6 +86,7 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
 }
 
 flat out uint frag_instance_id;
+flat out int o_triangle_index;
 
 void main(){
     // get_* gets the global inputs (uniform, sampler, position array)
@@ -100,5 +101,10 @@ void main(){
     frag_uv = apply_uv_transform(get_wgl_uv_transform(), get_texturecoordinates());
     frag_color = get_color(get_vertex_color(), get_uniform_colorrange(), uniform_colormap);
 
-    frag_instance_id = uint(gl_VertexID);
+    // only meaningful for de-indexed mesh geometry, where gl_VertexID counts corners
+    o_triangle_index = gl_VertexID / 3;
+    // de-indexed geometry provides the original vertex index for picking as an
+    // attribute, the indexed paths (image, heatmap, surface) set a -1 uniform
+    float vertex_index = get_vertex_index();
+    frag_instance_id = vertex_index < 0.0 ? uint(gl_VertexID) : uint(vertex_index);
 }
