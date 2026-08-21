@@ -26,6 +26,7 @@ using Test
 
 const TEST_FILES = [
     # CPU-only (no render), so it fails fast and before anything touches a device.
+    "test_pbrt_import_settings.jl",
     "test_material_precedence.jl",
     "test_overlay_compositing.jl",
     "test_figure_scene_routing.jl",

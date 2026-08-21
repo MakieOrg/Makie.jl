@@ -44,9 +44,16 @@ function pbrt_to_makie(filename::AbstractString)
     end
 
     # --- Camera ---
+    # Defaults match pbrt-v4 cameras.cpp PerspectiveCamera::Create: a zero lens
+    # radius is a pinhole, and focaldistance is only consulted when the lens has
+    # area. Dropping these silently rendered every depth-of-field scene sharp.
     fov = 90f0
+    lens_radius = 0f0
+    focal_distance = 1f6
     if pbrt.camera !== nothing
         fov = Float32(Hikari.pbrt_get_float(pbrt.camera, "fov", 90.0))
+        lens_radius = Float32(Hikari.pbrt_get_float(pbrt.camera, "lensradius", 0.0))
+        focal_distance = Float32(Hikari.pbrt_get_float(pbrt.camera, "focaldistance", 1.0e6))
     end
     # Extract eye / target / up from the world-to-camera matrix
     ctw = inv(pbrt.camera_transform)
@@ -83,6 +90,10 @@ function pbrt_to_makie(filename::AbstractString)
         rad2deg(2 * atan(tan(deg2rad(fov) / 2) / aspect))
     end
     scene.camera_controls.fov[] = Float64(makie_fov)
+    # Lens is in world units, so unlike fov it needs no aspect conversion.
+    # `to_trace_camera` lifts both into Hikari.PerspectiveCamera.
+    scene.camera_controls.lens_radius[] = Float64(lens_radius)
+    scene.camera_controls.focal_distance[] = Float64(focal_distance)
 
     # --- Build Hikari textures and materials from pbrt data ---
     hikari_textures = Hikari.build_pbrt_textures(pbrt)
@@ -125,6 +136,39 @@ function pbrt_to_makie(filename::AbstractString)
          russian_roulette_depth=int_rr_depth, max_component_value=int_max_component),
         sensor, sensor_name, exposure_time,
     )
+end
+
+"""
+    Hikari.VolPath(res::PBRTMakieResult; kwargs...)
+
+Build an integrator whose defaults come from the parsed `.pbrt` instead of from
+Hikari's own, which disagree with pbrt-v4 on two knobs that both silently darken
+specular highlights:
+
+| knob | pbrt-v4 default | Hikari default |
+|---|---|---|
+| `regularize` | `false` (`cpu/integrators.cpp:817`) | `true` |
+| `maxcomponentvalue` | `Infinity` (`film.cpp:576`) | `10f0` |
+
+A scene that omits both — crown.pbrt does — therefore renders with its specular
+lobes roughened AND its bright samples clamped, moving energy out of highlights
+and into their surroundings. Measured on crown that was a 1.6 % global energy
+deficit concentrated entirely in the bright quintiles.
+
+`pbrt_to_makie` parsed these correctly all along; there was just no way to apply
+them short of copying each field by hand, so every caller inherited the wrong
+defaults. Explicit keywords still win over the file.
+"""
+function Hikari.VolPath(res::PBRTMakieResult;
+                        samples::Int = res.integrator_settings.samples,
+                        max_depth::Int = res.integrator_settings.max_depth,
+                        regularize::Bool = res.integrator_settings.regularize,
+                        russian_roulette_depth::Int = res.integrator_settings.russian_roulette_depth,
+                        max_component_value::Real = res.integrator_settings.max_component_value,
+                        sensor::Hikari.PixelSensor = res.sensor,
+                        kwargs...)
+    return Hikari.VolPath(; samples, max_depth, regularize, russian_roulette_depth,
+                          max_component_value, sensor, kwargs...)
 end
 
 # ============================================================================
@@ -212,13 +256,11 @@ function pbrt_shape_to_makie!(scene, srec::Hikari.PBRTShapeRecord, pbrt,
     inside_medium = get(media_cache, srec.medium_inner, nothing)
     outside_medium = get(media_cache, srec.medium_outer, nothing)
 
-    # Area light: wrap in MediumInterface with Emissive using keyword constructor
-    # (applies photometric normalization like a user would)
+    # Area light: same construction Hikari's own scene builder uses, so the two
+    # importers cannot drift. This used to call the keyword constructor, which
+    # normalizes by the D65 constant rather than by the emitter's own spectrum.
     if srec.area_light !== nothing
-        Le = Hikari.pbrt_get_emissive_le(srec.area_light, (1.0, 1.0, 1.0))
-        al_scale = Float32(Hikari.pbrt_get_float(srec.area_light, "scale", 1.0))
-        two_sided = Hikari.pbrt_get_bool(srec.area_light, "twosided", false)
-        emissive = Hikari.Emissive(Le=Le, scale=al_scale, two_sided=two_sided)
+        emissive = Hikari.Emissive(srec.area_light)
         mesh!(scene, geom; material=Hikari.MediumInterface(mat;
             emission=emissive, inside=inside_medium, outside=outside_medium))
     elseif inside_medium !== nothing || outside_medium !== nothing
