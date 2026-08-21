@@ -962,7 +962,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         alpha = 1.0
 
         "Sets the color dim conversion."
-        dim_conversion = nothing
+        dim_conversion = ColorDimConvert()
         "Controls whether the dim conversion is shown in ticklabels."
         unit_in_ticklabel::Union{Bool, Automatic} = automatic
         "Controls whether the dim conversion is shown in the Colorbar label."

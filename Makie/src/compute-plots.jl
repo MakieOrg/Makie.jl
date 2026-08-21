@@ -222,18 +222,6 @@ function register_colormapping_without_color!(attr::ComputeGraph)
     return
 end
 
-function add_color_dim_convert!(attr::ComputeGraph, color)
-    # may also be initialized by build_plot!() from kwargs
-    if !haskey(attr, :color_dim_convert)
-        init = dim_conversion_from_args(color)
-        add_input!(attr, :color_dim_convert, init)
-        if !isa(init, Union{Nothing, NoDimConversion})
-            on(_ -> notify(attr.color_dim_convert), needs_tick_update_observable(init))
-        end
-    end
-    return
-end
-
 function process_color_value(dim_convert, scale, value, auto)
     if value === automatic
         return auto
@@ -248,9 +236,10 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     register_colormapping_without_color!(attr)
 
     color = attr[colorname][]
-    add_color_dim_convert!(attr, color)
     if !isa(dim_conversion_from_args(color), Union{Nothing, NoDimConversion})
-        map!(attr, [:color_dim_convert, colorname], :dc_color) do dc, color
+        update_dim_conversion!(attr.color_dim_convert[], color)
+
+        map!(attr, [:resolved_cdc, colorname], :dc_color) do dc, color
             converted = convert_dim_value(dc, attr, color, nothing)
             return to_color(converted)
         end
@@ -283,7 +272,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
 
     map!(
         attr,
-        [:color_dim_convert, :colorrange, :colorscale, :auto_colorrange],
+        [:resolved_cdc, :colorrange, :colorscale, :auto_colorrange],
         :scaled_colorrange
     ) do dc, colorrange, colorscale, _autorange
         # colors are actual colors, so no colormapping
@@ -551,7 +540,7 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
         dim == 0 && continue
         if dim isa Integer
             if dim == 4
-                add_color_dim_convert!(attr, args_converted[i])
+                update_dim_conversion!(attr.color_dim_convert[], args_converted[i])
             else
                 update_dim_conversion!(dim_converts, dim, args_converted[i])
             end
@@ -559,7 +548,7 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
         else
             for (j, d) in enumerate(dim)
                 if d == 4
-                    add_color_dim_convert!(attr, getindex.(args_converted[i], j))
+                    update_dim_conversion!(attr.color_dim_convert[], args_converted[i], j)
                 else
                     update_dim_conversion!(dim_converts, d, args_converted[i], j)
                 end
@@ -573,7 +562,7 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # Note that the order in dim_convert_names is important
     dim_convert_names = Symbol[]
     for i in 1:maxdim
-        push!(dim_convert_names, i == 4 ? :color_dim_convert : Symbol(:dim_convert_, i))
+        push!(dim_convert_names, i == 4 ? :resolved_cdc : Symbol(:dim_convert_, i))
         if i < 4 # 4 already got added if maxdim == 4
             obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
             converts_updated = map!(x -> dim_converts[i], Observable{Any}(), obs)
@@ -927,16 +916,11 @@ end
 function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
     graph = ComputeGraph()
 
-    if haskey(user_attributes, :color_dim_convert) ||
-            (!isnothing(parent) && haskey(parent, :color_dim_convert))
-
-        parent_cdc = isnothing(parent) ? nothing : parent.color_dim_convert
-        init = to_value(pop!(user_attributes, :color_dim_convert, parent_cdc))
-        add_input!(graph, :color_dim_convert, init)
-        if !isa(init, Union{Nothing, NoDimConversion})
-            on(_ -> notify(graph.color_dim_convert), needs_tick_update_observable(init))
-        end
-    end
+    # If the user passes a color_dim_convert or it is extracted from a parent
+    # plot in _create_plot! it is initialized here. If we generate it from
+    # arguments or color it is initialized later
+    cdc_init = pop!(user_attributes, :color_dim_convert, ColorDimConvert())
+    register_color_dim_convert!(graph, to_value(cdc_init))
 
     register_arguments!(P, graph, user_attributes, user_args)
     converted = graph.converted[]

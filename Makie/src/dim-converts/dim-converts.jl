@@ -282,7 +282,7 @@ function update_dim_conversion!(conversions::DimConversions, dim, value::VecType
 end
 
 function update_dim_conversion!(conversions::DimConversions, dim, points::AbstractArray{<:VecTypes}, element_idx)
-    isempty(points) && return Float64[]
+    isempty(points) && return
     return update_dim_conversion!(conversions, dim, first(points)[element_idx])
 end
 

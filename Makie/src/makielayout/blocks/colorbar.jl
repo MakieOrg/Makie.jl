@@ -270,22 +270,24 @@ function initialize_block!(cb::Colorbar; kwargs...)
     register_colormapping_without_color!(cb.attributes)
 
     # Auto dim conversion
+    cdc = cb.dim_conversion[]
     if hasinput(cb.attributes, :dim_conversion) # not managed externally
-        init = dim_conversion_from_args(color)
-        cb.dim_conversion = init
+        on(_ -> notify(cb.dim_conversion), cdc.update)
+        update_dim_conversion!(cb.dim_conversion[], cb.values[])
     end
+    map!(cdc -> cdc.dim_convert, cb, :dim_conversion, :resolved_cdc)
 
     if haskey(kwargs, :dim_converted)
         map!(to_color, cb, kwargs[:dim_converted], :dc_values)
         on(x -> @error("Colorbar values are controlled by a plot via :dc_values"), cb.values)
     else
-        if !isa(cb.dim_conversion[], Union{Nothing, NoDimConversion})
-            map!(cb, [:dim_conversion, :values], :dc_values) do dc, color
+        if cdc.dim_convert isa Union{Nothing, NoDimConversion}
+            ComputePipeline.map!(to_color, cb, :values, :dc_values)
+        else
+            map!(cb, [:resolved_cdc, :values], :dc_values) do dc, color
                 converted = convert_dim_value(dc, cb.attributes, color, nothing)
                 return to_color(converted)
             end
-        else
-            ComputePipeline.map!(to_color, cb, :values, :dc_values)
         end
     end
 
@@ -295,7 +297,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     register_computation!(
         cb.attributes,
-        [:dim_conversion, :colorrange, :limits, :_derived_colorrange],
+        [:resolved_cdc, :colorrange, :limits, :_derived_colorrange],
         [:resolved_colorrange]
     ) do (dc, _colorrange, limits, _autorange), changed, @nospecialize(cached)
         colorrange = if changed.limits && (limits !== automatic)
@@ -316,13 +318,13 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
-    map!(cb, [:dim_conversion, :color_mapping_type], :merged_color_mapping_type) do dc, cmt
+    map!(cb, [:resolved_cdc, :color_mapping_type], :merged_color_mapping_type) do dc, cmt
         return (cmt === Makie.continuous) && isa(dc, CategoricalConversion) ? Makie.categorical : cmt
     end
 
     map!(
         cb,
-        [:color_mapping, :merged_color_mapping_type, :dim_conversion, :dc_values, :nsteps, :resolved_colorrange],
+        [:color_mapping, :merged_color_mapping_type, :resolved_cdc, :dc_values, :nsteps, :resolved_colorrange],
         :cb_colors
     ) do mapping, mapping_type, dc, values, n, limits
         if mapping_type === Makie.continuous
@@ -507,7 +509,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
-    map!(cb, [:cb_colors, :merged_color_mapping_type, :ticks, :dim_conversion], :finalticks) do cs, type, ticks, dc
+    map!(cb, [:cb_colors, :merged_color_mapping_type, :ticks, :resolved_cdc], :finalticks) do cs, type, ticks, dc
         # For categorical we just enumerate
         if dc isa CategoricalConversion
             return automatic # let dim convert generate categories (or use names of categories)
@@ -530,7 +532,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
         labelfont = cb.labelfont, ticklabelfont = cb.ticklabelfont,
-        dim_convert = cb.dim_conversion,
+        dim_convert = cb.resolved_cdc,
         ticks = cb.finalticks, tickformat = cb.tickformat,
         ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
         ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,

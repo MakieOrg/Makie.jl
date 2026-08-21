@@ -18,7 +18,7 @@ function verify_colorbar_defaults(
         @test cb.lowclip.parent.inputs[1] == lowclip
         @test cb.highclip.parent.inputs[1] == highclip
         @test cb.color_mapping_type[] == color_mapping_type
-        # TODO: check color_dim_convert?
+        # TODO: check resolved_cdc?
     end
     return
 end
@@ -244,16 +244,24 @@ end
     end
 end
 
-@testset "Color dim converts" begin
+@recipe CDCTest begin
+    color = :red
+end
+function Makie.plot!(p::CDCTest)
+    scatter!(p, p.attributes, p[1])
+    scatter!(p, p[1]; p.color)
+end
+
+@testset "color dim converts" begin
     @testset "Unitful" begin
         f, a, p = scatter(rand(10), color = (1:10) .* u"m")
-        @test p.color_dim_convert[] isa Makie.UnitfulConversion
+        @test p.resolved_cdc[] isa Makie.UnitfulConversion
         @test p.dc_color[] == 1:10 # something needs to activate the dc before we can check unit
-        @test p.color_dim_convert[].unit[] == u"m"
+        @test p.resolved_cdc[].unit[] == u"m"
         @test p.scaled_colorrange[] == Vec2f(1, 10)
 
         cb = Colorbar(f[1, 2], p)
-        @test cb.dim_conversion[] === p.color_dim_convert[]
+        @test cb.resolved_cdc[] === p.resolved_cdc[]
         @test cb.color_mapping_type[] == Makie.continuous
         @test cb.merged_color_mapping_type[] == Makie.continuous
         @test cb.cb_colors[] ≈ collect(range(1.0, 10.0, cb.nsteps[]))
@@ -262,8 +270,8 @@ end
         @test cb.attributes.axis.label_with_suffix[] == rich("[", rich("m"), "]")
 
         p2 = scatter!(rand(10), color = (1:10) .* u"mm"; p.color_dim_convert)
-        @test p2.color_dim_convert[] === p.color_dim_convert[]
-        @test p2.color_dim_convert[].unit[] == u"m"
+        @test p2.resolved_cdc[] === p.resolved_cdc[]
+        @test p2.resolved_cdc[].unit[] == u"m"
         @test p2.dc_color[] == collect((1:10) .* 1.0f-3)
         # Would be nice if the colorrange was shared but we need to figure out how
         # to do that first (and also: colormap, colorscale, lowclip, highclip, nan_color)
@@ -273,19 +281,19 @@ end
         # that u"m" persists
         f, a, p = scatter(rand(10), color = (1:10) .* u"mm")
         p.dc_color[]
-        @test p.color_dim_convert[].unit[] == u"mm"
+        @test p.resolved_cdc[].unit[] == u"mm"
     end
 
     @testset "Categorical" begin
         f, a, p = scatter(rand(3), color = Categorical(["A", "A", "B"]))
-        @test p.color_dim_convert[] isa Makie.CategoricalConversion
+        @test p.resolved_cdc[] isa Makie.CategoricalConversion
         @test p.dc_color[] == [1.0, 1.0, 2.0]
-        @test only(p.color_dim_convert[].sets)[2] == ["A", "B"]
+        @test only(p.resolved_cdc[].sets)[2] == ["A", "B"]
         @test p.scaled_colorrange[] == Vec2f(1, 2)
-        key = only(p.color_dim_convert[].sets)[1]
+        key = only(p.resolved_cdc[].sets)[1]
 
         cb = Colorbar(f[1, 2], p)
-        @test cb.dim_conversion[] === p.color_dim_convert[]
+        @test cb.resolved_cdc[] === p.resolved_cdc[]
         @test cb.color_mapping_type[] == Makie.continuous
         @test cb.merged_color_mapping_type[] == Makie.categorical
         @test cb.cb_colors[] ≈ [1.0, 2.0]
@@ -294,10 +302,10 @@ end
         @test cb.attributes.axis.label_with_suffix[] == ""
 
         p2 = scatter!(1:3, color = Categorical(["B", "C", "C"]); p.color_dim_convert)
-        @test p2.color_dim_convert[] === p.color_dim_convert[]
+        @test p2.resolved_cdc[] === p.resolved_cdc[]
         @test p2.dc_color[] == [2.0, 3.0, 3.0]
-        @test length(p2.color_dim_convert[].sets) == 2
-        for (k, set) in p2.color_dim_convert[].sets
+        @test length(p2.resolved_cdc[].sets) == 2
+        for (k, set) in p2.resolved_cdc[].sets
             if k == key
                 @test set == ["A", "B"]
             else
@@ -311,5 +319,22 @@ end
         @test cb.cb_colors[] ≈ [1.0, 2.0, 3.0]
         @test cb.attributes.axis.tickvalues[] == [1.0, 2.0, 3.0]
         @test cb.attributes.axis.tickstrings[] == ["A", "B", "C"]
+    end
+
+    @testset "recipe passthrough" begin
+        f,a,p = scatter(rand(10), color = (1:10) .* u"m")
+        cdc = p.resolved_cdc[]
+        p2 = cdctest!(rand(10), color = (1:10) .* u"m"; p.color_dim_convert)
+        @test p2.resolved_cdc[] === cdc
+        @test p2.plots[1].resolved_cdc[] === cdc
+        @test p2.plots[2].resolved_cdc[] === cdc
+
+        # don't pass compute node
+        f,a,p = scatter(rand(10), color = (1:10) .* u"m")
+        p2 = cdctest!(rand(10), color = (1:10) .* u"m"; color_dim_convert = p.color_dim_convert[])
+        cdc = p.resolved_cdc[]
+        @test p2.resolved_cdc[] === cdc
+        @test p2.plots[1].resolved_cdc[] === cdc
+        @test p2.plots[2].resolved_cdc[] === cdc
     end
 end

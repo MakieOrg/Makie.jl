@@ -904,7 +904,7 @@ end
 
     a = Axis(f[2, 2][1, 1])
     hidedecorations!(a)
-    p1 = heatmap!(10 .* rand(10, 10) .* u"K", colormap = :blues)
+    p1 = heatmap!(10 .* RNG.rand(10, 10) .* u"K", colormap = :blues)
     p2 = scatter!(
         1:10,
         color = Categorical(["A", "B", "B", "C", "C", "C", "A", "A", "B", "B"]),
