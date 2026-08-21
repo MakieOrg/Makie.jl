@@ -192,11 +192,11 @@ As of Makie 0.25 dim converts are also used for color data given either through 
 The latter is used for the matrix input in `heatmap` for example.
 
 ```@setup color_dim_converts
-using Unitful
+using Makie.Unitful
 ```
 
 ```@figure color_dim_converts
-using Unitful
+using Makie.Unitful
 
 f, a, p1 = heatmap(10 .* rand(10, 10) .* u"K", colormap = :blues)
 p2 = scatter!(
