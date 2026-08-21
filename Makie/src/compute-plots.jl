@@ -226,13 +226,9 @@ function add_color_dim_convert!(attr::ComputeGraph, color)
     # may also be initialized by build_plot!() from kwargs
     if !haskey(attr, :color_dim_convert)
         init = dim_conversion_from_args(color)
-        add_constant!(attr, :color_dim_convert, init)
+        add_input!(attr, :color_dim_convert, init)
         if !isa(init, Union{Nothing, NoDimConversion})
-            on(needs_tick_update_observable(init)) do _
-                ComputePipeline.mark_dirty!(attr.color_dim_convert)
-                ComputePipeline.update_observables!(attr.color_dim_convert)
-                return
-            end
+            on(_ -> notify(attr.color_dim_convert), needs_tick_update_observable(init))
         end
     end
     return
@@ -931,15 +927,14 @@ end
 function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
     graph = ComputeGraph()
 
-    if haskey(user_attributes, :color_dim_convert)
-        init = to_value(pop!(user_attributes, :color_dim_convert))
-        add_constant!(graph, :color_dim_convert, init)
+    if haskey(user_attributes, :color_dim_convert) ||
+            (!isnothing(parent) && haskey(parent, :color_dim_convert))
+
+        parent_cdc = isnothing(parent) ? nothing : parent.color_dim_convert
+        init = to_value(pop!(user_attributes, :color_dim_convert, parent_cdc))
+        add_input!(graph, :color_dim_convert, init)
         if !isa(init, Union{Nothing, NoDimConversion})
-            on(needs_tick_update_observable(init)) do _
-                ComputePipeline.mark_dirty!(graph.color_dim_convert)
-                ComputePipeline.update_observables!(graph.color_dim_convert)
-                return
-            end
+            on(_ -> notify(graph.color_dim_convert), needs_tick_update_observable(init))
         end
     end
 
