@@ -18,7 +18,7 @@ function verify_colorbar_defaults(
         @test cb.lowclip.parent.inputs[1] == lowclip
         @test cb.highclip.parent.inputs[1] == highclip
         @test cb.color_mapping_type[] == color_mapping_type
-        # TODO: check resolved_cdc?
+        # TODO: check color_dim_convert?
     end
     return
 end
@@ -250,6 +250,7 @@ end
 function Makie.plot!(p::CDCTest)
     scatter!(p, p.attributes, p[1])
     scatter!(p, p[1]; p.color)
+    return
 end
 
 @testset "color dim converts" begin
@@ -322,7 +323,7 @@ end
     end
 
     @testset "recipe passthrough" begin
-        f,a,p = scatter(rand(10), color = (1:10) .* u"m")
+        f, a, p = scatter(rand(10), color = (1:10) .* u"m")
         cdc = p.resolved_cdc[]
         p2 = cdctest!(rand(10), color = (1:10) .* u"m"; p.color_dim_convert)
         @test p2.resolved_cdc[] === cdc
@@ -330,7 +331,7 @@ end
         @test p2.plots[2].resolved_cdc[] === cdc
 
         # don't pass compute node
-        f,a,p = scatter(rand(10), color = (1:10) .* u"m")
+        f, a, p = scatter(rand(10), color = (1:10) .* u"m")
         p2 = cdctest!(rand(10), color = (1:10) .* u"m"; color_dim_convert = p.color_dim_convert[])
         cdc = p.resolved_cdc[]
         @test p2.resolved_cdc[] === cdc
