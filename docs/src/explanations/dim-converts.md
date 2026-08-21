@@ -191,7 +191,11 @@ Makie.DateTimeConversion
 As of Makie 0.25 dim converts are also used for color data given either through the `color` attribute or passed as an argument with which maps to `dim = 4`.
 The latter is used for the matrix input in `heatmap` for example.
 
-```@figure
+```@setup color_dim_converts
+using Unitful
+```
+
+```@figure color_dim_converts
 using Unitful
 
 f, a, p1 = heatmap(10 .* rand(10, 10) .* u"K", colormap = :blues)
@@ -211,9 +215,7 @@ Unlike other dim converts, color dim converts do not communicate with each other
 This is because it is unclear which other attributes (e.g. `colormap`, `colorscale`, `colorrange`) need to be shared for the colors to be considered "of the same kind", i.e. for users to want them to synchronize.
 Instead of guessing we currently require sharing the dim convert as well as the relevant attributes explicitly.
 
-```@figure
-using Unitful
-
+```@figure color_dim_converts
 f = Figure()
 a = Axis(f[1, 1], title = "nothing shared")
 p = scatter!(a, 1:5, 1:5, color = (1:5) .* u"m")
@@ -231,9 +233,7 @@ f
 Note that categorical conversions can derive a shared `colorrange` automatically because all the categories are embedded in the dim convert.
 Keeping the `colorscale`, `colormap` and potentially other attributes like `lowclip`, `highclip` and `nan_color` synchronized is still required.
 
-```@figure
-using Unitful
-
+```@figure color_dim_converts
 f, a, p = scatter(
     randn(50), randn(50),
     color = Categorical(["A" for _ in 1:50]),

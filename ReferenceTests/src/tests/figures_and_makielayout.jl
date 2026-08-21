@@ -907,7 +907,7 @@ end
     p1 = heatmap!(10 .* rand(10, 10) .* u"K", colormap = :blues)
     p2 = scatter!(
         1:10,
-        color = Categorical(["A", "B", "B", "C", "C", "C", "A", "A", "B", "B", "C"]),
+        color = Categorical(["A", "B", "B", "C", "C", "C", "A", "A", "B", "B"]),
         colormap = :solar,
         markersize = 20, strokewidth = 1, strokecolor = :white
     )
