@@ -376,14 +376,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             return depthsort!(pos, depth_vals, indices, pvm)
         end
     else
-        register_computation!(attr, [:positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
-            return (length(ps),)
-        end
+        map!(length, attr, :positions_transformed_f32c, :gl_indices)
     end
 
-    register_computation!(attr, [:positions_transformed_f32c], [:gl_len]) do (ps,), changed, last
-        return (Int32(length(ps)),)
-    end
+    map!(ps -> Int32(length(ps)), attr, :positions_transformed_f32c, :gl_len)
 
     inputs = [
         # Special
@@ -392,15 +388,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :sdf_marker_shape,
     ]
     if attr[:marker][] isa FastPixel
-        register_computation!(attr, [:markerspace], [:gl_markerspace]) do (space,), changed, last
-            space == :pixel && return (Int32(0),)
-            space == :data  && return (Int32(1),)
+        map!(attr, :markerspace, :gl_markerspace) do space
+            space == :pixel && return Int32(0)
+            space == :data  && return Int32(1)
             return error("Unsupported markerspace for FastPixel marker: $space")
         end
 
-        register_computation!(attr, [:marker], [:sdf_marker_shape]) do (marker,), changed, last
-            return (marker.marker_type,)
-        end
+        map!(marker -> marker.marker_type, attr, :marker, :sdf_marker_shape)
 
         uniforms = [
             :positions_transformed_f32c,
@@ -481,14 +475,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
             return depthsort!(pos, depth_vals, indices, pvm)
         end
     else
-        register_computation!(attr, [:per_char_positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
-            return (length(ps),)
-        end
+        map!(length, attr, :per_char_positions_transformed_f32c, :gl_indices)
     end
 
-    register_computation!(attr, [:per_char_positions_transformed_f32c], [:gl_len]) do (ps,), changed, last
-        return (Int32(length(ps)),)
-    end
+    map!(ps -> Int32(length(ps)), attr, :per_char_positions_transformed_f32c, :gl_len)
 
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
 
@@ -567,8 +557,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     Makie.register_world_normalmatrix!(attr)
     Makie.register_view_normalmatrix!(attr)
 
-    register_computation!(attr, [:positions_transformed_f32c], [:instances, :gl_len]) do (pos,), changed, cached
-        return (length(pos), Int32(length(pos)))
+    map!(attr, :positions_transformed_f32c, [:instances, :gl_len]) do pos
+        return length(pos), Int32(length(pos))
     end
 
     inputs = [
@@ -749,17 +739,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         map!(pos -> collect(Float32.(eachindex(pos))), attr, positions, :gl_last_length)
     else
         positions = :gl_projected_positions
-        register_computation!(attr, [positions, :resolution], [:gl_last_length]) do (pos, res), changed, cached
-            return (sumlengths(pos, res),)
-        end
+        map!(sumlengths, attr, [positions, :resolution], :gl_last_length)
     end
 
     # Derived vertex attributes
     register_computation!(generate_indices, attr, [positions], [:gl_indices, :gl_valid_vertex])
-    register_computation!(attr, [:gl_indices], [:gl_total_length]) do (indices,), changed, cached
-        return (Int32(length(indices) - 2),)
-    end
-
+    map!(indices -> Int32(length(indices) - 2), attr, :gl_indices, :gl_total_length)
 
     inputs = [
         # relevant to creation time decisions
@@ -823,9 +808,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     # costs ~1µs per clip plane
     Makie.add_computation!(attr, Val(:uniform_clip_planes), :clip)
 
-    register_computation!(attr, [:positions_transformed_f32c], [:indices]) do (positions,), changed, cached
-        return (length(positions),)
-    end
+    map!(length, attr, :positions_transformed_f32c, :indices)
 
     inputs = [
         :space,
@@ -959,8 +942,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
 
     Makie.add_computation!(attr, scene, Val(:heatmap_transform))
 
-    register_computation!(attr, [:x_transformed_f32c, :y_transformed_f32c], [:instances]) do (x, y), changed, cached
-        return ((length(x) - 1) * (length(y) - 1),)
+    map!(attr, [:x_transformed_f32c, :y_transformed_f32c], :instances) do x, y
+        return (length(x) - 1) * (length(y) - 1)
     end
 
     inputs = [
@@ -1014,9 +997,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     Makie.register_view_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
 
-    register_computation!(attr, [:z], [:instances]) do (z,), changed, cached
-        return ((size(z, 1) - 1) * (size(z, 2) - 1),)
-    end
+    map!(z -> (size(z, 1) - 1) * (size(z, 2) - 1), attr, :z, :instances)
 
     inputs = [
         # Special
@@ -1167,9 +1148,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
 
     Makie.register_world_normalmatrix!(attr, :voxel_model)
 
-    register_computation!(attr, [:chunk_u8, :gap], [:instances]) do (chunk, gap), changed, cached
+    map!(attr, [:chunk_u8, :gap], :instances) do chunk, gap
         N = sum(size(chunk))
-        return (ifelse(gap > 0.01, 2 * N, N + 3),)
+        return ifelse(gap > 0.01, 2 * N, N + 3)
     end
 
     Makie.add_computation!(attr, scene, Val(:voxel_uv_transform))
@@ -1229,9 +1210,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     Makie.add_computation!(attr, Val(:uniform_clip_planes), :model, :uniform_model)
 
     # TODO: reuse in clip planes
-    register_computation!(attr, [:uniform_model], [:modelinv]) do (model,), changed, cached
-        return (Mat4f(inv(model)),)
-    end
+    map!(model -> Mat4f(inv(model)), attr, :uniform_model, :modelinv)
 
     inputs = [
         # Special
