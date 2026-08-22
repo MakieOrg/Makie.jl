@@ -79,6 +79,8 @@ module ComputePipeline
 using Preferences
 
 const ENABLE_COMPUTE_CHECKS = @load_preference("ENABLE_COMPUTE_CHECKS", false)
+const LOG_NOTHING_SKIP = @load_preference("LOG_NOTHING_SKIP", false)
+const LOG_NOTHING_SPLAT = @load_preference("LOG_NOTHING_SPLAT", false)
 
 enable_debugging!() = set_debug!(true)
 disable_debugging!() = set_debug!(false)
@@ -86,6 +88,33 @@ function set_debug!(value::Bool)
     if value != ENABLE_COMPUTE_CHECKS
         @set_preferences!("ENABLE_COMPUTE_CHECKS" => value)
         @info "Changing the debug mode requires restarting Julia to take effect!"
+    end
+    return
+end
+
+"""
+    log_nothing_skip(value::Bool)
+
+Enables or disables extended logging for `nothing -> skip_update` deprecations.
+"""
+function log_nothing_skip(value::Bool)
+    if value != LOG_NOTHING_SKIP
+        @set_preferences!("LOG_NOTHING_SKIP" => value)
+        @info "Changing the logging mode requires restarting Julia to take effect!"
+    end
+    return
+end
+
+"""
+    log_nothing_splat(value::Bool)
+
+Enables or disables extended logging for `return nothing` being used to initialize
+multiple outputs.
+"""
+function log_nothing_splat(value::Bool)
+    if value != LOG_NOTHING_SPLAT
+        @set_preferences!("LOG_NOTHING_SPLAT" => value)
+        @info "Changing the logging mode requires restarting Julia to take effect!"
     end
     return
 end
@@ -148,6 +177,10 @@ struct ResolveException{E <: Exception} <: Exception
     start::Computed
     error::E
 end
+
+struct SkipUpdate end
+const skip_update = SkipUpdate()
+export skip_update
 
 struct TypedEdge{InputTuple, OutputTuple, F}
     callback::F
@@ -234,6 +267,23 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
 
     elseif isnothing(result)
 
+        if LOG_NOTHING_SPLAT
+            @warn(
+                "Initializing multiple outputs with `return nothing` is deprecated. " *
+                "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
+                source_info_str(edge)
+            )
+        else
+            # This only triggers once, so it's not very useful for actually fixing
+            # upstream map!/register_computation! methods
+            Base.depwarn(
+                "Initializing multiple outputs with `return nothing` is deprecated. " *
+                "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
+                source_info_str(edge),
+                :TypedEdge
+            )
+        end
+
         outputs = ntuple(length(edge.outputs)) do i
             if isdefined(edge.outputs[i], :value)
                 edge.outputs[i].value[] = nothing
@@ -245,7 +295,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         foreach(node -> node.dirty = false, edge.outputs)
 
     else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output. Value: $result")
     end
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
@@ -889,7 +939,15 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
 end
 
 function set_result!(edge::TypedEdge, result, i, value)
-    if isnothing(value) || is_same(edge.outputs[i][], value)
+    if LOG_NOTHING_SKIP && isnothing(values)
+        @warn(
+            "Returning nothing in `map!` and `register_computation!` callbacks " *
+            "has been deprecated in favor of returning `skip_update` to allow " *
+            "outputs to update to `nothing`. " * source_info_str(edge)
+        )
+    end
+
+    if (value === skip_update) || is_same(edge.outputs[i][], value)
         edge.output_nodes[i].dirty = false
     else
         edge.output_nodes[i].dirty = true
@@ -947,9 +1005,27 @@ function locked_resolve!(edge::TypedEdge)
             end
             set_result!(edge, result)
         elseif isnothing(result)
+            if LOG_NOTHING_SKIP
+                @warn(
+                    "Returning nothing in `map!` and `register_computation!` callbacks " *
+                    "has been deprecated in favor of returning `skip_update` to allow " *
+                    "outputs to update to `nothing`. " * source_info_str(edge)
+                )
+            else
+                Base.depwarn(
+                    "Returning nothing in `map!` and `register_computation!` callbacks " *
+                    "has been deprecated in favor of returning `skip_update` to allow " *
+                    "outputs to update to `nothing`. Use
+                    `ComputePipeline.log_nothing_skip(true)` to find problematic methods.",
+                    :locked_resolve!
+                )
+            end
+
+            foreach(x -> x.dirty = false, edge.output_nodes)
+        elseif result === skip_update
             foreach(x -> x.dirty = false, edge.output_nodes)
         else
-            error("Needs to return a Tuple with one element per output, or nothing")
+            error("Needs to return a Tuple with one element per output or `skip_update`.")
         end
     end
     return
@@ -1670,7 +1746,7 @@ end
 
 function take_last!(channel::Channel; wait = false)
     return lock(channel) do
-        result = wait ? take!(channel) : nothing
+        result = wait ? take!(channel) : skip_update
         while isready(channel)
             result = take!(channel)
         end

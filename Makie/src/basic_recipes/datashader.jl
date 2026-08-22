@@ -389,7 +389,7 @@ function canvas_computation!(p::DataShader)
             canvas.bounds = lims64
         end
         has_changed = has_changed || isnothing(last)
-        return has_changed ? (canvas,) : nothing
+        return has_changed ? (canvas,) : skip_update
     end
 end
 
@@ -743,7 +743,7 @@ function Makie.plot!(p::HeatmapShader)
         init = (p.x[], p.x[], fill(zero(T), 2, 2), false)
     ) do image, x, y, max_resolution, limits
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
-        isnothing(xe_ye_oimg) && return nothing
+        isnothing(xe_ye_oimg) && return skip_update
         return (xe_ye_oimg..., true)
     end
 
