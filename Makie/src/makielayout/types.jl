@@ -8,36 +8,68 @@ end
 struct DataAspect end
 
 struct Cycle
-    cycle::Vector{Pair{Vector{Symbol}, Symbol}}
+    attribute_lookup::Dict{Symbol, Int}
+    palette_keys::Vector{Symbol}
     covary::Bool
 end
-Base.:(==)(a::Cycle, b::Cycle) = a.covary == b.covary && a.cycle == b.cycle
+
+function Base.:(==)(a::Cycle, b::Cycle)
+    return a.covary == b.covary &&
+        a.palette_keys == b.palette_keys &&
+        a.attribute_lookup == b.attribute_lookup
+end
 
 Cycle(cycle::Cycle) = cycle
-Cycle(cycle; covary = false) = Cycle(to_cycle(cycle), covary)
+Cycle(cycle; covary = false) = Cycle(cycle, covary)
+function Cycle(cycle, covary)
+    attribute_lookup = Dict{Symbol, Int}()
+    palette_keys = Symbol[] # keep order
+    flatten_cycle!(attribute_lookup, palette_keys, cycle)
+    return Cycle(attribute_lookup, palette_keys, covary)
+end
 
-palettesyms(cycle::Cycle) = [c[2] for c in cycle.cycle]
-attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
+# convert input to internal format
+function unique_push!(vec, val)
+    idx = findfirst(==(val), vec)
+    if isnothing(idx)
+        push!(vec, val)
+        return length(vec)
+    else
+        return idx
+    end
+end
 
-to_cycle(single) = [to_cycle_single(single)]
-to_cycle(::Nothing) = []
-to_cycle(symbolvec::Vector) = map(to_cycle_single, symbolvec)
-to_cycle_single(sym::Symbol) = [sym] => sym
-to_cycle_single(pair::Pair{Symbol, Symbol}) = [pair[1]] => pair[2]
-to_cycle_single(pair::Pair{Vector{Symbol}, Symbol}) = pair
+flatten_cycle!(lookup, keys, ::Nothing) = nothing
+function flatten_cycle!(lookup, keys, s::Symbol)
+    lookup[s] = unique_push!(keys, s)
+    return
+end
+function flatten_cycle!(lookup, keys, p::Pair{Symbol, Symbol})
+    lookup[p[1]] = unique_push!(keys, p[2])
+    return
+end
+function flatten_cycle!(lookup, keys, p::Pair{Vector{Symbol}, Symbol})
+    idx = unique_push!(keys, p[2])
+    foreach(k -> lookup[k] = idx, first(p))
+    return
+end
+flatten_cycle!(lookup, keys, v::Vector) = foreach(x -> flatten_cycle!(lookup, keys, x), v)
+
+attrsyms(cycle::Cycle) = keys(cycle.attribute_lookup)
+palettesyms(cycle::Cycle) = cycle.palette_keys
 
 function get_cycle_attribute(palettes, attribute::Symbol, index::Int, cycle::Cycle)
-    cyclepalettes = [palettes[sym][] for sym in palettesyms(cycle)]
-    isym = findfirst(syms -> attribute in syms, attrsyms(cycle))
-    palette = cyclepalettes[isym]
+    palette_idx = cycle.attribute_lookup[attribute]
+    palette_key = cycle.palette_keys[palette_idx]
+    palette = to_value(palettes[palette_key])
     if cycle.covary
         return palette[mod1(index, length(palette))]
     else
-        cis = CartesianIndices(Tuple(length(p) for p in cyclepalettes))
+        cis = CartesianIndices(Tuple(length(to_value(palettes[s])) for s in palettesyms(cycle)))
         n = length(cis)
         k = mod1(index, n)
         idx = Tuple(cis[k])
-        return palette[idx[isym]]
+        return palette[idx[palette_idx]]
     end
 end
 
@@ -183,17 +215,14 @@ struct IntervalsBetween
 end
 IntervalsBetween(n) = IntervalsBetween(n, true)
 
+include("ticklocators/linear.jl")
+include("ticklocators/wilkinson.jl")
 
 mutable struct LineAxis
     parent::Scene
-    protrusion::Observable{Float32}
     attributes::Attributes
+    graph::ComputePipeline.ComputeGraphView
     elements::Dict{Symbol, Any}
-    tickpositions::Observable{Vector{Point2f}}
-    tickvalues::Observable{Vector{Float32}}
-    ticklabels::Observable{Vector{Any}}
-    minortickpositions::Observable{Vector{Point2f}}
-    minortickvalues::Observable{Vector{Float32}}
 end
 
 struct LimitReset end
@@ -306,9 +335,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2d}
-    finallimits::Observable{Rect2d}
-    block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
@@ -325,6 +351,29 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         Global state for the y dimension conversion.
         """
         dim2_conversion = nothing
+
+        "Controls whether the x dim_convert is shown in ticklabels."
+        x_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in ticklabels."
+        y_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the x dim_convert is shown in the xlabel."
+        x_unit_in_label::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in the ylabel."
+        y_unit_in_label::Union{Bool, Automatic} = automatic
+        """
+        Formatter for the xlabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        label suffix generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        xlabel_suffix = "[{}]"
+        """
+        Formatter for the ylabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        label suffix generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        ylabel_suffix = "[{}]"
 
         """
         The content of the x axis label.
@@ -784,7 +833,8 @@ end
 function RectangleZoom(ax::Axis; kw...)
     return RectangleZoom(ax; kw...) do newlims
         if !(0 in widths(newlims))
-            ax.targetlimits[] = newlims
+            ax.localxlimits[] = (left(newlims), right(newlims))
+            ax.localylimits[] = (bottom(newlims), top(newlims))
         end
         return
     end
@@ -840,7 +890,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "Format for ticks."
         tickformat = Makie.automatic
         "The space reserved for the tick labels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
-        ticklabelspace = Makie.automatic
+        ticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
         "The gap between tick labels and tick marks."
         ticklabelpad = 3.0f0
         "The alignment of the tick marks relative to the axis spine (0 = out, 1 = in)."
@@ -892,16 +942,24 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
         "The colormap that the colorbar uses."
         colormap = @inherit(:colormap, :viridis)
+        "Deprecated in favor of `colorrange`. (The range of values depicted in the colorbar.)"
+        limits = automatic
         "The range of values depicted in the colorbar."
-        limits = nothing
-        "The range of values depicted in the colorbar."
-        colorrange = nothing
+        colorrange = automatic
+        """
+        Sets the color values of the Colorbar. The number of unique color values will set the number
+        of categories for a categorical colormap. If `colorrange` is not given, this will set a
+        default colorrange.
+        """
+        values = [0, 1]
         "The color of the high clip triangle."
-        highclip = nothing
+        highclip = automatic
         "The color of the low clip triangle."
-        lowclip = nothing
+        lowclip = automatic
         "The axis scale"
         scale = identity
+        "Sets the alpha value of the colormap."
+        alpha = 1.0
 
 
         "The align mode of the colorbar in its parent GridLayout."
@@ -924,6 +982,13 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
         size = 12
     end
+end
+
+# TODO: not used
+function deprecated_attributes(::Type{Colorbar})
+    return (
+        (; attribute = :limits, message = "`limits` has been removed in favor of `colorrange` in Makie v0.25.", error = true),
+    )
 end
 
 @Block Label begin
@@ -1438,52 +1503,42 @@ end
 abstract type LegendElement end
 
 struct LineElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MarkerElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct PolyElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct ImageElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MeshElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MeshScatterElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
-function get_plots(le::LegendElement)
-    if hasfield(typeof(le), :plots)
-        return le.plots
-    else
-        @warn """LegendElements should now keep track of the plots they represent in a `plots` field.
-        This can be `nothing` or a `Vector{Plot}`. Without this, the Legend won't be able to
-        toggle visibility of the associated plots. The `plots` field is missing in: $(le)
-        """
-        return Plot[]
-    end
+struct SurfaceElement <: LegendElement
+    attributes::Attributes
 end
 
 struct LegendEntry
+    plots::Vector{AbstractPlot}
     elements::Vector{LegendElement}
     attributes::Attributes
-end
 
+    function LegendEntry(plots::Vector, elements::Vector, attr::Attributes)
+        return new(plots, elements, attr)
+    end
+end
 
 const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
@@ -1746,8 +1801,6 @@ end
         placeholder = "Click to edit..."
         "The currently stored string."
         stored_string = nothing
-        "The currently displayed string (for internal use)."
-        displayed_string = nothing
         "Controls if the displayed text is reset to the stored text when defocusing the textbox without submitting."
         reset_on_defocus = false
         "Controls if the textbox is defocused when a string is submitted."
@@ -1817,6 +1870,41 @@ end
         Global state for the z dimension conversion.
         """
         dim3_conversion = nothing
+
+        "Controls whether the x dim_convert is shown in ticklabels."
+        x_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in ticklabels."
+        y_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the z dim_convert is shown in ticklabels."
+        z_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the x dim_convert is shown in the xlabel."
+        x_unit_in_label::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in the ylabel."
+        y_unit_in_label::Union{Bool, Automatic} = automatic
+        "Controls whether the z dim_convert is shown in the zlabel."
+        z_unit_in_label::Union{Bool, Automatic} = automatic
+        """
+        Formatter for the xlabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        label suffix generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        xlabel_suffix = "[{}]"
+        """
+        Formatter for the ylabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        label suffix generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        ylabel_suffix = "[{}]"
+        """
+        Formatter for the zlabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        label suffix generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        zlabel_suffix = "[{}]"
+
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -2265,7 +2353,7 @@ end
         "The fontsize of the `r` tick labels."
         rticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `r` tick labels."
-        rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, "default"))
         "The color of the `r` tick labels."
         rticklabelcolor = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
         "The width of the outline of `r` ticks. Setting this to 0 will remove the outline."
@@ -2327,7 +2415,7 @@ end
         "The fontsize of the `theta` tick labels."
         thetaticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `theta` tick labels."
-        thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, "default"))
         "The color of the `theta` tick labels."
         thetaticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
         "Padding of the `theta` ticks label."
@@ -2428,3 +2516,17 @@ end
         reset_axis_orientation::Bool = false
     end
 end
+
+"""
+An empty block which does nothing on its own. It is used as a target for
+`Block(::BlockSpec)` and `Block(::GridLayoutSpec)`. It can also be used as a
+container for an inner `GridLayout()`, i.e. as an alternative to
+
+```julia
+gl = fig[i, j] = GridLayout()
+SomeBlock(gl[1, 1], ...)
+# or
+SomeBlock(fig[i, j][1, 1], ...)
+```
+"""
+@Block Container

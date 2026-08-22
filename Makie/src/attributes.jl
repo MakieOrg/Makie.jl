@@ -19,6 +19,8 @@ value_convert(x::NamedTuple) = Attributes(x)
 
 # Version of `convert(Observable{Any}, obj)` that doesn't require runtime dispatch
 node_any(obj::Computed) = obj
+node_any(obj::ComputePipeline.ComputeGraphView) = obj
+node_any(obj::Attributes) = obj
 function node_any(@nospecialize(obj))
     isa(obj, Observable{Any}) && return obj
     isa(obj, Observable) && return convert(Observable{Any}, obj)
@@ -63,19 +65,60 @@ end
 
 Base.filter(f, x::Attributes) = Attributes(filter(f, attributes(x)))
 function Base.empty!(x::Attributes)
-    attr = attributes(x)
-    for (key, obs) in attr
-        Observables.clear(obs)
-    end
-    empty!(attr)
+    empty_rec!(x::Attributes)
     return x
 end
+empty_rec!(x::Attributes) = empty_rec!(attributes(x))
+function empty_rec!(attr::Dict)
+    for (key, val) in attr
+        empty_rec!(val)
+    end
+    empty!(attr)
+    return
+end
+empty_rec!(obs::Observable) = Observables.clear(obs)
+empty_rec!(::Any) = nothing
 
 Base.length(x::Attributes) = length(attributes(x))
 
 function Base.merge!(target::Attributes, args::Attributes...)
     for elem in args
-        merge_attributes!(target, elem)
+        # PERF: `Base.merge!` uses `sizehint!` to allocate all at once but most often the input would already have all
+        # the keys from the default attributes so no significant allocation happens.
+        for (key, value) in attributes(elem)
+            tvalue = to_value(value)
+            if haskey(target, key) && (tvalue isa Attributes && target[key] isa Attributes)
+                # if nested attribute, we merge recursively
+                Base.merge!(target[key], tvalue)
+            else
+                target[key] = value
+            end
+        end
+    end
+    return target
+end
+
+# `Base.merge!` with left precedence that merges recursively same as merge on `Attributes`
+function mergeleft!(target::Attributes, args::Attributes...)
+    for elem in args
+        # PERF: Preallocation <- user attributes filled with defaults -> most keys are new to target
+        @static if VERSION >= v"1.11"
+            sizehint!(target.attributes, length(target) + length(attributes(elem)); shrink = false)
+        else
+            sizehint!(target.attributes, length(target) + length(attributes(elem)))
+        end
+        for (key, value) in attributes(elem)
+            if !haskey(target, key)
+                target[key] = value
+            else
+                tvalue = to_value(value)
+                if tvalue isa Attributes && target[key] isa Attributes
+                    # if nested attribute, we merge recursively
+                    mergeleft!(target[key], tvalue)
+                end
+            end
+            # target already has a value for `key`
+        end
     end
     return target
 end
@@ -122,6 +165,10 @@ end
 
 function Base.setindex!(x::Attributes, value::Observable, key::Symbol)
     return x.attributes[key] = node_any(value)
+end
+
+function Base.setindex!(x::Attributes, value::Union{Attributes, ComputePipeline.ComputeGraphView}, key::Symbol)
+    return x.attributes[key] = value
 end
 
 _indent_attrs(s, n) = join(split(s, '\n'), "\n" * " "^n)
@@ -205,7 +252,7 @@ end
 
 function Base.setindex!(x::AttributeOrPlot, value, key::Symbol, key2::Symbol, rest::Symbol...)
     dict = to_value(x[key])
-    dict isa Attributes || error("Trying to access $(typeof(dict)) with multiple keys: $key, $key2, $(rest)")
+    # dict isa Attributes || error("Trying to access $(typeof(dict)) with multiple keys: $key, $key2, $(rest)")
     return dict[key2, rest...] = value
 end
 
@@ -223,23 +270,6 @@ function get_attribute(dict, key, default = nothing)
     else
         return default
     end
-end
-
-function merge_attributes!(input::Attributes, theme::Attributes)
-    for (key, value) in attributes(theme)
-        if !haskey(input, key)
-            input[key] = value
-        else
-            current_value = input[key]
-            tvalue = to_value(value)
-            if tvalue isa Attributes && current_value isa Attributes
-                # if nested attribute, we merge recursively
-                merge_attributes!(current_value, tvalue)
-            end
-            # we're good! input already has a value, can ignore theme
-        end
-    end
-    return input
 end
 
 function Base.propertynames(x::Attributes)

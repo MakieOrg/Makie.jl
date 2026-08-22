@@ -279,7 +279,7 @@ using Electron, WGLMakie, Bonito, Test
             })()"""
         )
 
-        @test textbox.displayed_string[] == "Hello World"
+        @test textbox.editor.arg1[] == "Hello World"
         @test textbox.stored_string[] == "Hello World"
     end
 
@@ -314,7 +314,7 @@ using Electron, WGLMakie, Bonito, Test
                 node.dispatchEvent(new Event('change', { bubbles: true }));
             })()"""
         )
-        @test textbox.displayed_string[] == "2.71"
+        @test textbox.editor.arg1[] == "2.71"
         @test textbox.stored_string[] == "2.71"
     end
 

@@ -1,3 +1,5 @@
+argument_dims(::Type{<:Voxels}, x, y, z, chunk) = (1, 2, 3)
+
 # expand_dimensions would require conversion trait
 function convert_arguments(::Type{<:Voxels}, chunk::Array{<:Real, 3})
     X, Y, Z = map(x -> EndPoints(Float32(-0.5 * x), Float32(0.5 * x)), size(chunk))
@@ -106,7 +108,9 @@ function register_voxel_colormapping!(attr)
     # TODO: Is resolving this immediately fine?
     add_constant!(attr, :fetch_pixel, false) # for CairoMakie
     if isnothing(attr[:color][])
-        register_computation!(attr, [:colormap, :alpha, :lowclip, :highclip], [:voxel_colormap]) do (cmap, alpha, lowclip, highclip), changed, cached_load
+        map!(
+            attr, [:colormap, :alpha, :lowclip, :highclip], :voxel_colormap
+        ) do cmap, alpha, lowclip, highclip
             N = 253 + (lowclip === automatic) + (highclip === automatic)
             cm = add_alpha.(resample_cmap(cmap, N), alpha)
             if lowclip !== automatic
@@ -115,10 +119,10 @@ function register_voxel_colormapping!(attr)
             if highclip !== automatic
                 cm = [cm; to_color(highclip)]
             end
-            return (cm,)
+            return cm
         end
     else
-        register_computation!(attr, [:color, :alpha], [:voxel_color]) do (color, alpha), changed, cached
+        map!(attr, [:color, :alpha], :voxel_color) do color, alpha
             if color isa AbstractVector # one color per id
                 output = Vector{RGBAf}(undef, 255)
                 @inbounds for i in 1:min(255, length(color))
@@ -127,14 +131,14 @@ function register_voxel_colormapping!(attr)
                 for i in (min(255, length(color)) + 1):255
                     output[i] = RGBAf(0, 0, 0, 0)
                 end
-                return (output,)
+                return output
             elseif color isa AbstractArray # image/texture
                 output = add_alpha.(to_color.(color), alpha)
-                return (output,)
+                return output
             elseif color isa Colorant # static
                 c = add_alpha(to_color(color), alpha)
                 output = [c for _ in 1:255]
-                return (output,)
+                return output
             else
                 error("Invalid color type $(typeof(color))")
             end
@@ -270,15 +274,20 @@ function voxel_size(p::Voxels)
 end
 
 function voxel_positions(p::Voxels)
-    mini, maxi = extrema(data_limits(p))
     voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
     _size = size(voxel_id)
-    step = (maxi .- mini) ./ _size
     return [
-        Point3f(mini .+ step .* (i - 0.5, j - 0.5, k - 0.5))
+        voxel_position(p, i, j, k)
             for k in 1:_size[3] for j in 1:_size[2] for i in 1:_size[1]
             if voxel_id[i, j, k] !== 0x00
     ]
+end
+
+function voxel_position(p::Voxels, i, j, k)
+    mini, maxi = extrema(data_limits(p))
+    _size = size(p.chunk_u8[].data::Array{UInt8, 3})
+    step = (maxi .- mini) ./ _size
+    return Point3f(mini .+ step .* (i - 0.5, j - 0.5, k - 0.5))
 end
 
 function voxel_colors(p::Voxels)

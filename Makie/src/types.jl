@@ -1,5 +1,4 @@
 abstract type AbstractCamera end
-abstract type Block end
 abstract type AbstractAxis <: Block end
 
 # placeholder if no camera is present
@@ -498,7 +497,6 @@ function Base.:(==)(a::GlyphCollection, b::GlyphCollection)
         a.strokecolors == b.strokecolors &&
         a.strokewidths == b.strokewidths
 end
-
 
 # The color type we ideally use for most color attributes
 const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}

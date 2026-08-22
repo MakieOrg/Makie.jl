@@ -3,6 +3,7 @@ on:
   pull_request:
     branches:
       - master
+      - ff/breaking-0.25
   push:
     tags:
       - '*'
@@ -53,7 +54,8 @@ jobs:
     if: >
       (github.event_name == 'push' || github.event_name == 'merge_group') &&
       contains(fromJSON('[
-      "refs/heads/master"
+      "refs/heads/master",
+      "refs/heads/ff/breaking-0.25"
       ]'), github.event_name == 'merge_group' && github.event.merge_group.base_ref || github.ref)
     uses: ./.github/workflows/_promote-refimages.yml
     secrets: inherit

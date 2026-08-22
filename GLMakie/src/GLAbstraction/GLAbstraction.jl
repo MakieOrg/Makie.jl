@@ -68,6 +68,26 @@ end
 
 export require_context, with_context, gl_switch_context!
 
+# ~45µs saved in mustache2replacement() in display(scatter(rand(10)))
+# ~10µs in glGetActiveAttrib() in the same
+const _STRING_TO_SYMBOL_CACHE = Dict{String, Symbol}()
+
+cached_Symbol(str::SubString) = cached_Symbol(String(str))
+function cached_Symbol(str::String)
+    if !haskey(_STRING_TO_SYMBOL_CACHE, str)
+        s = try
+            Symbol(str)
+        catch e
+            @info "Failed to create cached Symbol for \"$str\""
+            rethrow(e)
+        end
+        _STRING_TO_SYMBOL_CACHE[str] = s
+        return s
+    else
+        return _STRING_TO_SYMBOL_CACHE[str]
+    end
+end
+
 include("AbstractGPUArray.jl")
 
 #Methods which get overloaded by GLExtendedFunctions.jl:
@@ -107,6 +127,7 @@ export prerender!               # adds a function to a RenderObject, which gets 
 export postrender!              # adds a function to a RenderObject, which gets executed after setting the OpenGL render states
 export extract_renderable
 export set_arg!
+export add_instructions!
 export GLVertexArray            # VertexArray wrapper object
 export GLBuffer                 # OpenGL Buffer object wrapper
 export indexbuffer              # Shortcut to create an OpenGL Buffer object for indexes (1D, cardinality of one and GL_ELEMENT_ARRAY_BUFFER set)
@@ -148,5 +169,14 @@ include("GLInfo.jl")
 export getUniformsInfo
 export getProgramInfo
 export getAttributesInfo
+
+include("GLFramebuffer.jl")
+export GLRenderbuffer
+export GLFramebuffer
+export attach_colorbuffer, attach_depthbuffer, attach_stencilbuffer, attach_depthstencilbuffer
+export get_attachment, get_depth_attachment, get_stencil_attachment, each_attachment
+export get_buffer, get_depth_buffer, get_stencil_buffer
+export set_draw_buffers
+export check_framebuffer
 
 end # module

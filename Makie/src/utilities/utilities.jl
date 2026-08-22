@@ -315,7 +315,9 @@ function to_ndim(T::Type{<:VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {
     )
 end
 
-lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
+lerp(a::T, b::T, val::AbstractFloat) where {T} = a .+ val * (b .- a)
+lerp(a::RGBAf, b::RGBAf, val::AbstractFloat) = a .+ val * (b .- a)
+lerp(a::Colorant, b::Colorant, val::AbstractFloat) = lerp(RGBAf(a), RGBAf(b), val)
 
 function merged_get!(defaults::Function, key, scene, input::Vector{Any})
     return merged_get!(defaults, key, scene, Attributes(input))
@@ -326,9 +328,9 @@ function merged_get!(defaults::Function, key, scene::SceneLike, input::Attribute
     if haskey(theme(scene), key)
         # we need to merge theme(scene) with the defaults, because it might be an incomplete theme
         # TODO have a mark that says "theme incomplete" and only then get the defaults
-        d = merge!(to_value(theme(scene, key)), d)
+        d = mergeleft!(to_value(theme(scene, key)), d)
     end
-    return merge!(input, d)
+    return mergeleft!(input, d)
 end
 
 function Base.replace!(target::Attributes, key, scene::SceneLike, overwrite::Attributes)
@@ -371,12 +373,6 @@ function peaks(n = 49)
     y = LinRange(-3, 3, n)
     return 3 * (1 .- x') .^ 2 .* exp.(-(x' .^ 2) .- (y .+ 1) .^ 2) .- 10 * (x' / 5 .- x' .^ 3 .- y .^ 5) .* exp.(-x' .^ 2 .- y .^ 2) .- 1 / 3 * exp.(-(x' .+ 1) .^ 2 .- y .^ 2)
 end
-
-
-# function attribute_names(PlotType)
-#     # TODO, have all plot types store their attribute names
-#     return keys(default_theme(nothing, PlotType))
-# end
 
 get_dim(x, ind, dim, size) = get_dim(LinRange(extrema(x)..., size[dim]), ind, dim, size)
 get_dim(x::AbstractVector, ind, dim, size) = x[Tuple(ind)[dim]]
@@ -449,9 +445,22 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity)
     # create a `Matrix{Point3}`
     # ps = matrix_grid(identity, xs, ys, zs)
     ps = matrix_grid(p -> apply_transform(transform_func, p), xs, ys, zs)
+
+    return surface2mesh(ps, size(zs))
+end
+
+function surface2mesh(ps::AbstractVector{<:VecTypes{3}}, size)
+    # untesselated Rect2 is defined in counter-clockwise fashion (for x and y)
+    if size == (2, 2)
+        faces = [QuadFace{Int}(1, 2, 4, 3)]
+        faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
+        uv = Vec2f[(0, 1), (1, 1), (0, 0), (1, 0)]
+        return GeometryBasics.Mesh(ps, faces, uv = uv, normal = nan_aware_normals(ps, faces))
+    end
+
     # create valid tessellations (triangulations) for the mesh
     # knowing that it is a regular grid makes this simple
-    rect = Tessellation(Rect2f(0, 0, 1, 1), size(zs))
+    rect = Tessellation(Rect2f(0, 0, 1, 1), size)
     # we use quad faces so that nan handling is consistent
     faces = decompose(QuadFace{Int}, rect)
     # and remove quads that contain a NaN coordinate to avoid drawing triangles
@@ -474,24 +483,10 @@ end
 Creates points on the grid spanned by x, y, z.
 Allows to supply `f`, which gets applied to every point.
 """
-function matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
-    return f(matrix_grid(x, y, z))
-end
+matrix_grid(f, x, y, z::AbstractMatrix) = f(matrix_grid(x, y, z))
 
-function matrix_grid(f, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    return matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
-end
-
-function matrix_grid(x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    return matrix_grid(LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
-end
-
-function matrix_grid(x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
-    if size(z) == (2, 2) # untesselated Rect2 is defined in counter-clockwise fashion
-        ps = Point3.(x[[1, 2, 2, 1]], y[[1, 1, 2, 2]], z[:])
-    else
-        ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
-    end
+function matrix_grid(x, y, z::AbstractMatrix)
+    ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
     return vec(ps)
 end
 
@@ -515,27 +510,21 @@ Returns `x[i]` if x is a `AbstractArray` and `x` otherwise. `VecTypes` and `Mat`
 are treated as values rather than Arrays for this, i.e. they do not get indexed.
 """
 sv_getindex(v::AbstractArray, i::Integer) = v[i]
-sv_getindex(x, ::Integer) = x
+sv_getindex(v::AbstractArray{T, D}, i::CartesianIndex{D}) where {T, D} = v[i]
+sv_getindex(x, ::Union{CartesianIndex, Integer}) = x
+sv_getindex(x::VecTypes, ::CartesianIndex) = x
 sv_getindex(x::VecTypes, ::Integer) = x
+sv_getindex(x::Mat, ::CartesianIndex) = x
 sv_getindex(x::Mat, ::Integer) = x
+sv_getindex(x::AbstractMatrix{<:Colorant}, idx::CartesianIndex{2}) = x[idx]
+sv_getindex(x::ShaderAbstractions.Sampler, idx::CartesianIndex{2}) = x[idx]
 # for CairoMakie meshscatter we don't want images and patterns to get indexed
+sv_getindex(x::AbstractMatrix{<:Colorant}, ::CartesianIndex) = x
+sv_getindex(x::ShaderAbstractions.Sampler, ::CartesianIndex) = x
 sv_getindex(x::AbstractMatrix{<:Colorant}, ::Integer) = x
 sv_getindex(x::ShaderAbstractions.Sampler, ::Integer) = x
 
-# TODO: move to GeometryBasics
-function corners(rect::Rect2{T}) where {T}
-    o = minimum(rect)
-    w = widths(rect)
-    T0 = zero(T)
-    return Point{3, T}[o .+ Vec2{T}(x, y) for x in (T0, w[1]) for y in (T0, w[2])]
-end
-
-function corners(rect::Rect3{T}) where {T}
-    o = minimum(rect)
-    w = widths(rect)
-    T0 = zero(T)
-    return Point{3, T}[o .+ Vec3{T}(x, y, z) for x in (T0, w[1]) for y in (T0, w[2]) for z in (T0, w[3])]
-end
+@deprecate corners(r::Rect) GeometryBasics.coordinates(r) false
 
 """
     available_plotting_methods()
@@ -544,7 +533,7 @@ Returns an array of all available plotting functions.
 """
 function available_plotting_methods()
     meths = []
-    for m1 in methods(Makie.default_theme)
+    for m1 in methods(plotsym)
         params = m1.sig.parameters
         if length(params) == 3 && params[3] isa UnionAll
             push!(meths, Makie.plotfunc(params[3].var.ub))
@@ -603,28 +592,105 @@ function linestyle_to_sdf(linestyle::AbstractVector{<:Real}, resolution::Real = 
 end
 
 """
-    shared_attributes(plot::Plot, target::Type{<:Plot})
+    shared_attributes(plot::Plot, target::Type{<:Plot}[; drop])
 
 Extracts all attributes from `plot` that are shared with the `target` plot type.
+
+Optionally, `drop` can be specified for attributes to exclude. If it is given
+as a `Vector{Symbol}` or `Set{Symbol}` it only applies to top level attributes.
+If it is given as a `Dict` or `NamedTuple` values may point to another `Dict` or
+`NamedTuple` to exclude specific nested attributes. If it does not, the key is
+treated as an attribute or nested collection of attributes to exclude.
 """
-function shared_attributes(plot::Plot, target::Type{<:Plot}; drop::Vector{Symbol} = Symbol[])
-    # TODO: This currently happens for ComputeGraph passthrough already
-    valid_attributes = attribute_names(target)
-    existing_attributes = keys(plot.attributes.outputs)
-    to_drop = setdiff(existing_attributes, valid_attributes)
-    # Model is always shared, but should not be shared and therefore dropped
-    push!(to_drop, :model)
-    union!(to_drop, drop)
-    return drop_attributes(plot, to_drop)
+function shared_attributes(plot::Plot, target::Type{<:Plot}; drop = Symbol[])
+    if drop isa Union{Vector, Set}
+        push!(drop, :model)
+    elseif drop isa Dict
+        get!(drop, :model, nothing)
+    else
+        drop = (model = nothing, drop...)
+    end
+
+    return shared_attributes!(Attributes(), plot.attributes, documented_attributes(target), drop)
 end
 
-function drop_attributes(plot::Plot, to_drop::Symbol...)
-    return drop_attributes(plot, Set(to_drop))
+function shared_attributes!(
+        output::Attributes, graph::ComputePipeline.AbstractComputeGraph,
+        allowed::DocumentedAttributes, exclude::Union{Vector{Symbol}, Set{Symbol}}
+    )
+    for k in allowed.merged_keys
+        if ComputePipeline.has_leaf_key(graph, k) && !in(k, exclude)
+            output[k] = graph[k]
+        end
+    end
+    return output
 end
 
-function drop_attributes(plot::Plot, to_drop::Set{Symbol})
-    attr = plot.attributes.outputs
-    return Attributes([k => v for (k, v) in attr if !(k in to_drop)])
+function shared_attributes!(
+        output::Attributes, graph::ComputePipeline.AbstractComputeGraph,
+        allowed::DocumentedAttributes, exclude::Union{Dict, NamedTuple}, layer = 1
+    )
+    for (key, idx) in allowed.nesting.keytables[layer]
+        is_excluded = haskey(exclude, key) && !isa(exclude[key], Union{Dict, NamedTuple})
+        if haskey(graph, key) && !is_excluded
+            if idx > 0
+                shared_attributes!(output, graph[key], allowed, get(exclude, key, NamedTuple()), idx)
+            elseif ComputePipeline.has_leaf_key(graph, key)
+                fullkey = allowed.merged_keys[-idx]
+                output[fullkey] = graph[fullkey]
+            end
+        end
+    end
+    return output
+end
+
+function shared_attributes(attr::Attributes, target::Type{<:Plot}; drop = Symbol[])
+    if drop isa Union{Vector, Set}
+        push!(drop, :model)
+    elseif drop isa Dict
+        get!(drop, :model, nothing)
+    else
+        drop = (model = nothing, drop...)
+    end
+
+    return shared_attributes!(Attributes(), attr, documented_attributes(target), drop)
+end
+
+function shared_attributes!(
+        output::Attributes, attr::Attributes, allowed::DocumentedAttributes,
+        exclude::Union{Dict, NamedTuple}, layer = 1
+    )
+    for (key, idx) in allowed.nesting.keytables[layer]
+        is_excluded = haskey(exclude, key) && !isa(exclude[key], Union{Dict, NamedTuple})
+        if !is_excluded && haskey(attr, key)
+            if idx > 0
+                shared_attributes!(output, attr[key], allowed, get(exclude, key, NamedTuple()), idx)
+            else
+                fullkey = allowed.merged_keys[-idx]
+                output[fullkey] = attr[key]
+            end
+        end
+    end
+    return output
+end
+
+function shared_attributes!(
+        output::Attributes, attr::Attributes, allowed::DocumentedAttributes,
+        exclude::Union{Vector{Symbol}, Set{Symbol}}, layer = 1
+    )
+    for (key, idx) in allowed.nesting.keytables[layer]
+        if haskey(attr, key)
+            if idx > 0
+                shared_attributes!(output, attr[key], allowed, exclude, idx)
+            else
+                fullkey = allowed.merged_keys[-idx]
+                if !(fullkey in exclude)
+                    output[fullkey] = attr[key]
+                end
+            end
+        end
+    end
+    return output
 end
 
 isscalar(x::StaticVector) = true
@@ -647,3 +713,13 @@ function spawnat(f, tid)
     schedule(task)
     return task
 end
+
+print_plot_tree(plot::Plot) = show_plot_tree(stdout, plot)
+function show_plot_tree(io::IO, plot::Plot, depth::Integer = 0)
+    println(io, ' '^(4 * depth), plot)
+    foreach(p -> show_plot_tree(io, p, depth + 1), plot.plots)
+    return
+end
+
+# TODO: Can this extend rootparent()?
+rootparent_plot(plot::Plot) = parent(plot) isa Scene ? plot : rootparent_plot(parent(plot))

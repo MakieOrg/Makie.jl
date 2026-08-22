@@ -227,7 +227,7 @@ function add_light_computation!(graph, scene, lights)
         @error("Only one AmbientLights is allowed. Skipping AmbientLights beyond the first.")
     end
 
-    add_input!((k, c) -> RGBf(to_color(c)), graph, :ambient_color, ambient_color)
+    add_input!(c -> RGBf(to_color(c)), graph, :ambient_color, ambient_color)
     add_input!(graph, :lights, convert(Vector{AbstractLight}, filtered_lights))
     add_input!(graph, :shading, get(scene.theme, :shading, automatic))
     graph[:shading].value = RefValue{Any}(nothing) # allow shading to switch between automatic and ShadingAlgorithm
@@ -259,7 +259,7 @@ end
 # shading is a compile time variable for robjs, but it is allowed to change
 # when the robj is recompiled (e.g. screen reopened) so we make it dynamic
 # here. It should not be used outside of renderobject construction
-function get_shading_mode(scene)
+function get_shading_mode(scene::AbstractScene)
     graph = scene.compute
     if !haskey(graph, :lighting_mode)
         register_computation!(graph, Symbol[:shading, :lights], [:lighting_mode]) do (shading, _lights), changed, cached
@@ -274,6 +274,13 @@ function get_shading_mode(scene)
         end
     end
     return graph[:lighting_mode][]
+end
+
+function get_shading_mode(plot::Plot)
+    if !haskey(plot, :shading) || !plot.shading[]::Bool
+        return NoShading
+    end
+    return get_shading_mode(parent_scene(plot))
 end
 
 # These return the number of parameter slots they used

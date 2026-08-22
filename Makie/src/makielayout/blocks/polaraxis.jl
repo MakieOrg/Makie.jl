@@ -1,7 +1,23 @@
+function add_attributes!(T::Type{<:PolarAxis}, graph, flattened_defaults)
+    attr = documented_attributes(PolarAxis)
+
+    _, rlimits = get_typed_default(attr, flattened_defaults, :rlimits)
+    add_input!(graph, :rlimits, rlimits)
+    ComputePipeline.set_type!(graph.rlimits, Any)
+    graph.inputs[:rlimits].force_update = true
+
+    _, thetalimits = get_typed_default(attr, flattened_defaults, :thetalimits)
+    add_input!(graph, :thetalimits, thetalimits)
+    ComputePipeline.set_type!(graph.thetalimits, Any)
+    graph.inputs[:thetalimits].force_update = true
+    return
+end
+
 ################################################################################
 ### Main Block Initialization
 ################################################################################
 
+block_kwargs(::Type{PolarAxis}) = Set([:palette])
 function initialize_block!(po::PolarAxis; palette = nothing)
     # Setup Scenes
     cb = po.layoutobservables.computedbbox
@@ -215,10 +231,12 @@ function setup_camera_matrices!(po::PolarAxis)
     usable_fraction = Observable(Vec2d(1.0, 1.0))
     setfield!(po, :target_rlims, Observable{Tuple{Float64, Float64}}((0.0, 10.0)))
     setfield!(po, :target_thetalims, Observable{Tuple{Float64, Float64}}((0.0, 2pi)))
-    setfield!(po, :target_theta_0, map(identity, po.theta_0))
+    setfield!(po, :target_theta_0, map(Float32, po.theta_0))
     setfield!(po, :target_r0, Observable{Float32}(po.radius_at_origin[] isa Real ? po.radius_at_origin[] : 0.0f0))
     reset_limits!(po)
-    onany((_, _) -> reset_limits!(po), po.blockscene, po.rlimits, po.thetalimits)
+    rlimits_obs = ComputePipeline.get_observable!(po.attributes, :rlimits, use_deepcopy = false)
+    thetalimits_obs = ComputePipeline.get_observable!(po.attributes, :thetalimits, use_deepcopy = false)
+    onany((_, _) -> reset_limits!(po), po.blockscene, rlimits_obs, thetalimits_obs)
 
     # get cartesian bbox defined by axis limits
     data_bbox = map(
@@ -450,7 +468,7 @@ function setup_camera_matrices!(po::PolarAxis)
                 reset_limits!(po)
             end
             if po.reset_axis_orientation[]
-                notify(po.theta_0)
+                notify(ComputePipeline.get_observable!(po.theta_0))
             else
                 diff = 0.5 * sum(po.target_thetalims[] .- old_thetalims)
                 po.target_theta_0[] = mod(po.target_theta_0[] - diff, 0 .. 2pi)
@@ -944,10 +962,9 @@ function draw_axis!(po::PolarAxis)
     translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 9000)
     translate!(spineplot, 0, 0, 9001)
     translate!.((rticklabelplot, thetaticklabelplot, rtickplot, thetatickplot, rminortickplot, thetaminortickplot), 0, 0, 9002)
-    on(po.blockscene, po.gridz) do depth
+    on(po.blockscene, po.gridz, update = true) do depth
         translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot), 0, 0, depth)
     end
-    notify(po.gridz)
 
     return rticklabelplot, thetaticklabelplot
 end

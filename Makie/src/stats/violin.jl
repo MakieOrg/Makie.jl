@@ -1,14 +1,8 @@
 """
-    violin(x, y)
-
-Draws a violin plot which consists of pairs of density plots draw side by side.
+Draws a violin plot which consists of pairs of density plots drawn side by side.
 The density pairs can be sourced from the same or from different data.
-
-## Arguments
-- `x`: positions of the categories
-- `y`: variables whose density is computed
 """
-@recipe Violin (x, y) begin
+@recipe Violin (x::RealVector, y::RealVector) begin
     "Number of points used per density plot."
     npoints = 200
     "Boundary of the density estimation, determined automatically if `automatic`."
@@ -80,7 +74,20 @@ The density pairs can be sourced from the same or from different data.
     cycle = [:color => :patchcolor]
 end
 
+function attribute_groups(::Type{<:Violin})
+    groups = default_attribute_groups()
+    push!(
+        groups, "Median Line Attributes" => sort!(
+            [
+                :mediancolor, :medianlinewidth, :show_median,
+            ]
+        )
+    )
+    return groups
+end
+
 conversion_trait(::Type{<:Violin}) = SampleBased()
+argument_dim_kwargs(::Type{<:Violin}) = (:orientation,)
 
 getuniquevalue(v, idxs) = v
 

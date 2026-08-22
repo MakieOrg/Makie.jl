@@ -265,7 +265,7 @@ function initialize_block!(isl::IntervalSlider)
     end
 
     # trigger autosize through linewidth for first layout
-    isl.linewidth[] = isl.linewidth[]
+    notify(ComputePipeline.get_observable!(isl.linewidth))
 
     return
 end

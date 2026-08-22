@@ -66,16 +66,87 @@ end
 
 # Return instance of AbstractDimConversion for a given type
 create_dim_conversion(argument_eltype::DataType) = NoDimConversion()
-should_dim_convert(::Type{<:Real}) = false
+should_dim_convert() = nothing
 function convert_dim_observable(::NoDimConversion, value::Observable, deregister)
     return value
 end
 
 # get_ticks needs overloading for Dim Conversion
 # Which gets ignored for no conversion/nothing
-function get_ticks(::Union{Nothing, NoDimConversion}, ticks, scale, formatter, vmin, vmax)
+function get_ticks(::Union{Nothing, NoDimConversion}, ticks, scale, formatter, vmin, vmax, show_in_label)
     return get_ticks(ticks, scale, formatter, vmin, vmax)
 end
+
+show_dim_convert_in_ticklabel(dc::Union{AbstractDimConversion, Nothing}, ::Automatic) = show_dim_convert_in_ticklabel(dc)
+show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}) = false
+show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}, option::Bool) = option
+
+# Should this trigger an error or just return ""?
+"""
+    add_label_suffix(label, dim_convert, format)
+
+Adds a suffix to `label` based on the given `dim_convert` and formatter `format`.
+
+## Extension
+
+This function is meant to be extended by dim converts. It should generate a
+suffix, e.g. a unit like "m", apply the formatter which default adds brackets
+"[m]" and then merge it with `label` "\$label [m]".
+
+The `label` is the `x/y/zlabel` set by the user in the parent axis. The `format`
+is also set in the parent axis via `x/y/zlabel_suffix`. It may be a function,
+formatting string or a string replacing the suffix. It can be applied with
+`Makie.apply_format(str, format)` for strings and RichText.
+
+Alternatively you can also implement:
+- `get_label_suffix(label, dim_convert, format)` which should return just the suffix in
+    as a type that can be merged with `label`. The merging then happens in Makie.
+- `get_label_suffix(label, dim_convert)` which leaves the format application to Makie.
+- `get_label_suffix(dim_convert)` which avoids specialization on label types. This
+    should only ever return a plain String.
+"""
+function add_label_suffix(label, dc, format)
+    return add_label_suffix(label, get_label_suffix(label, dc, format))
+end
+
+"""
+    get_label_suffix(label, dim_convert, format)
+    get_label_suffix(label, dim_convert)
+    get_label_suffix(dim_convert)
+
+Returns a label suffix based on the given `dim_convert`.
+
+## Extension
+
+This function or `add_label_suffix` is meant to be extended for new dim converts.
+Methods that include `label` should use it to return a label-compatible string
+type. I.e. RichText or String for RichText, LaTeXString or String for LaTeXString.
+Methods with `format` should apply its formatting, either with `Makie.apply_format`
+or manually.
+"""
+get_label_suffix(label, dc, format) = apply_format(get_label_suffix(label, dc), format)
+get_label_suffix(label, dc) = get_label_suffix(dc)::String
+get_label_suffix(dc) = error("No axis label suffix defined for conversion $dc.")
+get_label_suffix(dc::Union{Nothing, NoDimConversion}) = ""
+
+function add_label_suffix(label::Union{String, LaTeXString}, formatted::Union{String, LaTeXString})
+    return isempty(label) ? formatted : latexstring(label, " ", formatted)
+end
+function add_label_suffix(label::Union{String, RichText}, formatted::Union{String, RichText})
+    return isempty(label) ? formatted : rich(label, " ", formatted)
+end
+function add_label_suffix(label::String, formatted::String)
+    return isempty(label) ? formatted : label * ' ' * formatted
+end
+# TODO: Can we merge RichText + LaTeXString?
+
+# Don't default to generating a suffix for no dim conversion.
+# TODO: Maybe allow option cases to go through though so `suffix` can be used w/o dimconverts?
+show_dim_convert_in_axis_label(::Union{Nothing, NoDimConversion}, ::Automatic) = false
+
+show_dim_convert_in_axis_label(dc::AbstractDimConversion, ::Automatic) = show_dim_convert_in_axis_label(dc)
+show_dim_convert_in_axis_label(::AbstractDimConversion) = true
+show_dim_convert_in_axis_label(::Union{AbstractDimConversion, Nothing}, option::Bool) = option
 
 # Recursively gets the dim convert from the plot
 # This needs to be recursive to allow recipes to use dim convert
@@ -124,14 +195,14 @@ function connect_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
         if hasproperty(ax, dim_sym)
             # merge
             ax_conversion = getproperty(ax, dim_sym)
-            new_conversions[i] = ax_conversion
+            new_conversions[i] = ComputePipeline.get_observable!(ax_conversion, use_deepcopy = false)
             # update in case new_conversions has a new conversion
-            getproperty(ax, dim_sym)[] = new_conversions[i]
+            setproperty!(ax, dim_sym, new_conversions[i])
             deregister = Ref{Any}(nothing)
             # if the conversion changes, update the axis as well.
             # This should only ever happen once, since conversions are mutable after setting it to a new value
             deregister[] = on(dim_observable(new_conversions, i)) do val
-                getproperty(ax, dim_sym)[] = val
+                setproperty!(ax, dim_sym, new_conversions[i])
                 off(deregister[])
             end
         end
@@ -156,6 +227,10 @@ end
     end
 =#
 needs_tick_update_observable(x) = nothing
+
+function needs_tick_update_observable(conversion::ComputePipeline.Computed)
+    return needs_tick_update_observable(ComputePipeline.get_observable!(conversion))
+end
 
 function needs_tick_update_observable(conversion::Observable)
     if isnothing(conversion[])
@@ -182,31 +257,42 @@ end
 
 convert_dim_value(conv, attr, value, last_value) = value
 
-function update_dim_conversion!(conversions::DimConversions, dim, value)
-    conversion = conversions[dim]
-    if !(conversion isa Union{Nothing, NoDimConversion})
-        return
-    end
-    c = dim_conversion_from_args(value)
-    return conversions[dim] = c
+function convert_dim_value(conv, attr, value, last_value, element_index)
+    return convert_dim_value(conv, attr, value, last_value)
 end
 
-function try_dim_convert(P::Type{<:Plot}, PTrait::ConversionTrait, user_attributes, args_obs::Tuple, deregister)
-    # Only 2 and 3d conversions are supported, and only
-    if !(length(args_obs) in (2, 3))
-        return args_obs
+function convert_dim_value(conv, attr, points::AbstractArray{<:VecTypes}, last_value, element_index)
+    isempty(points) && return Float64[]
+    dim_value = [p[element_index] for p in points]
+    last_dim_value = last_value === nothing ? nothing : [p[element_index] for p in last_value]
+    return convert_dim_value(conv, attr, dim_value, last_dim_value)
+end
+
+function convert_dim_value(conv, attr, point::VecTypes, last_value, element_index)
+    last = last_value === nothing ? nothing : last_value[element_index]
+    return convert_dim_value(conv, attr, point[element_index], last)
+end
+
+function update_dim_conversion!(conversions::DimConversions, dim, value, element_idx)
+    return update_dim_conversion!(conversions, dim, value)
+end
+
+function update_dim_conversion!(conversions::DimConversions, dim, value::VecTypes, element_idx)
+    return update_dim_conversion!(conversions, dim, value[element_idx])
+end
+
+function update_dim_conversion!(conversions::DimConversions, dim, points::AbstractArray{<:VecTypes}, element_idx)
+    isempty(points) && return Float64[]
+    return update_dim_conversion!(conversions, dim, first(points)[element_idx])
+end
+
+function update_dim_conversion!(conversions::DimConversions, dim, value)
+    conversion = conversions[dim]
+    if conversion isa Union{Nothing, NoDimConversion}
+        c = dim_conversion_from_args(value)
+        return conversions[dim] = c
     end
-    converts = to_value(get!(() -> DimConversions(), user_attributes, :dim_conversions))
-    return ntuple(length(args_obs)) do i
-        arg = args_obs[i]
-        argval = to_value(arg)
-        # We only convert if we have a conversion struct (which isn't NoDimConversion),
-        # or if we we should dim_convert
-        if !isnothing(converts[i]) || should_dim_convert(P, argval) || should_dim_convert(PTrait, argval)
-            return convert_dim_observable(converts, i, arg, deregister)
-        end
-        return arg
-    end
+    return
 end
 
 function convert_dim_observable(conversions::DimConversions, dim::Int, value::Observable, deregister)
