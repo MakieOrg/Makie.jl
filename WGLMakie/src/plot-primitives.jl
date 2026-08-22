@@ -65,7 +65,7 @@ function backend_colors!(attr, color_name = :scaled_color)
         isnothing(crange) && return (false, false)
         cmap_minfilter = ctype === Makie.continuous ? :linear : :nearest
         cmap_changed = changed.alpha_colormap || changed.color_mapping_type
-        cmap_s = cmap_changed ? Sampler(cmap, minfilter = cmap_minfilter) : nothing
+        cmap_s = cmap_changed ? Sampler(cmap, minfilter = cmap_minfilter) : skip_update
         return (cmap_s, Vec2f(crange))
     end
 
@@ -131,7 +131,7 @@ function create_wgl_renderobject(callback, attr, inputs)
             updates = plot_updates(args, changed)
             last.wgl_renderobject[:visible] = args.visible
             update_values!(last.wgl_update_obs, Bonito.LargeUpdate(updates))
-            return nothing
+            return skip_update
         end
     end
     return attr[:wgl_renderobject][]
