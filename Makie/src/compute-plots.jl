@@ -347,7 +347,7 @@ function register_positions_transformed_f32c!(
 
     register_computation!(
         attr, [input_name, :model, :f32c, :space], [output_name]
-    ) do (positions, model, f32c, space), changed, last
+    ) do (positions, model, f32c, space), changed, @nospecialize(last)
 
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
@@ -452,7 +452,7 @@ function add_convert_kwargs!(graph, user_kw, P, args)
             push!(conv_attr_input, key)
         end
     end
-    register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, changed, last
+    register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, @nospecialize(changed), @nospecialize(last)
         return (_filter(!isnothing, inputs),)
     end
     ComputePipeline.set_type!(graph[:convert_kwargs], Any)

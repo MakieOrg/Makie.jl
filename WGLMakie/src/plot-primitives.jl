@@ -57,13 +57,19 @@ function backend_colors!(attr, color_name = :scaled_color)
         return color isa AbstractVector ? color : false
     end
 
-    return register_computation!(attr, [:alpha_colormap, :scaled_colorrange, :color_mapping_type], [:uniform_colormap, :uniform_colorrange]) do (cmap, crange, ctype), changed, last
+    register_computation!(
+        attr,
+        [:alpha_colormap, :scaled_colorrange, :color_mapping_type],
+        [:uniform_colormap, :uniform_colorrange]
+    ) do (cmap, crange, ctype), changed, @nospecialize(last)
         isnothing(crange) && return (false, false)
         cmap_minfilter = ctype === Makie.continuous ? :linear : :nearest
         cmap_changed = changed.alpha_colormap || changed.color_mapping_type
         cmap_s = cmap_changed ? Sampler(cmap, minfilter = cmap_minfilter) : nothing
         return (cmap_s, Vec2f(crange))
     end
+
+    return
 end
 
 function handle_color!(data, attr)

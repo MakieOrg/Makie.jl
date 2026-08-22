@@ -84,7 +84,7 @@ struct RenderObjectUpdater <: Function
     gl_names::Dict{Symbol, Symbol}
 end
 
-function (updater::RenderObjectUpdater)(args::NamedTuple, changed::NamedTuple, last)
+function (updater::RenderObjectUpdater)(args::NamedTuple, changed::NamedTuple, @nospecialize(last))
     update_robjs!(updater.robj, args, changed, updater.gl_names)
     updater.screen.requires_update = true
     return (updater.robj,)
