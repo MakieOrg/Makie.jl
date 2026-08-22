@@ -26,6 +26,7 @@
 - Reworked `barplot` to allow infinitely long bars in `Axis`, e.g. for log transforms [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
 - Updated `Legend` to toggle visibility in the root plot associated with a legend entry instead of its child plots. This fixes issues with some recipes erroring when toggling visibility and avoids showing child plots which are hidden by the recipe. [#5209](https://github.com/MakieOrg/Makie.jl/pull/5209)
   - **breaking** Custom implementations of `legendelements(::Plot, legend)` should no longer set `plots` in the `LegendElement`s they create. Custom `LegendElement` structs no longer need to contain `plots`.
+- Adjusted `Legend` to react to plots added to and deleted from an attached axis. For this `scene.onplot` was added to track plot creation and deletion. [#5672](https://github.com/MakieOrg/Makie.jl/pull/5672)
 - Refactored `DataInspector` [#5241](https://github.com/MakieOrg/Makie.jl/pull/5241)
   - Fixed issues with tooltips reading `inspector_label` from the wrong plot
   - Fixed issues with tooltips reporting positions of the wrong space

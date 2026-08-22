@@ -552,6 +552,14 @@ function update_observables!(obs_to_update::Vector{Observable})
     return
 end
 
+function Base.notify(node::Union{Computed, Input})
+    @lock GLOBAL_LOCK begin
+        mark_dirty!(node)
+    end
+    update_observables!(node)
+    return
+end
+
 function Base.setindex!(computed::Computed, value)
     if computed.parent isa Input
         return setindex!(computed.parent, value)

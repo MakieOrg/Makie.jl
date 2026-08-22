@@ -347,7 +347,7 @@ function register_positions_transformed_f32c!(
 
     register_computation!(
         attr, [input_name, :model, :f32c, :space], [output_name]
-    ) do (positions, model, f32c, space), changed, last
+    ) do (positions, model, f32c, space), changed, @nospecialize(last)
 
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
@@ -452,7 +452,7 @@ function add_convert_kwargs!(graph, user_kw, P, args)
             push!(conv_attr_input, key)
         end
     end
-    register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, changed, last
+    register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, @nospecialize(changed), @nospecialize(last)
         return (_filter(!isnothing, inputs),)
     end
     ComputePipeline.set_type!(graph[:convert_kwargs], Any)
@@ -952,16 +952,6 @@ function collect_all_connected_nodes(computed::ComputePipeline.Computed, tracked
 end
 
 Observables.to_value(computed::ComputePipeline.Computed) = computed[]
-function Base.notify(computed::ComputePipeline.Computed)
-    nodes = collect_all_connected_nodes(computed)
-    graph = computed.parent.graph
-    to_notify = intersect(nodes, keys(graph.observables))
-    foreach(to_notify) do key
-        notify(graph.observables[key])
-    end
-    return
-end
-
 
 function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
     return map!(attr, [attribute, :positions], output_name) do vec, positions

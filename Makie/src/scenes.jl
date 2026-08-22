@@ -97,6 +97,12 @@ mutable struct Scene <: AbstractScene
     "The plots contained in the Scene."
     plots::Vector{Plot}
 
+    """
+    Observable that triggers with `true => plot` after a plot is added to the
+    scene and `false => plot` after one is deleted.
+    """
+    onplot::Observable{Pair{Bool, AbstractPlot}}
+
     theme::Attributes
 
     "Children of the Scene inherit its transformation."
@@ -148,6 +154,7 @@ mutable struct Scene <: AbstractScene
             transformation,
             nothing,
             plots,
+            Observable{Pair{Bool, AbstractPlot}}(),
             theme,
             children,
             current_screens,
@@ -581,6 +588,8 @@ end
 # Note: can be called from scene finalizer
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
+
+    scene.onplot[] = false => plot
 
     # Remove references to the plot compute graph from any parent compute graph.
     # (E.g. the scene compute graph)

@@ -217,8 +217,13 @@ function handle_transformation!(plot, parent)
     return
 end
 
+notify_onplot(scene::Scene, plot::Plot) = scene.onplot[] = true => plot
+notify_onplot(::Plot, ::Plot) = nothing
+notify_onplot(scene, plot::Plot) = @error("Did not notify scene of plot when adding $plot to $scene")
+
 function plot!(scene::SceneLike, plot::Plot)
     connect_plot!(scene, plot)
     push!(scene, plot)
+    notify_onplot(scene, plot)
     return plot
 end
