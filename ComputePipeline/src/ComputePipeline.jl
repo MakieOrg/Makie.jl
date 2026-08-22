@@ -270,16 +270,16 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         if LOG_NOTHING_SPLAT
             @warn(
                 "Initializing multiple outputs with `return nothing` is deprecated. " *
-                "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
-                source_info_str(edge)
+                    "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
+                    source_info_str(edge)
             )
         else
             # This only triggers once, so it's not very useful for actually fixing
             # upstream map!/register_computation! methods
             Base.depwarn(
                 "Initializing multiple outputs with `return nothing` is deprecated. " *
-                "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
-                source_info_str(edge),
+                    "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
+                    source_info_str(edge),
                 :TypedEdge
             )
         end
@@ -942,8 +942,8 @@ function set_result!(edge::TypedEdge, result, i, value)
     if LOG_NOTHING_SKIP && isnothing(values)
         @warn(
             "Returning nothing in `map!` and `register_computation!` callbacks " *
-            "has been deprecated in favor of returning `skip_update` to allow " *
-            "outputs to update to `nothing`. " * source_info_str(edge)
+                "has been deprecated in favor of returning `skip_update` to allow " *
+                "outputs to update to `nothing`. " * source_info_str(edge)
         )
     end
 
@@ -1008,14 +1008,14 @@ function locked_resolve!(edge::TypedEdge)
             if LOG_NOTHING_SKIP
                 @warn(
                     "Returning nothing in `map!` and `register_computation!` callbacks " *
-                    "has been deprecated in favor of returning `skip_update` to allow " *
-                    "outputs to update to `nothing`. " * source_info_str(edge)
+                        "has been deprecated in favor of returning `skip_update` to allow " *
+                        "outputs to update to `nothing`. " * source_info_str(edge)
                 )
             else
                 Base.depwarn(
                     "Returning nothing in `map!` and `register_computation!` callbacks " *
-                    "has been deprecated in favor of returning `skip_update` to allow " *
-                    "outputs to update to `nothing`. Use
+                        "has been deprecated in favor of returning `skip_update` to allow " *
+                        "outputs to update to `nothing`. Use
                     `ComputePipeline.log_nothing_skip(true)` to find problematic methods.",
                     :locked_resolve!
                 )
