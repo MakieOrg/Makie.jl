@@ -1,3 +1,20 @@
+"""
+    refresh_contentsize!(sf::Subfigure)
+
+Recompute `sf.contentsize` from the content layout's intrinsic size and
+return it. Normally driven by the layout's `computedbbox`; call it
+directly to resynchronise after rebuilding content in place.
+"""
+function refresh_contentsize!(sf::Subfigure)
+    layout = sf.layout
+    dw = GridLayoutBase.determinedirsize(layout, GridLayoutBase.Col())
+    dh = GridLayoutBase.determinedirsize(layout, GridLayoutBase.Row())
+    cw = dw === nothing ? 0.0f0 : Float32(dw)
+    ch = dh === nothing ? 0.0f0 : Float32(dh)
+    sf.contentsize[] = Vec2f(cw, ch)
+    return sf.contentsize[]
+end
+
 function initialize_block!(sf::Subfigure)
     blockscene = sf.blockscene
 
@@ -109,11 +126,7 @@ function initialize_block!(sf::Subfigure)
     end
 
     on(blockscene, layout.layoutobservables.computedbbox) do _
-        dw = GridLayoutBase.determinedirsize(layout, GridLayoutBase.Col())
-        dh = GridLayoutBase.determinedirsize(layout, GridLayoutBase.Row())
-        cw = dw === nothing ? 0.0f0 : Float32(dw)
-        ch = dh === nothing ? 0.0f0 : Float32(dh)
-        sf.contentsize[] = Vec2f(cw, ch)
+        refresh_contentsize!(sf)
         return
     end
 
@@ -182,7 +195,7 @@ function initialize_block!(sf::Subfigure)
             bb = block.layoutobservables.computedbbox[]
             all(isfinite, bb.origin) && all(isfinite, bb.widths) || continue
             outside = bb.origin[1] + bb.widths[1] < left(vp) || bb.origin[1] > right(vp) ||
-                      bb.origin[2] + bb.widths[2] < bottom(vp) || bb.origin[2] > top(vp)
+                bb.origin[2] + bb.widths[2] < bottom(vp) || bb.origin[2] > top(vp)
             outside ? hide!(block) : unhide!(block)
         end
         return

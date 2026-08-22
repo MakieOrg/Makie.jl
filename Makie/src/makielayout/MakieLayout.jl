@@ -18,6 +18,7 @@ include("blocks/axis3d.jl")
 include("blocks/polaraxis.jl")
 include("blocks/colorbar.jl")
 include("blocks/label.jl")
+include("blocks/spinner.jl")
 include("blocks/slider.jl")
 include("blocks/slidergrid.jl")
 include("blocks/intervalslider.jl")
@@ -40,7 +41,7 @@ include("blocks/paramform.jl")
 
 export @Block, Block
 export axislegend, axiscolorbar
-export open!, close!
+export open!, close!, replace_content!, refresh_contentsize!
 export card_accessory, filter_cards!
 export Between, OneOf, FilePath, convert_form_input
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
