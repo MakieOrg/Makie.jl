@@ -37,17 +37,17 @@ function create_shader(scene::Scene, plot::Voxels)
         end
     elseif haskey(attr, :voxel_color)
         Makie.add_computation!(attr, scene, Val(:voxel_uv_transform))
-        register_computation!(
-            attr, [:voxel_color, :packed_uv_transform, :interpolate],
+        map!(
+            attr,
+            [:voxel_color, :packed_uv_transform, :interpolate],
             [:wgl_colormap, :wgl_uv_transform, :wgl_color]
-        ) do inputs, changed, cached
+        ) do color, uvt, interpolate
             # how interpolate?
-            color, uvt, interpolate = inputs
             filter = ifelse(interpolate, :linear, :nearest)
             if isnothing(uvt)
-                return (false, false, Sampler(color, minfilter = filter)) # color vector
+                return false, false, Sampler(color, minfilter = filter) # color vector
             else
-                return (false, Sampler(uvt, minfilter = :nearest), Sampler(color, minfilter = filter)) # texture map
+                return false, Sampler(uvt, minfilter = :nearest), Sampler(color, minfilter = filter) # texture map
             end
         end
     else

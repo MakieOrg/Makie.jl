@@ -37,18 +37,18 @@ function backend_colors!(attr, color_name = :scaled_color)
     if !haskey(attr, :interpolate)
         Makie.add_input!(attr, :interpolate, false)
     end
-    register_computation!(attr, [color_name, :interpolate, :fetch_pixel], [:uniform_color, :pattern]) do (color, interpolate, is_pattern), changed, last
+    map!(attr, [color_name, :interpolate, :fetch_pixel], [:uniform_color, :pattern]) do color, interpolate, is_pattern
         filter = interpolate ? :linear : :nearest
         if color isa Sampler
-            return (color, is_pattern)
+            return color, is_pattern
         elseif color isa AbstractMatrix || color isa AbstractArray{<:Any, 3}
             # TODO, don't construct a sampler every time
-            return (Sampler(color, minfilter = filter), false)
+            return Sampler(color, minfilter = filter), false
         elseif color isa Union{Real, Colorant}
-            return (color, false)
+            return color, false
         else
             # Not a uniform color
-            return (false, false)
+            return false, false
         end
     end
 
@@ -57,13 +57,19 @@ function backend_colors!(attr, color_name = :scaled_color)
         return color isa AbstractVector ? color : false
     end
 
-    return register_computation!(attr, [:alpha_colormap, :scaled_colorrange, :color_mapping_type], [:uniform_colormap, :uniform_colorrange]) do (cmap, crange, ctype), changed, last
+    register_computation!(
+        attr,
+        [:alpha_colormap, :scaled_colorrange, :color_mapping_type],
+        [:uniform_colormap, :uniform_colorrange]
+    ) do (cmap, crange, ctype), changed, @nospecialize(last)
         isnothing(crange) && return (false, false)
         cmap_minfilter = ctype === Makie.continuous ? :linear : :nearest
         cmap_changed = changed.alpha_colormap || changed.color_mapping_type
         cmap_s = cmap_changed ? Sampler(cmap, minfilter = cmap_minfilter) : skip_update
         return (cmap_s, Vec2f(crange))
     end
+
+    return
 end
 
 function handle_color!(data, attr)
@@ -259,11 +265,11 @@ function create_shader(scene::Scene, plot::Scatter)
         markersym = :fast_pixel_marker
     end
     Makie.all_marker_computations!(attr, markersym)
-    register_computation!(attr, [:sdf_marker_shape, :marker, :font], [:glyph_data]) do (shape, markers, fonts), changed, last
+    map!(attr, [:sdf_marker_shape, :marker, :font], :glyph_data) do shape, markers, fonts
         shape != 3 && return nothing
         data = get_scatter_data(scene, markers, fonts)
         dict = Dict(:atlas_updates => data)
-        return (dict,)
+        return dict
     end
 
     map!(attr, [:marker, :scaled_color], :scatter_color) do marker, color
@@ -337,15 +343,16 @@ function register_text_computation!(attr, scene)
     map!(attr, [:text_blocks, :text_scales], :glyph_scales) do text_blocks, fontsize
         return Makie.map_per_glyph(text_blocks, Vec2f, Makie.to_2d_scale(fontsize))
     end
-    return register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs, fonts, glyph_scales), changed, last
+    map!(attr, [:glyphindices, :font_per_char, :glyph_scales], :glyph_data) do glyphs, fonts, glyph_scales
         hashes, updates = get_glyph_data(scene, glyphs, fonts)
         dict = Dict(
             :glyph_hashes => hashes,
             :atlas_updates => updates,
             :scales => serialize_three(glyph_scales)
         )
-        return (dict,)
+        return dict
     end
+    return
 end
 
 function create_shader(scene::Scene, plot::Makie.Text)
@@ -664,9 +671,7 @@ function create_shader(scene::Scene, plot::Volume)
     Makie.add_computation!(attr, Val(:uniform_clip_planes), :model, :uniform_model)
 
     # TODO: reuse in clip planes
-    register_computation!(attr, [:uniform_model], [:modelinv]) do (model,), changed, cached
-        return (Mat4f(inv(model)),)
-    end
+    map!(model -> Mat4f(inv(model)), attr, :uniform_model, :modelinv)
     backend_colors!(attr)
     inputs = [
         # Special

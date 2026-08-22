@@ -340,7 +340,9 @@ function add_computation!(attr, ::Val{:uniform_clip_planes}, target_space::Symbo
     target_space == :model && push!(inputs, modelname)
     target_space == :clip && push!(inputs, :projectionview)
 
-    register_computation!(attr, inputs, [:uniform_clip_planes, :uniform_num_clip_planes]) do input, changed, last
+    register_computation!(
+        attr, inputs, [:uniform_clip_planes, :uniform_num_clip_planes]
+    ) do input, @nospecialize(changed), @nospecialize(last)
         # TODO
         # If we want to remove allocations
         # we need to check what has changed manually, since is_same(input, last) will always return false
