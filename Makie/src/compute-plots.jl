@@ -186,7 +186,6 @@ function meshscatter_boundingbox(_positions, model, transform_marker, marker_bb,
     end
 end
 
-
 add_alpha(color, alpha) = add_alpha(Colors.color(color), Colors.alpha(color), alpha)
 add_alpha(rgb, a::T, alpha) where {T} = RGBA(rgb, a * T(alpha))
 
@@ -223,20 +222,42 @@ function register_colormapping_without_color!(attr::ComputeGraph)
     return
 end
 
+function process_color_value(dim_convert, scale, value, auto)
+    if value === automatic
+        return auto
+    elseif value isa Real
+        return apply_scale(scale, value)
+    else
+        return apply_scale(scale, convert_dim_value(dim_convert, value))
+    end
+end
+
 function register_colormapping!(attr::ComputeGraph, colorname = :color)
     register_colormapping_without_color!(attr)
 
+    color = attr[colorname][]
+    if !isa(dim_conversion_from_args(color), Union{Nothing, NoDimConversion})
+        update_dim_conversion!(attr.color_dim_convert[], color)
+
+        map!(attr, [:resolved_cdc, colorname], :dc_color) do dc, color
+            converted = convert_dim_value(dc, attr, color, nothing)
+            return to_color(converted)
+        end
+    else
+        ComputePipeline.alias!(attr, colorname, :dc_color)
+    end
+
     map!(
         attr,
-        [colorname, :colorscale, :alpha],
+        [:dc_color, :colorscale, :alpha],
         [:raw_color, :scaled_color, :fetch_pixel, :auto_colorrange]
     ) do color, colorscale, alpha
-        auto_colorrange = nothing
         if color isa Union{AbstractArray{<:Real}, Real}
             scaled = smallfloat_convert.(apply_scale(colorscale, color))
             auto_colorrange = Vec2f(distinct_extrema_nan(scaled))
             T = eltype(scaled)
             val = clamp.(scaled, -floatmax(T), floatmax(T))
+            return color, val, false, auto_colorrange
         elseif color isa AbstractPattern
             val = ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
@@ -246,28 +267,33 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         else
             val = add_alpha(color, alpha)
         end
-        return (color, val, color isa AbstractPattern, auto_colorrange)
+        return color, val, color isa AbstractPattern, nothing
     end
 
-    return map!(
+    map!(
         attr,
-        [:colorrange, :colorscale, :auto_colorrange], :scaled_colorrange
-    ) do colorrange, colorscale, autorange
-        if isnothing(autorange) # colors are actual colors, so no colormapping
-            return nothing
-        elseif colorrange === automatic
-            return autorange
-        elseif first(colorrange) == automatic
-            return Vec2f((first(autorange), last(colorrange)))
-        elseif last(colorrange) == automatic
-            return Vec2f((first(colorrange), last(autorange)))
+        [:resolved_cdc, :colorrange, :colorscale, :auto_colorrange],
+        :scaled_colorrange
+    ) do dc, colorrange, colorscale, _autorange
+        # colors are actual colors, so no colormapping
+        isnothing(_autorange) && return nothing
+
+        autorange = dc isa CategoricalConversion ? distinct_extrema_nan(first.(dc.int_to_category)) : _autorange
+        if colorrange === automatic
+            return Vec2f(autorange)
         else
-            lo, hi = apply_scale(colorscale, colorrange)
-            lo == hi || return Vec2f(lo, hi)
-            delta = max(0.5f0, abs(Float32(lo)))
-            return Vec2f(lo - delta, hi + delta)
+            low = process_color_value(dc, colorscale, first(colorrange), first(autorange))
+            high = process_color_value(dc, colorscale, last(colorrange), last(autorange))
+            if low < high
+                return Vec2f(low, high)
+            else
+                delta = max(0.5f0, abs(Float32(low)))
+                return Vec2f(low - delta, high + delta)
+            end
         end
     end
+
+    return
 end
 
 """
@@ -513,11 +539,19 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     for (i, dim) in enumerate(dim_tuple)
         dim == 0 && continue
         if dim isa Integer
-            update_dim_conversion!(dim_converts, dim, args_converted[i])
+            if dim == 4
+                update_dim_conversion!(attr.color_dim_convert[], args_converted[i])
+            else
+                update_dim_conversion!(dim_converts, dim, args_converted[i])
+            end
             maxdim = max(maxdim, dim)
         else
             for (j, d) in enumerate(dim)
-                update_dim_conversion!(dim_converts, d, args_converted[i], j)
+                if d == 4
+                    update_dim_conversion!(attr.color_dim_convert[], args_converted[i], j)
+                else
+                    update_dim_conversion!(dim_converts, d, args_converted[i], j)
+                end
                 maxdim = max(maxdim, d)
             end
         end
@@ -528,10 +562,12 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # Note that the order in dim_convert_names is important
     dim_convert_names = Symbol[]
     for i in 1:maxdim
-        obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
-        converts_updated = map!(x -> dim_converts[i], Observable{Any}(), obs)
-        add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
-        push!(dim_convert_names, Symbol(:dim_convert_, i))
+        push!(dim_convert_names, i == 4 ? :resolved_cdc : Symbol(:dim_convert_, i))
+        if i < 4 # 4 already got added if maxdim == 4
+            obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
+            converts_updated = map!(x -> dim_converts[i], Observable{Any}(), obs)
+            add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
+        end
     end
 
     # Apply dim_convert
@@ -880,6 +916,12 @@ end
 function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
     graph = ComputeGraph()
 
+    # If the user passes a color_dim_convert or it is extracted from a parent
+    # plot in _create_plot! it is initialized here. If we generate it from
+    # arguments or color it is initialized later
+    cdc_init = pop!(user_attributes, :color_dim_convert, ColorDimConvert())
+    register_color_dim_convert!(graph, to_value(cdc_init))
+
     register_arguments!(P, graph, user_attributes, user_args)
     converted = graph.converted[]
     PTrait = conversion_trait(P, graph.args[]...)
@@ -963,9 +1005,8 @@ function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
     end
 end
 
-
 function color_per_mesh(ccolors, vertes_per_mesh)
-    result = similar(ccolors, float32type(ccolors), sum(vertes_per_mesh))
+    result = Vector{eltype(ccolors)}(undef, sum(vertes_per_mesh))
     i = 1
     for (cs, len) in zip(ccolors, vertes_per_mesh)
         for j in 1:len
@@ -977,7 +1018,7 @@ function color_per_mesh(ccolors, vertes_per_mesh)
 end
 
 function register_mesh_decomposition!(attr)
-    # :arg1 is user input, :mesh is after convert_arguments and dim converts (?)
+    # :arg1 is user input, :mesh is after convert_arguments and dim converts
     map!(attr, :mesh, [:positions, :faces, :normals, :texturecoordinates]) do merged
         pos = coordinates(merged)
         faces = decompose(GLTriangleFace, merged)
@@ -986,19 +1027,21 @@ function register_mesh_decomposition!(attr)
         return (pos, faces, normies, texturecoords)
     end
 
-    return map!(
+    map!(
         attr, [:arg1, :mesh, :color], [:mesh_color, :interpolate_in_fragment_shader]
     ) do meshes, merged, color
-
         if hasproperty(merged, :color)
             return (merged.color, true)
-        elseif meshes isa Vector{<:AbstractGeometry} && color isa Vector && length(color) == length(meshes)
+        elseif meshes isa Vector{<:AbstractGeometry} && color isa AbstractVector && length(color) == length(meshes)
             _color = color_per_mesh(color, map(x -> length(coordinates(x)), meshes))
             return (_color, false)
         else
             return (color, true)
         end
     end
+    ComputePipeline.set_type!(attr.mesh_color, Any)
+
+    return
 end
 
 # optionally converts uv_transform to the one used with patterns (different defaults)
