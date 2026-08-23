@@ -16,7 +16,7 @@ function serialize_three(scene::Scene, plot::Makie.PrimitivePlotTypes)
 
     mesh[:overdraw] = plot.overdraw[]
     mesh[:transparency] = plot.transparency[]
-    mesh[:zvalue] = Makie.zvalue2d(plot)
+    mesh[:gl_zindex] = Makie.zvalue2d(plot)
     mesh[:space] = plot.space[]
 
     if haskey(plot, :markerspace)
@@ -122,6 +122,8 @@ end
 function create_wgl_renderobject(callback, attr, inputs)
     # default case
     haskey(attr, :uniform_clip_planes) || Makie.add_computation!(attr, Val(:uniform_clip_planes))
+    haskey(attr, :gl_zindex) || map!(Makie.zvalue2d, attr, [:zindex, :model], :gl_zindex)
+    (:gl_zindex in inputs) || push!(inputs, :gl_zindex)
 
     register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
         if isnothing(last)
@@ -130,6 +132,7 @@ function create_wgl_renderobject(callback, attr, inputs)
         else
             updates = plot_updates(args, changed)
             last.wgl_renderobject[:visible] = args.visible
+            last.wgl_renderobject[:gl_zindex] = -args.gl_zindex
             update_values!(last.wgl_update_obs, Bonito.LargeUpdate(updates))
             return nothing
         end
@@ -765,6 +768,6 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     dict[:uniforms][:uniform_clip_planes] = serialize_three(plot.uniform_clip_planes[])
     dict[:uniforms][:uniform_num_clip_planes] = serialize_three(plot.uniform_num_clip_planes[])
     dict[:overdraw] = plot.overdraw[]
-    dict[:zvalue] = Makie.zvalue2d(plot)
+    dict[:gl_zindex] = Makie.zvalue2d(plot)
     return dict
 end

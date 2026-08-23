@@ -726,5 +726,11 @@ end
 # by translating e.g. the axis spines forward so they are not obscured halfway
 # by heatmaps or images
 # zvalue2d(x)::Float32 = Float32(Makie.translation(x)[][3] + zvalue2d(x.parent))
-@inline zvalue2d(x)::Float32 = Float32(transformationmatrix(x)[][3, 4])
-@inline zvalue2d(::Nothing)::Float32 = 0.0f0
+@inline function zvalue2d(@nospecialize(x::AbstractPlot))::Float64
+    zindex = x.zindex[]::Float64
+    return isnan(zindex) ? transformationmatrix(x)[][3, 4] : zindex
+end
+@inline zvalue2d(::Nothing)::Float64 = 0.0
+@inline function zvalue2d(zindex::Float64, model::Mat4d)
+    return ifelse(isnan(zindex), model[3, 4], zindex)
+end

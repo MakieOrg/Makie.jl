@@ -223,7 +223,13 @@ end
     f, ax, pl = plotlist([S.Scatter(1:4, 1:4; marker = :circle, label = "A"), S.Scatter(1:6, 1:6; marker = :rect, label = "B")])
     leg = axislegend(ax)
     # Test that the legend has two scatter plots
-    @test count(x -> x isa Makie.Scatter, leg.scene.plots) == 2
+    n_scatter = count(x -> x isa Makie.Scatter, leg.scene.plots)
+    for child in leg.scene.children
+        for plot in child.plots
+            n_scatter += isa(plot, Scatter)
+        end
+    end
+    @test n_scatter == 2
 
     # Test that the scatter plots have the correct markers
     # This is too internal and fragile, so we won't actually test this
