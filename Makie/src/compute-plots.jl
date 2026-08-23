@@ -599,6 +599,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw,
             rtype === :SpecApi || error("convert_arguments($P, $dim_converted) switch away from a SpecApi output. That is not allowed.")
             return (val,)
         end
+        ComputePipeline.unsafe_init!(attr.converted, (args_converted,))
 
         if args_converted isa Union{PlotSpec, AbstractVector{PlotSpec}}
             map!(attr, :converted, :plotspecs) do x
