@@ -15,7 +15,7 @@
     end
 end
 
-@testset "Glyph Collections" begin
+@testset "glyph layout" begin
     using Makie.FreeTypeAbstraction
 
     # Test whether Makie's padded signed distance field text matches
@@ -58,14 +58,14 @@ end
         ]
     )
 
-    @test p.glyphindices[] == FreeTypeAbstraction.glyph_index.(font, chars)
-    @test p.font_per_char[] == [font for _ in 1:4]
+    @test p.glyph_indices[] == FreeTypeAbstraction.glyph_index.(font, chars)
+    @test p.glyph_fonts[] == [font for _ in 1:4]
     @test all(isapprox.(p.glyph_origins[], [Point3f(x, 0, 0) for x in origins], atol = 1.0e-10))
-    @test all(s -> s == Vec2f(p.fontsize[]), p.text_scales[])
-    @test all(r -> r == Quaternionf(0, 0, 0, 1), p.text_rotation[])
-    @test all(c -> c == RGBAf(0, 0, 0, 1), p.text_color[])
-    @test all(x -> x == RGBAf(0, 0, 0, 0), p.text_strokecolor[])
-    @test all(x -> x == 0, p.text_strokewidth[])
+    @test all(s -> s == Vec2f(p.fontsize[]), p.glyph_scales[])
+    @test all(r -> r == Quaternionf(0, 0, 0, 1), p.glyph_rotations[])
+    @test all(c -> c == RGBAf(0, 0, 0, 1), p.glyph_colors[])
+    @test all(x -> x == RGBAf(0, 0, 0, 0), p.glyph_strokecolors[])
+    @test all(x -> x == 0, p.glyph_strokewidths[])
 
     makie_hi_bb = Makie.height_insensitive_boundingbox.(p.glyph_extents[])
     makie_hi_bb_wa = Makie.height_insensitive_boundingbox_with_advance.(p.glyph_extents[])
@@ -76,10 +76,11 @@ end
     atlas = Makie.get_texture_atlas()
     # Test quad data
     positions = p.positions_transformed_f32c[]
+    glyphs = p.plots[1]
     char_offsets = p.marker_offset[]
-    quad_offsets = p.quad_offset[]
-    uvs = p.sdf_uv[]
-    scales = p.quad_scale[]
+    quad_offsets = glyphs.quad_offset[]
+    uvs = glyphs.sdf_uv[]
+    scales = glyphs.quad_scale[]
 
     # Also doesn't work
     # fta_offsets = map(fta_glyphs) do (img, extent)
@@ -129,7 +130,7 @@ end
         @test begin
             for changed in ["test", rich("test"), L"test"]
                 p.text = changed
-                p.glyphindices[]
+                p.glyph_indices[]
             end
             true
         end
@@ -138,11 +139,338 @@ end
         @test begin
             for changed in ["test", rich("test"), L"test"]
                 p.text = [changed]
-                p.glyphindices[]
+                p.glyph_indices[]
             end
             true
         end
     end
+end
+
+@testset "glyph buffer reuse" begin
+    scene = Scene()
+    p = text!(scene, Point2f(0), text = "ab")
+    glyphs = p.plots[1]
+    indices, origins, colors = p.glyph_indices[], p.glyph_origins[], p.glyph_colors[]
+    @test length(glyphs.sdf_uv[]) == 2
+
+    p.text = "abcd"
+    @test p.glyph_indices[] === indices
+    @test p.glyph_origins[] === origins
+    @test length(indices) == 4
+    @test length(glyphs.sdf_uv[]) == 4
+
+    p.color = :red
+    @test p.glyph_colors[] === colors
+    @test colors == fill(RGBAf(1, 0, 0, 1), 4)
+
+    p2 = text!(scene, Point2f(0), text = L"\frac{1}{2}")
+    @test length(p2.layout_specs[]) == 1
+    p2.fontsize = 30
+    @test length(p2.layout_specs[]) == 1
+    @test length(p2.text_spec_block_indices[]) == 1
+    @test length(p2.text_spec_bboxes[]) == 1
+end
+
+struct CountingHandler
+    calls::Base.RefValue{Int}
+end
+
+function Makie.layout_text(h::CountingHandler, str, attributes)
+    h.calls[] += 1
+    return Makie.layout_text(nothing, str, attributes)
+end
+
+@testset "placement does not relayout" begin
+    handler = CountingHandler(Ref(0))
+    scene = Scene(camera = campixel!)
+    p = text!(scene, Point2f(100, 100), text = "ab\ncd", fontsize = 20, align = (:left, :bottom), text_handler = handler)
+    p.glyph_origins[]
+    layouts = handler.calls[]
+    @test layouts == 1
+
+    for (attribute, value) in [
+            (:align, (:left, :top)),        # same justification, so no relayout
+            (:rotation, Float32(pi / 4)),
+            (:offset, Vec2f(5, 5)),
+        ]
+        setproperty!(p, attribute, value)
+        p.glyph_origins[]
+        @test handler.calls[] == layouts
+    end
+
+    p.align = (:right, :top) # justification follows halign, so this does relayout
+    p.glyph_origins[]
+    @test handler.calls[] == layouts + 1
+
+    p.fontsize = 30
+    p.glyph_origins[]
+    @test handler.calls[] == layouts + 2
+end
+
+@testset "moving text does not relayout" begin
+    handler = CountingHandler(Ref(0))
+    scene = Scene(camera = campixel!)
+    p = text!(scene, [Point2f(10, 10), Point2f(50, 50)], text = ["a", "b"], text_handler = handler)
+    p.glyph_origins[]
+    layouts = handler.calls[]
+    @test layouts == 2
+
+    p[1] = [Point2f(20, 20), Point2f(60, 60)]
+    p.glyph_origins[]
+    @test handler.calls[] == layouts
+
+    p.text = ["a", "b"] # a different array holding the same text
+    p.glyph_origins[]
+    @test handler.calls[] == layouts
+
+    p.text = ["x", "y"]
+    p.glyph_origins[]
+    @test handler.calls[] == layouts + 2
+end
+
+@testset "latex layout follows the plot color" begin
+    scene = Scene(camera = campixel!)
+    p = text!(scene, Point2f(100, 100), text = L"\frac{a}{b}", color = :red, fontsize = 20)
+    @test all(==(to_color(:red)), p.glyph_colors[])
+    @test only(p.layout_specs[]).kwargs[:color] == to_color(:red)
+
+    p.color = :blue
+    @test all(==(to_color(:blue)), p.glyph_colors[])
+    @test only(p.layout_specs[]).kwargs[:color] == to_color(:blue)
+end
+
+struct WrappedText
+    value::String
+end
+
+struct WrappedTextHandler end
+
+function Makie.layout_text(::WrappedTextHandler, str::WrappedText, attributes)
+    size = Vec2f(length(str.value), 1)
+    spec = Makie.PlotSpec(:Scatter, [Point3f(0.5size[1], 0.5size[2], 0)])
+    return Makie.TextLayout(
+        ; bbox = Rect2f(0, 0, size...), baseline = 0.2f0,
+        specs = Makie.PlotSpec[spec],
+        spec_bboxes = Rect3d[Rect3d(Point3d(0), Vec3d(size..., 0))],
+    )
+end
+
+@testset "text handler dispatches per block" begin
+    scene = Scene(camera = campixel!)
+    p = text!(
+        scene, [Point2f(0, 0), Point2f(100, 0), Point2f(200, 0)];
+        text = Any["ab", WrappedText("cde"), L"f"],
+        text_handler = WrappedTextHandler(),
+    )
+
+    @test length.(p.text_blocks[]) == [2, 0, 1]
+    @test p.text_spec_block_indices[] == [2]
+end
+
+struct ClaimCountingHandler
+    calls::Base.RefValue{Int}
+end
+
+function Makie.layout_text(h::ClaimCountingHandler, str::WrappedText, attributes)
+    h.calls[] += 1
+    return Makie.layout_text(WrappedTextHandler(), str, attributes)
+end
+
+@testset "recoloring relayouts only when the handler claims a block" begin
+    handler = ClaimCountingHandler(Ref(0))
+    scene = Scene(camera = campixel!)
+
+    p = text!(scene, [Point2f(0, 0), Point2f(100, 0)], text = ["ab", "cd"], color = :red, text_handler = handler)
+    @test p.baked_display_attributes[] === nothing
+    @test all(==(to_color(:red)), p.glyph_colors[])
+    p.color = :blue
+    @test all(==(to_color(:blue)), p.glyph_colors[])
+    @test handler.calls[] == 0
+
+    p2 = text!(
+        scene, [Point2f(0, 0), Point2f(100, 0)];
+        text = Any["ab", WrappedText("cde")], color = :red, text_handler = handler,
+    )
+    @test p2.baked_display_attributes[] !== nothing
+    @test all(==(to_color(:red)), p2.glyph_colors[])
+    @test handler.calls[] == 1
+    p2.color = :blue
+    @test all(==(to_color(:blue)), p2.glyph_colors[])
+    @test handler.calls[] == 2
+end
+
+@testset "multi-line rich text anchors on the last baseline" begin
+    scene = Scene(camera = campixel!)
+    p = text!(scene, Point2f(0, 0), text = rich("ab\ncd"))
+    # rich text line height is currently fixed at 20
+    @test p.block_baselines[] == [-20.0f0]
+end
+
+@testset "per block placement attributes" begin
+    scene = Scene(camera = campixel!)
+
+    # PolarAxis starts its tick labels out like this
+    p = text!(scene, Point2f[], text = String[], align = Point2f[], offset = Point2f[])
+    @test p.glyph_origins[] == Point3f[]
+    @test p.resolved_justification[] == Float32[]
+
+    p2 = text!(
+        scene, [Point2f(0, 0), Point2f(100, 0)], text = ["ab", "cd"],
+        align = [(:left, :bottom), (:right, :top)], rotation = [0.0, pi / 2], offset = [Vec2f(0), Vec2f(5, 5)]
+    )
+    origins, rotations = p2.glyph_origins[], p2.glyph_rotations[]
+    @test length(origins) == 4
+    @test rotations[1:2] == fill(Quaternionf(0, 0, 0, 1), 2)
+    @test rotations[3:4] == fill(convert(Quaternionf, to_rotation(pi / 2)), 2)
+
+    # the first glyph lays out at the layout frame's origin, and (:left, :bottom)
+    # shifts the block so the frame's lower left corner lands on the anchor
+    box = p2.block_bboxes[][1]
+    @test origins[1] == Point3f(-minimum(box)[1], -minimum(box)[2], 0)
+    @test p2.marker_offset[][3:4] == origins[3:4] .+ Point3f(5, 5, 0)
+end
+
+@testset "attribute vectors are per string" begin
+    scene = Scene(camera = campixel!)
+
+    p = text!(scene, [Point2f(0, 0), Point2f(100, 0)], text = ["ab", "cde"], color = [:red, :blue])
+    @test p.glyph_colors[] == [fill(RGBAf(1, 0, 0, 1), 2); fill(RGBAf(0, 0, 1, 1), 3)]
+
+    for (attribute, value) in [
+            (:color, [:red, :green, :blue, :black]), (:strokewidth, [1, 2, 3, 4]),
+            (:fontsize, [10, 20, 30, 40]),
+        ]
+        @test_throws "Expected a scalar $attribute or one value per string (1), got 4." text!(
+            scene, Point2f(0, 0); text = "abcd", attribute => value
+        )
+    end
+
+    # `color` feeds text layout so it errors while plotting, the other two only
+    # once the value is pulled
+    path = [Point2f(0, 0), Point2f(100, 0)]
+    for (attribute, value) in [(:color, [:red, :green]), (:strokecolor, [:red, :green]), (:strokewidth, [1, 2])]
+        @test_throws "`pathtext` takes a single $attribute, got 2 values." begin
+            p = pathtext!(scene, path; text = "ab", space = :pixel, attribute => value)
+            getproperty(only(p.plots), attribute)[]
+        end
+    end
+
+    # rich text is the supported way to style parts of one string
+    p = pathtext!(scene, path; text = rich("a", rich("b", color = :red)), space = :pixel)
+    @test only(p.plots).color[] == [RGBAf(0, 0, 0, 1), RGBAf(1, 0, 0, 1)]
+
+    @test_throws "Expected a scalar rotation or one value per string (1), got 3." begin
+        rotated = text!(scene, Point2f(0, 0); text = "abc", rotation = [0.0, 0.5, 1.0])
+        rotated.glyph_rotations[]
+    end
+end
+
+@testset "transform_func applies per string" begin
+    f = Figure()
+    ax = Axis(f[1, 1], xscale = log10)
+    p = text!(ax, [Point2f(10, 1), Point2f(1000, 2)], text = ["a", "bb"])
+    Makie.update_state_before_display!(f)
+
+    # log10 runs once per string, and the two glyphs of "bb" share that anchor
+    @test p.per_glyph_positions[] == Point2f[(1, 1), (3, 2), (3, 2)]
+
+    # the child no longer transforms, so the model has to reach it
+    glyphs = p.plots[1]
+    translate!(p, 5, 6, 0)
+    @test glyphs.model_f32c[][1, 4] == 5.0f0
+    @test glyphs.model_f32c[][2, 4] == 6.0f0
+end
+
+@testset "Float64 anchors survive until float32 rescaling" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    p = text!(ax, [Point2(1.0e9, 1.0), Point2(1.0e9 + 1.0e-3, 2.0)], text = ["a", "b"])
+    Makie.update_state_before_display!(f)
+    @test p.per_glyph_positions[] == Point2d[(1.0e9, 1), (1.0e9 + 1.0e-3, 2)]
+end
+
+@testset "generic attributes reach the children" begin
+    scene = Scene(camera = campixel!)
+    p = text!(scene, Point2f(0, 0), text = L"\frac{a}{b}", fontsize = 20)
+    Makie.update_state_before_display!(scene)
+    glyphs, specs = p.plots[1], p.plots[2]
+
+    # GLMakie and WGLMakie build render objects from leaf plots, so a stale `visible`
+    # on the child draws text the parent hides
+    for value in (false, true)
+        p.visible = value
+        @test glyphs.visible[] == value
+        @test only(specs.plots).visible[] == value
+    end
+
+    p.depth_shift = 0.25f0
+    @test glyphs.depth_shift[] == 0.25f0
+    @test only(specs.plots).depth_shift[] == 0.25f0
+    p.transparency = true
+    @test glyphs.transparency[] == true
+    @test only(specs.plots).transparency[] == true
+    p.inspectable = false
+    @test glyphs.inspectable[] == false
+    @test only(specs.plots).inspectable[] == false
+
+    # `alpha` is folded into the glyph colors, so passing it on would apply it twice
+    p.alpha = 0.5
+    @test glyphs.alpha[] == 1.0
+    @test glyphs.color[][1] == RGBAf(0, 0, 0, 0.5)
+end
+
+@testset "per string strokewidth reaches the glyphs" begin
+    scene = Scene(camera = campixel!)
+    p = text!(scene, [Point2f(0, 0), Point2f(100, 0)], text = ["ab", "cde"], strokewidth = [1, 2])
+
+    glyphs = p.plots[1]
+    @test p.glyph_strokewidths[] == Float32[1, 1, 2, 2, 2]
+    @test glyphs.strokewidth[] == p.glyph_strokewidths[]
+    # GL and WGL bind the stroke width to a uniform float
+    @test glyphs.uniform_strokewidth[] === 1.0f0
+
+    scalar = text!(scene, Point2f(0, 0), text = "ab", strokewidth = 3)
+    @test scalar.plots[1].uniform_strokewidth[] === 3.0f0
+end
+
+@testset "pathtext color" begin
+    scene = Scene(camera = campixel!)
+    path = [Point2f(0, 0), Point2f(100, 0)]
+
+    plain = pathtext!(scene, path; text = "abc", color = :red, space = :pixel)
+    @test only(plain.plots).color[] == RGBAf(1, 0, 0, 1)
+
+    # rich text takes the plot's color for the parts it doesn't style itself
+    styled = pathtext!(scene, path; text = rich("ab", rich("c", color = :blue)), color = :red, space = :pixel)
+    @test only(styled.plots).color[] == [RGBAf(1, 0, 0, 1), RGBAf(1, 0, 0, 1), RGBAf(0, 0, 1, 1)]
+
+    # a number is colormapped rather than rejected
+    mapped = pathtext!(
+        scene, path; text = "abc", space = :pixel,
+        color = 0.5, colormap = [:red, :red], colorrange = (0, 1)
+    )
+    @test only(mapped.plots).color[] == RGBAf(1, 0, 0, 1)
+
+    # alpha is folded in once, like `text` does it
+    faded = pathtext!(scene, path; text = "abc", color = :red, alpha = 0.5, space = :pixel)
+    @test only(faded.plots).computed_color[] == RGBAf(1, 0, 0, 0.5)
+end
+
+@testset "pathtext draws glyphs directly" begin
+    scene = Scene(camera = campixel!)
+    font = Makie.defaultfont()
+    p = pathtext!(scene, [Point2f(0, 100), Point2f(300, 100)], text = "ab", fontsize = 20, space = :pixel)
+
+    glyphs = only(p.plots)
+    @test glyphs isa Makie.Glyphs
+    @test glyphs.glyph_indices[] == FreeTypeAbstraction.glyph_index.(font, ['a', 'b'])
+    @test glyphs.scale[] == fill(Vec2f(20), 2)
+    # the positions are the glyph origins, so nothing is left for marker_offset
+    @test glyphs.marker_offset[] == fill(Point3f(0), 2)
+
+    positions = glyphs.positions[]
+    @test positions[1] ≈ Point2f(0, 100)
+    @test positions[2][1] ≈ 20 * Makie.GlyphExtent(font, 'a').hadvance
 end
 
 @testset "text boundingboxes" begin
