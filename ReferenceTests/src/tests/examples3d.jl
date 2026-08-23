@@ -21,6 +21,50 @@
     f
 end
 
+@reference_test "mesh stroke" begin
+    f = Figure(size = (600, 600))
+
+    ps2d = [Point2f(x, y) for y in 0:1 for x in 0:2]
+    quads2d = [QuadFace{Int}(1, 2, 5, 4), QuadFace{Int}(2, 3, 6, 5)]
+    m2d = GeometryBasics.Mesh(ps2d, quads2d)
+    mesh(f[1, 1], m2d, color = [1, 2, 3, 1, 2, 3], shading = NoShading, strokewidth = 10, strokecolor = :black)
+    mesh(f[1, 2], m2d, color = :lightblue, shading = NoShading, strokewidth = 10, strokecolor = (:red, 0.5), strokeedges = :all)
+
+    ps3d = Point3f[(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0), (0, 0, 1), (1, 0, 1), (1, 1, 1), (0, 1, 1)]
+    quads3d = [
+        QuadFace{Int}(1, 4, 3, 2), QuadFace{Int}(5, 6, 7, 8),
+        QuadFace{Int}(1, 2, 6, 5), QuadFace{Int}(2, 3, 7, 6),
+        QuadFace{Int}(3, 4, 8, 7), QuadFace{Int}(4, 1, 5, 8),
+    ]
+    cube = GeometryBasics.Mesh(ps3d, quads3d)
+    mesh(f[2, 1], cube, color = :orange, strokewidth = 4, strokecolor = :black, strokeedges = :all)
+    mesh(
+        f[2, 2], cube, color = :transparent, transparency = true, shading = NoShading,
+        strokewidth = 4, strokecolor = :black, strokeedges = :all
+    )
+
+    f
+end
+
+@reference_test "surface stroke" begin
+    f = Figure(size = (600, 600))
+    r = range(-2, 2, length = 13)
+    zs = [2 * sinc(sqrt(x^2 + y^2)) for x in r, y in r]
+    surface(f[1, 1], r, r, zs, strokewidth = 1, strokecolor = :black, strokeedges = :all)
+
+    zs_hole = copy(zs)
+    zs_hole[5:7, 6:9] .= NaN
+    surface(f[1, 2], r, r, zs_hole, strokewidth = 3, strokecolor = :red)
+
+    surface(f[2, 1], r, r, zs, color = :orange, strokewidth = 2, strokecolor = (:black, 0.5), strokeedges = :all)
+    surface(
+        f[2, 2], r, r, zs, color = :transparent, transparency = true, shading = NoShading,
+        strokewidth = 1, strokecolor = :black, strokeedges = :all
+    )
+
+    f
+end
+
 @reference_test "Orthographic Camera" begin
     function colormesh((geometry, color))
         mesh1 = normal_mesh(geometry)

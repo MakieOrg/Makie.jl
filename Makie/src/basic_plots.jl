@@ -392,6 +392,22 @@ Plots a surface defined by a grid of vertices.
     invert_normals = false
     "[(W)GLMakie only] Specifies whether the surface matrix gets sampled with interpolation."
     interpolate = true
+    "Sets the color of the stroke along visible surface grid edges."
+    strokecolor = @inherit patchstrokecolor
+    """
+    Sets the width of the stroke along visible surface grid edges in pixels. A width of 0 disables
+    stroking. The stroke is drawn inwards from each edge as part of the surface itself, replacing
+    the surface color rather than being layered on top. In WGLMakie, stroking must be enabled
+    when the plot is created to take effect.
+    """
+    strokewidth = 0.0
+    """
+    Selects which edges are stroked. `:boundary` strokes only edges that belong to exactly one
+    grid cell, i.e. the outer rim of the surface and the outlines of holes cut by NaN values.
+    `:all` additionally strokes edges shared between grid cells at half width per cell, resulting
+    in a wireframe-like appearance. Edges introduced by triangulating grid cells are never stroked.
+    """
+    strokeedges = :boundary
     """
     Sets a transform for uv coordinates, which controls how a texture is mapped to a surface.
     The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
@@ -508,6 +524,21 @@ Note that `meshscatter` is much better for plotting a single mesh at multiple po
     color = @inherit patchcolor
     "sets whether colors should be interpolated"
     interpolate = true
+    "Sets the color of the stroke along visible mesh edges."
+    strokecolor = @inherit patchstrokecolor
+    """
+    Sets the width of the stroke along visible mesh edges in pixels. A width of 0 disables stroking.
+    The stroke is drawn inwards from each edge as part of the mesh surface itself, replacing the
+    face color rather than being layered on top.
+    """
+    strokewidth = 0.0
+    """
+    Selects which edges are stroked. `:boundary` strokes only edges that belong to exactly one face,
+    e.g. the outline of a mesh that has been triangulated from a polygon. `:all` additionally strokes
+    edges shared between faces at half width per face, resulting in a wireframe-like appearance.
+    Edges introduced by triangulating non-triangular faces are never stroked.
+    """
+    strokeedges = :boundary
     """
     Sets which attributes to cycle when creating multiple plots. The values to
     cycle through are defined by the parent Theme. Multiple cycled attributes can

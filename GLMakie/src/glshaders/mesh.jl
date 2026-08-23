@@ -51,6 +51,9 @@ function draw_mesh(screen, data::Dict)
         uv_transform = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
         px_per_unit = 1.0f0
         interpolate_in_fragment_shader = true
+        strokewidth = 0.0f0
+        strokecolor = RGBAf(0, 0, 0, 0)
+        stroke_data = nothing => TextureBuffer
     end
 
     return RenderObject(screen.glscreen, data)
@@ -66,7 +69,7 @@ function default_shader(screen::Screen, @nospecialize(robj::RenderObject), plot:
     shader = GLVisualizeShader(
         screen,
         "util.vert", "mesh.vert",
-        "fragment_output.frag", "mesh.frag",
+        "fragment_output.frag", "mesh.frag", "mesh_stroke.frag",
         "lighting.frag",
         view = view
     )

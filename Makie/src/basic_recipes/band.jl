@@ -98,7 +98,10 @@ function plot!(plot::Band)
         end
     end
 
-    mesh!(plot, plot.attributes, plot.coordinates, plot.connectivity, color = plot.colors)
+    mesh!(
+        plot, plot.attributes, plot.coordinates, plot.connectivity, color = plot.colors,
+        strokewidth = 0, strokecolor = :transparent
+    )
 
     map!(plot, :strokecolor, :linecolor) do strokecolor
         if strokecolor isa AbstractVector
