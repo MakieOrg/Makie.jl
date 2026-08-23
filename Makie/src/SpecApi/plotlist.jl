@@ -204,8 +204,16 @@ end
 # Explicitly only handle `plotlist!(parent, PlotSpec[], kwargs...)`
 # i.e. no plotlist!(parent, attributes, ...) or plotlist!(parent, graph, ...)
 # Anything else falls back onto Plot{Func}, maybe should error instead?
-function PlotList(user_args::Tuple{Vector{PlotSpec}}, user_attributes::Union{Dict, NamedTuple})
+function PlotList(user_args::Tuple, user_attributes::Union{Dict, NamedTuple})
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
+    length(user_args) == 1 || throw(ArgumentError("plotlist takes exactly one argument, a PlotSpec or Vector{PlotSpec}, but $(length(user_args)) were given."))
+
+    if !isa(to_value(user_args[1]), Union{PlotSpec, AbstractArray{PlotSpec}})
+        throw(ArgumentError(
+            "Invalid argument type for plotlist: $(typeof(user_args[1])) should be a " *
+            "PlotSpec, Vector{PlotSpec}, or Observable or Computed containing either."
+        ))
+    end
 
     graph = ComputeGraph()
 
@@ -214,7 +222,9 @@ function PlotList(user_args::Tuple{Vector{PlotSpec}}, user_attributes::Union{Dic
     # - no convert_arguments
     # - no dim converts apply here (skip :dim_converted outputs)
     # - fixed to type Vector{PlotSpec}
-    add_input!(graph, :arg1, user_args[1])
+    add_input!(graph, :arg1, user_args[1]) do x
+        return x isa AbstractArray ? vec(x) : [x]
+    end
     map!(x -> (x,), graph, :arg1, :args) # needed for default axis
     ComputePipeline.alias!(graph, :args, :converted) # needed for default axis
     map!(first, graph, :converted, :plotspecs)
@@ -230,8 +240,11 @@ function build_plotlist(graph::ComputeGraph, user_attributes)
     # - should Spec attributes beat plotlist attributes?
     # - should plotlist attributes update but the static after spec -> plot?
     # - should plotlist attribute dynamically update child plot attributes?
+    pop!(user_attributes, :force_dimconverts, nothing)
     for (k, v) in user_attributes
-        add_input!(compute_identity, graph, k, v)
+        if !haskey(graph, k)
+            add_input!(compute_identity, graph, k, v)
+        end
     end
 
     return Plot{plotlist, Vector{PlotSpec}}(user_attributes, graph)
@@ -248,15 +261,4 @@ function connect_plot!(parent::SceneLike, plot::PlotList)
     update_plotspecs!(scene, obs, plot)
 
     return
-end
-
-# Catch any other plot call initiated with a PlotSpec
-# This may not be reasonable to all plots...? Should at least catch `Plot{plot}`
-function Plot{Func}(user_args::Tuple{Vector{PlotSpec}}, user_attributes::Union{Dict, NamedTuple}) where {Func}
-    return PlotList(user_args, user_attributes)
-end
-
-# maybe useful?
-function Plot{Func}(user_args::Tuple{PlotSpec}, user_attributes::Union{Dict, NamedTuple}) where {Func}
-    return PlotList(([user_args[1]],), user_attributes)
 end

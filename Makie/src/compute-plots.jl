@@ -400,8 +400,7 @@ end
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args) where {P}
     inputs = _register_input_arguments!(attr, input_args)
     expanded_args = _register_expand_arguments!(P, attr, inputs, to_value.(input_args))
-    _register_argument_conversions!(P, attr, user_kw, expanded_args)
-    return
+    return _register_argument_conversions!(P, attr, user_kw, expanded_args)
 end
 
 function _register_input_arguments!(attr::ComputeGraph, input_args::Tuple)
@@ -588,33 +587,44 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw,
     add_convert_kwargs!(attr, user_kw, P, args)
     kw = attr.convert_kwargs[]
     args_converted = convert_arguments(P, args...; kw...)
-    error_check_convert_arguments(P, args, user_kw, args_converted)
+    rtype = error_check_convert_arguments(P, args, user_kw, args_converted)
     status = got_converted(P, conversion_trait(P, args...), args_converted)
 
     if status === SpecApi
+        # convert_arguments produces SpecApi outputs
 
+        # SpecApi outputs can be either Tuples or values
         map!(attr, [:args, :convert_kwargs], :converted) do dim_converted, convert_kwargs
             val = convert_arguments(P, dim_converted...; convert_kwargs...)
             rtype = error_check_convert_arguments(P, dim_converted, convert_kwargs, val)
-            rtype === :SpecApi || error("convert_arguments($P, $dim_converted) switch away from a SpecApi output. That is not allowed.")
-            return (val,)
+            return rtype === :Tuple ? val : (val,)
         end
-        ComputePipeline.unsafe_init!(attr.converted, (args_converted,))
+        converted = rtype === :Tuple ? args_converted : (args_converted,)
+        ComputePipeline.unsafe_init!(attr.converted, converted)
 
-        if args_converted isa Union{PlotSpec, AbstractVector{PlotSpec}}
+        if converted[1] isa Union{PlotSpec, AbstractVector{PlotSpec}}
+            # We will jump to the PlotList constructor which uses plotspecs as
+            # the converted name
             map!(attr, :converted, :plotspecs) do x
                 return x[1] isa PlotSpec ? [x[1]] : x[1]
             end
             return :PlotSpec
         else
-            n_args = length(args_converted)
+            # BlockSpec or GridLayoutSpec don't have a specialized constructor
+            # and connect_plot! method (yet), so they need the usual outputs
+            n_args = length(converted)
             map!(attr, :converted, [argument_names(P, n_args)...]) do converted
                 return converted # destructure
             end
+
+            add_input!(attr, :f32c, :uninitialized)
+
             return :SpecApi
         end
 
     else
+        # Normals plot processing - this can still produce SpecApi outputs if
+        # dim converts need to happen before convect_arguments
 
         dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))::DimConversions
         add_input!(attr, :dim_conversions, dim_converts)
@@ -651,8 +661,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw,
         map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
             val = convert_arguments(P, dim_converted...; convert_kwargs...)
             rtype = error_check_convert_arguments(P, dim_converted, convert_kwargs, val)
-            rtype === :Tuple || error("convert_arguments($P, $dim_converted) switch to a SpecApi output. That is not allowed.")
-            return val
+            return rtype === :Tuple ? val : (val,)
         end
 
         # If dim converts didn't do anything we can use the previous result of
@@ -665,7 +674,8 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw,
 
         converted = attr[:converted][]
         n_args = length(converted)
-        map!(attr, :converted, [argument_names(P, n_args)...]) do converted
+        converted_names = argument_names(P, n_args)
+        map!(attr, :converted, [converted_names...]) do converted
             return converted # destructure
         end
 
@@ -673,9 +683,18 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw,
         ComputePipeline.set_type!(attr.transform_func, Any)
 
         add_input!(attr, :f32c, :uninitialized)
-    end
 
-    return :Plot
+        if length(converted) == 1 && converted[1] isa Union{PlotSpec, AbstractArray{PlotSpec}}
+            # We will jump to the PlotList constructor which needs :plotspecs as
+            # the converted output
+            map!(x -> x isa PlotSpec ? [x] : vec(x), attr, converted_names[1], :plotspecs)
+            return :PlotSpec
+        elseif length(converted) == 1 && converted[1] isa Union{BlockSpec, GridLayoutSpec}
+            return :SpecApi
+        else
+            return :Plot
+        end
+    end
 end
 
 function register_marker_computations!(attr::ComputeGraph)
