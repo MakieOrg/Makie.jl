@@ -1507,12 +1507,14 @@ to_rotation(s::Quaternionf) = s
 to_rotation(s::Quaternion) = Quaternionf(s.data...)
 
 function to_rotation(s::VecTypes{N}) where {N}
-    return if N == 4
-        Quaternionf(s...)
+    if N == 4
+        return Quaternionf(s...)
     elseif N == 3
-        rotation_between(Vec3f(0, 0, 1), to_ndim(Vec3f, s, 0.0))
+        q64 = rotation_between(Vec3d(0, 0, 1), to_ndim(Vec3d, s, 0.0))
+        return Quaternionf(q64.data)
     elseif N == 2
-        rotation_between(Vec3f(0, 1, 0), to_ndim(Vec3f, s, 0.0))
+        q64 = rotation_between(Vec3d(0, 1, 0), to_ndim(Vec3d, s, 0.0))
+        return Quaternionf(q64.data)
     else
         error("The $N dimensional vector $s can't be converted to a rotation.")
     end
