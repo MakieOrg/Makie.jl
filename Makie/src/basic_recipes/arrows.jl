@@ -675,7 +675,7 @@ function Makie.plot!(plot::Arrows3D)
         return metrics
     end
 
-    map!(dirs -> LinearAlgebra.normalize.(dirs), plot, :world_directions, :normalized_dir)
+    map!(dirs -> normalize.(dirs), plot, :world_directions, :normalized_dir)
     map!(dirs -> to_ndim.(Vec3f, dirs, 0), plot, :normalized_dir, :rot)
 
     map!(metrics -> [Vec3f(2r, 2r, l) for (l, r, _, _, _, _) in metrics], plot, :arrow_metrics, :tail_scale)
