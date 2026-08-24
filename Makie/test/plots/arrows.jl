@@ -17,7 +17,7 @@ end
 
     ps = rand(Point3f, 5)
     vs = [0.1 .+ rand(Vec3f) for _ in 1:5] #
-    f,a,p = arrows3d(ps, vs)
+    f, a, p = arrows3d(ps, vs)
     @testset "unscaled" begin
         @test !all(onenorm.(vs))
         @test !all(onenorm.(p.world_directions[]))
@@ -49,7 +49,7 @@ end
     end
 
     @testset "transform_func scaled" begin
-        a.scene.transformation.transform_func[] = Makie.PointTrans{3}(p -> (1f0, 2f0, 3f0) .* p)
+        a.scene.transformation.transform_func[] = Makie.PointTrans{3}(p -> (1.0f0, 2.0f0, 3.0f0) .* p)
         @test !all(onenorm.(p.world_directions[]))
         @test all(onenorm.(p.normalized_dir[]))
 
