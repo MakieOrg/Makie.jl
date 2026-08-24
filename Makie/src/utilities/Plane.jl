@@ -191,7 +191,13 @@ end
 function apply_transform(transform::Mat4, plane::Plane3{T}) where {T}
     origin = Point3{T}(transform * to_ndim(Point4{T}, plane.distance * plane.normal, 1))
     target = Point3{T}(transform * to_ndim(Point4{T}, (plane.distance + 1) * plane.normal, 1))
-    normal = normalize(target - origin)
+    diff = target - origin
+    n = norm(diff)
+    # If the transform collapses the normal direction (e.g. a zero scale factor)
+    # the transformed plane is undefined. Return a no-op plane that never clips
+    # rather than one with a NaN distance, which clips everything.
+    !(n > 100 * eps(T)) && return Plane3{T}(Vec3{T}(0), T(0))
+    normal = diff / n
     return Plane3{T}(normal, dot(origin, normal))
 end
 
