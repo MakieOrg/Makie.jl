@@ -22,6 +22,7 @@
     - `compression` has no effect on `mkv` and `gif` outputs.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
   you have issues playing a video, try `profile = "high"` or `profile = "main"`.
+- `input_pixel_format = "rgb24"`: A ffmpeg compatible pixel format (`-pixel_format`) for the input video.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
   applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
 - `loop = 0`: Number of times the video is repeated, for a `gif` or `html` output. Defaults to `0`, which
@@ -38,6 +39,7 @@ struct VideoStreamOptions
     framerate::Int
     compression::Union{Nothing, Int}
     profile::Union{Nothing, String}
+    input_pixel_format::String
     pixel_format::Union{Nothing, String}
     loop::Union{Nothing, Int}
 
@@ -46,9 +48,17 @@ struct VideoStreamOptions
     rawvideo::Bool
 
     function VideoStreamOptions(
-            format::AbstractString, framerate::Real, compression, profile,
-            pixel_format, loop, loglevel::String, input::String, rawvideo::Bool = true
-        )
+        format::AbstractString,
+        framerate::Real,
+        compression,
+        profile,
+        input_pixel_format,
+        pixel_format,
+        loop,
+        loglevel::String,
+        input::String,
+        rawvideo::Bool = true,
+    )
 
         if !isa(framerate, Integer)
             @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To suppress this warning, provide an integer as the framerate."
@@ -106,12 +116,34 @@ struct VideoStreamOptions
         if !(loglevel in loglevels)
             error("loglevel needs to be one of $(loglevels)")
         end
-        return new(format, framerate, compression, profile, pixel_format, loop, loglevel, input, rawvideo)
+        return new(format, framerate, compression, profile, input_pixel_format, pixel_format, loop, loglevel, input, rawvideo)
     end
 end
 
-function VideoStreamOptions(; format = "mp4", framerate = 24, compression = nothing, profile = nothing, pixel_format = nothing, loop = nothing, loglevel = "quiet", input = "pipe:0", rawvideo = true)
-    return VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, input, rawvideo)
+function VideoStreamOptions(;
+    format = "mp4",
+    framerate = 24,
+    compression = nothing,
+    profile = nothing,
+    input_pixel_format = "rgb24",
+    pixel_format = nothing,
+    loop = nothing,
+    loglevel = "quiet",
+    input = "pipe:0",
+    rawvideo = true,
+)
+    return VideoStreamOptions(
+        format,
+        framerate,
+        compression,
+        profile,
+        input_pixel_format,
+        pixel_format,
+        loop,
+        loglevel,
+        input,
+        rawvideo,
+    )
 end
 
 function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer = 0)
@@ -144,7 +176,7 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
         ffmpeg_prefix = `
             $ffmpeg_prefix
             -framerate $(framerate)
-            -pixel_format rgb24
+            -pixel_format $(vso.input_pixel_format)
             -f rawvideo`
     end
     xdim > 0 && ydim > 0 && (ffmpeg_prefix = `$ffmpeg_prefix -s:v $(xdim)x$(ydim)`)
@@ -224,7 +256,7 @@ mutable struct VideoStream
     process::Base.Process
     screen::MakieScreen
     tick_controller::TickController
-    buffer::Matrix{RGB{N0f8}}
+    buffer::Matrix
     path::String
     options::VideoStreamOptions
 end
@@ -278,8 +310,10 @@ function VideoStream(
     _ydim, _xdim = size(first_frame)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
-    buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
-    vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, "pipe:0", true)
+    buffer = Matrix{eltype(first_frame)}(undef, xdim, ydim)
+    @debug "FFmpeg input" eltype=eltype(first_frame)
+    input_pixel_format = _color_type_to_string(eltype(first_frame))
+    vso = VideoStreamOptions(format, framerate, compression, profile, input_pixel_format, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
     # a plain `open` without the `pipeline` causes hangs when IOCapture.capture closes over a function that creates
     # a `VideoStream` without closing the process explicitly, such as when returning `Record` in a cell in Documenter or quarto
@@ -303,6 +337,8 @@ function recordframe!(io::VideoStream)
     # Make no copy if already Matrix{RGB{N0f8}}
     # There may be a 1px padding for odd dimensions
     xdim, ydim = size(glnative)
+    @debug "glnative, size(glnative)" glnative=eltype(glnative) size(glnative)
+    @debug "eltype(io.buffer) size(io.buffer)" eltype(io.buffer) size(io.buffer)
     if eltype(glnative) == eltype(io.buffer) && size(glnative) == size(io.buffer)
         write(io.io, glnative)
     else
@@ -348,3 +384,7 @@ function extract_frames(video, frame_folder; loglevel = "quiet")
     path = joinpath(frame_folder, "frame%04d.png")
     return run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
 end
+
+_color_type_to_string(::Type{RGB{N0f8}}) = "rgb24"
+_color_type_to_string(::Type{ARGB32}) = Base.ENDIAN_BOM == 0x04030201 ? "bgra" : "argb"
+_color_type_to_string(::Type{RGBA{T}}) where {T} = "rgba"
