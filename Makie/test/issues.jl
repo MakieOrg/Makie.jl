@@ -106,4 +106,10 @@
         p.sdf_uv[]
         @test true
     end
+
+    @testset "#5744 to_rotation resolution" begin
+        v = normalize(Vec3f(0.001, 0, -1))
+        @assert v !== Vec3f(0, 0, -1)
+        @test to_rotation(v) !== to_rotation(Vec3f(0, 0, -1))
+    end
 end
