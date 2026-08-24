@@ -55,11 +55,26 @@ function pbrt_to_makie(filename::AbstractString)
         lens_radius = Float32(Hikari.pbrt_get_float(pbrt.camera, "lensradius", 0.0))
         focal_distance = Float32(Hikari.pbrt_get_float(pbrt.camera, "focaldistance", 1.0e6))
     end
-    # Extract eye / target / up from the world-to-camera matrix
+    # Extract eye / target / up from the world-to-camera matrix.
+    #
+    # The DIRECTION must come from the matrix, not from the file's raw `LookAt`
+    # numbers: pbrt concatenates `LookAt` onto the CTM, so a leading transform
+    # (Crown's `Scale -1 1 1`) is part of the camera orientation, and the
+    # handedness difference between `pbrt_lookat` and `Raycore.look_at`
+    # documented in `Hikari/src/pbrt/scene_builder.jl:102-139` is already baked
+    # in. Only the DISTANCE has to be recovered separately, because a rigid
+    # transform is identical for every target along the view ray.
+    #
+    # It matters for interaction, not rendering: `Camera3D` scales pan by
+    # `2*norm(lookat-eye)/height` and zoom by `lookat - zoom_step*viewdir`,
+    # while rotation is angular. Pinning the target 1 unit ahead (which this
+    # did) left Crown panning 0.14 and zooming 0.10 world units per gesture
+    # against ~90x43x100 of geometry, i.e. visibly dead, with rotation fine.
     ctw = inv(pbrt.camera_transform)
     eye = Point3f(ctw[1,4], ctw[2,4], ctw[3,4])
     forward = normalize(Vec3f(-ctw[1,3], -ctw[2,3], -ctw[3,3]))
-    target = eye + forward
+    lookat_distance = pbrt.camera_lookat_distance
+    target = eye + forward * (lookat_distance > 0f0 ? lookat_distance : 1f0)
     up = normalize(Vec3f(ctw[1,2], ctw[2,2], ctw[3,2]))
 
     # --- Integrator settings ---
@@ -125,6 +140,30 @@ function pbrt_to_makie(filename::AbstractString)
     # --- Add shapes with materials ---
     for srec in pbrt.shapes
         pbrt_shape_to_makie!(scene, srec, pbrt, mat_cache, media_cache, hikari_textures)
+    end
+
+    # A scene that never issues `LookAt` (`camera_lookat_distance == 0`) has no
+    # recorded distance, so derive one from the geometry now that the shapes are
+    # in. Only possible here, after the shapes are added.
+    #
+    # Moving the target along the view ray leaves the view matrix mathematically
+    # unchanged -- `look_at` normalizes the direction -- so this rescales
+    # pan/zoom without reframing anything. Not bit-identical, though: measured
+    # on Crown the Float32 rounding of `normalize` shifts the matrix by 1.9e-6,
+    # which is orders of magnitude below a pixel but will not survive an exact
+    # image comparison.
+    #
+    # `data_limits` is a rough proxy: a single oversized plot inflates it (on
+    # Crown a ±100 light proxy dominates geometry that is really ~90x43x100).
+    # That is acceptable for a fallback and is why the recorded distance is
+    # preferred whenever the file provides one.
+    if lookat_distance <= 0f0
+        lims = Makie.data_limits(scene)
+        c = (minimum(lims) .+ maximum(lims)) ./ 2
+        d = norm(Vec3f(c) - Vec3f(eye))
+        if isfinite(d) && d > 1.0f-6
+            update_cam!(scene, eye, eye + forward * Float32(d), up)
+        end
     end
 
     sensor = Hikari.PixelSensor(sensor=sensor_name, iso=sensor_iso,
