@@ -38,8 +38,6 @@ function initialize_block!(ax::Axis3)
         if clip
             _planes = planes(lims)
             _planes = apply_transform.(Ref(model), _planes)
-            # drop planes collapsed into no-ops by a degenerate model matrix
-            filter!(plane -> !iszero(plane.normal), _planes)
             nudge = 1.0f0 + 1.0f-5 # clip slightly outside to avoid float precision issues with 0 margin
             clip_planes = map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
             # Creating a plot in Axis3 will read scene.theme.clip_planes to initialize
@@ -294,6 +292,9 @@ function calculate_matrices(
     else
         error("Invalid aspect $aspect")
     end
+
+    # Do not allow dimensions to collapse
+    scales = @. ifelse(abs(scales) < floatmin(Float32), ifelse(scales < 0f0, -1f0, 1f0), scales)
 
     # center and scale axis bbox so that the longest side is -1..1
     # then rotate (and permute axes) according to azimuth and elevation
