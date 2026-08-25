@@ -294,7 +294,7 @@ function calculate_matrices(
     end
 
     # Do not allow dimensions to collapse
-    scales = @. ifelse(abs(scales) < floatmin(Float32), ifelse(scales < 0f0, -1f0, 1f0), scales)
+    scales = @. ifelse(abs(scales) < floatmin(Float32), ifelse(scales < 0.0f0, -1.0f0, 1.0f0), scales)
 
     # center and scale axis bbox so that the longest side is -1..1
     # then rotate (and permute axes) according to azimuth and elevation
