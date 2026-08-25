@@ -120,8 +120,12 @@ function _chosen_limits(rz, ax)
         mini = Point2(mini[1], lims_mini[2])
         maxi = Point2(maxi[1], lims_maxi[2])
     end
-    clamped_min = clamp.(mini, lims_mini, lims_maxi)
-    clamped_max = clamp.(maxi, lims_mini, lims_maxi)
+    return _clamp_rectanglezoom_limits(mini, maxi, lims_mini, lims_maxi)
+end
+
+function _clamp_rectanglezoom_limits(selected_mini, selected_maxi, visible_mini, visible_maxi)
+    clamped_min = clamp.(selected_mini, visible_mini, visible_maxi)
+    clamped_max = clamp.(selected_maxi, visible_mini, visible_maxi)
     return Rect2(clamped_min, Vec2(clamped_max .- clamped_min))
 end
 
