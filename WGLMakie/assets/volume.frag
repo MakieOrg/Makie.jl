@@ -187,9 +187,13 @@ vec4 contours(vec3 front, vec3 dir)
 
         float opacity = color_sample.a;
         if(opacity > 0.0){
-            vec3 N = gennormal(pos, step_size);
-            vec3 L = light_direction;
-            vec3 opaque = blinnphong(N, camdir, L, color_sample.rgb);
+            vec3 opaque = color_sample.rgb
+            if (intensity < 1.0 || intensity > 0.0)
+            {
+                vec3 N = gennormal(pos, step_size);
+                vec3 L = light_direction;
+                opaque = blinnphong(N, camdir, L, color_sample.rgb);
+            }
             color_sum += (transmittance * opacity) * opaque;
             transmittance *= 1.0 - opacity;
 
@@ -235,13 +239,17 @@ vec4 mip(vec3 front, vec3 dir)
     int i = 0;
     float maximum = -10000000000000000.0;
     bool highclip_visible = get_highclip_color().a > 0.0;
+    bool has_finite_sample = false;
 
     for (i; i < samples; ++i, pos += dir){
         float density = texture(uniform_color, pos).x;
+        has_finite_sample = has_finite_sample || (density < 1.0) || (density > 0.0);
         bool consider_sample = less_than_max(density, uniform_colorrange) || highclip_visible;
         if (consider_sample && (maximum < density))
             maximum = density;
     }
+    if (!has_finite_sample)
+        return nan_color;
     if (maximum == -10000000000000000.0)
         maximum = 10000000000000000.0;
     return color_lookup(maximum, uniform_colormap, uniform_colorrange);

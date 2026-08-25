@@ -197,7 +197,7 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     end
 
     volume!(
-        plot, Attributes(plot),
+        plot, plot.attributes,
         plot.converted_1, plot.converted_2, plot.converted_3, plot.converted_4,
         alpha = 1.0, # don't apply alpha 2 times
         algorithm = 7, # contour algorithm
