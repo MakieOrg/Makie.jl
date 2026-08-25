@@ -816,9 +816,12 @@ function review_content(root_path, backends, score_thresholds; display_threshold
     updated_cards = build_card_grid(imgs_with_score, backends, file -> haskey(lookup, file), review_card)
 
     cov = approval_coverage(root_path)
-    all_approved = cov.n_approved == cov.n_changed
-    summary = "$(cov.n_approved) of $(cov.n_changed) new/changed images approved by pin files" *
-        (all_approved ? "" : ", the rest still need to be added before merge")
+    summary = if total_images(cov) == 0
+        coverage_summary(cov)
+    else
+        coverage_summary(cov) * " by pin files" *
+            (fully_approved(cov) ? "" : ", the rest still need to be added before merge")
+    end
 
     cycle_controls = DOM.div(
         DOM.input(type = "checkbox", class = "cycle-checkbox"),
