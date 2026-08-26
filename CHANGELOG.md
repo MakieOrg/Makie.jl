@@ -2,7 +2,11 @@
 
 ## Breaking
 
-- **breaking** `image(mat)` now renders typical images upright by default: dimension 1 of the matrix is interpreted as y (instead of x as before), and `image` sets `yreversed = true` as a hint when it creates a new axis. The new `orientation` attribute can be used for matrices stored in other layouts.
+- **breaking** `image(mat)` now renders typical images upright by default: dimension 1 of the matrix is interpreted as y (instead of x as before), and `image` sets `yreversed = true` as a hint when it creates a new axis. The new `orientation` attribute can be used for matrices stored in other layouts [#5638](https://github.com/MakieOrg/Makie.jl/pull/5638). Migration:
+  - Remove `rotr90` (or similar) calls that only prepared an image for display: `image(rotr90(img))` becomes `image(img)`.
+  - Plots layered on top of such images had to use the transposed y-up coordinates before; those coordinates must be adjusted back: with the default `orientation`, matrix index `[i, j]` now sits at `x = j - 0.5, y = i - 0.5` on a y-reversed axis.
+  - The old behavior for a given matrix is `orientation = (:right, :down)` plus `yreversed = false` on the axis.
+  - `uv_transform` on `image` is now an extra transform composed with `orientation` (identity by default) instead of a replacement for the default texture flip.
 - **breaking** Moved `FFMPEG_jll` from a hard dependency to a package extension to avoid pulling in GPL-licensed libraries (e.g. libx264). `record`, `VideoStream`, `convert_video`, and `extract_frames` now require `FFMPEG_jll` to be available in the active environment; Makie will load it automatically on first use. A custom ffmpeg binary can be configured via `Makie.ffmpeg_path!(path)` (or persistently via Preferences.jl). [#5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
 - Expanded scope of dim converts [#5323](https://github.com/MakieOrg/Makie.jl/pull/5323)
   - **breaking** most plot recipes now set the target types for their conversions. This means `plot!(::PlotType{<:Tuple{<:MyArgType}})` requires introducing a conversion trait and extending `Makie.types_for_plot_arguments()`. See docs.
