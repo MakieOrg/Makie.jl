@@ -49,12 +49,51 @@ end
 is_trace_robj(robj) = robj !== nothing && hasproperty(robj, :handle)
 
 function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, last_robj)
+    # Geometry only. `trace_color_tex` was in this set, so recolouring a mesh
+    # tore down its BLAS and rebuilt it — the colour never reaches the geometry,
+    # it only ever feeds `extract_material` in `push_to_scene_simple`.
     needs_rebuild = !is_trace_robj(last_robj) ||
                     changed.mesh || changed.positions_transformed_f32c ||
                     changed.faces || changed.normals ||
-                    changed.texturecoordinates || changed.trace_color_tex
+                    changed.texturecoordinates
+
+    # A colour change is a material swap, with one catch: `MultiTypeSet.update!`
+    # replaces in place and so requires the same CONCRETE type. Recolouring can
+    # change it — a scalar `Kd` gives `Diffuse{RGBSpectrum}` where a texture
+    # gives `Diffuse{Texture{...}}` — and that case still needs the re-push.
+    # Decided here rather than in `mesh_trace_update!` because only this function
+    # can fall back to a rebuild.
+    recolor_material = nothing
+    if !needs_rebuild && changed.trace_color_tex
+        recolor_material = trace_material_for_color(plot, args)
+        if recolor_material === nothing ||
+                typeof(recolor_material) !== typeof(last_robj.material)
+            needs_rebuild = true
+        end
+    end
 
     if needs_rebuild
+        # Classify BEFORE rebuilding, and only for a mesh that already had a
+        # BLAS — the first build is not something a refit could have avoided.
+        if is_trace_robj(last_robj)
+            # `changed.mesh` is deliberately NOT consulted: `:mesh` is the
+            # container `register_mesh_decomposition!` decomposes, so replacing
+            # `arg1` dirties it whatever the new mesh contains. The decomposed
+            # nodes are the topology signal, and they are accurate — a mesh
+            # rebuilt with equal faces reports `faces = false`.
+            #
+            # One trap in reading them: `ComputePipeline.is_same(::Array, ::Array)`
+            # reports the SAME array object as CHANGED, because in-place mutation
+            # between resolves is undetectable, and only compares by `isequal`
+            # when the pointers differ. So handing back the identical `faces`
+            # vector marks it dirty while handing back a copy does not.
+            if (changed.positions_transformed_f32c || changed.normals) &&
+                    !(changed.faces || changed.texturecoordinates)
+                state.refit_eligible_rebuilds += 1
+            else
+                state.topology_rebuilds += 1
+            end
+        end
         # Drop the previous trace handle (if any) before rebuilding so
         # scene.materials / scene.media_interfaces stay bounded.
         is_trace_robj(last_robj) && delete_trace_handles!(hikari_scene, last_robj)
@@ -62,7 +101,29 @@ function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, la
         return mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx)
     end
 
-    return mesh_trace_update!(hikari_scene, state, last_robj, args, changed)
+    return mesh_trace_update!(hikari_scene, state, last_robj, args, changed, recolor_material)
+end
+
+"""
+    trace_material_for_color(plot, args) -> Hikari.Material or nothing
+
+The material `push_to_scene_simple` would build for the current colour, without
+touching the geometry. `nothing` means "cannot be done without a rebuild".
+
+Per-vertex colours are the reason this can fail: they are baked into a texture
+against the mesh's vertex count, so `build_vertex_color_texture` needs the mesh.
+`args.mesh` is a `MetaMesh` for glTF/OBJ content, whose embedded per-face
+materials `push_to_scene` resolves through a different path entirely — that one
+is left to the rebuild rather than reimplemented here.
+"""
+function trace_material_for_color(plot, args)
+    color_tex = args.trace_color_tex
+    if color_tex isa AbstractVector{<:Colorant}
+        mesh_val = args.mesh
+        mesh_val isa GeometryBasics.Mesh || return nothing
+        color_tex = build_vertex_color_texture(color_tex, mesh_val)
+    end
+    return extract_material(plot, color_tex)
 end
 
 function mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx)
@@ -75,9 +136,17 @@ function mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx)
     return robj
 end
 
-function mesh_trace_update!(hikari_scene, state, robj, args, changed)
+function mesh_trace_update!(hikari_scene, state, robj, args, changed, recolor_material = nothing)
     if changed.model_f32c
         update_trace_transform!(hikari_scene, state, robj, Mat4f(args.model_f32c))
+    end
+    if recolor_material !== nothing
+        # Type-checked against the stored material by the caller, so this is the
+        # in-place `MultiTypeSet.update!` and the BLAS is untouched. The robj
+        # carries the material forward so the next colour change compares
+        # against what is actually stored.
+        update_trace_material!(hikari_scene, state, robj, recolor_material)
+        robj = merge(robj, (material = recolor_material,))
     end
     if changed.material
         # Pass args.material raw (NOT through extract_material again).
@@ -352,20 +421,23 @@ end
 
 function update_trace_transform!(hikari_scene, state, robj, transform)
     tlas = hikari_scene.accel
-    backend = tlas.backend
 
-    if hasproperty(robj, :handles)
-        for h in robj.handles
-            actual_handle = h isa Hikari.SceneHandle ? h.geometry : h
-            Raycore.update_transform!(tlas, actual_handle, transform)
-        end
-    else
-        h = robj.handle
+    # `update_transform!(accel, handle, transform)` for BOTH shapes. The single
+    # -handle branch used to take the index-based
+    # `update_instance_transforms!(tlas, transforms, 1, idx)`, which only
+    # `Raycore.TLAS` implements — `Lava.HWTLAS` is batch/handle-addressed and has
+    # no such method. So under `hw_accel = true` (the default) moving a `mesh!`
+    # threw a MethodError that `poll_all_plots` logged and swallowed, and the
+    # transform silently never applied. The multi-handle branch was already on
+    # the handle API and worked, which is why meshscatter moved and mesh did not.
+    #
+    # A single mesh is a batch of one, and `update_transform!` sets every
+    # instance in the batch, so this is the same operation without the
+    # per-update `allocate` + `fill!` the index path needed.
+    handles = hasproperty(robj, :handles) ? robj.handles : (robj.handle,)
+    for h in handles
         actual_handle = h isa Hikari.SceneHandle ? h.geometry : h
-        idx = robj.instance_idx
-        transforms = KernelAbstractions.allocate(backend, Mat4f, 1)
-        fill!(transforms, transform)
-        Raycore.update_instance_transforms!(tlas, transforms, 1, idx)
+        Raycore.update_transform!(tlas, actual_handle, transform)
     end
     state.needs_film_clear = true
 end

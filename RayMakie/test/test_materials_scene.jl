@@ -7,6 +7,10 @@ using GeometryBasics, Hikari
 using Colors
 using RayMakie
 using Makie
+# `Raycore.KA.CPU()` is the default backend for every entry point below, but the
+# import was missing — the file depended on whatever harness ran it having
+# imported Raycore already. Same failure shape as denoise.jl's unbound `KA`.
+using Raycore
 
 """
     create_test_materials_scene(; size=(400, 300))
@@ -91,11 +95,19 @@ function test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
         exposure=0.5f0,
         tonemap=nothing,
         gamma=2.2f0,
-        sensor=Hikari.FilmSensor(iso=50, exposure_time=1.0, white_balance=0)
     )
 
     scene = create_test_materials_scene()
-    integrator = Hikari.VolPath(samples=samples, max_depth=4)
+    # The sensor belongs to the integrator, not the screen config. This file had
+    # drifted across three separate API moves at once, which is why it errored on
+    # its first line and sat outside runtests.jl: `Hikari.FilmSensor` became
+    # `PixelSensor` (and `white_balance` became `whitebalance`), `Raycore` was
+    # never imported despite `Raycore.KA.CPU()` being the default argument, and
+    # `sensor` was removed from `ScreenConfig`. `pbrt_to_makie.jl` shows the
+    # current shape: the sensor is a `VolPath` keyword.
+    integrator = Hikari.VolPath(samples=samples, max_depth=4,
+                                sensor=Hikari.PixelSensor(iso=50, exposure_time=1.0,
+                                                          whitebalance=0))
 
     img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
     return img

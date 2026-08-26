@@ -128,6 +128,18 @@ function extract_meshscatter_materials(plot::Makie.MeshScatter, n_instances::Int
     has_material = haskey(plot, :material) && !isnothing(to_value(plot.material))
     material_template = has_material ? to_value(plot.material) : nothing
 
+    # A material with no user-set colour is used as given. This is the same rule
+    # `extract_material` applies on the mesh path, and it was missing here: every
+    # branch below merges a colour over the template unconditionally, so
+    # `meshscatter!(...; material = Diffuse(Kd = red))` rendered in the cycler's
+    # palette colour instead. "Not set" is `:cycled`, not `nothing` — Makie's
+    # `resolve_cycled!` writes that symbol into every cycled attribute the user
+    # did not assign, which is why a `!== nothing` test cannot tell the two
+    # apart. Found by rendering it and looking: the state assertions all passed.
+    if material_template isa Hikari.Material && !color_was_set(plot)
+        return map(_ -> material_template, 1:n_instances)
+    end
+
     # Per-instance colors: use Makie's compute_colors to resolve colormapping
     if color isa AbstractVector && length(color) == n_instances
         computed = Makie.compute_colors(plot.attributes)
@@ -222,6 +234,12 @@ function meshscatter_update!(hikari_scene, state, robj, args, changed)
         foreach((h, m) -> Hikari.update_material!(hikari_scene, h.interface, m),
                 robj.handles, args.trace_materials)
         state.needs_film_clear = true
+        # Carry the new materials on the record too. The scene update above is
+        # what the renderer reads, so leaving this stale rendered CORRECTLY and
+        # only lied to anyone inspecting the renderobject — which is exactly how
+        # a test asserting the stored material can fail while the image is right.
+        # Mirrors what `mesh_trace_update!` does for the single-material case.
+        robj = merge(robj, (materials = args.trace_materials,))
     end
     return robj
 end
@@ -271,8 +289,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
         return (buf,)
     end
 
-    # 4. Per-instance materials (only refires when color changes or count changes).
-    register_computation!(attr, [:color, :n_instances],
+    # 4. Per-instance materials.
+    #
+    # `:material` MUST be an input even though the body reads `plot.material`
+    # rather than `args.material`: the compute graph re-runs a node only when a
+    # declared input changes, so with just `[:color, :n_instances]` a
+    # `plot.material = ...` assignment invalidated nothing and the swap never
+    # reached the scene. The value was read correctly and the node simply never
+    # ran. Conditional because `:material` is only present when the user gave
+    # one — same shape as image.jl's `:model_f32c` handling.
+    material_deps = haskey(attr, :material) ? [:color, :n_instances, :material] :
+                                              [:color, :n_instances]
+    register_computation!(attr, material_deps,
                           [:trace_materials]) do args, changed, last
         return (extract_meshscatter_materials(plot, max(args.n_instances, 1)),)
     end

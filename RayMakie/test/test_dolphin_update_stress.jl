@@ -7,7 +7,7 @@
 # (`Makie.update!(plt; material=new_MediumInterface)`).  Repeats for many
 # frames at minimal resolution + samples to surface:
 #
-#   * leaks (LIVE_BUFFERS / GPU_LIVE_BYTES growth across frames)
+#   * leaks (live_buffer_count / gpu_live_bytes growth across frames)
 #   * use-after-free assertions
 #   * batch.bq desync
 #   * SPIR-V emit failures triggered by dynamic mesh/material updates
@@ -54,8 +54,8 @@ caller can assert against drift.
 """
 function dolphin_like_loop(; hw_accel::Bool, n_frames::Int=10, samples::Int=1)
     GC.gc(true); sleep(0.1); GC.gc(true)
-    base_bufs  = length(Lava.LIVE_BUFFERS)
-    base_bytes = Lava.GPU_LIVE_BYTES[]
+    base_bufs  = Lava.live_buffer_count(ctx)
+    base_bytes = Lava.gpu_live_bytes(ctx)
 
     scene = Scene(size=(96, 64); lights=Makie.AbstractLight[
         Makie.DirectionalLight(Makie.RGBf(2, 2, 2), Vec3f(-0.4, -0.5, -0.7))],
@@ -81,14 +81,14 @@ function dolphin_like_loop(; hw_accel::Bool, n_frames::Int=10, samples::Int=1)
         # mat slot reused per the no-rebuild invariant in mesh_update_stress).
         Makie.update!(medium_plt; material=fresh_glass_with_medium(Float32(0.5 + 0.5 * sin(f))))
         img_sample = Makie.colorbuffer(screen)
-        push!(bufs_after, length(Lava.LIVE_BUFFERS))
-        push!(bytes_after, Lava.GPU_LIVE_BYTES[])
+        push!(bufs_after, Lava.live_buffer_count(ctx))
+        push!(bytes_after, Lava.gpu_live_bytes(ctx))
     end
     close(screen)
 
     GC.gc(true); sleep(0.2); GC.gc(true)
-    final_bufs = length(Lava.LIVE_BUFFERS)
-    final_bytes = Lava.GPU_LIVE_BYTES[]
+    final_bufs = Lava.live_buffer_count(ctx)
+    final_bytes = Lava.gpu_live_bytes(ctx)
 
     return (; base_bufs, base_bytes, bufs_after, bytes_after,
               final_bufs, final_bytes, img_sample)

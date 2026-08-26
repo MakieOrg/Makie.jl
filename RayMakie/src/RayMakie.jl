@@ -56,6 +56,15 @@ mutable struct RayMakieState
     overlay_only::Bool
     # Lifecycle: true after close(screen) — prevents operations on freed GPU resources
     closed::Bool
+    # Trace-path rebuild accounting. A rebuild whose only dirty geometry input is
+    # `positions_transformed_f32c` and/or `normals` is one a BLAS refit could
+    # have avoided; anything else (faces, mesh, uv) changed topology or layout
+    # and needs a new BVH regardless. Only that distinction is counted, because
+    # it is the only one that decides whether refit is worth having — a plain
+    # "updates vs rebuilds" ratio reads best on a scene where nothing changed at
+    # all and the compute node never re-ran.
+    refit_eligible_rebuilds::Int
+    topology_rebuilds::Int
 end
 
 # Helper to get TLAS from state
@@ -414,7 +423,7 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
 
     # Clear film when Makie camera changes (rotation, zoom, pan)
 
-    state = RayMakieState(rscene, film, camera, hikari_scene, false, nothing, false, false)
+    state = RayMakieState(rscene, film, camera, hikari_scene, false, nothing, false, false, 0, 0)
     # Guard: only clear film when the projection matrix actually changes.
     # Makie's Observable fires on every notify(), even when the value is identical.
     # Without this guard, GLMakie re-renders (triggered by overlay image updates)
@@ -446,7 +455,7 @@ function create_overlay_only_state(scene::Makie.Scene, screen)
     )
     film = Hikari.Film(ka_backend, film)
 
-    state = RayMakieState(scene, film, nothing, nothing, false, nothing, true, false)
+    state = RayMakieState(scene, film, nothing, nothing, false, nothing, true, false, 0, 0)
     return state
 end
 
