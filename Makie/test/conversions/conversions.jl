@@ -523,6 +523,21 @@ end
         @test Makie.image_cell_to_matrix_index(nothing, 3, 5)(1, 1) == CartesianIndex(1, 1)
         @test Makie.image_orientation_uv_transform(nothing) == Makie.image_orientation_uv_transform((:down, :right))
     end
+
+    @testset "internal image users declare their x-first layout" begin
+        internal_orientations(plot) = [c.orientation[] for c in plot.plots if c isa Image]
+
+        f, a, p = datashader(rand(Point2f, 100); async = false)
+        @test internal_orientations(p) == [(:right, :down)]
+
+        f, a, p = heatmap(Resampler(zeros(4, 4)))
+        @test internal_orientations(p) == [(:right, :down), (:right, :down)]
+
+        f = Figure()
+        cb = Colorbar(f[1, 1], colorrange = (0, 1), colormap = :viridis)
+        cb_images = filter(pl -> pl isa Image, cb.blockscene.plots)
+        @test [pl.orientation[] for pl in cb_images] == [(:right, :down)]
+    end
 end
 
 @testset "Triplot" begin

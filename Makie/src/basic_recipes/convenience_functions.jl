@@ -36,7 +36,8 @@ function showgradients(
             ax,
             0 .. 10,
             i .. (i + 1),
-            reshape(c, (length(c), 1))
+            reshape(c, (length(c), 1));
+            orientation = (:right, :down)
         )
 
         cmapstr = string(cmap)

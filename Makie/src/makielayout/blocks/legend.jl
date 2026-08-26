@@ -508,7 +508,8 @@ function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rec
     end
     plt = image!(
         scene, map(first, scene, lims), map(last, scene, lims),
-        attr.data, colormap = attr.colormap, colorrange = attr.imagecolorrange,
+        attr.data, orientation = (:right, :down),
+        colormap = attr.colormap, colorrange = attr.imagecolorrange,
         inspectable = false, alpha = attr.alpha, interpolate = attr.interpolate
     )
 
