@@ -466,7 +466,7 @@ _image_orientation(o) = o
     Makie.image_orientation_swap(orientation) -> Bool
 
 `true` if `orientation`'s first array dim runs along y (so the second array
-dim runs along x — a logical transpose from the legacy `(:right, :down)`
+dim runs along x, a logical transpose from the legacy `(:right, :down)`
 layout). `nothing` is treated as the default `(:down, :right)`. Errors on
 invalid input.
 """
@@ -575,7 +575,7 @@ end
 
 function convert_arguments(
         ::ImageLike, data::AbstractMatrix{<:Union{Real, Colorant}};
-        orientation = (:down, :right), kw...
+        orientation = nothing, kw...
     )
     nx_cells, ny_cells = image_rect_cells(orientation, size(data)...)
     x = (0.0f0, Float32(nx_cells))
@@ -586,7 +586,7 @@ end
 function convert_arguments(
         ::ImageLike, xs::RangeLike, ys::RangeLike,
         data::AbstractMatrix{<:Union{Real, Colorant}};
-        orientation = (:down, :right), kw...
+        orientation = nothing, kw...
     )
     image_orientation_swap(orientation)  # validate
     x = to_endpoints(xs, "x", ImageLike)
@@ -1185,7 +1185,7 @@ to_3d_offset(x::AbstractVector) = to_3d_offset.(x)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"meshscatter") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
-convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0)
 
 # Careful: Mat <: AbstractArray, which should be handled by other methods
 convert_attribute(x::Array, k::key"uv_transform") = convert_attribute.(x, Ref(k))

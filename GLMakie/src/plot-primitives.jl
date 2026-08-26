@@ -882,14 +882,16 @@ end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Image)
     # GLMakie's image-shader baseline (no uv_transform) renders as if the array has
-    # orientation (:right, :up) — texture (0, 0) at the bottom-left of the quad,
+    # orientation (:right, :up): texture (0, 0) at the bottom-left of the quad,
     # because OpenGL texture origin is at the bottom. We compose orientation_T
     # after flip_y so the effective transform takes that baseline to the requested
-    # orientation. User-provided uv_transform is ignored for now.
+    # orientation. The user uv_transform composes on the left so it acts in the
+    # matrix's own uv space, independent of orientation.
     flip_y = Mat3f(1, 0, 0, 0, -1, 0, 0, 1, 1)
-    map!(plot.attributes, [:orientation], :oriented_uv_transform) do orientation
+    map!(plot.attributes, [:uv_transform, :orientation], :oriented_uv_transform) do T, orientation
         ot = Makie.image_orientation_uv_transform(orientation)
-        return (ot * flip_y)[Vec(1, 2), Vec(1, 2, 3)]
+        T3 = isnothing(T) ? Mat3f(I) : Mat3f(T[1], T[2], 0, T[3], T[4], 0, T[5], T[6], 1)
+        return (T3 * ot * flip_y)[Vec(1, 2), Vec(1, 2, 3)]
     end
     return draw_atomic_as_image(screen, scene, plot; uv_transform_key = :oriented_uv_transform)
 end
