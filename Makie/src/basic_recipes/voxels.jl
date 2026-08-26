@@ -122,7 +122,7 @@ function register_voxel_colormapping!(attr)
             return cm
         end
     else
-        register_computation!(attr, [:color, :alpha], [:voxel_color]) do (color, alpha), changed, cached
+        map!(attr, [:color, :alpha], :voxel_color) do color, alpha
             if color isa AbstractVector # one color per id
                 output = Vector{RGBAf}(undef, 255)
                 @inbounds for i in 1:min(255, length(color))
@@ -131,14 +131,14 @@ function register_voxel_colormapping!(attr)
                 for i in (min(255, length(color)) + 1):255
                     output[i] = RGBAf(0, 0, 0, 0)
                 end
-                return (output,)
+                return output
             elseif color isa AbstractArray # image/texture
                 output = add_alpha.(to_color.(color), alpha)
-                return (output,)
+                return output
             elseif color isa Colorant # static
                 c = add_alpha(to_color(color), alpha)
                 output = [c for _ in 1:255]
-                return (output,)
+                return output
             else
                 error("Invalid color type $(typeof(color))")
             end

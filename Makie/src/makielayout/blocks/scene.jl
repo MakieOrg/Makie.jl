@@ -42,6 +42,7 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
             end
         end
     end
+
     return
 end
 
