@@ -20,7 +20,7 @@ produces two things:
 2. A resampled output for each input.
 """
 resample(::Type{<:Plot}, ::AbstractResampler, transform_func, args...) = (nothing, args...)
-resample(::Type{<:Plot}, ::Nothing, transform_func) = (nothing, )
+resample(::Type{<:Plot}, ::Nothing, transform_func) = (nothing,)
 
 # TODO: Might be preferable to give this the graph so it can check what attributes
 # are appropriately sized?
@@ -64,10 +64,7 @@ end
 
 
 resampled_attributes(::Type{<:Scatter}, ::AbstractResampler) = [:color, :markersize]
-resample(::LinearResampler, data) = data
-resample(::LinearResampler, data::VecTypes) = data
 
-# Other Resamplers could maybe hook into this as a default?
 function resample(interp::LinearResampler, data::AbstractVector)
     N = length(data)
     if N == interp.N
@@ -91,7 +88,9 @@ end
 function register_resampling!(plot::PlotType) where {PlotType}
     graph = plot.attributes
 
-    # add_input!((k, v) -> Ref{Any}(v), graph, :resampler, Resampler())
+    if !haskey(graph, :resampler)
+        add_input!((k, v) -> Ref{Any}(v), graph, :resampler, Resampler())
+    end
 
     map!(graph, [:resampler, :transform_func], [:interpolator]) do args...
         return resample(PlotType, args...)
