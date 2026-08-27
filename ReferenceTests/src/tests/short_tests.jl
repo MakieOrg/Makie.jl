@@ -67,7 +67,7 @@ end
 
 @reference_test "contour levels and colors" begin
     f = Figure()
-    contour(f[1, 1], RNG.randn(50, 40), levels = 3)
+    contour(f[1, 1], RNG.randn(50, 40), levels = 3, linewidth = [1, 3, 1])
     contour(f[1, 2], RNG.randn(50, 40), levels = [0.1, 0.5, 0.8])
     contour(
         f[2, 1], RNG.randn(33, 30), levels = [0.1, 0.5, 0.9],
