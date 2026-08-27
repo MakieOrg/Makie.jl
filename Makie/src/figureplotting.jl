@@ -171,6 +171,13 @@ struct FigureOnly end
 
 # axis attributes
 
+function preferred_axis_attributes(::Type{Axis}, plot::Image)
+    # The image quad is conceptually oriented top-down; with a default y-up
+    # axis that would flip the image upside-down. So `image` defaults to
+    # `yreversed = true` on freshly-created axes.
+    return (yreversed = true,)
+end
+
 function _preferred_axis_attributes(::Type{Block}, plot::Plot) where {Block}
     args = plot.args[]
     result1 = preferred_axis_attributes(Block, plot, args...)

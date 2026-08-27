@@ -366,10 +366,10 @@ end
     t1 = (1, 10)
     t2 = (1, 6)
 
-    xx = convert_arguments(Image, m3)
-    xx == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
     @testset "ImageLike conversion" begin
-        @test convert_arguments(Image, m3) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
+        # Convert returns the user matrix unchanged (orientation is applied by backends).
+        # Rect extents follow orientation: default `(:down, :right)` puts ncols along x, nrows along y.
+        @test convert_arguments(Image, m3) == ((0.0f0, 6.0f0), (0.0f0, 10.0f0), o3)
         @test convert_arguments(Image, i1, i2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
         @test convert_arguments(Image, i1, t2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
         @test convert_arguments(Image, t1, t2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
@@ -378,6 +378,12 @@ end
         @test_throws ErrorException convert_arguments(Image, i1, v2, m3)
         @test_throws ErrorException convert_arguments(Image, v3, i1, m3)
         @test_throws ErrorException convert_arguments(Image, v1, i3, m3)
+
+        # Legacy `(:right, :down)` swaps which dim sizes which axis.
+        @test convert_arguments(Image, m3; orientation = (:right, :down)) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
+        @test convert_arguments(Image, i1, i2, m3; orientation = (:right, :down)) == ((1.0, 10.0), (1.0, 6.0), o3)
+        @test_throws ErrorException convert_arguments(Image, m3; orientation = (:up, :up))
+        @test_throws ErrorException convert_arguments(Image, m3; orientation = :bogus)
 
         # TODO: Should probably fail because it's not accepted by backends?
         @test convert_arguments(Image, m1, m2, m3) === (m1, m2, m3)
@@ -425,6 +431,132 @@ end
                 @test convert_arguments(Heatmap, data) == res
             end
         end
+    end
+end
+
+@testset "image orientation" begin
+    mat = [
+        RGBf(1, 0, 0) RGBf(0, 0, 1);
+        RGBf(0, 1, 0) RGBf(1, 1, 0)
+    ]
+
+    @testset "user matrix flows through every orientation without copy" begin
+        # `convert_arguments` returns the user matrix unchanged for every orientation;
+        # backends apply orientation via their own render-time transforms (CTM for
+        # CairoMakie, uv_transform for GLMakie/WGLMakie). No allocation here.
+        for s in ((:down, :right), (:up, :left), (:right, :down), (:left, :up))
+            x, y, data = convert_arguments(Image, mat; orientation = s)
+            @test data === mat
+            @test x == Makie.EndPoints(0.0f0, 2.0f0)
+            @test y == Makie.EndPoints(0.0f0, 2.0f0)
+        end
+    end
+
+    @testset "default extents follow orientation" begin
+        rect_mat = rand(Float32, 3, 5)
+        x_yx, y_yx, _ = convert_arguments(Image, rect_mat)
+        @test x_yx == Makie.EndPoints(0.0f0, 5.0f0)
+        @test y_yx == Makie.EndPoints(0.0f0, 3.0f0)
+        x_xy, y_xy, _ = convert_arguments(Image, rect_mat; orientation = (:right, :down))
+        @test x_xy == Makie.EndPoints(0.0f0, 3.0f0)
+        @test y_xy == Makie.EndPoints(0.0f0, 5.0f0)
+    end
+
+    @testset "axis hint and orientation attribute" begin
+        rect_mat = rand(Float32, 3, 5)
+
+        fig, ax, p = image(rect_mat)
+        @test ax.xreversed[] === false
+        @test ax.yreversed[] === true
+        @test p.image[] === rect_mat
+        @test p.orientation[] === nothing || p.orientation[] === (:down, :right)
+
+        _, _, p_explicit = image(rect_mat; orientation = (:down, :right))
+        @test p_explicit.orientation[] === (:down, :right)
+
+        # axis hint is fixed regardless of orientation
+        for s in ((:down, :right), (:up, :left), (:right, :down), (:left, :down))
+            _, ax_s, _ = image(rect_mat; orientation = s)
+            @test (ax_s.xreversed[], ax_s.yreversed[]) === (false, true)
+        end
+
+        @test_throws ErrorException image(rect_mat; orientation = :bogus)
+        @test_throws ErrorException image(rect_mat; orientation = (:up, :down))
+    end
+
+    @testset "mutating image! does not touch existing axis" begin
+        fig = Figure()
+        existing_ax = Axis(fig[1, 1])
+        image!(existing_ax, rand(3, 5))
+        @test existing_ax.xreversed[] === false
+        @test existing_ax.yreversed[] === false
+    end
+
+    @testset "image_cell_to_matrix_index" begin
+        f = Makie.image_cell_to_matrix_index((:down, :right), 3, 5)
+        @test f(1, 1) == CartesianIndex(1, 1)
+        @test f(5, 3) == CartesianIndex(3, 5)
+        f2 = Makie.image_cell_to_matrix_index((:up, :left), 3, 5)
+        @test f2(1, 1) == CartesianIndex(3, 5)
+    end
+
+    @testset "image_matrix_to_cell_index inverts image_cell_to_matrix_index" begin
+        for orient in (
+                (:down, :right), (:down, :left), (:up, :right), (:up, :left),
+                (:right, :down), (:right, :up), (:left, :down), (:left, :up),
+            )
+            nx, ny = Makie.image_rect_cells(orient, 3, 5)
+            f = Makie.image_cell_to_matrix_index(orient, 3, 5)
+            g = Makie.image_matrix_to_cell_index(orient, 3, 5)
+            for cx in 1:nx, cy in 1:ny
+                idx = f(cx, cy)
+                @test g(idx[1], idx[2]) == (cx, cy)
+            end
+        end
+    end
+
+    @testset "continuous rect uv / matrix coordinate maps" begin
+        for orient in (
+                (:down, :right), (:down, :left), (:up, :right), (:up, :left),
+                (:right, :down), (:right, :up), (:left, :down), (:left, :up),
+            )
+            to_mat = Makie.image_rect_uv_to_matrix_coords(orient, 3, 5)
+            to_uv = Makie.image_matrix_coords_to_rect_uv(orient, 3, 5)
+            for u in (0.0, 0.3, 1.0), v in (0.0, 0.7, 1.0)
+                @test to_uv(to_mat(u, v)...) ≈ Vec2d(u, v)
+            end
+
+            cell_index = Makie.image_cell_to_matrix_index(orient, 3, 5)
+            nx, ny = Makie.image_rect_cells(orient, 3, 5)
+            for cx in 1:nx, cy in 1:ny
+                m = to_mat((cx - 0.5) / nx, (cy - 0.5) / ny)
+                @test CartesianIndex(round(Int, m[1] + 0.5), round(Int, m[2] + 0.5)) == cell_index(cx, cy)
+            end
+        end
+    end
+
+    @testset "nothing orientation is the default" begin
+        # `orientation` reaches backends as `nothing` when not set explicitly
+        # (it rides as a convert kwarg, which doesn't carry the recipe default).
+        @test Makie.image_orientation_swap(nothing) == Makie.image_orientation_swap((:down, :right))
+        @test Makie.image_rect_cells(nothing, 3, 5) == (5, 3)
+        @test Makie.image_cell_to_matrix_index(nothing, 3, 5)(1, 1) == CartesianIndex(1, 1)
+        @test Makie.image_orientation_uv_transform(nothing) == Makie.image_orientation_uv_transform((:down, :right))
+    end
+
+    @testset "internal image users declare their x-first layout" begin
+        internal_orientations(plot) = [c.orientation[] for c in plot.plots if c isa Image]
+
+        f, a, p = datashader(rand(Point2f, 100); async = false)
+        @test internal_orientations(p) == [(:right, :down)]
+
+        f, a, p = heatmap(Resampler(zeros(4, 4)))
+        @test internal_orientations(p) == [(:right, :down), (:right, :down)]
+
+        f = Figure()
+        cb = Colorbar(f[1, 1], colorrange = (0, 1), colormap = :viridis)
+        cb_images = filter(pl -> pl isa Image, cb.blockscene.plots)
+        @test [pl.orientation[] for pl in cb_images] == [(:right, :down)]
     end
 end
 

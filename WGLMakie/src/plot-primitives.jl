@@ -546,7 +546,16 @@ end
 function create_shader(::Scene, plot::Union{Heatmap, Image})
     attr = plot.attributes
     if plot isa Image
-        map!(to_3x3, attr, :uv_transform, :wgl_uv_transform)
+        # WebGL texture origin is bottom-left (same as OpenGL), so we compose
+        # orientation_T with flip_y just like GLMakie. The user uv_transform
+        # composes on the left so it acts in the matrix's own uv space,
+        # independent of orientation.
+        flip_y_mat = Mat3f(1, 0, 0, 0, -1, 0, 0, 1, 1)
+        map!(attr, [:uv_transform, :orientation], :wgl_uv_transform) do T, orientation
+            ot = Makie.image_orientation_uv_transform(orientation)
+            T3 = isnothing(T) ? Mat3f(I) : to_3x3(T)
+            return T3 * ot * flip_y_mat
+        end
     end
     add_uv_mesh!(attr)
     backend_colors!(attr)

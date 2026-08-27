@@ -966,7 +966,7 @@ end
     for (i, interp) in enumerate((true, false))
         for (j, plot_func) in enumerate(
                 (
-                    (fp, x, y, cs, interp) -> image(fp, to_tuple(x), to_tuple(y), cs, colormap = :viridis, interpolate = interp),
+                    (fp, x, y, cs, interp) -> image(fp, to_tuple(x), to_tuple(y), cs, colormap = :viridis, interpolate = interp, orientation = (:right, :down), axis = (; yreversed = false)),
                     (fp, x, y, cs, interp) -> heatmap(fp, x, y, cs, colormap = :viridis, interpolate = interp),
                     (fp, x, y, cs, interp) -> surface(fp, x, y, zeros(size(cs)), color = cs, colormap = :viridis, interpolate = interp, shading = NoShading),
                 )
@@ -987,6 +987,19 @@ end
         end
     end
 
+    f
+end
+
+@reference_test "image orientation variations" begin
+    n_rows, n_cols = 8, 12
+    li = LinearIndices((n_rows, n_cols))
+    mat = [(v = (li[i, j] - 1) / (n_rows * n_cols - 1); RGBf(v, v, v)) for i in 1:n_rows, j in 1:n_cols]
+    f = Figure(size = (900, 600))
+    for (n, s) in enumerate([(:down, :right), (:down, :left), (:up, :right), (:right, :down)])
+        row, col = divrem(n - 1, 2) .+ (1, 1)
+        ax = Axis(f[row, col]; aspect = DataAspect(), title = "orientation = $(s)", yreversed = true)
+        image!(ax, mat; orientation = s, interpolate = false)
+    end
     f
 end
 
