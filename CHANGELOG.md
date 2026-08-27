@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `Axis` spines now end exactly at the axis corners and rely on a `:square` linecap for corner coverage, instead of baking a half-spine-width extension into the geometry. This keeps exported figures (SVG/PDF) aligned when the stroke width is changed in an external editor; the rendered appearance is unchanged [#5765](https://github.com/MakieOrg/Makie.jl/pull/5765).
 - Fixed `BoundsError` in CairoMakie when clip planes remove all points of a plot, fixed `apply_transform(::Mat4, ::Plane3)` producing a `NaN`-distance plane that clips everything when the transform collapses the plane's normal direction, and fixed `Axis3` collapsing dimensions with zero-width limits [#5759](https://github.com/MakieOrg/Makie.jl/pull/5759).
 - Fixed log-scale `Axis` interactions producing invalid limits. [#5736](https://github.com/MakieOrg/Makie.jl/pull/5736)
 - Fixed `arrows3d` component alignment (tail, shaft, tip) when `normalize = true` and scaling applies (e.g. Axis3, `scale!`, `transform_func`). [#5711](https://github.com/MakieOrg/Makie.jl/issues/5711)

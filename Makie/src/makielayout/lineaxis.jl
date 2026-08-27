@@ -48,7 +48,7 @@ end
 
 function create_linepoints(
         pos_ext_hor,
-        flipped::Bool, spine_width::Number, trimspine::Union{Bool, Tuple{Bool, Bool}}, tickpositions::Vector{Point2f}, tickwidth::Number
+        flipped::Bool, trimspine::Union{Bool, Tuple{Bool, Bool}}, tickpositions::Vector{Point2f}
     )
 
     (position::Float32, extents::NTuple{2, Float32}, horizontal::Bool) = pos_ext_hor
@@ -57,33 +57,28 @@ function create_linepoints(
         trimspine = (trimspine, trimspine)
     end
 
+    # The spine ends exactly at the axis corners (or the outer ticks when trimmed).
+    # Corner coverage is handled by the :square linecap on the spine, which scales
+    # correctly with the stroke width if the exported figure is restyled.
     return if trimspine == (false, false) || length(tickpositions) < 2
         if horizontal
             y = position
-            p1 = Point2f(extents[1] - 0.5spine_width, y)
-            p2 = Point2f(extents[2] + 0.5spine_width, y)
-            return [p1, p2]
+            return [Point2f(extents[1], y), Point2f(extents[2], y)]
         else
             x = position
-            p1 = Point2f(x, extents[1] - 0.5spine_width)
-            p2 = Point2f(x, extents[2] + 0.5spine_width)
-            return [p1, p2]
+            return [Point2f(x, extents[1]), Point2f(x, extents[2])]
         end
     else
         extents_oriented = last(tickpositions) > first(tickpositions) ? extents : reverse(extents)
         if horizontal
             y = position
-            pstart = Point2f(-0.5f0 * tickwidth, 0)
-            pend = Point2f(0.5f0 * tickwidth, 0)
-            from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(extents_oriented[1] - 0.5spine_width, y)
-            to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(extents_oriented[2] + 0.5spine_width, y)
+            from = trimspine[1] ? tickpositions[1] : Point2f(extents_oriented[1], y)
+            to = trimspine[2] ? tickpositions[end] : Point2f(extents_oriented[2], y)
             return [from, to]
         else
             x = position
-            pstart = Point2f(0, -0.5f0 * tickwidth)
-            pend = Point2f(0, 0.5f0 * tickwidth)
-            from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(x, extents_oriented[1] - 0.5spine_width)
-            to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(x, extents_oriented[2] + 0.5spine_width)
+            from = trimspine[1] ? tickpositions[1] : Point2f(x, extents_oriented[1])
+            to = trimspine[2] ? tickpositions[end] : Point2f(x, extents_oriented[2])
             return [from, to]
         end
     end
@@ -488,13 +483,13 @@ function LineAxis(parent::Scene, attrs::Attributes)
     )
 
     linepoints = lift(
-        create_linepoints, parent, pos_extents_horizontal, flipped, spinewidth, trimspine,
-        tickpositions, tickwidth
+        create_linepoints, parent, pos_extents_horizontal, flipped, trimspine,
+        tickpositions
     )
 
     decorations[:axisline] = linesegments!(
         parent, linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, inspectable = false, linestyle = nothing
+        color = spinecolor, inspectable = false, linestyle = nothing, linecap = :square
     )
 
     translate!(decorations[:axisline], 0, 0, 20)
