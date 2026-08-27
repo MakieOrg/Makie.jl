@@ -36,7 +36,7 @@ mutable struct LavaRenderObject
     # Persistent arg buffer — avoids per-draw allocation from the global slab.
     # This is a small VkMappedBuffer (typically 256-512 bytes) that holds the
     # packed shader arguments. Written in-place each frame, never freed/reallocated.
-    arg_buffer::Any  # Nothing or Lava.VkMappedBuffer
+    arg_buffer::Any  # Nothing or Mantle.VkMappedBuffer
     push_data::Vector{UInt8}  # 8-byte push constant (BDA pointer), reused
 end
 
@@ -136,7 +136,7 @@ function compile_robj!(robj::LavaRenderObject, args::Tuple;
     if ds_layout === nothing && robj.bindings !== nothing
         ds_layout = robj.bindings.layout
     end
-    vert_shader, compiled = Lava.ensure_compiled_with_shader!(pipeline,
+    vert_shader, compiled = Mantle.ensure_compiled_with_shader!(pipeline,
         pipeline.vertex, pipeline.fragment, tt, tt;
         color_format, descriptor_set_layout=ds_layout)
     return vert_shader, compiled
@@ -145,7 +145,7 @@ end
 """Convert args tuple to device-side types (LavaArray → LavaDeviceArray)."""
 function gfx_type_tuple(args)
     types = map(args) do arg
-        arg isa Lava.LavaArray ? typeof(Lava.LavaDeviceArray(arg)) : typeof(arg)
+        arg isa Mantle.LavaArray ? typeof(Lava.LavaDeviceArray(arg)) : typeof(arg)
     end
     return Tuple{types...}
 end
@@ -174,7 +174,7 @@ function update_robj!(robj::LavaRenderObject, args::NamedTuple, changed::NamedTu
             # GPU buffer — update in place (capacity-aware resize + copyto)
             if value isa AbstractArray
                 if name === :indices
-                    robj.buffers[name] = Lava.alloc_index_buffer(UInt32.(value))
+                    robj.buffers[name] = Mantle.alloc_index_buffer(UInt32.(value))
                 else
                     buf = robj.buffers[name]
                     resize!(buf, length(value))
@@ -205,14 +205,14 @@ is_gpu_buffer(x::Vector) = true
 is_gpu_buffer(x) = false
 
 function construct_robj(pipeline::GraphicsPipeline, args::NamedTuple, arg_names::Tuple;
-                        backend=Lava.LavaBackend(), vertex_count=0, instances=1, bindings=nothing)
+                        backend=Mantle.LavaBackend(), vertex_count=0, instances=1, bindings=nothing)
     buffers = Dict{Symbol, LavaArray}()
     uniforms = Dict{Symbol, Any}()
     for name in keys(args)
         value = args[name]
         if is_gpu_buffer(value)
             if name === :indices
-                buffers[name] = Lava.alloc_index_buffer(UInt32.(value))
+                buffers[name] = Mantle.alloc_index_buffer(UInt32.(value))
             else
                 buffers[name] = Adapt.adapt(backend, value)
             end

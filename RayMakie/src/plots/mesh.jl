@@ -228,9 +228,9 @@ function mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat
     pipeline = get_mesh_pipeline!(screen)
     return LavaRenderObject(pipeline;
         arg_names = (:positions, :colors, :projectionview, :model),
-        buffers = Dict{Symbol, Lava.LavaArray}(
-            :positions => Lava.LavaArray(flat_positions),
-            :colors => Lava.LavaArray(flat_colors),
+        buffers = Dict{Symbol, Mantle.LavaArray}(
+            :positions => Mantle.LavaArray(flat_positions),
+            :colors => Mantle.LavaArray(flat_colors),
         ),
         uniforms = Dict{Symbol, Any}(
             :projectionview => pv,
@@ -425,7 +425,7 @@ function update_trace_transform!(hikari_scene, state, robj, transform)
     # `update_transform!(accel, handle, transform)` for BOTH shapes. The single
     # -handle branch used to take the index-based
     # `update_instance_transforms!(tlas, transforms, 1, idx)`, which only
-    # `Raycore.TLAS` implements — `Lava.HWTLAS` is batch/handle-addressed and has
+    # `Raycore.TLAS` implements — `Mantle.HWTLAS` is batch/handle-addressed and has
     # no such method. So under `hw_accel = true` (the default) moving a `mesh!`
     # threw a MethodError that `poll_all_plots` logged and swallowed, and the
     # transform silently never applied. The multi-handle branch was already on

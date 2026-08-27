@@ -9,21 +9,21 @@ using Test
 #   (2) referenced removed APIs (test_materials_scene.jl) — FIXED, see below, or
 #   (3) bypass the RayMakie package init by `include()`-ing internal source
 #       files (test_lava_array_meshscatter.jl pulls in lava_arrays.jl by hand,
-#       which leaves the Lava BatchQueue in a state that desyncs every
+#       which leaves the BatchQueue in a state that desyncs every
 #       subsequent RayMakie test in the same process), or
 #   (4) leave LavaArray finalizers attached to a semaphore whose timeline
 #       has been freed; running GC after them segfaults
 #       (test_caching_gc_correctness.jl).
 # Run those individually in fresh sessions when needed.
 #
-# (4) is FIXED — `Lava.allocate_batch_queue!` now hands the context ownership of
+# (4) is FIXED — `Mantle.allocate_batch_queue!` now hands the context ownership of
 # every queue it returns, so a semaphore cannot be finalized while a buffer that
 # names it is still alive, and `release_batch_queue!` is the way back out; see
-# Lava's test_batch_queue_lifetime.jl for the invariant.
+# Mantle's vulkan/test_batch_queue_lifetime.jl for the invariant.
 #
 # Re-checked 2026-08-25, and the reason they were failing had stopped being (4)
 # some time ago: both `test_caching_gc_correctness.jl` and
-# `test_dolphin_update_stress.jl` were calling Lava APIs the per-BatchQueue
+# `test_dolphin_update_stress.jl` were calling runtime APIs the per-BatchQueue
 # deferred-free refactor deleted — `flush_deferred_frees!`, `_live_buffers`,
 # `LIVE_BUFFERS`, `GPU_LIVE_BYTES`. They errored on the first line of every
 # testset, so the exclusion comment above was describing a hazard that no longer
@@ -43,6 +43,9 @@ using Test
 # coverage least likely to be duplicated elsewhere and most likely to matter.
 
 const TEST_FILES = [
+    # Source-only, no device: the architecture ledger goes first so it is
+    # reported before anything that can take a device down with it.
+    "test_lava_surface_ledger.jl",
     # CPU-only (no render), so it fails fast and before anything touches a device.
     "test_pbrt_import_settings.jl",
     "test_material_precedence.jl",
@@ -66,8 +69,8 @@ const TEST_FILES = [
 # `GPU_LIVE_BYTES` globals and passes 7/7 standalone (~24 s), and 12/12 when run
 # after test_transform_update_hwtlas.jl. But in the full run above it errors:
 #
-#     TypeError: expected Lava.CommandBatch, got Nothing
-#       Lava/src/runtime/launch.jl:298, in pack_args_direct!
+#     TypeError: expected Mantle.CommandBatch, got Nothing
+#       Mantle/src/vulkan/runtime/launch.jl:298, in pack_args_direct!
 #
 # i.e. `bq.active_batch` is nothing where a recording batch is expected. Ruled
 # out: it is NOT the `queue_released` guard added to `vk_free!` at the same time

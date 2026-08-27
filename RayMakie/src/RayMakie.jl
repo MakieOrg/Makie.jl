@@ -8,24 +8,33 @@ using GeometryBasics: VecTypes
 using Colors: N0f8, Colorant
 using ImageCore: RGBA, RGB, clamp01nan
 import Makie.Observables
+# Two packages, split by what each name IS.
+#
+# `Lava` is the SPIR-V compiler: the shader-stage intrinsics a shader body calls,
+# the enums a pipeline is DESCRIBED with, and the device-side array. None of it
+# needs a device to exist.
+#
+# `Mantle` is the runtime: the pipeline that gets built, the framebuffer it draws
+# into, the textures, the queue, the host array. All of it needs one.
+#
+# It was all `Lava` until 2026-08-27, when the runtime moved out of the compiler.
 import Lava
-import Lava: GraphicsPipeline, Premultiplied, TriangleList, NoCull, DepthOff,
-             LavaFramebuffer, OffscreenTarget,
-             LavaTexture2D, LavaSampler, SampledTexture, bind_textures,
-             vk_context, ensure_active_batch!, transition_image!,
+import Lava: Premultiplied, TriangleList, NoCull, DepthOff,
              vertex_index, instance_index, set_position!, set_point_size!,
              frag_coord_x, frag_coord_y, gfx_output, gfx_input,
              gfx_output_flat, gfx_input_flat,
              dFdx, dFdy,
              emit_vertex!, end_primitive!, primitive_id_in,
-             sample_texture_2d, LavaArray, LavaBackend,
-             BatchQueue,
-             allocate_batch_queue!,
-             LavaDeviceArray, GeometryConfig,
+             sample_texture_2d, LavaDeviceArray, GeometryConfig,
              LineListAdjacency, LineStripAdjacency, LineList, TriangleStrip, PointList,
              GfxTexture2D,
              geom_input, geom_input_position
-import Lava.Vulkan
+import Mantle
+import Mantle: GraphicsPipeline, LavaFramebuffer, OffscreenTarget,
+               LavaTexture2D, LavaSampler, SampledTexture, bind_textures,
+               vk_context, ensure_active_batch!, transition_image!,
+               LavaArray, LavaBackend, BatchQueue, allocate_batch_queue!
+import Mantle: VK
 using Adapt
 using Makie.ComputePipeline: register_computation!
 
@@ -736,7 +745,7 @@ end
 # one-Diffuse-sphere render here cut the unrelated 15-material `materials` scene's
 # cold host codegen from ~45s to ~10s.
 #
-# `Lava.@compile_workload` runs both halves under this kernel-cache version: the
+# `Mantle.@compile_workload` runs both halves under this kernel-cache version: the
 # first precompile compiles this scene's kernels and freezes them to disk, later
 # precompiles load them back instead of recompiling SPIR-V.
 #
@@ -746,10 +755,10 @@ end
 #     using RayMakie, Preferences
 #     set_preferences!(RayMakie, "precompile_workload" => false; force = true)  # disable
 const PRECOMPILE_KERNELS_VERSION = "raymakie_pc"
-Lava.@setup_workload begin
+Mantle.@setup_workload begin
     try
-        dev = Lava.LavaBackend()
-        Lava.@compile_workload PRECOMPILE_KERNELS_VERSION begin
+        dev = Mantle.LavaBackend()
+        Mantle.@compile_workload PRECOMPILE_KERNELS_VERSION begin
             scene = Scene(size = (96, 72),
                           lights = [PointLight(RGBf(30, 30, 30), Vec3f(4, 5, 6))])
             cam3d!(scene)

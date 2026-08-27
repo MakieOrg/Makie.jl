@@ -1,6 +1,6 @@
 # RayMakie / Lava: LavaArray pass-through for Makie's conversion + bounds path.
 #
-# When a user passes a Lava.LavaArray{Point3f, 1} as `positions` (or any
+# When a user passes a Mantle.LavaArray{Point3f, 1} as `positions` (or any
 # Point-typed array attribute) to a Makie plot, the default Makie pipeline
 # contains scalar-iteration sites that will error or warn on a GPU array:
 #
@@ -25,7 +25,10 @@
 # to canonical Point3f on the GPU side before constructing the LavaArray.
 
 import Makie
-import Lava: LavaArray, LavaBackend
+# `Mantle`, not `Lava`: the host array and the backend moved with the runtime
+# on 2026-08-27. `LavaDeviceArray` — the device-side one — stayed with the
+# compiler, which is the whole shape of the split in one line.
+import Mantle: LavaArray, LavaBackend
 import AcceleratedKernels as AK
 using GeometryBasics: Point
 

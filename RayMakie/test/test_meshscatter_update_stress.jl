@@ -543,7 +543,7 @@ mat4_translation(dx, dy, dz) = Mat4f(
     sphere = hires_sphere(50)
     @test length(GeometryBasics.faces(sphere)) > 1000
 
-    hwtlas = Lava.HWTLAS(LavaBackend())
+    hwtlas = Mantle.HWTLAS(LavaBackend())
     for cycle in 1:20
         h_big = Base.push!(hwtlas, sphere,
                            [mat4_translation(Float32(2i), 0f0, 0f0) for i in 1:200])

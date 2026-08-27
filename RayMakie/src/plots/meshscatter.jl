@@ -76,7 +76,7 @@ normalize_markersize(s) =
 # matrix's columns (matrix[3][4] is row-major in C). The 4th Julia row holds
 # translations (tx, ty, tz). To produce a homogeneous Mat4f we transpose the
 # rotation block and append [0,0,0,1] in the bottom row.
-function mat3x4_to_mat4(t::Lava.Mat3x4f)
+function mat3x4_to_mat4(t::Mantle.Mat3x4f)
     Mat4f(t[1,1], t[1,2], t[1,3], 0f0,
           t[2,1], t[2,2], t[2,3], 0f0,
           t[3,1], t[3,2], t[3,3], 0f0,
@@ -106,12 +106,12 @@ bcast_scalar(x)                       = x
 @inline as_vec3(s::Vec3f)   = s
 
 @inline function build_instance_mat3x4(p::Point3f, q::Vec4f, s)
-    Lava.Mat3x4f(Lava.build_4x3_pervec(Lava.quat_to_rot3x3(q), as_vec3(s), p)...)
+    Mantle.Mat3x4f(Mantle.build_4x3_pervec(Mantle.quat_to_rot3x3(q), as_vec3(s), p)...)
 end
 
 # `transforms` and `positions` must be the same length and on the same
 # backend.  We own the buffer in trace_transforms (allocated via
-# `similar(positions, Lava.Mat3x4f)`), so this is enforced upstream.
+# `similar(positions, Mantle.Mat3x4f)`), so this is enforced upstream.
 function pos_rot_scale_to_mat3x4!(transforms, positions, rotation, scale)
     transforms .= build_instance_mat3x4.(positions,
                                          bcast_scalar(rotation),
@@ -273,7 +273,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
                           [:trace_transforms]) do args, changed, last
         positions = args.positions
         n = length(positions)
-        n == 0 && return (Lava.Mat3x4f[],)
+        n == 0 && return (Mantle.Mat3x4f[],)
 
         rot = normalize_rotation(args.rotation)
         scale = normalize_markersize(args.markersize)
@@ -281,7 +281,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
         backend = KernelAbstractions.get_backend(positions)
         buf = if isnothing(last) || length(last.trace_transforms) != n ||
                  typeof(KernelAbstractions.get_backend(last.trace_transforms)) !== typeof(backend)
-            similar(positions, Lava.Mat3x4f)
+            similar(positions, Mantle.Mat3x4f)
         else
             last.trace_transforms
         end

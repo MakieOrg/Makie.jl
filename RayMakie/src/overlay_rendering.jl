@@ -32,7 +32,7 @@ end
 # Draw a single LavaRenderObject inside the active render pass
 # =============================================================================
 
-function draw_lava_renderobject!(screen, bq::Lava.BatchQueue, robj::LavaRenderObject, viewport, color_format, default_vp, default_sc)
+function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRenderObject, viewport, color_format, default_vp, default_sc)
     batch = bq.active_batch
     cmd = batch.cmd_buf
 
@@ -66,7 +66,7 @@ function draw_lava_renderobject!(screen, bq::Lava.BatchQueue, robj::LavaRenderOb
     args = build_args(robj)
     tt = gfx_type_tuple(args)
     ds_layout = robj.bindings !== nothing ? robj.bindings.layout : nothing
-    vert_shader, compiled = Lava.ensure_compiled_with_shader!(robj.pipeline,
+    vert_shader, compiled = Mantle.ensure_compiled_with_shader!(robj.pipeline,
         robj.pipeline.vertex, robj.pipeline.fragment, tt, tt;
         color_format=color_format, descriptor_set_layout=ds_layout)
 
@@ -75,23 +75,23 @@ function draw_lava_renderobject!(screen, bq::Lava.BatchQueue, robj::LavaRenderOb
             Vulkan.PIPELINE_BIND_POINT_GRAPHICS,
             compiled.pipeline_layout, UInt32(0),
             [robj.bindings.set], UInt32[])
-        Lava.pin!(batch, robj.bindings)
+        Mantle.pin!(batch, robj.bindings)
     end
 
-    push_data = Lava.pack_gfx_args(bq, args, vert_shader.push_info)
+    push_data = Mantle.pack_gfx_args(bq, args, vert_shader.push_info)
 
     if haskey(robj.buffers, :indices)
         ib = robj.buffers[:indices]
-        Lava.vk_draw_indexed_in_pass!(bq, compiled, length(ib);
+        Mantle.vk_draw_indexed_in_pass!(bq, compiled, length(ib);
             push_data=push_data, indices_buffer=ib.buf[].buffer)
     else
-        Lava.vk_draw_in_pass!(bq, compiled, robj.vertex_count;
+        Mantle.vk_draw_in_pass!(bq, compiled, robj.vertex_count;
             push_data=push_data, instances=robj.instances)
     end
 
-    Lava.pin!(batch, compiled)
+    Mantle.pin!(batch, compiled)
     for (_, buf) in robj.buffers
-        Lava.pin!(batch, buf)
+        Mantle.pin!(batch, buf)
     end
 end
 
@@ -171,9 +171,9 @@ function render_overlays_gfx!(screen, bq, target; scenes=nothing)
 
     # Render directly to target using the provided BatchQueue
 
-    if target isa Lava.WindowTarget
+    if target isa Mantle.WindowTarget
         win = target.window
-        w, h = Lava.size(win)
+        w, h = Mantle.size(win)
         view = win.views[win.current_image_idx + 1]
         image = win.images[win.current_image_idx + 1]
     else
@@ -185,7 +185,7 @@ function render_overlays_gfx!(screen, bq, target; scenes=nothing)
 
     extent = Vulkan.Extent2D(UInt32(w), UInt32(h))
     # No clear — overlays are alpha-blended on top of existing content
-    Lava.vk_begin_pass!(bq, view, image, extent; clear_color=nothing)
+    Mantle.vk_begin_pass!(bq, view, image, extent; clear_color=nothing)
 
     batch = bq.active_batch
     cmd = batch.cmd_buf
@@ -194,10 +194,10 @@ function render_overlays_gfx!(screen, bq, target; scenes=nothing)
     sc = Vulkan.Rect2D(Vulkan.Offset2D(0, 0), extent)
     Vulkan.cmd_set_scissor(cmd, [sc])
 
-    fmt = target isa Lava.WindowTarget ? target.window.format : target.fb.color_format
+    fmt = target isa Mantle.WindowTarget ? target.window.format : target.fb.color_format
     for (robj, robj_vp) in robjs
         draw_lava_renderobject!(screen, bq, robj, robj_vp, fmt, vp, sc)
     end
 
-    Lava.vk_end_pass!(bq)
+    Mantle.vk_end_pass!(bq)
 end

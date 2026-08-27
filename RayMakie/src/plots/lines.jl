@@ -82,7 +82,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
                 update_buffer!(robj, :lastlen, lastlen_data)
                 update_buffer!(robj, :valid_vertex, valid_data)
                 update_buffer!(robj, :thickness, thickness_data)
-                robj.buffers[:indices] = Lava.alloc_index_buffer(UInt32.(indices))
+                robj.buffers[:indices] = Mantle.alloc_index_buffer(UInt32.(indices))
                 robj.vertex_count = length(indices)
             end
             # Always update uniforms (cheap)
@@ -121,13 +121,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
                          :projectionview, :model, :px_per_unit, :depth_shift,
                          :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length),
-            buffers = Dict{Symbol, Lava.LavaArray}(
-                :vertex => Lava.LavaArray(vertex_data),
-                :color => Lava.LavaArray(color_data),
-                :lastlen => Lava.LavaArray(lastlen_data),
-                :valid_vertex => Lava.LavaArray(valid_data),
-                :thickness => Lava.LavaArray(thickness_data),
-                :indices => Lava.alloc_index_buffer(UInt32.(indices)),
+            buffers = Dict{Symbol, Mantle.LavaArray}(
+                :vertex => Mantle.LavaArray(vertex_data),
+                :color => Mantle.LavaArray(color_data),
+                :lastlen => Mantle.LavaArray(lastlen_data),
+                :valid_vertex => Mantle.LavaArray(valid_data),
+                :thickness => Mantle.LavaArray(thickness_data),
+                :indices => Mantle.alloc_index_buffer(UInt32.(indices)),
             ),
             uniforms = Dict{Symbol, Any}(
                 :projectionview => pv,
@@ -232,7 +232,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
             update_buffer!(robj, :lastlen, lastlen_data)
             update_buffer!(robj, :valid_vertex, valid_data)
             update_buffer!(robj, :thickness, thickness_data)
-            robj.buffers[:indices] = Lava.alloc_index_buffer(UInt32.(indices))
+            robj.buffers[:indices] = Mantle.alloc_index_buffer(UInt32.(indices))
             robj.uniforms[:projectionview] = pv
             robj.uniforms[:model] = model
             robj.uniforms[:resolution] = res
@@ -247,13 +247,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
             arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
                          :projectionview, :model, :px_per_unit, :depth_shift,
                          :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length),
-            buffers = Dict{Symbol, Lava.LavaArray}(
-                :vertex => Lava.LavaArray(vertex_data),
-                :color => Lava.LavaArray(color_data),
-                :lastlen => Lava.LavaArray(lastlen_data),
-                :valid_vertex => Lava.LavaArray(valid_data),
-                :thickness => Lava.LavaArray(thickness_data),
-                :indices => Lava.alloc_index_buffer(UInt32.(indices)),
+            buffers = Dict{Symbol, Mantle.LavaArray}(
+                :vertex => Mantle.LavaArray(vertex_data),
+                :color => Mantle.LavaArray(color_data),
+                :lastlen => Mantle.LavaArray(lastlen_data),
+                :valid_vertex => Mantle.LavaArray(valid_data),
+                :thickness => Mantle.LavaArray(thickness_data),
+                :indices => Mantle.alloc_index_buffer(UInt32.(indices)),
             ),
             uniforms = Dict{Symbol, Any}(
                 :projectionview => pv,

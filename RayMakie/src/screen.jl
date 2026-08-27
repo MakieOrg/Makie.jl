@@ -78,7 +78,7 @@ struct ScreenConfig
         actual_integrator = integrator isa Makie.Automatic ? VolPath(; hw_accel=true) : integrator
         actual_exposure = Float32(exposure)
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
-        actual_device = device isa Makie.Automatic ? Lava.LavaBackend() : device
+        actual_device = device isa Makie.Automatic ? Mantle.LavaBackend() : device
         actual_visible = visible isa Makie.Automatic ? true : visible
         return new(actual_integrator, actual_exposure, tonemap, actual_gamma, actual_device,
                    denoise, denoise_config, actual_visible, string(title), vsync)
@@ -116,7 +116,7 @@ mutable struct Screen <: Makie.MakieScreen
     memory::Union{Nothing, Hikari.DeviceMemory}
     config::ScreenConfig
     # Render loop (vulkan_viewer)
-    window::Any                 # Nothing or Lava.RenderWindow
+    window::Any                 # Nothing or Mantle.RenderWindow
     rendertask::Union{Nothing, Task}
     stop_renderloop::Threads.Atomic{Bool}
     last_colorbuffer::Union{Nothing, Matrix{RGB{N0f8}}}
@@ -133,7 +133,7 @@ mutable struct Screen <: Makie.MakieScreen
     gfx_atlas_size::Int
     fb_readback_buf::Any
     # Per-screen graphics BatchQueue — isolated from compute/transfer
-    gfx_bq::Any  # Lava.BatchQueue
+    gfx_bq::Any  # Mantle.BatchQueue
     # Per-screen graphics pipeline cache (no globals!)
     gfx_pipelines::Dict{Symbol, GraphicsPipeline}
 
@@ -159,9 +159,9 @@ Base.wait(screen::Screen) = !isnothing(screen.rendertask) && wait(screen.rendert
 """Get or create the screen's dedicated graphics BatchQueue."""
 function get_gfx_bq!(screen::Screen)
     if screen.gfx_bq === nothing
-        screen.gfx_bq = Lava.allocate_batch_queue!()
+        screen.gfx_bq = Mantle.allocate_batch_queue!()
     end
-    return screen.gfx_bq::Lava.BatchQueue
+    return screen.gfx_bq::Mantle.BatchQueue
 end
 
 function renderloop_running(screen::Screen)
@@ -313,7 +313,7 @@ function Base.close(screen::Screen)
     # The graphics queue goes back. It drains on the way out, which is what
     # retires everything the overlay pass recorded against it.
     if screen.gfx_bq !== nothing
-        Lava.release_batch_queue!(screen.gfx_bq::Lava.BatchQueue)
+        Mantle.release_batch_queue!(screen.gfx_bq::Mantle.BatchQueue)
         screen.gfx_bq = nothing
     end
 
@@ -663,19 +663,19 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     if has_overlays
         # Slow path: blit to offscreen framebuffer, render overlays on top, readback
         w, h = size(screen.output_buffer, 2), size(screen.output_buffer, 1)
-        fb = Lava.LavaFramebuffer(w, h; depth=false, color_format=COMPOSITE_FORMAT)
+        fb = Mantle.LavaFramebuffer(w, h; depth=false, color_format=COMPOSITE_FORMAT)
         bq = get_gfx_bq!(screen)
-        Lava.blit!(bq, Lava.OffscreenTarget(fb), screen.output_buffer; clear=false)
+        Mantle.blit!(bq, Mantle.OffscreenTarget(fb), screen.output_buffer; clear=false)
         for scene_state in screen.scene_states
             screen.state = scene_state
             poll_all_plots(screen, scene_state.makie_scene)
-            render_overlays!(screen, bq, Lava.OffscreenTarget(fb))
+            render_overlays!(screen, bq, Mantle.OffscreenTarget(fb))
         end
-        Lava.flush!(bq, Lava.vk_device())
-        Lava.Vulkan.device_wait_idle(Lava.vk_context().device)
+        Mantle.flush!(bq, Mantle.vk_device())
+        VK.device_wait_idle(Mantle.vk_context().device)
 
         # Readback framebuffer (has TRANSFER_SRC_BIT, unlike swapchain images)
-        pixels = Lava.readback_framebuffer(fb)
+        pixels = Mantle.readback_framebuffer(fb)
 
         # Convert BGRA UInt8 tuples -> RGBA{Float32} matrix (row-major -> column-major)
         result = Matrix{RGBA{Float32}}(undef, h, w)
@@ -764,7 +764,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
         @info "RayMakie: pipeline ready ($(round(time() - t0, digits=1))s) — opening window"
     end
 
-    win = Lava.RenderWindow(w, h; title=screen.config.title, vsync=screen.config.vsync,
+    win = Mantle.RenderWindow(w, h; title=screen.config.title, vsync=screen.config.vsync,
                             color_format=COMPOSITE_FORMAT)
     screen.window = win
     connect_glfw_events!(root_scene, win.handle, screen.stop_renderloop)
@@ -783,8 +783,8 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
     end
 
     screen.stop_renderloop[] = false
-    ctx = Lava.vk_context()
-    present_bq = Lava.allocate_batch_queue!()
+    ctx = Mantle.vk_context()
+    present_bq = Mantle.allocate_batch_queue!()
 
     screen.rendertask = @async begin
         yield()
@@ -797,16 +797,16 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
             KernelAbstractions.synchronize(screen.config.device)
 
-            Lava.acquire_next_image!(win)
-            Lava.blit!(present_bq, Lava.WindowTarget(win), screen.output_buffer; clear=false)
-            win_target = Lava.WindowTarget(win)
+            Mantle.acquire_next_image!(win)
+            Mantle.blit!(present_bq, Mantle.WindowTarget(win), screen.output_buffer; clear=false)
+            win_target = Mantle.WindowTarget(win)
             for ss in screen.scene_states
                 screen.state = ss
                 poll_all_plots(screen, ss.makie_scene)
                 render_overlays!(screen, present_bq, win_target)
             end
-            Lava.present_frame!(present_bq, win)
-            Lava.Vulkan.device_wait_idle(ctx.device)
+            Mantle.present_frame!(present_bq, win)
+            VK.device_wait_idle(ctx.device)
 
             while !screen.stop_renderloop[]
                 GLFW.PollEvents()
@@ -835,18 +835,18 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
 
                 screen.stop_renderloop[] && break
 
-                Lava.acquire_next_image!(win)
-                Lava.blit!(present_bq, Lava.WindowTarget(win), screen.output_buffer; clear=false)
+                Mantle.acquire_next_image!(win)
+                Mantle.blit!(present_bq, Mantle.WindowTarget(win), screen.output_buffer; clear=false)
 
-                win_target = Lava.WindowTarget(win)
+                win_target = Mantle.WindowTarget(win)
                 for ss in screen.scene_states
                     screen.state = ss
                     poll_all_plots(screen, ss.makie_scene)
                     render_overlays!(screen, present_bq, win_target)
                 end
 
-                Lava.present_frame!(present_bq, win)
-                Lava.Vulkan.device_wait_idle(ctx.device)
+                Mantle.present_frame!(present_bq, win)
+                VK.device_wait_idle(ctx.device)
 
                 # Cache composited frame for colorbuffer() to return without blocking.
                 # A failed readback leaves the PREVIOUS frame in the cache, so
@@ -873,7 +873,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             # is gone, which is the single most useful thing to know here and
             # was exactly what `catch end` threw away.
             try
-                Lava.Vulkan.device_wait_idle(ctx.device)
+                VK.device_wait_idle(ctx.device)
             catch e
                 @error "RayMakie: device_wait_idle failed during render-loop teardown" exception = (e, catch_backtrace())
             end
@@ -886,7 +886,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             # command pool, timeline semaphore and argument slabs for the life of
             # the device, and every start_renderloop! allocated a fresh one.
             try
-                Lava.release_batch_queue!(present_bq)
+                Mantle.release_batch_queue!(present_bq)
             catch e
                 @warn "RayMakie: releasing the presentation queue failed" exception = (e, catch_backtrace())
             end

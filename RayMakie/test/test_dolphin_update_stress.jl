@@ -20,7 +20,7 @@ using Test, Makie, RayMakie, Lava, Hikari, Raycore
 using GeometryBasics
 using GeometryBasics: Point3f, Vec3f, Rect3f, Sphere
 
-ctx = Lava.vk_context()
+ctx = Mantle.vk_context()
 const HW_AVAILABLE = ctx.ray_query_available
 
 # Two interchangeable mesh shapes — same mesh-recipe schema, different
@@ -54,8 +54,8 @@ caller can assert against drift.
 """
 function dolphin_like_loop(; hw_accel::Bool, n_frames::Int=10, samples::Int=1)
     GC.gc(true); sleep(0.1); GC.gc(true)
-    base_bufs  = Lava.live_buffer_count(ctx)
-    base_bytes = Lava.gpu_live_bytes(ctx)
+    base_bufs  = Mantle.live_buffer_count(ctx)
+    base_bytes = Mantle.gpu_live_bytes(ctx)
 
     scene = Scene(size=(96, 64); lights=Makie.AbstractLight[
         Makie.DirectionalLight(Makie.RGBf(2, 2, 2), Vec3f(-0.4, -0.5, -0.7))],
@@ -81,14 +81,14 @@ function dolphin_like_loop(; hw_accel::Bool, n_frames::Int=10, samples::Int=1)
         # mat slot reused per the no-rebuild invariant in mesh_update_stress).
         Makie.update!(medium_plt; material=fresh_glass_with_medium(Float32(0.5 + 0.5 * sin(f))))
         img_sample = Makie.colorbuffer(screen)
-        push!(bufs_after, Lava.live_buffer_count(ctx))
-        push!(bytes_after, Lava.gpu_live_bytes(ctx))
+        push!(bufs_after, Mantle.live_buffer_count(ctx))
+        push!(bytes_after, Mantle.gpu_live_bytes(ctx))
     end
     close(screen)
 
     GC.gc(true); sleep(0.2); GC.gc(true)
-    final_bufs = Lava.live_buffer_count(ctx)
-    final_bytes = Lava.gpu_live_bytes(ctx)
+    final_bufs = Mantle.live_buffer_count(ctx)
+    final_bytes = Mantle.gpu_live_bytes(ctx)
 
     return (; base_bufs, base_bytes, bufs_after, bytes_after,
               final_bufs, final_bytes, img_sample)
