@@ -1,25 +1,3 @@
-function sumlengths(points, resolution)
-    # normalize w component if available
-    f(p::VecTypes{4}) = p[Vec(1, 2)] / p[4]
-    f(p::VecTypes) = p[Vec(1, 2)]
-
-    invalid(p::VecTypes{4}) = p[4] <= 1.0e-6
-    invalid(p::VecTypes) = false
-
-    T = eltype(eltype(typeof(points)))
-    result = zeros(T, length(points))
-    for (i, idx) in enumerate(eachindex(points))
-        idx0 = max(idx - 1, 1)
-        p1, p2 = points[idx0], points[idx]
-        if any(map(isnan, p1)) || any(map(isnan, p2)) || invalid(p1) || invalid(p2)
-            result[i] = 0.0f0
-        else
-            result[i] = result[max(i - 1, 1)] + 0.5 * norm(resolution .* (f(p1) - f(p2)))
-        end
-    end
-    return result
-end
-
 # because the "color_type" generated in GLAbstraction also include "uniform"
 gl_color_type_annotation(x::Observable) = gl_color_type_annotation(x.val)
 gl_color_type_annotation(::Vector{<:Real}) = "float"
