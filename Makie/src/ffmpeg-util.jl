@@ -6,9 +6,10 @@
     * `"mkv"`  (open standard, the default)
     * `"mp4"`  (good for Web, most supported format)
     * `"webm"` (smallest file size)
+    * `"mov"`  (good for Apple devices, transparent background, but not widely supported)
     * `"gif"`  (largest file size for the same quality)
 
-    `mp4` and `mk4` are marginally bigger than `webm`. `gif`s can be significantly (as much as
+    `mp4`, `mk4`, and `mov` are marginally bigger than `webm`. `gif`s can be significantly (as much as
     6x) larger with worse quality (due to the limited color palette) and only should be used
     as a last resort, for playing in a context where videos aren't supported.
 - `framerate = 24`: The target framerate.
@@ -22,9 +23,11 @@
     - `compression` has no effect on `mkv` and `gif` outputs.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
   you have issues playing a video, try `profile = "high"` or `profile = "main"`.
-- `input_pixel_format = "rgb24"`: A ffmpeg compatible pixel format (`-pixel_format`) for the input video.
+    - for `mov`, the default is `4`, which is the highest quality ProRes 4444 format with alpha channel support.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
-  applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
+  applies to `mp4` and `mov`. Defaults to `yuv444p` for `profile = "high444"`.
+    -`mov` defaults to `yuva444p10` for `pixel_format` and `4` for `profile`, which is the
+    highest quality ProRes 4444 format with alpha channel support.
 - `loop = 0`: Number of times the video is repeated, for a `gif` or `html` output. Defaults to `0`, which
   means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
   means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
@@ -70,6 +73,11 @@ struct VideoStreamOptions
             (pixel_format === nothing) && (pixel_format = (profile == "high444" ? "yuv444p" : "yuv420p"))
         end
 
+        if format == "mov"
+            (profile === nothing) && (profile = "4")  # prores_ks:  0 = ProRes 422 Proxy 1 = ProRes 422 LT 2 = ProRes 422 3 = ProRes 422 HQ 4 = ProRes 4444 5 = ProRes 4444 XQ
+            (pixel_format === nothing) && (pixel_format = "yuva444p10")
+        end
+
         if format in ("mp4", "webm")
             (compression === nothing) && (compression = 20)
         end
@@ -79,8 +87,8 @@ struct VideoStreamOptions
         # items are name, value, allowed_formats
         allowed_kwargs = [
             ("compression", compression, ("mp4", "webm")),
-            ("profile", profile, ("mp4",)),
-            ("pixel_format", pixel_format, ("mp4",)),
+            ("profile", profile, ("mp4", "mov")),
+            ("pixel_format", pixel_format, ("mp4", "mov")),
         ]
 
         for (name, value, allowed_formats) in allowed_kwargs
@@ -160,8 +168,8 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
     # -b:v, -b:a: video and audio bitrate, respectively
     # -crf: "constant rate factor", the lower the better the quality (0 is lossless, 51 is
     #   maximum compression)
-    # -pix_fmt: (mp4 only) the output pixel format
-    # -profile:v: (mp4 only) the output video profile
+    # -pix_fmt: (mp4, mov only) the output pixel format
+    # -profile:v: (mp4, mov only) the output video profile
     # -an: no audio in output
     # -loop: (gif only) number of times to loop
     (format, framerate, compression, profile, pixel_format, loop) = (vso.format, vso.framerate, vso.compression, vso.profile, vso.pixel_format, vso.loop)
@@ -200,6 +208,12 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
         `-crf $(compression)
          -c:v libvpx-vp9
          -b:v 0
+         -an
+        `
+    elseif format == "mov"
+        `-profile:v $(profile)
+         -c:v prores_ks
+         -pix_fmt $(pixel_format)
          -an
         `
     elseif format == "gif"
@@ -337,8 +351,6 @@ function recordframe!(io::VideoStream)
     # Make no copy if already Matrix{RGB{N0f8}}
     # There may be a 1px padding for odd dimensions
     xdim, ydim = size(glnative)
-    @debug "glnative, size(glnative)" glnative=eltype(glnative) size(glnative)
-    @debug "eltype(io.buffer) size(io.buffer)" eltype(io.buffer) size(io.buffer)
     if eltype(glnative) == eltype(io.buffer) && size(glnative) == size(io.buffer)
         write(io.io, glnative)
     else
