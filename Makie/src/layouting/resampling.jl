@@ -46,7 +46,7 @@ resample(interp, data) = data
 ################################################################################
 
 # More or less an example...
-struct Resampler <: AbstractResampler end
+struct TestResampler <: AbstractResampler end
 
 
 struct LinearResampler <: AbstractResampler
@@ -55,7 +55,7 @@ struct LinearResampler <: AbstractResampler
 end
 
 mandatory_resampling_inputs(::Type{<:Scatter}, ::AbstractResampler) = [:positions]
-function resample(::Type{<:Plot}, ::Resampler, transform_func, positions)
+function resample(::Type{<:Plot}, ::TestResampler, transform_func, positions)
     steps = [i + di for i in eachindex(positions) for di in (0.0, 0.5)]
     interp = LinearResampler(steps, length(positions))
     new_pos = resample(interp, positions)
@@ -89,7 +89,7 @@ function register_resampling!(plot::PlotType) where {PlotType}
     graph = plot.attributes
 
     if !haskey(graph, :resampler)
-        add_input!((k, v) -> Ref{Any}(v), graph, :resampler, Resampler())
+        add_input!((k, v) -> Ref{Any}(v), graph, :resampler, TestResampler())
     end
 
     map!(graph, [:resampler, :transform_func], [:interpolator]) do args...
