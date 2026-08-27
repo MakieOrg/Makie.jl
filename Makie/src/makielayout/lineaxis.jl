@@ -162,21 +162,29 @@ function update_ticklabel_node(
     return
 end
 
-function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observable{Bool}, tickpositions, tickalign, ticksize, spinewidth)
+function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observable{Bool}, tickpositions, tickalign, ticksize)
     result = tick_obs[]
     empty!(result) # reuse allocated array
-    sign::Int = flipped[] ? -1 : 1
+    dir::Int = flipped[] ? -1 : 1
+    # Distance from the spine centerline to each tick tip. The drawn mark is always
+    # exactly `ticksize` long; `tickalign` (0 = out, 1 = in) slides it across the
+    # centerline, placing `(1 - tickalign) * ticksize` outside and `tickalign * ticksize`
+    # inside. Anchoring to the centerline rather than a spine edge means restyling the
+    # spine's stroke width (e.g. in a vector editor) can never push a mark meant to sit
+    # outside the axis into the plot area.
+    outer_len = (1 - tickalign) * ticksize
+    inner_len = tickalign * ticksize
     if horizontal[]
         for tp in tickpositions
-            tstart = tp + sign * Point2f(0.0f0, tickalign * ticksize - 0.5f0 * spinewidth)
-            tend = tstart + sign * Point2f(0.0f0, -ticksize)
-            push!(result, tstart, tend)
+            outer = tp + dir * Point2f(0.0f0, -outer_len)
+            inner = tp + dir * Point2f(0.0f0, inner_len)
+            push!(result, outer, inner)
         end
     else
         for tp in tickpositions
-            tstart = tp + sign * Point2f(tickalign * ticksize - 0.5f0 * spinewidth, 0.0f0)
-            tend = tstart + sign * Point2f(-ticksize, 0.0f0)
-            push!(result, tstart, tend)
+            outer = tp + dir * Point2f(-outer_len, 0.0f0)
+            inner = tp + dir * Point2f(inner_len, 0.0f0)
+            push!(result, outer, inner)
         end
     end
     notify(tick_obs)
@@ -331,8 +339,10 @@ function LineAxis(parent::Scene, attrs::Attributes)
     end
 
     tickspace = Observable(0.0f0; ignore_equal_values = true)
-    map!(parent, tickspace, ticksvisible, ticksize, tickalign) do ticksvisible, ticksize, tickalign
-        ticksvisible ? max(0.0f0, ticksize * (1.0f0 - tickalign)) : 0.0f0
+    # how far the tick marks reach past the outer spine edge; ticks are anchored on the
+    # spine centerline, so half a spine width of the outward part is covered by the spine
+    map!(parent, tickspace, ticksvisible, ticksize, tickalign, spinewidth) do ticksvisible, ticksize, tickalign, spinewidth
+        ticksvisible ? max(0.0f0, ticksize * (1.0f0 - tickalign) - 0.5f0 * spinewidth) : 0.0f0
     end
 
     labelgap = Observable(0.0f0; ignore_equal_values = true)
@@ -465,7 +475,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     onany(
         update_tick_obs, parent,
         Observable(minorticksnode), Observable(horizontal), Observable(flipped),
-        minortickpositions, minortickalign, minorticksize, spinewidth
+        minortickpositions, minortickalign, minorticksize
     )
 
     onany(
@@ -479,7 +489,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     onany(
         update_tick_obs, parent,
         Observable(ticksnode), Observable(horizontal), Observable(flipped),
-        tickpositions, tickalign, ticksize, spinewidth
+        tickpositions, tickalign, ticksize
     )
 
     linepoints = lift(
