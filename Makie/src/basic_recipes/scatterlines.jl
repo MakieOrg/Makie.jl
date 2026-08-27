@@ -12,6 +12,7 @@ Plots `scatter` markers and `lines` between them.
             :fxaa, :visible, :transparency, :space, :clip_planes, :ssao, :overdraw,
             :cycle, :transformation, :model, :depth_shift,
             :inspector_clear, :inspector_hover, :inspector_label, :inspectable,
+            :resampler
         )
     )...
     "The color of the line, and by default also of the scatter markers."
