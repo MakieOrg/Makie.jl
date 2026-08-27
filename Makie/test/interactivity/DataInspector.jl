@@ -40,6 +40,17 @@ using Makie: apply_tooltip_format, default_tooltip_formatter
         end
     end
 
+    @testset "tooltip matrix coords for indexed and interpolated accessors" begin
+        indexed = Makie.IndexedAccessor(CartesianIndex(2, 3), Makie.Vec{2, Int64}(4, 5))
+        @test Makie.continuous_matrix_coords(indexed) == (1.5, 2.5)
+
+        interpolated = Makie.InterpolatedAccessor(
+            CartesianIndex(2, 3), CartesianIndex(3, 4), Makie.Vec2f(0.25, 0.75),
+            Makie.Vec{2, Int64}(4, 5), false
+        )
+        @test Makie.continuous_matrix_coords(interpolated) == (1.75, 3.25)
+    end
+
     # TODO: add more tests for DataInspector pipeline, e.g. pick_element.
     # (This is already indirectly tested via refimages)
 end

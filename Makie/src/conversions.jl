@@ -547,6 +547,45 @@ function image_matrix_to_cell_index(orientation, nrows::Integer, ncols::Integer)
 end
 
 """
+    Makie.image_rect_uv_to_matrix_coords(orientation, nrows, ncols)
+
+Returns `f(u, v) -> Vec2d(m1, m2)` mapping a point in the rect's unit square to
+continuous matrix coordinates in cell units (`0 .. nrows` along dim 1,
+`0 .. ncols` along dim 2). Continuous counterpart of
+[`image_cell_to_matrix_index`](@ref): the center of the integer cell `(cx, cy)`
+maps to `index .- 0.5` of the matrix index that cell shows.
+"""
+function image_rect_uv_to_matrix_coords(orientation, nrows::Integer, ncols::Integer)
+    swap = image_orientation_swap(orientation)
+    flip_x, flip_y = image_orientation_flips(orientation)
+    nx, ny = image_rect_cells(orientation, nrows, ncols)
+    return function (u::Real, v::Real)
+        m_x = (flip_x ? 1 - u : u) * nx
+        m_y = (flip_y ? 1 - v : v) * ny
+        return swap ? Vec2d(m_y, m_x) : Vec2d(m_x, m_y)
+    end
+end
+
+"""
+    Makie.image_matrix_coords_to_rect_uv(orientation, nrows, ncols)
+
+Returns `f(m1, m2) -> Vec2d(u, v)` mapping continuous matrix coordinates in
+cell units back to the rect's unit square. Inverse of
+[`image_rect_uv_to_matrix_coords`](@ref).
+"""
+function image_matrix_coords_to_rect_uv(orientation, nrows::Integer, ncols::Integer)
+    swap = image_orientation_swap(orientation)
+    flip_x, flip_y = image_orientation_flips(orientation)
+    nx, ny = image_rect_cells(orientation, nrows, ncols)
+    return function (m1::Real, m2::Real)
+        a1, a2 = swap ? (m2, m1) : (m1, m2)
+        u = flip_x ? (nx - a1) / nx : a1 / nx
+        v = flip_y ? (ny - a2) / ny : a2 / ny
+        return Vec2d(u, v)
+    end
+end
+
+"""
     Makie.image_orientation_uv_transform(orientation) -> Mat3f
 
 A 3×3 UV transform in `[0, 1]²` UV space that, composed with a plot's user

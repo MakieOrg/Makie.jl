@@ -426,19 +426,20 @@ end
 
 # Interpolations are calculated after transform func is applied, so they are
 # appropriate for transformed data. We need to back transform here to get pre-
-# transform data. For Image we translate the user-matrix index back to a
-# rect-cell via orientation so the tooltip lands at the centre of the picked
-# cell regardless of orientation.
+# transform data. For Image we translate the accessor's matrix coordinates
+# (cell center for indexed, cursor-interpolated for interpolated access) back
+# to a position on the rect via orientation.
+continuous_matrix_coords(acc::IndexedAccessor{2}) = Tuple(acc.index) .- 0.5
+continuous_matrix_coords(acc::InterpolatedAccessor{2}) = Tuple(acc.index0) .+ Tuple(acc.interpolation) .- 0.5
+
 function get_tooltip_position(element::PlotElement{<:Image})
     plot = get_plot(element)
     p00, _, p11, _ = plot.positions_transformed[]
-    orientation = plot.orientation[]
     mat_size = size(plot.image[])
-    i, j = Tuple(accessor(element).index)
-    nx, ny = Makie.image_rect_cells(orientation, mat_size...)
-    cx, cy = Makie.image_matrix_to_cell_index(orientation, mat_size...)(i, j)
-    x = p00[1] + (p11[1] - p00[1]) * (cx - 0.5) / nx
-    y = p00[2] + (p11[2] - p00[2]) * (cy - 0.5) / ny
+    m = continuous_matrix_coords(accessor(element))
+    uv = Makie.image_matrix_coords_to_rect_uv(plot.orientation[], mat_size...)(m...)
+    x = p00[1] + (p11[1] - p00[1]) * uv[1]
+    y = p00[2] + (p11[2] - p00[2]) * uv[2]
     return Point2f(x, y)
 end
 

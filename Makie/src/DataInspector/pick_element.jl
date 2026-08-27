@@ -188,7 +188,12 @@ function InterpolatedAccessor(
     isnan(pos) && return nothing
 
     if !edge_based
-        ij_interp = (pos - origin(rect)) ./ widths(rect) .* size
+        uv = (pos - origin(rect)) ./ widths(rect)
+        ij_interp = if plot isa Image
+            Makie.image_rect_uv_to_matrix_coords(plot.orientation[], size...)(uv...)
+        else
+            uv .* size
+        end
         ij_low, ij_high, interp = interpolated_edge_to_cell_index(ij_interp, size, edge_based)
         return InterpolatedAccessor(ij_low, ij_high, interp, size)
     else

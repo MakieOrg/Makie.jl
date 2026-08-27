@@ -515,6 +515,26 @@ end
         end
     end
 
+    @testset "continuous rect uv / matrix coordinate maps" begin
+        for orient in (
+                (:down, :right), (:down, :left), (:up, :right), (:up, :left),
+                (:right, :down), (:right, :up), (:left, :down), (:left, :up),
+            )
+            to_mat = Makie.image_rect_uv_to_matrix_coords(orient, 3, 5)
+            to_uv = Makie.image_matrix_coords_to_rect_uv(orient, 3, 5)
+            for u in (0.0, 0.3, 1.0), v in (0.0, 0.7, 1.0)
+                @test to_uv(to_mat(u, v)...) ≈ Vec2d(u, v)
+            end
+
+            cell_index = Makie.image_cell_to_matrix_index(orient, 3, 5)
+            nx, ny = Makie.image_rect_cells(orient, 3, 5)
+            for cx in 1:nx, cy in 1:ny
+                m = to_mat((cx - 0.5) / nx, (cy - 0.5) / ny)
+                @test CartesianIndex(round(Int, m[1] + 0.5), round(Int, m[2] + 0.5)) == cell_index(cx, cy)
+            end
+        end
+    end
+
     @testset "nothing orientation is the default" begin
         # `orientation` reaches backends as `nothing` when not set explicitly
         # (it rides as a convert kwarg, which doesn't carry the recipe default).
