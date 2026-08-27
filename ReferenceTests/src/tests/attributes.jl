@@ -40,7 +40,7 @@ end
     cg = cgrad(:viridis, 5, categorical = true, scale = log10)
     scatter_kwargs = (colorrange = (0, 1000), colormap = cg, marker = Rect, markersize = 25)
     line_kwargs = (colorrange = (0, 1000), colormap = cg, linewidth = 10)
-    image!(scene, -1 .. 1, -1 .. 1, reshape(cg.colors.colors, (1, 5)), interpolate = false)
+    image!(scene, -1 .. 1, -1 .. 1, reshape(cg.colors.colors, (5, 1)), interpolate = false)
     for i in 2:5
         edge = cg.values[i]
         y = range(-1, 1, length = 6)[i]
@@ -56,7 +56,7 @@ end
     scatter_kwargs = (colorrange = (0, 1000), colormap = cg, marker = Rect, markersize = 20, alpha = 1)
     line_kwargs = (colorrange = (0, 1000), colormap = cg, linewidth = 8, alpha = 1)
     cm = to_colormap(cg)
-    image!(scene, -1 .. 1, -1 .. 1, reshape(cm[1:6], (1, 6)), interpolate = false)
+    image!(scene, -1 .. 1, -1 .. 1, reshape(cm[1:6], (6, 1)), interpolate = false)
     p = nothing
     for i in 1:5
         edge = 100 * i

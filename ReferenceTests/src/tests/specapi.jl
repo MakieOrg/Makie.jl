@@ -158,7 +158,7 @@ AxNoTicks(; kw...) = S.Axis(;
 
     imgs = hcat(rotr90.((cb1, cb2, cb3))...)
     s = Scene(; size = size(imgs))
-    image!(s, imgs; space = :pixel)
+    image!(s, imgs; space = :pixel, orientation = (:right, :down))
     s
 end
 
@@ -174,7 +174,7 @@ end
     data = vcat((1:4)', (4:-1:1)')
     plots = [
         S.Heatmap(data),
-        S.Image(data),
+        S.Image(data; orientation = (:right, :down)),
         S.Lines(1:4; linewidth = 4, color = 1:4),
         S.Scatter(1:4; markersize = 20, color = 1:4),
     ]
@@ -183,7 +183,7 @@ end
     img1 = copy(colorbuffer(fig))
     plots = [
         S.Heatmap(data; colormap = :inferno),
-        S.Image(data; colormap = :inferno),
+        S.Image(data; colormap = :inferno, orientation = (:right, :down)),
         S.Lines(1:4; linewidth = 4, color = 1:4, colormap = :inferno),
         S.Scatter(1:4; markersize = 20, color = 1:4, colormap = :inferno),
     ]
@@ -192,7 +192,7 @@ end
 
     plots = [
         S.Heatmap(data; colorrange = (2, 3)),
-        S.Image(data; colorrange = (2, 3)),
+        S.Image(data; colorrange = (2, 3), orientation = (:right, :down)),
         S.Lines(1:4; linewidth = 4, color = 1:4, colorrange = (2, 3)),
         S.Scatter(1:4; markersize = 20, color = 1:4, colorrange = (2, 3)),
     ]
@@ -201,7 +201,7 @@ end
 
     imgs = hcat(rotr90.((img3, img2, img1))...)
     s = Scene(; size = size(imgs))
-    image!(s, imgs; space = :pixel)
+    image!(s, imgs; space = :pixel, orientation = (:right, :down))
     s
 end
 
@@ -230,7 +230,7 @@ end
     img2 = rotr90(colorbuffer(f; update = false))
     large = hcat(img2, img1)
     s = Scene(; size = size(large))
-    image!(s, large; space = :pixel)
+    image!(s, large; space = :pixel, orientation = (:right, :down))
     s
 end
 

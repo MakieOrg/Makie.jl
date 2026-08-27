@@ -966,7 +966,7 @@ end
     for (i, interp) in enumerate((true, false))
         for (j, plot_func) in enumerate(
                 (
-                    (fp, x, y, cs, interp) -> image(fp, to_tuple(x), to_tuple(y), cs, colormap = :viridis, interpolate = interp),
+                    (fp, x, y, cs, interp) -> image(fp, to_tuple(x), to_tuple(y), cs, colormap = :viridis, interpolate = interp, orientation = (:right, :down), axis = (; yreversed = false)),
                     (fp, x, y, cs, interp) -> heatmap(fp, x, y, cs, colormap = :viridis, interpolate = interp),
                     (fp, x, y, cs, interp) -> surface(fp, x, y, zeros(size(cs)), color = cs, colormap = :viridis, interpolate = interp, shading = NoShading),
                 )
