@@ -312,8 +312,8 @@ function initialize_block!(cb::Colorbar; kwargs...)
             return (Vec2d(autorange),)
         else
             # colorscale is processed later
-            low = process_color_value(dc, identity, first(colorrange), first(autorange))
-            high = process_color_value(dc, identity, last(colorrange), last(autorange))
+            low = process_color_value(dc, identity, minimum(colorrange), first(autorange))
+            high = process_color_value(dc, identity, maximum(colorrange), last(autorange))
             return (Vec2d(low, high),)
         end
     end

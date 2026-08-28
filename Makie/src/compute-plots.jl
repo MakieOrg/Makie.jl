@@ -282,8 +282,8 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         if colorrange === automatic
             return Vec2f(autorange)
         else
-            low = process_color_value(dc, colorscale, first(colorrange), first(autorange))
-            high = process_color_value(dc, colorscale, last(colorrange), last(autorange))
+            low = process_color_value(dc, colorscale, minimum(colorrange), first(autorange))
+            high = process_color_value(dc, colorscale, maximum(colorrange), last(autorange))
             if low < high
                 return Vec2f(low, high)
             else
