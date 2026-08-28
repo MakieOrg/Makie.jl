@@ -509,14 +509,24 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
-    map!(cb, [:cb_colors, :merged_color_mapping_type, :ticks, :resolved_cdc], :finalticks) do cs, type, ticks, dc
+    map!(
+        cb,
+        [:cb_colors, :merged_color_mapping_type, :ticks, :resolved_cdc, :tickformat],
+        [:finalticks, :finaltickformat]
+    ) do cs, type, ticks, dc, formatter
         # For categorical we just enumerate
         if dc isa CategoricalConversion
-            return automatic # let dim convert generate categories (or use names of categories)
+            # let dim convert generate categories (or use names of categories)
+            return automatic, formatter
         elseif type === Makie.categorical
-            return default_automatic(ticks, (1:length(cs), string.(cs)))
+            if ticks === automatic
+                return ticks, formatter
+            else
+                labels = get_ticklabels(formatter, cs)
+                return (eachindex(cs), labels), automatic
+            end
         else
-            return ticks
+            return ticks, formatter
         end
     end
     ComputePipeline.set_type!(cb.finalticks, Any)
@@ -533,7 +543,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
         labelfont = cb.labelfont, ticklabelfont = cb.ticklabelfont,
         dim_convert = cb.resolved_cdc,
-        ticks = cb.finalticks, tickformat = cb.tickformat,
+        ticks = cb.finalticks, tickformat = cb.finaltickformat,
         ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
         ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,
         ticklabelrotation = cb.ticklabelrotation,
