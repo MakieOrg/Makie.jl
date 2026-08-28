@@ -52,7 +52,7 @@ end
 ################################################################################
 
 
-isfinite_rect(x::Rect) = all(isfinite, x.origin) &&  all(isfinite, x.widths)
+isfinite_rect(x::Rect) = all(isfinite, x.origin) && all(isfinite, x.widths)
 function isfinite_rect(x::Rect{N}, dim::Int) where {N}
     if 0 < dim <= N
         return isfinite(origin(x)[dim]) && isfinite(widths(x)[dim])

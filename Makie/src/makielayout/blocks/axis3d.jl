@@ -293,6 +293,9 @@ function calculate_matrices(
         error("Invalid aspect $aspect")
     end
 
+    # Do not allow dimensions to collapse
+    scales = @. ifelse(abs(scales) < floatmin(Float32), ifelse(scales < 0, -1.0, 1.0), scales)
+
     # center and scale axis bbox so that the longest side is -1..1
     # then rotate (and permute axes) according to azimuth and elevation
     model =
