@@ -28,7 +28,7 @@ mktempdir() do tempdir
         fig, ax, _ = lines(x, zeros(size(x)))
         # test for no throwing when encoding
         @testset "Encoding" begin
-            for fmt in ("mkv", "mp4", "webm", "gif")
+            for fmt in ("mkv", "mp4", "webm", "gif", "mov")
                 dst = joinpath(tempdir, "out.$fmt")
                 @test begin
                     record(fig, dst, 1:n) do i
