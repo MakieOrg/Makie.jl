@@ -326,7 +326,7 @@ function VideoStream(
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     buffer = Matrix{eltype(first_frame)}(undef, xdim, ydim)
     @debug "FFmpeg input" eltype=eltype(first_frame)
-    input_pixel_format = _color_type_to_string(eltype(first_frame))
+    input_pixel_format = _color_type_to_ffmpeg_string(eltype(first_frame))
     vso = VideoStreamOptions(format, framerate, compression, profile, input_pixel_format, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
     # a plain `open` without the `pipeline` causes hangs when IOCapture.capture closes over a function that creates
@@ -397,10 +397,10 @@ function extract_frames(video, frame_folder; loglevel = "quiet")
     return run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
 end
 
-_color_type_to_string(::Type{RGB{T}}) where {T} = "rgb24"
-_color_type_to_string(::Type{ARGB32}) = Base.ENDIAN_BOM == 0x04030201 ? "bgra" : "argb"
-_color_type_to_string(::Type{RGBA{T}}) where {T} = "rgba"
-_color_type_to_string(::Type{T}) where {T} = (
+_color_type_to_ffmpeg_string(::Type{RGB{T}}) where {T} = "rgb24"
+_color_type_to_ffmpeg_string(::Type{ARGB32}) = Base.ENDIAN_BOM == 0x04030201 ? "bgra" : "argb"
+_color_type_to_ffmpeg_string(::Type{RGBA{T}}) where {T} = "rgba"
+_color_type_to_ffmpeg_string(::Type{T}) where {T} = (
     @warn "Unsupported color type $T for video encoding. Falling back to 'rgb24'.";
     "rgb24"
 )
