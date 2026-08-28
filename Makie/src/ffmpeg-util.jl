@@ -33,8 +33,8 @@
   means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
 
 !!! warning
-    `profile` and `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
-    is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
+    `profile` and `pixel_format` are only used when `format` is `"mp4"` or `"mov"`; a warning will be issued if `format`
+    is not `"mp4"` or `"mov"` and those two arguments are not `nothing`. Similarly, `compression` is only
     valid when `format` is `"mp4"` or `"webm"`.
 """
 struct VideoStreamOptions
@@ -397,6 +397,10 @@ function extract_frames(video, frame_folder; loglevel = "quiet")
     return run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
 end
 
-_color_type_to_string(::Type{RGB{N0f8}}) = "rgb24"
+_color_type_to_string(::Type{RGB{T}}) where {T} = "rgb24"
 _color_type_to_string(::Type{ARGB32}) = Base.ENDIAN_BOM == 0x04030201 ? "bgra" : "argb"
 _color_type_to_string(::Type{RGBA{T}}) where {T} = "rgba"
+_color_type_to_string(::Type{T}) where {T} = (
+    @warn "Unsupported color type $T for video encoding. Falling back to 'rgb24'.";
+    "rgb24"
+)
