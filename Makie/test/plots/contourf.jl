@@ -54,3 +54,83 @@ end
     @test shares_points(g2)
     @test group_shape(group_polys(g2)) == (1, [1])
 end
+
+@testset "contourf colormap generation" begin
+    # levels can be the number of levels or a value per edge
+    # computed_levels is always a value per edge
+    #
+    data = reshape(range(-0.2, 1.2, 16), 4, 4)
+
+    @testset "N levels" begin
+        @testset "no extendlow/high" begin
+            f,a,p = contourf(data, levels = 4)
+            @test p.levels[] == 4
+            @test length(p.computed_levels[]) == 5
+            @test p.nlevels[] == 4
+            @test length(p.base_colormap[]) == 256 # not downsampled to remove extendlow/high
+            @test collect(p.computed_colormap[]) == resample_cmap(p.base_colormap[], 4)
+        end
+
+        @testset "extendlow/extendhigh" begin
+            f,a,p = contourf(data, levels = 4, extendlow = :auto)
+            @test p.levels[] == 4
+            @test length(p.computed_levels[]) == 5
+            @test p.nlevels[] == 4
+            @test length(p.base_colormap[]) == 4 # downsampled
+            @test collect(p.computed_colormap[]) == p.base_colormap[]
+
+            f,a,p = contourf(data, levels = 4, extendhigh = :auto)
+            @test p.levels[] == 4
+            @test length(p.computed_levels[]) == 5
+            @test p.nlevels[] == 4
+            @test length(p.base_colormap[]) == 4 # downsampled
+            @test collect(p.computed_colormap[]) == p.base_colormap[]
+        end
+
+        @testset "both" begin
+            f,a,p = contourf(data, levels = 4, extendlow = :auto, extendhigh = :auto)
+            @test p.levels[] == 4
+            @test length(p.computed_levels[]) == 5
+            @test p.nlevels[] == 4
+            @test length(p.base_colormap[]) == 4 # downsampled
+            @test collect(p.computed_colormap[]) == p.base_colormap[]
+        end
+    end
+
+    @testset "edge based levels" begin
+        @testset "no extendlow/high" begin
+            f,a,p = contourf(data, levels = 0.0:0.25:1.0)
+            @test length(p.levels[]) == 5
+            @test length(p.computed_levels[]) == 5
+            @test p.nlevels[] == 4
+            @test length(p.base_colormap[]) == 256 # not downsampled to remove extendlow/high
+            @test collect(p.computed_colormap[]) == resample_cmap(p.base_colormap[], 4)
+        end
+
+        @testset "extendlow/extendhigh" begin
+            f,a,p = contourf(data, levels = 0.0:0.25:1.0, extendlow = :auto)
+            @test length(p.levels[]) == 5
+            @test length(p.computed_levels[]) == 5
+            @test p.nlevels[] == 4
+            @test length(p.base_colormap[]) == 4 # downsampled
+            @test collect(p.computed_colormap[]) == p.base_colormap[]
+
+            f,a,p = contourf(data, levels = 0.0:0.25:1.0, extendhigh = :auto)
+            @test length(p.levels[]) == 5
+            @test length(p.computed_levels[]) == 5
+            @test p.nlevels[] == 4
+            @test length(p.base_colormap[]) == 4 # downsampled
+            @test collect(p.computed_colormap[]) == p.base_colormap[]
+        end
+
+        @testset "both" begin
+            f,a,p = contourf(data, levels = 0.0:0.25:1.0, extendlow = :auto, extendhigh = :auto)
+            @test length(p.levels[]) == 5
+            @test length(p.computed_levels[]) == 5
+            @test p.nlevels[] == 4
+            @test length(p.base_colormap[]) == 4 # downsampled
+            @test collect(p.computed_colormap[]) == p.base_colormap[]
+        end
+    end
+
+end

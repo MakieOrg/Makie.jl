@@ -23,6 +23,7 @@
 - Fixed `Axis3(..., title = rich(...))` not working [#5729](https://github.com/MakieOrg/Makie.jl/pull/5729)
 - Added nan handling to `volume` algorithms `:absorption` and `:mip` as well as 3D `countour` plots. These cases now respect `nan_color` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Fixed `empty!(root_scene)` and `empty(fig)` disconnecting mouseposition and render_tick event sources in GLMakie [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed `tri/contourf` colormap sampling with `extendlow = :auto` and/or `extendhigh = :auto`. Previously this generated nlevels + 1 categories and sampled between them, now it generates nlevels categories and samples them directly. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 
 ## [0.24.13] - 2026-07-02
 
