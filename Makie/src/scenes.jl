@@ -551,14 +551,32 @@ end
 function free(scene::Scene)
     # Errors should be handled at a lower level because otherwise
     # some of the cleanup will be incomplete.
-    empty!(scene; reset_theme = false)
-    for field in [:backgroundcolor, :viewport, :visible]
-        Observables.clear(getfield(scene, field))
-    end
+    #
+    # TELL THE SCREENS FIRST, WHILE THE SUBTREE STILL EXISTS. A backend's
+    # `delete!(screen, scene)` walks `scene.children` to deregister the whole
+    # subtree, but `empty!` detaches every child from its parent — so doing it
+    # the other way round handed the screen a scene with no children left and the
+    # descendants stayed registered. GLMakie keeps them in `screen.screens`,
+    # which holds them STRONGLY, so they were never collected: measured on the
+    # editor's effects panel at 334 orphaned scenes per panel rebuild, all with
+    # their plots already emptied, and it also walks the scene id — a `UInt16` —
+    # toward its 65535 ceiling.
+    # TELL THE SCREENS FIRST, WHILE THE SUBTREE STILL EXISTS. A backend's
+    # `delete!(screen, scene)` walks `scene.children` to deregister the whole
+    # subtree, and `empty!` detaches every child from its parent — so the other
+    # order handed the screen a scene with no children left and every descendant
+    # stayed registered. GLMakie keeps those in `screen.screens`, which holds them
+    # STRONGLY, so they were never collected: measured on the video editor's
+    # effects panel at 334 orphaned scenes and 150 MB per panel rebuild, and it
+    # walks the scene id — a `UInt16` — toward its 65535 ceiling.
     for screen in copy(scene.current_screens)
         delete!(screen, scene)
     end
     empty!(scene.current_screens)
+    empty!(scene; reset_theme = false)
+    for field in [:backgroundcolor, :viewport, :visible]
+        Observables.clear(getfield(scene, field))
+    end
     scene.parent = nothing
     return
 end
@@ -603,8 +621,74 @@ function Base.push!(plot::Plot, subplot)
     return push!(plot.plots, subplot)
 end
 
+"""
+    findplot(scene_or_plot, name) -> Plot
+
+The plot called `name`, searched RECURSIVELY, or `nothing`.
+
+Recursive because plots nest: a `plotlist!` holds its children in `plot.plots`,
+and so does any recipe built from other plots — a flat scan over `scene.plots`
+finds a `PlotList` and none of the plots anybody actually named. This is the
+counterpart to the `name` attribute and the way to reach a plot for animation:
+look it up once, then write its attributes directly, which is far cheaper than
+re-specifying the scene per frame.
+"""
+function findplot(scene::Scene, name::Symbol)
+    for p in scene.plots
+        found = findplot(p, name)
+        found === nothing || return found
+    end
+    for child in scene.children
+        found = findplot(child, name)
+        found === nothing || return found
+    end
+    return nothing
+end
+function findplot(plot::Plot, name::Symbol)
+    to_value(get(plot.attributes, :name, nothing)) === name && return plot
+    for p in plot.plots
+        found = findplot(p, name)
+        found === nothing || return found
+    end
+    return nothing
+end
+
+"""
+    assign_name!(scene, plot)
+
+Settle `plot`'s `name` as it enters `scene`.
+
+`:automatic` derives one — from `label` if the plot has one, else the plot type
+with a counter — and those never collide, so the error below only ever fires on
+a name somebody wrote down. That is deliberate: an explicit name exists to be
+looked up later, so renaming it silently would break the very code that is going
+to ask for it, and an alias cannot fix that because the original then addresses
+two plots.
+"""
+function assign_name!(scene::Scene, @nospecialize(plot::Plot))
+    haskey(plot.attributes, :name) || return
+    given = to_value(plot.attributes[:name])
+    taken(n) = any(p -> to_value(get(p.attributes, :name, nothing)) === n, scene.plots)
+    if given === :automatic
+        base = let lbl = to_value(get(plot.attributes, :label, nothing))
+            lbl isa AbstractString && !isempty(lbl) ? Symbol(lbl) : plotkey(typeof(plot))
+        end
+        n, k = base, 1
+        while taken(n)
+            k += 1
+            n = Symbol(base, :_, k)
+        end
+        update!(plot; name = n)
+    elseif taken(given)
+        error("a plot named $(repr(given)) is already in this scene. Names identify " *
+              "plots, so they must be unique; `label` is the one that may repeat.")
+    end
+    return
+end
+
 function Base.push!(scene::Scene, @nospecialize(plot::Plot))
     validate_attribute_keys(plot)
+    assign_name!(scene, plot)
     push!(scene.plots, plot)
     for screen in scene.current_screens
         Base.invokelatest(insert!, screen, scene, plot)
