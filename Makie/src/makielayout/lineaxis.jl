@@ -48,7 +48,8 @@ end
 
 function create_linepoints(
         pos_ext_hor,
-        flipped::Bool, trimspine::Union{Bool, Tuple{Bool, Bool}}, tickpositions::Vector{Point2f}
+        flipped::Bool, trimspine::Union{Bool, Tuple{Bool, Bool}}, tickpositions::Vector{Point2f},
+        spinewidth::Number, tickwidth::Number
     )
 
     (position::Float32, extents::NTuple{2, Float32}, horizontal::Bool) = pos_ext_hor
@@ -69,16 +70,20 @@ function create_linepoints(
             return [Point2f(x, extents[1]), Point2f(x, extents[2])]
         end
     else
+        # A trimmed end should finish flush with the outer edge of the outermost tick,
+        # i.e. half a tick width past its center. The :square linecap already extends the
+        # spine by half a spine width, so the geometry only has to make up the difference.
+        trim = 0.5f0 * (tickwidth - spinewidth)
         extents_oriented = last(tickpositions) > first(tickpositions) ? extents : reverse(extents)
         if horizontal
             y = position
-            from = trimspine[1] ? tickpositions[1] : Point2f(extents_oriented[1], y)
-            to = trimspine[2] ? tickpositions[end] : Point2f(extents_oriented[2], y)
+            from = trimspine[1] ? tickpositions[1] .- Point2f(trim, 0) : Point2f(extents_oriented[1], y)
+            to = trimspine[2] ? tickpositions[end] .+ Point2f(trim, 0) : Point2f(extents_oriented[2], y)
             return [from, to]
         else
             x = position
-            from = trimspine[1] ? tickpositions[1] : Point2f(x, extents_oriented[1])
-            to = trimspine[2] ? tickpositions[end] : Point2f(x, extents_oriented[2])
+            from = trimspine[1] ? tickpositions[1] .- Point2f(0, trim) : Point2f(x, extents_oriented[1])
+            to = trimspine[2] ? tickpositions[end] .+ Point2f(0, trim) : Point2f(x, extents_oriented[2])
             return [from, to]
         end
     end
@@ -494,7 +499,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     linepoints = lift(
         create_linepoints, parent, pos_extents_horizontal, flipped, trimspine,
-        tickpositions
+        tickpositions, spinewidth, tickwidth
     )
 
     decorations[:axisline] = linesegments!(
