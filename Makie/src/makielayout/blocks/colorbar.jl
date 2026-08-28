@@ -291,8 +291,9 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
-    map!(cb, :dc_values, :_derived_colorrange) do values
-        return Vec2d(distinct_extrema_nan(values)...)
+    map!(cb, [:scale, :dc_values], :_derived_colorrange) do scale, values
+        scalable_values = filter(v -> isfinite(apply_scale(scale, v)), values)
+        return Vec2d(distinct_extrema_nan(scalable_values)...)
     end
 
     register_computation!(

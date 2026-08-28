@@ -360,3 +360,14 @@ end
         @test cb.attributes.axis.tickstrings[] == fill("1", 5)
     end
 end
+
+@testset "color value filtering" begin
+    # If a scaled color is NaN or Inf it should be excluded from the colorrange
+    # so that Colorbar builds with a range of values it can actually display and
+    # find ticks for
+    f, a, p = heatmap([0 10; 100 10000], colorscale = log10)
+    cb = Colorbar(f[1, 2], p)
+    @test cb.attributes.axis.tickvalues[] == Float64[10, 100, 1000, 10000]
+    lbls = [rich("10", superscript(string(i), offset = Vec2f(0.1, 0))) for i in 1:4]
+    @test cb.attributes.axis.tickstrings[] == lbls
+end
