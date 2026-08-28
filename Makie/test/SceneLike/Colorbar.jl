@@ -342,7 +342,7 @@ end
 
 @testset "ticks" begin
     @test "manual categorical ticks" begin
-        fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis))
+        fig, ax, pl = barplot(1:3; color = 1:3, colormap = Makie.Categorical(:viridis))
         cb = Colorbar(fig[1, 2], pl)
         @test cb.attributes.axis.tickvalues[] == [1, 2, 3]
         @test cb.attributes.axis.tickstrings[] == ["1.0", "2.0", "3.0"]
@@ -354,8 +354,8 @@ end
     @testset "categorical tickformat" begin
         data = ones(Int, 4, 4)
         data[1:10] .= 1:10
-        f, a, hm = heatmap(data, colormap=Makie.Categorical(:inferno))
-        cb = Colorbar(f[1, 2], hm, tickformat="1")
+        f, a, hm = heatmap(data, colormap = Makie.Categorical(:inferno))
+        cb = Colorbar(f[1, 2], hm, tickformat = "1")
         @test cb.attributes.axis.tickvalues[] == collect(2.0:2.0:10.0)
         @test cb.attributes.axis.tickstrings[] == fill("1", 5)
     end
