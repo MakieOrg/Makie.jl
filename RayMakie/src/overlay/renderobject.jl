@@ -128,7 +128,7 @@ end
 Ensure the pipeline is compiled for the current arg types. Returns (vert_shader, compiled).
 """
 function compile_robj!(robj::LavaRenderObject, args::Tuple;
-                       color_format=Vulkan.FORMAT_R32G32B32A32_SFLOAT,
+                       color_format=VK.FORMAT_R32G32B32A32_SFLOAT,
                        descriptor_set_layout=nothing)
     pipeline = robj.pipeline
     tt = gfx_type_tuple(args)

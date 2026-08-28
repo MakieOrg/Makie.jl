@@ -38,8 +38,8 @@ function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRender
 
     if viewport !== nothing
         vx, vy, vw, vh = viewport
-        dvp = Vulkan.Viewport(vx, vy, vw, vh, 0f0, 1f0)
-        Vulkan.cmd_set_viewport(cmd, [dvp])
+        dvp = VK.Viewport(vx, vy, vw, vh, 0f0, 1f0)
+        VK.cmd_set_viewport(cmd, [dvp])
         # Compute scissor rect — must clamp to non-negative (Vulkan requirement)
         sc_x = Int32(floor(vx))
         sc_y = vh < 0 ? Int32(floor(vy + vh)) : Int32(floor(vy))
@@ -54,13 +54,13 @@ function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRender
             sc_h = max(Int32(0), sc_h + sc_y)
             sc_y = Int32(0)
         end
-        dsc = Vulkan.Rect2D(
-            Vulkan.Offset2D(sc_x, sc_y),
-            Vulkan.Extent2D(UInt32(sc_w), UInt32(sc_h)))
-        Vulkan.cmd_set_scissor(cmd, [dsc])
+        dsc = VK.Rect2D(
+            VK.Offset2D(sc_x, sc_y),
+            VK.Extent2D(UInt32(sc_w), UInt32(sc_h)))
+        VK.cmd_set_scissor(cmd, [dsc])
     else
-        Vulkan.cmd_set_viewport(cmd, [default_vp])
-        Vulkan.cmd_set_scissor(cmd, [default_sc])
+        VK.cmd_set_viewport(cmd, [default_vp])
+        VK.cmd_set_scissor(cmd, [default_sc])
     end
 
     args = build_args(robj)
@@ -71,8 +71,8 @@ function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRender
         color_format=color_format, descriptor_set_layout=ds_layout)
 
     if robj.bindings !== nothing
-        Vulkan.cmd_bind_descriptor_sets(cmd,
-            Vulkan.PIPELINE_BIND_POINT_GRAPHICS,
+        VK.cmd_bind_descriptor_sets(cmd,
+            VK.PIPELINE_BIND_POINT_GRAPHICS,
             compiled.pipeline_layout, UInt32(0),
             [robj.bindings.set], UInt32[])
         Mantle.pin!(batch, robj.bindings)
@@ -183,16 +183,16 @@ function render_overlays_gfx!(screen, bq, target; scenes=nothing)
         image = fb.color_image
     end
 
-    extent = Vulkan.Extent2D(UInt32(w), UInt32(h))
+    extent = VK.Extent2D(UInt32(w), UInt32(h))
     # No clear — overlays are alpha-blended on top of existing content
     Mantle.vk_begin_pass!(bq, view, image, extent; clear_color=nothing)
 
     batch = bq.active_batch
     cmd = batch.cmd_buf
-    vp = Vulkan.Viewport(0f0, Float32(h), Float32(w), -Float32(h), 0f0, 1f0)
-    Vulkan.cmd_set_viewport(cmd, [vp])
-    sc = Vulkan.Rect2D(Vulkan.Offset2D(0, 0), extent)
-    Vulkan.cmd_set_scissor(cmd, [sc])
+    vp = VK.Viewport(0f0, Float32(h), Float32(w), -Float32(h), 0f0, 1f0)
+    VK.cmd_set_viewport(cmd, [vp])
+    sc = VK.Rect2D(VK.Offset2D(0, 0), extent)
+    VK.cmd_set_scissor(cmd, [sc])
 
     fmt = target isa Mantle.WindowTarget ? target.window.format : target.fb.color_format
     for (robj, robj_vp) in robjs

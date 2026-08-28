@@ -1,5 +1,5 @@
 using Test
-using Lava: LavaArray
+using Mantle: LavaArray
 using GeometryBasics: Point3f, Point2f, Point, Vec3f, Rect3f
 import Makie
 import GPUArraysCore
