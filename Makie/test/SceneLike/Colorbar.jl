@@ -339,3 +339,13 @@ end
         @test p2.plots[2].resolved_cdc[] === cdc
     end
 end
+
+@testset "ticks" begin
+    fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis))
+    cb = Colorbar(fig[1, 2], pl)
+    @test cb.attributes.axis.tickvalues[] == [1, 2, 3]
+    @test cb.attributes.axis.tickstrings[] == ["1.0", "2.0", "3.0"]
+    cb.ticks = (1:3, ["a", "b", "c"])
+    @test cb.attributes.axis.tickvalues[] == [1, 2, 3]
+    @test cb.attributes.axis.tickstrings[] == ["a", "b", "c"]
+end

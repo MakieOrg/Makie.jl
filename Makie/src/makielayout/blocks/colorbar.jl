@@ -514,7 +514,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         if dc isa CategoricalConversion
             return automatic # let dim convert generate categories (or use names of categories)
         elseif type === Makie.categorical
-            return (1:length(cs), string.(cs))
+            return default_automatic(ticks, (1:length(cs), string.(cs)))
         else
             return ticks
         end
