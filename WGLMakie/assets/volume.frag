@@ -187,7 +187,7 @@ vec4 contours(vec3 front, vec3 dir)
 
         float opacity = color_sample.a;
         if(opacity > 0.0){
-            vec3 opaque = color_sample.rgb
+            vec3 opaque = color_sample.rgb;
             if (intensity < 1.0 || intensity > 0.0)
             {
                 vec3 N = gennormal(pos, step_size);
