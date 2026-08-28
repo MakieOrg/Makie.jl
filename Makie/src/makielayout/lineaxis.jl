@@ -48,7 +48,8 @@ end
 
 function create_linepoints(
         pos_ext_hor,
-        flipped::Bool, spine_width::Number, trimspine::Union{Bool, Tuple{Bool, Bool}}, tickpositions::Vector{Point2f}, tickwidth::Number
+        flipped::Bool, trimspine::Union{Bool, Tuple{Bool, Bool}}, tickpositions::Vector{Point2f},
+        spinewidth::Number, tickwidth::Number
     )
 
     (position::Float32, extents::NTuple{2, Float32}, horizontal::Bool) = pos_ext_hor
@@ -57,33 +58,32 @@ function create_linepoints(
         trimspine = (trimspine, trimspine)
     end
 
+    # The spine ends exactly at the axis corners (or the outer ticks when trimmed).
+    # Corner coverage is handled by the :square linecap on the spine, which scales
+    # correctly with the stroke width if the exported figure is restyled.
     return if trimspine == (false, false) || length(tickpositions) < 2
         if horizontal
             y = position
-            p1 = Point2f(extents[1] - 0.5spine_width, y)
-            p2 = Point2f(extents[2] + 0.5spine_width, y)
-            return [p1, p2]
+            return [Point2f(extents[1], y), Point2f(extents[2], y)]
         else
             x = position
-            p1 = Point2f(x, extents[1] - 0.5spine_width)
-            p2 = Point2f(x, extents[2] + 0.5spine_width)
-            return [p1, p2]
+            return [Point2f(x, extents[1]), Point2f(x, extents[2])]
         end
     else
+        # A trimmed end should finish flush with the outer edge of the outermost tick,
+        # i.e. half a tick width past its center. The :square linecap already extends the
+        # spine by half a spine width, so the geometry only has to make up the difference.
+        trim = 0.5f0 * (tickwidth - spinewidth)
         extents_oriented = last(tickpositions) > first(tickpositions) ? extents : reverse(extents)
         if horizontal
             y = position
-            pstart = Point2f(-0.5f0 * tickwidth, 0)
-            pend = Point2f(0.5f0 * tickwidth, 0)
-            from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(extents_oriented[1] - 0.5spine_width, y)
-            to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(extents_oriented[2] + 0.5spine_width, y)
+            from = trimspine[1] ? tickpositions[1] .- Point2f(trim, 0) : Point2f(extents_oriented[1], y)
+            to = trimspine[2] ? tickpositions[end] .+ Point2f(trim, 0) : Point2f(extents_oriented[2], y)
             return [from, to]
         else
             x = position
-            pstart = Point2f(0, -0.5f0 * tickwidth)
-            pend = Point2f(0, 0.5f0 * tickwidth)
-            from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(x, extents_oriented[1] - 0.5spine_width)
-            to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(x, extents_oriented[2] + 0.5spine_width)
+            from = trimspine[1] ? tickpositions[1] .- Point2f(0, trim) : Point2f(x, extents_oriented[1])
+            to = trimspine[2] ? tickpositions[end] .+ Point2f(0, trim) : Point2f(x, extents_oriented[2])
             return [from, to]
         end
     end
@@ -167,21 +167,29 @@ function update_ticklabel_node(
     return
 end
 
-function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observable{Bool}, tickpositions, tickalign, ticksize, spinewidth)
+function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observable{Bool}, tickpositions, tickalign, ticksize)
     result = tick_obs[]
     empty!(result) # reuse allocated array
-    sign::Int = flipped[] ? -1 : 1
+    dir::Int = flipped[] ? -1 : 1
+    # Distance from the spine centerline to each tick tip. The drawn mark is always
+    # exactly `ticksize` long; `tickalign` (0 = out, 1 = in) slides it across the
+    # centerline, placing `(1 - tickalign) * ticksize` outside and `tickalign * ticksize`
+    # inside. Anchoring to the centerline rather than a spine edge means restyling the
+    # spine's stroke width (e.g. in a vector editor) can never push a mark meant to sit
+    # outside the axis into the plot area.
+    outer_len = (1 - tickalign) * ticksize
+    inner_len = tickalign * ticksize
     if horizontal[]
         for tp in tickpositions
-            tstart = tp + sign * Point2f(0.0f0, tickalign * ticksize - 0.5f0 * spinewidth)
-            tend = tstart + sign * Point2f(0.0f0, -ticksize)
-            push!(result, tstart, tend)
+            outer = tp + dir * Point2f(0.0f0, -outer_len)
+            inner = tp + dir * Point2f(0.0f0, inner_len)
+            push!(result, outer, inner)
         end
     else
         for tp in tickpositions
-            tstart = tp + sign * Point2f(tickalign * ticksize - 0.5f0 * spinewidth, 0.0f0)
-            tend = tstart + sign * Point2f(-ticksize, 0.0f0)
-            push!(result, tstart, tend)
+            outer = tp + dir * Point2f(-outer_len, 0.0f0)
+            inner = tp + dir * Point2f(inner_len, 0.0f0)
+            push!(result, outer, inner)
         end
     end
     notify(tick_obs)
@@ -336,8 +344,10 @@ function LineAxis(parent::Scene, attrs::Attributes)
     end
 
     tickspace = Observable(0.0f0; ignore_equal_values = true)
-    map!(parent, tickspace, ticksvisible, ticksize, tickalign) do ticksvisible, ticksize, tickalign
-        ticksvisible ? max(0.0f0, ticksize * (1.0f0 - tickalign)) : 0.0f0
+    # how far the tick marks reach past the outer spine edge; ticks are anchored on the
+    # spine centerline, so half a spine width of the outward part is covered by the spine
+    map!(parent, tickspace, ticksvisible, ticksize, tickalign, spinewidth) do ticksvisible, ticksize, tickalign, spinewidth
+        ticksvisible ? max(0.0f0, ticksize * (1.0f0 - tickalign) - 0.5f0 * spinewidth) : 0.0f0
     end
 
     labelgap = Observable(0.0f0; ignore_equal_values = true)
@@ -470,7 +480,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     onany(
         update_tick_obs, parent,
         Observable(minorticksnode), Observable(horizontal), Observable(flipped),
-        minortickpositions, minortickalign, minorticksize, spinewidth
+        minortickpositions, minortickalign, minorticksize
     )
 
     onany(
@@ -484,17 +494,17 @@ function LineAxis(parent::Scene, attrs::Attributes)
     onany(
         update_tick_obs, parent,
         Observable(ticksnode), Observable(horizontal), Observable(flipped),
-        tickpositions, tickalign, ticksize, spinewidth
+        tickpositions, tickalign, ticksize
     )
 
     linepoints = lift(
-        create_linepoints, parent, pos_extents_horizontal, flipped, spinewidth, trimspine,
-        tickpositions, tickwidth
+        create_linepoints, parent, pos_extents_horizontal, flipped, trimspine,
+        tickpositions, spinewidth, tickwidth
     )
 
     decorations[:axisline] = linesegments!(
         parent, linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, inspectable = false, linestyle = nothing
+        color = spinecolor, inspectable = false, linestyle = nothing, linecap = :square
     )
 
     translate!(decorations[:axisline], 0, 0, 20)

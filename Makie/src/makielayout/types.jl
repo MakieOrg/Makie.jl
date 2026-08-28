@@ -433,10 +433,10 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xticklabelalign::Union{Makie.Automatic, Tuple{Symbol, Symbol}} = Makie.automatic
         "The horizontal and vertical alignment of the yticklabels."
         yticklabelalign::Union{Makie.Automatic, Tuple{Symbol, Symbol}} = Makie.automatic
-        "The size of the xtick marks."
-        xticksize::Float64 = 5.0f0
-        "The size of the ytick marks."
-        yticksize::Float64 = 5.0f0
+        "The size of the xtick marks. Marks are drawn from the spine centerline, so `spinewidth / 2` of this is covered by the spine when `xtickalign = 0`."
+        xticksize::Float64 = 5.5f0
+        "The size of the ytick marks. Marks are drawn from the spine centerline, so `spinewidth / 2` of this is covered by the spine when `ytickalign = 0`."
+        yticksize::Float64 = 5.5f0
         "Controls if the xtick marks are visible."
         xticksvisible::Bool = true
         "Controls if the ytick marks are visible."
@@ -685,7 +685,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         "The alignment of x minor ticks on the axis spine"
         xminortickalign::Float64 = 0.0f0
         "The tick size of x minor ticks"
-        xminorticksize::Float64 = 3.0f0
+        xminorticksize::Float64 = 3.5f0
         "The tick width of x minor ticks"
         xminortickwidth::Float64 = 1.0f0
         "The tick color of x minor ticks"
@@ -704,7 +704,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         "The alignment of y minor ticks on the axis spine"
         yminortickalign::Float64 = 0.0f0
         "The tick size of y minor ticks"
-        yminorticksize::Float64 = 3.0f0
+        yminorticksize::Float64 = 3.5f0
         "The tick width of y minor ticks"
         yminortickwidth::Float64 = 1.0f0
         "The tick color of y minor ticks"
@@ -840,8 +840,8 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         ticklabelsvisible = true
         "The color of the tick labels."
         ticklabelcolor = @inherit(:textcolor, :black)
-        "The size of the tick marks."
-        ticksize = 5.0f0
+        "The size of the tick marks. Marks are drawn from the spine centerline, so `spinewidth / 2` of this is covered by the spine when `tickalign = 0`."
+        ticksize = 5.5f0
         "Controls if the tick marks are visible."
         ticksvisible = true
         "The ticks."
@@ -923,7 +923,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "The alignment of minor ticks on the axis spine"
         minortickalign = 0.0f0
         "The tick size of minor ticks"
-        minorticksize = 3.0f0
+        minorticksize = 3.5f0
         "The tick width of minor ticks"
         minortickwidth = 1.0f0
         "The tick color of minor ticks"
