@@ -51,17 +51,17 @@ struct VideoStreamOptions
     rawvideo::Bool
 
     function VideoStreamOptions(
-        format::AbstractString,
-        framerate::Real,
-        compression,
-        profile,
-        input_pixel_format,
-        pixel_format,
-        loop,
-        loglevel::String,
-        input::String,
-        rawvideo::Bool = true,
-    )
+            format::AbstractString,
+            framerate::Real,
+            compression,
+            profile,
+            input_pixel_format,
+            pixel_format,
+            loop,
+            loglevel::String,
+            input::String,
+            rawvideo::Bool = true,
+        )
 
         if !isa(framerate, Integer)
             @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To suppress this warning, provide an integer as the framerate."
@@ -129,17 +129,17 @@ struct VideoStreamOptions
 end
 
 function VideoStreamOptions(;
-    format = "mp4",
-    framerate = 24,
-    compression = nothing,
-    profile = nothing,
-    input_pixel_format = "rgb24",
-    pixel_format = nothing,
-    loop = nothing,
-    loglevel = "quiet",
-    input = "pipe:0",
-    rawvideo = true,
-)
+        format = "mp4",
+        framerate = 24,
+        compression = nothing,
+        profile = nothing,
+        input_pixel_format = "rgb24",
+        pixel_format = nothing,
+        loop = nothing,
+        loglevel = "quiet",
+        input = "pipe:0",
+        rawvideo = true,
+    )
     return VideoStreamOptions(
         format,
         framerate,
@@ -325,7 +325,7 @@ function VideoStream(
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     buffer = Matrix{eltype(first_frame)}(undef, xdim, ydim)
-    @debug "FFmpeg input" eltype=eltype(first_frame)
+    @debug "FFmpeg input" eltype = eltype(first_frame)
     input_pixel_format = _color_type_to_ffmpeg_string(eltype(first_frame))
     vso = VideoStreamOptions(format, framerate, compression, profile, input_pixel_format, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
