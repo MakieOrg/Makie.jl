@@ -12,7 +12,10 @@
   - Added support for x/y/zlabel suffixes based on dim converts via Axis/Axis3 attributes.
   - Adjusted conversion logic to avoid applying dim converts when `space != :data`, and allow early `convert_arguments()` application when dim converts are forced. (I.e. when the parent scene/Axis/etc. has set dim converts.)
   - Added `force_dimconverts` as a generic plot keyword argument. This can be set to `false` to allow a numeric plot to plot in a scene with fixed dim converts. (E.g. for axis decorations.)
-- Added dim converts for colors that can also apply to arguments as `dim = 4`, and extended `Colorbar` to process these dim converts. This means colors can now have units and `Colorbar` can display them. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
+- Added dim converts for colors and color-like arguments. The latter can be adressed as dim 4 in `argument_dims`. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
+- Added `dim_conversion` attribute and processing to `Colorbar`, including extraction of color dim converts from plots [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
+- **mildly breaking** Reworked `Colorbar` to use the ComputeGraph infrastructure and reworked the `extract_colormap` interface. Deprecated `limits` in favor of `colorrange`. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
+- Fixed Colorbar `tickformat` and `ticks` not working with categorical colors, NaN/Inf producing `(color)scale` + color combinations breaking the Colorbar and added safeguards against unsorted `colorrange`s. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
 - Reworked `barplot` to allow infinitely long bars in `Axis`, e.g. for log transforms [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
 - Updated `Legend` to toggle visibility in the root plot associated with a legend entry instead of its child plots. This fixes issues with some recipes erroring when toggling visibility and avoids showing child plots which are hidden by the recipe. [#5209](https://github.com/MakieOrg/Makie.jl/pull/5209)
   - **breaking** Custom implementations of `legendelements(::Plot, legend)` should no longer set `plots` in the `LegendElement`s they create. Custom `LegendElement` structs no longer need to contain `plots`.
@@ -49,7 +52,6 @@
 - Refactored `Colorbar` to use the compute graph [#5678](https://github.com/MakieOrg/Makie.jl/pull/5678)
   - **minor breaking** `extract_colormap(plot)` is now expected to return a `Dict` containing the `color`, `colormap`, `colorrange`, `colorscale`, `lowclip` and `highclip` attributes of the given plot. Returning a `Makie.ColorMapping` still works but is considered deprecated.
   - **minor breaking** The `limits` attribute has been deprecated in favor of `colorrange`
-- Added a dim convert for colors which can be addressed in `argument_dims` as dimension 4. Also updated Colorbar to consider this dim convert when generating ticks and labels [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
 - Fixed an issue where Observable outputs of compute nodes that cycle back into the compute graph could discard updates of other Observable outputs. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
 - Added `ComputePipeline.set_type!(node, type)` for initializing the type of a compute graph node [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
 - Added `ExplicitUpdate` wrapper to control update propagation for computations in the compute graph. Also added an option for forcefully propagate updates from input nodes. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
