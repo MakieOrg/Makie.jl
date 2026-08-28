@@ -233,6 +233,7 @@ function process_color_value(dim_convert, scale, value, auto)
 end
 
 sort_colorrange(r::VT) where {VT <: VecTypes{2, <:Real}} = VT(minimum(r), maximum(r))
+sort_colorrange(r::Tuple{<:Real, <:Real}) = (minimum(r), maximum(r))
 sort_colorrange(r) = r
 
 function register_colormapping!(attr::ComputeGraph, colorname = :color)
