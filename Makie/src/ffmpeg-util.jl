@@ -26,8 +26,7 @@
     - for `mov`, the default is `4`, which is the highest quality ProRes 4444 format with alpha channel support.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
   applies to `mp4` and `mov`. Defaults to `yuv444p` for `profile = "high444"`.
-    -`mov` defaults to `yuva444p10` for `pixel_format` and `4` for `profile`, which is the
-    highest quality ProRes 4444 format with alpha channel support.
+    -`mov`, `webm` defaults to `yuva420p` for `pixel_format`, which supports alpha channel.
 - `loop = 0`: Number of times the video is repeated, for a `gif` or `html` output. Defaults to `0`, which
   means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
   means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
@@ -70,16 +69,18 @@ struct VideoStreamOptions
 
         if format == "mp4"
             (profile === nothing) && (profile = "high422")
+            (compression === nothing) && (compression = 20)
             (pixel_format === nothing) && (pixel_format = (profile == "high444" ? "yuv444p" : "yuv420p"))
         end
 
         if format == "mov"
             (profile === nothing) && (profile = "4")  # prores_ks:  0 = ProRes 422 Proxy 1 = ProRes 422 LT 2 = ProRes 422 3 = ProRes 422 HQ 4 = ProRes 4444 5 = ProRes 4444 XQ
-            (pixel_format === nothing) && (pixel_format = "yuva444p10")
+            (pixel_format === nothing) && (pixel_format = "yuva420p")  # yuva444p10 would be too heavy for some players.
         end
 
-        if format in ("mp4", "webm")
+        if format == "webm"
             (compression === nothing) && (compression = 20)
+            (pixel_format === nothing) && (pixel_format = "yuva420p")  # yuva444p10 would be too heavy for some players.
         end
 
         (loop === nothing) && (loop = 0)
@@ -88,7 +89,7 @@ struct VideoStreamOptions
         allowed_kwargs = [
             ("compression", compression, ("mp4", "webm")),
             ("profile", profile, ("mp4", "mov")),
-            ("pixel_format", pixel_format, ("mp4", "mov")),
+            ("pixel_format", pixel_format, ("mp4", "webm", "mov")),
         ]
 
         for (name, value, allowed_formats) in allowed_kwargs
@@ -205,9 +206,12 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
         `
     elseif format == "webm"
         # this may need improvement, see here: https://trac.ffmpeg.org/wiki/Encode/VP9
+        # -metadata line is needed to make sure the alpha channel is preserved in webm
         `-crf $(compression)
          -c:v libvpx-vp9
          -b:v 0
+         -pix_fmt $(pixel_format)
+         -metadata:s:v:0 alpha_mode="1"
          -an
         `
     elseif format == "mov"
