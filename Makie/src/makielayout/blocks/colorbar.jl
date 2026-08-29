@@ -521,7 +521,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
             # let dim convert generate categories (or use names of categories)
             return automatic, formatter
         elseif type === Makie.categorical
-            if ticks === automatic
+            if ticks !== automatic
                 return ticks, formatter
             else
                 labels = get_ticklabels(formatter, cs)
