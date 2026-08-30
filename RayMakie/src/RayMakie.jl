@@ -19,8 +19,14 @@ import Makie.Observables
 #
 # It was all `Lava` until 2026-08-27, when the runtime moved out of the compiler.
 import Lava
-import Lava: Premultiplied, TriangleList, NoCull, DepthOff,
-             vertex_index, instance_index, set_position!, set_point_size!,
+# The shader half: stage intrinsics a shader BODY calls, and the device-side
+# array. Lava is the Julia→SPIR-V compiler and needs no device, so importing it
+# here costs nothing on a machine with no Vulkan loader.
+#
+# `Premultiplied`, `NoCull` and `DepthOff` are NOT in this list any more: blend,
+# cull and depth state describe a pipeline rather than compile one, so they moved
+# to Mantle with the rest of the runtime's vocabulary and are imported below.
+import Lava: vertex_index, instance_index, set_position!, set_point_size!,
              frag_coord_x, frag_coord_y, gfx_output, gfx_input,
              gfx_output_flat, gfx_input_flat,
              dFdx, dFdy,
@@ -30,23 +36,31 @@ import Lava: Premultiplied, TriangleList, NoCull, DepthOff,
              GfxTexture2D,
              geom_input, geom_input_position
 import Mantle
-import Mantle: GraphicsPipeline, LavaFramebuffer, OffscreenTarget,
-               LavaTexture2D, LavaSampler, SampledTexture, bind_textures,
-               vk_context, ensure_active_batch!, transition_image!,
-               LavaArray, LavaBackend, BatchQueue, allocate_batch_queue!
-# `VK` is Mantle's alias for the Vulkan package. This file used to say
-# `import Lava.Vulkan` and the call sites said `Vulkan.FORMAT_…`; the split
-# replaced the import with this line and left the 18 call sites naming a module
-# RayMakie no longer has, so the package did not load at all. Reached through
-# Mantle rather than depended on directly: RayMakie describes what to draw, and
-# the Vulkan handle types it still touches — viewport, scissor, format — belong
-# to the runtime that owns the command buffer.
-import Mantle: VK
+# The runtime half, and all of it Mantle's portable spelling. These used to be
+# `VulkanFramebuffer` / `VulkanTexture2D` / `VulkanSampler` / `VulkanBatchQueue`
+# — driver-named concretes that only exist when `MantleVulkanExt` is loaded, so
+# naming them here made RayMakie a package that could not load on a Mac. The
+# abstract types are Mantle's; the backend supplies the concretes.
+import Mantle: GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
+               Texture2D, Sampler, SampledTexture, bind_textures,
+               ensure_active_batch!, transition_image!,
+               BatchQueue, allocate_batch_queue!, release_batch_queue!,
+               supports_graphics, waitidle
+# Fixed-function state: what a pipeline IS, not what compiles it.
+import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
+# No `import Mantle: VK`. The Vulkan handle types this file used to reach for —
+# viewport, scissor, pixel format — are the runtime's, not a renderer's, and a
+# module-level `const … = VK.FORMAT_…` is what stopped RayMakie loading without
+# a driver. Formats are now written as Julia element types (`BGRA{N0f8}`), which
+# is what `Mantle.vkformat` lowers, and viewport/scissor go through
+# `Mantle.set_viewport!`. What genuinely needs a graphics pipeline is gated on
+# `Mantle.supports_graphics`.
 using Adapt
+using GPUArraysCore: AbstractGPUArray
 using Makie.ComputePipeline: register_computation!
 
-# LavaArray overloads for Makie's conversion + bounds path
-include("lava_arrays.jl")
+# GPU-array overloads for Makie's conversion + bounds path
+include("gpu_arrays.jl")
 
 # Overlay rasterization (included directly, no submodule)
 include("overlay/Overlay.jl")
@@ -83,8 +97,18 @@ mutable struct RayMakieState
     topology_rebuilds::Int
 end
 
-# Helper to get TLAS from state
+# Helper to get HWTLAS from state
 get_tlas(state::RayMakieState) = state.hikari_scene.accel
+
+"""
+Does this integrator want a hardware acceleration structure?
+
+One place, because two call sites have to agree: `create_scene_state` builds the
+`Hikari.Scene` from it, and `apply_screen_config!` has to notice when it CHANGES
+— the accel type is baked in at scene construction, so a new integrator with a
+different answer needs a new scene, not just a new integrator state.
+"""
+wants_hw_accel(integrator) = integrator isa Hikari.VolPath && integrator.hw_accel === true
 
 # =============================================================================
 # Legacy Overlay Render Objects (kept for backward compat during transition)
@@ -427,8 +451,7 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
         diagonal=1.0f0, scale=1.0f0,
     )
 
-    hw_accel = integrator isa Hikari.VolPath && integrator.hw_accel === true
-    hikari_scene = Hikari.Scene(backend=ka_backend, hw_accel=hw_accel)
+    hikari_scene = Hikari.Scene(backend=ka_backend, hw_accel=wants_hw_accel(integrator))
     init_lights!(hikari_scene, rscene, integrator)
 
     # Onto the backend, in memory the film owns
@@ -563,7 +586,7 @@ function init_scene!(screen, mscene::Makie.Scene)
         # the axis's own state came up the plot already had a
         # `:trace_renderobject` and was skipped. Net effect: NOTHING in a Figure
         # was ever raytraced — an `Axis3` sphere came out as a flat disc of the
-        # raw plot colour, with an empty TLAS and an all-zero film.
+        # raw plot colour, with an empty HWTLAS and an all-zero film.
         # `collect_overlay_robjs` already walks scenes this way.
         for plot in rscene.plots
             Makie.for_each_atomic_plot(plot) do p
@@ -656,7 +679,7 @@ function poll_all_plots(screen, mscene)
 end
 
 # =============================================================================
-# delete_trace_robj! — remove a plot's render object from the TLAS
+# delete_trace_robj! — remove a plot's render object from the HWTLAS
 # =============================================================================
 
 function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
@@ -764,7 +787,7 @@ end
 const PRECOMPILE_KERNELS_VERSION = "raymakie_pc"
 Mantle.@setup_workload begin
     try
-        dev = Mantle.LavaBackend()
+        dev = Mantle.defaultbackend()
         Mantle.@compile_workload PRECOMPILE_KERNELS_VERSION begin
             scene = Scene(size = (96, 72),
                           lights = [PointLight(RGBf(30, 30, 30), Vec3f(4, 5, 6))])

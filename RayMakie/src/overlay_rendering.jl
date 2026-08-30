@@ -32,35 +32,17 @@ end
 # Draw a single LavaRenderObject inside the active render pass
 # =============================================================================
 
-function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRenderObject, viewport, color_format, default_vp, default_sc)
+function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRenderObject, viewport, color_format, default_vp)
     batch = bq.active_batch
-    cmd = batch.cmd_buf
 
+    # `Mantle.set_viewport!` takes plain numbers and derives the scissor —
+    # including the clamping a flipped (negative-height) viewport needs. That
+    # arithmetic used to live here, spelled in `VK.Viewport`/`VK.Rect2D`, which
+    # is how a renderer ended up owning a driver's rectangle rules.
     if viewport !== nothing
-        vx, vy, vw, vh = viewport
-        dvp = VK.Viewport(vx, vy, vw, vh, 0f0, 1f0)
-        VK.cmd_set_viewport(cmd, [dvp])
-        # Compute scissor rect — must clamp to non-negative (Vulkan requirement)
-        sc_x = Int32(floor(vx))
-        sc_y = vh < 0 ? Int32(floor(vy + vh)) : Int32(floor(vy))
-        sc_w = Int32(ceil(abs(vw)))
-        sc_h = Int32(ceil(abs(vh)))
-        # Clamp negative offsets: shrink extent by the overflow amount
-        if sc_x < Int32(0)
-            sc_w = max(Int32(0), sc_w + sc_x)
-            sc_x = Int32(0)
-        end
-        if sc_y < Int32(0)
-            sc_h = max(Int32(0), sc_h + sc_y)
-            sc_y = Int32(0)
-        end
-        dsc = VK.Rect2D(
-            VK.Offset2D(sc_x, sc_y),
-            VK.Extent2D(UInt32(sc_w), UInt32(sc_h)))
-        VK.cmd_set_scissor(cmd, [dsc])
+        Mantle.set_viewport!(bq, viewport...)
     else
-        VK.cmd_set_viewport(cmd, [default_vp])
-        VK.cmd_set_scissor(cmd, [default_sc])
+        Mantle.set_viewport!(bq, default_vp...)
     end
 
     args = build_args(robj)
@@ -71,21 +53,17 @@ function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRender
         color_format=color_format, descriptor_set_layout=ds_layout)
 
     if robj.bindings !== nothing
-        VK.cmd_bind_descriptor_sets(cmd,
-            VK.PIPELINE_BIND_POINT_GRAPHICS,
-            compiled.pipeline_layout, UInt32(0),
-            [robj.bindings.set], UInt32[])
-        Mantle.pin!(batch, robj.bindings)
+        Mantle.use_bindings!(bq, compiled, robj.bindings)
     end
 
     push_data = Mantle.pack_gfx_args(bq, args, vert_shader.push_info)
 
     if haskey(robj.buffers, :indices)
         ib = robj.buffers[:indices]
-        Mantle.vk_draw_indexed_in_pass!(bq, compiled, length(ib);
+        Mantle.draw_indexed_in_pass!(bq, compiled, length(ib);
             push_data=push_data, indices_buffer=ib.buf[].buffer)
     else
-        Mantle.vk_draw_in_pass!(bq, compiled, robj.vertex_count;
+        Mantle.draw_in_pass!(bq, compiled, robj.vertex_count;
             push_data=push_data, instances=robj.instances)
     end
 
@@ -183,21 +161,18 @@ function render_overlays_gfx!(screen, bq, target; scenes=nothing)
         image = fb.color_image
     end
 
-    extent = VK.Extent2D(UInt32(w), UInt32(h))
     # No clear — overlays are alpha-blended on top of existing content
-    Mantle.vk_begin_pass!(bq, view, image, extent; clear_color=nothing)
+    Mantle.begin_pass!(bq, view, image, w, h; clear_color=nothing)
 
-    batch = bq.active_batch
-    cmd = batch.cmd_buf
-    vp = VK.Viewport(0f0, Float32(h), Float32(w), -Float32(h), 0f0, 1f0)
-    VK.cmd_set_viewport(cmd, [vp])
-    sc = VK.Rect2D(VK.Offset2D(0, 0), extent)
-    VK.cmd_set_scissor(cmd, [sc])
+    # Y-flipped: negative height puts clip-space +Y at the top, matching Makie's
+    # pixel convention. `set_viewport!` derives the scissor from exactly this.
+    default_vp = (0f0, Float32(h), Float32(w), -Float32(h))
+    Mantle.set_viewport!(bq, default_vp...)
 
     fmt = target isa Mantle.WindowTarget ? target.window.format : target.fb.color_format
     for (robj, robj_vp) in robjs
-        draw_lava_renderobject!(screen, bq, robj, robj_vp, fmt, vp, sc)
+        draw_lava_renderobject!(screen, bq, robj, robj_vp, fmt, default_vp)
     end
 
-    Mantle.vk_end_pass!(bq)
+    Mantle.end_pass!(bq)
 end

@@ -19,7 +19,7 @@ using Makie, RayMakie, Hikari, Lava, GeometryBasics, Raycore
     scene = Makie.Scene(size = (64, 64))
     Makie.Camera3D(scene)
     p = mesh!(scene, Rect3f(Vec3f(-1), Vec3f(2)), color = :red)
-    screen = RayMakie.Screen(scene; device = Mantle.LavaBackend(), visible = false)
+    screen = RayMakie.Screen(scene; device = Mantle.defaultbackend(), visible = false)
     # The Screen constructor does not build the scene; `colorbuffer` does it
     # lazily and so does this.
     RayMakie.init_scene!(screen, scene)

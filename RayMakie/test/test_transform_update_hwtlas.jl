@@ -6,25 +6,27 @@ import ColorTypes
 #
 # `update_trace_transform!` had two branches: the multi-handle one (meshscatter)
 # called `Raycore.update_transform!(accel, handle, transform)`, which both
-# `Raycore.TLAS` and `Mantle.HWTLAS` implement, while the single-handle one
+# `Raycore.TLAS` and `Mantle.VulkanTLAS` implement, while the single-handle one
 # (mesh) called the index-based `update_instance_transforms!(tlas, …, idx)`,
-# which only `TLAS` has — `HWTLAS` is batch/handle-addressed. So the mesh path
+# which only `TLAS` has — `VulkanTLAS` is batch/handle-addressed. So the mesh path
 # threw a MethodError, `poll_all_plots` logged and swallowed it, and the
 # transform never applied. Silent: meshscatter animated, mesh sat still.
 #
 # Both branches now use the handle API. A single mesh is a batch of one and
 # `update_transform!` sets every instance in the batch, so it is the same
 # operation minus the per-update `allocate` + `fill!`.
-@testset "transform update reaches the accel (HWTLAS)" begin
+@testset "transform update reaches the accel" begin
     scene = Makie.Scene(size = (48, 48))
     Makie.Camera3D(scene)
     p = mesh!(scene, Rect3f(Vec3f(-0.5), Vec3f(1)), color = :red)
-    screen = RayMakie.Screen(scene; device = Mantle.LavaBackend(), visible = false)
+    screen = RayMakie.Screen(scene; device = Mantle.defaultbackend(), visible = false)
     RayMakie.init_scene!(screen, scene)
     state = screen.scene_states[1]
 
     # Pin the configuration this regressed under; a software TLAS never had the
-    # bug, so a test that silently ran on one would prove nothing.
+    # bug, so a test that silently ran on one would prove nothing. `HWTLAS` is
+    # the abstract type in Mantle core — `VulkanTLAS` named one backend's
+    # concrete and made this assertion unreachable on any other.
     @test state.hikari_scene.accel isa Mantle.HWTLAS
 
     before = (state.refit_eligible_rebuilds, state.topology_rebuilds)
@@ -48,7 +50,7 @@ end
     scene = Makie.Scene(size = (48, 48))
     Makie.Camera3D(scene)
     p = mesh!(scene, Rect3f(Vec3f(-0.5), Vec3f(1)), color = :red)
-    screen = RayMakie.Screen(scene; device = Mantle.LavaBackend(), visible = false)
+    screen = RayMakie.Screen(scene; device = Mantle.defaultbackend(), visible = false)
 
     red_of(img) = Float32.(ColorTypes.red.(img))
     a = red_of(Makie.colorbuffer(screen))

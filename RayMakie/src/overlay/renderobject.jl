@@ -11,13 +11,13 @@
     LavaRenderObject
 
 Holds a fully compiled Lava graphics pipeline plus all GPU resources needed to draw.
-Created once, updated in-place via `update!` on LavaArrays.
+Created once, updated in-place via `update!` on its device arrays.
 
 # Fields
 - `pipeline`: The `GraphicsPipeline` (lazily compiled Vulkan pipeline)
-- `buffers`: `Dict{Symbol, LavaArray}` — persistent GPU buffers, updated via `update!`
+- `buffers`: `Dict{Symbol, AbstractGPUArray}` — persistent GPU buffers, updated via `update!`
 - `uniforms`: `Dict{Symbol, Any}` — scalar uniforms (Vec2f, Float32, Int32, Mat4f, etc.)
-- `bindings`: `Nothing` or `TextureBindings` — descriptor set for texture sampling
+- `bindings`: `Nothing` or `VulkanTextureBindings` — descriptor set for texture sampling
 - `vertex_count`: Number of vertices per draw call
 - `instances`: Number of instances (1 for most, N for instanced draws)
 - `visible`: Whether to draw this object
@@ -25,10 +25,16 @@ Created once, updated in-place via `update!` on LavaArrays.
 """
 mutable struct LavaRenderObject
     pipeline::GraphicsPipeline
-    buffers::Dict{Symbol, LavaArray}
+    # The backend this object's buffers and textures live on. Carried rather
+    # than looked up: `update_texture!` and `update_buffer!` are handed only the
+    # render object, and they used to name `VulkanTexture2D`/`LavaArray`
+    # directly — which is both a driver dependency and a guess about where the
+    # existing buffers already are.
+    backend::Any
+    buffers::Dict{Symbol, AbstractGPUArray}
     uniforms::Dict{Symbol, Any}
     arg_names::Tuple   # ordered names for building args tuple, e.g. (:vertex, :color, ..., :resolution, ...)
-    bindings::Any      # Nothing or TextureBindings
+    bindings::Any      # Nothing or VulkanTextureBindings
     vertex_count::Int
     instances::Int
     visible::Bool
@@ -41,7 +47,8 @@ mutable struct LavaRenderObject
 end
 
 function LavaRenderObject(pipeline::GraphicsPipeline;
-                          buffers=Dict{Symbol, LavaArray}(),
+                          backend=Mantle.defaultbackend(),
+                          buffers=Dict{Symbol, AbstractGPUArray}(),
                           uniforms=Dict{Symbol, Any}(),
                           arg_names::Tuple=(),
                           bindings=nothing,
@@ -49,7 +56,8 @@ function LavaRenderObject(pipeline::GraphicsPipeline;
                           instances=1,
                           visible=true,
                           viewport=nothing)
-    LavaRenderObject(pipeline, buffers, uniforms, arg_names, bindings, vertex_count, instances, visible, viewport,
+    LavaRenderObject(pipeline, backend, buffers, uniforms, arg_names, bindings,
+                     vertex_count, instances, visible, viewport,
                      nothing, Vector{UInt8}(undef, 8))
 end
 
@@ -75,7 +83,7 @@ end
 """
     update_buffer!(robj::LavaRenderObject, name::Symbol, data::AbstractArray)
 
-Update a named GPU buffer.  `Base.resize!` on a LavaArray is capacity-aware
+Update a named GPU buffer.  `Base.resize!` on a pooled device array is capacity-aware
 (no Vulkan alloc when the new size fits the existing VkBuffer) and retires
 the old VkBuffer via deferred-free on genuine growth — no GC pressure, no
 per-call CPU sync.
@@ -86,7 +94,7 @@ function update_buffer!(robj::LavaRenderObject, name::Symbol, data::AbstractArra
         resize!(buf, length(data))
         copyto!(buf, data)
     else
-        robj.buffers[name] = LavaArray(data)
+        robj.buffers[name] = Mantle.devicearray(robj.backend, data)
     end
     return robj.buffers[name]
 end
@@ -97,8 +105,8 @@ end
 Update or create the texture bindings on a render object.
 """
 function update_texture!(robj::LavaRenderObject, image_data; filter=:linear, wrap=:clamp)
-    tex = LavaTexture2D(image_data)
-    sampler = LavaSampler(; filter, wrap)
+    tex = Texture2D(robj.backend, image_data)
+    sampler = Sampler(robj.backend; filter, wrap)
     robj.bindings = bind_textures([SampledTexture(tex, sampler)])
     return robj.bindings
 end
@@ -128,7 +136,7 @@ end
 Ensure the pipeline is compiled for the current arg types. Returns (vert_shader, compiled).
 """
 function compile_robj!(robj::LavaRenderObject, args::Tuple;
-                       color_format=VK.FORMAT_R32G32B32A32_SFLOAT,
+                       color_format=RGBA{Float32},
                        descriptor_set_layout=nothing)
     pipeline = robj.pipeline
     tt = gfx_type_tuple(args)
@@ -142,10 +150,10 @@ function compile_robj!(robj::LavaRenderObject, args::Tuple;
     return vert_shader, compiled
 end
 
-"""Convert args tuple to device-side types (LavaArray → LavaDeviceArray)."""
+"""Convert args tuple to device-side types (host GPU array → device array)."""
 function gfx_type_tuple(args)
     types = map(args) do arg
-        arg isa Mantle.LavaArray ? typeof(Lava.LavaDeviceArray(arg)) : typeof(arg)
+        arg isa AbstractGPUArray ? typeof(Lava.LavaDeviceArray(arg)) : typeof(arg)
     end
     return Tuple{types...}
 end
@@ -205,8 +213,8 @@ is_gpu_buffer(x::Vector) = true
 is_gpu_buffer(x) = false
 
 function construct_robj(pipeline::GraphicsPipeline, args::NamedTuple, arg_names::Tuple;
-                        backend=Mantle.LavaBackend(), vertex_count=0, instances=1, bindings=nothing)
-    buffers = Dict{Symbol, LavaArray}()
+                        backend=Mantle.defaultbackend(), vertex_count=0, instances=1, bindings=nothing)
+    buffers = Dict{Symbol, AbstractGPUArray}()
     uniforms = Dict{Symbol, Any}()
     for name in keys(args)
         value = args[name]
@@ -221,6 +229,6 @@ function construct_robj(pipeline::GraphicsPipeline, args::NamedTuple, arg_names:
         end
     end
     LavaRenderObject(pipeline;
-        buffers, uniforms, arg_names, bindings,
+        backend, buffers, uniforms, arg_names, bindings,
         vertex_count, instances)
 end

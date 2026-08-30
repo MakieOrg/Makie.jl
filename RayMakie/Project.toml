@@ -8,6 +8,7 @@ AcceleratedKernels = "6a4ca0a5-0e36-4168-a932-d9be78d558f1"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 GLFW = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
+GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 # Both, split by what each provides: Lava is the SPIR-V compiler (shader
 # intrinsics, pipeline-description enums, the device-side array), Mantle is the

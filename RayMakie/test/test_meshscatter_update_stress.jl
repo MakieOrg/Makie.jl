@@ -20,8 +20,16 @@
 #  10. Mixed CPU/GPU position alternation across frames
 #  11. Large-mesh meshscatter refit stress, 50 frames, hi-res sphere
 
-using Test, Makie, RayMakie, Lava, Raycore, Hikari, GeometryBasics
-using Mantle: LavaArray, LavaBackend, Mat3x4f
+using Test, Makie, RayMakie, Raycore, Hikari, GeometryBasics
+using Mantle: Mat3x4f
+import Mantle, KernelAbstractions as KA
+
+# `gpuarray(x)` / `BE` until this suite first ran on anything but
+# Vulkan: both are driver types that do not resolve without a loader, and every
+# testset below died on the first line. `devicearray` is the portable verb — the
+# Vulkan backend still answers it with a pooled, capacity-aware `LavaArray`.
+const BE = Mantle.defaultbackend()
+gpuarray(data) = Mantle.devicearray(BE, data)
 using GeometryBasics: Point3f, Vec3f, Vec4f
 using Statistics: mean
 
@@ -83,7 +91,7 @@ end
 
 @testset "meshscatter refit — GPU positions, uniform scale, 500×40" begin
     n = 500
-    positions = Observable(LavaArray([Point3f(Float32(i)*0.05f0 - 12f0, 0f0, 0f0)
+    positions = Observable(gpuarray([Point3f(Float32(i)*0.05f0 - 12f0, 0f0, 0f0)
                                      for i in 1:n]))
 
     scene = Scene(size=(64, 64)); cam3d!(scene)
@@ -95,13 +103,16 @@ end
     pinned_buf = trans_of(plt)
     pinned_robj = robj_of(plt)
     @test pinned_robj.n_instances == n
-    @test pinned_buf isa LavaArray{Mat3x4f, 1}
+    # The type is the backend's business; that the buffer LIVES on the device
+    # with the right element type is the claim, and it reads the same everywhere.
+    @test KA.get_backend(pinned_buf) == BE
+    @test eltype(pinned_buf) === Mat3x4f
     @test length(pinned_buf) == n
     @test lit_count(img0) > 100   # spheres really show up on screen
 
     for frame in 1:40
         dx = Float32(frame) * 0.05f0
-        positions[] = LavaArray([Point3f(Float32(i)*0.05f0 - 12f0 + dx,
+        positions[] = gpuarray([Point3f(Float32(i)*0.05f0 - 12f0 + dx,
                                          Float32(frame)*0.02f0, 0f0)
                                  for i in 1:n])
         img = Makie.colorbuffer(screen)
@@ -133,9 +144,9 @@ end
 
 @testset "meshscatter refit — per-instance Vec3f scale, 300×30" begin
     n = 300
-    positions = Observable(LavaArray([Point3f(Float32(i)*0.05f0 - 7f0, 0f0, 0f0)
+    positions = Observable(gpuarray([Point3f(Float32(i)*0.05f0 - 7f0, 0f0, 0f0)
                                      for i in 1:n]))
-    scales    = Observable(LavaArray([Vec3f(0.05f0, 0.05f0, 0.05f0) for _ in 1:n]))
+    scales    = Observable(gpuarray([Vec3f(0.05f0, 0.05f0, 0.05f0) for _ in 1:n]))
 
     scene = Scene(size=(64, 64)); cam3d!(scene)
     plt = meshscatter!(scene, positions; markersize=scales, color=:magenta)
@@ -149,9 +160,9 @@ end
 
     for frame in 1:30
         dx = Float32(frame) * 0.05f0
-        positions[] = LavaArray([Point3f(Float32(i)*0.05f0 - 7f0 + dx, 0f0, 0f0)
+        positions[] = gpuarray([Point3f(Float32(i)*0.05f0 - 7f0 + dx, 0f0, 0f0)
                                  for i in 1:n])
-        scales[]    = LavaArray([Vec3f(0.05f0,
+        scales[]    = gpuarray([Vec3f(0.05f0,
                                        0.05f0 + Float32(frame)*0.001f0,
                                        0.05f0) for _ in 1:n])
         img = Makie.colorbuffer(screen)
@@ -213,7 +224,7 @@ end
 
 @testset "meshscatter — single transforms_buf allocation, 100 frames" begin
     n = 64
-    positions = Observable(LavaArray([Point3f(Float32(i)*0.2f0 - 6.5f0, 0f0, 0f0)
+    positions = Observable(gpuarray([Point3f(Float32(i)*0.2f0 - 6.5f0, 0f0, 0f0)
                                      for i in 1:n]))
 
     scene = Scene(size=(32, 32)); cam3d!(scene)
@@ -225,7 +236,7 @@ end
     pinned = trans_of(plt)
     pinned_robj_handles = robj_of(plt).handles
     for frame in 1:100
-        positions[] = LavaArray([Point3f(Float32(i)*0.2f0 - 6.5f0,
+        positions[] = gpuarray([Point3f(Float32(i)*0.2f0 - 6.5f0,
                                          Float32(frame)*0.05f0, 0f0)
                                  for i in 1:n])
         img = Makie.colorbuffer(screen)
@@ -243,7 +254,7 @@ end
 
 @testset "meshscatter — marker mesh swap triggers rebuild, mi_indices reused" begin
     n = 50
-    positions = Observable(LavaArray([Point3f(Float32(i), 0f0, 0f0) for i in 1:n]))
+    positions = Observable(gpuarray([Point3f(Float32(i), 0f0, 0f0) for i in 1:n]))
     sphere0 = GeometryBasics.normal_mesh(GeometryBasics.Sphere(Point3f(0), 1f0))
     marker = Observable{Any}(sphere0)
 
@@ -273,7 +284,7 @@ end
 # ===========================================================================
 
 @testset "meshscatter — instance count cycles trigger rebuild" begin
-    positions = Observable(LavaArray([Point3f(0f0, 0f0, 0f0)]))
+    positions = Observable(gpuarray([Point3f(0f0, 0f0, 0f0)]))
 
     scene = Scene(size=(32, 32)); cam3d!(scene)
     plt = meshscatter!(scene, positions; markersize=0.3f0)
@@ -283,7 +294,7 @@ end
 
     for cycle in 1:5
         for n in (10, 100, 250, 100, 10, 1, 50)
-            positions[] = LavaArray([Point3f(Float32(i), 0f0, 0f0) for i in 1:n])
+            positions[] = gpuarray([Point3f(Float32(i), 0f0, 0f0) for i in 1:n])
             Makie.colorbuffer(screen)
             @test robj_of(plt).n_instances == n
             @test length(trans_of(plt)) == n
@@ -299,7 +310,7 @@ end
 # ===========================================================================
 
 @testset "meshscatter — empty / non-empty transitions" begin
-    positions = Observable(LavaArray(Point3f[]))
+    positions = Observable(gpuarray(Point3f[]))
 
     scene = Scene(size=(32, 32)); cam3d!(scene)
     plt = meshscatter!(scene, positions; markersize=0.3f0)
@@ -308,15 +319,15 @@ end
     Makie.colorbuffer(screen)
     @test robj_of(plt).n_instances == 0
 
-    positions[] = LavaArray([Point3f(Float32(i), 0f0, 0f0) for i in 1:5])
+    positions[] = gpuarray([Point3f(Float32(i), 0f0, 0f0) for i in 1:5])
     Makie.colorbuffer(screen)
     @test robj_of(plt).n_instances == 5
 
-    positions[] = LavaArray(Point3f[])
+    positions[] = gpuarray(Point3f[])
     Makie.colorbuffer(screen)
     @test robj_of(plt).n_instances == 0
 
-    positions[] = LavaArray([Point3f(Float32(i), 0f0, 0f0) for i in 1:20])
+    positions[] = gpuarray([Point3f(Float32(i), 0f0, 0f0) for i in 1:20])
     Makie.colorbuffer(screen)
     @test robj_of(plt).n_instances == 20
     close(screen)
@@ -328,7 +339,7 @@ end
 
 @testset "meshscatter — color update keeps transforms_buf identity" begin
     n = 32
-    positions = Observable(LavaArray([Point3f(Float32(i), 0f0, 0f0) for i in 1:n]))
+    positions = Observable(gpuarray([Point3f(Float32(i), 0f0, 0f0) for i in 1:n]))
     color = Observable(Makie.RGBAf(0.8, 0.8, 0.8, 1.0))
 
     scene = Scene(size=(32, 32)); cam3d!(scene)
@@ -355,7 +366,7 @@ end
 
 @testset "meshscatter — scalar markersize live updates" begin
     n = 80
-    positions = Observable(LavaArray([Point3f(Float32(i), 0f0, 0f0) for i in 1:n]))
+    positions = Observable(gpuarray([Point3f(Float32(i), 0f0, 0f0) for i in 1:n]))
     markersize = Observable(0.3f0)
 
     scene = Scene(size=(32, 32)); cam3d!(scene)
@@ -384,7 +395,7 @@ end
 @testset "meshscatter — large-mesh refit stress, 50 frames" begin
     sphere = hires_sphere(50)
     n = 100
-    positions = Observable(LavaArray([Point3f(Float32(i)*0.3f0 - 15f0, 0f0, 0f0)
+    positions = Observable(gpuarray([Point3f(Float32(i)*0.3f0 - 15f0, 0f0, 0f0)
                                      for i in 1:n]))
 
     scene = Scene(size=(64, 64)); cam3d!(scene)
@@ -399,7 +410,7 @@ end
     centroids = Tuple{Float64, Float64}[]
     for frame in 1:50
         dy = Float32(frame) * 0.1f0
-        positions[] = LavaArray([Point3f(Float32(i)*0.3f0 - 15f0, dy, 0f0)
+        positions[] = gpuarray([Point3f(Float32(i)*0.3f0 - 15f0, dy, 0f0)
                                  for i in 1:n])
         img = Makie.colorbuffer(screen)
         @test trans_of(plt) === pinned_buf
@@ -425,7 +436,7 @@ end
 
 @testset "meshscatter — pixel motion: single instance shifts in image space" begin
     cube = GeometryBasics.normal_mesh(Rect3f(Vec3f(-0.5), Vec3f(1)))
-    positions = Observable(LavaArray([Point3f(0, 0, 0)]))
+    positions = Observable(gpuarray([Point3f(0, 0, 0)]))
     scene = Scene(size=(96, 96)); cam3d!(scene)
     plt = meshscatter!(scene, positions; marker=cube, markersize=1f0, color=:red)
 
@@ -439,20 +450,20 @@ end
     @test c_origin !== nothing
 
     # Frame 2: cube far offscreen → mostly empty
-    positions[] = LavaArray([Point3f(100f0, 0, 0)])
+    positions[] = gpuarray([Point3f(100f0, 0, 0)])
     img_off     = Makie.colorbuffer(screen)
     n_off       = lit_count(img_off)
     @test n_off < n_origin ÷ 3                  # >3× drop in lit pixels
 
     # Frame 3: cube shifted left in world space → centroid shifts in image
-    positions[] = LavaArray([Point3f(-1.5f0, 0, 0)])
+    positions[] = gpuarray([Point3f(-1.5f0, 0, 0)])
     img_left    = Makie.colorbuffer(screen)
     c_left      = lit_centroid(img_left)
     @test c_left !== nothing
     @test sqrt((c_left[1] - c_origin[1])^2 + (c_left[2] - c_origin[2])^2) > 4
 
     # Frame 4: cube right of origin in world → opposite-direction centroid shift
-    positions[] = LavaArray([Point3f(+1.5f0, 0, 0)])
+    positions[] = gpuarray([Point3f(+1.5f0, 0, 0)])
     img_right   = Makie.colorbuffer(screen)
     c_right     = lit_centroid(img_right)
     @test c_right !== nothing
@@ -470,7 +481,7 @@ end
 
 @testset "meshscatter — pixel motion: 50-frame trajectory traces a curve" begin
     sphere = GeometryBasics.normal_mesh(GeometryBasics.Sphere(Point3f(0), 1f0))
-    positions = Observable(LavaArray([Point3f(0, 0, 0)]))
+    positions = Observable(gpuarray([Point3f(0, 0, 0)]))
     scene = Scene(size=(96, 96)); cam3d!(scene)
     plt = meshscatter!(scene, positions; marker=sphere, markersize=0.5f0, color=:cyan)
 
@@ -480,7 +491,7 @@ end
     centroids = Tuple{Float64, Float64}[]
     for frame in 0:49
         θ = 2π * frame / 50
-        positions[] = LavaArray([Point3f(2cos(θ), 0f0, 2sin(θ))])
+        positions[] = gpuarray([Point3f(2cos(θ), 0f0, 2sin(θ))])
         img = Makie.colorbuffer(screen)
         c = lit_centroid(img)
         c !== nothing && push!(centroids, c)
@@ -500,7 +511,7 @@ end
 
 @testset "meshscatter — pixel motion: instance count change visibly drops lit pixels" begin
     sphere = GeometryBasics.normal_mesh(GeometryBasics.Sphere(Point3f(0), 1f0))
-    positions = Observable(LavaArray([Point3f(Float32(i) - 5f0, 0f0, 0f0) for i in 1:9]))
+    positions = Observable(gpuarray([Point3f(Float32(i) - 5f0, 0f0, 0f0) for i in 1:9]))
     scene = Scene(size=(96, 96)); cam3d!(scene)
     plt = meshscatter!(scene, positions; marker=sphere, markersize=0.3f0, color=:yellow)
 
@@ -511,7 +522,7 @@ end
     @test n_many > 100      # many balls visible
 
     # Drop to a single ball — should have far fewer lit pixels
-    positions[] = LavaArray([Point3f(0, 0, 0)])
+    positions[] = gpuarray([Point3f(0, 0, 0)])
     img_one    = Makie.colorbuffer(screen)
     n_one      = lit_count(img_one)
     @test n_one < n_many                # fewer instances → fewer lit pixels
@@ -521,7 +532,7 @@ end
     # the lit count must drop substantially.  We don't compare to n_one
     # because path-tracing noise on the now-uniform background can still
     # produce deviation from the corner-sampled reference.
-    positions[] = LavaArray(Point3f[])
+    positions[] = gpuarray(Point3f[])
     img_empty   = Makie.colorbuffer(screen)
     n_empty     = lit_count(img_empty)
     @test n_empty < n_many                  # lots of instances → ~none
@@ -530,7 +541,7 @@ end
 end
 
 # ===========================================================================
-# 12. Direct HWTLAS large-mesh grow/shrink stress (no Makie layer involved)
+# 12. Direct VulkanTLAS large-mesh grow/shrink stress (no Makie layer involved)
 # ===========================================================================
 
 mat4_translation(dx, dy, dz) = Mat4f(
@@ -539,11 +550,15 @@ mat4_translation(dx, dy, dz) = Mat4f(
     0f0, 0f0, 1f0, 0f0,
     Float32(dx), Float32(dy), Float32(dz), 1f0)
 
-@testset "HWTLAS direct — large-mesh grow/shrink, 20 cycles" begin
+# `Mantle.VulkanTLAS(BE)` and a driver name in the testset title until this
+# suite first ran on anything else. `HWTLAS{Tri}(backend)` is the portable
+# constructor — the backend supplies the concrete type — and it is what Hikari's
+# `default_accel` calls.
+@testset "hardware TLAS direct — large-mesh grow/shrink, 20 cycles" begin
     sphere = hires_sphere(50)
     @test length(GeometryBasics.faces(sphere)) > 1000
 
-    hwtlas = Mantle.HWTLAS(LavaBackend())
+    hwtlas = Mantle.HWTLAS{Raycore.Triangle{UInt32}}(BE)
     for cycle in 1:20
         h_big = Base.push!(hwtlas, sphere,
                            [mat4_translation(Float32(2i), 0f0, 0f0) for i in 1:200])

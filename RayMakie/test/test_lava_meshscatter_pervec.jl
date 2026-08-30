@@ -3,7 +3,13 @@
 
 using Test
 using Makie, RayMakie, Lava, Hikari
-using Mantle: LavaArray, Mat3x4f
+using Mantle: Mat3x4f
+import Mantle, KernelAbstractions as KA
+
+# `LavaArray` is a driver type and does not resolve without a Vulkan loader;
+# `devicearray` is the portable verb for the same thing.
+const BE = Mantle.defaultbackend()
+gpuarray(data) = Mantle.devicearray(BE, data)
 using GeometryBasics
 using GeometryBasics: Point3f, Vec3f, Vec4f, Rect3f
 
@@ -17,7 +23,7 @@ trans_of(plt) = to_value(plt.attributes[:trace_transforms])
     @test nm(Vec3f(1,2,3)) === Vec3f(1,2,3)            # scalar Vec3f as-is
     arr = [Vec3f(1, 2, 3), Vec3f(4, 5, 6)]
     @test nm(arr) === arr                              # CPU per-instance
-    larr = LavaArray([Vec3f(1, 2, 3), Vec3f(4, 5, 6)])
+    larr = gpuarray([Vec3f(1, 2, 3), Vec3f(4, 5, 6)])
     @test nm(larr) === larr                            # GPU per-instance
     @test_throws ErrorException nm([1f0, 2f0])         # wrong eltype
     @test_throws ErrorException nm("not a size")
@@ -38,8 +44,8 @@ end
 
 @testset "per-vec meshscatter — Makie API + persistent screen, 200×20" begin
     n = 200
-    positions = Observable(LavaArray([Point3f(Float32(i), 0f0, 0f0) for i in 1:n]))
-    scales    = Observable(LavaArray([Vec3f(Float32(i), Float32(i)*0.5f0, Float32(i)*0.25f0)
+    positions = Observable(gpuarray([Point3f(Float32(i), 0f0, 0f0) for i in 1:n]))
+    scales    = Observable(gpuarray([Vec3f(Float32(i), Float32(i)*0.5f0, Float32(i)*0.25f0)
                                       for i in 1:n]))
 
     cube = GeometryBasics.normal_mesh(Rect3f(Vec3f(-1), Vec3f(2)))
@@ -51,7 +57,8 @@ end
 
     pinned_buf = trans_of(plt)
     @test robj_of(plt).n_instances == n
-    @test pinned_buf isa LavaArray{Mat3x4f, 1}
+    @test KA.get_backend(pinned_buf) == BE
+    @test eltype(pinned_buf) === Mat3x4f
 
     # Verify initial transforms (identity rotation, per-axis scale, position on x-axis)
     cpu = Array(trans_of(plt))
@@ -65,9 +72,9 @@ end
 
     # Refit many times via Observable
     for frame in 1:20
-        positions[] = LavaArray([Point3f(Float32(i)+Float32(frame)*0.5f0, 0f0, 0f0)
+        positions[] = gpuarray([Point3f(Float32(i)+Float32(frame)*0.5f0, 0f0, 0f0)
                                  for i in 1:n])
-        scales[] = LavaArray([Vec3f(Float32(frame)*0.1f0, Float32(i)*0.2f0, 0.5f0)
+        scales[] = gpuarray([Vec3f(Float32(frame)*0.1f0, Float32(i)*0.2f0, 0.5f0)
                               for i in 1:n])
         Makie.colorbuffer(screen)
 

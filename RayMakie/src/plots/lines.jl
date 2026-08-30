@@ -117,16 +117,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
 
         # CREATE new render object
         pipeline = get_lines_pipeline!(screen)
+        backend = screen.config.device
         robj = LavaRenderObject(pipeline;
+            backend,
             arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
                          :projectionview, :model, :px_per_unit, :depth_shift,
                          :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length),
-            buffers = Dict{Symbol, Mantle.LavaArray}(
-                :vertex => Mantle.LavaArray(vertex_data),
-                :color => Mantle.LavaArray(color_data),
-                :lastlen => Mantle.LavaArray(lastlen_data),
-                :valid_vertex => Mantle.LavaArray(valid_data),
-                :thickness => Mantle.LavaArray(thickness_data),
+            buffers = Dict{Symbol, AbstractGPUArray}(
+                :vertex => Mantle.devicearray(backend, vertex_data),
+                :color => Mantle.devicearray(backend, color_data),
+                :lastlen => Mantle.devicearray(backend, lastlen_data),
+                :valid_vertex => Mantle.devicearray(backend, valid_data),
+                :thickness => Mantle.devicearray(backend, thickness_data),
                 :indices => Mantle.alloc_index_buffer(UInt32.(indices)),
             ),
             uniforms = Dict{Symbol, Any}(
@@ -243,16 +245,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
         end
 
         pipeline = get_lines_pipeline!(screen)
+        backend = screen.config.device
         robj = LavaRenderObject(pipeline;
+            backend,
             arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
                          :projectionview, :model, :px_per_unit, :depth_shift,
                          :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length),
-            buffers = Dict{Symbol, Mantle.LavaArray}(
-                :vertex => Mantle.LavaArray(vertex_data),
-                :color => Mantle.LavaArray(color_data),
-                :lastlen => Mantle.LavaArray(lastlen_data),
-                :valid_vertex => Mantle.LavaArray(valid_data),
-                :thickness => Mantle.LavaArray(thickness_data),
+            buffers = Dict{Symbol, AbstractGPUArray}(
+                :vertex => Mantle.devicearray(backend, vertex_data),
+                :color => Mantle.devicearray(backend, color_data),
+                :lastlen => Mantle.devicearray(backend, lastlen_data),
+                :valid_vertex => Mantle.devicearray(backend, valid_data),
+                :thickness => Mantle.devicearray(backend, thickness_data),
                 :indices => Mantle.alloc_index_buffer(UInt32.(indices)),
             ),
             uniforms = Dict{Symbol, Any}(

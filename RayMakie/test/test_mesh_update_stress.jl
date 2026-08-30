@@ -2,8 +2,13 @@
 #
 # All updates use the standard Makie API. Persistent screen across frames.
 
-using Test, Makie, RayMakie, Lava, Hikari, GeometryBasics
-using Mantle: LavaArray
+using Test, Makie, RayMakie, Hikari, GeometryBasics
+import Mantle
+
+# `using Lava` + `Mantle: LavaArray`: the compiler is not needed here and the
+# array type is a driver type. `devicearray` is the portable verb.
+const BE = Mantle.defaultbackend()
+gpuarray(data) = Mantle.devicearray(BE, data)
 using GeometryBasics: Point3f, Vec3f, Rect3f, Sphere
 using Makie: Mat4f
 
@@ -93,7 +98,10 @@ end
 # 4. Overlay path: 2D mesh in a 2D scene
 # ---------------------------------------------------------------------------
 
-@testset "mesh overlay — 2D mesh, vertex updates 30 frames" begin
+# Rasterised overlay: composited by recording into a batch queue, which is a
+# separate capability from being able to rasterise at all. Same gate as
+# `GRAPHICS_TEST_FILES` in runtests.jl.
+Mantle.supports_batch_queue(BE) && @testset "mesh overlay — 2D mesh, vertex updates 30 frames" begin
     n = 4
     positions = Observable([Point3f(0, 0, 0), Point3f(1, 0, 0),
                              Point3f(1, 1, 0), Point3f(0, 1, 0)])
@@ -124,7 +132,10 @@ end
 # 5. Overlay path: per-vertex colors update on every frame
 # ---------------------------------------------------------------------------
 
-@testset "mesh overlay — per-vertex color, 30 frames" begin
+# Rasterised overlay: composited by recording into a batch queue, which is a
+# separate capability from being able to rasterise at all. Same gate as
+# `GRAPHICS_TEST_FILES` in runtests.jl.
+Mantle.supports_batch_queue(BE) && @testset "mesh overlay — per-vertex color, 30 frames" begin
     n_verts = 4
     positions = [Point3f(0, 0, 0), Point3f(1, 0, 0), Point3f(1, 1, 0), Point3f(0, 1, 0)]
     faces = [GeometryBasics.GLTriangleFace(1, 2, 3), GeometryBasics.GLTriangleFace(1, 3, 4)]

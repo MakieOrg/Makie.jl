@@ -40,7 +40,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
         return (color_to_texture(args.color, plot),)
     end
 
-    # 3. TLAS management: combine mesh, color, model_f32c
+    # 3. HWTLAS management: combine mesh, color, model_f32c
     register_computation!(attr, [:trace_surface_mesh, :trace_color_tex, :model_f32c], [:trace_renderobject]) do args, changed, last
         gb_mesh = args.trace_surface_mesh
         color_tex = args.trace_color_tex

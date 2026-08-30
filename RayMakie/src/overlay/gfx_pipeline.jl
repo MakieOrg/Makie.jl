@@ -5,9 +5,9 @@
 
 function get_overlay_framebuffer(screen, w::Int, h::Int)
     if screen.overlay_fb === nothing || screen.overlay_fb_size != (w, h)
-        screen.overlay_fb = LavaFramebuffer(w, h;
+        screen.overlay_fb = Framebuffer(screen.config.device, w, h;
             depth=false,
-            color_format=VK.FORMAT_R32G32B32A32_SFLOAT)
+            color_format=RGBA{Float32})
         screen.overlay_fb_size = (w, h)
     end
     return screen.overlay_fb
@@ -25,8 +25,8 @@ function get_atlas_bindings(screen)
     end
 
     atlas_f32 = Float32.(atlas_data)
-    tex = LavaTexture2D(atlas_f32)
-    sampler = LavaSampler(; filter=:linear, wrap=:clamp)
+    tex = Texture2D(screen.config.device, atlas_f32)
+    sampler = Sampler(screen.config.device; filter=:linear, wrap=:clamp)
     bindings = bind_textures([SampledTexture(tex, sampler)])
 
     screen.gfx_atlas_tex = tex

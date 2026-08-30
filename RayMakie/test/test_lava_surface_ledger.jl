@@ -7,9 +7,9 @@ backend reaching into a Vulkan runtime — queues, framebuffers, render passes,
 moved out. On 2026-08-27 it was: **124 references across 8 files.**
 
 The move happened, and it is now **31 across 2**, all of one kind. Everything
-that needed a device went to Mantle: `GraphicsPipeline`, `LavaFramebuffer`,
-`LavaTexture2D`, `BatchQueue`, `vk_context`, `blit!`, `present_frame!`,
-`acquire_next_image!`, `vk_begin_pass!`, `LavaArray`. What is left is what a
+that needed a device went to Mantle: `GraphicsPipeline`, `VulkanFramebuffer`,
+`VulkanTexture2D`, `VulkanBatchQueue`, `vk_context`, `blit!`, `present_frame!`,
+`acquire_next_image!`, `begin_pass!`, `LavaArray`. What is left is what a
 shader is written IN and what a pipeline is DESCRIBED with:
 
   * **shader-stage intrinsics** — `gfx_input`/`gfx_output`, `emit_vertex!`,
@@ -46,7 +46,11 @@ using Test
 const LAVA_SURFACE = Dict(
     # Shader-stage intrinsics and the enums a pipeline is described with.
     "src/RayMakie.jl" => Set([
-        "Premultiplied", "TriangleList", "NoCull", "DepthOff",
+        # `Premultiplied`, `TriangleList`, `NoCull` and `DepthOff` were here
+        # until the runtime moved out of the compiler: blend, cull, depth and
+        # topology describe a pipeline rather than compile one, so they are
+        # imported from Mantle now and are no longer part of the Lava surface.
+        # `RayMakie.jl` says so at its import; this list had not caught up.
         "PointList", "LineList", "LineListAdjacency", "LineStripAdjacency",
         "TriangleStrip", "GeometryConfig", "GfxTexture2D",
         "vertex_index", "instance_index", "primitive_id_in",
@@ -101,11 +105,11 @@ end
 # Names that need a DEVICE. None of these may appear: each one is something the
 # 2026-08-27 move put in Mantle, and its return would mean the split came undone.
 const RUNTIME_NAMES = Set([
-    "LavaArray", "LavaBackend", "BatchQueue", "VkContext", "vk_context",
-    "GraphicsPipeline", "LavaFramebuffer", "LavaTexture2D", "LavaSampler",
-    "WindowTarget", "OffscreenTarget", "RenderWindow", "blit!", "present_frame!",
+    "LavaArray", "LavaBackend", "VulkanBatchQueue", "VkContext", "vk_context",
+    "GraphicsPipeline", "VulkanFramebuffer", "VulkanTexture2D", "VulkanSampler",
+    "WindowTarget", "OffscreenTarget", "VulkanWindow", "blit!", "present_frame!",
     "acquire_next_image!", "allocate_batch_queue!", "release_batch_queue!",
-    "vk_begin_pass!", "vk_end_pass!", "vk_draw_in_pass!", "pin!", "flush!",
+    "begin_pass!", "end_pass!", "draw_in_pass!", "pin!", "flush!",
 ])
 
 @testset "RayMakie names only compiler vocabulary from Lava" begin

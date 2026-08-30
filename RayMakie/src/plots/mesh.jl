@@ -4,7 +4,7 @@
 #
 # A Mesh has two render paths chosen per-frame by `should_raytrace(scene, plot)`:
 #
-#   - Trace path:   push to Hikari scene, BLAS/TLAS-traced.
+#   - Trace path:   push to Hikari scene, BLAS/HWTLAS-traced.
 #                   Returns NamedTuple (handle, mat_idx, material, instance_idx).
 #   - Overlay path: rasterized on top of the rendered film via Lava graphics
 #                   pipeline. Returns a LavaRenderObject.
@@ -226,11 +226,13 @@ end
 
 function mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat)
     pipeline = get_mesh_pipeline!(screen)
+    backend = screen.config.device
     return LavaRenderObject(pipeline;
+        backend,
         arg_names = (:positions, :colors, :projectionview, :model),
-        buffers = Dict{Symbol, Mantle.LavaArray}(
-            :positions => Mantle.LavaArray(flat_positions),
-            :colors => Mantle.LavaArray(flat_colors),
+        buffers = Dict{Symbol, AbstractGPUArray}(
+            :positions => Mantle.devicearray(backend, flat_positions),
+            :colors => Mantle.devicearray(backend, flat_colors),
         ),
         uniforms = Dict{Symbol, Any}(
             :projectionview => pv,
@@ -256,7 +258,7 @@ end
 # =============================================================================
 
 """
-Swap the material of an existing mesh scene handle in place — no BLAS/TLAS
+Swap the material of an existing mesh scene handle in place — no BLAS/HWTLAS
 rebuild.  For a `MediumInterface`, unpack to surface + inside updates.
 """
 function update_trace_material!(hikari_scene, state, robj, new_material)

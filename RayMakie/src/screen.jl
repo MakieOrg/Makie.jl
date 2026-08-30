@@ -32,7 +32,11 @@ PIXEL_FILTER() = Hikari.GaussianFilter(radius = Point2f(1.5f0, 1.5f0), sigma = 0
 # survived every primary-coloured test. It also made the raytraced pixels depend
 # on whether the scene happened to contain an overlay, since only then did
 # `colorbuffer` route through this framebuffer at all.
-const COMPOSITE_FORMAT = VK.FORMAT_B8G8R8A8_UNORM
+# A Julia element type, not a `VK.Format`: this is a module-level `const`, so
+# spelling it as a driver constant meant RayMakie could not even load without
+# a Vulkan loader. `Mantle.vkformat` lowers it, and the readback below still
+# unswizzles BGRA by hand because that is what the bytes are.
+const COMPOSITE_FORMAT = BGRA{N0f8}
 
 """
     ScreenConfig
@@ -78,7 +82,10 @@ struct ScreenConfig
         actual_integrator = integrator isa Makie.Automatic ? VolPath(; hw_accel=true) : integrator
         actual_exposure = Float32(exposure)
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
-        actual_device = device isa Makie.Automatic ? Mantle.LavaBackend() : device
+        # `Mantle.defaultbackend()` asks the registry which backends this session
+        # actually loaded, best first. Naming one driver here made RayMakie pick
+        # Vulkan on a machine that has no Vulkan.
+        actual_device = device isa Makie.Automatic ? Mantle.defaultbackend() : device
         actual_visible = visible isa Makie.Automatic ? true : visible
         return new(actual_integrator, actual_exposure, tonemap, actual_gamma, actual_device,
                    denoise, denoise_config, actual_visible, string(title), vsync)
@@ -116,7 +123,7 @@ mutable struct Screen <: Makie.MakieScreen
     memory::Union{Nothing, Hikari.DeviceMemory}
     config::ScreenConfig
     # Render loop (vulkan_viewer)
-    window::Any                 # Nothing or Mantle.RenderWindow
+    window::Any                 # Nothing or a Mantle.Window
     rendertask::Union{Nothing, Task}
     stop_renderloop::Threads.Atomic{Bool}
     last_colorbuffer::Union{Nothing, Matrix{RGB{N0f8}}}
@@ -132,7 +139,7 @@ mutable struct Screen <: Makie.MakieScreen
     gfx_atlas_bindings::Any
     gfx_atlas_size::Int
     fb_readback_buf::Any
-    # Per-screen graphics BatchQueue — isolated from compute/transfer
+    # Per-screen graphics VulkanBatchQueue — isolated from compute/transfer
     gfx_bq::Any  # Mantle.BatchQueue
     # Per-screen graphics pipeline cache (no globals!)
     gfx_pipelines::Dict{Symbol, GraphicsPipeline}
@@ -156,7 +163,7 @@ end
 
 Base.wait(screen::Screen) = !isnothing(screen.rendertask) && wait(screen.rendertask)
 
-"""Get or create the screen's dedicated graphics BatchQueue."""
+"""Get or create the screen's dedicated graphics VulkanBatchQueue."""
 function get_gfx_bq!(screen::Screen)
     if screen.gfx_bq === nothing
         screen.gfx_bq = Mantle.allocate_batch_queue!()
@@ -290,7 +297,7 @@ function Base.close(screen::Screen)
     end
 
     # Step 2: Free ALL GPU resources — both integrator/film (cleanup!) and
-    # hikari scene data (TLAS, materials, lights, media via free_state_gpu!)
+    # hikari scene data (HWTLAS, materials, lights, media via free_state_gpu!)
     for ss in screen.scene_states
         cleanup!(ss)
         if ss.hikari_scene !== nothing
@@ -358,6 +365,34 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
     old_int = screen.config.integrator
     new_int = config.integrator
 
+    # A new integrator that wants a DIFFERENT acceleration structure needs a
+    # different scene, not just a fresh integrator state. `hw_accel` picks the
+    # accel type in `create_scene_state` and it is baked into `hikari_scene` at
+    # construction, so keeping the old scene silently keeps the old traversal
+    # path: two `colorbuffer` calls on one Makie scene, `hw_accel=true` then
+    # `false`, both traced the HARDWARE TLAS. Nothing errors, the images are
+    # right, and any A/B of the two paths measures the first one twice.
+    if old_int !== new_int && wants_hw_accel(old_int) != wants_hw_accel(new_int)
+        close(old_int)
+        # Drop every plot's render object FIRST, while the old states are still
+        # alive to tear it down. `init_scene!` skips any plot that still has a
+        # `:trace_renderobject`, so emptying the states on their own rebuilds an
+        # EMPTY scene — `n_instances == 0`, and the next render returns a blank
+        # film in a few milliseconds without tracing anything.
+        for rscene in collect_all_scenes_with_plots(scene), plot in rscene.plots
+            Makie.for_each_atomic_plot(plot) do p
+                delete_trace_robj!(screen, p)
+            end
+        end
+        for ss in screen.scene_states
+            cleanup!(ss)
+        end
+        empty!(screen.scene_states)
+        screen.state = nothing
+        screen.config = config
+        return screen
+    end
+
     # If the integrator object changed, close the old one's caches and mark dirty
     if old_int !== new_int
         close(old_int)
@@ -402,7 +437,7 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
     tlas = get_tlas(state)
     Raycore.sync!(tlas)
 
-    # Skip ray tracing if TLAS has no geometry (e.g. scene with only overlay plots)
+    # Skip ray tracing if HWTLAS has no geometry (e.g. scene with only overlay plots)
     if Raycore.n_instances(tlas) == 0
         return state.film
     end
@@ -663,7 +698,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     if has_overlays
         # Slow path: blit to offscreen framebuffer, render overlays on top, readback
         w, h = size(screen.output_buffer, 2), size(screen.output_buffer, 1)
-        fb = Mantle.LavaFramebuffer(w, h; depth=false, color_format=COMPOSITE_FORMAT)
+        fb = Mantle.Framebuffer(screen.config.device, w, h; depth=false, color_format=COMPOSITE_FORMAT)
         bq = get_gfx_bq!(screen)
         Mantle.blit!(bq, Mantle.OffscreenTarget(fb), screen.output_buffer; clear=false)
         for scene_state in screen.scene_states
@@ -671,8 +706,8 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
             poll_all_plots(screen, scene_state.makie_scene)
             render_overlays!(screen, bq, Mantle.OffscreenTarget(fb))
         end
-        Mantle.flush!(bq, Mantle.vk_device())
-        VK.device_wait_idle(Mantle.vk_context().device)
+        Mantle.flush!(bq)
+        Mantle.waitidle(screen.config.device)
 
         # Readback framebuffer (has TRANSFER_SRC_BIT, unlike swapchain images)
         pixels = Mantle.readback_framebuffer(fb)
@@ -764,7 +799,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
         @info "RayMakie: pipeline ready ($(round(time() - t0, digits=1))s) — opening window"
     end
 
-    win = Mantle.RenderWindow(w, h; title=screen.config.title, vsync=screen.config.vsync,
+    win = Mantle.Window(screen.config.device, w, h; title=screen.config.title, vsync=screen.config.vsync,
                             color_format=COMPOSITE_FORMAT)
     screen.window = win
     connect_glfw_events!(root_scene, win.handle, screen.stop_renderloop)
@@ -783,7 +818,6 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
     end
 
     screen.stop_renderloop[] = false
-    ctx = Mantle.vk_context()
     present_bq = Mantle.allocate_batch_queue!()
 
     screen.rendertask = @async begin
@@ -806,7 +840,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                 render_overlays!(screen, present_bq, win_target)
             end
             Mantle.present_frame!(present_bq, win)
-            VK.device_wait_idle(ctx.device)
+            Mantle.waitidle(screen.config.device)
 
             while !screen.stop_renderloop[]
                 GLFW.PollEvents()
@@ -846,7 +880,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                 end
 
                 Mantle.present_frame!(present_bq, win)
-                VK.device_wait_idle(ctx.device)
+                Mantle.waitidle(screen.config.device)
 
                 # Cache composited frame for colorbuffer() to return without blocking.
                 # A failed readback leaves the PREVIOUS frame in the cache, so
@@ -873,7 +907,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             # is gone, which is the single most useful thing to know here and
             # was exactly what `catch end` threw away.
             try
-                VK.device_wait_idle(ctx.device)
+                Mantle.waitidle(screen.config.device)
             catch e
                 @error "RayMakie: device_wait_idle failed during render-loop teardown" exception = (e, catch_backtrace())
             end
@@ -910,7 +944,7 @@ function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
         end
     end
 
-    # Sync all affected TLAS
+    # Sync all affected HWTLAS
     for ss in screen.scene_states
         Hikari.sync!(ss.hikari_scene)
     end
@@ -936,7 +970,7 @@ function Base.delete!(screen::Screen, scene::Scene)
         ss.closed && continue  # Already freed by close(screen)
         ss.closed = true
         cleanup!(ss)           # Free integrator state, colorbuffer, overlay, depth
-        free_state_gpu!(ss)   # Free hikari scene (TLAS, materials, lights, media)
+        free_state_gpu!(ss)   # Free hikari scene (HWTLAS, materials, lights, media)
     end
     empty!(screen.scene_states)
     screen.state = nothing

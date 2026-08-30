@@ -12,7 +12,7 @@
 #   * batch.bq desync
 #   * SPIR-V emit failures triggered by dynamic mesh/material updates
 #
-# Runs both lava_sw (SW BVH) and lava_hw (HWAdaptedAccel inline ray query),
+# Runs both lava_sw (SW BVH) and lava_hw (AdaptedAccel inline ray query),
 # proving the polymorphic `Raycore.closest_hit(accel, ray)` path is leak-free
 # across mesh + medium swaps.
 

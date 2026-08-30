@@ -14,7 +14,9 @@ using KernelAbstractions
 using Lava, Mantle
 using Colors
 
-const _gpu_device = Mantle.LavaBackend()
+# Whichever backend registered — `LavaBackend` is a Vulkan type and naming it
+# made this file unloadable anywhere else.
+const _gpu_device = Mantle.defaultbackend()
 
 # Helper: create a minimal Makie scene with one sphere
 function _make_makie_scene(; sz=(32, 32))
