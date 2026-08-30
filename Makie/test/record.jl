@@ -56,8 +56,8 @@ mktempdir() do tempdir
                 (
                     kwarg = :pixel_format,
                     value = "yuv420p",
-                    warn_fmts = ["mkv", "webm", "gif"],
-                    no_warn_fmts = ["mp4"],
+                    warn_fmts = ["mkv", "gif"],
+                    no_warn_fmts = ["mp4", "webm"],
                 ),
             ]
 
