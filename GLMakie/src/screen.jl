@@ -182,6 +182,16 @@ mutable struct Screen{GLWindow} <: MakieScreen
     close_after_renderloop::Bool
     # To trigger rerenders that aren't related to an existing renderobject.
     requires_update::Bool
+    """
+    Print every draw of every stage to `Core.stdout`, unbuffered — see
+    [`run_stage`](@ref).
+
+    For finding which draw call took the process down: a `glDrawElements` that
+    segfaults leaves no Julia stack worth reading, and a buffered `println` dies
+    with its buffer, so the LAST LINE PRINTED is the answer. Set it on the screen
+    you are watching (`screen.rendertrace = true`); one build serves many runs.
+    """
+    rendertrace::Bool
 
     function Screen(
             glscreen::GLWindow,
@@ -207,7 +217,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             Observable(0.0f0), screen2scene,
             screens, renderlist, GLRenderPipeline(), cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
-            Observable(true), Observable(0.0f0), nothing, reuse, true, false
+            Observable(true), Observable(0.0f0), nothing, reuse, true, false, false
         )
         push!(ALL_SCREENS, screen) # track all created screens
         return screen

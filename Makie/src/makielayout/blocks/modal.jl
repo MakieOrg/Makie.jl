@@ -156,17 +156,7 @@ replace_content!(modal) do sf
 end
 ```
 """
-function replace_content!(f, m::Modal)
-    sf = m.subfigure
-    layout = sf.layout
-    for c in copy(contents(layout))
-        delete_layoutable!(c)
-    end
-    trim!(layout)
-    f(sf)
-    refresh_contentsize!(sf)
-    return m
-end
+replace_content!(f, m::Modal) = (replace_content!(f, m.subfigure); m)
 
 "Show the modal."
 open!(m::Modal) = (m.open = true; nothing)

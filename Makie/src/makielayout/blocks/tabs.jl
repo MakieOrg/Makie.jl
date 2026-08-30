@@ -148,16 +148,17 @@ function add_tab!(
     if !t.font_metrics_captured
         t.font_metrics_captured = true
         on(blockscene, labelplot.selected_font; update = true) do f
-            try
-                asc = Float32(Makie.FreeTypeAbstraction.ascender(f))
-                des = Float32(Makie.FreeTypeAbstraction.descender(f))
-                ext = Makie.FreeTypeAbstraction.get_extent(f, 'x')
-                bb = Makie.FreeTypeAbstraction.inkboundingbox(ext)
-                xh = Float32(widths(bb)[2])
-                t.font_metrics[] = TabFontMetrics(asc, des, xh)
-            catch
-                # keep defaults
-            end
+            # `to_font` resolves to ONE `NativeFont` or a vector of them (per-glyph
+            # fonts); only the single one has metrics to read. That is a question
+            # about the value, not an error to catch — swallowing everything here
+            # meant a real FreeType fault left the tabs on default metrics forever,
+            # with the × sitting off the baseline and nothing to explain it.
+            f isa NativeFont || return
+            asc = Float32(Makie.FreeTypeAbstraction.ascender(f))
+            des = Float32(Makie.FreeTypeAbstraction.descender(f))
+            ext = Makie.FreeTypeAbstraction.get_extent(f, 'x')
+            bb = Makie.FreeTypeAbstraction.inkboundingbox(ext)
+            t.font_metrics[] = TabFontMetrics(asc, des, Float32(widths(bb)[2]))
             return
         end
     end

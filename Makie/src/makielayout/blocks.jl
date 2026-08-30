@@ -482,20 +482,30 @@ end
 # Should this be allowed?
 convert_for_attribute(::UnionAll, x) = x
 
-# If a concrete union is given, try each conversion option until one work
+# If a concrete union is given, try each conversion option until one works.
+#
+# "This type does not take that value" is what the failed branch means, and those
+# are the errors a conversion raises for it: `MethodError` (no conversion at all),
+# `InexactError`/`ArgumentError` (there is one, the value does not fit). Anything
+# else is a BUG IN THE CONVERSION, and both branches used to swallow it whole —
+# an attribute then silently kept its raw value and the block drew something
+# nobody asked for, with nothing to grep for.
+const ATTRIBUTE_CONVERSION_MISSES = Union{MethodError, InexactError, ArgumentError}
+
+function try_convert_for_attribute(T, x)
+    try
+        return convert_for_attribute(T, x)
+    catch e
+        e isa ATTRIBUTE_CONVERSION_MISSES || rethrow()
+        return nothing
+    end
+end
+
 function convert_for_attribute(t::Union, x)
-    try
-        y1 = convert_for_attribute(t.a, x)
-        (y1 isa t.a) && return y1
-    catch e
-    end
-
-    try
-        y2 = convert_for_attribute(t.b, x)
-        (y2 isa t.b) && return y2
-    catch e
-    end
-
+    y1 = try_convert_for_attribute(t.a, x)
+    y1 isa t.a && return y1
+    y2 = try_convert_for_attribute(t.b, x)
+    y2 isa t.b && return y2
     return x
 end
 
@@ -615,21 +625,12 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
         setfield!(b, :layout, nothing)
     end
 
-    unassigned_fields = filter(collect(fieldnames(T))) do fieldname
-        try
-            getfield(b, fieldname)
-        catch e
-            if e isa UndefRefError
-                return true
-            else
-                rethrow(e)
-            end
-        end
-        false
-    end
-    if !isempty(unassigned_fields)
-        @warn("The following fields of $T were not assigned after `initialize_block!`: $unassigned_fields")
-    end
+    # `isdefined`, the way the `:layout` check above already asks it. This used to
+    # read the field and catch the `UndefRefError` — building an exception to ask a
+    # question the language answers directly, on every block that is ever created.
+    unassigned = filter(f -> !isdefined(b, f), fieldnames(T))
+    isempty(unassigned) ||
+        @warn("The following fields of $T were not assigned after `initialize_block!`: $(collect(unassigned))")
 
     # forward all layout attributes to the block's layoutobservables
     connect_block_layoutobservables!(
@@ -919,7 +920,6 @@ function Base.delete!(block::Block)
     # `UInt16` — toward its 65535 ceiling, one rebuild at a time. `free` is the
     # teardown that does deregister; see `free(::Scene)`.
     free(block.blockscene)
-    empty!(block.attributes)
 
     disconnect!(block)
     block.parent = nothing

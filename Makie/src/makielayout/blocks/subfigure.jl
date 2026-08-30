@@ -37,6 +37,7 @@ function initialize_block!(sf::Subfigure)
 
     sf.scroll = Observable(Vec2f(0, 0); ignore_equal_values = true)
     sf.contentsize = Observable(Vec2f(0, 0); ignore_equal_values = true)
+    sf.buildlisteners = IdDict{Any, Dict{Symbol, Int}}()
 
     layout_bbox = Observable(Rect2f(0, 0, 1, 1); ignore_equal_values = true)
     # TOP-LEFT, not centred. A GridLayout defaults to `valign = :center`, so

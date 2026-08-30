@@ -295,21 +295,12 @@ on_resize(stage::RenderPlots, w, h) = resize!(stage.framebuffer, w, h)
 # degrades to a valid rect instead of crashing the render loop.
 @inline gl_extent(x::Real) = isfinite(x) ? round(GLint, clamp(x, -1.0f8, 1.0f8)) : GLint(0)
 
-"""
-Trace every draw in [`run_stage`](@ref) to `Core.stdout`, unbuffered.
-
-For finding which draw call took the process down: a `glDrawElements` that
-segfaults leaves no Julia stack worth reading, so the LAST LINE PRINTED is the
-answer. Off by default and behind a `Ref` so one build serves many runs.
-"""
-const RENDERTRACE = Ref{Any}(nothing)
-
 function run_stage(screen, glscene, stage::RenderPlots)
     # Somehow errors in here get ignored silently!?
     try
         require_context(screen.glscreen)
         GLAbstraction.bind(stage.framebuffer)
-        if RENDERTRACE[] === screen
+        if screen.rendertrace
             fb = stage.framebuffer
             print(
                 Core.stdout, "== stage target=", stage.target, " fb=", fb.id,
@@ -351,7 +342,7 @@ function run_stage(screen, glscene, stage::RenderPlots)
 
             stage.prerender(elem[:overdraw]::UInt8)
 
-            if RENDERTRACE[] === screen
+            if screen.rendertrace
                 va = elem.variants[stage.target]
                 print(
                     Core.stdout, "  draw id=", screenid, "/", length(screen.screens),
