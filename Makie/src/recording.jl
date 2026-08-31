@@ -212,7 +212,7 @@ if VERSION < v"1.11.0-DEV"
         return write(io, reinterpret(UInt32, x))
     end
 
-    function Base.write(io::IO, x::RGBA{T}) where T
+    function Base.write(io::IO, x::RGBA{T}) where {T}
         return write(io, RGBA{N0f8}(x))
     end
 
@@ -225,7 +225,7 @@ if VERSION < v"1.11.0-DEV"
         return n
     end
 
-    function Base.write(io::IO, x::RGB{T}) where T
+    function Base.write(io::IO, x::RGB{T}) where {T}
         return write(io, RGB{N0f8}(x))
     end
 end
