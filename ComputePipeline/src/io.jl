@@ -52,10 +52,17 @@ function get_callback_info(edge::Input)
     return get_callback_info(edge.f, edge.value)
 end
 function get_callback_info(edge::ComputeEdge)
+    return get_callback_info(edge.callback, edge)
+end
+function get_callback_info(callback, edge::ComputeEdge)
     input = _get_named_inputs(edge)
     changed = NamedTuple{keys(input)}(ntuple(x -> true, length(keys(input))))
     output = _get_named_outputs(edge)
-    return get_callback_info(edge.callback, input, changed, output)
+    return get_callback_info(callback, input, changed, output)
+end
+function get_callback_info(callback::MapFunctionWrapper, edge::ComputeEdge)
+    input = ntuple(i -> edge.inputs[i].value[], length(edge.inputs))
+    return get_callback_info(callback, input)
 end
 
 # catch-all for the final user function being called.
@@ -67,7 +74,7 @@ get_callback_info(f, args...) = f, typeof.(args)
 
 # map!(f, attr, ...) call which drops changed, cached and NamedTuple
 # for add_input!(f, key, value)
-function get_callback_info(f::MapFunctionWrapper, inputs, changed, outputs)
+function get_callback_info(f::MapFunctionWrapper, inputs)
     return get_callback_info(f.user_func, values(inputs))
 end
 
