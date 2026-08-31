@@ -625,8 +625,13 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         # support keep working.
         integ = screen.config.integrator
         supports_skip = integ isa Hikari.VolPath
-        for i in 1:samples
-            if supports_skip && i < samples
+        # A batching integrator renders `sample_batch` samples per `render!`,
+        # so the loop shrinks to the number of passes, not the number of
+        # samples.
+        batch = supports_skip ? max(1, Int(integ.sample_batch)) : 1
+        iters = cld(samples, batch)
+        for i in 1:iters
+            if supports_skip && i < iters
                 render!(screen; finalize_framebuffer=false)
             else
                 render!(screen)
@@ -634,7 +639,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
             # Synchronize every sample to prevent command buffer overflow.
             # Heavy scenes (volumetrics, many materials) can generate thousands of
             # dispatches per sample. Without sync, these accumulate and cause DEVICE_LOST.
-            if i < samples
+            if i < iters
                 KernelAbstractions.synchronize(screen.config.device)
             end
         end
