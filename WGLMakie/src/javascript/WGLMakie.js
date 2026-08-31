@@ -19,9 +19,15 @@ import {get_texture_atlas} from "./TextureAtlas.js";
 
 window.THREE = THREE;
 
+// A scene init whose predecessor never arrives (its notebook output was re-run,
+// or a page reload / static export carries only some outputs) must not block
+// the rest forever: after this grace period, continue with the smallest pending order.
+const ORDER_GAP_GRACE_MS = 1000;
+
 const orderedExecutor = {
     tasks: new Map(),
     nextExpected: 1,
+    gapTimer: null,
 
     insert(f, order) {
         if (this.tasks.has(order)) {
@@ -37,6 +43,17 @@ const orderedExecutor = {
             f();
             this.tasks.delete(this.nextExpected);
             this.nextExpected += 1;
+        }
+        if (this.tasks.size > 0 && this.gapTimer === null) {
+            this.gapTimer = setTimeout(() => {
+                this.gapTimer = null;
+                if (this.tasks.size > 0 && !this.tasks.has(this.nextExpected)) {
+                    const pending = Math.min(...this.tasks.keys());
+                    console.warn(`WGLMakie: scene order ${this.nextExpected} never arrived, continuing with ${pending}`);
+                    this.nextExpected = pending;
+                    this.flush();
+                }
+            }, ORDER_GAP_GRACE_MS);
         }
     },
 };

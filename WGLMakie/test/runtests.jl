@@ -23,6 +23,8 @@ import Electron
     @test !showable("blaaa", f)
 end
 
+include("static_snapshot.jl")
+
 excludes = Set(
     [
         "Image on Surface Sphere", # TODO: texture rotated 180°

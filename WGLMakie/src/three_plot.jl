@@ -66,9 +66,10 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     # Create observable for scene serialization that updates asynchronously
     scene_serialized = Observable{Union{Nothing, Dict{Symbol, Any}}}(nothing)
     done_init = Observable{Any}(nothing)
-    if is_offline
-        # For offline connections, we have to serialize immediately
-        # Since we cant do any round trip communication
+    # Nothing to learn from the browser when offline or with `resize_to` unset
+    # (JS reports exactly `initial_size` back): serialize now, so a static
+    # snapshot of a live session (Pluto/Jupyter HTML export) carries the scene.
+    if is_offline || isnothing(config.resize_to)
         scene_serialized[] = serialize_scene(scene)
     else
         # Query the real canvas size (resize_to) from JS first, resize the scene to

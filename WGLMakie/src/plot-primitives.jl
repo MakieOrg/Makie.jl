@@ -309,12 +309,16 @@ function get_atlas_tracker(f, scene::Scene)
         return f(Set{UInt32}())
     end
     session = screen.session
-    atlas = Bonito.get_metadata(session, :wglmakie_scene_atlas, nothing)
-    if isnothing(atlas)
-        atlas = Set{UInt32}()
-        Bonito.set_metadata!(session, :wglmakie_scene_atlas, atlas)
+    # One tracker per session, not per root: a notebook output (Pluto, IJulia) is
+    # its own session and has to carry the glyphs it uses — a static export or a
+    # page reload has nothing but the outputs. Within a session a glyph is still
+    # sent once. Weak keys: an entry goes away with its session.
+    trackers = Bonito.get_metadata(session, :wglmakie_atlas_trackers, nothing)
+    if isnothing(trackers)
+        trackers = WeakKeyDict{Session, Set{UInt32}}()
+        Bonito.set_metadata!(session, :wglmakie_atlas_trackers, trackers)
     end
-    return f(atlas)
+    return f(get!(() -> Set{UInt32}(), trackers, session))
 end
 
 function get_scatter_data(scene::Scene, markers, fonts)

@@ -24572,9 +24572,11 @@ const mod1 = {
     Scatter: Scatter
 };
 window.THREE = mod;
+const ORDER_GAP_GRACE_MS = 1000;
 const orderedExecutor = {
     tasks: new Map(),
     nextExpected: 1,
+    gapTimer: null,
     insert (f, order) {
         if (this.tasks.has(order)) {
             throw new Error(`Duplicate task for order ${order}`);
@@ -24588,6 +24590,17 @@ const orderedExecutor = {
             f();
             this.tasks.delete(this.nextExpected);
             this.nextExpected += 1;
+        }
+        if (this.tasks.size > 0 && this.gapTimer === null) {
+            this.gapTimer = setTimeout(()=>{
+                this.gapTimer = null;
+                if (this.tasks.size > 0 && !this.tasks.has(this.nextExpected)) {
+                    const pending = Math.min(...this.tasks.keys());
+                    console.warn(`WGLMakie: scene order ${this.nextExpected} never arrived, continuing with ${pending}`);
+                    this.nextExpected = pending;
+                    this.flush();
+                }
+            }, ORDER_GAP_GRACE_MS);
         }
     }
 };
