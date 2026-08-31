@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- WGLMakie: a figure displayed through a live session (REPL, Pluto, Jupyter) is serialized into its initial payload again when `resize_to` is unset (the default), instead of only after the browser reported the canvas size. A static snapshot of that session — Pluto's or Jupyter's HTML export, "save page as" — therefore contains the scene and renders offline, where it used to show the loading spinner forever waiting for a reply that no Julia process could give. Scene inits also no longer block forever when an earlier scene's output is missing from the page (re-run notebook cell, partial export); after a short grace period they continue in order.
+- WGLMakie: a figure displayed through a live session (REPL, Pluto, Jupyter) is serialized into its initial payload again when `resize_to` is unset (the default), instead of only after the browser reported the canvas size. A static snapshot of that session — Pluto's or Jupyter's HTML export, "save page as" — therefore contains the scene and renders offline, where it used to show the loading spinner forever waiting for a reply that no Julia process could give. Scene inits also no longer block forever when an earlier scene's output is missing from the page (re-run notebook cell, partial export); after a short grace period they continue in order. [#5766](https://github.com/MakieOrg/Makie.jl/pull/5766)
 
 ## [0.24.13] - 2026-07-02
 
