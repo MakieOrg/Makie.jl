@@ -245,7 +245,7 @@ function record_longrunning(func, figlike::FigureLike, path::AbstractString, ite
     input_pattern = joinpath(frame_folder, "frame_%0$(nd)d.$(frame_format)")
     vso = VideoStreamOptions(video_format, framerate, compression, profile, pixel_format, preset, loop, "quiet", input_pattern, false)
     cmd = to_ffmpeg_cmd(vso)
-    run(`$(FFMPEG_jll.ffmpeg()) $cmd $path`)
+    run(`$(get_ffmpeg_path()) $cmd $path`)
     return path
 end
 
