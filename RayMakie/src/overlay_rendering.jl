@@ -48,7 +48,7 @@ function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRender
     args = build_args(robj)
     tt = gfx_type_tuple(args)
     ds_layout = robj.bindings !== nothing ? robj.bindings.layout : nothing
-    vert_shader, compiled = Mantle.ensure_compiled_with_shader!(robj.pipeline,
+    vert_shader, compiled = vulkanbackend().ensure_compiled_with_shader!(robj.pipeline,
         robj.pipeline.vertex, robj.pipeline.fragment, tt, tt;
         color_format=color_format, descriptor_set_layout=ds_layout)
 
@@ -56,7 +56,7 @@ function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRender
         Mantle.use_bindings!(bq, compiled, robj.bindings)
     end
 
-    push_data = Mantle.pack_gfx_args(bq, args, vert_shader.push_info)
+    push_data = vulkanbackend().pack_gfx_args(bq, args, vert_shader.push_info)
 
     if haskey(robj.buffers, :indices)
         ib = robj.buffers[:indices]
@@ -67,9 +67,9 @@ function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRender
             push_data=push_data, instances=robj.instances)
     end
 
-    Mantle.pin!(batch, compiled)
+    vulkanbackend().pin!(batch, compiled)
     for (_, buf) in robj.buffers
-        Mantle.pin!(batch, buf)
+        vulkanbackend().pin!(batch, buf)
     end
 end
 

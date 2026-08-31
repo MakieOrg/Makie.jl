@@ -38,10 +38,10 @@ end
 # Helper: flush GPU and GC to get accurate buffer counts
 function _flush_all!()
     GC.gc(true)
-    Mantle.vk_flush!(Mantle.vk_context())
-    Mantle.drain_deferred_frees!(Mantle.vk_context().default_bq)
+    MVE.vk_flush!(MVE.vk_context())
+    MVE.drain_deferred_frees!(MVE.vk_context().default_bq)
     GC.gc(true)
-    Mantle.drain_deferred_frees!(Mantle.vk_context().default_bq)
+    MVE.drain_deferred_frees!(MVE.vk_context().default_bq)
 end
 
 @testset "RayMakie Caching, GC & Correctness" begin
@@ -165,17 +165,17 @@ end
     @testset "memory cleanup" begin
         @testset "close frees GPU memory" begin
             _flush_all!()
-            baseline = Mantle.live_buffer_count()
+            baseline = MVE.live_buffer_count()
 
             scene = _make_makie_scene(; sz=(16, 16))
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
             integrator = Hikari.VolPath(samples=1, max_depth=2)
 
             img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
-            Mantle.vk_flush!(Mantle.vk_context())
+            MVE.vk_flush!(MVE.vk_context())
 
             # After render on GPU, many buffers should be allocated
-            during = Mantle.live_buffer_count()
+            during = MVE.live_buffer_count()
             @test during > baseline
 
             screen = Makie.getscreen(scene)
@@ -193,7 +193,7 @@ end
             @test state.integrator_state === nothing
 
             _flush_all!()
-            after = Mantle.live_buffer_count()
+            after = MVE.live_buffer_count()
             @test after < during
 
             # empty!(scene) after close should not crash (the critical fix)
@@ -207,17 +207,17 @@ end
 
             # Warmup
             img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
-            Mantle.vk_flush!(Mantle.vk_context())
+            MVE.vk_flush!(MVE.vk_context())
             _flush_all!()
-            baseline = Mantle.live_buffer_count()
+            baseline = MVE.live_buffer_count()
 
             # Multiple renders — should not leak
             for _ in 1:5
                 img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
-                Mantle.vk_flush!(Mantle.vk_context())
+                MVE.vk_flush!(MVE.vk_context())
             end
             _flush_all!()
-            after = Mantle.live_buffer_count()
+            after = MVE.live_buffer_count()
             @test after == baseline
 
             screen = Makie.getscreen(scene)
@@ -229,7 +229,7 @@ end
 
         @testset "sequential scenes — no leak" begin
             _flush_all!()
-            baseline = Mantle.live_buffer_count()
+            baseline = MVE.live_buffer_count()
 
             # Scene 1: render and fully clean up
             scene1 = _make_makie_scene(; sz=(16, 16))
@@ -242,7 +242,7 @@ end
             empty!(scene1)
 
             _flush_all!()
-            after1 = Mantle.live_buffer_count()
+            after1 = MVE.live_buffer_count()
 
             # Scene 2: render and fully clean up
             scene2 = _make_makie_scene(; sz=(16, 16))
@@ -254,7 +254,7 @@ end
             empty!(scene2)
 
             _flush_all!()
-            after2 = Mantle.live_buffer_count()
+            after2 = MVE.live_buffer_count()
 
             # Neither scene should leave residual buffers
             @test after1 <= baseline + 5  # Small tolerance for kernel/pipeline caches
@@ -380,9 +380,9 @@ end
         # Flush everything from prior tests
         for _ in 1:3
             GC.gc(true); sleep(0.05)
-            Mantle.vk_flush!(Mantle.vk_context()); Mantle.drain_deferred_frees!(Mantle.vk_context().default_bq)
+            MVE.vk_flush!(MVE.vk_context()); MVE.drain_deferred_frees!(MVE.vk_context().default_bq)
         end
-        baseline = Mantle.live_buffer_count()
+        baseline = MVE.live_buffer_count()
 
         # Create, render, DROP — rely entirely on GC (no explicit close)
         let
@@ -390,15 +390,15 @@ end
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
             int = Hikari.VolPath(samples=1, max_depth=2)
             colorbuffer(s; backend=RayMakie, integrator=int)
-            Mantle.vk_flush!(Mantle.vk_context())
+            MVE.vk_flush!(MVE.vk_context())
         end
         # All references out of scope — Scene finalizer should close screen
         for _ in 1:3
             GC.gc(true); sleep(0.1)
-            Mantle.vk_flush!(Mantle.vk_context()); Mantle.drain_deferred_frees!(Mantle.vk_context().default_bq)
+            MVE.vk_flush!(MVE.vk_context()); MVE.drain_deferred_frees!(MVE.vk_context().default_bq)
         end
 
-        after = Mantle.live_buffer_count()
+        after = MVE.live_buffer_count()
         @test after <= baseline + 5
     end
 end

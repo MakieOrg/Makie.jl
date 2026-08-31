@@ -6,7 +6,7 @@ import ColorTypes
 #
 # `update_trace_transform!` had two branches: the multi-handle one (meshscatter)
 # called `Raycore.update_transform!(accel, handle, transform)`, which both
-# `Raycore.TLAS` and `Mantle.VulkanTLAS` implement, while the single-handle one
+# `Raycore.TLAS` and `MVE.VulkanTLAS` implement, while the single-handle one
 # (mesh) called the index-based `update_instance_transforms!(tlas, …, idx)`,
 # which only `TLAS` has — `VulkanTLAS` is batch/handle-addressed. So the mesh path
 # threw a MethodError, `poll_all_plots` logged and swallowed it, and the

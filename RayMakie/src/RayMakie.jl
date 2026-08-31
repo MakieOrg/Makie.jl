@@ -48,6 +48,27 @@ import Mantle: GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
 import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
+
+"""
+The Vulkan backend module, for the four things the OVERLAY path still needs from
+it, or `nothing` where that backend is not loaded.
+
+`ensure_compiled_with_shader!`, `pack_gfx_args`, `pin!` and `alloc_index_buffer`
+are backend internals, not Mantle API, and the overlay compositor calls all four.
+They were written `Mantle.ensure_compiled_with_shader!` and so on, which worked
+while the runtime lived in Mantle and became `UndefVarError` the moment it moved
+into `MantleVulkanExt`.
+
+Reaching the extension by name rather than repairing the spelling, because the
+spelling was not the problem: this is the one path in RayMakie that is not
+backend-agnostic, and it should SAY so until the graphics API grows the verbs it
+needs. `use_bindings!(bq, …)` next door is the same gap from the other side — a
+Vulkan-shaped signature left in the portable API.
+
+A function and not a `const`, so it resolves per call: an extension is loaded
+when its triggers are, and that can be after this module.
+"""
+vulkanbackend() = Base.get_extension(Mantle, :MantleVulkanExt)
 # No `import Mantle: VK`. The Vulkan handle types this file used to reach for —
 # viewport, scissor, pixel format — are the runtime's, not a renderer's, and a
 # module-level `const … = VK.FORMAT_…` is what stopped RayMakie loading without

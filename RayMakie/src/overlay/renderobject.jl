@@ -42,7 +42,7 @@ mutable struct LavaRenderObject
     # Persistent arg buffer — avoids per-draw allocation from the global slab.
     # This is a small VkMappedBuffer (typically 256-512 bytes) that holds the
     # packed shader arguments. Written in-place each frame, never freed/reallocated.
-    arg_buffer::Any  # Nothing or Mantle.VkMappedBuffer
+    arg_buffer::Any  # Nothing or the backend's mapped buffer (MantleVulkanExt.VkMappedBuffer)
     push_data::Vector{UInt8}  # 8-byte push constant (BDA pointer), reused
 end
 
@@ -144,7 +144,7 @@ function compile_robj!(robj::LavaRenderObject, args::Tuple;
     if ds_layout === nothing && robj.bindings !== nothing
         ds_layout = robj.bindings.layout
     end
-    vert_shader, compiled = Mantle.ensure_compiled_with_shader!(pipeline,
+    vert_shader, compiled = vulkanbackend().ensure_compiled_with_shader!(pipeline,
         pipeline.vertex, pipeline.fragment, tt, tt;
         color_format, descriptor_set_layout=ds_layout)
     return vert_shader, compiled
@@ -182,7 +182,7 @@ function update_robj!(robj::LavaRenderObject, args::NamedTuple, changed::NamedTu
             # GPU buffer — update in place (capacity-aware resize + copyto)
             if value isa AbstractArray
                 if name === :indices
-                    robj.buffers[name] = Mantle.alloc_index_buffer(UInt32.(value))
+                    robj.buffers[name] = vulkanbackend().alloc_index_buffer(UInt32.(value))
                 else
                     buf = robj.buffers[name]
                     resize!(buf, length(value))
@@ -220,7 +220,7 @@ function construct_robj(pipeline::GraphicsPipeline, args::NamedTuple, arg_names:
         value = args[name]
         if is_gpu_buffer(value)
             if name === :indices
-                buffers[name] = Mantle.alloc_index_buffer(UInt32.(value))
+                buffers[name] = vulkanbackend().alloc_index_buffer(UInt32.(value))
             else
                 buffers[name] = Adapt.adapt(backend, value)
             end

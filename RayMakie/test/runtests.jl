@@ -42,6 +42,15 @@ BACKEND === nothing &&
 
 @info "RayMakie tests: using $(nameof(typeof(BACKEND)))"
 
+# The Vulkan backend module, or `nothing` on a machine running Metal.
+#
+# RayMakie's source is backend-agnostic; several of its TESTS are not, and name
+# things — `Mantle.LavaArray`, `Mantle.vk_flush!` — that moved into
+# `MantleVulkanExt` when the runtime did. A `Main`-level binding serves every
+# file, since they are all `include`d here. Files that use it are already behind
+# the `supports_batch_queue` / Vulkan-runtime guards further down.
+const MVE = Base.get_extension(Mantle, :MantleVulkanExt)
+
 # Single-process test entry point.
 #
 # Only test files that are stable when chained together in a single session
@@ -121,7 +130,7 @@ const VULKAN_RUNTIME_TEST_FILES = ["test_caching_gc_correctness.jl"]
 # `GPU_LIVE_BYTES` globals and passes 7/7 standalone (~24 s), and 12/12 when run
 # after test_transform_update_hwtlas.jl. But in the full run above it errors:
 #
-#     TypeError: expected Mantle.CommandBatch, got Nothing
+#     TypeError: expected MVE.CommandBatch, got Nothing
 #       Mantle/src/vulkan/runtime/launch.jl:298, in pack_args_direct!
 #
 # i.e. `bq.active_batch` is nothing where a recording batch is expected. Ruled

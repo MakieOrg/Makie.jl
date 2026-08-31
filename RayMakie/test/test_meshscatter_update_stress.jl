@@ -550,7 +550,7 @@ mat4_translation(dx, dy, dz) = Mat4f(
     0f0, 0f0, 1f0, 0f0,
     Float32(dx), Float32(dy), Float32(dz), 1f0)
 
-# `Mantle.VulkanTLAS(BE)` and a driver name in the testset title until this
+# `MVE.VulkanTLAS(BE)` and a driver name in the testset title until this
 # suite first ran on anything else. `HWTLAS{Tri}(backend)` is the portable
 # constructor — the backend supplies the concrete type — and it is what Hikari's
 # `default_accel` calls.
