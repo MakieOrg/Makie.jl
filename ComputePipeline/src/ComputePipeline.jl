@@ -191,63 +191,69 @@ function _get_named_change(::NamedTuple{Names}, dirty) where {Names}
     return NamedTuple{Names, NTuple{length(Names), Bool}}(values)
 end
 
-function TypedEdge(edge::ComputeEdge)
+TypedEdge(edge::ComputeEdge) = TypedEdge(edge.callback, edge)
+
+function TypedEdge(callback, edge::ComputeEdge)
     N = length(edge.inputs)
     names = ntuple(i -> edge.inputs[i].name, N)
     values = ntuple(i -> edge.inputs[i].value, N)
     inputs = NamedTuple{names}(values)
     # force `callback` and `inputs` types to be inferred so the rest of the
     # constructor can be type stable
-    return Base.invokelatest(TypedEdge, edge, edge.callback, inputs)
+    return Base.invokelatest(TypedEdge, edge, callback, inputs)
 end
 
 function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
-
     result = f(map(getindex, inputs), dirty, nothing)
-
-    if result isa Tuple
-
-        if !all(is_node_value_valid, result)
-            invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
-            strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
-            str = join(strings, ", ")
-            error("Edge callback returned invalid types for outputs: [$str]")
-        end
-
-        if length(result) != length(edge.outputs)
-            m = first(methods(edge.callback))
-            line = string(m.file, ":", m.line)
-            error("Result needs to have same length. Found: $(result), for func $(line)")
-        end
-
-        outputs = ntuple(length(result)) do i
-            v = result[i] isa RefValue ? result[i] : RefValue(result[i])
-            if isdefined(edge.outputs[i], :value)
-                edge.outputs[i].value[] = v[] # set value of existing node
-            else
-                edge.outputs[i].value = v # initialize to fully typed RefValue
-            end
-            return edge.outputs[i].value
-        end
-        foreach(node -> node.dirty = true, edge.outputs)
-
-    elseif isnothing(result)
-
-        outputs = ntuple(length(edge.outputs)) do i
-            if isdefined(edge.outputs[i], :value)
-                edge.outputs[i].value[] = nothing
-            else
-                edge.outputs[i].value = RefValue(nothing)
-            end
-            return edge.outputs[i].value
-        end
-        foreach(node -> node.dirty = false, edge.outputs)
-
-    else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
-    end
+    outputs = _init_outputs(result, edge)
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
+end
+
+function _init_outputs(result::Tuple, edge::ComputeEdge)
+    if !all(is_node_value_valid, result)
+        invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
+        strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
+        str = join(strings, ", ")
+        error("Edge callback returned invalid types for outputs: [$str]")
+    end
+
+    if length(result) != length(edge.outputs)
+        m = first(methods(edge.callback))
+        line = string(m.file, ":", m.line)
+        error("Result needs to have same length. Found: $(result), for func $(line)")
+    end
+
+    outputs = ntuple(length(result)) do i
+        v = result[i] isa RefValue ? result[i] : RefValue(result[i])
+        if isdefined(edge.outputs[i], :value)
+            edge.outputs[i].value[] = v[] # set value of existing node
+        else
+            edge.outputs[i].value = v # initialize to fully typed RefValue
+        end
+        return edge.outputs[i].value
+    end
+    foreach(node -> node.dirty = true, edge.outputs)
+
+    return outputs
+end
+
+function _init_outputs(::Nothing, edge::ComputeEdge)
+    outputs = ntuple(length(edge.outputs)) do i
+        if isdefined(edge.outputs[i], :value)
+            edge.outputs[i].value[] = nothing
+        else
+            edge.outputs[i].value = RefValue(nothing)
+        end
+        return edge.outputs[i].value
+    end
+    foreach(node -> node.dirty = false, edge.outputs)
+
+    return outputs
+end
+
+function _init_outputs(result, ::ComputeEdge)
+    error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
 end
 
 
@@ -911,10 +917,22 @@ function set_result!(edge::TypedEdge, result, i, value)
     return
 end
 
-function set_result!(edge::TypedEdge, result)
+function set_result!(edge::TypedEdge, result::Tuple)
+    if length(result) != length(edge.outputs)
+        error("Did not return correct length: $(length(result)) $result results into $(length(edge.outputs)) outputs, in $(edge.callback)")
+    end
     next_val = first(result)
     rem = Base.tail(result)
     return set_result!(edge, rem, 1, next_val)
+end
+
+function set_result!(edge::TypedEdge, ::Nothing)
+    foreach(x -> x.dirty = false, edge.output_nodes)
+    return
+end
+
+function set_result!(::TypedEdge, ::Any)
+    error("Needs to return a Tuple with one element per output, or nothing")
 end
 
 is_same(@nospecialize(old), @nospecialize(new)) = false
@@ -949,16 +967,7 @@ function locked_resolve!(edge::TypedEdge)
         end
         last = NamedTuple{names}(vals)
         result = edge.callback(map(getindex, edge.inputs), dirty, last)
-        if result isa Tuple
-            if length(result) != length(edge.outputs)
-                error("Did not return correct length: $(length(result)) $result results into $(length(edge.outputs)) outputs, in $(edge.callback)")
-            end
-            set_result!(edge, result)
-        elseif isnothing(result)
-            foreach(x -> x.dirty = false, edge.output_nodes)
-        else
-            error("Needs to return a Tuple with one element per output, or nothing")
-        end
+        set_result!(edge, result)
     end
     return
 end
@@ -1579,6 +1588,32 @@ end
 function (x::MapFunctionWrapper{false})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
     return result
+end
+
+# Overwrite this to allow map! to ignore input name collisions (for cross-graph maps)
+function TypedEdge(callback::MapFunctionWrapper, edge::ComputeEdge)
+    N = length(edge.inputs)
+    inputs = ntuple(i -> edge.inputs[i].value, N)
+    # force `callback` and `inputs` types to be inferred so the rest of the
+    # constructor can be type stable
+    return Base.invokelatest(TypedEdge, edge, callback, inputs)
+end
+
+function TypedEdge(edge::ComputeEdge, f::MapFunctionWrapper{pack}, inputs) where {pack}
+    _result = f.user_func(map(getindex, inputs)...)
+    result = pack ? (_result,) : _result
+    outputs = _init_outputs(result, edge)
+    return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
+end
+
+function locked_resolve!(edge::TypedEdge{Inputs, Outputs, <:MapFunctionWrapper{pack}}) where {Inputs, Outputs, pack}
+    if any(edge.inputs_dirty) # only call if inputs changed
+        args = map(getindex, edge.inputs)
+        _result = edge.callback.user_func(args...)
+        result = pack ? (_result,) : _result
+        set_result!(edge, result)
+    end
+    return
 end
 
 const InputNodeTypes = Union{Computed, Symbol, Tuple{Vararg{Symbol}}}
