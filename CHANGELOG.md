@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed WGLMakie relocatability: shader assets are again loaded via RelocatableFolders instead of being read from the package directory at runtime, which does not exist for relocated PackageCompiler/juliac apps [#5747](https://github.com/MakieOrg/Makie.jl/pull/5747).
 - Fixed `BoundsError` in CairoMakie when clip planes remove all points of a plot, fixed `apply_transform(::Mat4, ::Plane3)` producing a `NaN`-distance plane that clips everything when the transform collapses the plane's normal direction, and fixed `Axis3` collapsing dimensions with zero-width limits [#5759](https://github.com/MakieOrg/Makie.jl/pull/5759).
 - Fixed log-scale `Axis` interactions producing invalid limits. [#5736](https://github.com/MakieOrg/Makie.jl/pull/5736)
 - Fixed `arrows3d` component alignment (tail, shaft, tip) when `normalize = true` and scaling applies (e.g. Axis3, `scale!`, `transform_func`). [#5711](https://github.com/MakieOrg/Makie.jl/issues/5711)
