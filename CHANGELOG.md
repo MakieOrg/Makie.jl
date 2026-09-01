@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Improved window resize performance in GLMakie, especially noticeable with many plot objects [#5431](https://github.com/MakieOrg/Makie.jl/pull/5431)
 
 - Fixed WGLMakie's precompilation no longer covering scene serialization, which made time to first display roughly 3x slower since 0.13.13. Display-phase compilation for `scatter(1:4; color = 1:4, colormap = :turbo)` drops from 14.3s to 3.0s [#XXXX](https://github.com/MakieOrg/Makie.jl/pull/XXXX).
 - Fixed `BoundsError` in CairoMakie when clip planes remove all points of a plot, fixed `apply_transform(::Mat4, ::Plane3)` producing a `NaN`-distance plane that clips everything when the transform collapses the plane's normal direction, and fixed `Axis3` collapsing dimensions with zero-width limits [#5759](https://github.com/MakieOrg/Makie.jl/pull/5759).
