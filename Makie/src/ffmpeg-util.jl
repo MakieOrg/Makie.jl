@@ -26,7 +26,8 @@
     - for `mov`, the default is `4`, which is the highest quality ProRes 4444 format with alpha channel support.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
   applies to `mp4` and `mov`. Defaults to `yuv444p` for `profile = "high444"`.
-    -`mov`, `webm` defaults to `yuva420p` for `pixel_format`, which supports alpha channel.
+    -`mov` defaults to `yuva420p` for `pixel_format`, which supports alpha channel.
+    -`webm` defaults to `yuv420p` for `pixel_format`, which does not support alpha channel.
 - `loop = 0`: Number of times the video is repeated, for a `gif` or `html` output. Defaults to `0`, which
   means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
   means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
@@ -80,7 +81,7 @@ struct VideoStreamOptions
 
         if format == "webm"
             (compression === nothing) && (compression = 20)
-            (pixel_format === nothing) && (pixel_format = "yuva420p")  # yuva444p10 would be too heavy for some players.
+            (pixel_format === nothing) && (pixel_format = "yuv420p")
         end
 
         (loop === nothing) && (loop = 0)
@@ -222,7 +223,6 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
          -c:v libvpx-vp9
          -b:v 0
          -pix_fmt $(pixel_format)
-         -metadata:s:v:0 alpha_mode="1"
          -an
         `
     elseif format == "mov"
@@ -379,7 +379,7 @@ function recordframe!(io::VideoStream)
         if size(glnative) == size(io.buffer)
             if eltype(glnative) != write_el
                 # Convert elementwise (e.g., Float32 colors -> N0f8) into io.buffer without extra allocations
-                broadcast!((v)->convert(write_el, v), io.buffer, glnative)
+                broadcast!((v) -> convert(write_el, v), io.buffer, glnative)
                 write(io.io, io.buffer)
             else
                 # Same element type but non-contiguous: copy into contiguous buffer then write
