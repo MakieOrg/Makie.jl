@@ -15,11 +15,6 @@ function ColorDimConvert()
     return ColorDimConvert(nothing, graph, graph.sync_update)
 end
 
-# No hot-swapping here:
-# nothing - not locked in
-# NoDimConversion - locked in to values
-# any other AbstractDimConversion - locked in to conversion
-
 # convenience for add_dim_converts
 function init_dim_conversion!(cdc::ColorDimConvert, value, element_idx)
     isempty(value) && return
@@ -36,7 +31,6 @@ end
 function register_color_dim_convert!(attr::ComputeGraph, cdc::ColorDimConvert)
     add_input!(attr, :color_dim_convert, cdc)
     map!(cdc -> cdc.dim_convert, attr, :color_dim_convert, :dim_convert_4)
-    # on(_ -> notify(attr.color_dim_convert), cdc.update)
     return
 end
 

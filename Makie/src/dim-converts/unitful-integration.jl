@@ -96,8 +96,6 @@ end
 
 UnitfulConversion() = UnitfulConversion(automatic)
 
-needs_tick_update_observable(conversion::UnitfulConversion) = conversion.unit
-
 # TODO: Convert the unit to rich text arguments instead of parsing the string
 # TODO: Could also consider UnitfulLatexify?
 function unit_string_to_rich(str::String)
@@ -144,12 +142,6 @@ function update_dim_conversion!(conversion::UnitfulConversion, values)
     if !isempty(values)
         if conversion.unit[] === automatic
             conversion.unit[] = to_unit(first(values))
-
-            # TODO, somehow we need another notify to update the axis label
-            # The interactions in Lineaxis are too complex to debug this in a sane amount of time
-            # So, I think we should just revisit this once we move lineaxis to use compute graph
-            notify(conversion.unit)
-
             return true
         end
     end

@@ -1393,7 +1393,11 @@ function get_node(view::ComputeGraphView, keys::Tuple)
     return get_node(view.parent, merged_key(view.nested_trace), keys)
 end
 
-convert_to_nodes(attr::ComputeGraph, inputs) = get_node.(Ref(attr), inputs)
+const InputNodeTypes = Union{Computed, Symbol, Tuple{Vararg{Symbol}}}
+const OutputNodeTypes = Union{Symbol, Tuple{Vararg{Symbol}}}
+
+convert_to_nodes(attr::ComputeGraph, inputs::InputNodeTypes) = [get_node(attr, inputs)]
+convert_to_nodes(attr::ComputeGraph, inputs::Vector) = get_node.(Ref(attr), inputs)
 convert_to_nodes(attr::ComputeGraph, path, inputs) = get_node.(Ref(attr), Ref(path), inputs)
 function convert_to_nodes(view::ComputeGraphView, inputs)
     return convert_to_nodes(view.parent, merged_key(view.nested_trace), inputs)
@@ -1615,9 +1619,6 @@ function locked_resolve!(edge::TypedEdge{Inputs, Outputs, <:MapFunctionWrapper{p
     end
     return
 end
-
-const InputNodeTypes = Union{Computed, Symbol, Tuple{Vararg{Symbol}}}
-const OutputNodeTypes = Union{Symbol, Tuple{Vararg{Symbol}}}
 
 """
     map!(f, compute_graph, inputs, outputs; init=nothing)

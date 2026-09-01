@@ -569,11 +569,10 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # Note that the order in dim_convert_names is important
     dim_convert_names = Symbol[]
     for i in 1:maxdim
-        push!(dim_convert_names, Symbol(:dim_convert_, i))
+        name = DIM_CONVERT_NAMES[i]
+        push!(dim_convert_names, name)
         if i < 4 # 4 already got added if maxdim == 4
-            obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
-            converts_updated = map!(x -> dim_converts[i], Observable{Any}(), obs)
-            add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
+            add_input!(attr, name, dim_converts.sync_graph[name])
         end
     end
 

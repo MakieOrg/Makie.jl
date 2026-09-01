@@ -45,7 +45,6 @@ function CategoricalConversion(; sortby = nothing)
 end
 
 expand_dimensions(::PointBased, y::Categorical) = (keys(y.values), y)
-needs_tick_update_observable(conversion::CategoricalConversion) = conversion.category_to_int
 create_dim_conversion(::Type{Categorical}) = CategoricalConversion(; sortby = identity)
 
 # Support enums as categorical per default
@@ -110,37 +109,17 @@ function update_dim_conversion!(conversion::CategoricalConversion, values, plot_
     if any(x -> !haskey(conversion.category_to_int[], x), new_values)
         dict_setindex!(conversion.sets, string(plot_id), new_values)
         recalculate_categories!(conversion)
-        # Others need to be updated too
-        # This will also call this `convert_dim_value` again
-        # But will then not trigger a new recalc of categories, since last == prev
-        # Would be nice, to get out of that to not do `Any[v for v in unwrapped_values]` with a `==`
-        notify(conversion.category_to_int)
         return true
     end
     return false
 end
 
 function convert_dim_value(conversion::CategoricalConversion, value)
-    if !haskey(conversion.category_to_int[], value)
-        set = dict_get!(() -> [], conversion.sets, "")
-        push!(set, value)
-        unique!(set)
-        recalculate_categories!(conversion)
-        notify(conversion.category_to_int)
-    end
     return conversion.category_to_int[][value]
 end
 
-function convert_categorical(conversion::CategoricalConversion, value)
-    return conversion.category_to_int[][value]
-end
-
-function convert_categorical(conversion::CategoricalConversion, value::Integer)
-    return conversion.category_to_int[][value]
-end
-
-function convert_dim_value(conversion::CategoricalConversion, plot_id, values)
-    return convert_categorical.(Ref(conversion), get_values(values))
+function convert_dim_value(conversion::CategoricalConversion, values::AbstractArray)
+    return convert_dim_value.(Ref(conversion), get_values(values))
 end
 
 # TODO: Does it make sense to allow discarding all the categorical information

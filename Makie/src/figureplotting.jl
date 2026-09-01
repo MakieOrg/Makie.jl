@@ -227,7 +227,6 @@ function create_axis_for_plot(figure::Union{Figure, Scene}, plot::AbstractPlot, 
     end
 
     bbox = pop!(axis_kw, :bbox, nothing)
-    set_axis_attributes!(AxType, axis_kw, plot)
 
     # Add defaults generated based on the plot creating the axis
     if to_value(pop!(attributes, :use_axis_hints, true))
@@ -458,24 +457,21 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
         end
     end
     get!(attributes, :force_dimconverts, true)
+
     plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     ax = create_axis_like(plot, figkws, figarg)
+
+    if !isnothing(get_conversions(plot))
+        target = get_conversions(ax)
+        @assert !isnothing(target)
+        connect_conversions!(target, get_conversions(plot))
+        plot.kw[:dim_conversions] = target
+    end
+
     plot!(ax, plot)
+
     return figurelike_return(ax, plot)
 end
-
-function set_axis_attributes!(T::Type{<:AbstractAxis}, attributes::Dict, plot::Plot)
-    conversions = get(plot.kw, :dim_conversions, nothing)
-    isnothing(conversions) && return
-    for i in 1:3
-        key = Symbol("dim$(i)_conversion")
-        if hasfield(T, key) || is_attribute(T, key)
-            attributes[key] = conversions[i]
-        end
-    end
-    return
-end
-
 
 # This enables convert_arguments(::Type{<:AbstractPlot}, ::X) -> FigureSpec
 # Which skips axis creation
@@ -484,6 +480,7 @@ const PlotSpecPlot = Plot{plot, Tuple{<:GridLayoutSpec}}
 
 get_conversions(scene::Scene) = scene.conversions
 get_conversions(fig::Figure) = get_conversions(fig.scene)
+get_conversions(fb::FigureBlock) = get_conversions(fb.block)
 
 @noinline function _create_plot!(F, attributes::Dict, args...)
     if length(args) > 0
@@ -578,10 +575,6 @@ plot!(fa::FigureBlock, plot) = plot!(fa.block, plot)
 
 function plot!(ax::AbstractAxis, plot::AbstractPlot)
     plot!(ax.scene, plot)
-    if !isnothing(get_conversions(plot))
-        connect_conversions!(ax.scene.conversions, get_conversions(plot))
-        plot.kw[:dim_conversions] = ax.scene.conversions
-    end
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.

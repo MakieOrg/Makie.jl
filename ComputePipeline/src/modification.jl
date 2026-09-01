@@ -461,6 +461,27 @@ function modify_edge!(edge::Input; kwargs...)
     return
 end
 
+function replace_input!(_callback, new_sources, output::Computed)
+    input = output.parent::Input
+    graph = output.parent.graph
+
+    # Build new edge
+    inputs = convert_to_nodes(graph, new_sources)
+    output.parent = ComputeEdge(
+        graph, MapFunctionWrapper(_callback),
+        inputs, fill(true, length(inputs)), [output],
+        Ref(false), input.dependents, Ref{TypedEdge}()
+    )
+    output.parent_idx = 1
+    for input in inputs
+        push!(input.parent.dependents, output.parent)
+    end
+
+    # Remove Input/make it GC-able
+    delete!(graph.inputs, output.name)
+    return
+end
+
 """
     add_orphaned_node!(graph, name)
 

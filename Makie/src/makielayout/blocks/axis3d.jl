@@ -134,16 +134,11 @@ function initialize_block!(ax::Axis3)
         return
     end
 
-    x_dim_convert_updater = needs_tick_update_observable(ax.dim1_conversion)
-    y_dim_convert_updater = needs_tick_update_observable(ax.dim2_conversion)
-    z_dim_convert_updater = needs_tick_update_observable(ax.dim3_conversion)
-
     ticknode_1 = Observable{Any}()
     map!(
         scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat, ax.x_unit_in_ticklabel,
-        x_dim_convert_updater
-    ) do lims, ticks, format, show_unit, _
-        dc = ax.scene.conversions[1]
+        ax.dim1_conversion, ax.dim_convert_1_sync
+    ) do lims, ticks, format, show_unit, dc, _
         should_show = show_dim_convert_in_ticklabel(dc, show_unit)
         get_ticks(dc, ticks, identity, format, minimum(lims)[1], maximum(lims)[1], should_show)
     end
@@ -151,9 +146,8 @@ function initialize_block!(ax::Axis3)
     ticknode_2 = Observable{Any}()
     map!(
         scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat, ax.y_unit_in_ticklabel,
-        y_dim_convert_updater
-    ) do lims, ticks, format, show_unit, _
-        dc = ax.scene.conversions[2]
+        ax.dim2_conversion, ax.dim_convert_2_sync
+    ) do lims, ticks, format, show_unit, dc, _
         should_show = show_dim_convert_in_ticklabel(dc, show_unit)
         get_ticks(dc, ticks, identity, format, minimum(lims)[2], maximum(lims)[2], should_show)
     end
@@ -161,34 +155,33 @@ function initialize_block!(ax::Axis3)
     ticknode_3 = Observable{Any}()
     map!(
         scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat, ax.z_unit_in_ticklabel,
-        z_dim_convert_updater
-    ) do lims, ticks, format, show_unit, _
-        dc = ax.scene.conversions[3]
+        ax.dim3_conversion, ax.dim_convert_3_sync
+    ) do lims, ticks, format, show_unit, dc, _
         should_show = show_dim_convert_in_ticklabel(dc, show_unit)
         get_ticks(dc, ticks, identity, format, minimum(lims)[3], maximum(lims)[3], should_show)
     end
 
     xlabel_node = Observable{Any}()
     map!(
-        xlabel_node, ax.xlabel, ax.xlabel_suffix, ax.x_unit_in_label, x_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, _
-        dc = ax.scene.conversions[1]
+        xlabel_node, ax.xlabel, ax.xlabel_suffix, ax.x_unit_in_label,
+        ax.dim1_conversion, ax.dim_convert_1_sync, update = true
+    ) do label, formatter, show_unit_in_label, dc, _
         return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
     end
 
     ylabel_node = Observable{Any}()
     map!(
-        ylabel_node, ax.ylabel, ax.ylabel_suffix, ax.y_unit_in_label, y_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, _
-        dc = ax.scene.conversions[2]
+        ylabel_node, ax.ylabel, ax.ylabel_suffix, ax.y_unit_in_label,
+        ax.dim2_conversion, ax.dim_convert_2_sync, update = true
+    ) do label, formatter, show_unit_in_label, dc, _
         return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
     end
 
     zlabel_node = Observable{Any}()
     map!(
-        zlabel_node, ax.zlabel, ax.zlabel_suffix, ax.z_unit_in_label, z_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, _
-        dc = ax.scene.conversions[3]
+        zlabel_node, ax.zlabel, ax.zlabel_suffix, ax.z_unit_in_label,
+        ax.dim3_conversion, ax.dim_convert_3_sync, update = true
+    ) do label, formatter, show_unit_in_label, dc, _
         x = build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
         return x
     end

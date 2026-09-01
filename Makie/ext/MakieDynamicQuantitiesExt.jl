@@ -22,7 +22,6 @@ function unit_convert(quantity::DQ.UnionAbstractQuantity, value)
     return float(conv)
 end
 
-M.needs_tick_update_observable(conversion::M.DQConversion) = conversion.quantity
 M.show_dim_convert_in_ticklabel(::M.DQConversion) = false
 M.show_dim_convert_in_axis_label(::M.DQConversion) = true
 
@@ -41,23 +40,16 @@ function M.get_label_suffix(conversion::M.DQConversion)
     return conversion.quantity[] isa M.Automatic ? "" : unit_string(conversion.quantity[])
 end
 
-function M.convert_dim_value(conversion::M.DQConversion, attr, values, last_values)
-    if conversion.quantity[] isa M.Automatic
-        conversion.quantity[] = oneunit(first(values))
-    end
-
-    unit = conversion.quantity[]
-
+function M.update_dim_conversion!(conversion::M.DQConversion, values)
     if !isempty(values)
-        # try if conversion works, to through error if not!
-        # Is there a function for this to check in DynamicQuantities?
-        unit_convert(unit, first(values))
+        if conversion.quantity[] isa M.Automatic
+            conversion.quantity[] = oneunit(first(values))
+            return true
+        end
     end
-
-    return unit_convert(conversion.quantity[], values)
+    return false
 end
 
-# Can maybe be dropped? Keeping for correspondence with unitful-integration.jl
 function M.convert_dim_value(conversion::M.DQConversion, values)
     return unit_convert(conversion.quantity[], values)
 end
