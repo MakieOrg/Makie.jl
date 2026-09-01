@@ -471,7 +471,7 @@ Backends use this as the scissor rectangle, so a scene is rendered only within
 the bounds shared by itself and all of its parents. Including the scene's own
 viewport keeps the scissor a subset of it (some drivers require `scissor ⊆
 viewport`), while intersecting the ancestors is what clips content that has
-scrolled or been positioned outside an enclosing region (e.g. a `Subfigure`).
+scrolled or been positioned outside an enclosing region (e.g. a `ScrollArea`).
 
 For the root scene this is just its own viewport, so the scissor matches the
 window.
@@ -483,13 +483,17 @@ function effective_clip(scene::Scene)
         s = parent(s)
         rect = intersect(rect, viewport(s)[])
     end
-    # `intersect` on `Rect2i` returns negative widths for disjoint rects, which
-    # turns `glScissor` into `GL_INVALID_VALUE` (and Cairo's clip into a no-op).
-    # Clamp to an empty rect at the intersection origin so callers get a sane
-    # "draw nothing" instead.
+    # For disjoint rects `intersect` returns the empty-`Rect` sentinel: origin
+    # `typemax(Int64)`, negative widths. Those widths turn `glScissor` into
+    # `GL_INVALID_VALUE` (and Cairo's clip into a no-op), and the origin
+    # overflows the `round(Int, px_per_unit * origin)` the backends do — which
+    # happens for real on the first frame of a window that hasn't been resized
+    # yet, where the layout still produces negative-width viewports. Return an
+    # empty rect at the window origin instead: an empty scissor draws nothing
+    # wherever it sits, and the coordinates stay in range.
     w = widths(rect)
     if w[1] < 0 || w[2] < 0
-        return Rect2i(minimum(rect), Vec2i(0, 0))
+        return Rect2i(minimum(viewport(root(scene))[]), Vec2i(0, 0))
     end
     return rect
 end

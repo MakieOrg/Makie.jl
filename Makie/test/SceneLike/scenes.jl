@@ -108,3 +108,24 @@ end
         @test_throws ErrorException set_directional_light!(a, color = RGBf(0, 0, 1))
     end
 end
+
+@testset "effective_clip" begin
+    root = Scene(size = (800, 600))
+    child = Scene(root; viewport = Observable(Recti(100, 100, 200, 200)))
+    grandchild = Scene(child; viewport = Observable(Recti(150, 150, 400, 400)))
+
+    @test Makie.effective_clip(root) == Recti(0, 0, 800, 600)
+    @test Makie.effective_clip(child) == Recti(100, 100, 200, 200)
+    # clipped by the parent, not just by its own (larger) viewport
+    @test Makie.effective_clip(grandchild) == Recti(150, 150, 150, 150)
+
+    # A viewport with negative widths (as the layout produces on the first frame
+    # of a window that hasn't been resized yet) makes `intersect` return the
+    # empty-`Rect` sentinel, whose `typemax` origin overflows the
+    # `round(Int, px_per_unit * origin)` the backends do.
+    tiny = Scene(size = (10, 28))
+    degenerate = Scene(tiny; viewport = Observable(Recti(14, 14, 1, -32)))
+    clip = Makie.effective_clip(degenerate)
+    @test widths(clip) == Vec2i(0, 0)                       # draws nothing
+    @test all(abs.(minimum(clip)) .< 2^31)                  # and stays in range
+end
