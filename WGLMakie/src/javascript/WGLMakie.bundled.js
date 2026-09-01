@@ -25248,7 +25248,14 @@ function pick_closest(scene, xy, range) {
     const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
+    const picked = pick_native(scene, x0, y0, dx, dy, false);
+    if (!picked) {
+        return [
+            null,
+            0
+        ];
+    }
+    const [plot_data, _] = picked;
     const plot_matrix = plot_data.data;
     let min_dist = px_per_unit * px_per_unit * range * range;
     let selection = [
@@ -25393,7 +25400,7 @@ function register_popup(popup, scene, plots_to_pick, callback, options = {}) {
         }
     }
     if (trigger === "hover") {
-        let pending = null, pressed = false;
+        let pending = null, pressed = false, scheduled = false;
         canvas.addEventListener("mousedown", ()=>{
             pressed = true;
             popup.classList.remove("show");
@@ -25401,21 +25408,23 @@ function register_popup(popup, scene, plots_to_pick, callback, options = {}) {
         window.addEventListener("mouseup", ()=>{
             pressed = false;
         });
-        canvas.addEventListener("mousemove", (e)=>{
-            pending = e;
-        });
         canvas.addEventListener("mouseleave", ()=>{
             pending = null;
             popup.classList.remove("show");
         });
-        (function frame() {
-            if (pending && !pressed) {
-                const e = pending;
-                pending = null;
-                process(e);
-            }
-            requestAnimationFrame(frame);
-        })();
+        canvas.addEventListener("mousemove", (e)=>{
+            pending = e;
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(()=>{
+                scheduled = false;
+                if (pending && !pressed) {
+                    const ev = pending;
+                    pending = null;
+                    process(ev);
+                }
+            });
+        });
     } else {
         canvas.addEventListener("mousedown", process);
     }
