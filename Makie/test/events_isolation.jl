@@ -30,6 +30,53 @@ using Test
     @test receives_events(s2) == true
 end
 
+@testset "a hidden ancestor makes the subtree inert" begin
+    # Routing has to consider the whole ancestor chain, not just a scene's own
+    # `visible[]`. A scene created while its parent was visible keeps its own
+    # flag, and `unhide!` force-shows a Block's scene — so a subtree can be
+    # invisible on screen while every flag inside it still says `true`.
+    root = Scene(size = (400, 400))
+    container = Scene(root; viewport = Observable(Makie.Recti(0, 0, 400, 400)), visible = true)
+    child = Scene(container; viewport = Observable(Makie.Recti(100, 100, 200, 200)), visible = Observable(true))
+    root.events.mouseposition[] = (200.0, 200.0)
+    @test receives_events(child) == true
+
+    container.visible[] = false
+    @test child.visible[] == true                 # own flag untouched
+    @test Makie.scene_visible(child) == false     # but hidden through its parent
+    @test receives_events(child) == false
+    @test Makie.is_mouseinside(child) == false
+
+    container.visible[] = true
+    @test receives_events(child) == true
+end
+
+@testset "an inactive tab's Axis does not consume scroll" begin
+    f = Figure(size = (600, 400))
+    t = Tabs(f[1, 1], ["A", "B"])
+    ax = Axis(t[1][1, 1])
+    for i in 1:20
+        Label(t[2][i, 1], "row $i")
+        Makie.GridLayoutBase.rowsize!(t[2].layout, i, Makie.GridLayoutBase.Fixed(30))
+    end
+    Makie.update_state_before_display!(f)
+
+    t.active[] = 2
+    e = events(f.scene)
+    e.mouseposition[] = Tuple(Float64.(minimum(ax.scene.viewport[]) .+ widths(ax.scene.viewport[]) ./ 2))
+    @test receives_events(ax.scene) == false
+
+    limits_before = ax.finallimits[]
+    scroll_before = t[2].scroll[]
+    e.scroll[] = (0.0, -3.0)
+    @test ax.finallimits[] == limits_before        # hidden axis does not zoom
+    @test t[2].scroll[] != scroll_before           # and does not swallow the event
+
+    t.active[] = 1
+    e.scroll[] = (0.0, -3.0)
+    @test ax.finallimits[] != limits_before        # visible axis still zooms
+end
+
 labels_of(t) = [td.label[] for td in t.tabs]
 closable_of(t) = [td.closable[] for td in t.tabs]
 

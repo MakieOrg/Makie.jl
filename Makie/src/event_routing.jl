@@ -73,9 +73,14 @@ end
 Whether pointer-event handlers attached to `scene` should fire right now.
 Returns `true` when `scene` is visible AND either no scene currently covers
 the mouse, or the covering scene shares a root-to-leaf path with `scene`.
+
+Visibility is checked with `scene_visible`, i.e. including ancestors: a `Block`
+force-shows its own scene in `unhide!`, so a widget inside a hidden container
+(an inactive tab, a closed modal) keeps `scene.visible[] == true` and would
+otherwise keep consuming input it is not drawn for.
 """
 function receives_events(scene::Scene)
-    scene.visible[] || return false
+    scene_visible(scene) || return false
     active = find_topmost_cover(root(scene), scene.events.mouseposition[])
     active === nothing && return true
     return is_ancestor_or_equal(active, scene) ||
