@@ -155,6 +155,17 @@ function VideoStreamOptions(;
     )
 end
 
+using Colors
+
+function _is_colmajor_contiguous(A)
+    # For a 2D column-major contiguous array, stride(A,1) == 1 and stride(A,2) == size(A,1)
+    try
+        return stride(A, 1) == 1 && stride(A, 2) == size(A, 1)
+    catch
+        return false
+    end
+end
+
 function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer = 0)
     # explanation of ffmpeg args. note that the order of args is important; args pertaining
     # to the input have to go before -i and args pertaining to the output have to go after.
@@ -328,9 +339,11 @@ function VideoStream(
     _ydim, _xdim = size(first_frame)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
-    buffer = Matrix{eltype(first_frame)}(undef, xdim, ydim)
-    @debug "FFmpeg input" eltype = eltype(first_frame)
-    input_pixel_format = _color_type_to_ffmpeg_string(eltype(first_frame))
+    # Decide on the element type we'll write to ffmpeg (prefer 8-bit integer color types)
+    write_eltype = _write_eltype_for_ffmpeg(eltype(first_frame))
+    buffer = Matrix{write_eltype}(undef, xdim, ydim)
+    @debug "FFmpeg input" frame_eltype = eltype(first_frame) write_eltype = write_eltype
+    input_pixel_format = _color_type_to_ffmpeg_string(write_eltype)
     vso = VideoStreamOptions(format, framerate, compression, profile, input_pixel_format, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
     # a plain `open` without the `pipeline` causes hangs when IOCapture.capture closes over a function that creates
@@ -352,16 +365,32 @@ Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
     glnative = colorbuffer(io.screen, GLNative)
-    # Ensure a dense contiguous array (fixes PermutedDimsArray / lazy array backends)
+    # Ensure a dense contiguous array to avoid surprises from lazy/permuted arrays
     glnative = collect(glnative)
-    # Make no copy if already Matrix{RGB{N0f8}}
-    # There may be a 1px padding for odd dimensions
+    # Dimensions (there may be a 1px padding for odd dimensions)
     xdim, ydim = size(glnative)
-    if eltype(glnative) == eltype(io.buffer) && size(glnative) == size(io.buffer)
+    write_el = eltype(io.buffer)
+
+    # Fast path: exact eltype match and contiguous memory -> write directly
+    if eltype(glnative) == write_el && size(glnative) == size(io.buffer) && _is_colmajor_contiguous(glnative)
         write(io.io, glnative)
     else
-        copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
-        write(io.io, io.buffer)
+        # If sizes match, try an elementwise conversion into the preallocated buffer to avoid allocations.
+        if size(glnative) == size(io.buffer)
+            if eltype(glnative) != write_el
+                # Convert elementwise (e.g., Float32 colors -> N0f8) into io.buffer without extra allocations
+                broadcast!((v)->convert(write_el, v), io.buffer, glnative)
+                write(io.io, io.buffer)
+            else
+                # Same element type but non-contiguous: copy into contiguous buffer then write
+                copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
+                write(io.io, io.buffer)
+            end
+        else
+            # Handle possible 1px padding or size mismatch by copying into the subview we allocated
+            copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
+            write(io.io, io.buffer)
+        end
     end
     next_tick!(io.tick_controller)
     return
@@ -402,6 +431,10 @@ function extract_frames(video, frame_folder; loglevel = "quiet")
     path = joinpath(frame_folder, "frame%04d.png")
     return run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
 end
+
+_write_eltype_for_ffmpeg(::Type{RGB{T}}) where {T} = (T <: AbstractFloat) ? RGB{N0f8} : RGB{T}
+_write_eltype_for_ffmpeg(::Type{RGBA{T}}) where {T} = (T <: AbstractFloat) ? RGBA{N0f8} : RGBA{T}
+_write_eltype_for_ffmpeg(::Type{ARGB32}) = ARGB32
 
 _color_type_to_ffmpeg_string(::Type{RGB{T}}) where {T} = "rgb24"
 _color_type_to_ffmpeg_string(::Type{ARGB32}) = Base.ENDIAN_BOM == 0x04030201 ? "bgra" : "argb"
