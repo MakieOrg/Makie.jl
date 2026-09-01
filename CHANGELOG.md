@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `WGLMakie.ToolTip` gained a `trigger` keyword (`:click`, the previous default behavior, or
+  `:hover`) and a `range` keyword to control the picking tolerance in pixels, so tooltips can
+  now follow the cursor on hover instead of only appearing on click [#5715](https://github.com/MakieOrg/Makie.jl/pull/5715).
 - Fixed `BoundsError` in CairoMakie when clip planes remove all points of a plot, fixed `apply_transform(::Mat4, ::Plane3)` producing a `NaN`-distance plane that clips everything when the transform collapses the plane's normal direction, and fixed `Axis3` collapsing dimensions with zero-width limits [#5759](https://github.com/MakieOrg/Makie.jl/pull/5759).
 - Fixed log-scale `Axis` interactions producing invalid limits. [#5736](https://github.com/MakieOrg/Makie.jl/pull/5736)
 - Fixed `arrows3d` component alignment (tail, shaft, tip) when `normalize = true` and scaling applies (e.g. Axis3, `scale!`, `transform_func`). [#5711](https://github.com/MakieOrg/Makie.jl/issues/5711)
