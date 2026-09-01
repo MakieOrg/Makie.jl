@@ -241,11 +241,13 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
 
     color = attr[colorname][]
     if !isa(dim_conversion_from_args(color), Union{Nothing, NoDimConversion})
-        update_dim_conversion!(attr.color_dim_convert[], color)
+        plot_id = objectid(attr)
+        cdc = attr.color_dim_convert[]::ColorDimConvert
+        init_dim_conversion!(cdc, color)
+        register_cdc_synchronization!(attr, cdc, colorname)
 
-        map!(attr, [:resolved_cdc, colorname], :dc_color) do dc, color
-            converted = convert_dim_value(dc, attr, color, nothing)
-            return to_color(converted)
+        map!(attr, [:dim_convert_4, colorname, :dim_convert_4_sync], :dc_color) do dc, color, _
+            return to_color(convert_dim_value(dc, plot_id, color))
         end
     else
         ComputePipeline.alias!(attr, colorname, :dc_color)
@@ -276,7 +278,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
 
     map!(
         attr,
-        [:resolved_cdc, :colorrange, :colorscale, :auto_colorrange],
+        [:dim_convert_4, :colorrange, :colorscale, :auto_colorrange],
         :scaled_colorrange
     ) do dc, colorrange, colorscale, _autorange
         # colors are actual colors, so no colormapping
@@ -545,17 +547,17 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
         dim == 0 && continue
         if dim isa Integer
             if dim == 4
-                update_dim_conversion!(attr.color_dim_convert[], args_converted[i])
+                init_dim_conversion!(attr.color_dim_convert[]::ColorDimConvert, args_converted[i])
             else
-                update_dim_conversion!(dim_converts, dim, args_converted[i])
+                init_dim_conversion!(dim_converts, dim, args_converted[i])
             end
             maxdim = max(maxdim, dim)
         else
             for (j, d) in enumerate(dim)
                 if d == 4
-                    update_dim_conversion!(attr.color_dim_convert[], args_converted[i], j)
+                    init_dim_conversion!(attr.color_dim_convert[]::ColorDimConvert, args_converted[i], j)
                 else
-                    update_dim_conversion!(dim_converts, d, args_converted[i], j)
+                    init_dim_conversion!(dim_converts, d, args_converted[i], j)
                 end
                 maxdim = max(maxdim, d)
             end
@@ -567,7 +569,7 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # Note that the order in dim_convert_names is important
     dim_convert_names = Symbol[]
     for i in 1:maxdim
-        push!(dim_convert_names, i == 4 ? :resolved_cdc : Symbol(:dim_convert_, i))
+        push!(dim_convert_names, Symbol(:dim_convert_, i))
         if i < 4 # 4 already got added if maxdim == 4
             obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
             converts_updated = map!(x -> dim_converts[i], Observable{Any}(), obs)
@@ -575,25 +577,62 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
         end
     end
 
-    # Apply dim_convert
-    # TODO: Do we really need last here?
-    register_computation!(
-        attr, [input, :arg_dims, dim_convert_names...], [:dim_converted]
-    ) do (expanded, dims, converts...), changed, last
+    # Update dim converts based on local changes of plot args
+    plot_id = objectid(attr)
+    local_updates = map(dim_convert_names) do name
+        return Symbol(name, :_update)
+    end
 
-        last_vals = isnothing(last) ? ntuple(i -> nothing, length(dims)) : last.dim_converted
+    map!(
+        attr, [input, :arg_dims, dim_convert_names...], local_updates
+    ) do args, dims, converts...
+        updated = fill(false, length(converts))
+        for (i, arg) in enumerate(args)
+            if i <= length(dims) && dims[i] != 0
+                if dims[i] isa Integer
+                    result = update_dim_conversion!(converts[dims[i]], arg, plot_id)
+                    updated[dims[i]] = updated[dims[i]] || result
+                else
+                    for (idx, dim) in enumerate(dims[i])
+                        result = update_dim_conversion!(converts[dim], arg, plot_id, idx)
+                        updated[dim] = updated[dim] || result
+                    end
+                end
+            end
+        end
+        return ntuple(length(converts)) do i
+            ExplicitUpdate(updated[i], updated[i] > 0 ? :force : :deny)
+        end
+    end
+
+    # Synchronize changes across plots for normal and color dim converts
+    local_update_nodes = getindex.(Ref(attr), view(local_updates, 1:min(3, maxdim)))
+    register_dim_convert_synchronization!(attr, dim_converts, local_update_nodes)
+    if :dim_convert_4 in dim_convert_names
+        register_cdc_synchronization!(attr, attr.color_dim_convert[]::ColorDimConvert)
+    end
+
+    # Collect all the different dimensions into one trigger node
+    synced_names = [Symbol(:dim_convert_, i, :_sync) for i in 1:maxdim]
+    map!(_dc_sync_callback, attr, synced_names, :all_dc_updates)
+
+    # Apply dim_convert to arguments
+    map!(
+        attr, [input, :arg_dims, :all_dc_updates, dim_convert_names...], :dim_converted
+    ) do expanded, dims, _, converts...
+
         result = ntuple(length(expanded)) do i
             # argument i is associated with the dim convert of dimension dims[i]
             if i <= length(dims) && dims[i] != 0
                 if dims[i] isa Integer
-                    return convert_dim_value(converts[dims[i]], attr, expanded[i], last_vals[i])
+                    return convert_dim_value(converts[dims[i]], plot_id, expanded[i])
                 else
                     # Vector{<:VecTypes} case, where dim converts are expected to
                     # return an array for VecTypes dimension
                     # These arrays are repackaged as a Point array which hopefully
                     # goes through the remaining conversions without issues
                     parts = map(eachindex(dims[i]), dims[i]) do idx, dim
-                        return convert_dim_value(converts[dim], attr, expanded[i], last_vals[i], idx)
+                        return convert_dim_value(converts[dim], plot_id, expanded[i], idx)
                     end
                     return Point.(parts...)
                 end
@@ -601,8 +640,9 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
                 return expanded[i]
             end
         end
-        return (Ref{Any}(result),)
+        return result
     end
+    ComputePipeline.set_type!(attr.dim_converted, Any)
 
     return
 end

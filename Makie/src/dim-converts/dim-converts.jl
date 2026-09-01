@@ -4,13 +4,42 @@ struct NoDimConversion <: AbstractDimConversion end
 
 struct DimConversions
     conversions::NTuple{3, Observable{Union{Nothing, AbstractDimConversion}}}
-    function DimConversions()
-        conversions = map((1, 2, 3)) do i
-            Observable{Union{Nothing, AbstractDimConversion}}(nothing)
-        end
-        return new(conversions)
+
+    # DimConversions in the first plot of an axis might be discarded to replace
+    # these with scene.compute
+    sync_graph::ComputeGraph
+    sync_nodes::NTuple{3, ComputePipeline.Computed}
+end
+
+function DimConversions(graph = ComputeGraph())
+    conversions = map((1, 2, 3)) do i
+        Observable{Union{Nothing, AbstractDimConversion}}(nothing)
+    end
+    sync_nodes = ntuple(3) do i
+        name = Symbol(:sync_update_, i)
+        map!(_dc_sync_callback, graph, Symbol[], name)
+        graph[name]
+    end
+    return DimConversions(conversions, graph, sync_nodes)
+end
+
+# TODO: maybe better to use register_computation!() with @nospecialize here?
+_dc_sync_callback(args...) = ExplicitUpdate(nothing, :force)
+
+function register_dim_convert_synchronization!(attr, dc::DimConversions, sources)
+    return map(enumerate(sources)) do (i, source)
+        # shared node for all the update results - trigger this if update did something
+        ComputePipeline.push_input!(dc.sync_nodes[i].parent, source)
+
+        # pull from the synchronized output so one plot can pull dc updates from all plots
+        name = Symbol(:dim_convert_, i, :_sync)
+        add_input!(attr, name, dc.sync_nodes[i])
+
+        return attr[name]
     end
 end
+
+####################
 
 dim_observable(conversions::DimConversions, dim::Int) = conversions.conversions[dim]
 
@@ -46,7 +75,6 @@ function Base.setindex!(conversions::DimConversions, value, i::Int)
 end
 
 
-## Interface to be overloaded for any AbstractDimConversion type
 function convert_dim_value(conversions::DimConversions, dim::Int, value)
     if isnothing(conversions[dim])
         return value
@@ -60,9 +88,65 @@ function convert_dim_value(axislike::AbstractAxis, dim::Int, value)
 end
 
 convert_dim_value(::NoDimConversion, value) = value
-function convert_dim_value(conversion::AbstractDimConversion, value, deregister)
+convert_dim_value(::Nothing, value) = value
+function convert_dim_value(conversion::AbstractDimConversion, value)
     error("AbstractDimConversion $(typeof(conversion)) not supported for value of type $(typeof(value))")
 end
+
+
+# Interface
+
+"""
+    update_dim_conversion!(dim_convert, value, plot_id)
+
+Interface function for updating dim conversions. This is called when arguments
+of plots are updated to synchronize the changes.
+"""
+update_dim_conversion!(conv, values, plot_id) = update_dim_conversion!(conv, values)
+function update_dim_conversion!(conv, values)
+    str = "The dim_conversion interface now includes \
+    `update_dim_conversion!($conv, values[, plot_id])` for updating the dim \
+    conversion based on updated argument `values` of a plot. Not implementing \
+    this function may result in the dim convert being behind.
+    "
+    @warn str
+    Base.show_backtrace(stdout, Base.backtrace())
+    return true
+end
+
+# convert_dim_value(conv, attr, value, last_value) = value
+function convert_dim_value(conv, attr, value)
+    if applicable(convert_dim_value, conv, attr, value, nothing)
+        Base.depwarn("`convert_dim_value(dim_convert, attr, value, last)` is deprecated. Implement `convert_dim_value(dim_convert, [attr,] value)` instead", :convert_dim_value)
+        return convert_dim_value(conv, attr, value, nothing)
+    end
+    return convert_dim_value(conv, value)
+end
+
+# Helpers
+
+function update_dim_conversion!(conv, values::AbstractArray{<:VecTypes}, plot_id, element_index::Integer)
+    dim_view = [v[element_index] for v in values]
+    return update_dim_conversion!(conv, dim_view, plot_id)
+end
+function update_dim_conversion!(conv, values::VecTypes, plot_id, element_index::Integer)
+    return update_dim_conversion!(conv, values[element_index], plot_id)
+end
+
+update_dim_conversion!(::Nothing, values) = false
+update_dim_conversion!(::NoDimConversion, values) = false
+
+function convert_dim_value(conv, plot_id, points::AbstractArray{<:VecTypes}, element_index::Integer)
+    isempty(points) && return Float64[]
+    dim_value = [p[element_index] for p in points]
+    return convert_dim_value(conv, plot_id, dim_value)
+end
+
+function convert_dim_value(conv, plot_id, point::VecTypes, element_index::Integer)
+    return convert_dim_value(conv, plot_id, point[element_index])
+end
+
+
 
 # Return instance of AbstractDimConversion for a given type
 create_dim_conversion(argument_eltype) = NoDimConversion()
@@ -211,9 +295,34 @@ function connect_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
 end
 
 function connect_conversions!(conversions::DimConversions, new_conversions::DimConversions)
+    # TODO: Can we avoid this?
+    conversions === new_conversions && return
+
     for i in 1:3
         conversions[i] = new_conversions.conversions[i]
     end
+
+    for i in 1:3
+        source_edge = new_conversions.sync_nodes[i].parent
+        target_edge = conversions.sync_nodes[i].parent
+
+        # make every input of source trigger target instead
+        inputs = vcat(target_edge.inputs, source_edge.inputs)
+        ComputePipeline.modify_edge!(target_edge, inputs = inputs)
+
+        # make every node connected to the source output listen to the target
+        # output instead (keeping the output of target edge the same)
+        for dep in source_edge.dependents
+            ComputePipeline.modify_edge!(dep, inputs = target_edge.outputs)
+        end
+
+        # We moved all the inputs and output to the target_edge so we can now
+        # delete the source edge
+        delete!(source_edge)
+
+        # This assumes new_conversions will be replaced by conversions
+    end
+
     return
 end
 
@@ -255,38 +364,20 @@ function needs_tick_update_observable(conversion::Observable)
     end
 end
 
-convert_dim_value(conv, attr, value, last_value) = value
-
-function convert_dim_value(conv, attr, value, last_value, element_index)
-    return convert_dim_value(conv, attr, value, last_value)
+function init_dim_conversion!(conversions::DimConversions, dim, value, element_idx)
+    return init_dim_conversion!(conversions, dim, value)
 end
 
-function convert_dim_value(conv, attr, points::AbstractArray{<:VecTypes}, last_value, element_index)
-    isempty(points) && return Float64[]
-    dim_value = [p[element_index] for p in points]
-    last_dim_value = last_value === nothing ? nothing : [p[element_index] for p in last_value]
-    return convert_dim_value(conv, attr, dim_value, last_dim_value)
+function init_dim_conversion!(conversions::DimConversions, dim, value::VecTypes, element_idx)
+    return init_dim_conversion!(conversions, dim, value[element_idx])
 end
 
-function convert_dim_value(conv, attr, point::VecTypes, last_value, element_index)
-    last = last_value === nothing ? nothing : last_value[element_index]
-    return convert_dim_value(conv, attr, point[element_index], last)
-end
-
-function update_dim_conversion!(conversions::DimConversions, dim, value, element_idx)
-    return update_dim_conversion!(conversions, dim, value)
-end
-
-function update_dim_conversion!(conversions::DimConversions, dim, value::VecTypes, element_idx)
-    return update_dim_conversion!(conversions, dim, value[element_idx])
-end
-
-function update_dim_conversion!(conversions::DimConversions, dim, points::AbstractArray{<:VecTypes}, element_idx)
+function init_dim_conversion!(conversions::DimConversions, dim, points::AbstractArray{<:VecTypes}, element_idx)
     isempty(points) && return
-    return update_dim_conversion!(conversions, dim, first(points)[element_idx])
+    return init_dim_conversion!(conversions, dim, first(points)[element_idx])
 end
 
-function update_dim_conversion!(conversions::DimConversions, dim, value)
+function init_dim_conversion!(conversions::DimConversions, dim, value)
     conversion = conversions[dim]
     if conversion isa Union{Nothing, NoDimConversion}
         c = dim_conversion_from_args(value)

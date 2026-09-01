@@ -97,6 +97,29 @@ function dict_setindex!(dict, key, value)
     end
 end
 
+function update_dim_conversion!(conversion::CategoricalConversion, values, plot_id)
+    # This is a bit tricky...
+    # We need to recalculate the categories on each values_obs update,
+    # but we also need to update the cat->int mapping each time the categories get recalculated
+    # So category_to_int needs to be notified every time values_obs introduces new categories
+    # but we don't want to recalculate cat->int two times, when value changes + category_to_int
+    # so we introduce a placeholder observable that gets triggered when an update is needed
+    # outside of category_to_int updating
+    unwrapped_values = get_values(values)
+    new_values = unique!(Any[v for v in unwrapped_values])
+    if any(x -> !haskey(conversion.category_to_int[], x), new_values)
+        dict_setindex!(conversion.sets, string(plot_id), new_values)
+        recalculate_categories!(conversion)
+        # Others need to be updated too
+        # This will also call this `convert_dim_value` again
+        # But will then not trigger a new recalc of categories, since last == prev
+        # Would be nice, to get out of that to not do `Any[v for v in unwrapped_values]` with a `==`
+        notify(conversion.category_to_int)
+        return true
+    end
+    return false
+end
+
 function convert_dim_value(conversion::CategoricalConversion, value)
     if !haskey(conversion.category_to_int[], value)
         set = dict_get!(() -> [], conversion.sets, "")
@@ -116,30 +139,8 @@ function convert_categorical(conversion::CategoricalConversion, value::Integer)
     return conversion.category_to_int[][value]
 end
 
-function convert_dim_value(conversion::CategoricalConversion, attr, values, prev_values)
-    # This is a bit tricky...
-    # We need to recalculate the categories on each values_obs update,
-    # but we also need to update the cat->int mapping each time the categories get recalculated
-    # So category_to_int needs to be notified every time values_obs introduces new categories
-    # but we don't want to recalculate cat->int two times, when value changes + category_to_int
-    # so we introduce a placeholder observable that gets triggered when an update is needed
-    # outside of category_to_int updating
-    unwrapped_values = get_values(values)
-    new_values = unique!(Any[v for v in unwrapped_values])
-    if any(x -> !haskey(conversion.category_to_int[], x), new_values)
-        dict_setindex!(conversion.sets, string(objectid(attr)), new_values)
-        recalculate_categories!(conversion)
-        # Others need to be updated too
-        # This will also call this `convert_dim_value` again
-        # But will then not trigger a new recalc of categories, since last == prev
-        # Would be nice, to get out of that to not do `Any[v for v in unwrapped_values]` with a `==`
-        notify(conversion.category_to_int)
-    else
-        # TODO, what do if no change?
-    end
-    # So now we update when either category_to_int changes, or
-    # when values changes and an update is needed
-    return convert_categorical.(Ref(conversion), unwrapped_values)
+function convert_dim_value(conversion::CategoricalConversion, plot_id, values)
+    return convert_categorical.(Ref(conversion), get_values(values))
 end
 
 # TODO: Does it make sense to allow discarding all the categorical information

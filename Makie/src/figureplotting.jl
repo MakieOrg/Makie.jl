@@ -580,6 +580,7 @@ function plot!(ax::AbstractAxis, plot::AbstractPlot)
     plot!(ax.scene, plot)
     if !isnothing(get_conversions(plot))
         connect_conversions!(ax.scene.conversions, get_conversions(plot))
+        plot.kw[:dim_conversions] = ax.scene.conversions
     end
 
     # some area-like plots basically always look better if they cover the whole plot area.
