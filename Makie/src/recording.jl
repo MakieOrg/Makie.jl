@@ -196,4 +196,3 @@ function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
         )
     end
 end
-

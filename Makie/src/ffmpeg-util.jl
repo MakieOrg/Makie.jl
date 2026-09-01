@@ -76,7 +76,7 @@ struct VideoStreamOptions
 
         if format == "mov"
             (profile === nothing) && (profile = "4")  # prores_ks:  0 = ProRes 422 Proxy 1 = ProRes 422 LT 2 = ProRes 422 3 = ProRes 422 HQ 4 = ProRes 4444 5 = ProRes 4444 XQ
-            (pixel_format === nothing) && (pixel_format = "yuva420p")  # yuva444p10 would be too heavy for some players.
+            (pixel_format === nothing) && (pixel_format = "yuva444p10le")  # "le" = little-endian, "be" = big-endian. 10-bit color depth for ProRes 4444
         end
 
         if format == "webm"
