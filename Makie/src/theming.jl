@@ -161,7 +161,12 @@ function merge_without_obs!(result::Attributes, theme::Attributes)
     dict = attributes(result)
     for (key, value) in theme
         if !haskey(dict, key)
-            dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+            new_value = if value isa Attributes
+                merge_without_obs!(Attributes(), value) # the deepcopy part for Attributes
+            else
+                value
+            end
+            dict[key] = Observable{Any}(to_value(new_value)) # the deepcopy part for observables
         else
             current_value = result[key]
             if value isa Attributes && current_value isa Attributes
@@ -179,14 +184,24 @@ function merge_without_obs_reverse!(result::Attributes, priority::Attributes)
     result_dict = attributes(result)
     for (key, value) in priority
         if !haskey(result_dict, key)
-            result_dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+            new_value = if value isa Attributes
+                merge_without_obs_reverse!(Attributes(), value) # the deepcopy part for Attributes
+            else
+                value
+            end
+            result_dict[key] = Observable{Any}(to_value(new_value)) # the deepcopy part for observables
         else
             current_value = result[key]
             if value isa Attributes && current_value isa Attributes
                 # if nested attribute, we merge recursively
                 merge_without_obs_reverse!(current_value, value)
             else
-                result_dict[key] = Observable{Any}(to_value(value))
+                new_value = if value isa Attributes
+                    merge_without_obs_reverse!(Attributes(), value)
+                else
+                    value
+                end
+                result_dict[key] = Observable{Any}(to_value(new_value)) # the deepcopy part for observables
             end
         end
     end

@@ -106,4 +106,28 @@
         p.sdf_uv[]
         @test true
     end
+
+    @testset "Merging Themes is not recursive when key does not exist in result" begin
+        t1 = Theme(x = 1, nested = (; y = 2))
+        t1_merged = Makie.merge_without_obs!(Attributes(), t1)
+        t1_merged.nested.y = 3
+
+        @test t1.nested.y[] == 2
+        @test t1_merged.nested.y[] == 3
+
+        t2 = Theme(x = 1, nested = (; y = 2))
+        t2_merged = Makie.merge_without_obs_reverse!(Attributes(), t2)
+        t2_merged.nested.y = 3
+
+        @test t2.nested.y[] == 2
+        @test t2_merged.nested.y[] == 3
+
+        t3 = Theme(x = 1, nested = 2)
+        t4 = Theme(nested = (; y = 5))
+        t5 = Makie.merge_without_obs_reverse!(t3, t4)
+        t5.nested.y = 100
+
+        @test t4.nested.y[] == 5
+        @test t5.nested.y[] == 100
+    end
 end
