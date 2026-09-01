@@ -116,7 +116,7 @@ end
 function flush_glyph_batch!(ctx, glyph_buffer, font, color, mat, strokewidth, strokecolor)
     isempty(glyph_buffer) && return
 
-    cairoface = set_ft_font(ctx, font)
+    set_ft_font(ctx, font)
     old_matrix = get_font_matrix(ctx)
 
     Cairo.save(ctx)
@@ -135,7 +135,6 @@ function flush_glyph_batch!(ctx, glyph_buffer, font, color, mat, strokewidth, st
         Cairo.restore(ctx)
     end
 
-    cairo_font_face_destroy(cairoface)
     set_font_matrix(ctx, old_matrix)
     empty!(glyph_buffer)
     return
@@ -185,10 +184,9 @@ function draw_text(ctx, attr::NamedTuple)
                 scale = Makie.sv_getindex(text_scales, glyph_idx)
                 rotation = Makie.sv_getindex(text_rotation, glyph_idx)
                 pos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
-                cairoface = set_ft_font(ctx, font_per_char[glyph_idx])
+                set_ft_font(ctx, font_per_char[glyph_idx])
                 set_font_matrix(ctx, mat)
                 glyph_path(ctx, glyph, pos...)
-                cairo_font_face_destroy(cairoface)
             end
             n_layers = max(1, round(Int, glowwidth))
             Cairo.set_source_rgba(ctx, glow_r, glow_g, glow_b, glow_a / n_layers)
@@ -318,7 +316,7 @@ function project_flipped(trans::Mat4, res, point::Union{Point3, Vec3}, yflip::Bo
 end
 
 function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, jl_mat, mat)
-    cairoface = set_ft_font(ctx, font)
+    set_ft_font(ctx, font)
 
     # The given pos includes the user position which corresponds to the center
     # of the marker and the user marker_offset which may shift the position.
@@ -349,9 +347,6 @@ function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, jl_
     Cairo.set_line_width(ctx, strokewidth)
     Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
     Cairo.stroke(ctx)
-
-    # if we use set_ft_font we should destroy the pointer it returns
-    cairo_font_face_destroy(cairoface)
 
     set_font_matrix(ctx, old_matrix)
     return

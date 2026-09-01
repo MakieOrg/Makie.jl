@@ -20,14 +20,6 @@ function pattern_get_matrix(ctx)
     return matrix[]
 end
 
-function cairo_font_face_destroy(font_face)
-    return ccall(
-        (:cairo_font_face_destroy, Cairo.libcairo),
-        Cvoid, (Ptr{Cvoid},),
-        font_face
-    )
-end
-
 function cairo_transform(ctx, cairo_matrix)
     return ccall(
         (:cairo_transform, Cairo.libcairo),
@@ -36,15 +28,31 @@ function cairo_transform(ctx, cairo_matrix)
     )
 end
 
+# Cairo keeps scaled fonts alive in an internal holdover cache even after the last
+# user reference to their font face is destroyed, and resolves font faces created
+# via cairo_ft_font_face_create_for_ft_face by raw FT_Face pointer. So the FT_Face
+# must outlive all of Cairo's internal references: if the FTFont were finalized
+# (FT_Done_Face) while Cairo still holds cached state for its pointer, a later
+# FT_Face allocated at the same address would alias that stale state and glyphs
+# could render with a wrong scale or from freed memory. We therefore create one
+# font face per FTFont and keep both alive for the process lifetime instead of
+# creating and destroying font faces per draw call.
+const FONT_FACE_CACHE = IdDict{Makie.FreeTypeAbstraction.FTFont, Ptr{Cvoid}}()
+const FONT_FACE_CACHE_LOCK = Base.ReentrantLock()
+
+function ft_font_face(font)
+    return Base.@lock FONT_FACE_CACHE_LOCK get!(FONT_FACE_CACHE, font) do
+        Base.@lock font.lock ccall(
+            (:cairo_ft_font_face_create_for_ft_face, Cairo.libcairo),
+            Ptr{Cvoid}, (Makie.FreeTypeAbstraction.FT_Face, Cint),
+            font, 0
+        )
+    end
+end
+
 function set_ft_font(ctx, font)
-
-    font_face = Base.@lock font.lock ccall(
-        (:cairo_ft_font_face_create_for_ft_face, Cairo.libcairo),
-        Ptr{Cvoid}, (Makie.FreeTypeAbstraction.FT_Face, Cint),
-        font, 0
-    )
+    font_face = ft_font_face(font)
     ccall((:cairo_set_font_face, Cairo.libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), ctx.ptr, font_face)
-
     return font_face
 end
 
