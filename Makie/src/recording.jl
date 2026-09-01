@@ -197,35 +197,3 @@ function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
     end
 end
 
-if VERSION < v"1.11.0-DEV"
-    import Base: write
-    using ColorTypes
-    using FixedPointNumbers: N0f8
-
-    # 1. ARGB32
-    function Base.write(io::IO, x::ColorTypes.ARGB32)
-        return write(io, reinterpret(UInt32, x))
-    end
-
-    # 2. RGBA{N08} / RGBA{T}
-    function Base.write(io::IO, x::RGBA{N0f8})
-        return write(io, reinterpret(UInt32, x))
-    end
-
-    function Base.write(io::IO, x::RGBA{T}) where {T}
-        return write(io, RGBA{N0f8}(x))
-    end
-
-    # 3. RGB{N08} / RGB{T}
-    function Base.write(io::IO, x::RGB{N0f8})
-        n = 0
-        n += write(io, reinterpret(UInt8, x.r))
-        n += write(io, reinterpret(UInt8, x.g))
-        n += write(io, reinterpret(UInt8, x.b))
-        return n
-    end
-
-    function Base.write(io::IO, x::RGB{T}) where {T}
-        return write(io, RGB{N0f8}(x))
-    end
-end

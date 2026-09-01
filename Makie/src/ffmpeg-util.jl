@@ -352,6 +352,8 @@ Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
     glnative = colorbuffer(io.screen, GLNative)
+    # Ensure a dense contiguous array (fixes PermutedDimsArray / lazy array backends)
+    glnative = collect(glnative)
     # Make no copy if already Matrix{RGB{N0f8}}
     # There may be a 1px padding for odd dimensions
     xdim, ydim = size(glnative)
