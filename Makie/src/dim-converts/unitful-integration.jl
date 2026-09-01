@@ -8,7 +8,8 @@ expand_dimensions(::PointBased, y::AbstractVector{<:SupportedUnits}) = (keys(y),
 create_dim_conversion(::Type{<:SupportedUnits}) = UnitfulConversion()
 should_dim_convert(::Type{<:SupportedUnits}) = true
 
-const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
+# deca and hecto are excluded because they are uncommon plot labels
+const COMMON_PREFIX_POWERS = Unitful.prefixdict |> keys |> collect |> filter(∉((1, 2))) |> sort!
 const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs, :as, :zs, :ys]
 
 base_unit(q::Quantity) = base_unit(typeof(q))
@@ -81,7 +82,7 @@ end
 get_all_base10_units(value) = get_all_base10_units(base_unit(value))
 
 function get_all_base10_units(value::Unitful.Unit{Sym, Unitful.𝐋}) where {Sym}
-    return Unitful.Unit{Sym, Unitful.𝐋}.(UNIT_POWER_OF_TENS, value.power)
+    return Unitful.Unit{Sym, Unitful.𝐋}.(COMMON_PREFIX_POWERS, value.power)
 end
 
 function get_all_base10_units(value::Unitful.Unit)
@@ -95,16 +96,20 @@ function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym}
 end
 
 function best_unit(min, max)
-    middle = (min + max) / 2.0
-    all_units = get_all_base10_units(middle)
-    _, index = findmin(all_units) do unit
-        raw_value = abs(unit_convert(unit, middle))
-        # We want the unit that displays the value with the smallest number possible, but not something like 1.0e-19
-        # So, for fractions between 0..1, we use inv to penalize really small fractions
-        positive = raw_value < 1.0 ? (inv(raw_value) + 100) : raw_value
-        return positive
-    end
-    return all_units[index]
+    # The unit is chosen from the largest magnitude the axis has to display. A midpoint
+    # would be useless here since it vanishes for a range symmetric around zero.
+    usable = filter(x -> isfinite(x) && !iszero(x), (min, max))
+    isempty(usable) && return base_unit(min)
+    reference = maximum(abs, usable)
+    all_units = get_all_base10_units(reference)
+    values = map(unit -> unit_convert(unit, reference), all_units)
+    # Pick the largest unit the reference fills at least twice, so that ticks below the
+    # maximum stay clear of fractions too. For data starting at zero this selects the same
+    # unit as the previous midpoint, which was just half the maximum. If the reference is
+    # below every unit, use the smallest one available.
+    big_enough = filter(>=(2), values)
+    target = isempty(big_enough) ? maximum(values) : minimum(big_enough)
+    return all_units[findfirst(==(target), values)]
 end
 
 best_unit(min::LogScaled, max) = Unitful.logunit(min)
