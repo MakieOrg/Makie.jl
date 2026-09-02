@@ -188,8 +188,8 @@ mutable struct Screen{GLWindow} <: MakieScreen
 
     For finding which draw call took the process down: a `glDrawElements` that
     segfaults leaves no Julia stack worth reading, and a buffered `println` dies
-    with its buffer, so the LAST LINE PRINTED is the answer. Set it on the screen
-    you are watching (`screen.rendertrace = true`); one build serves many runs.
+    with its buffer, so the last line printed is the answer. Set it per screen
+    (`screen.rendertrace = true`).
     """
     rendertrace::Bool
 

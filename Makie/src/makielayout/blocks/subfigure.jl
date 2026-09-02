@@ -126,10 +126,6 @@ function initialize_block!(sf::Subfigure)
         return
     end
 
-    on(blockscene, layout.layoutobservables.computedbbox) do _
-        refresh_contentsize!(sf)
-        return
-    end
 
     # Wheel scrolling runs below the default priority so an inner block (e.g.
     # an Axis zoom-on-scroll handler at priority 0) gets the event first; the
@@ -202,6 +198,21 @@ function initialize_block!(sf::Subfigure)
         return
     end
     onany(blockscene, layout_bbox, scene.viewport) do _, _
+        clip_content_to_viewport!()
+        return
+    end
+    # …and again once the content layout has SETTLED. `layout_bbox` moves at the
+    # start of a relayout, so culling from it alone decides what is on screen from
+    # positions the layout has not finished changing: folding a card left the
+    # wrong cards hidden, and a hidden card takes no clicks, so the next click
+    # went nowhere. Scrolling one pixel put it right, which is what made folding
+    # look intermittent rather than broken.
+    #
+    # The content layout's own `computedbbox` fires when GridLayoutBase is done,
+    # which is the moment both answers — how tall the content is, and what of it
+    # is in view — are worth asking for.
+    on(blockscene, layout.layoutobservables.computedbbox) do _
+        refresh_contentsize!(sf)
         clip_content_to_viewport!()
         return
     end

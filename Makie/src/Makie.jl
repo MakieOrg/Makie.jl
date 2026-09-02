@@ -519,6 +519,7 @@ export widths, decompose
 
 # building blocks for series recipes
 export PlotSpec
+export findplot
 
 export plot!, plot
 export abline! # until deprecation removal

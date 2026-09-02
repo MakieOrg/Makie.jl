@@ -167,6 +167,25 @@ function filter_cards!(predicate, stack::GridLayout, cards)
 end
 
 """
+    over_content(gl::GridLayout, pos) -> Bool
+
+Whether `pos` lands on a block inside `gl`, as opposed to merely inside the cell
+`gl` occupies. Nested layouts are searched too, so a row of buttons built into a
+sub-layout answers the same as one built directly.
+"""
+function over_content(gl::GridLayout, pos)
+    for c in gl.content
+        o = c.content
+        if o isa GridLayout
+            over_content(o, pos) && return true
+        elseif o isa Block
+            pos in o.layoutobservables.computedbbox[] && return true
+        end
+    end
+    return false
+end
+
+"""
     card_accessory(card) -> GridPosition
 
 Where a header widget goes: `Button(card_accessory(card); label = "×")`. The
@@ -352,12 +371,14 @@ function initialize_block!(c::Card)
         receives_events(blockscene) || return Consume(false)
         pos = Point2f(blockscene.events.mouseposition[])
         pos in headerrect[] || return Consume(false)
-        # The accessory cell belongs to whatever the user put there — a press
-        # over it is that widget's, not the card's. An EMPTY layout reports the
-        # default 0..100 box, which would swallow presses on the whole header.
-        if !isempty(c.header.content)
-            pos in c.header.layoutobservables.computedbbox[] && return Consume(false)
-        end
+        # A press over an accessory WIDGET is that widget's, not the card's. Over
+        # the cell but not over a widget it is the card's: the cell is as wide as
+        # the widest row of accessories and includes the gaps between them, so
+        # treating all of it as "not the header" left a quarter of a card's title
+        # bar dead to the fold gesture — which reads as the fold being unreliable.
+        # (An EMPTY layout reports the default 0..100 box, which is why this asks
+        # about the widgets rather than the cell in the first place.)
+        over_content(c.header, pos) && return Consume(false)
         c.headerclicks[] = c.headerclicks[] + 1
         c.foldable[] && (c.open = !c.open[])
         return Consume(true)

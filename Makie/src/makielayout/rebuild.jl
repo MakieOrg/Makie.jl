@@ -9,8 +9,8 @@ the expensive way to change a label. Measured on 100 `Button`s: 230 ms and
 `Button` costs 1.5 MB, and 1.03 MB of that is the `poly` and the `text` it draws
 with. The block that was already there can take the new values instead.
 
-The API stays the one people write, an imperative closure that constructs
-blocks. What changes is the POSITION it constructs them at: inside
+The API stays an imperative closure that constructs blocks. What changes is the
+position it constructs them at: inside
 [`replace_content!`](@ref) `sf.layout[i, j]` yields a [`RebuildPosition`](@ref),
 and `Button(pos; label = …)` on one of those hands back the block that was in
 that cell — with the new attributes written and the previous closure's callbacks
@@ -44,7 +44,7 @@ Base.getindex(rl::RebuildLayout, rows, cols, side = GridLayoutBase.Inner()) =
     RebuildPosition(rl, rows, cols, side)
 
 # `layout[3, 1]` and the span the grid remembers for that block (`3:3`) have to
-# produce the SAME key, or nothing is ever found and every rebuild builds again.
+# produce the same key, or nothing is found and every rebuild builds again.
 tospan(i::Integer) = Int(i):Int(i)
 tospan(r::UnitRange{<:Integer}) = Int(r.start):Int(r.stop)
 tospan(x) = x                       # Colon and friends: no key, no reuse
@@ -80,9 +80,8 @@ Drop everything the previous closure hung on `block`, keep the wiring the block
 made for itself.
 
 A reused block is the same object, so `on(button.clicks) do …` in a closure that
-runs on every rebuild would stack up one callback per rebuild — the classic leak
-of any reuse scheme. `snap` is what the block carried when it was BUILT; anything
-past that came from a closure and goes.
+runs on every rebuild would stack up one callback per rebuild. `snap` is what the
+block carried when it was built; anything past that came from a closure.
 """
 function reset_to_buildlisteners!(block::Block, snap::Dict{Symbol, Int})
     for (name, obs) in block.attributes.observables
@@ -95,7 +94,7 @@ end
 """
     reuse_arguments!(block, args...) -> Bool
 
-Write a block's POSITIONAL constructor arguments onto one that already exists,
+Write a block's positional constructor arguments onto one that already exists,
 or return `false` if this type cannot take them that way — then
 [`replace_content!`](@ref) builds a fresh block instead.
 
@@ -143,16 +142,15 @@ end
 """
     replace_content!(f, sf::Subfigure)
 
-Rebuild the subfigure's content by calling `f(sf)`, REUSING the blocks that are
-already there: a block of the same type in the same cell takes the new attributes
-instead of being deleted and built again. Blocks the closure does not ask for
-this time are deleted, the layout is trimmed, and the content size refreshed.
+Rebuild the subfigure's content by calling `f(sf)`, reusing the blocks already
+there: a block of the same type in the same cell takes the new attributes instead
+of being deleted and built again. Blocks the closure does not ask for are deleted,
+the layout is trimmed and the content size refreshed.
 
-The whole rebuild is one layout pass. Every block deleted and every attribute
-written otherwise triggers its own pass over the entire grid, which is where a
-panel rebuild's time actually goes: writing a `Label`'s text costs 1551 µs with
-updates live and 43 µs inside a suspended layout — the `text` plot underneath
-needs 21 µs.
+The whole rebuild is one layout pass. Otherwise every deleted block and every
+attribute write triggers its own pass over the grid, which is where a panel
+rebuild's time goes: writing a `Label`'s text costs 1551 µs with updates live and
+43 µs inside a suspended layout, against 21 µs for the `text` plot underneath.
 
 ```julia
 replace_content!(sf) do sf

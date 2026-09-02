@@ -1092,6 +1092,9 @@ end
 
 @Block Slider begin
     selected_index::Observable{Int}
+    # Whether the user has hold of the button right now. The GESTURE, as opposed
+    # to the value: a slider moved from code changes `value` and never this.
+    dragging::Observable{Bool}
     @attributes begin
         "The horizontal alignment of the element in its suggested bounding box."
         halign = :center
@@ -1530,9 +1533,9 @@ scientific-figure panels, sidebars, dialog regions, etc.
     scroll::Observable{Vec2f}
     contentsize::Observable{Vec2f}
     # How many listeners each of a content block's observables carried when it was
-    # BUILT, so `replace_content!` can reuse the block and still drop everything the
-    # previous closure hung on it. Without that record, reuse means every rebuild
-    # registers another copy of every callback.
+    # built, so `replace_content!` can reuse the block and still drop what the
+    # previous closure hung on it. Without the record, every rebuild registers
+    # another copy of every callback.
     buildlisteners::IdDict{Any, Dict{Symbol, Int}}
     @attributes begin
         "Whether the subfigure is shown. When `false` it renders nothing and receives no input."
