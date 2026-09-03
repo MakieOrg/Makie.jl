@@ -303,7 +303,8 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     end
 
     map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
-        return formatter.(levels)
+        # Allow inconsistent output types (String, LaTexString, RichText) from formatter
+        return Ref{Any}(formatter.(levels))
     end
 
     map!(plot, [:labelcolor, :computed_lbl_colors], :text_color) do user_color, computed_color

@@ -224,19 +224,15 @@ function positivize(r::Rect2)
 end
 
 function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
-
-    if event.type === MouseEventTypes.leftclick
-        if ispressed(ax.scene, Keyboard.left_control)
-            if ispressed(ax.scene, Keyboard.left_shift)
-                autolimits!(ax)
-            else
-                reset_limits!(ax)
-            end
-            return Consume(true)
-        end
+    if ispressed(ax.scene, ax.recomputelimitskey[])
+        autolimits!(ax)
+        return Consume(true)
+    elseif ispressed(ax.scene, ax.resetlimitskey[])
+        reset_limits!(ax)
+        return Consume(true)
+    else
+        return Consume(false)
     end
-
-    return Consume(false)
 end
 
 
@@ -523,26 +519,22 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
 end
 
 function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
-    consumed = false
-    if event.type === MouseEventTypes.leftclick
-        if ispressed(ax.scene, Keyboard.left_control)
-            ax.zoom_mult[] = 1.0
-            if ispressed(ax.scene, Keyboard.left_shift)
-                autolimits!(ax)
-            else
-                reset_limits!(ax)
-            end
-            consumed = true
-        end
-        if ispressed(ax.scene, Keyboard.left_shift)
-            ax.axis_offset[] = Vec2d(0)
-            ax.elevation[] = pi / 8
-            ax.azimuth[] = 1.275 * pi
-            consumed = true
-        end
+    if ispressed(ax.scene, ax.recomputelimitskey[])
+        ax.zoom_mult[] = 1.0
+        autolimits!(ax)
+        return Consume(true)
+    elseif ispressed(ax.scene, ax.resetlimitskey[])
+        ax.zoom_mult[] = 1.0
+        reset_limits!(ax)
+        return Consume(true)
+    elseif ispressed(ax.scene, ax.resetrotationkey[])
+        ax.axis_offset[] = Vec2d(0)
+        ax.elevation[] = pi / 8
+        ax.azimuth[] = 1.275 * pi
+        return Consume(true)
+    else
+        return Consume(false)
     end
-
-    return Consume(consumed)
 end
 
 function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}, ax::Axis3)

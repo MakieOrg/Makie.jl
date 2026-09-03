@@ -49,6 +49,8 @@ If you trigger both simultaneously, i.e. press `ctrl + shift + leftclick`, the a
 This includes `ax.limits` which are reset to `nothing` via `autolimits!(ax)`
 This interaction is registered as `:limitreset` and uses the `LimitReset` type.
 
+These key combination can be adjusted with `resetlimitskey`, `recomputelimitskey` and `resetrotationkey`.
+
 ### Center on point
 
 You can center the axis on your cursor with `alt + left click`.

@@ -162,16 +162,12 @@ end
 end
 
 # https://github.com/MakieOrg/Makie.jl/issues/3579
-@reference_test "Axis yticksmirrored" begin
-    f = Figure(size = (200, 200))
-    Axis(f[1, 1], yticksmirrored = true, yticksize = 10, ytickwidth = 4, spinewidth = 5)
-    Colorbar(f[1, 2])
-    f
-end
-@reference_test "Axis xticksmirrored" begin
-    f = Figure(size = (200, 200))
-    Axis(f[1, 1], xticksmirrored = true, xticksize = 10, xtickwidth = 4, spinewidth = 5)
-    Colorbar(f[0, 1], vertical = false)
+@reference_test "Axis ticksmirrored" begin
+    f = Figure(size = (400, 200))
+    Axis(f[1, 1][1, 1], yticksmirrored = true, yticksize = 10, ytickwidth = 4, spinewidth = 5)
+    Colorbar(f[1, 1][1, 2])
+    Axis(f[1, 2][1, 1], xticksmirrored = true, xticksize = 10, xtickwidth = 4, spinewidth = 5)
+    Colorbar(f[1, 2][0, 1], vertical = false)
     f
 end
 
@@ -666,11 +662,14 @@ end
     )
     Colorbar(fig[2, 3][1, 2], hm; ticks = -1:0.25:1)
 
+    signed_sqrt(x) = sign(x) * sqrt(abs(x))
+    signed_square(x) = sign(x) * x * x
+    Makie.inverse_transform(::typeof(signed_sqrt)) = signed_square
     ax, hm = contourf(
         fig[3, :][1, 1], xs, ys, zs;
-        colormap = :Spectral, colorscale = sqrt, levels = [0, 0.25, 0.5, 1]
+        colormap = :Spectral, colorscale = signed_sqrt, levels = [0, 0.25, 0.5, 1]
     )
-    Colorbar(fig[3, :][1, 2], hm; width = 200)
+    cb = Colorbar(fig[3, :][1, 2], hm; width = 200)
 
     fig
 end
@@ -680,17 +679,13 @@ end
     x = 0:0.1:51
     y = 0:0.1:51
     z = [y for x in x, y in y]
-    fig, ax, plt = contourf(x, y, z; levels = l)
+    fig = Figure(size = (400, 600))
+    ax, plt = contourf(fig[1, 1], x, y, z; levels = l)
     cb = Colorbar(fig[1, 2], plt; tellheight = false)
 
-    fig
-end
-
-@reference_test "Categorical Colorbar with nan_color" begin
     arr = [0 0 NaN; 1 1 NaN; 3 3 NaN]
-    fig = Figure(size = (300, 200))
-    a, hm = heatmap(fig[1, 1], arr; colormap = Makie.Categorical(:Paired_8), colorrange = (1, 3), lowclip = :black)
-    Colorbar(fig[1, 2], hm)
+    a, hm = heatmap(fig[2, 1], arr; colormap = Makie.Categorical(:Paired_8), colorrange = (1, 3), lowclip = :black)
+    Colorbar(fig[2, 2], hm)
     fig
 end
 
