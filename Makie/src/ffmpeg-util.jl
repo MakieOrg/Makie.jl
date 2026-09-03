@@ -158,15 +158,6 @@ end
 
 using Colors
 
-function _is_colmajor_contiguous(A)
-    # For a 2D column-major contiguous array, stride(A,1) == 1 and stride(A,2) == size(A,1)
-    try
-        return stride(A, 1) == 1 && stride(A, 2) == size(A, 1)
-    catch
-        return false
-    end
-end
-
 function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer = 0)
     # explanation of ffmpeg args. note that the order of args is important; args pertaining
     # to the input have to go before -i and args pertaining to the output have to go after.
@@ -364,32 +355,19 @@ end
 Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
-    # Ensure a dense contiguous array to avoid surprises from lazy/permuted arrays
+    # `convert` is a no-op when the backend already hands us a dense `Matrix` of the
+    # write element type (GLMakie's framecache), and materializes + converts otherwise
+    # (CairoMakie's PermutedDimsArray, float color buffers).
     write_el = eltype(io.buffer)
     glnative = convert(Matrix{write_el}, colorbuffer(io.screen, GLNative))
-    # Dimensions (there may be a 1px padding for odd dimensions)
     xdim, ydim = size(glnative)
 
-    # Fast path: exact eltype match and contiguous memory -> write directly
-    if eltype(glnative) == write_el && size(glnative) == size(io.buffer) && _is_colmajor_contiguous(glnative)
+    if size(glnative) == size(io.buffer)
         write(io.io, glnative)
     else
-        # If sizes match, try an elementwise conversion into the preallocated buffer to avoid allocations.
-        if size(glnative) == size(io.buffer)
-            if eltype(glnative) != write_el
-                # Convert elementwise (e.g., Float32 colors -> N0f8) into io.buffer without extra allocations
-                broadcast!((v) -> convert(write_el, v), io.buffer, glnative)
-                write(io.io, io.buffer)
-            else
-                # Same element type but non-contiguous: copy into contiguous buffer then write
-                copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
-                write(io.io, io.buffer)
-            end
-        else
-            # Handle possible 1px padding or size mismatch by copying into the subview we allocated
-            copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
-            write(io.io, io.buffer)
-        end
+        # 1px padding for odd dimensions: write the frame into the padded buffer
+        copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
+        write(io.io, io.buffer)
     end
     next_tick!(io.tick_controller)
     return
