@@ -364,12 +364,11 @@ end
 Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
-    glnative = colorbuffer(io.screen, GLNative)
     # Ensure a dense contiguous array to avoid surprises from lazy/permuted arrays
-    glnative = collect(glnative)
+    write_el = eltype(io.buffer)
+    glnative = convert(Matrix{write_el}, colorbuffer(io.screen, GLNative))
     # Dimensions (there may be a 1px padding for odd dimensions)
     xdim, ydim = size(glnative)
-    write_el = eltype(io.buffer)
 
     # Fast path: exact eltype match and contiguous memory -> write directly
     if eltype(glnative) == write_el && size(glnative) == size(io.buffer) && _is_colmajor_contiguous(glnative)
