@@ -394,3 +394,33 @@ function show_inputs(io::IO, edge::ComputeEdge, tab = 0)
     end
     return
 end
+
+"""
+    show_outputs(node)
+
+Traces and prints all recursive inputs to a node.
+"""
+show_outputs(node::Computed) = show_outputs(stdout, node)
+function show_outputs(io::IO, node::Computed, tab = 0)
+    return show_outputs_rec(io, node.parent, tab)
+end
+
+function show_edge(io::IO, input::Input, tab = 0)
+    println(io, "    "^tab, "Input(", input.name, ")")
+    return
+end
+
+function show_edge(io::IO, edge::ComputeEdge, tab = 0)
+    inputs = "(" * join(string.(getproperty.(edge.inputs, :name)), ", ") * ")"
+    outputs = "(" * join(string.(getproperty.(edge.outputs, :name)), ", ") * ")"
+    println(io, "    "^tab, inputs, " --> ", outputs)
+    return
+end
+
+function show_outputs_rec(io::IO, edge::AbstractEdge, tab = 0)
+    show_edge(io, edge, tab)
+    for e in edge.dependents
+        show_outputs_rec(io, e, tab+1)
+    end
+    return
+end

@@ -402,12 +402,18 @@ function ComputeGraph()
     on(graph.onchange) do changeset
         # Remove node names not backed by observables
         intersect!(changeset, keys(graph.observables))
+        isempty(changeset) && return
 
         obs_to_notify = graph.obs_to_notify
 
         # update values without triggering observables and add all updated names
         # to obs_to_notify
-        for key in changeset
+        while !isempty(changeset)
+            # Remove the key before resolve so that if the resolve triggers the
+            # changeset again we don't try to resolve the same node twice.
+            # (This might not be reachable anymore)
+            key = pop!(changeset)
+
             # Still necessary?
             haskey(graph.observables, key) || continue
 
@@ -426,9 +432,6 @@ function ComputeGraph()
             end
         end
 
-        # Clear the changeset now so that if notify causes the graph to update
-        # again, the already processed names are not processed again.
-        empty!(changeset)
 
         # trigger observables from obs_to_notify.
         # Separating this from changeset allows notify to cause another
@@ -494,6 +497,13 @@ function mark_resolved!(edge::ComputeEdge)
 end
 mark_resolved!(edge::Input) = edge.dirty = false
 
+"""
+    mark_dirty!(x)
+
+Marks a compute node or edge and all its dependents dirty, and triggers
+Observables dependent on the graph. It is generally recommended to use `notify`
+instead of this function.
+"""
 function mark_dirty!(computed::Computed)
     hasparent(computed) || return
     mark_dirty!(computed, computed.parent.graph.obs_to_update)
@@ -508,14 +518,30 @@ function mark_dirty!(computed::Computed, obs_to_update)
         computed.dirty = true
         locked_mark_dirty!(computed.parent, obs_to_update)
     end
+    update_observables!(obs_to_update)
     return
 end
+
 mark_dirty!(x::AbstractEdge) = mark_dirty!(x, x.graph.obs_to_update)
 function mark_dirty!(x, obs_to_update)
     @lock GLOBAL_LOCK begin
         locked_mark_dirty!(x, obs_to_update)
     end
+    update_observables!(obs_to_update)
     return
+end
+
+"""
+    locked_mark_dirty!(x, obs_to_update)
+
+Marks a compute node or edge and all its dependents dirty. This assumes the
+compute graph is already locked and that observables are updated outside of this
+function. This should not be used externally.
+"""
+locked_mark_dirty!(x::AbstractEdge) = locked_mark_dirty!(x, x.graph.obs_to_update)
+function locked_mark_dirty!(x::Computed, obs_to_update = x.parent.graph.obs_to_update)
+    x.dirty = true
+    return locked_mark_dirty!(x.parent, obs_to_update)
 end
 
 function locked_mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
@@ -558,13 +584,7 @@ function update_observables!(obs_to_update::Vector{Observable})
     return
 end
 
-function Base.notify(node::Union{Computed, Input})
-    @lock GLOBAL_LOCK begin
-        mark_dirty!(node)
-    end
-    update_observables!(node)
-    return
-end
+Base.notify(node::Union{Computed, Input}) = mark_dirty!(node)
 
 function Base.setindex!(computed::Computed, value)
     if computed.parent isa Input
@@ -572,7 +592,7 @@ function Base.setindex!(computed::Computed, value)
     else
         @lock GLOBAL_LOCK begin
             computed.value[] = value
-            mark_dirty!(computed)
+            locked_mark_dirty!(computed)
         end
         update_observables!(computed)
         return value
@@ -589,7 +609,7 @@ function _setindex!(input::Input, value, force_update = false)
     end
     @lock GLOBAL_LOCK begin
         input.value = value
-        mark_dirty!(input)
+        locked_mark_dirty!(input)
     end
     update_observables!(input)
     return value
@@ -605,7 +625,7 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
         # can't notify observables immediately here, because update may call this
         # multiple times for a synchronized update (would cause desync)
         input.value = value
-        mark_dirty!(input)
+        locked_mark_dirty!(input)
     end
     return value
 end

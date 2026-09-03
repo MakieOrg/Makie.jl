@@ -562,11 +562,15 @@ function initialize_limit_computations!(ax)
     # (This is important for ticks which need finallimits to be up to date with
     # the user set (x/y)scale. This requires the path from limits -> finallimits
     # to be purely ComputeGraph computations.)
-    map!(attr, [:xscale, :yscale], :transform_func) do transform_func...
-        ax.scene.transformation.transform_func[] = transform_func
-        return transform_func
-    end
+    map!((x, y) -> (x, y), attr, [:xscale, :yscale], :transform_func)
     ComputePipeline.set_type!(attr.transform_func, Any)
+
+    # It's dangerous to do this in a ComputePipeline.map! so do it outside of
+    # one. The equal value check might be unnecessary?
+    on(attr.transform_func) do transform_func
+        ax.scene.transformation.transform_func[] = transform_func
+        return
+    end
 
     map!(attr, :transform_func, :inverse_transform_func) do tf
         itf = inverse_transform(tf)
@@ -588,7 +592,7 @@ function initialize_limit_computations!(ax)
         attr,
         [:limits, :_limit_update_rule, :transform_func, :inverse_transform_func, :xautolimitmargin, :yautolimitmargin],
         [:localxlimits, :localylimits],
-    ) do (limits, rule, tf, itf, xmargins, ymargins), changed, cached
+    ) do (limits, rule, tf, itf, xmargins, ymargins), changed, @nospecialize(cached)
         lims = calculate_local_limits(ax, limits, tf, itf, xmargins, ymargins)
         if changed._limit_update_rule
             # The update comes from (x/y)lims!() which explicitly set update rules
