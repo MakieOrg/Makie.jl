@@ -52,17 +52,23 @@ function get_callback_info(edge::Input)
     return get_callback_info(edge.f, edge.value)
 end
 function get_callback_info(edge::ComputeEdge)
-    return get_callback_info(edge.callback, edge)
+    return _get_callback_info(edge.callback, edge)
 end
-function get_callback_info(callback, edge::ComputeEdge)
+
+# Underscore to avoid dispatch issues with the `f, args...` method
+function _get_callback_info(callback, edge::ComputeEdge)
     input = _get_named_inputs(edge)
     changed = NamedTuple{keys(input)}(ntuple(x -> true, length(keys(input))))
     output = _get_named_outputs(edge)
     return get_callback_info(callback, input, changed, output)
 end
-function get_callback_info(callback::MapFunctionWrapper, edge::ComputeEdge)
-    input = ntuple(i -> edge.inputs[i].value[], length(edge.inputs))
-    return get_callback_info(callback, input)
+function _get_callback_info(callback::MapFunctionWrapper, edge::ComputeEdge)
+    N = length(edge.inputs)
+    input_types = ntuple(N) do i
+        node = edge.inputs[i]
+        return is_initialized(node) ? typeof(node.value[]) : Any
+    end
+    return callback.user_func, input_types
 end
 
 # catch-all for the final user function being called.
