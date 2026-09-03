@@ -22,8 +22,8 @@ end
 function to_range(index)
     return map(index) do val
         isa(val, Integer) && return val:val
-        isa(val, AbstractRange) && return val
-        error("Indexing only defined for integers or ranges. Found: $val")
+        isa(val, UnitRange) && return val
+        error("Indexing only defined for integers and unit ranges. Found: $val")
     end
 end
 
