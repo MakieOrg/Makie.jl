@@ -148,4 +148,6 @@ function update_dim_conversion!(conversion::UnitfulConversion, values)
     return false
 end
 
-convert_dim_value(dc::UnitfulConversion, values) = unit_convert(dc.unit[], values)
+function convert_dim_value(dc::UnitfulConversion, values)
+    return unit_convert(dc.unit[], values)
+end

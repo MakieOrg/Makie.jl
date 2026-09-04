@@ -1038,7 +1038,11 @@ function resolve!(computed::Computed)
         try
             resolve!(computed.parent)
         catch e
-            rethrow(ResolveException(computed, e))
+            if e isa ResolveException
+                rethrow(e)
+            else
+                rethrow(ResolveException(computed, e))
+            end
         end
     end
     return computed.value[]

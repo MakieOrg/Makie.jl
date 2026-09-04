@@ -234,7 +234,11 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
     haskey(cmap, :colorscale) && (cmap[:scale] = pop!(cmap, :colorscale))
     haskey(cmap, :color) && (cmap[:values] = pop!(cmap, :color))
-    haskey(cmap, :color_dim_convert) && (cmap[:dim_conversion] = pop!(cmap, :color_dim_convert))
+    if haskey(cmap, :color_dim_convert)
+        cmap[:dim_conversion] = pop!(cmap, :color_dim_convert)
+    elseif haskey(plot, :color_dim_convert)
+        cmap[:dim_conversion] = plot.color_dim_convert
+    end
 
     cmap_keys = collect(keys(cmap))
     haskey(cmap, :colorrange) && push!(cmap_keys, :limits)
@@ -271,11 +275,14 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     # Auto dim conversion
     cdc = cb.dim_conversion[]
+    map!(cdc -> cdc.dim_convert, cb, :dim_conversion, :dim_convert_4)
+
     if hasinput(cb.attributes, :dim_conversion) # not managed externally
         init_dim_conversion!(cb.dim_conversion[], cb.values[])
         register_cdc_synchronization!(cb.attributes, cdc, cb.values)
+    else
+        add_input!(cb, :dim_convert_4_sync, cdc.sync_node)
     end
-    map!(cdc -> cdc.dim_convert, cb, :dim_conversion, :dim_convert_4)
 
     if haskey(kwargs, :dim_converted)
         map!(to_color, cb, kwargs[:dim_converted], :dc_values)

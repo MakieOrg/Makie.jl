@@ -243,6 +243,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     )
 
     map!(calculate_horizontal_extends, graph, endpoints, [:position, :extents, :horizontal])
+
     map!(
         graph,
         # TODO: Why was :pos_extents_horizontal in here?
@@ -525,6 +526,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
             end
         end
         translate!(labeltext, xs, ys, 0.0f0)
+        return
     end
 
     decorations[:labeltext] = labeltext

@@ -39,6 +39,7 @@ function initialize_block!(ax::Axis3)
     # transfer conversions from axis to scene if there are any
     # or the other way around
     connect_conversions!(scene.conversions, ax)
+    register_dim_convert_synchronization!(ax)
 
     axis_cam = Axis3Camera()
     cameracontrols!(scene, axis_cam)
@@ -163,28 +164,24 @@ function initialize_block!(ax::Axis3)
 
     xlabel_node = Observable{Any}()
     map!(
-        xlabel_node, ax.xlabel, ax.xlabel_suffix, ax.x_unit_in_label,
-        ax.dim1_conversion, ax.dim_convert_1_sync, update = true
-    ) do label, formatter, show_unit_in_label, dc, _
-        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
-    end
+        build_label_with_unit_suffix, xlabel_node,
+        ax.dim1_conversion, ax.xlabel_suffix, ax.xlabel, ax.x_unit_in_label,
+        ax.dim_convert_1_sync, update = true
+    )
 
     ylabel_node = Observable{Any}()
     map!(
-        ylabel_node, ax.ylabel, ax.ylabel_suffix, ax.y_unit_in_label,
-        ax.dim2_conversion, ax.dim_convert_2_sync, update = true
-    ) do label, formatter, show_unit_in_label, dc, _
-        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
-    end
+        build_label_with_unit_suffix, ylabel_node,
+        ax.dim2_conversion, ax.ylabel_suffix, ax.ylabel, ax.y_unit_in_label,
+        ax.dim_convert_2_sync, update = true
+    )
 
     zlabel_node = Observable{Any}()
     map!(
-        zlabel_node, ax.zlabel, ax.zlabel_suffix, ax.z_unit_in_label,
-        ax.dim3_conversion, ax.dim_convert_3_sync, update = true
-    ) do label, formatter, show_unit_in_label, dc, _
-        x = build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
-        return x
-    end
+        build_label_with_unit_suffix, zlabel_node,
+        ax.dim3_conversion, ax.zlabel_suffix, ax.zlabel, ax.z_unit_in_label,
+        ax.dim_convert_3_sync, update = true
+    )
 
     add_panel!(blockscene, ax, 1, 2, 3, finallimits, mi3)
     add_panel!(blockscene, ax, 2, 3, 1, finallimits, mi1)

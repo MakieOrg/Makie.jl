@@ -135,6 +135,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     # transfer conversions from axis to scene if there are any
     # or the other way around
     connect_conversions!(scene.conversions, ax)
+    register_dim_convert_synchronization!(ax)
 
     setfield!(scene, :float32convert, Float32Convert())
 
@@ -210,20 +211,27 @@ function initialize_block!(ax::Axis; palette = nothing)
     map!(xlimits, ax, :finallimits, :finalxlimits)
     map!(ylimits, ax, :finallimits, :finalylimits)
 
+
     xaxis = LineAxis(
         blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :xaxis),
         endpoints = ax.xaxis_endpoints, limits = ax.finalxlimits,
-        flipped = ax.xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
-        ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
-        labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
-        label = ax.xlabel, labelfont = ax.xlabelfont, labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
-        ticklabelspace = ax.xticklabelspace, dim_convert = ax.dim1_conversion, dim_convert_sync = ax.dim_convert_1_sync,
+        flipped = ax.xaxis_flipped, scale = ax.xscale,
+        ticklabelrotation = ax.xticklabelrotation, ticklabelalign = ax.xticklabelalign,
+        labelsize = ax.xlabelsize, labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad,
+        labelvisible = ax.xlabelvisible, label = ax.xlabel, labelfont = ax.xlabelfont,
+        labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont,
+        ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
+        ticklabelspace = ax.xticklabelspace,
         ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
-        ticksvisible = ax.xticksvisible, spinevisible = ax.xspinevisible, spinecolor = ax.xspinecolor, spinewidth = ax.spinewidth,
-        ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
-        reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
-        minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
+        ticksvisible = ax.xticksvisible, spinevisible = ax.xspinevisible, spinecolor = ax.xspinecolor,
+        spinewidth = ax.spinewidth, ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine,
+        ticksize = ax.xticksize, reversed = ax.xreversed, tickwidth = ax.xtickwidth,
+        tickcolor = ax.xtickcolor,
+        minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign,
+        minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth,
+        minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks,
         minorticksused = ax.xminorgridvisible,
+        dim_convert = ax.dim1_conversion, dim_convert_sync = ax.dim_convert_1_sync,
         unit_in_ticklabel = ax.x_unit_in_ticklabel, unit_in_label = ax.x_unit_in_label,
         suffix_formatter = ax.xlabel_suffix
     )
@@ -233,17 +241,23 @@ function initialize_block!(ax::Axis; palette = nothing)
     yaxis = LineAxis(
         blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :yaxis),
         endpoints = ax.yaxis_endpoints, limits = ax.finalylimits,
-        flipped = ax.yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
-        ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
-        labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
-        label = ax.ylabel, labelfont = ax.ylabelfont, labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
-        ticklabelspace = ax.yticklabelspace, dim_convert = ax.dim2_conversion, dim_convert_sync = ax.dim_convert_2_sync,
-        ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
-        ticksvisible = ax.yticksvisible, spinevisible = ax.yspinevisible, spinecolor = ax.yspinecolor, spinewidth = ax.spinewidth,
-        trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
+        flipped = ax.yaxis_flipped,
+        ticklabelrotation = ax.yticklabelrotation, ticklabelalign = ax.yticklabelalign,
+        labelsize = ax.ylabelsize, labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad,
+        labelvisible = ax.ylabelvisible, label = ax.ylabel, labelfont = ax.ylabelfont,
+        labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont,
+        ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
+        ticklabelspace = ax.yticklabelspace, ticks = ax.yticks, tickformat = ax.ytickformat,
+        ticklabelsvisible = ax.yticklabelsvisible, ticksvisible = ax.yticksvisible,
+        spinevisible = ax.yspinevisible, spinecolor = ax.yspinecolor, spinewidth = ax.spinewidth,
+        trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize,
+        flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
         tickcolor = ax.ytickcolor,
-        minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
+        minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign,
+        minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth,
+        minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
         minorticksused = ax.yminorgridvisible,
+        dim_convert = ax.dim2_conversion, dim_convert_sync = ax.dim_convert_2_sync,
         unit_in_ticklabel = ax.y_unit_in_ticklabel, unit_in_label = ax.y_unit_in_label,
         suffix_formatter = ax.ylabel_suffix
     )
@@ -567,7 +581,7 @@ function initialize_limit_computations!(ax)
 
     # It's dangerous to do this in a ComputePipeline.map! so do it outside of
     # one. The equal value check might be unnecessary?
-    on(attr.transform_func) do transform_func
+    on(attr.transform_func, update = true) do transform_func
         ax.scene.transformation.transform_func[] = transform_func
         return
     end
@@ -804,7 +818,7 @@ end
 
 function prepare_user_lims(ax, _lims, idx)
     dim = ("x", "y")[idx]
-    lims = map(x -> convert_dim_value(ax, idx, x), _convert_single_limit(_lims))
+    lims = update_sync_convert_dim_value(ax, idx, _convert_single_limit(_lims))
     reversed = false
     if length(lims) != 2
         error("Invalid $(dim)lims length of $(length(lims)), must be 2.")

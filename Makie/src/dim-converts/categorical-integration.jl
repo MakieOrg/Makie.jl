@@ -68,12 +68,9 @@ function recalculate_categories!(conversion::CategoricalConversion)
 end
 
 
-get_values(x) = x
+get_values(x) = [x]
+get_values(x::Union{AbstractArray, VecTypes}) = x
 get_values(x::Categorical) = x.values
-
-function convert_dim_value(conversion::CategoricalConversion, value::Categorical)
-    return getindex.(Ref(conversion.category_to_int[]), get_values(value))
-end
 
 # TODO, use ordered sets/dicts?
 function dict_get!(f, dict, key)
@@ -114,13 +111,18 @@ function update_dim_conversion!(conversion::CategoricalConversion, values, plot_
     return false
 end
 
-function convert_dim_value(conversion::CategoricalConversion, value)
-    return conversion.category_to_int[][value]
+function convert_dim_value(conversion::CategoricalConversion, cat::Categorical)
+    return convert_dim_value(conversion, get_values(cat))
 end
 
-function convert_dim_value(conversion::CategoricalConversion, values::AbstractArray)
-    return convert_dim_value.(Ref(conversion), get_values(values))
+function convert_dim_value(conversion::CategoricalConversion, _value)
+    return conversion.category_to_int[][_value]
 end
+
+function convert_dim_value(conversion::CategoricalConversion, values::Union{AbstractArray, VecTypes})
+    return getindex.(Ref(conversion.category_to_int[]), values)
+end
+
 
 # TODO: Does it make sense to allow discarding all the categorical information
 # and go back to default tick finding?
@@ -136,7 +138,7 @@ function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, v
         categories = ticks
     end
     # TODO filter out ticks greater vmin vmax?
-    numbers = convert_dim_value.(Ref(conversion), categories)
+    numbers = convert_dim_value(conversion, categories)
     if show_in_label
         labels_str = formatter isa Automatic ? string.(categories) : get_ticklabels(formatter, categories)
         return numbers, labels_str

@@ -242,7 +242,49 @@ function set_type!(view::ComputeGraphView, T::Type)
 end
 
 ################################################################################
-# TODO: test this:
+# TODO: test all of this:
+
+function is_part_of_loop(node::Computed, visited = Dict{UInt64, Vector{Bool}}())
+    return is_part_of_loop(node.parent, node, visited)
+end
+
+is_part_of_loop(::Input, node, visited = Dict{UInt64, Vector{Bool}}()) = false
+
+function is_part_of_loop(edge::ComputeEdge, output, visited = Dict{UInt64, Vector{Bool}}())
+    idx = findfirst(x -> x === output, edge.outputs)::Int
+
+    if haskey(visited, objectid(edge))
+        # we only go through the inputs on our first visit. Otherwise diamond
+        # patterns (a -> (b, c) -> d) detect as loops.
+        outputs_visited = visited[objectid(edge)]
+        outputs_visited[idx] && return true
+        outputs_visited[idx] = true
+    else
+        outputs_visited = fill(false, length(edge.outputs))
+        outputs_visited[idx] = true
+        push!(visited, objectid(edge) => outputs_visited)
+        for input in edge.inputs
+            if is_part_of_loop(input, visited)
+                return true
+            end
+        end
+    end
+    return false
+end
+
+is_child_of(child::Computed, parent::Computed) = is_child_of(child.parent, parent)
+is_child_of(edge::Input, ::Computed) = false
+function is_child_of(edge::ComputeEdge, parent::Computed)
+    for input in edge.inputs
+        if input === parent
+            return true
+        elseif is_child_of(input, parent)
+            return true
+        end
+    end
+    return false
+end
+
 
 maybe_set_type!(view::ComputeGraphView, T) = set_type!(view, T)
 function maybe_set_type!(node::Computed, T)
@@ -384,7 +426,7 @@ function modify_edge!(edge::ComputeEdge; kwargs...)
         end
 
         # If the edge has been initialized before we need to reinitialize it
-        mark_dirty!(edge)
+        locked_mark_dirty!(edge)
         if isassigned(edge.typed_edge)
             # Note: This is a locked resolve that sets edge.typed_edge
             foreach(locked_resolve!, edge.inputs)
@@ -397,6 +439,9 @@ function modify_edge!(edge::ComputeEdge; kwargs...)
             foreach(comp -> comp.dirty = false, edge.outputs)
         end
     end
+
+    # do not trigger this with mark_dirty!() since the TypedEdge might need replacement
+    update_observables!(graph)
 
     return
 end
@@ -454,9 +499,9 @@ function modify_edge!(edge::Input; kwargs...)
         if haskey(kwargs, :callback)
             edge.callback = kwargs[:callback]
         end
-
-        mark_dirty!(edge)
     end
+
+    mark_dirty!(edge)
 
     return
 end
@@ -526,6 +571,9 @@ function replace_output!(edge::Input, replacement::Pair{Symbol, Symbol})
 end
 
 function push_input!(edge::ComputeEdge, node::Computed)
+    if any(output -> is_child_of(node, output), edge.outputs)
+        error("Adding $node as an edge input to $edge would create a loop.")
+    end
     inputs = push!(copy(edge.inputs), node)
     modify_edge!(edge; inputs)
     return

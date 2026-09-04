@@ -514,7 +514,6 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
         # args declared not dim-convertible by argument_dims().
         ComputePipeline.alias!(attr, :args, :dim_converted)
         return args
-
     elseif !(dim_tuple isa Tuple)
         # Format check
         error("`arguments_dims() must return a `Tuple` of integers or `Nothing` but returned $dim_tuple")
@@ -542,7 +541,7 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # This sets conversions per dimension if they have not already been set.
     # If a recipe has multiple arguments for one dimension that dimension may
     # be set multiple times here (but only the first one will actually be used)
-    maxdim = 0
+    dims_used = fill(false, 4)
     for (i, dim) in enumerate(dim_tuple)
         dim == 0 && continue
         if dim isa Integer
@@ -551,7 +550,7 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
             else
                 init_dim_conversion!(dim_converts, dim, args_converted[i])
             end
-            maxdim = max(maxdim, dim)
+            dims_used[dim] = true
         else
             for (j, d) in enumerate(dim)
                 if d == 4
@@ -559,19 +558,41 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
                 else
                     init_dim_conversion!(dim_converts, d, args_converted[i], j)
                 end
-                maxdim = max(maxdim, d)
+                dims_used[d] = true
             end
         end
+    end
+
+    # Recheck: Are any of the dim converts we use or created actually needed?
+    # If not, skip applying dim converts.
+    # This is mainly meant to prevent loops from parent and child plots both
+    # applying NoDimConversion. (Which can happen because the dim_convert sync
+    # node could be connected to child local_updates which connects back to
+    # parent dim_converted which connects back to the dim_convert sync node.)
+    any_required = dims_used[4] && !isa(attr.dim_convert_4[], Union{Nothing, NoDimConversion})
+    for dim in 1:3
+        if dims_used[dim]
+            any_required = any_required || needs_dimconvert(dim_converts, dim)
+        end
+    end
+
+    if !any_required
+        # :args_converted could error here, but it'll be caught later anyway
+        # (It's an error because conversions didn't complete and dim converts
+        # won't change that)
+        ComputePipeline.alias!(attr, input, :dim_converted)
+        return
     end
 
     # Add input containing Symbol(:dim_convert_, i) which triggers when the
     # conversion changes. (One per dimension, so use unique on dim_tuple)
     # Note that the order in dim_convert_names is important
     dim_convert_names = Symbol[]
-    for i in 1:maxdim
+    for i in 1:4
+        dims_used[i] || continue
         name = DIM_CONVERT_NAMES[i]
         push!(dim_convert_names, name)
-        if i < 4 # 4 already got added if maxdim == 4
+        if i < 4 # 4 already got added
             add_input!(attr, name, dim_converts.sync_graph[name])
         end
     end
@@ -582,6 +603,8 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
         return Symbol(name, :_update)
     end
 
+    remap_dims = ifelse.(dims_used, cumsum(dims_used), 0)
+
     map!(
         attr, [input, :arg_dims, dim_convert_names...], local_updates
     ) do args, dims, converts...
@@ -589,10 +612,14 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
         for (i, arg) in enumerate(args)
             if i <= length(dims) && dims[i] != 0
                 if dims[i] isa Integer
-                    result = update_dim_conversion!(converts[dims[i]], arg, plot_id)
-                    updated[dims[i]] = updated[dims[i]] || result
+                    dim = remap_dims[dims[i]]
+                    dim == 0 && continue
+                    result = update_dim_conversion!(converts[dim], arg, plot_id)
+                    updated[dim] = updated[dim] || result
                 else
-                    for (idx, dim) in enumerate(dims[i])
+                    for (idx, _dim) in enumerate(dims[i])
+                        dim = remap_dims[_dim]
+                        dim == 0 && continue
                         result = update_dim_conversion!(converts[dim], arg, plot_id, idx)
                         updated[dim] = updated[dim] || result
                     end
@@ -605,14 +632,14 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     end
 
     # Synchronize changes across plots for normal and color dim converts
-    local_update_nodes = getindex.(Ref(attr), view(local_updates, 1:min(3, maxdim)))
+    local_update_nodes = [i => attr[local_updates[remap_dims[i]]] for i in 1:3 if dims_used[i]]
     register_dim_convert_synchronization!(attr, dim_converts, local_update_nodes)
     if :dim_convert_4 in dim_convert_names
         register_cdc_synchronization!(attr, attr.color_dim_convert[]::ColorDimConvert)
     end
 
     # Collect all the different dimensions into one trigger node
-    synced_names = [Symbol(:dim_convert_, i, :_sync) for i in 1:maxdim]
+    synced_names = [Symbol(name, :_sync) for name in dim_convert_names]
     map!(_dc_sync_callback, attr, synced_names, :all_dc_updates)
 
     # Apply dim_convert to arguments
@@ -624,13 +651,17 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
             # argument i is associated with the dim convert of dimension dims[i]
             if i <= length(dims) && dims[i] != 0
                 if dims[i] isa Integer
-                    return convert_dim_value(converts[dims[i]], plot_id, expanded[i])
+                    dim = remap_dims[dims[i]]
+                    dim == 0 && return expanded[i]
+                    return convert_dim_value(converts[dim], plot_id, expanded[i])
                 else
                     # Vector{<:VecTypes} case, where dim converts are expected to
                     # return an array for VecTypes dimension
                     # These arrays are repackaged as a Point array which hopefully
                     # goes through the remaining conversions without issues
-                    parts = map(eachindex(dims[i]), dims[i]) do idx, dim
+                    parts = map(eachindex(dims[i]), dims[i]) do idx, _dim
+                        dim = remap_dims[_dim]
+                        dim == 0 && return convert_dim_value(nothing, plot_id, expanded[i], idx)
                         return convert_dim_value(converts[dim], plot_id, expanded[i], idx)
                     end
                     return Point.(parts...)
@@ -687,17 +718,15 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw,
     end
 
     # TODO: Can't infer types here because dim_conversions[i] are of unknown type
-    dim_converted = if !is_data_space(space)
+    if !is_data_space(space)
         # dim converts do not apply in relative, pixel or clip space
         ComputePipeline.alias!(attr, :args, :dim_converted)
-        args
     elseif force_dimconverts && needs_dimconvert(dim_converts)
         add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
     elseif (status === true || status === SpecApi)
         # Nothing needs to be done, since we can just use convert_arguments without dim_converts
         # And just pass the arguments through
         ComputePipeline.alias!(attr, :args, :dim_converted)
-        args
     elseif isnothing(status) || status === false # we don't know (e.g. recipes) or incomplete conversion
         add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
     end
