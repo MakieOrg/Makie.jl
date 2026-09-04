@@ -223,6 +223,9 @@ show_dim_convert_in_axis_label(::Union{Nothing, NoDimConversion}, ::Automatic) =
 # argument_dims interfacing
 ################################################################################
 
+function update_dim_conversion!(conv, values, plot_id, ::Nothing)
+    return update_dim_conversion!(conv, values, plot_id)
+end
 function update_dim_conversion!(conv, values::AbstractArray{<:VecTypes}, plot_id, element_index::Integer)
     dim_view = [v[element_index] for v in values]
     return update_dim_conversion!(conv, dim_view, plot_id)
@@ -296,6 +299,10 @@ function init_dim_conversion!(conversions::DimConversions, dim, values, element_
     dc = dim_conversion_from_args(values, element_idx)
     init_dim_conversion!(conversions, dim, dc)
     return
+end
+
+function init_dim_conversion!(conversions::DimConversions, dim, values, ::Nothing)
+    return init_dim_conversion!(conversions, dim, values)
 end
 
 function init_dim_conversion!(::DimConversions, dim, ::Nothing)
