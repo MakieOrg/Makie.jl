@@ -191,63 +191,69 @@ function _get_named_change(::NamedTuple{Names}, dirty) where {Names}
     return NamedTuple{Names, NTuple{length(Names), Bool}}(values)
 end
 
-function TypedEdge(edge::ComputeEdge)
+TypedEdge(edge::ComputeEdge) = TypedEdge(edge.callback, edge)
+
+function TypedEdge(callback, edge::ComputeEdge)
     N = length(edge.inputs)
     names = ntuple(i -> edge.inputs[i].name, N)
     values = ntuple(i -> edge.inputs[i].value, N)
     inputs = NamedTuple{names}(values)
     # force `callback` and `inputs` types to be inferred so the rest of the
     # constructor can be type stable
-    return Base.invokelatest(TypedEdge, edge, edge.callback, inputs)
+    return Base.invokelatest(TypedEdge, edge, callback, inputs)
 end
 
 function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
-
     result = f(map(getindex, inputs), dirty, nothing)
-
-    if result isa Tuple
-
-        if !all(is_node_value_valid, result)
-            invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
-            strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
-            str = join(strings, ", ")
-            error("Edge callback returned invalid types for outputs: [$str]")
-        end
-
-        if length(result) != length(edge.outputs)
-            m = first(methods(edge.callback))
-            line = string(m.file, ":", m.line)
-            error("Result needs to have same length. Found: $(result), for func $(line)")
-        end
-
-        outputs = ntuple(length(result)) do i
-            v = result[i] isa RefValue ? result[i] : RefValue(result[i])
-            if isdefined(edge.outputs[i], :value)
-                edge.outputs[i].value[] = v[] # set value of existing node
-            else
-                edge.outputs[i].value = v # initialize to fully typed RefValue
-            end
-            return edge.outputs[i].value
-        end
-        foreach(node -> node.dirty = true, edge.outputs)
-
-    elseif isnothing(result)
-
-        outputs = ntuple(length(edge.outputs)) do i
-            if isdefined(edge.outputs[i], :value)
-                edge.outputs[i].value[] = nothing
-            else
-                edge.outputs[i].value = RefValue(nothing)
-            end
-            return edge.outputs[i].value
-        end
-        foreach(node -> node.dirty = false, edge.outputs)
-
-    else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
-    end
+    outputs = _init_outputs(result, edge)
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
+end
+
+function _init_outputs(result::Tuple, edge::ComputeEdge)
+    if !all(is_node_value_valid, result)
+        invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
+        strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
+        str = join(strings, ", ")
+        error("Edge callback returned invalid types for outputs: [$str]")
+    end
+
+    if length(result) != length(edge.outputs)
+        m = first(methods(edge.callback))
+        line = string(m.file, ":", m.line)
+        error("Result needs to have same length. Found: $(result), for func $(line)")
+    end
+
+    outputs = ntuple(length(result)) do i
+        v = result[i] isa RefValue ? result[i] : RefValue(result[i])
+        if isdefined(edge.outputs[i], :value)
+            edge.outputs[i].value[] = v[] # set value of existing node
+        else
+            edge.outputs[i].value = v # initialize to fully typed RefValue
+        end
+        return edge.outputs[i].value
+    end
+    foreach(node -> node.dirty = true, edge.outputs)
+
+    return outputs
+end
+
+function _init_outputs(::Nothing, edge::ComputeEdge)
+    outputs = ntuple(length(edge.outputs)) do i
+        if isdefined(edge.outputs[i], :value)
+            edge.outputs[i].value[] = nothing
+        else
+            edge.outputs[i].value = RefValue(nothing)
+        end
+        return edge.outputs[i].value
+    end
+    foreach(node -> node.dirty = false, edge.outputs)
+
+    return outputs
+end
+
+function _init_outputs(result, ::ComputeEdge)
+    error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
 end
 
 
@@ -396,23 +402,30 @@ function ComputeGraph()
     on(graph.onchange) do changeset
         # Remove node names not backed by observables
         intersect!(changeset, keys(graph.observables))
+        isempty(changeset) && return
 
         obs_to_notify = graph.obs_to_notify
 
         # update values without triggering observables and add all updated names
         # to obs_to_notify
-        for key in changeset
+        while !isempty(changeset)
+            # Remove the key before resolve so that if the resolve triggers the
+            # changeset again we don't try to resolve the same node twice.
+            # (This might not be reachable anymore)
+            key = pop!(changeset)
+
             # Still necessary?
             haskey(graph.observables, key) || continue
 
             val = graph.outputs[key][]
             obs = graph.observables[key]
+
             # Trust the graph to discard equal values. This doesn't work for
             # anything updated in-place
             if !(key in graph.should_deepcopy)
                 obs.val = val
                 push!(obs_to_notify, key)
-            elseif !isequal(val, obs[]) # treat in-place updates (use isequal to handle NaN correctly)
+            elseif !is_same(obs[], val) # treat in-place updates (use isequal to handle NaN correctly)
                 obs.val = deepcopy(val)
                 push!(obs_to_notify, key)
             else # same value (with deepcopy), skip update
@@ -420,9 +433,6 @@ function ComputeGraph()
             end
         end
 
-        # Clear the changeset now so that if notify causes the graph to update
-        # again, the already processed names are not processed again.
-        empty!(changeset)
 
         # trigger observables from obs_to_notify.
         # Separating this from changeset allows notify to cause another
@@ -488,6 +498,13 @@ function mark_resolved!(edge::ComputeEdge)
 end
 mark_resolved!(edge::Input) = edge.dirty = false
 
+"""
+    mark_dirty!(x)
+
+Marks a compute node or edge and all its dependents dirty, and triggers
+Observables dependent on the graph. It is generally recommended to use `notify`
+instead of this function.
+"""
 function mark_dirty!(computed::Computed)
     hasparent(computed) || return
     mark_dirty!(computed, computed.parent.graph.obs_to_update)
@@ -502,14 +519,30 @@ function mark_dirty!(computed::Computed, obs_to_update)
         computed.dirty = true
         locked_mark_dirty!(computed.parent, obs_to_update)
     end
+    update_observables!(obs_to_update)
     return
 end
+
 mark_dirty!(x::AbstractEdge) = mark_dirty!(x, x.graph.obs_to_update)
 function mark_dirty!(x, obs_to_update)
     @lock GLOBAL_LOCK begin
         locked_mark_dirty!(x, obs_to_update)
     end
+    update_observables!(obs_to_update)
     return
+end
+
+"""
+    locked_mark_dirty!(x, obs_to_update)
+
+Marks a compute node or edge and all its dependents dirty. This assumes the
+compute graph is already locked and that observables are updated outside of this
+function. This should not be used externally.
+"""
+locked_mark_dirty!(x::AbstractEdge) = locked_mark_dirty!(x, x.graph.obs_to_update)
+function locked_mark_dirty!(x::Computed, obs_to_update = x.parent.graph.obs_to_update)
+    x.dirty = true
+    return locked_mark_dirty!(x.parent, obs_to_update)
 end
 
 function locked_mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
@@ -552,13 +585,7 @@ function update_observables!(obs_to_update::Vector{Observable})
     return
 end
 
-function Base.notify(node::Union{Computed, Input})
-    @lock GLOBAL_LOCK begin
-        mark_dirty!(node)
-    end
-    update_observables!(node)
-    return
-end
+Base.notify(node::Union{Computed, Input}) = mark_dirty!(node)
 
 function Base.setindex!(computed::Computed, value)
     if computed.parent isa Input
@@ -566,7 +593,7 @@ function Base.setindex!(computed::Computed, value)
     else
         @lock GLOBAL_LOCK begin
             computed.value[] = value
-            mark_dirty!(computed)
+            locked_mark_dirty!(computed)
         end
         update_observables!(computed)
         return value
@@ -583,7 +610,7 @@ function _setindex!(input::Input, value, force_update = false)
     end
     @lock GLOBAL_LOCK begin
         input.value = value
-        mark_dirty!(input)
+        locked_mark_dirty!(input)
     end
     update_observables!(input)
     return value
@@ -599,7 +626,7 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
         # can't notify observables immediately here, because update may call this
         # multiple times for a synchronized update (would cause desync)
         input.value = value
-        mark_dirty!(input)
+        locked_mark_dirty!(input)
     end
     return value
 end
@@ -911,10 +938,22 @@ function set_result!(edge::TypedEdge, result, i, value)
     return
 end
 
-function set_result!(edge::TypedEdge, result)
+function set_result!(edge::TypedEdge, result::Tuple)
+    if length(result) != length(edge.outputs)
+        error("Did not return correct length: $(length(result)) $result results into $(length(edge.outputs)) outputs, in $(edge.callback)")
+    end
     next_val = first(result)
     rem = Base.tail(result)
     return set_result!(edge, rem, 1, next_val)
+end
+
+function set_result!(edge::TypedEdge, ::Nothing)
+    foreach(x -> x.dirty = false, edge.output_nodes)
+    return
+end
+
+function set_result!(::TypedEdge, ::Any)
+    error("Needs to return a Tuple with one element per output, or nothing")
 end
 
 is_same(@nospecialize(old), @nospecialize(new)) = false
@@ -949,16 +988,7 @@ function locked_resolve!(edge::TypedEdge)
         end
         last = NamedTuple{names}(vals)
         result = edge.callback(map(getindex, edge.inputs), dirty, last)
-        if result isa Tuple
-            if length(result) != length(edge.outputs)
-                error("Did not return correct length: $(length(result)) $result results into $(length(edge.outputs)) outputs, in $(edge.callback)")
-            end
-            set_result!(edge, result)
-        elseif isnothing(result)
-            foreach(x -> x.dirty = false, edge.output_nodes)
-        else
-            error("Needs to return a Tuple with one element per output, or nothing")
-        end
+        set_result!(edge, result)
     end
     return
 end
@@ -1009,7 +1039,11 @@ function resolve!(computed::Computed)
         try
             resolve!(computed.parent)
         catch e
-            rethrow(ResolveException(computed, e))
+            if e isa ResolveException
+                rethrow(e)
+            else
+                rethrow(ResolveException(computed, e))
+            end
         end
     end
     return computed.value[]
@@ -1384,7 +1418,11 @@ function get_node(view::ComputeGraphView, keys::Tuple)
     return get_node(view.parent, merged_key(view.nested_trace), keys)
 end
 
-convert_to_nodes(attr::ComputeGraph, inputs) = get_node.(Ref(attr), inputs)
+const InputNodeTypes = Union{Computed, Symbol, Tuple{Vararg{Symbol}}}
+const OutputNodeTypes = Union{Symbol, Tuple{Vararg{Symbol}}}
+
+convert_to_nodes(attr::ComputeGraph, inputs::InputNodeTypes) = [get_node(attr, inputs)]
+convert_to_nodes(attr::ComputeGraph, inputs::Vector) = get_node.(Ref(attr), inputs)
 convert_to_nodes(attr::ComputeGraph, path, inputs) = get_node.(Ref(attr), Ref(path), inputs)
 function convert_to_nodes(view::ComputeGraphView, inputs)
     return convert_to_nodes(view.parent, merged_key(view.nested_trace), inputs)
@@ -1581,8 +1619,31 @@ function (x::MapFunctionWrapper{false})(inputs, @nospecialize(changed), @nospeci
     return result
 end
 
-const InputNodeTypes = Union{Computed, Symbol, Tuple{Vararg{Symbol}}}
-const OutputNodeTypes = Union{Symbol, Tuple{Vararg{Symbol}}}
+# Overwrite this to allow map! to ignore input name collisions (for cross-graph maps)
+function TypedEdge(callback::MapFunctionWrapper, edge::ComputeEdge)
+    N = length(edge.inputs)
+    inputs = ntuple(i -> edge.inputs[i].value, N)
+    # force `callback` and `inputs` types to be inferred so the rest of the
+    # constructor can be type stable
+    return Base.invokelatest(TypedEdge, edge, callback, inputs)
+end
+
+function TypedEdge(edge::ComputeEdge, f::MapFunctionWrapper{pack}, inputs) where {pack}
+    _result = f.user_func(map(getindex, inputs)...)
+    result = pack ? (_result,) : _result
+    outputs = _init_outputs(result, edge)
+    return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
+end
+
+function locked_resolve!(edge::TypedEdge{Inputs, Outputs, <:MapFunctionWrapper{pack}}) where {Inputs, Outputs, pack}
+    if any(edge.inputs_dirty) # only call if inputs changed
+        args = map(getindex, edge.inputs)
+        _result = edge.callback.user_func(args...)
+        result = pack ? (_result,) : _result
+        set_result!(edge, result)
+    end
+    return
+end
 
 """
     map!(f, compute_graph, inputs, outputs; init=nothing)
@@ -1809,261 +1870,10 @@ function map_latest!(f, attr::AbstractComputeGraph, inputs::Vector, outputs::Vec
     return
 end
 
-
-function Base.empty!(attr::ComputeGraph)
-    # empty!(attr.inputs)
-    # empty!(attr.outputs)
-    for (name, obs) in attr.observables
-        Observables.clear(obs)
-    end
-    empty!(attr.observables)
-    for of in attr.observerfunctions
-        Observables.off(of)
-    end
-    return empty!(attr.observerfunctions)
-end
-
-"""
-    delete!(graph::ComputeGraph, key::Symbol[; force = false, recursive = false])
-
-Deletes a node from the given graph based on its name.
-
-If `recursive = true` all child nodes of the selected node are deleted. If
-`force = true` all siblings (outputs from the same parent edge) are deleted.
-If either exists without the respective option being true an error will be thrown.
-"""
-function Base.delete!(attr::ComputeGraph, key::Symbol; force::Bool = false, recursive::Bool = false)
-    haskey(attr.outputs, key) || throw(KeyError(key))
-    @lock GLOBAL_LOCK begin
-        _delete!(attr, attr.outputs[key], force, recursive)
-    end
-    return attr
-end
-
-function _delete!(attr::ComputeGraph, node::Computed, force::Bool, recursive::Bool)
-    @assert hasparent(node)
-    _delete!(attr, node.parent, force, recursive)
-    return attr
-end
-
-function validate_deletion(edge::ComputeEdge, force::Bool, recursive::Bool)
-    force && recursive && return
-    if !(length(edge.outputs) == 1 || force)
-        error("Cannot delete node because it or one of its dependents has siblings. Set `force = true` to also delete siblings.")
-    end
-    if !(recursive || isempty(edge.dependents))
-        error("Cannot delete node because it has children. Set `recursive = true` to also delete its children.")
-    end
-    return foreach(e -> validate_deletion(e, force, recursive), edge.dependents)
-end
-
-function validate_deletion(edge::Input, force::Bool, recursive::Bool)
-    force && recursive && return
-    if !(recursive || isempty(edge.dependents))
-        error("Cannot delete node because it has children. Set `recursive = true` to also delete its children.")
-    end
-    return foreach(e -> validate_deletion(e, force, recursive), edge.dependents)
-end
-
-function _delete!(attr::ComputeGraph, edge::AbstractEdge, force::Bool, recursive::Bool)
-    validate_deletion(edge, force, recursive)
-    return unsafe_delete!(attr, edge)
-end
-
-function unsafe_delete!(attr::ComputeGraph, edge::ComputeEdge)
-    # all dependents become invalid as their parent computation no longer runs
-    for dependent in edge.dependents
-        unsafe_delete!(attr, dependent)
-    end
-
-    # deregister this edge as a dependency of its parents
-    for computed in edge.inputs
-        @assert hasparent(computed)
-        parent_edge = computed.parent
-        filter!(e -> e !== edge, parent_edge.dependents)
-    end
-
-    # Delete output nodes of this edge
-    for computed in edge.outputs
-        k = computed.name
-        @assert haskey(attr.outputs, k) && attr.outputs[k] === computed
-        delete!(attr.outputs, k)
-    end
-
-    return attr
-end
-
-function unsafe_delete!(attr::ComputeGraph, edge::Input)
-    # all dependents become invalid as their parent computation no longer runs
-    for dependent in edge.dependents
-        unsafe_delete!(attr, dependent)
-    end
-
-    # Delete output node of this edge
-    k = edge.name
-    @assert haskey(attr.outputs, k) && attr.outputs[k] === edge.output
-    delete!(attr.outputs, k)
-
-    # Delete Input
-    @assert haskey(attr.inputs, k) && attr.inputs[k] === edge
-    delete!(attr.inputs, k)
-
-    return attr
-end
-
-"""
-    unsafe_disconnect_parents!(graph)
-
-Removes every reference to this graph from every connected parent graph. This is
-meant to prepare the given graph for garbage collection.
-
-After calling this function, the graph will be in a broken state. Edges
-connecting this graph to parent graphs still exist with references to parent
-graphs, but they can no longer be triggered.
-"""
-function unsafe_disconnect_from_parents!(attr::ComputeGraph)
-    for comp in values(attr.outputs)
-        if hasparent(comp)
-            unsafe_disconnect_parent_graph_nodes!(attr, comp.parent)
-        end
-    end
-    return
-end
-
-unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::Input) = nothing
-function unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::ComputeEdge)
-    for input in edge.inputs
-        if !haskey(attr.outputs, input.name) || !(input in values(attr.outputs))
-            unsafe_atomic_delete!(edge)
-        end
-    end
-    return
-end
-
-function unsafe_atomic_delete!(edge::ComputeEdge)
-    # deregister this edge as a dependency of its parents
-    for computed in edge.inputs
-        if hasparent(computed)
-            parent_edge = computed.parent
-            filter!(e -> e !== edge, parent_edge.dependents)
-        end
-    end
-
-    return
-end
-
-
-is_initialized(node::Computed) = isdefined(node, :value) && isassigned(node.value)
-
-"""
-    unsafe_init!(node::Computed, value)
-
-Initializes a node to the given value. If this causes all outputs of the parent
-compute edge to be initialized, the edge will be initialized without calling its
-callback.
-
-This function makes no checks to confirm that the given value matches the type
-returned by the parent edge callback.
-"""
-function unsafe_init!(node::Computed, value)
-    if isdefined(node, :value)
-        error("Node already initialized.")
-    else
-        node.value = value isa RefValue ? value : RefValue(value)
-    end
-
-    return unsafe_init!(node.parent)
-end
-
-function unsafe_init!(edge::ComputeEdge)
-    # We can only mark the edge as initialized if all the outputs have been
-    # initialized
-    if !all(is_initialized, edge.outputs)
-        return false
-    end
-
-    @lock GLOBAL_LOCK begin
-        foreach(locked_resolve!, edge.inputs)
-        edge.typed_edge[] = TypedEdge_no_call(edge)
-        edge.got_resolved[] = true
-        for dep in edge.dependents
-            mark_input_dirty!(edge, dep)
-        end
-        foreach(comp -> comp.dirty = false, edge.outputs)
-    end
-    return true
-end
-
-function unsafe_init!(input::Input)
-    input.dirty = false
-    input.output.dirty = true
-    for edge in input.dependents
-        mark_input_dirty!(input, edge)
-    end
-    input.output.dirty = false
-    return true
-end
-
-function TypedEdge_no_call(edge::ComputeEdge)
-    inputs = let
-        N = length(edge.inputs)
-        names = ntuple(i -> edge.inputs[i].name, N)
-        values = ntuple(i -> edge.inputs[i].value, N)
-        NamedTuple{names}(values)
-    end
-
-    outputs = let
-        N = length(edge.outputs)
-        names = ntuple(i -> edge.outputs[i].name, N)
-        values = ntuple(i -> edge.outputs[i].value, N)
-        NamedTuple{names}(values)
-    end
-
-    return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
-end
-
-"""
-    set_type!(node::Computed, type)
-
-Initialize a compute graph `node` to the given `type`.
-
-```
-map!(x -> rand([1, 1.0, "1"]), graph, :input, :output)
-set_type!(graph.output, Union{Int, Float64, String})
-```
-"""
-function set_type!(node::Computed, T::Type)
-    if isdefined(node, :value)
-        error("Node already initialized.")
-    else
-        node.value = Ref{T}()
-    end
-    return
-end
-
-"""
-    set_type!(view::ComputeGraphView, type)
-
-Initialize every uninitialized node in the view to the given `type`.
-"""
-function set_type!(view::ComputeGraphView, T::Type)
-    for (k, element) in view
-        maybe_set_type!(element, T)
-    end
-    return
-end
-
-maybe_set_type!(view::ComputeGraphView, T) = set_type!(view, T)
-function maybe_set_type!(node::Computed, T)
-    if !isdefined(node, :value)
-        set_type!(node, T)
-    end
-    return
-end
-
 include("io.jl")
 include("observables_compat.jl")
 include("utils.jl")
+include("modification.jl")
 
 export Computed, ComputeEdge
 export ComputeGraph

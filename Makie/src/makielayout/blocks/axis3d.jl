@@ -39,6 +39,7 @@ function initialize_block!(ax::Axis3)
     # transfer conversions from axis to scene if there are any
     # or the other way around
     connect_conversions!(scene.conversions, ax)
+    register_dim_convert_synchronization!(ax)
 
     axis_cam = Axis3Camera()
     cameracontrols!(scene, axis_cam)
@@ -134,63 +135,64 @@ function initialize_block!(ax::Axis3)
         return
     end
 
-    x_dim_convert_updater = needs_tick_update_observable(ax.dim1_conversion)
-    y_dim_convert_updater = needs_tick_update_observable(ax.dim2_conversion)
-    z_dim_convert_updater = needs_tick_update_observable(ax.dim3_conversion)
-
     ticknode_1 = Observable{Any}()
     map!(
         scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat, ax.x_unit_in_ticklabel,
-        x_dim_convert_updater
+        ax.dim_convert_1_sync
     ) do lims, ticks, format, show_unit, _
-        dc = ax.scene.conversions[1]
+        dc = ax.dim1_conversion[]
         should_show = show_dim_convert_in_ticklabel(dc, show_unit)
-        get_ticks(dc, ticks, identity, format, minimum(lims)[1], maximum(lims)[1], should_show)
+        vals, strs = get_ticks(dc, ticks, identity, format, minimum(lims)[1], maximum(lims)[1], should_show)
+        return vals, convert(Vector{Any}, strs)
     end
 
     ticknode_2 = Observable{Any}()
     map!(
         scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat, ax.y_unit_in_ticklabel,
-        y_dim_convert_updater
+        ax.dim_convert_2_sync
     ) do lims, ticks, format, show_unit, _
-        dc = ax.scene.conversions[2]
+        dc = ax.dim2_conversion[]
         should_show = show_dim_convert_in_ticklabel(dc, show_unit)
-        get_ticks(dc, ticks, identity, format, minimum(lims)[2], maximum(lims)[2], should_show)
+        vals, strs = get_ticks(dc, ticks, identity, format, minimum(lims)[2], maximum(lims)[2], should_show)
+        return vals, convert(Vector{Any}, strs)
     end
 
     ticknode_3 = Observable{Any}()
     map!(
         scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat, ax.z_unit_in_ticklabel,
-        z_dim_convert_updater
+        ax.dim_convert_3_sync
     ) do lims, ticks, format, show_unit, _
-        dc = ax.scene.conversions[3]
+        dc = ax.dim3_conversion[]
         should_show = show_dim_convert_in_ticklabel(dc, show_unit)
-        get_ticks(dc, ticks, identity, format, minimum(lims)[3], maximum(lims)[3], should_show)
+        vals, strs = get_ticks(dc, ticks, identity, format, minimum(lims)[3], maximum(lims)[3], should_show)
+        return vals, convert(Vector{Any}, strs)
     end
 
     xlabel_node = Observable{Any}()
     map!(
-        xlabel_node, ax.xlabel, ax.xlabel_suffix, ax.x_unit_in_label, x_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, _
-        dc = ax.scene.conversions[1]
-        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
+        scene, xlabel_node,
+        ax.xlabel_suffix, ax.xlabel, ax.x_unit_in_label,
+        ax.dim_convert_1_sync, update = true
+    ) do args...
+        return build_label_with_unit_suffix(ax.dim1_conversion[], args...)
     end
 
     ylabel_node = Observable{Any}()
     map!(
-        ylabel_node, ax.ylabel, ax.ylabel_suffix, ax.y_unit_in_label, y_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, _
-        dc = ax.scene.conversions[2]
-        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
+        scene, ylabel_node,
+        ax.ylabel_suffix, ax.ylabel, ax.y_unit_in_label,
+        ax.dim_convert_2_sync, update = true
+    ) do args...
+        return build_label_with_unit_suffix(ax.dim2_conversion[], args...)
     end
 
     zlabel_node = Observable{Any}()
     map!(
-        zlabel_node, ax.zlabel, ax.zlabel_suffix, ax.z_unit_in_label, z_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, _
-        dc = ax.scene.conversions[3]
-        x = build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
-        return x
+        scene, zlabel_node,
+        ax.zlabel_suffix, ax.zlabel, ax.z_unit_in_label,
+        ax.dim_convert_3_sync, update = true
+    ) do args...
+        return build_label_with_unit_suffix(ax.dim3_conversion[], args...)
     end
 
     add_panel!(blockscene, ax, 1, 2, 3, finallimits, mi3)

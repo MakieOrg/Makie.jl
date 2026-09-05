@@ -52,10 +52,23 @@ function get_callback_info(edge::Input)
     return get_callback_info(edge.f, edge.value)
 end
 function get_callback_info(edge::ComputeEdge)
+    return _get_callback_info(edge.callback, edge)
+end
+
+# Underscore to avoid dispatch issues with the `f, args...` method
+function _get_callback_info(callback, edge::ComputeEdge)
     input = _get_named_inputs(edge)
     changed = NamedTuple{keys(input)}(ntuple(x -> true, length(keys(input))))
     output = _get_named_outputs(edge)
-    return get_callback_info(edge.callback, input, changed, output)
+    return get_callback_info(callback, input, changed, output)
+end
+function _get_callback_info(callback::MapFunctionWrapper, edge::ComputeEdge)
+    N = length(edge.inputs)
+    input_types = ntuple(N) do i
+        node = edge.inputs[i]
+        return is_initialized(node) ? typeof(node.value[]) : Any
+    end
+    return callback.user_func, input_types
 end
 
 # catch-all for the final user function being called.
@@ -67,7 +80,7 @@ get_callback_info(f, args...) = f, typeof.(args)
 
 # map!(f, attr, ...) call which drops changed, cached and NamedTuple
 # for add_input!(f, key, value)
-function get_callback_info(f::MapFunctionWrapper, inputs, changed, outputs)
+function get_callback_info(f::MapFunctionWrapper, inputs)
     return get_callback_info(f.user_func, values(inputs))
 end
 
@@ -259,7 +272,8 @@ function collect_dirty(computed::Computed, marked = Set{Symbol}())
     return marked
 end
 function collect_dirty(edge::ComputeEdge, marked = Set{Symbol}())
-    if isdirty(edge) || any(edge.inputs_dirty)
+    if (isdirty(edge) || any(edge.inputs_dirty))
+        all(x -> x.name in marked, edge.outputs) && return marked
         foreach(output -> push!(marked, output.name), edge.outputs)
         foreach(input -> collect_dirty(input, marked), edge.inputs)
     end
@@ -378,6 +392,36 @@ end
 function show_inputs(io::IO, edge::ComputeEdge, tab = 0)
     for node in edge.inputs
         show_inputs(io, node, tab)
+    end
+    return
+end
+
+"""
+    show_outputs(node)
+
+Traces and prints all recursive inputs to a node.
+"""
+show_outputs(node::Computed) = show_outputs(stdout, node)
+function show_outputs(io::IO, node::Computed, tab = 0)
+    return show_outputs_rec(io, node.parent, tab)
+end
+
+function show_edge(io::IO, input::Input, tab = 0)
+    println(io, "    "^tab, "Input(", input.name, ")")
+    return
+end
+
+function show_edge(io::IO, edge::ComputeEdge, tab = 0)
+    inputs = "(" * join(string.(getproperty.(edge.inputs, :name)), ", ") * ")"
+    outputs = "(" * join(string.(getproperty.(edge.outputs, :name)), ", ") * ")"
+    println(io, "    "^tab, inputs, " --> ", outputs)
+    return
+end
+
+function show_outputs_rec(io::IO, edge::AbstractEdge, tab = 0)
+    show_edge(io, edge, tab)
+    for e in edge.dependents
+        show_outputs_rec(io, e, tab+1)
     end
     return
 end

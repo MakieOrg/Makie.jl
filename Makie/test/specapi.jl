@@ -256,7 +256,7 @@ end
     @test first.(pl.converted[][1]) == vals[sortperm(xvals)] # sorted by ENUM value
     # test y values and expand_dimensions too
     f, ax, pl = barplot(xvals)
-    vals = Makie.convert_dim_value.((ax.dim2_conversion[],), xvals)
+    vals = Makie.convert_dim_value(ax.dim2_conversion[], xvals)
     @test last.(pl.converted[][1]) == vals[sortperm(xvals)] # sorted by ENUM value
 end
 

@@ -45,7 +45,6 @@ function CategoricalConversion(; sortby = nothing)
 end
 
 expand_dimensions(::PointBased, y::Categorical) = (keys(y.values), y)
-needs_tick_update_observable(conversion::CategoricalConversion) = conversion.category_to_int
 create_dim_conversion(::Type{Categorical}) = CategoricalConversion(; sortby = identity)
 
 # Support enums as categorical per default
@@ -69,12 +68,9 @@ function recalculate_categories!(conversion::CategoricalConversion)
 end
 
 
-get_values(x) = x
+get_values(x) = [x]
+get_values(x::Union{AbstractArray, VecTypes}) = x
 get_values(x::Categorical) = x.values
-
-function convert_dim_value(conversion::CategoricalConversion, value::Categorical)
-    return getindex.(Ref(conversion.category_to_int[]), get_values(value))
-end
 
 # TODO, use ordered sets/dicts?
 function dict_get!(f, dict, key)
@@ -97,26 +93,7 @@ function dict_setindex!(dict, key, value)
     end
 end
 
-function convert_dim_value(conversion::CategoricalConversion, value)
-    if !haskey(conversion.category_to_int[], value)
-        set = dict_get!(() -> [], conversion.sets, "")
-        push!(set, value)
-        unique!(set)
-        recalculate_categories!(conversion)
-        notify(conversion.category_to_int)
-    end
-    return conversion.category_to_int[][value]
-end
-
-function convert_categorical(conversion::CategoricalConversion, value)
-    return conversion.category_to_int[][value]
-end
-
-function convert_categorical(conversion::CategoricalConversion, value::Integer)
-    return conversion.category_to_int[][value]
-end
-
-function convert_dim_value(conversion::CategoricalConversion, attr, values, prev_values)
+function update_dim_conversion!(conversion::CategoricalConversion, values, plot_id)
     # This is a bit tricky...
     # We need to recalculate the categories on each values_obs update,
     # but we also need to update the cat->int mapping each time the categories get recalculated
@@ -127,20 +104,25 @@ function convert_dim_value(conversion::CategoricalConversion, attr, values, prev
     unwrapped_values = get_values(values)
     new_values = unique!(Any[v for v in unwrapped_values])
     if any(x -> !haskey(conversion.category_to_int[], x), new_values)
-        dict_setindex!(conversion.sets, string(objectid(attr)), new_values)
+        dict_setindex!(conversion.sets, string(plot_id), new_values)
         recalculate_categories!(conversion)
-        # Others need to be updated too
-        # This will also call this `convert_dim_value` again
-        # But will then not trigger a new recalc of categories, since last == prev
-        # Would be nice, to get out of that to not do `Any[v for v in unwrapped_values]` with a `==`
-        notify(conversion.category_to_int)
-    else
-        # TODO, what do if no change?
+        return true
     end
-    # So now we update when either category_to_int changes, or
-    # when values changes and an update is needed
-    return convert_categorical.(Ref(conversion), unwrapped_values)
+    return false
 end
+
+function convert_dim_value(conversion::CategoricalConversion, cat::Categorical)
+    return convert_dim_value(conversion, get_values(cat))
+end
+
+function convert_dim_value(conversion::CategoricalConversion, _value)
+    return conversion.category_to_int[][_value]
+end
+
+function convert_dim_value(conversion::CategoricalConversion, values::Union{AbstractArray, VecTypes})
+    return getindex.(Ref(conversion.category_to_int[]), values)
+end
+
 
 # TODO: Does it make sense to allow discarding all the categorical information
 # and go back to default tick finding?
@@ -156,7 +138,7 @@ function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, v
         categories = ticks
     end
     # TODO filter out ticks greater vmin vmax?
-    numbers = convert_dim_value.(Ref(conversion), categories)
+    numbers = convert_dim_value(conversion, categories)
     if show_in_label
         labels_str = formatter isa Automatic ? string.(categories) : get_ticklabels(formatter, categories)
         return numbers, labels_str
