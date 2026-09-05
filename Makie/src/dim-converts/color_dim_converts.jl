@@ -16,6 +16,7 @@ function ColorDimConvert()
 end
 
 # convenience for add_dim_converts
+init_dim_conversion!(cdc::ColorDimConvert, value, ::Nothing) = init_dim_conversion!(cdc, value)
 function init_dim_conversion!(cdc::ColorDimConvert, value, element_idx)
     isempty(value) && return
     return init_dim_conversion!(cdc::ColorDimConvert, first(value)[element_idx])

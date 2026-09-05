@@ -138,50 +138,62 @@ function initialize_block!(ax::Axis3)
     ticknode_1 = Observable{Any}()
     map!(
         scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat, ax.x_unit_in_ticklabel,
-        ax.dim1_conversion, ax.dim_convert_1_sync
-    ) do lims, ticks, format, show_unit, dc, _
+        ax.dim_convert_1_sync
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.dim1_conversion[]
         should_show = show_dim_convert_in_ticklabel(dc, show_unit)
-        get_ticks(dc, ticks, identity, format, minimum(lims)[1], maximum(lims)[1], should_show)
+        vals, strs = get_ticks(dc, ticks, identity, format, minimum(lims)[1], maximum(lims)[1], should_show)
+        return vals, convert(Vector{Any}, strs)
     end
 
     ticknode_2 = Observable{Any}()
     map!(
         scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat, ax.y_unit_in_ticklabel,
-        ax.dim2_conversion, ax.dim_convert_2_sync
-    ) do lims, ticks, format, show_unit, dc, _
+        ax.dim_convert_2_sync
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.dim2_conversion[]
         should_show = show_dim_convert_in_ticklabel(dc, show_unit)
-        get_ticks(dc, ticks, identity, format, minimum(lims)[2], maximum(lims)[2], should_show)
+        vals, strs = get_ticks(dc, ticks, identity, format, minimum(lims)[2], maximum(lims)[2], should_show)
+        return vals, convert(Vector{Any}, strs)
     end
 
     ticknode_3 = Observable{Any}()
     map!(
         scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat, ax.z_unit_in_ticklabel,
-        ax.dim3_conversion, ax.dim_convert_3_sync
-    ) do lims, ticks, format, show_unit, dc, _
+        ax.dim_convert_3_sync
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.dim3_conversion[]
         should_show = show_dim_convert_in_ticklabel(dc, show_unit)
-        get_ticks(dc, ticks, identity, format, minimum(lims)[3], maximum(lims)[3], should_show)
+        vals, strs = get_ticks(dc, ticks, identity, format, minimum(lims)[3], maximum(lims)[3], should_show)
+        return vals, convert(Vector{Any}, strs)
     end
 
     xlabel_node = Observable{Any}()
     map!(
-        build_label_with_unit_suffix, xlabel_node,
-        ax.dim1_conversion, ax.xlabel_suffix, ax.xlabel, ax.x_unit_in_label,
+        scene, xlabel_node,
+        ax.xlabel_suffix, ax.xlabel, ax.x_unit_in_label,
         ax.dim_convert_1_sync, update = true
-    )
+    ) do args...
+        return build_label_with_unit_suffix(ax.dim1_conversion[], args...)
+    end
 
     ylabel_node = Observable{Any}()
     map!(
-        build_label_with_unit_suffix, ylabel_node,
-        ax.dim2_conversion, ax.ylabel_suffix, ax.ylabel, ax.y_unit_in_label,
+        scene, ylabel_node,
+        ax.ylabel_suffix, ax.ylabel, ax.y_unit_in_label,
         ax.dim_convert_2_sync, update = true
-    )
+    ) do args...
+        return build_label_with_unit_suffix(ax.dim2_conversion[], args...)
+    end
 
     zlabel_node = Observable{Any}()
     map!(
-        build_label_with_unit_suffix, zlabel_node,
-        ax.dim3_conversion, ax.zlabel_suffix, ax.zlabel, ax.z_unit_in_label,
+        scene, zlabel_node,
+        ax.zlabel_suffix, ax.zlabel, ax.z_unit_in_label,
         ax.dim_convert_3_sync, update = true
-    )
+    ) do args...
+        return build_label_with_unit_suffix(ax.dim3_conversion[], args...)
+    end
 
     add_panel!(blockscene, ax, 1, 2, 3, finallimits, mi3)
     add_panel!(blockscene, ax, 2, 3, 1, finallimits, mi1)

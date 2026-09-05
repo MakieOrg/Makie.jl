@@ -463,9 +463,10 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
 
     if !isnothing(get_conversions(plot))
         target = get_conversions(ax)
-        @assert !isnothing(target)
-        connect_conversions!(target, get_conversions(plot))
-        plot.kw[:dim_conversions] = target
+        if !isnothing(target)
+            connect_conversions!(target, get_conversions(plot))
+            plot.kw[:dim_conversions] = target
+        end
     end
 
     plot!(ax, plot)

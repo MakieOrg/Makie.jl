@@ -419,12 +419,13 @@ function ComputeGraph()
 
             val = graph.outputs[key][]
             obs = graph.observables[key]
+
             # Trust the graph to discard equal values. This doesn't work for
             # anything updated in-place
             if !(key in graph.should_deepcopy)
                 obs.val = val
                 push!(obs_to_notify, key)
-            elseif !isequal(val, obs[]) # treat in-place updates (use isequal to handle NaN correctly)
+            elseif !is_same(obs[], val) # treat in-place updates (use isequal to handle NaN correctly)
                 obs.val = deepcopy(val)
                 push!(obs_to_notify, key)
             else # same value (with deepcopy), skip update

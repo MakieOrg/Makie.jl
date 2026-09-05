@@ -631,7 +631,9 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # connected. Otherwise we would need to disconnect them if the first resolve
     # fails to prevent the errored-out plot from poisoning dim converts.
     plot_id = objectid(attr)
-    converts = [dim_converts.sync_graph[DIM_CONVERT_NAMES[i]][] for i in 1:4 if dims_used[i]]
+    converts = Union{Nothing, AbstractDimConversion}[dim_converts.sync_graph[DIM_CONVERT_NAMES[i]][] for i in 1:3 if dims_used[i]]
+    dims_used[4] && push!(converts, attr.dim_convert_4[])
+
     foreach_arg_dim(dim_tuple, remap_dims) do arg_idx, dim, element_idx
         try
             update_dim_conversion!(converts[dim], args_converted[arg_idx], plot_id, element_idx)
