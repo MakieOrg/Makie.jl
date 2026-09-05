@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Error 404 - Page not found</title>
+    <script>
+        window.onload = function () {
+            const pathname = window.location.pathname;
+            if (!(pathname.startsWith("/")) || pathname == "/") {
+                return
+            }
+            const parts = pathname.slice(1).split("/");
+            const version = parts[0].match(/^(v\d+\.\d+)\.\d+$/);
+            if (version === null){
+                return
+            }
+            const minorversion = version[1];
+            // replace version
+            parts[0] = minorversion;
+            const new_pathname = "/" + parts.join("/");
+            
+            document.getElementById("body").innerHTML = "Tried to access patch version " + version[0] + ".<br>Redirecting to corresponding minor version " + minorversion + "...";
+            // change url without history
+            window.location.replace(new_pathname);
+        }
+    </script>
+</head>
+
+<body id="body" style="text-align: center">
+    Page not found.<br>
+    If you tried to access a patch version page vX.Y.Z and you have disabled javascript, try going to vX.Y instead.<br>
+    Alternatively, go to the <a href="/stable/">main docs</a>.
+</body>
+
+</html>
