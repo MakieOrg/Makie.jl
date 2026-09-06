@@ -50,7 +50,10 @@ end
 
 function register_cdc_synchronization!(attr::ComputeGraph, cdc::ColorDimConvert)
     # shared node for all the update results - trigger this if update did something
-    ComputePipeline.push_input!(cdc.sync_node.parent, attr.dim_convert_4_update)
+    ComputePipeline.push_input!(
+        cdc.sync_node.parent::ComputeEdge{ComputeGraph},
+        attr.dim_convert_4_update::Computed
+    )
 
     # pull from the synchronized output so one plot can pull dc updates from all plots
     add_input!(attr, :dim_convert_4_sync, cdc.sync_node)

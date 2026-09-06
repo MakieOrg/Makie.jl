@@ -272,13 +272,19 @@ function is_part_of_loop(edge::ComputeEdge, output, visited = Dict{UInt64, Vecto
     return false
 end
 
-is_child_of(child::Computed, parent::Computed) = is_child_of(child.parent, parent)
-is_child_of(edge::Input, ::Computed) = false
-function is_child_of(edge::ComputeEdge, parent::Computed)
-    for input in edge.inputs
-        if input === parent
+is_child_of(child::Computed, parent::Computed) = _is_child_of(child, parent.parent)
+function _is_child_of(child::Computed, edge::AbstractEdge)
+    for dep in edge.dependents::Vector{ComputeEdge{ComputeGraph}}
+        if is_child_of(child, dep)
             return true
-        elseif is_child_of(input, parent)
+        end
+    end
+    return false
+end
+function is_child_of(child::Computed, edge::ComputeEdge{ComputeGraph})
+    any(node -> node === child, edge.outputs) && return true
+    for dep in edge.dependents
+        if is_child_of(child, dep)
             return true
         end
     end
@@ -309,12 +315,18 @@ end
 # Warning: This does not completely disconnect the parent edge. It may still
 # exist in dependents of its inputs.
 function _disconnect_node_from_parent!(node::Computed, callback = invalid_callback)
+    return _disconnect_node_from_parent!(node, node.parent, callback)
+end
+
+function _disconnect_node_from_parent!(node::Computed, edge::AbstractEdge, callback = invalid_callback)
     # To preserve the connections from node -> other nodes, we keep track of all
     # of the parent edge dependents that rely on this node
-    graph = node.parent.graph::ComputeGraph
-    dependents = filter(dep -> node in dep.inputs, node.parent.dependents)
+    dependents = filter(
+        dep -> node in dep.inputs,
+        edge.dependents::Vector{ComputeEdge{ComputeGraph}}
+    )
     node.parent = ComputeEdge(
-        graph, callback,
+        edge.graph::ComputeGraph, callback,
         Computed[], Bool[], [node],
         Ref(true), dependents, Ref{TypedEdge}()
     )
@@ -353,91 +365,82 @@ must produce a value of matching type in its callback. Any old output that is
 orphaned by replacing the edge outputs is considered invalid and will error when
 resolved.
 """
-function modify_edge!(edge::ComputeEdge; kwargs...)
-    graph = edge.graph::ComputeGraph
+function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
+    graph = edge.graph
+
+    callback = if haskey(kwargs, :callback)
+        callback = kwargs[:callback]
+        if !isa(callback, MapFunctionWrapper) &&
+            (isa(edge.callback, MapFunctionWrapper) || haskey(kwargs, :packed))
+
+            callback = MapFunctionWrapper(callback, get(kwargs, :packed, false))
+        end
+    else
+        edge.callback
+    end
+
+    inputs, inputs_dirty = if haskey(kwargs, :inputs)
+        if !isa(kwargs[:inputs], AbstractVector{Computed})
+            error("`inputs` must be a Vector of `Computed` nodes.")
+        end
+        kwargs[:inputs], fill(false, length(kwargs[:inputs]))
+    else
+        edge.inputs, edge.inputs_dirty
+    end
+
+    outputs = if haskey(kwargs, :outputs)
+        if !isa(kwargs[:outputs], AbstractVector{Computed})
+            error("`outputs` must be a Vector of `Computed` nodes.")
+        end
+        kwargs[:outputs]
+    else
+        edge.outputs
+    end
+
+    new_edge = ComputeEdge(
+        graph, callback,
+        inputs, inputs_dirty, outputs,
+        Ref(false), edge.dependents, Ref{TypedEdge}()
+    )
 
     @lock GLOBAL_LOCK begin
-        if haskey(kwargs, :inputs)
-            new_inputs = kwargs[:inputs]
-            if !isa(new_inputs, AbstractVector{Computed})
-                error("`inputs` must be a Vector of `Computed` nodes.")
-            end
+        # remove all references to `edge` that exist via edge.inputs
+        # (i.e. edge.input.parent.dependents -> edge)
+        _disconnect_edge_from_inputs!(edge)
 
-            _disconnect_edge_from_inputs!(edge)
-
-            # replace inputs
-            resize!(edge.inputs, length(new_inputs))
-            copyto!(edge.inputs, new_inputs)
-            resize!(edge.inputs_dirty, length(new_inputs))
-            fill!(edge.inputs_dirty, true)
-
-            # connect new inputs.parent.dependents -> edge connections
-            for new in edge.inputs
-                push!(new.parent.dependents, edge)
-            end
+        # add reference to `new_edge` in all of it's inputs
+        for new in new_edge.inputs
+            push!(new.parent.dependents::Vector{ComputeEdge{ComputeGraph}}, new_edge)
         end
 
-        # Note: This is quite unsafe when orphaned outputs have computations depending
-        # on them. If those are pulled without the output being attached to something
-        # no reasonable result can be produced.
         if haskey(kwargs, :outputs)
-            new_outputs = kwargs[:outputs]
-            if !isa(new_outputs, AbstractVector{Computed})
-                error("`outputs` must be a Vector of `Computed` nodes.")
+            # remove all references to `edge` defined via edge.outputs.parent
+            # Note: This is quite unsafe when orphaned outputs have computations depending
+            # on them. If those are pulled without the output being attached to something
+            # no reasonable result can be produced.
+            for node in edge.outputs
+                _disconnect_node_from_parent!(node, edge)
             end
 
-            # disconnect all outputs
-            foreach(_disconnect_node_from_parent!, edge.outputs)
-
-            # replace and connect outputs
-            empty!(edge.dependents)
-            resize!(edge.outputs, length(new_outputs))
-            for (i, node) in enumerate(new_outputs)
+            # Add references to `new_edge` in all outputs of new_edge. Also add all
+            # the dependents we need to reference
+            for (i, node) in enumerate(new_edge.outputs)
                 for dep in node.parent.dependents
-                    if !in(dep, edge.dependents)
-                        push!(edge.dependents, dep)
+                    if !in(dep, new_edge.dependents)
+                        push!(new_edge.dependents, dep)
                     end
                 end
-                node.parent = edge
+                node.parent = new_edge
                 node.parent_idx = i
-                edge.outputs[i] = node
+            end
+        else
+            for node in new_edge.outputs
+                node.parent = new_edge
             end
         end
 
-        if haskey(kwargs, :callback)
-            # TODO: How do we deal with invalid_callback?
-            # TODO: Or more generally decide between map-like and
-            # TODO: register_computation-like callback handling?
-            callback = kwargs[:callback]
-            if !isa(callback, MapFunctionWrapper) && (isa(edge.callback, MapFunctionWrapper) || haskey(kwargs, :packed))
-                callback = MapFunctionWrapper(callback, get(kwargs, :packed, false))
-            end
-
-            # Can't set callback, so need to replace edge
-            new_edge = ComputeEdge(
-                graph, callback,
-                edge.inputs, edge.inputs_dirty, edge.outputs,
-                Ref(false), edge.dependents, Ref{TypedEdge}()
-            )
-
-            _replace_edge!(edge, new_edge)
-
-            edge = new_edge
-        end
-
-        # If the edge has been initialized before we need to reinitialize it
-        locked_mark_dirty!(edge)
-        if isassigned(edge.typed_edge)
-            # Note: This is a locked resolve that sets edge.typed_edge
-            foreach(locked_resolve!, edge.inputs)
-            edge.typed_edge[] = TypedEdge(edge)
-            edge.got_resolved[] = true
-            fill!(edge.inputs_dirty, false)
-            for dep in edge.dependents
-                mark_input_dirty!(edge, dep)
-            end
-            foreach(comp -> comp.dirty = false, edge.outputs)
-        end
+        # Everything depending on this node may now be out of date
+        locked_mark_dirty!(new_edge)
     end
 
     # do not trigger this with mark_dirty!() since the TypedEdge might need replacement
