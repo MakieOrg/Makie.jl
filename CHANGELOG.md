@@ -11,6 +11,7 @@
 - Fixed `bracket!` dropping z values [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Added `matcap` support to `arrows3d!` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Changed `arrows2d` and `arrows3d` color handling to allow `color` (and `head/shaft/tailcolor`) to be given as a 2 or 3D array if they match the size of at least one argument. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed CairoMakie `matcap` not rendering with the correct orientation. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 
 
 ## [0.24.14] - 2026-08-27
