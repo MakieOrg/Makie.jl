@@ -95,7 +95,10 @@ end
 
 function mixin_arrow_attributes()
     return @DocumentedAttributes begin
-        "Sets the color of the arrow. Can be overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`."
+        """
+        Sets the color of the arrow either for all arrows or per arrow. Can be
+        overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`.
+        """
         color = :black
         "Sets the color of the arrow tail. Defaults to `color`"
         tailcolor = automatic
@@ -588,11 +591,27 @@ $_arrow_args_docs
     More vertices will improve the roundness of the mesh but be more costly.
     """
     quality = 32
+    """
+    Applies a "material capture" texture to the generated mesh. A matcap encodes
+    lighting and color data of a material on a circular texture which is sampled
+    based on normal vectors.
+    """
+    matcap = nothing
 
     mixin_shading_attributes()...
     mixin_arrow_attributes()...
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
+
+    """
+    Sets the color of the arrow either for all arrows or per arrow. Can be
+    overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`.
+
+    This can also be a 2D image (texture) that applies per arrow component if
+    `tip`, `tail` and `shaft` are changed to mesh or geometry primitive that
+    generates texture coordinates.
+    """
+    color = :black
 end
 
 conversion_trait(::Type{<:Arrows3D}) = ArrowLike()
@@ -600,9 +619,9 @@ conversion_trait(::Type{<:Arrows3D}) = ArrowLike()
 to_mesh(m::GeometryBasics.Mesh, n) = m
 function to_mesh(prim::GeometryBasics.GeometryPrimitive, n)
     return try
-        normal_mesh(Tessellation(prim, n))
+        uv_normal_mesh(Tessellation(prim, n))
     catch e
-        normal_mesh(prim)
+        uv_normal_mesh(prim)
     end
 end
 

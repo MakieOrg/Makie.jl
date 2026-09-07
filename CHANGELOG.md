@@ -8,6 +8,7 @@
 - Added support for per level `linewidth` in `contour` plot. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Fixed `tri/contourf` colormap sampling with `extendlow = :auto` and/or `extendhigh = :auto`. Previously this generated nlevels + 1 categories and sampled between them, now it generates nlevels categories and samples them directly. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Fixed `bracket!` dropping z values [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added `matcap` support to `arrows3d!` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Added support for exporting .mov video files. Transparent-background rendering for .mov outputs is now supported [#5764](https://github.com/MakieOrg/Makie.jl/pull/5764).
 
 ## [0.24.14] - 2026-08-27

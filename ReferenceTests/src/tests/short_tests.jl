@@ -313,7 +313,11 @@ end
     r = range(-2, 1, length = 31)
     f, a, p = surface(-2 .. 1, -2 .. 1, [0.25 * (x * x + y * y) - 1 for x in r, y in r], matcap = img)
     mesh!(a, Sphere(Point3f(0), 1.0f0), matcap = img)
-    meshscatter!(a, [Point3f(x, y, 0.25 * (x * x + y * y) - 1.5) for x in (-2.25, 1.25) for y in (-2.25, 1.25)], matcap = img, markersize = 0.5)
+    ps = [Point3f(x, y, 0.25 * (x * x + y * y) - 1.5) for x in (-2.25, 1.25) for y in (-2.25, 1.25)]
+    meshscatter!(a, ps, matcap = img, markersize = 0.5)
+    _ps = map((a, b) -> 0.5 .* (a .+ b), ps, ps[[2, 4, 1, 3]])
+    vs = [Vec3f(0,1,0), Vec3f(1,0,0), Vec3f(-1,0,0), Vec3f(0,-1,0)]
+    arrows3d!(a, _ps, vs, matcap = img, align = :center)
     f
 end
 
