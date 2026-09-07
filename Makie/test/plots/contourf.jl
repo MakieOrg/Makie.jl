@@ -63,7 +63,7 @@ end
 
     @testset "N levels" begin
         @testset "no extendlow/high" begin
-            f,a,p = contourf(data, levels = 4)
+            f, a, p = contourf(data, levels = 4)
             @test p.levels[] == 4
             @test length(p.computed_levels[]) == 5
             @test p.nlevels[] == 4
@@ -72,14 +72,14 @@ end
         end
 
         @testset "extendlow/extendhigh" begin
-            f,a,p = contourf(data, levels = 4, extendlow = :auto)
+            f, a, p = contourf(data, levels = 4, extendlow = :auto)
             @test p.levels[] == 4
             @test length(p.computed_levels[]) == 5
             @test p.nlevels[] == 4
             @test length(p.base_colormap[]) == 4 # downsampled
             @test collect(p.computed_colormap[]) == p.base_colormap[]
 
-            f,a,p = contourf(data, levels = 4, extendhigh = :auto)
+            f, a, p = contourf(data, levels = 4, extendhigh = :auto)
             @test p.levels[] == 4
             @test length(p.computed_levels[]) == 5
             @test p.nlevels[] == 4
@@ -88,7 +88,7 @@ end
         end
 
         @testset "both" begin
-            f,a,p = contourf(data, levels = 4, extendlow = :auto, extendhigh = :auto)
+            f, a, p = contourf(data, levels = 4, extendlow = :auto, extendhigh = :auto)
             @test p.levels[] == 4
             @test length(p.computed_levels[]) == 5
             @test p.nlevels[] == 4
@@ -99,7 +99,7 @@ end
 
     @testset "edge based levels" begin
         @testset "no extendlow/high" begin
-            f,a,p = contourf(data, levels = 0.0:0.25:1.0)
+            f, a, p = contourf(data, levels = 0.0:0.25:1.0)
             @test length(p.levels[]) == 5
             @test length(p.computed_levels[]) == 5
             @test p.nlevels[] == 4
@@ -108,14 +108,14 @@ end
         end
 
         @testset "extendlow/extendhigh" begin
-            f,a,p = contourf(data, levels = 0.0:0.25:1.0, extendlow = :auto)
+            f, a, p = contourf(data, levels = 0.0:0.25:1.0, extendlow = :auto)
             @test length(p.levels[]) == 5
             @test length(p.computed_levels[]) == 5
             @test p.nlevels[] == 4
             @test length(p.base_colormap[]) == 4 # downsampled
             @test collect(p.computed_colormap[]) == p.base_colormap[]
 
-            f,a,p = contourf(data, levels = 0.0:0.25:1.0, extendhigh = :auto)
+            f, a, p = contourf(data, levels = 0.0:0.25:1.0, extendhigh = :auto)
             @test length(p.levels[]) == 5
             @test length(p.computed_levels[]) == 5
             @test p.nlevels[] == 4
@@ -124,7 +124,7 @@ end
         end
 
         @testset "both" begin
-            f,a,p = contourf(data, levels = 0.0:0.25:1.0, extendlow = :auto, extendhigh = :auto)
+            f, a, p = contourf(data, levels = 0.0:0.25:1.0, extendlow = :auto, extendhigh = :auto)
             @test length(p.levels[]) == 5
             @test length(p.computed_levels[]) == 5
             @test p.nlevels[] == 4

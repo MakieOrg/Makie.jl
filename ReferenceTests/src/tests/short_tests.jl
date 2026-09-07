@@ -316,7 +316,7 @@ end
     ps = [Point3f(x, y, 0.25 * (x * x + y * y) - 1.5) for x in (-2.25, 1.25) for y in (-2.25, 1.25)]
     meshscatter!(a, ps, matcap = img, markersize = 0.5)
     _ps = map((a, b) -> 0.5 .* (a .+ b), ps, ps[[2, 4, 1, 3]])
-    vs = [Vec3f(0,1,0), Vec3f(1,0,0), Vec3f(-1,0,0), Vec3f(0,-1,0)]
+    vs = [Vec3f(0, 1, 0), Vec3f(1, 0, 0), Vec3f(-1, 0, 0), Vec3f(0, -1, 0)]
     arrows3d!(a, _ps, vs, matcap = img, align = :center)
     f
 end
