@@ -164,6 +164,17 @@ end
     Makie.colorbuffer(fig; backend = CairoMakie)
 end
 
+@testset "scatter with all points clipped (#XXXX)" begin
+    fig = Figure()
+    ax = Axis3(fig[1, 1])
+    # all points outside the clip volume -> unclipped_indices is empty
+    scatter!(ax, [0.5, 0.5], [0.5, 0.5], [-10.0, -10.0])
+    limits!(ax, 0, 1, 0, 1, 0, 1)
+    Makie.colorbuffer(fig; backend = CairoMakie)
+    # broadcast_foreach_index returns without error on empty indices
+    @test Makie.broadcast_foreach_index((args...) -> error("unreachable"), UInt32[], 1:3, 1:3) === nothing
+end
+
 @testset "ComputeGraph Sanity Checks" begin
     # This is supposed to catch changes in ComputePipeline causing nodes to
     # be skipped or become duplicated. This will also trigger if plot attributes

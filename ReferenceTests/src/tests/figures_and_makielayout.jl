@@ -620,6 +620,15 @@ end
     f
 end
 
+@reference_test "collapsed Axis3" begin
+    # See #5759
+    fig = Figure()
+    ax = Axis3(fig[1, 1], aspect = :data, limits = (0, 1, 0, 1, 5, 5))
+    scatter!(ax, [0.2, 0.8], [0.2, 0.8], [5.0, 5.0], color = [1, 2], markersize = 20)
+    scatter!(ax, [0.2, 0.8], [0.8, 0.2], [4.9, 5.1], color = :red, markersize = 20)
+    fig
+end
+
 @reference_test "Colorbar for recipes" begin
     fig, ax, pl = barplot(1:3; color = 1:3, colormap = Makie.Categorical(:viridis), figure = (; size = (800, 800)))
     Colorbar(fig[1, 2], pl; size = 100)

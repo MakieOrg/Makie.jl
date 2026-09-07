@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Increased precision of `Vec3f` to `Quaternionf` conversion to reduce quantization/improve precision around `Vec3f(0, 0, ±1)` rotations in `meshscatter`. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added nan handling to `volume` algorithms `:absorption` and `:mip` as well as 3D `countour` plots. These cases now respect `nan_color` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed `empty!(root_scene)` and `empty(fig)` disconnecting mouseposition and render_tick event sources in GLMakie [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added support for per level `linewidth` in `contour` plot. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed `tri/contourf` colormap sampling with `extendlow = :auto` and/or `extendhigh = :auto`. Previously this generated nlevels + 1 categories and sampled between them, now it generates nlevels categories and samples them directly. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed `bracket!` dropping z values [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added support for exporting .mov video files. Transparent-background rendering for .mov outputs is now supported [#5764](https://github.com/MakieOrg/Makie.jl/pull/5764).
+
+## [0.24.14] - 2026-08-27
+
+- Fixed WGLMakie's precompilation regression [#5767](https://github.com/MakieOrg/Makie.jl/pull/5767).
+- Fixed `BoundsError` in CairoMakie when clip planes remove all points of a plot, fixed `apply_transform(::Mat4, ::Plane3)` producing a `NaN`-distance plane that clips everything when the transform collapses the plane's normal direction, and fixed `Axis3` collapsing dimensions with zero-width limits [#5759](https://github.com/MakieOrg/Makie.jl/pull/5759).
+- Fixed log-scale `Axis` interactions producing invalid limits. [#5736](https://github.com/MakieOrg/Makie.jl/pull/5736)
+- Fixed `arrows3d` component alignment (tail, shaft, tip) when `normalize = true` and scaling applies (e.g. Axis3, `scale!`, `transform_func`). [#5711](https://github.com/MakieOrg/Makie.jl/issues/5711)
 - Added `StageCamera` (`stage_cam!`), a 3D camera with photographic settings that keeps a stage of a given size in view [#5472](https://github.com/MakieOrg/Makie.jl/pull/5472).
 - `Menu` is now searchable: typing while it is open filters the options. Set `searchable = false` for the old behavior [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
 - Added `textcolor_active` and `textcolor_hover` attributes to `Menu`, with the selected entry now white by default [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
@@ -21,11 +35,6 @@
 - Fixed `surface` normals sometimes being `NaN` in GLMakie (when vertices collapse to single point on the edge of a surface) [#5725](https://github.com/MakieOrg/Makie.jl/pull/5725)
 - Fixed specialized `args_preferred_axis` methods getting skipped by less specialized Makie defaults [#5722](https://github.com/MakieOrg/Makie.jl/pull/5722)
 - Fixed `Axis3(..., title = rich(...))` not working [#5729](https://github.com/MakieOrg/Makie.jl/pull/5729)
-- Added nan handling to `volume` algorithms `:absorption` and `:mip` as well as 3D `countour` plots. These cases now respect `nan_color` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
-- Fixed `empty!(root_scene)` and `empty(fig)` disconnecting mouseposition and render_tick event sources in GLMakie [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
-- Added support for per level `linewidth` in `contour` plot. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
-- Fixed `tri/contourf` colormap sampling with `extendlow = :auto` and/or `extendhigh = :auto`. Previously this generated nlevels + 1 categories and sampled between them, now it generates nlevels categories and samples them directly. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
-- Fixed `bracket!` dropping z values [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 
 ## [0.24.13] - 2026-07-02
 
@@ -1068,7 +1077,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.14...HEAD
+[0.24.14]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...v0.24.14
 [0.24.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.12...v0.24.13
 [0.24.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...v0.24.12
 [0.24.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.10...v0.24.11
