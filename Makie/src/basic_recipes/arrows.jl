@@ -108,7 +108,7 @@ _arrows_arg_size(x::RealVector, y::RealVector, ::Function) = (length(x), length(
 _arrows_arg_size(x::RealVector, y::RealVector, z::RealVector, ::Function) = (length(x), length(y), length(z))
 
 function register_arrow_color_flattening!(plot)
-    map!(_arrows_arg_size, plot, :args, :arg_size)
+    map!(args -> Ref{Tuple}(_arrows_arg_size(args)), plot, :args, :arg_size)
 
     for colorname in (:tipcolor, :shaftcolor, :tailcolor)
         map!(
