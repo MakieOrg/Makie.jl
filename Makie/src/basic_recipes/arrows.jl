@@ -116,7 +116,7 @@ function register_arrow_color_flattening!(plot)
         ) do component_color, fallback, arg_size
             color = default_automatic(component_color, fallback)
             if length(arg_size) > 1 && !isa(color, ShaderAbstractions.Sampler) &&
-                isa(color, AbstractArray) && size(color) == arg_size
+                    isa(color, AbstractArray) && size(color) == arg_size
                 return vec(color)
             else
                 # This continues to allow 2D textures if as long as the texture
@@ -466,10 +466,10 @@ function Makie.plot!(plot::Arrows2D)
     map!(to_color, plot, :nan_color, :converted_nan_color)
 
     for (input, output) in (
-        :resolved_tailcolor => :scaled_tailcolor,
-        :resolved_shaftcolor => :scaled_shaftcolor,
-        :resolved_tipcolor => :scaled_tipcolor
-    )
+            :resolved_tailcolor => :scaled_tailcolor,
+            :resolved_shaftcolor => :scaled_shaftcolor,
+            :resolved_tipcolor => :scaled_tipcolor,
+        )
         map!(
             plot, [input, :colorscale, :alpha, :sortperm_startpoints], output
         ) do color, colorscale, alpha, order

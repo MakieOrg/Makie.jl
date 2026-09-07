@@ -61,12 +61,12 @@ end
 
 @testset "arrows color flattening" begin
     cs = 1:8
-    f,a,p = arrows3d(rand(2, 4), rand(2, 4), rand(8), rand(8), color = reshape(cs, (2, 4)))
+    f, a, p = arrows3d(rand(2, 4), rand(2, 4), rand(8), rand(8), color = reshape(cs, (2, 4)))
     @test p.resolved_tailcolor[] == cs
     @test p.resolved_shaftcolor[] == cs
     @test p.resolved_tipcolor[] == cs
 
-    f,a,p = arrows2d(
+    f, a, p = arrows2d(
         rand(2), rand(4), p -> rand(Vec2f),
         color = reshape(cs, (2, 4)),
         tailcolor = 4:12, shaftcolor = reshape(8:-1:1, (2, 4))
@@ -75,7 +75,7 @@ end
     @test p.resolved_shaftcolor[] == 8:-1:1
     @test p.resolved_tipcolor[] == cs
 
-    f,a,p = arrows3d(
+    f, a, p = arrows3d(
         rand(Point3f, 6), rand(Vec3f, 1, 2, 3),
         tipcolor = reshape(1:6, (1, 2, 3)),
         tailcolor = 4:10,
