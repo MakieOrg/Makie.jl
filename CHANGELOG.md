@@ -23,6 +23,7 @@
 - Fixed `Axis3(..., title = rich(...))` not working [#5729](https://github.com/MakieOrg/Makie.jl/pull/5729)
 - Added nan handling to `volume` algorithms `:absorption` and `:mip` as well as 3D `countour` plots. These cases now respect `nan_color` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Fixed `empty!(root_scene)` and `empty(fig)` disconnecting mouseposition and render_tick event sources in GLMakie [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added support for per level `linewidth` in `contour` plot. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Fixed `tri/contourf` colormap sampling with `extendlow = :auto` and/or `extendhigh = :auto`. Previously this generated nlevels + 1 categories and sampled between them, now it generates nlevels categories and samples them directly. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Fixed `bracket!` dropping z values [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 
@@ -78,7 +79,6 @@
 - CairoMakie now batches glyphs from the same text string into a single PDF/SVG text object, so that text can be selected and edited as a unit in vector editors like Inkscape and Illustrator [#5561](https://github.com/MakieOrg/Makie.jl/pull/5561)
 - Fixed `annotation` not showing lines/arrows when `text` is blank. [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
 - Fixed error/nan offsets in `annotation!()` when an annotation is perfectly centered. [#5568](https://github.com/MakieOrg/Makie.jl/pull/5568)
-- Added support for per level `linewidth` in `contour` plot. [#5568](https://github.com/MakieOrg/Makie.jl/pull/5568)
 
 ## [0.24.9] - 2026-03-04
 
