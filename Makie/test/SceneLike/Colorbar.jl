@@ -8,10 +8,17 @@ function verify_colorbar_defaults(
         color = plot.color, colorrange = plot.colorrange,
         colormap = plot.colormap, colorscale = plot.colorscale,
         lowclip = plot.lowclip, highclip = plot.highclip,
-        color_mapping_type = Makie.colormapping_type(colormap[])
+        color_mapping_type = Makie.colormapping_type(colormap[]),
+        dim_conversion = plot.color_dim_convert, dc_color = get(plot, :raw_color, nothing)
     )
     @testset "$(Makie.plotsym(typeof(plot)))" begin
-        @test cb.values.parent.inputs[1] == color
+        if ComputePipeline.hasinput(cb.attributes, :values)
+            # if values exists as an input we should have connected post dim
+            # convert colors from a plot directly to dc_values
+            @test cb.dc_values.parent.inputs[1] == dc_color
+        else
+            @test cb.values.parent.inputs[1] == color
+        end
         @test cb.colorrange.parent.inputs[1] == colorrange
         @test cb.colormap.parent.inputs[1] == colormap
         @test cb.scale.parent.inputs[1] == colorscale
@@ -19,6 +26,7 @@ function verify_colorbar_defaults(
         @test cb.highclip.parent.inputs[1] == highclip
         @test cb.color_mapping_type[] == color_mapping_type
         # TODO: check color_dim_convert?
+        @test cb.dim_conversion.parent.inputs[1] === dim_conversion
     end
     return
 end

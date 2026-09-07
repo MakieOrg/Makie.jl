@@ -57,9 +57,24 @@ struct DateTimeConversion <: AbstractDimConversion
 end
 
 expand_dimensions(::PointBased, y::AbstractVector{<:Dates.AbstractTime}) = (keys(y), y)
-needs_tick_update_observable(conversion::DateTimeConversion) = conversion.type
 create_dim_conversion(::Type{<:Dates.AbstractTime}) = DateTimeConversion()
 
+
+function update_dim_conversion!(conversion::DateTimeConversion, values)
+    T = conversion.type[]
+    eltype = get_element_type(values)
+    if T <: Automatic
+        new_type = eltype
+        new_type = new_type === Date ? DateTime : new_type
+        conversion.type[] = new_type
+        return true
+    elseif T != eltype && !(T === DateTime && eltype === Date)
+        if !(T <: Time && eltype <: Unitful.Quantity)
+            error("Plotting unit $(eltype) into axis with type $(T) not supported.")
+        end
+    end
+    return false
+end
 
 function convert_dim_value(conversion::DateTimeConversion, value::Dates.TimeType)
     return date_to_number(conversion.type[], value)
@@ -67,21 +82,6 @@ end
 
 function convert_dim_value(conversion::DateTimeConversion, value::AbstractArray)
     return date_to_number.(conversion.type[], value)
-end
-
-function convert_dim_value(conversion::DateTimeConversion, attr, values, previous_values)
-    T = conversion.type[]
-    eltype = get_element_type(values)
-    if T <: Automatic
-        new_type = eltype
-        new_type = new_type === Date ? DateTime : new_type
-        conversion.type[] = new_type
-    elseif T != eltype && !(T === DateTime && eltype === Date)
-        if !(T <: Time && eltype <: Unitful.Quantity)
-            error("Plotting unit $(eltype) into axis with type $(T) not supported.")
-        end
-    end
-    return date_to_number.(conversion.type[], values)
 end
 
 # TODO: Is there a point in allowing Date ticks to not be displayed?

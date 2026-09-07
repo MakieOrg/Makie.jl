@@ -51,10 +51,10 @@ end
 end
 
 #=
-# Reference image test for the above, that I dont think is necessary
+# Reference image test for the above, that I don't think is necessary
 ##
 n = 5
-# FLoat32 is important, so that it doesn't get converted
+# Float32 is important, so that it doesn't get converted
 A = Observable(Float32.(Makie.peaks(n)));
 s = Scene(size=(200, 200))
 r = -0.75 .. 0.75
@@ -68,6 +68,7 @@ s = Scene(size=size(large));
 image!(s, large; space=:pixel);
 s
 =#
+
 Makie.@recipe(AttrTest) do scene
     Attributes(
         kwargs = (;)

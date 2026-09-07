@@ -179,7 +179,7 @@ function compute_minor_ticks(
     end
 end
 
-function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label)
+function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label, sync)
     should_show = show_dim_convert_in_axis_label(dim_convert, show_unit_in_label)
     if should_show
         return add_label_suffix(label, dim_convert, formatter)
@@ -230,7 +230,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     decorations = Dict{Symbol, Any}()
 
     @extract_computed attrs graph (
-        endpoints, limits, flipped, scale, dim_convert,
+        endpoints, limits, flipped, scale, dim_convert, dim_convert_sync,
         ticksize, tickwidth, tickcolor, tickalign, ticks, tickformat, ticksvisible,
         ticklabelalign, ticklabelrotation, ticklabelspace, ticklabelpad,
         ticklabelsize, ticklabelsvisible, ticklabelfont, ticklabelcolor,
@@ -244,20 +244,12 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
 
     map!(calculate_horizontal_extends, graph, endpoints, [:position, :extents, :horizontal])
 
-    # TODO: Does this have side effects on Axis, plots?
-    # TODO: Does this propagate enough on same value updates?
-    # make sure we update tick calculation when needed
-    obs = needs_tick_update_observable(dim_convert)
-    if !isnothing(obs)
-        on(x -> ComputePipeline.mark_dirty!(dim_convert), obs)
-    end
-
     map!(
         graph,
         # TODO: Why was :pos_extents_horizontal in here?
-        [dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel],
+        [dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel, dim_convert_sync],
         [:tickvalues_unfiltered, :tickstrings_unfiltered],
-    ) do dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel
+    ) do dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel, _
         should_show = show_dim_convert_in_ticklabel(dim_convert, unit_in_ticklabel)
         vals, strs = get_ticks(dim_convert, ticks, scale, tickformat, limits..., should_show)
         return vals, convert(Vector{Any}, strs)
@@ -501,7 +493,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     # label + dim convert suffix
     map!(
         build_label_with_unit_suffix, graph,
-        [dim_convert, suffix_formatter, label, unit_in_label],
+        [dim_convert, suffix_formatter, label, unit_in_label, dim_convert_sync],
         :label_with_suffix
     )
     ComputePipeline.set_type!(graph.label_with_suffix, Any)
@@ -534,6 +526,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
             end
         end
         translate!(labeltext, xs, ys, 0.0f0)
+        return
     end
 
     decorations[:labeltext] = labeltext
