@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed a segfault in CairoMakie when saving a vector graphic (pdf, svg, eps) of a figure while recording it with a `VideoStream` [#5772](https://github.com/MakieOrg/Makie.jl/pull/5772).
 
 
 ## [0.24.14] - 2026-08-27

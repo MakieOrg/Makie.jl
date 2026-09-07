@@ -87,6 +87,19 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
         rm("test.png")
     end
 
+    @testset "saving pdf while recording a VideoStream" begin
+        fig, ax, pl = heatmap(rand(10, 10))
+        vio = VideoStream(fig)
+        recordframe!(vio)
+        save("test.pdf", fig)
+        @test isopen(vio.screen)
+        recordframe!(vio)
+        save("test.mp4", vio)
+        @test filesize("test.mp4") > 0
+        rm("test.pdf")
+        rm("test.mp4")
+    end
+
     @testset "changing resolution of same format" begin
         # see: https://github.com/MakieOrg/Makie.jl/issues/2433
         # and: https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/441
