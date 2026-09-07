@@ -13,6 +13,11 @@ macro compile(block)
             dom = Bonito.session_dom(session, app)
             show(IOBuffer(), dom)
             Makie.second_resolve(figlike, :wgl_renderobject)
+            # three_display only serializes from inside the `real_size` callback,
+            # i.e. after a browser round trip, which never happens here. Without
+            # this call the entire serialization path (and the compute edges it
+            # builds) is left to be compiled on first display.
+            serialize_scene(Makie.get_scene(figlike))
             close(session)
             yield()
             return nothing

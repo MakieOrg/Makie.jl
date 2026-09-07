@@ -3,6 +3,11 @@
 ## Unreleased
 
 - `Axis` spines now end exactly at the axis corners and rely on a `:square` linecap for corner coverage, instead of baking a half-spine-width extension into the geometry. Tick marks are anchored on the spine centerline rather than on a spine edge: a mark is `ticksize` long and `tickalign` (`0` = out, `1` = in) slides it across the centerline. Both changes keep exported figures (SVG/PDF) aligned — and keep ticks from riding into the plot area — when the stroke width is changed in an external editor. The default tick sizes were increased by half the default spine width (`Axis` `ticksize` `5 -> 5.5`, `minorticksize` `3 -> 3.5`, likewise for `Colorbar`) so that default axes look exactly as before; figures that set `ticksize` explicitly get marks that appear `spinewidth / 2` shorter [#5765](https://github.com/MakieOrg/Makie.jl/pull/5765).
+
+## [0.24.14] - 2026-08-27
+
+- Added support for exporting .mov video files. Transparent-background rendering for .mov outputs is now supported [#5764](https://github.com/MakieOrg/Makie.jl/pull/5764).
+- Fixed WGLMakie's precompilation regression [#5767](https://github.com/MakieOrg/Makie.jl/pull/5767).
 - Fixed `BoundsError` in CairoMakie when clip planes remove all points of a plot, fixed `apply_transform(::Mat4, ::Plane3)` producing a `NaN`-distance plane that clips everything when the transform collapses the plane's normal direction, and fixed `Axis3` collapsing dimensions with zero-width limits [#5759](https://github.com/MakieOrg/Makie.jl/pull/5759).
 - Fixed log-scale `Axis` interactions producing invalid limits. [#5736](https://github.com/MakieOrg/Makie.jl/pull/5736)
 - Fixed `arrows3d` component alignment (tail, shaft, tip) when `normalize = true` and scaling applies (e.g. Axis3, `scale!`, `transform_func`). [#5711](https://github.com/MakieOrg/Makie.jl/issues/5711)
@@ -1067,7 +1072,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.14...HEAD
+[0.24.14]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...v0.24.14
 [0.24.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.12...v0.24.13
 [0.24.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...v0.24.12
 [0.24.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.10...v0.24.11
