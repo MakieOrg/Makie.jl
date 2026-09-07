@@ -649,8 +649,7 @@ $_arrow_args_docs
     overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`.
 
     This can also be a 2D image (texture) that applies per arrow component if
-    `tip`, `tail` and `shaft` are changed to mesh or geometry primitive that
-    generates texture coordinates.
+    `tip`, `tail` and `shaft` are changed to mesh that includes texture coordinates.
     """
     color = :black
 end
@@ -660,9 +659,9 @@ conversion_trait(::Type{<:Arrows3D}) = ArrowLike()
 to_mesh(m::GeometryBasics.Mesh, n) = m
 function to_mesh(prim::GeometryBasics.GeometryPrimitive, n)
     return try
-        uv_normal_mesh(Tessellation(prim, n))
+        normal_mesh(Tessellation(prim, n))
     catch e
-        uv_normal_mesh(prim)
+        normal_mesh(prim)
     end
 end
 
