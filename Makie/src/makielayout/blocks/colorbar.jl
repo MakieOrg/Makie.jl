@@ -63,8 +63,10 @@ function extract_colormap(plot::Union{Contourf, Tricontourf})
     limits = map(plot.colorscale, plot.computed_colorrange) do scale, cr
         return apply_scale(inverse_transform(scale), cr)
     end
-    colormap = map(plot.colorscale, plot.computed_colormap) do scale, cm
-        vals = apply_scale(inverse_transform(scale), cm.values)
+    colormap = map(plot.colorscale, plot.computed_colormap, plot.computed_colorrange) do scale, cm, cr
+        vals = minimum(cr) .+ (maximum(cr) - minimum(cr)) .* cm.values
+        vals = apply_scale(inverse_transform(scale), vals)
+        vals .= (vals .- minimum(vals)) ./ (maximum(vals) - minimum(vals))
         return PlotUtils.CategoricalColorGradient(cm.colors, vals)
     end
     function extend_color(color, computed)
