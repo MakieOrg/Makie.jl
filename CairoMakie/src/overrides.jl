@@ -22,8 +22,14 @@ function draw_plot(scene::Scene, screen::Screen, poly::Poly)
         # (`plot.converted`).  This allows anything which decomposes to be checked for.
     elseif Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(deref(poly.converted[]))...})
         return draw_poly(scene, screen, poly, deref(poly.converted[])...)
-        # In the worst case, we return to drawing the polygon as a mesh + lines.
     else
+        # For broad Union-typed vectors like Vector{PolyElements} (e.g. from textlabel),
+        # hasmethod fails because no draw_poly matches the Union eltype. Try drawing
+        # each element individually, falling back to mesh only as a last resort.
+        args = deref(poly.args[])
+        if length(args) == 1 && args[1] isa AbstractVector
+            return draw_poly_per_element(scene, screen, poly, args[1])
+        end
         return draw_poly_as_mesh(scene, screen, poly)
     end
 end
@@ -86,14 +92,44 @@ end
 
 draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene, screen, poly, decompose(Point2f, circle))
 
+# Per-element drawing for broad Union-typed vectors like Vector{PolyElements}
+# (e.g. textlabel poly uses Point3f for depth sorting). Each element is drawn as
+# a path if it's a point vector, or dispatched to type-specific draw_poly otherwise.
+function draw_poly_per_element(scene::Scene, screen::Screen, poly, elements::AbstractVector)
+    color = to_cairo_color(poly.color[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    miter_limit = to_cairo_miter_limit(poly.miter_limit[])
+    joinstyle = to_cairo_joinstyle(poly.joinstyle[])
+    linecap = to_cairo_linecap(poly.linecap[])
+
+    broadcast_foreach(
+        elements, color,
+        strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])
+    ) do element, color, strokecolor, strokestyle, strokewidth, model
+        if element isa AbstractVector{<:VecTypes}
+            draw_poly(scene, screen, poly, element, color, model, strokecolor, strokestyle, strokewidth, miter_limit, joinstyle, linecap)
+        else
+            draw_poly(scene, screen, poly, element)
+        end
+    end
+    if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    end
+    return
+end
+
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
 function draw_poly(
-        scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
+        scene::Scene, screen::Screen, poly, points::AbstractVector{<:VecTypes}, color::Union{Colorant, Cairo.CairoPattern},
         model, strokecolor, strokestyle, strokewidth, miter_limit, joinstyle, linecap
     )
     space = poly.space[]
     points = apply_transform(transform_func(poly), points)
-    points = clip_poly(poly.clip_planes[], points, space, model)
+    # clip_poly only supports 2D points
+    if eltype(points) <: VecTypes{2}
+        points = clip_poly(poly.clip_planes[], points, space, model)
+    end
     points = _project_position(scene, space, points, model, true)
 
     Cairo.move_to(screen.context, points[1]...)
