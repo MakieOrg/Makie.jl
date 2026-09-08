@@ -29,7 +29,7 @@ The backend packages **GLMakie**, **WGLMakie**, **CairoMakie** and **RPRMakie** 
 You can use Makie to interactively explore your data and create simple GUIs
 in native windows or web browsers, export high-quality vector graphics or even raytrace with physically accurate lighting.
 
-The name Makie (we pronounce it Mah-kee) is derived from the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
+The name Makie (we pronounce it Mah-kee) is derived from the Japanese decoration technique [maki-e](https://en.wikipedia.org/wiki/Maki-e), which uses lacquer to make designs with gold and silver powder.
 Data is the gold and silver of our age, so let's spread it out beautifully on the screen!
 
 To learn more, we invite you to visit the documentation at [docs.makie.org](http://docs.makie.org/stable/).
