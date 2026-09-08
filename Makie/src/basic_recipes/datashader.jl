@@ -526,6 +526,7 @@ If the array doesn't support this, it will be converted to an interpolation obje
 * `method` is the interpolation method used, defaulting to `Interpolations.Linear()`.
 * `update_while_button_pressed` will update the heatmap while a mouse button is pressed, useful for zooming/panning. Set it to false for e.g. WGLMakie to avoid updating while dragging.
 * `lowres_background` will always show a low resolution background while the high resolution image is being calculated.
+When plotting, `x` and `y` are typically omitted. To control the absolute coordinates, these must be provided as 2-tuples or `EndPoints`, i.e. heatmap((xmin, xmax), (ymin, ymax), Resampler(data)). 
 """
 struct Resampler{T <: AbstractMatrix{<:Union{Real, Colorant}}}
     data::T
@@ -617,7 +618,7 @@ end
 extract_colormap_recursive(plot::HeatmapShader) = extract_colormap_recursive(plot.plots[1])
 
 
-function resample_image(x, y, image, max_resolution, limits)
+function resample_image(x, y, image, max_resolution, limits, transform_func)
     # extent of the image in data coordinates (same as limits)
     xmin, xmax = x
     ymin, ymax = y
@@ -641,7 +642,16 @@ function resample_image(x, y, image, max_resolution, limits)
         indices = ((nrange .- data_min[i]) ./ data_width[i]) .* (si .- 1) .+ 1
         resolution = max(2, round(Int, indices[2] - indices[1]))
         len = min(resolution, max_resolution[i])
-        return LinRange(max(1, indices[1]), min(indices[2], si), len)
+        transformed_inds = apply_transform(
+                inverse_transform(transform_func[i]), 
+                LinRange(
+                    apply_transform(transform_func[i], max(1, indices[1])),
+                    apply_transform(transform_func[i], min(indices[2], si)), 
+                    len
+                )
+            )
+        # prevent oob due to rounding
+        return clamp.(transformed_inds, 1, si)
     end
     if isempty(x_index_range) || isempty(y_index_range)
         return nothing
@@ -713,8 +723,11 @@ function Makie.plot!(p::HeatmapShader)
 
 
     T = eltype(p.image[].data) <: Colors.Colorant ? RGB{Float32} : Float32
-    map!(p.attributes, [:image, :x, :y, :max_resolution, :data_limits, :colorrange], [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]) do image, x, y, max_resolution, image_area, crange
-        x, y, img = resample_image(x, y, image.data, max_resolution, image_area)
+    map!(p.attributes, 
+        [:image, :x, :y, :max_resolution, :data_limits, :colorrange, :transform_func], 
+        [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]
+    ) do image, x, y, max_resolution, image_area, crange, transform_func
+        x, y, img = resample_image(x, y, image.data, max_resolution, image_area, transform_func)
         cr = calculate_colorrange(img, crange)
         if image.lowres_background
             val = cr isa Vec2 ? mean(cr) : 0.0f0 # TODO color mean?
@@ -727,11 +740,11 @@ function Makie.plot!(p::HeatmapShader)
 
     ComputePipeline.map!(
         p.attributes,
-        [:image, :x, :y, :max_resolution, :slow_limits],
+        [:image, :x, :y, :max_resolution, :slow_limits, :transform_func],
         [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible],
-        init = (p.x[], p.x[], fill(zero(T), 2, 2), false)
-    ) do image, x, y, max_resolution, limits
-        xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
+        init = (p.x[], p.y[], fill(zero(T), 2, 2), false)
+    ) do image, x, y, max_resolution, limits, transform_func
+        xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits, transform_func)
         isnothing(xe_ye_oimg) && return nothing
         return (xe_ye_oimg..., true)
     end
