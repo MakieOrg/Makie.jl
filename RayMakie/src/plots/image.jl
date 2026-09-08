@@ -67,6 +67,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
         # CREATE new render object
         pipeline = get_image_pipeline!(screen)
         robj = LavaRenderObject(pipeline;
+            backend = screen.config.device,
             arg_names = (:screen_bl, :screen_tr, :res),
             uniforms = Dict{Symbol, Any}(
                 :screen_bl => Vec2f(p_bl),

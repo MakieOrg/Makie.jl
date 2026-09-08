@@ -47,7 +47,7 @@ mutable struct LavaRenderObject
 end
 
 function LavaRenderObject(pipeline::GraphicsPipeline;
-                          backend=Mantle.defaultbackend(),
+                          backend,
                           buffers=Dict{Symbol, AbstractGPUArray}(),
                           uniforms=Dict{Symbol, Any}(),
                           arg_names::Tuple=(),
@@ -182,7 +182,7 @@ function update_robj!(robj::LavaRenderObject, args::NamedTuple, changed::NamedTu
             # GPU buffer — update in place (capacity-aware resize + copyto)
             if value isa AbstractArray
                 if name === :indices
-                    robj.buffers[name] = vulkanbackend().alloc_index_buffer(UInt32.(value))
+                    robj.buffers[name] = vulkanbackend().alloc_index_buffer(robj.backend, UInt32.(value))
                 else
                     buf = robj.buffers[name]
                     resize!(buf, length(value))
@@ -213,14 +213,14 @@ is_gpu_buffer(x::Vector) = true
 is_gpu_buffer(x) = false
 
 function construct_robj(pipeline::GraphicsPipeline, args::NamedTuple, arg_names::Tuple;
-                        backend=Mantle.defaultbackend(), vertex_count=0, instances=1, bindings=nothing)
+                        backend, vertex_count=0, instances=1, bindings=nothing)
     buffers = Dict{Symbol, AbstractGPUArray}()
     uniforms = Dict{Symbol, Any}()
     for name in keys(args)
         value = args[name]
         if is_gpu_buffer(value)
             if name === :indices
-                buffers[name] = vulkanbackend().alloc_index_buffer(UInt32.(value))
+                buffers[name] = vulkanbackend().alloc_index_buffer(backend, UInt32.(value))
             else
                 buffers[name] = Adapt.adapt(backend, value)
             end

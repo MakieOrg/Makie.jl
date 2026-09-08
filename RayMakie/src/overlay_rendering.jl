@@ -53,7 +53,7 @@ function draw_lava_renderobject!(screen, e, robj::LavaRenderObject, viewport, co
     ds_layout = robj.bindings !== nothing ? robj.bindings.layout : nothing
     vert_shader, compiled = vulkanbackend().ensure_compiled_with_shader!(robj.pipeline,
         robj.pipeline.vertex, robj.pipeline.fragment, tt, tt;
-        color_format=color_format, descriptor_set_layout=ds_layout)
+        ctx=e.ctx, color_format=color_format, descriptor_set_layout=ds_layout)
 
     if robj.bindings !== nothing
         Mantle.use_bindings!(e, compiled, robj.bindings)

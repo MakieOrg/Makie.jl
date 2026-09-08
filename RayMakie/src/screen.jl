@@ -166,7 +166,7 @@ Base.wait(screen::Screen) = !isnothing(screen.rendertask) && wait(screen.rendert
 """Get or create the screen's dedicated graphics VulkanBatchQueue."""
 function get_gfx_bq!(screen::Screen)
     if screen.gfx_bq === nothing
-        screen.gfx_bq = Mantle.allocate_batch_queue!()
+        screen.gfx_bq = Mantle.allocate_batch_queue!(screen.config.device)
     end
     return screen.gfx_bq::Mantle.BatchQueue
 end
@@ -866,7 +866,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
     end
 
     screen.stop_renderloop[] = false
-    present_bq = Mantle.allocate_batch_queue!()
+    present_bq = Mantle.allocate_batch_queue!(screen.config.device)
 
     screen.rendertask = @async begin
         yield()
