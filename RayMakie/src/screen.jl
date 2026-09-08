@@ -163,10 +163,16 @@ end
 
 Base.wait(screen::Screen) = !isnothing(screen.rendertask) && wait(screen.rendertask)
 
-"""Get or create the screen's dedicated graphics VulkanBatchQueue."""
+"""
+Get or create the screen's dedicated graphics queue.
+
+Takes the screen's DEVICE. The call was argument-free, which only the Vulkan
+backend answers — it reaches for the implicit global context — so on any other
+backend this was a `MethodError` the first time a screen needed a queue.
+"""
 function get_gfx_bq!(screen::Screen)
     if screen.gfx_bq === nothing
-        screen.gfx_bq = Mantle.allocate_batch_queue!()
+        screen.gfx_bq = Mantle.allocate_batch_queue!(screen.config.device)
     end
     return screen.gfx_bq::Mantle.BatchQueue
 end
@@ -866,7 +872,9 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
     end
 
     screen.stop_renderloop[] = false
-    present_bq = Mantle.allocate_batch_queue!()
+    # The screen's device, not the implicit global context: only the Vulkan
+    # backend answers the argument-free form.
+    present_bq = Mantle.allocate_batch_queue!(screen.config.device)
 
     screen.rendertask = @async begin
         yield()
