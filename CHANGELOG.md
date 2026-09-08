@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Improved window resize performance in GLMakie, especially noticeable with many plot objects [#5431](https://github.com/MakieOrg/Makie.jl/pull/5431)
 
 - Fixed a segfault in CairoMakie when saving a vector graphic (pdf, svg, eps) of a figure while recording it with a `VideoStream` [#5772](https://github.com/MakieOrg/Makie.jl/pull/5772).
 - Added support for exporting .mov video files. Transparent-background rendering for .mov outputs is now supported [#5764](https://github.com/MakieOrg/Makie.jl/pull/5764).
