@@ -18,23 +18,21 @@ import Makie.Observables
 # into, the textures, the queue, the host array. All of it needs one.
 #
 # It was all `Lava` until 2026-08-27, when the runtime moved out of the compiler.
-import Lava
-# The shader half: stage intrinsics a shader BODY calls, and the device-side
-# array. Lava is the Julia→SPIR-V compiler and needs no device, so importing it
-# here costs nothing on a machine with no Vulkan loader.
+# DELETED in phase 1.5: see Mantle/docs/mantle-owns-it.md
 #
-# `Premultiplied`, `NoCull` and `DepthOff` are NOT in this list any more: blend,
-# cull and depth state describe a pipeline rather than compile one, so they moved
-# to Mantle with the rest of the runtime's vocabulary and are imported below.
-import Lava: vertex_index, instance_index, set_position!, set_point_size!,
-             frag_coord_x, frag_coord_y, gfx_output, gfx_input,
-             gfx_output_flat, gfx_input_flat,
-             dFdx, dFdy,
-             emit_vertex!, end_primitive!, primitive_id_in,
-             sample_texture_2d, LavaDeviceArray, GeometryConfig,
-             LineListAdjacency, LineStripAdjacency, LineList, TriangleStrip, PointList,
-             GfxTexture2D,
-             geom_input, geom_input_position
+# `import Lava` and the 26 shader names taken from it. The comment that stood
+# here claimed "Lava is the Julia→SPIR-V compiler and needs no device, so
+# importing it here costs nothing on a machine with no Vulkan loader". That
+# contract held until Lava depended on Vulkan again, and then this line was
+# what stopped RayMakie loading on a Mac.
+#
+# Nine of the 26 (`vertex_index`, `frag_coord_*`, the topologies) Mantle already
+# declared, so they were being taken from the wrong package even while it
+# worked. Seven more — `set_position!`, `gfx_output`/`gfx_input` and their flat
+# variants, `geom_input`, `geom_input_position` — are Lava's older
+# location-based varying API, which Mantle's declarative `varyings = (…)` and a
+# vertex stage returning `(position = …, …)` replace outright. Phase 2.8 ports
+# the shaders rather than porting the names.
 import Mantle
 # The runtime half, and all of it Mantle's portable spelling. These used to be
 # `VulkanFramebuffer` / `VulkanTexture2D` / `VulkanSampler` / `VulkanBatchQueue`

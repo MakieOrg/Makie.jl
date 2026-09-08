@@ -37,7 +37,7 @@ end
 # Draw a single LavaRenderObject inside the active render pass
 # =============================================================================
 
-function draw_lava_renderobject!(screen, e, robj::LavaRenderObject, viewport, color_format, default_vp)
+function draw_renderobject!(screen, e, robj::LavaRenderObject, viewport, color_format, default_vp)
     # `Mantle.set_viewport!` takes plain numbers and derives the scissor —
     # including the clamping a flipped (negative-height) viewport needs. That
     # arithmetic used to live here, spelled in `VK.Viewport`/`VK.Rect2D`, which
@@ -177,7 +177,7 @@ function render_overlays_gfx!(screen, e, target; scenes=nothing)
 
     fmt = target isa Mantle.WindowTarget ? target.window.format : target.fb.color_format
     for (robj, robj_vp) in robjs
-        draw_lava_renderobject!(screen, e, robj, robj_vp, fmt, default_vp)
+        draw_renderobject!(screen, e, robj, robj_vp, fmt, default_vp)
     end
 
     Mantle.end_pass!(e)
