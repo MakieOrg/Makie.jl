@@ -223,16 +223,24 @@ function positivize(r::Rect2)
     return Rect2(Point2(newori), Vec2(newwidths))
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
-    if ispressed(ax.scene, ax.recomputelimitskey[])
+function limit_reset_waspressed(lr::LimitReset, ax, idx, keys)
+    state = ispressed(ax.scene, keys)
+    processed = lr.prev_pressed[idx] && !state
+    lr.prev_pressed[idx] = state
+    return processed
+end
+
+function process_interaction(lr::LimitReset, event, ax::Axis)
+    processed = false
+    if limit_reset_waspressed(lr, ax, 1, ax.recomputelimitskey[])
         autolimits!(ax)
-        return Consume(true)
-    elseif ispressed(ax.scene, ax.resetlimitskey[])
-        reset_limits!(ax)
-        return Consume(true)
-    else
-        return Consume(false)
+        processed = true
     end
+    if limit_reset_waspressed(lr, ax, 2, ax.resetlimitskey[])
+        reset_limits!(ax)
+        processed = true
+    end
+    return Consume(processed)
 end
 
 
@@ -518,23 +526,25 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
     return Consume(true)
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
-    if ispressed(ax.scene, ax.recomputelimitskey[])
+function process_interaction(lr::LimitReset, event::MouseEvent, ax::Axis3)
+    processed = false
+    if limit_reset_waspressed(lr, ax, 1, ax.recomputelimitskey[])
         ax.zoom_mult[] = 1.0
         autolimits!(ax)
-        return Consume(true)
-    elseif ispressed(ax.scene, ax.resetlimitskey[])
+        processed = true
+    end
+    if limit_reset_waspressed(lr, ax, 2, ax.resetlimitskey[])
         ax.zoom_mult[] = 1.0
         reset_limits!(ax)
-        return Consume(true)
-    elseif ispressed(ax.scene, ax.resetrotationkey[])
+        processed = true
+    end
+    if limit_reset_waspressed(lr, ax, 3, ax.resetrotationkey[])
         ax.axis_offset[] = Vec2d(0)
         ax.elevation[] = pi / 8
         ax.azimuth[] = 1.275 * pi
-        return Consume(true)
-    else
-        return Consume(false)
+        processed = true
     end
+    return Consume(processed)
 end
 
 function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}, ax::Axis3)

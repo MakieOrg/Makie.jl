@@ -196,7 +196,10 @@ mutable struct LineAxis
     minortickvalues::Observable{Vector{Float32}}
 end
 
-struct LimitReset end
+struct LimitReset
+    prev_pressed::Vector{Bool}
+end
+LimitReset() = LimitReset(fill(false, 3))
 
 mutable struct RectangleZoom
     callback::Function
@@ -615,7 +618,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         "Button that needs to be pressed to allow scroll zooming."
         zoombutton::IsPressedInputType = true
         "The key (and button) combination for triggering a limit reset (equivalent to `reset_limits!(ax)`)"
-        resetlimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & Mouse.left
+        resetlimitskey::IsPressedInputType = Exclusively((Keyboard.left_control | Keyboard.right_control) & Mouse.left)
         "The key (and button) combination for triggering a limit recalculation (equivalent to `autolimits!(ax)`)"
         recomputelimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
 
@@ -2145,7 +2148,7 @@ end
         """
         zoommode::Symbol = :center
         "The key (and button) combination for triggering a limit reset (equivalent to `reset_limits!(ax)`)"
-        resetlimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & Mouse.left
+        resetlimitskey::IsPressedInputType = Exclusively((Keyboard.left_control | Keyboard.right_control) & Mouse.left)
         "The key (and button) combination for triggering a rotation reset (sets `elevation` and `azimuth` to its default values)"
         resetrotationkey::IsPressedInputType = (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
         "The key (and button) combination for triggering a limit recalculation (equivalent to `autolimits!(ax)`)"
