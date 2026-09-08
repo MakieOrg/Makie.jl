@@ -131,7 +131,7 @@ wants_hw_accel(integrator) = integrator isa Hikari.VolPath && integrator.hw_acce
 
 # =============================================================================
 # Legacy Overlay Render Objects (kept for backward compat during transition)
-# All new draw_atomic methods produce LavaRenderObject instead.
+# All new draw_atomic methods produce RenderObject instead.
 # =============================================================================
 
 abstract type OverlayRenderObject end

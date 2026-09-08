@@ -1,7 +1,7 @@
 # =============================================================================
 # draw_atomic for Makie.Image and Makie.Heatmap
 # =============================================================================
-# Creates a LavaRenderObject with a textured quad pipeline.
+# Creates a RenderObject with a textured quad pipeline.
 # Pipeline and texture are created once, updated in-place on data changes.
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Makie.Heatmap})
@@ -53,7 +53,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
         # Get root resolution for viewport
         root_w, root_h = size(screen.state.makie_scene)
 
-        if !isnothing(last) && last.trace_renderobject isa LavaRenderObject
+        if !isnothing(last) && last.trace_renderobject isa RenderObject
             # UPDATE existing render object
             robj = last.trace_renderobject
             robj.uniforms[:screen_bl] = Vec2f(p_bl)
@@ -66,7 +66,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
 
         # CREATE new render object
         pipeline = get_image_pipeline!(screen)
-        robj = LavaRenderObject(pipeline;
+        robj = RenderObject(pipeline;
             arg_names = (:screen_bl, :screen_tr, :res),
             uniforms = Dict{Symbol, Any}(
                 :screen_bl => Vec2f(p_bl),

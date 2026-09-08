@@ -1,7 +1,7 @@
 # =============================================================================
 # draw_atomic for Lines and LineSegments — GLMakie-style graphics pipeline
 # =============================================================================
-# Uses register_computation! to create LavaRenderObject once, update on changes.
+# Uses register_computation! to create RenderObject once, update on changes.
 # No compute shaders — vertex/geometry/fragment pipeline only.
 # Matching GLMakie's plot-primitives.jl data flow exactly.
 
@@ -34,7 +34,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         return (lines_sumlengths(positions, resolution),)
     end
 
-    # Build LavaRenderObject: create once, update buffers on changes
+    # Build RenderObject: create once, update buffers on changes
     register_computation!(
         attr,
         [:positions_transformed_f32c, :trace_gl_indices, :trace_gl_valid_vertex,
@@ -65,7 +65,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         linestyle = to_value(args.linestyle)
         pat_length = 0f0
 
-        if !isnothing(cached) && cached.trace_renderobject isa LavaRenderObject
+        if !isnothing(cached) && cached.trace_renderobject isa RenderObject
             robj = cached.trace_renderobject
             # Only re-upload buffers when data inputs changed (not just camera)
             data_changed = changed.positions_transformed_f32c ||
@@ -118,7 +118,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         # CREATE new render object
         pipeline = get_lines_pipeline!(screen)
         backend = screen.config.device
-        robj = LavaRenderObject(pipeline;
+        robj = RenderObject(pipeline;
             backend,
             arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
                          :projectionview, :model, :px_per_unit, :depth_shift,
@@ -195,7 +195,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
         return (zeros(Float32, length(positions)),)
     end
 
-    # Build LavaRenderObject (same pattern as Lines)
+    # Build RenderObject (same pattern as Lines)
     register_computation!(
         attr,
         [:positions_transformed_f32c, :trace_gl_indices, :trace_gl_valid_vertex,
@@ -227,7 +227,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
             lc === :butt ? Int32(0) : lc === :square ? Int32(1) : lc === :round ? Int32(2) : Int32(0)
         end
 
-        if !isnothing(cached) && cached.trace_renderobject isa LavaRenderObject
+        if !isnothing(cached) && cached.trace_renderobject isa RenderObject
             robj = cached.trace_renderobject
             update_buffer!(robj, :vertex, vertex_data)
             update_buffer!(robj, :color, color_data)
@@ -246,7 +246,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
 
         pipeline = get_lines_pipeline!(screen)
         backend = screen.config.device
-        robj = LavaRenderObject(pipeline;
+        robj = RenderObject(pipeline;
             backend,
             arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
                          :projectionview, :model, :px_per_unit, :depth_shift,

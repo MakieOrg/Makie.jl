@@ -49,11 +49,11 @@ end
 #   location 3: g_thickness (float)
 
 function lines_vertex(
-    vertex::LavaDeviceArray{Vec3f, 1},      # per-vertex position (f32c transformed)
-    color::LavaDeviceArray{Vec4f, 1},       # per-vertex RGBA color
-    lastlen::LavaDeviceArray{Float32, 1},   # cumulative screen-space length
-    valid_vertex::LavaDeviceArray{Float32, 1}, # 0/1/2 validity flag
-    thickness::LavaDeviceArray{Float32, 1}, # per-vertex linewidth
+    vertex::DeviceArray{Vec3f, 1},      # per-vertex position (f32c transformed)
+    color::DeviceArray{Vec4f, 1},       # per-vertex RGBA color
+    lastlen::DeviceArray{Float32, 1},   # cumulative screen-space length
+    valid_vertex::DeviceArray{Float32, 1}, # 0/1/2 validity flag
+    thickness::DeviceArray{Float32, 1}, # per-vertex linewidth
     projectionview::Mat4f,
     model::Mat4f,
     px_per_unit::Float32,
@@ -89,11 +89,11 @@ end
 # Computes miter/bevel joints, extrusions, SDFs. Emits triangle strip (4 verts).
 
 function lines_geometry(
-    vertex::LavaDeviceArray{Vec3f, 1},
-    color::LavaDeviceArray{Vec4f, 1},
-    lastlen::LavaDeviceArray{Float32, 1},
-    valid_vertex::LavaDeviceArray{Float32, 1},
-    thickness::LavaDeviceArray{Float32, 1},
+    vertex::DeviceArray{Vec3f, 1},
+    color::DeviceArray{Vec4f, 1},
+    lastlen::DeviceArray{Float32, 1},
+    valid_vertex::DeviceArray{Float32, 1},
+    thickness::DeviceArray{Float32, 1},
     projectionview::Mat4f,
     model::Mat4f,
     px_per_unit::Float32,
@@ -345,11 +345,11 @@ end
 
 function lines_fragment(
     # BDA args (same signature as vertex/geometry — Lava passes all args to all stages)
-    vertex::LavaDeviceArray{Vec3f, 1},
-    color::LavaDeviceArray{Vec4f, 1},
-    lastlen::LavaDeviceArray{Float32, 1},
-    valid_vertex::LavaDeviceArray{Float32, 1},
-    thickness::LavaDeviceArray{Float32, 1},
+    vertex::DeviceArray{Vec3f, 1},
+    color::DeviceArray{Vec4f, 1},
+    lastlen::DeviceArray{Float32, 1},
+    valid_vertex::DeviceArray{Float32, 1},
+    thickness::DeviceArray{Float32, 1},
     projectionview::Mat4f,
     model::Mat4f,
     px_per_unit::Float32,

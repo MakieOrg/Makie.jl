@@ -1,5 +1,5 @@
 # =============================================================================
-# Overlay Rendering — draws LavaRenderObjects via Lava graphics pipeline
+# Overlay Rendering — draws RenderObjects via Lava graphics pipeline
 # =============================================================================
 
 # `e` is the EMITTER of the closed command buffer the overlays go into — a
@@ -34,10 +34,10 @@ function render_subscene_backgrounds!(postprocess, root_scene)
 end
 
 # =============================================================================
-# Draw a single LavaRenderObject inside the active render pass
+# Draw a single RenderObject inside the active render pass
 # =============================================================================
 
-function draw_renderobject!(screen, e, robj::LavaRenderObject, viewport, color_format, default_vp)
+function draw_renderobject!(screen, e, robj::RenderObject, viewport, color_format, default_vp)
     # `Mantle.set_viewport!` takes plain numbers and derives the scissor —
     # including the clamping a flipped (negative-height) viewport needs. That
     # arithmetic used to live here, spelled in `VK.Viewport`/`VK.Rect2D`, which
@@ -79,7 +79,7 @@ function draw_renderobject!(screen, e, robj::LavaRenderObject, viewport, color_f
 end
 
 # =============================================================================
-# Main render pass — collect and draw all LavaRenderObjects
+# Main render pass — collect and draw all RenderObjects
 # =============================================================================
 
 """
@@ -98,7 +98,7 @@ render objects and then nobody drew them, which is also why an `Axis3` came out
 with no spines, ticks or labels.
 """
 function collect_overlay_robjs(state::RayMakieState; scenes = nothing)
-    robjs = Tuple{LavaRenderObject, NTuple{4, Float32}}[]
+    robjs = Tuple{RenderObject, NTuple{4, Float32}}[]
 
     overlay_scenes = if scenes !== nothing
         scenes
@@ -129,7 +129,7 @@ function collect_overlay_robjs(state::RayMakieState; scenes = nothing)
                            plot = typeof(ap), exception = (e, catch_backtrace()), maxlog = 1)
                     return nothing
                 end
-                robj isa LavaRenderObject && robj.visible && push!(robjs, (robj, vp_rect))
+                robj isa RenderObject && robj.visible && push!(robjs, (robj, vp_rect))
                 return nothing
             end
         end
