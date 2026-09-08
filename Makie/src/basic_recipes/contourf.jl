@@ -156,28 +156,6 @@ function calculate_contourf_polys!(
     return (polys, colors)
 end
 
-
-function compute_contourf_colormap(levels, cmap, elow, ehigh)
-    levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
-    n = length(levels_scaled)
-
-    _cmap = to_colormap(cmap)
-
-    if elow === :auto && ehigh !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical = true)[2:end]
-        cm = cgrad(cm_base, levels_scaled; categorical = true)
-    elseif ehigh === :auto && elow !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical = true)[1:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical = true)
-    elseif ehigh === :auto && elow === :auto
-        cm_base = cgrad(_cmap, n + 2; categorical = true)[2:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical = true)
-    else
-        cm = cgrad(_cmap, levels_scaled; categorical = true)
-    end
-    return cm
-end
-
 function compute_lowcolor(el, cmap)
     if isnothing(el)
         return RGBAf(0, 0, 0, 0)
@@ -210,9 +188,26 @@ function register_contourf_computations!(graph, argname)
         end
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
+    map!(edges -> length(edges) - 1, graph, :computed_levels, :nlevels)
 
     map!(extrema_nan, graph, :computed_levels, :computed_colorrange)
-    map!(compute_contourf_colormap, graph, [:computed_levels, :colormap, :extendlow, :extendhigh], :computed_colormap)
+    map!(graph, [:nlevels, :colormap, :extendlow, :extendhigh], :base_colormap) do n, cmap, elow, ehigh
+        _cmap = to_colormap(cmap)
+
+        if elow === :auto && ehigh !== :auto
+            return cgrad(_cmap, n + 1; categorical = true)[2:end]
+        elseif ehigh === :auto && elow !== :auto
+            return cgrad(_cmap, n + 1; categorical = true)[1:(end - 1)]
+        elseif ehigh === :auto && elow === :auto
+            return cgrad(_cmap, n + 2; categorical = true)[2:(end - 1)]
+        else
+            return _cmap
+        end
+    end
+    map!(graph, [:base_colormap, :computed_levels], :computed_colormap) do base_cmap, edges
+        edges_scaled = (edges .- minimum(edges)) ./ (maximum(edges) - minimum(edges))
+        return cgrad(base_cmap, edges_scaled; categorical = true)
+    end
     map!(compute_lowcolor, graph, [:extendlow, :colormap], :computed_lowcolor)
     map!(compute_highcolor, graph, [:extendhigh, :colormap], :computed_highcolor)
 
