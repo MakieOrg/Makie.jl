@@ -2,8 +2,13 @@
 # Overlay Rendering — draws LavaRenderObjects via Lava graphics pipeline
 # =============================================================================
 
-function render_overlays!(screen, bq, target; scenes=nothing)
-    render_overlays_gfx!(screen, bq, target; scenes)
+# `e` is the EMITTER of the closed command buffer the overlays go into — a
+# frame's one-shot in the render loop, an overlay one-shot in `colorbuffer` —
+# not a queue. It used to take the queue and draw into whatever batch the queue
+# had open; a queue holds nothing open any more (Mantle, step 7), so the caller
+# opens the buffer and this writes into it.
+function render_overlays!(screen, e, target; scenes=nothing)
+    render_overlays_gfx!(screen, e, target; scenes)
 end
 
 # =============================================================================
@@ -32,17 +37,15 @@ end
 # Draw a single LavaRenderObject inside the active render pass
 # =============================================================================
 
-function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRenderObject, viewport, color_format, default_vp)
-    batch = bq.active_batch
-
+function draw_lava_renderobject!(screen, e, robj::LavaRenderObject, viewport, color_format, default_vp)
     # `Mantle.set_viewport!` takes plain numbers and derives the scissor —
     # including the clamping a flipped (negative-height) viewport needs. That
     # arithmetic used to live here, spelled in `VK.Viewport`/`VK.Rect2D`, which
     # is how a renderer ended up owning a driver's rectangle rules.
     if viewport !== nothing
-        Mantle.set_viewport!(bq, viewport...)
+        Mantle.set_viewport!(e, viewport...)
     else
-        Mantle.set_viewport!(bq, default_vp...)
+        Mantle.set_viewport!(e, default_vp...)
     end
 
     args = build_args(robj)
@@ -53,23 +56,25 @@ function draw_lava_renderobject!(screen, bq::Mantle.BatchQueue, robj::LavaRender
         color_format=color_format, descriptor_set_layout=ds_layout)
 
     if robj.bindings !== nothing
-        Mantle.use_bindings!(bq, compiled, robj.bindings)
+        Mantle.use_bindings!(e, compiled, robj.bindings)
     end
 
-    push_data = vulkanbackend().pack_gfx_args(bq, args, vert_shader.push_info)
+    # The argument bytes belong to the buffer being written (`e.owner`): given
+    # back when its submission has passed, which is when the draw is done with them.
+    push_data = vulkanbackend().pack_gfx_args(e.owner, args, vert_shader.push_info)
 
     if haskey(robj.buffers, :indices)
         ib = robj.buffers[:indices]
-        Mantle.draw_indexed_in_pass!(bq, compiled, length(ib);
+        Mantle.draw_indexed_in_pass!(e, compiled, length(ib);
             push_data=push_data, indices_buffer=ib.buf[].buffer)
     else
-        Mantle.draw_in_pass!(bq, compiled, robj.vertex_count;
+        Mantle.draw_in_pass!(e, compiled, robj.vertex_count;
             push_data=push_data, instances=robj.instances)
     end
 
-    vulkanbackend().pin!(batch, compiled)
+    vulkanbackend().pin!(e, compiled)
     for (_, buf) in robj.buffers
-        vulkanbackend().pin!(batch, buf)
+        vulkanbackend().pin!(e, buf)
     end
 end
 
@@ -133,21 +138,22 @@ function collect_overlay_robjs(state::RayMakieState; scenes = nothing)
 end
 
 """
-    render_overlays_gfx!(screen, target; scenes=nothing)
+    render_overlays_gfx!(screen, e, target; scenes=nothing)
 
 Render overlay plots (scatter, lines, text, mesh) via the Lava graphics pipeline
-directly onto `target` (a `WindowTarget` or `OffscreenTarget`).
+directly onto `target` (a `WindowTarget` or `OffscreenTarget`), into the closed
+command buffer `e` emits into.
 
 When `scenes` is provided, only plots from those scenes are rendered (used for
 uncovered overlay rendering). Otherwise, uses the current screen state's scene.
 """
-function render_overlays_gfx!(screen, bq, target; scenes=nothing)
+function render_overlays_gfx!(screen, e, target; scenes=nothing)
     state = screen.state
     robjs = collect_overlay_robjs(state; scenes)
 
     isempty(robjs) && return
 
-    # Render directly to target using the provided BatchQueue
+    # Render directly to target, into the caller's command buffer
 
     if target isa Mantle.WindowTarget
         win = target.window
@@ -162,17 +168,17 @@ function render_overlays_gfx!(screen, bq, target; scenes=nothing)
     end
 
     # No clear — overlays are alpha-blended on top of existing content
-    Mantle.begin_pass!(bq, view, image, w, h; clear_color=nothing)
+    Mantle.begin_pass!(e, view, image, w, h; clear_color=nothing)
 
     # Y-flipped: negative height puts clip-space +Y at the top, matching Makie's
     # pixel convention. `set_viewport!` derives the scissor from exactly this.
     default_vp = (0f0, Float32(h), Float32(w), -Float32(h))
-    Mantle.set_viewport!(bq, default_vp...)
+    Mantle.set_viewport!(e, default_vp...)
 
     fmt = target isa Mantle.WindowTarget ? target.window.format : target.fb.color_format
     for (robj, robj_vp) in robjs
-        draw_lava_renderobject!(screen, bq, robj, robj_vp, fmt, default_vp)
+        draw_lava_renderobject!(screen, e, robj, robj_vp, fmt, default_vp)
     end
 
-    Mantle.end_pass!(bq)
+    Mantle.end_pass!(e)
 end

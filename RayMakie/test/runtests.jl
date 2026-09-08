@@ -107,6 +107,7 @@ const TEST_FILES = [
     "test_recolor_keeps_blas.jl",
     "test_transform_update_hwtlas.jl",
     "test_update_paths.jl",
+    "test_render_allocates_nothing.jl",
     # Leak / GC regressions.
     "test_materials_scene.jl",
 ]
@@ -162,6 +163,7 @@ RayMakie.activate!(; device = BACKEND)
 const GRAPHICS_TEST_FILES = [
     "test_overlay_compositing.jl",
     "test_figure_scene_routing.jl",
+    "test_window_frame.jl",
 ]
 
 @testset "RayMakie" begin
@@ -178,6 +180,12 @@ const GRAPHICS_TEST_FILES = [
     # build a `BatchQueue` out of, so `allocate_batch_queue!` throws there by
     # design. Asking the wrong question sends this straight into that throw.
     if Mantle.supports_batch_queue(BACKEND)
+        # `test_materials_scene.jl` activates the CPU backend for its own
+        # renders and leaves it active, so every screen the graphics files make
+        # without naming a device — `make_screen(sc)` in the overlay file — was
+        # a CPU screen: no overlays drawn, and `HWTLAS(::CPU)` had no method
+        # (2026-09-08). Put the GPU back before them.
+        RayMakie.activate!(; device = BACKEND)
         for fname in GRAPHICS_TEST_FILES
             @testset "$fname" begin
                 include(joinpath(@__DIR__, fname))

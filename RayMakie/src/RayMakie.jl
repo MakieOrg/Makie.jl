@@ -43,7 +43,7 @@ import Mantle
 # abstract types are Mantle's; the backend supplies the concretes.
 import Mantle: GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
                Texture2D, Sampler, SampledTexture, bind_textures,
-               ensure_active_batch!, transition_image!,
+               transition_image!,
                BatchQueue, allocate_batch_queue!, release_batch_queue!,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
@@ -686,8 +686,16 @@ function poll_all_plots(screen, mscene)
         pp = Makie.parent_scene(p)
         pp.visible[] || return nothing
         if haskey(p, :trace_renderobject)
+            # Resolve only what is dirty. Reading the node resolves it AND hands
+            # back its value, and the value is a render object whose material
+            # is a large isbits struct: through a `Computed` that read boxed
+            # it, one box per plot per sample, for a scene where nothing had
+            # changed — 7 KB a sample on the materials scene. `isdirty` is the
+            # same question without the value.
+            c = p[:trace_renderobject]
+            Makie.ComputePipeline.isdirty(c) || return nothing
             try
-                p[:trace_renderobject][]  # triggers resolution if dirty
+                c[]  # triggers resolution
             catch e
                 oid = objectid(p)
                 if oid ∉ POLL_ERROR_LOGGED

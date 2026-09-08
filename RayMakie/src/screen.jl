@@ -455,25 +455,40 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
         state.needs_film_clear = false
     end
 
-    camera = state.camera[]
-
     # Fill auxiliary buffers if denoising is enabled (before main render)
     if screen.config.denoise
         adapted_scene = Adapt.adapt(screen.config.device, state.hikari_scene)
-        Hikari.fill_aux_buffers!(state.film, adapted_scene, camera)
+        Hikari.fill_aux_buffers!(state.film, adapted_scene, state.camera[])
     end
 
-    # Render: VolPath uses render!() for one sample, SamplerIntegrators use functor call
+    tracesample!(integrator, state.hikari_scene, state.film, state.camera, finalize_framebuffer)
     if integrator isa Hikari.VolPath
-        Hikari.render!(integrator, state.hikari_scene, state.film, camera;
-                       finalize_framebuffer=finalize_framebuffer)
         # Save back integrator state (may have been newly created)
         state.integrator_state = integrator.state
-    else
-        integrator(state.hikari_scene, state.film, camera)
     end
 
     return state.film
+end
+
+# One dynamic dispatch per sample, and on heap objects only. `RayMakieState`
+# types its scene and its camera observable loosely (the scene's type carries
+# the backend's arrays, the observable's carries the camera type), so a call
+# made from `render!` with `state.camera[]` already in hand was dynamic with a
+# 684-byte isbits camera among its arguments — boxed, every sample — and it
+# forwarded its keyword through a boxed NamedTuple. Here every type is
+# concrete: the observable read is typed, the call is static, and the flag is
+# a plain argument.
+function tracesample!(integrator::Hikari.VolPath, scene::Hikari.AbstractScene,
+                      film::Hikari.Film, camera::Observable, finalize::Bool)
+    # VolPath renders one sample per call.
+    Hikari.render!(integrator, scene, film, camera[]; finalize_framebuffer = finalize)
+    return nothing
+end
+function tracesample!(integrator::Hikari.Integrator, scene::Hikari.AbstractScene,
+                      film::Hikari.Film, camera::Observable, ::Bool)
+    # A SamplerIntegrator renders all its samples in one functor call.
+    integrator(scene, film, camera[])
+    return nothing
 end
 
 function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
@@ -666,12 +681,11 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
             else
                 render!(screen)
             end
-            # Synchronize every sample to prevent command buffer overflow.
-            # Heavy scenes (volumetrics, many materials) can generate thousands of
-            # dispatches per sample. Without sync, these accumulate and cause DEVICE_LOST.
-            if i < samples
-                KernelAbstractions.synchronize(screen.config.device)
-            end
+            # No wait between samples. Each sample is one closed submission of
+            # the integrator's recorded plan, and the queue orders them; a
+            # device wait here only idled the GPU between samples (and let it
+            # downclock). It dated from an open command buffer that accumulated
+            # every dispatch until something flushed it, which no longer exists.
         end
     end
     # Check if any overlay rendering is needed. Overlays require the slow path:
@@ -700,14 +714,19 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         w, h = size(screen.output_buffer, 2), size(screen.output_buffer, 1)
         fb = Mantle.Framebuffer(screen.config.device, w, h; depth=false, color_format=COMPOSITE_FORMAT)
         bq = get_gfx_bq!(screen)
-        Mantle.blit!(bq, Mantle.OffscreenTarget(fb), screen.output_buffer; clear=false)
-        for scene_state in screen.scene_states
-            screen.state = scene_state
-            poll_all_plots(screen, scene_state.makie_scene)
-            render_overlays!(screen, bq, Mantle.OffscreenTarget(fb))
+        target = Mantle.OffscreenTarget(fb)
+        Mantle.blit!(bq, target, screen.output_buffer; clear=false)
+        # The overlays go into one closed buffer of their own, submitted on the
+        # way out; the readback below is a later submission on the same queue,
+        # ordered behind it, and waits for its own copy. Nothing to flush and
+        # nothing to wait for here — the queue holds nothing open.
+        vulkanbackend().oneshot!(bq; tag = :overlays) do e
+            for scene_state in screen.scene_states
+                screen.state = scene_state
+                poll_all_plots(screen, scene_state.makie_scene)
+                render_overlays!(screen, e, target)
+            end
         end
-        Mantle.flush!(bq)
-        Mantle.waitidle(screen.config.device)
 
         # Readback framebuffer (has TRANSFER_SRC_BIT, unlike swapchain images)
         pixels = Mantle.readback_framebuffer(fb)
@@ -774,6 +793,35 @@ function Base.display(screen::Screen, scene::Scene; figure = nothing, display_kw
 end
 
 """
+    present_composited!(screen, bq, win)
+
+One frame to the window: acquire an image, blit the composited output buffer
+onto it, draw every scene's overlays over that, and present.
+
+One closed command buffer, made with `oneshot` and handed to `present_frame!`,
+because that is what a frame IS to the swapchain: the blit, the overlays and
+the transition to `PRESENT_SRC` in one submission, waiting on the image and
+signalling the present. It used to be three calls each drawing into whatever
+the queue had open and a `present_frame!` that took that batch over; the queue
+holds nothing open any more (Mantle, step 7).
+"""
+function present_composited!(screen::Screen, bq, win)
+    Mantle.acquire_next_image!(win)
+    win_target = Mantle.WindowTarget(win)
+    frame = vulkanbackend().oneshot(bq) do e
+        Mantle.blit!(e, win_target, screen.output_buffer; clear=false)
+        for ss in screen.scene_states
+            screen.state = ss
+            poll_all_plots(screen, ss.makie_scene)
+            render_overlays!(screen, e, win_target)
+        end
+        vulkanbackend().presentready!(e, win)
+    end
+    Mantle.present_frame!(bq, win, frame)
+    return nothing
+end
+
+"""
     start_renderloop!(screen::Screen, root_scene::Scene)
 
 Open a GLFW window and start an async render loop. Called automatically by
@@ -831,15 +879,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
             KernelAbstractions.synchronize(screen.config.device)
 
-            Mantle.acquire_next_image!(win)
-            Mantle.blit!(present_bq, Mantle.WindowTarget(win), screen.output_buffer; clear=false)
-            win_target = Mantle.WindowTarget(win)
-            for ss in screen.scene_states
-                screen.state = ss
-                poll_all_plots(screen, ss.makie_scene)
-                render_overlays!(screen, present_bq, win_target)
-            end
-            Mantle.present_frame!(present_bq, win)
+            present_composited!(screen, present_bq, win)
             Mantle.waitidle(screen.config.device)
 
             while !screen.stop_renderloop[]
@@ -869,17 +909,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
 
                 screen.stop_renderloop[] && break
 
-                Mantle.acquire_next_image!(win)
-                Mantle.blit!(present_bq, Mantle.WindowTarget(win), screen.output_buffer; clear=false)
-
-                win_target = Mantle.WindowTarget(win)
-                for ss in screen.scene_states
-                    screen.state = ss
-                    poll_all_plots(screen, ss.makie_scene)
-                    render_overlays!(screen, present_bq, win_target)
-                end
-
-                Mantle.present_frame!(present_bq, win)
+                present_composited!(screen, present_bq, win)
                 Mantle.waitidle(screen.config.device)
 
                 # Cache composited frame for colorbuffer() to return without blocking.
