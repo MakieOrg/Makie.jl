@@ -48,6 +48,24 @@ end
 #   location 2: g_valid_vertex (float, passed as float to avoid int varying issues)
 #   location 3: g_thickness (float)
 
+# What the vertex stage hands the geometry stage, per input vertex. A
+# `LineStripAdjacency` primitive is four of them, read back as `prim.<name>[i]`.
+const LINES_VERTEX_OUT = (colour = Vec4f, lastlen = Float32,
+                          valid = Float32, thickness = Float32)
+
+# What the geometry stage hands the fragment stage. The first four vary across
+# the quad; the ten `Flat` ones are the SEGMENT's and are computed once before the
+# emit loop, so they are written once per triangle instead of four times.
+# GLMakie's lines.geom wrote all fourteen per vertex because a geometry shader
+# offers no other way, and this file did the same through `gfx_output_flat`.
+const LINES_GEOM_OUT = (quad_sdf = Vec3f, truncation = Vec2f, linestart = Float32,
+                        linelength = Float32,
+                        extrusion = Flat{Vec2f}, linewidth = Flat{Float32},
+                        pattern_overwrite = Flat{Vec4f}, color1 = Flat{Vec4f},
+                        color2 = Flat{Vec4f}, alpha_weight = Flat{Float32},
+                        cumulative_length = Flat{Float32}, capmode = Flat{Vec2f},
+                        linepoints = Flat{Vec4f}, miter_vecs = Flat{Vec4f})
+
 function lines_vertex(
     vertex::DeviceArray{Vec3f, 1},      # per-vertex position (f32c transformed)
     color::DeviceArray{Vec4f, 1},       # per-vertex RGBA color
@@ -72,14 +90,11 @@ function lines_vertex(
     # Project: projectionview * model * position
     clip = projectionview * model * Vec4f(pos[1], pos[2], pos[3], 1f0)
     clip = Vec4f(clip[1], clip[2], clip[3] + clip[4] * depth_shift, clip[4])
-    set_position!(clip)
-
-    # Forward per-vertex data as varyings
-    gfx_output(0, color[vid])
-    gfx_output(1, px_per_unit * lastlen[vid])
-    gfx_output(2, valid_vertex[vid])
-    gfx_output(3, px_per_unit * thickness[vid])
-    return nothing
+    return (position = Vec4f(clip[1], clip_y(clip[2]), clip[3], clip[4]),
+            colour = color[vid],
+            lastlen = px_per_unit * lastlen[vid],
+            valid = valid_vertex[vid],
+            thickness = px_per_unit * thickness[vid])
 end
 
 # =============================================================================
@@ -89,6 +104,7 @@ end
 # Computes miter/bevel joints, extrusions, SDFs. Emits triangle strip (4 verts).
 
 function lines_geometry(
+    gs, prim,
     vertex::DeviceArray{Vec3f, 1},
     color::DeviceArray{Vec4f, 1},
     lastlen::DeviceArray{Float32, 1},
@@ -108,26 +124,28 @@ function lines_geometry(
 )
     # Read vertex shader outputs for 4 input vertices (0-based indices)
     # gl_in[i].gl_Position
-    clip_p0 = geom_input_position(0)
-    clip_p1 = geom_input_position(1)
-    clip_p2 = geom_input_position(2)
-    clip_p3 = geom_input_position(3)
+    # Four input vertices: the segment plus a neighbour on each side. One-based
+    # here, where `geom_input_position` counted from zero.
+    clip_p0 = prim.position[1]
+    clip_p1 = prim.position[2]
+    clip_p2 = prim.position[3]
+    clip_p3 = prim.position[4]
 
     # Per-vertex varyings from vertex shader
-    g_color_0 = geom_input(Vec4f, 0, 0)
-    g_color_1 = geom_input(Vec4f, 0, 1)
-    g_color_2 = geom_input(Vec4f, 0, 2)
-    g_color_3 = geom_input(Vec4f, 0, 3)
+    g_color_0 = prim.colour[1]
+    g_color_1 = prim.colour[2]
+    g_color_2 = prim.colour[3]
+    g_color_3 = prim.colour[4]
 
-    g_lastlen_1 = geom_input(Float32, 1, 1)
+    g_lastlen_1 = prim.lastlen[2]
 
-    g_valid_0 = geom_input(Float32, 2, 0)
-    g_valid_1 = geom_input(Float32, 2, 1)
-    g_valid_2 = geom_input(Float32, 2, 2)
-    g_valid_3 = geom_input(Float32, 2, 3)
+    g_valid_0 = prim.valid[1]
+    g_valid_1 = prim.valid[2]
+    g_valid_2 = prim.valid[3]
+    g_valid_3 = prim.valid[4]
 
-    g_thickness_1 = geom_input(Float32, 3, 1)
-    g_thickness_2 = geom_input(Float32, 3, 2)
+    g_thickness_1 = prim.thickness[2]
+    g_thickness_2 = prim.thickness[3]
 
     # Skip zero-width lines
     if g_thickness_1 == 0f0 && g_thickness_2 == 0f0
@@ -270,6 +288,22 @@ function lines_geometry(
     f_cumulative_length = g_lastlen_1
     f_pattern_overwrite = Vec4f(-1f12, 1f0, 1f12, 1f0)
 
+    # The segment's own values. They are `Flat` in `LINES_GEOM_OUT`, so the
+    # emitter writes them once per triangle rather than once per vertex; the loop
+    # below carries them along, it does not recompute them.
+    flat = (extrusion = Vec2f(f_extrusion_x, f_extrusion_y),
+            linewidth = halfwidth,
+            pattern_overwrite = f_pattern_overwrite,
+            color1 = f_color1,
+            color2 = f_color2,
+            alpha_weight = f_alpha_weight,
+            cumulative_length = f_cumulative_length,
+            capmode = Vec2f(Float32(f_capmode_x), Float32(f_capmode_y)),
+            linepoints = Vec4f(f_linepoints_xy[1], f_linepoints_xy[2],
+                               f_linepoints_zw[1], f_linepoints_zw[2]),
+            miter_vecs = Vec4f(f_miter_vecs_xy[1], f_miter_vecs_xy[2],
+                               f_miter_vecs_zw[1], f_miter_vecs_zw[2]))
+
     # Emit 4 vertices (triangle strip): x=0,1 (p1,p2), y=0,1 (-n,+n)
     for x in Int32(0):Int32(1)
         for y in Int32(0):Int32(1)
@@ -297,7 +331,7 @@ function lines_geometry(
             vp = bp + offset
             ndc_x = 2f0 * vp[1] / (px_per_unit * resolution[1]) - 1f0
             ndc_y = 2f0 * vp[2] / (px_per_unit * resolution[2]) - 1f0
-            set_position!(Vec4f(ndc_x, ndc_y, vp[3], 1f0))
+            pos = Vec4f(ndc_x, clip_y(ndc_y), vp[3], 1f0)
 
             VP1 = Vec2f(vp[1] - p1[1], vp[2] - p1[2])
             VP2 = Vec2f(vp[1] - p2[1], vp[2] - p2[2])
@@ -312,29 +346,14 @@ function lines_geometry(
             f_linelength = max(1f0, segment_length - sf * halfwidth * (
                 (x == Int32(0) ? ext_0p : ext_1p) - (x == Int32(0) ? ext_0n : ext_1n)))
 
-            # Interpolated varyings
-            gfx_output(0, quad_sdf)                   # f_quad_sdf
-            gfx_output(1, Vec2f(trunc_x, trunc_y))    # f_truncation
-            gfx_output(2, f_linestart)                 # f_linestart
-            gfx_output(3, f_linelength)                # f_linelength
-
-            # Flat varyings
-            gfx_output_flat(4, Vec2f(f_extrusion_x, f_extrusion_y))
-            gfx_output_flat(5, halfwidth)
-            gfx_output_flat(6, f_pattern_overwrite)
-            gfx_output_flat(7, f_color1)
-            gfx_output_flat(8, f_color2)
-            gfx_output_flat(9, f_alpha_weight)
-            gfx_output_flat(10, f_cumulative_length)
-            gfx_output_flat(11, Vec2f(Float32(f_capmode_x), Float32(f_capmode_y)))
-            gfx_output_flat(12, Vec4f(f_linepoints_xy[1], f_linepoints_xy[2],
-                                       f_linepoints_zw[1], f_linepoints_zw[2]))
-            gfx_output_flat(13, Vec4f(f_miter_vecs_xy[1], f_miter_vecs_xy[2],
-                                       f_miter_vecs_zw[1], f_miter_vecs_zw[2]))
-            emit_vertex!()
+            emit!(gs, merge((position = pos,
+                             quad_sdf = quad_sdf,
+                             truncation = Vec2f(trunc_x, trunc_y),
+                             linestart = f_linestart,
+                             linelength = f_linelength), flat))
         end
     end
-    end_primitive!()
+    endprimitive!(gs)
     return nothing
 end
 
@@ -344,6 +363,7 @@ end
 # Shared by Lines and LineSegments.
 
 function lines_fragment(
+    inputs,
     # BDA args (same signature as vertex/geometry — Lava passes all args to all stages)
     vertex::DeviceArray{Vec3f, 1},
     color::DeviceArray{Vec4f, 1},
@@ -362,22 +382,24 @@ function lines_fragment(
     pattern_length::Float32,
 )
     # Read interpolated varyings
-    f_quad_sdf = gfx_input(Vec3f, 0)
-    f_truncation = gfx_input(Vec2f, 1)
-    f_linestart = gfx_input(Float32, 2)
-    f_linelength = gfx_input(Float32, 3)
+    f_quad_sdf = inputs.quad_sdf
+    f_truncation = inputs.truncation
+    f_linestart = inputs.linestart
+    f_linelength = inputs.linelength
 
     # Read flat varyings
-    f_extrusion = gfx_input_flat(Vec2f, 4)
-    f_linewidth = gfx_input_flat(Float32, 5)
-    f_pattern_overwrite = gfx_input_flat(Vec4f, 6)
-    f_color1 = gfx_input_flat(Vec4f, 7)
-    f_color2 = gfx_input_flat(Vec4f, 8)
-    f_alpha_weight = gfx_input_flat(Float32, 9)
-    f_cumulative_length = gfx_input_flat(Float32, 10)
-    f_capmode_v = gfx_input_flat(Vec2f, 11)
-    f_linepoints = gfx_input_flat(Vec4f, 12)
-    f_miter_vecs = gfx_input_flat(Vec4f, 13)
+    # Flat or not makes no difference HERE: everything arrives by name, and which
+    # plane it came from is the pipeline's business.
+    f_extrusion = inputs.extrusion
+    f_linewidth = inputs.linewidth
+    f_pattern_overwrite = inputs.pattern_overwrite
+    f_color1 = inputs.color1
+    f_color2 = inputs.color2
+    f_alpha_weight = inputs.alpha_weight
+    f_cumulative_length = inputs.cumulative_length
+    f_capmode_v = inputs.capmode
+    f_linepoints = inputs.linepoints
+    f_miter_vecs = inputs.miter_vecs
 
     f_capmode_x = unsafe_trunc(Int32, f_capmode_v[1] + 0.5f0)
     f_capmode_y = unsafe_trunc(Int32, f_capmode_v[2] + 0.5f0)
@@ -392,7 +414,7 @@ function lines_fragment(
 
     if (f_quad_sdf[1] > 0f0 && discard_sdf1 > 0f0) ||
        (f_quad_sdf[2] > 0f0 && discard_sdf2 >= 0f0)
-        gfx_output(0, Vec4f(0f0, 0f0, 0f0, 0f0))
+        return Vec4f(0f0, 0f0, 0f0, 0f0)
         return nothing
     end
 
@@ -448,8 +470,7 @@ function lines_fragment(
     alpha = col[4] * f_alpha_weight * aastep(0f0, -sdf)
 
     # Premultiply
-    gfx_output(0, Vec4f(col[1] * alpha, col[2] * alpha, col[3] * alpha, alpha))
-    return nothing
+    return Vec4f(col[1] * alpha, col[2] * alpha, col[3] * alpha, alpha)
 end
 
 # =============================================================================
@@ -459,10 +480,11 @@ end
 function get_lines_pipeline!(screen)
     get!(screen.gfx_pipelines, :lines) do
         GraphicsPipeline(;
-            vertex = lines_vertex,
-            geometry = (lines_geometry, GeometryConfig(
-                input = LineStripAdjacency(), output = TriangleStrip(), max_vertices = 4)),
-            fragment = lines_fragment,
+            vertex = VertexShader(lines_vertex; outputs = LINES_VERTEX_OUT),
+            geometry = GeometryShader(lines_geometry; outputs = LINES_GEOM_OUT,
+                                      input = LineStripAdjacency(),
+                                      output = TriangleStrip(), max_vertices = 4),
+            fragment = FragmentShader(lines_fragment),
             blend = Premultiplied(),
             # STRIP, not list. `lines_generate_indices` is a port of GLMakie's
             # `generate_indices`, which builds a GL_LINE_STRIP_ADJACENCY list:

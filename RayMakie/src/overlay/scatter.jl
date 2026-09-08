@@ -1,10 +1,26 @@
 # =============================================================================
-# Lava scatter/text rendering — direct port of GLMakie sprites.vert/geom/frag
+# Scatter/text rendering — direct port of GLMakie sprites.vert/geom/frag
 # =============================================================================
 # Shaders use Makie compute graph names directly. Conversions registered as
 # separate computations (gpu_* prefixed) so update_robj! needs zero conversion.
 
 const SPRITE_AA_RADIUS = 0.8f0
+
+# What the vertex stage hands the geometry stage: one point's attributes, read
+# back there as `prim.<name>[1]` because a `PointList` primitive is one vertex.
+const SCATTER_VERTEX_OUT = (world_pos = Vec3f, marker_offset = Vec3f,
+                            offset_width = Vec4f, rotation = Vec4f, colour = Vec4f,
+                            uv_bbox = Vec4f, stroke_colour = Vec4f, glow_colour = Vec4f)
+
+# What the geometry stage hands the fragment stage. Only `uv` varies across the
+# quad's four vertices; everything else is the SPRITE's, computed once before the
+# emit loop, so it is declared `Flat` and written once per triangle instead of
+# four times. GLMakie's sprites.geom wrote all nine per vertex because a geometry
+# shader offers no other way.
+const SCATTER_GEOM_OUT = (uv = Vec2f, colour = Flat{Vec4f}, vp_from_u = Flat{Float32},
+                          df_scale = Flat{Float32}, uv_bbox = Flat{Vec4f},
+                          sp_scl = Flat{Vec2f}, shape = Flat{Float32},
+                          stroke_colour = Flat{Vec4f}, glow_colour = Flat{Vec4f})
 
 # ─── Per-vertex attribute: either a single value (uniform) or array (per-element) ───
 const PerVertex{T} = Union{T, AbstractVector{<:T}}
@@ -14,10 +30,11 @@ const PerVertex{T} = Union{T, AbstractVector{<:T}}
 function get_scatter_pipeline!(screen)
     get!(screen.gfx_pipelines, :scatter) do
         GraphicsPipeline(;
-            vertex = scatter_vertex,
-            geometry = (scatter_geometry, GeometryConfig(
-                input = PointList(), output = TriangleStrip(), max_vertices = 4)),
-            fragment = scatter_fragment,
+            vertex = VertexShader(scatter_vertex; outputs = SCATTER_VERTEX_OUT),
+            geometry = GeometryShader(scatter_geometry; outputs = SCATTER_GEOM_OUT,
+                                      input = PointList(), output = TriangleStrip(),
+                                      max_vertices = 4),
+            fragment = FragmentShader(scatter_fragment),
             blend = Premultiplied(),
             topology = PointList(),
             cull = NoCull(),
@@ -83,16 +100,18 @@ function scatter_vertex(
     g_offset_width = Vec4f(f32c_scale[1]*qoff[1], f32c_scale[2]*qoff[2],
                            f32c_scale[1]*qscl[1], f32c_scale[2]*qscl[2])
 
-    set_position!(Vec4f(0f0, 0f0, 0f0, 1f0))
-    gfx_output(0, world_pos)
-    gfx_output(1, g_marker_offset)
-    gfx_output(2, g_offset_width)
-    gfx_output(3, gpu_read(gpu_rotation, idx))
-    gfx_output(4, gpu_read(gpu_colors, idx))
-    gfx_output(5, gpu_read(sdf_uv, idx))
-    gfx_output(6, gpu_read(gpu_stroke_color, idx))
-    gfx_output(7, gpu_read(gpu_glow_color, idx))
-    return nothing
+    # The clip position is the GEOMETRY stage's to compute; this one is a
+    # placeholder the rasteriser never sees, and it has to be written because
+    # every vertex stage has a position.
+    return (position = Vec4f(0f0, 0f0, 0f0, 1f0),
+            world_pos = world_pos,
+            marker_offset = g_marker_offset,
+            offset_width = g_offset_width,
+            rotation = gpu_read(gpu_rotation, idx),
+            colour = gpu_read(gpu_colors, idx),
+            uv_bbox = gpu_read(sdf_uv, idx),
+            stroke_colour = gpu_read(gpu_stroke_color, idx),
+            glow_colour = gpu_read(gpu_glow_color, idx))
 end
 
 # =============================================================================
@@ -100,6 +119,7 @@ end
 # =============================================================================
 
 function scatter_geometry(
+    gs, prim,
     gpu_positions::AbstractVector{<:Vec3f},
     gpu_colors::PerVertex{Vec4f},
     quad_offset,     # PerVertex — Vec2f or Vector{Vec2f}
@@ -116,14 +136,15 @@ function scatter_geometry(
     gpu_billboard::Int32, depth_shift::Float32,
     gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32,
 )
-    world_pos = geom_input(Vec3f, 0, 0)
-    g_marker_offset = geom_input(Vec3f, 1, 0)
-    o_w = geom_input(Vec4f, 2, 0)
-    rot = geom_input(Vec4f, 3, 0)
-    col = geom_input(Vec4f, 4, 0)
-    uv_bbox = geom_input(Vec4f, 5, 0)
-    scol = geom_input(Vec4f, 6, 0)
-    gcol = geom_input(Vec4f, 7, 0)
+    # A `PointList` primitive is one vertex, so every field is its first.
+    world_pos = prim.world_pos[1]
+    g_marker_offset = prim.marker_offset[1]
+    o_w = prim.offset_width[1]
+    rot = prim.rotation[1]
+    col = prim.colour[1]
+    uv_bbox = prim.uv_bbox[1]
+    scol = prim.stroke_colour[1]
+    gcol = prim.glow_colour[1]
 
     p = preprojection * Vec4f(world_pos[1], world_pos[2], world_pos[3], 1f0)
     position = Vec3f(p[1]/p[4], p[2]/p[4], p[3]/p[4]) + g_marker_offset
@@ -169,6 +190,14 @@ function scatter_geometry(
     sp_scl = Vec2f(o_w[3], o_w[4])
     sh_f = Float32(gpu_sdf_marker_shape)
 
+    # The sprite's own values, computed once. They are `Flat` in
+    # `SCATTER_GEOM_OUT`, so the emitter writes them once per triangle rather
+    # than once per vertex — the loop below carries them along, it does not
+    # recompute them.
+    flat = (colour = col, vp_from_u = f_vp_from_u, df_scale = f_df_scale,
+            uv_bbox = uv_bbox, sp_scl = sp_scl, shape = sh_f,
+            stroke_colour = scol, glow_colour = gcol)
+
     # Triangle strip winding: BL, TL, BR, TR (Z pattern, matching GLMakie)
     for c in Int32(1):Int32(4)
         bx = (c == Int32(1) || c == Int32(2)) ? b_mn[1] : b_mx[1]
@@ -176,19 +205,10 @@ function scatter_geometry(
         ux = (c == Int32(1) || c == Int32(2)) ? uv_mn[1] : uv_mx[1]
         uy = (c == Int32(1) || c == Int32(3)) ? uv_mx[2] : uv_mn[2]
         v = vclip + trans * Vec4f(bx, by, 0f0, 0f0)
-        set_position!(Vec4f(v[1], v[2], v[3] + v[4] * depth_shift, v[4]))
-        gfx_output(0, Vec2f(ux, uy))
-        gfx_output(1, col)
-        gfx_output(2, f_vp_from_u)
-        gfx_output(3, f_df_scale)
-        gfx_output(4, uv_bbox)
-        gfx_output(5, sp_scl)
-        gfx_output(6, sh_f)
-        gfx_output(7, scol)
-        gfx_output(8, gcol)
-        emit_vertex!()
+        pos = Vec4f(v[1], clip_y(v[2]), v[3] + v[4] * depth_shift, v[4])
+        emit!(gs, merge((position = pos, uv = Vec2f(ux, uy)), flat))
     end
-    end_primitive!()
+    endprimitive!(gs)
     return nothing
 end
 
@@ -197,6 +217,7 @@ end
 # =============================================================================
 
 function scatter_fragment(
+    inputs,
     gpu_positions::AbstractVector{<:Vec3f},
     gpu_colors::PerVertex{Vec4f},
     quad_offset,     # PerVertex — Vec2f or Vector{Vec2f}
@@ -213,15 +234,15 @@ function scatter_fragment(
     gpu_billboard::Int32, depth_shift::Float32,
     gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32,
 )
-    f_uv = gfx_input(Vec2f, 0)
-    f_color = gfx_input(Vec4f, 1)
-    f_vp_from_u = gfx_input(Float32, 2)
-    f_df_scale = gfx_input(Float32, 3)
-    f_uv_bbox = gfx_input(Vec4f, 4)
-    f_sp_scl = gfx_input(Vec2f, 5)
-    f_shape = gfx_input(Float32, 6)
-    f_scol = gfx_input(Vec4f, 7)
-    f_gcol = gfx_input(Vec4f, 8)
+    f_uv = inputs.uv
+    f_color = inputs.colour
+    f_vp_from_u = inputs.vp_from_u
+    f_df_scale = inputs.df_scale
+    f_uv_bbox = inputs.uv_bbox
+    f_sp_scl = inputs.sp_scl
+    f_shape = inputs.shape
+    f_scol = inputs.stroke_colour
+    f_gcol = inputs.glow_colour
 
     u = f_uv[1]; v = f_uv[2]
     sh = Base.fptosi(Int32, f_shape + 0.5f0)
@@ -270,8 +291,7 @@ function scatter_fragment(
         end
     end
 
-    gfx_output(0, Vec4f(color[1]*color[4], color[2]*color[4], color[3]*color[4], color[4]))
-    return nothing
+    return Vec4f(color[1]*color[4], color[2]*color[4], color[3]*color[4], color[4])
 end
 
 # =============================================================================

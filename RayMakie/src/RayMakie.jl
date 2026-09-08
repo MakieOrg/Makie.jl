@@ -39,13 +39,23 @@ import Mantle
 # — driver-named concretes that only exist when `MantleVulkanExt` is loaded, so
 # naming them here made RayMakie a package that could not load on a Mac. The
 # abstract types are Mantle's; the backend supplies the concretes.
-import Mantle: GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
+import Mantle: DeviceArray, GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
                Texture2D, Sampler, SampledTexture, bind_textures,
                transition_image!,
                BatchQueue, allocate_batch_queue!, release_batch_queue!,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
 import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
+# The stages a pipeline is made of, and the device-side names a shader body calls.
+# Phase 2.8 ported the shaders instead of the names: each stage declares its own
+# `outputs`, a field that belongs to the primitive is `Flat{T}` there, and a
+# geometry body emits through `emit!`/`endprimitive!` so the same source can reach
+# a native geometry stage or a mesh stage.
+import Mantle: VertexShader, FragmentShader, GeometryShader, Flat,
+               emit!, endprimitive!,
+               vertex_index, instance_index, frag_coord_x, frag_coord_y, clip_y,
+               dFdx, dFdy, sample_texture_2d,
+               LineStripAdjacency, TriangleStrip, PointList, LineList
 
 """
 The Vulkan backend module, for the four things the OVERLAY path still needs from
