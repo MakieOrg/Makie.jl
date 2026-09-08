@@ -1269,10 +1269,10 @@ function _delete!(attr::ComputeGraph, edge::AbstractEdge, force::Bool, recursive
     return unsafe_delete!(attr, edge)
 end
 
-function unsafe_delete!(attr::ComputeGraph, edge::ComputeEdge)
+function unsafe_delete!(graph::ComputeGraph, edge::ComputeEdge)
     # all dependents become invalid as their parent computation no longer runs
     for dependent in edge.dependents
-        unsafe_delete!(attr, dependent)
+        unsafe_delete!(graph, dependent)
     end
 
     # deregister this edge as a dependency of its parents
@@ -1285,11 +1285,11 @@ function unsafe_delete!(attr::ComputeGraph, edge::ComputeEdge)
     # Delete output nodes of this edge
     for computed in edge.outputs
         k = computed.name
-        @assert haskey(attr.outputs, k) && attr.outputs[k] === computed
-        delete!(attr.outputs, k)
+        @assert haskey(graph.outputs, k) && graph.outputs[k] === computed
+        delete!(graph.outputs, k)
     end
 
-    return attr
+    return graph
 end
 
 function unsafe_delete!(attr::ComputeGraph, edge::Input)
@@ -1409,6 +1409,7 @@ function TypedEdge_no_call(edge::ComputeEdge)
 end
 
 include("io.jl")
+include("modification.jl")
 
 export Computed, ComputeEdge
 export ComputeGraph

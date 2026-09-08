@@ -865,6 +865,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
 
     plot!(plot)
 
+    register_resampling!(plot)
 
     documented_attr = plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw
