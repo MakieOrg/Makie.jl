@@ -1,3 +1,16 @@
+# Base sizes that `ticksize = automatic` / `minorticksize = automatic` build on. Ticks are
+# anchored on the spine centerline, so half a spine width of the mark is covered by the
+# spine; adding it back keeps the part left visible outside the spine at the base size no
+# matter how wide the spine is.
+const TICKSIZE_BASE = 5.0f0
+const MINORTICKSIZE_BASE = 3.0f0
+
+resolve_ticksize_with_base(ticksize::Real, spinewidth, base::Real)::Float32 = ticksize
+resolve_ticksize_with_base(::Automatic, spinewidth, base::Real)::Float32 = base + 0.5f0 * spinewidth
+
+resolve_ticksize(ticksize, spinewidth) = resolve_ticksize_with_base(ticksize, spinewidth, TICKSIZE_BASE)
+resolve_minorticksize(ticksize, spinewidth) = resolve_ticksize_with_base(ticksize, spinewidth, MINORTICKSIZE_BASE)
+
 function LineAxis(parent::Scene; @nospecialize(kwargs...))
     attrs = merge!(Attributes(kwargs), generic_plot_attributes(LineAxis))
     return LineAxis(parent, attrs)
@@ -283,6 +296,9 @@ function LineAxis(parent::Scene, attrs::Attributes)
     # Tuple constructor converts more than `convert(NTuple{2, Float32}, x)` but we still need the conversion to Float32 tuple:
     limits = lift(x -> convert(NTuple{2, Float64}, Tuple(x)), parent, attrs.limits; ignore_equal_values = true)
     flipped = lift(x -> convert(Bool, x), parent, attrs.flipped; ignore_equal_values = true)
+    # from here on the tick sizes are plain numbers; `automatic` tracks the spine width
+    ticksize = lift(resolve_ticksize, parent, ticksize, spinewidth; ignore_equal_values = true)::Observable{Float32}
+    minorticksize = lift(resolve_minorticksize, parent, minorticksize, spinewidth; ignore_equal_values = true)::Observable{Float32}
 
     ticksnode = Observable(Point2f[]; ignore_equal_values = true)
     ticklines = linesegments!(

@@ -391,8 +391,14 @@ function initialize_block!(ax::Axis; palette = nothing)
         return [Point2f(x, bottom(r)), Point2f(x, top(r))]
     end
 
+    # resolve `automatic` tick sizes once, see `resolve_ticksize`
+    xticksize = lift(resolve_ticksize, blockscene, ax.xticksize, ax.spinewidth)
+    yticksize = lift(resolve_ticksize, blockscene, ax.yticksize, ax.spinewidth)
+    xminorticksize = lift(resolve_minorticksize, blockscene, ax.xminorticksize, ax.spinewidth)
+    yminorticksize = lift(resolve_minorticksize, blockscene, ax.yminorticksize, ax.spinewidth)
+
     xticksmirrored = lift(
-        mirror_ticks, blockscene, xaxis.tickpositions, ax.xticksize, ax.xtickalign,
+        mirror_ticks, blockscene, xaxis.tickpositions, xticksize, ax.xtickalign,
         scene.viewport, :x, ax.xaxisposition[]
     )
     xticksmirrored_lines = linesegments!(
@@ -401,7 +407,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     translate!(xticksmirrored_lines, 0, 0, 10)
     yticksmirrored = lift(
-        mirror_ticks, blockscene, yaxis.tickpositions, ax.yticksize, ax.ytickalign,
+        mirror_ticks, blockscene, yaxis.tickpositions, yticksize, ax.ytickalign,
         scene.viewport, :y, ax.yaxisposition[]
     )
     yticksmirrored_lines = linesegments!(
@@ -410,7 +416,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     translate!(yticksmirrored_lines, 0, 0, 10)
     xminorticksmirrored = lift(
-        mirror_ticks, blockscene, xaxis.minortickpositions, ax.xminorticksize,
+        mirror_ticks, blockscene, xaxis.minortickpositions, xminorticksize,
         ax.xminortickalign, scene.viewport, :x, ax.xaxisposition[]
     )
     xminorticksmirrored_lines = linesegments!(
@@ -419,7 +425,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     translate!(xminorticksmirrored_lines, 0, 0, 10)
     yminorticksmirrored = lift(
-        mirror_ticks, blockscene, yaxis.minortickpositions, ax.yminorticksize,
+        mirror_ticks, blockscene, yaxis.minortickpositions, yminorticksize,
         ax.yminortickalign, scene.viewport, :y, ax.yaxisposition[]
     )
     yminorticksmirrored_lines = linesegments!(

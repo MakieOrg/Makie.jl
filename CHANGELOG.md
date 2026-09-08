@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- `Axis` spines now end exactly at the axis corners and rely on a `:square` linecap for corner coverage, instead of baking a half-spine-width extension into the geometry. Tick marks are anchored on the spine centerline rather than on a spine edge: a mark is `ticksize` long and `tickalign` (`0` = out, `1` = in) slides it across the centerline. Both changes keep exported figures (SVG/PDF) aligned — and keep ticks from riding into the plot area — when the stroke width is changed in an external editor. The default tick sizes were increased by half the default spine width (`Axis` `ticksize` `5 -> 5.5`, `minorticksize` `3 -> 3.5`, likewise for `Colorbar`) so that default axes look exactly as before; figures that set `ticksize` explicitly get marks that appear `spinewidth / 2` shorter [#5765](https://github.com/MakieOrg/Makie.jl/pull/5765).
+- `Axis` spines now end exactly at the axis corners and rely on a `:square` linecap for corner coverage, instead of baking a half-spine-width extension into the geometry. Tick marks are anchored on the spine centerline rather than on a spine edge: a mark is `ticksize` long and `tickalign` (`0` = out, `1` = in) slides it across the centerline. Both changes keep exported figures (SVG/PDF) aligned — and keep ticks from riding into the plot area — when the stroke width is changed in an external editor. `ticksize` and `minorticksize` now default to `automatic`, resolving to `5 + spinewidth / 2` and `3 + spinewidth / 2`, so that the mark left visible outside the spine keeps its size at any spine width; figures that set a tick size explicitly get marks that appear `spinewidth / 2` shorter [#5765](https://github.com/MakieOrg/Makie.jl/pull/5765).
 
 ## [0.24.14] - 2026-08-27
 
