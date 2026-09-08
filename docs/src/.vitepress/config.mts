@@ -1,8 +1,13 @@
 import { defineConfig } from 'vitepress'
 import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
-import mathjax3 from "markdown-it-mathjax3";
+import { mathjaxPlugin } from './mathjax-plugin'
 import footnote from "markdown-it-footnote";
 import path from 'path'
+
+// DocumenterVitepress >= 0.3 ships MathJax via `@mdit/plugin-mathjax` through this
+// helper (which also provides the `virtual:mathjax-styles.css` module used by the
+// default theme), replacing the old `markdown-it-mathjax3` dependency.
+const mathjax = mathjaxPlugin()
 
 
 const baseTemp = {
@@ -37,6 +42,9 @@ export default defineConfig({
   ],
 
   vite: {
+    plugins: [
+      mathjax.vitePlugin,
+    ],
     define: {
       __DEPLOY_ABSPATH__: JSON.stringify('REPLACE_ME_DOCUMENTER_VITEPRESS_DEPLOY_ABSPATH'),
     },
@@ -61,11 +69,10 @@ export default defineConfig({
     },
   },
   markdown: {
-    math: true,
     config(md) {
-      md.use(tabsMarkdownPlugin),
-      md.use(mathjax3),
-      md.use(footnote)
+      md.use(tabsMarkdownPlugin);
+      mathjax.markdownConfig(md);
+      md.use(footnote);
     },
     theme: {
       light: "github-light",
