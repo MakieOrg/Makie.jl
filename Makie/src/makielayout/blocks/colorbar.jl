@@ -57,18 +57,23 @@ function extract_colormap(plot::Plot{volumeslices})
 end
 
 function extract_colormap(plot::Union{Contourf, Tricontourf})
-    levels = map(plot.colorscale, plot.computed_levels) do scale, levels
-        return apply_scale(inverse_transform(scale), levels)
+    inverse_colorscale = map(inverse_transform, plot.colorscale)
+    if isnothing(inverse_colorscale[])
+        @warn "Colorbar for $(plotsym(typeof(plot))) with `colorscale = $(plot.colorscale[])` can not compute pre-colorscale color values because `Makie.inverse_transform($(plot.colorscale[]))` is missing. Showing transformed values in ticks instead."
     end
-    limits = map(plot.colorscale, plot.computed_colorrange) do scale, cr
-        return apply_scale(inverse_transform(scale), cr)
+    levels = map(inverse_colorscale, plot.computed_levels) do iscale, levels
+        return apply_scale(iscale, levels)
     end
-    colormap = map(plot.colorscale, plot.computed_colormap, plot.computed_colorrange) do scale, cm, cr
+    limits = map(inverse_colorscale, plot.computed_colorrange) do iscale, cr
+        return apply_scale(iscale, cr)
+    end
+    colormap = map(inverse_colorscale, plot.computed_colormap, plot.computed_colorrange) do iscale, cm, cr
         vals = minimum(cr) .+ (maximum(cr) - minimum(cr)) .* cm.values
-        vals = apply_scale(inverse_transform(scale), vals)
+        vals = apply_scale(iscale, vals)
         vals .= (vals .- minimum(vals)) ./ (maximum(vals) - minimum(vals))
         return PlotUtils.CategoricalColorGradient(cm.colors, vals)
     end
+
     function extend_color(color, computed)
         color === nothing && return automatic
         color == :auto || color == automatic && return computed
