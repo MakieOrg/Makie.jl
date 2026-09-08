@@ -1317,11 +1317,15 @@ end
         text = "Falling", offset = 10, orientation = :up, color = :purple, textcolor = :purple
     )
 
-    bracket!(
+    p1 = bracket!(
         Point(5.5, sin(5.5)), Point(7.0, sin(7.0)),
         text = "Rising", offset = 10, orientation = :down, color = :orange, textcolor = :orange,
         fontsize = 30, textoffset = 30, width = 50
     )
+    translate!(p1, 0, 0, 150)
+    p2 = mesh!(Rect2f(6.5, -1, 2, 1), color = :black, shading = NoShading)
+    translate!(p2, 0, 0, 100)
+
     f
 end
 
@@ -1329,7 +1333,10 @@ end
     f = Figure()
     ax = Axis(f[1, 1])
 
-    bracket!(
+    p = mesh!(Rect2f(3.2, 2, 1.6, 2), color = :lightblue, shading = NoShading, fxaa = false)
+    translate!(p, 0, 0, 100)
+
+    p = bracket!(
         ax,
         1:5,
         2:6,
@@ -1338,8 +1345,9 @@ end
         text = ["A", "B", "C", "D", "E"],
         orientation = :down,
     )
+    translate!(p, 0, 0, 150)
 
-    bracket!(
+    p = bracket!(
         ax,
         [(Point2f(i, i - 0.7), Point2f(i + 2, i - 0.7)) for i in 1:5],
         text = ["F", "G", "H", "I", "J"],
@@ -1349,6 +1357,7 @@ end
         textcolor = [:red, :blue, :green, :orange, :brown],
         fontsize = range(12, 24, length = 5),
     )
+    translate!(p, 0, 0, 150)
 
     # https://github.com/MakieOrg/Makie.jl/issues/3569
     b = bracket!(

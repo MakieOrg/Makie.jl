@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- Fixed a segfault in CairoMakie when saving a vector graphic (pdf, svg, eps) of a figure while recording it with a `VideoStream` [#5772](https://github.com/MakieOrg/Makie.jl/pull/5772).
+- Added support for exporting .mov video files. Transparent-background rendering for .mov outputs is now supported [#5764](https://github.com/MakieOrg/Makie.jl/pull/5764).
+- Increased precision of `Vec3f` to `Quaternionf` conversion to reduce quantization/improve precision around `Vec3f(0, 0, ±1)` rotations in `meshscatter`. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added nan handling to `volume` algorithms `:absorption` and `:mip` as well as 3D `countour` plots. These cases now respect `nan_color` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed `empty!(root_scene)` and `empty(fig)` disconnecting mouseposition and render_tick event sources in GLMakie [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added support for per level `linewidth` in `contour` plot. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed `tri/contourf` colormap sampling with `extendlow = :auto` and/or `extendhigh = :auto`. Previously this generated nlevels + 1 categories and sampled between them, now it generates nlevels categories and samples them directly. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed `bracket!` dropping z values [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added `matcap` support to `arrows3d!` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Changed `arrows2d` and `arrows3d` color handling to allow `color` (and `head/shaft/tailcolor`) to be given as a 2 or 3D array if they match the size of at least one argument. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed CairoMakie `matcap` not rendering with the correct orientation. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+
+
+## [0.24.14] - 2026-08-27
+
+- Fixed WGLMakie's precompilation regression [#5767](https://github.com/MakieOrg/Makie.jl/pull/5767).
+- Fixed `BoundsError` in CairoMakie when clip planes remove all points of a plot, fixed `apply_transform(::Mat4, ::Plane3)` producing a `NaN`-distance plane that clips everything when the transform collapses the plane's normal direction, and fixed `Axis3` collapsing dimensions with zero-width limits [#5759](https://github.com/MakieOrg/Makie.jl/pull/5759).
+- Fixed log-scale `Axis` interactions producing invalid limits. [#5736](https://github.com/MakieOrg/Makie.jl/pull/5736)
+- Fixed `arrows3d` component alignment (tail, shaft, tip) when `normalize = true` and scaling applies (e.g. Axis3, `scale!`, `transform_func`). [#5711](https://github.com/MakieOrg/Makie.jl/issues/5711)
 - Added `StageCamera` (`stage_cam!`), a 3D camera with photographic settings that keeps a stage of a given size in view [#5472](https://github.com/MakieOrg/Makie.jl/pull/5472).
 - `Menu` is now searchable: typing while it is open filters the options. Set `searchable = false` for the old behavior [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
 - Added `textcolor_active` and `textcolor_hover` attributes to `Menu`, with the selected entry now white by default [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
@@ -83,8 +102,8 @@
 - Allow to set low or high bound of the colorrange and let the other side stay adaptive [#5555](https://github.com/MakieOrg/Makie.jl/pull/5555)
 - Barplot `bar_labels` now support `RichText` (e.g. subscript/superscript) both directly and via `label_formatter` [#5578](https://github.com/MakieOrg/Makie.jl/pull/5578)
 - CairoMakie now batches glyphs from the same text string into a single PDF/SVG text object, so that text can be selected and edited as a unit in vector editors like Inkscape and Illustrator [#5561](https://github.com/MakieOrg/Makie.jl/pull/5561)
-- Fixed `annotation` not showing lines/arrows when `text` is blank [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
-- Fixed error/nan offsets in `annotation!()` when an annotation is perfectly centered [#5568](https://github.com/MakieOrg/Makie.jl/pull/5568)
+- Fixed `annotation` not showing lines/arrows when `text` is blank. [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
+- Fixed error/nan offsets in `annotation!()` when an annotation is perfectly centered. [#5568](https://github.com/MakieOrg/Makie.jl/pull/5568)
 
 ## [0.24.9] - 2026-03-04
 
@@ -1074,7 +1093,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.14...HEAD
+[0.24.14]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...v0.24.14
 [0.24.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.12...v0.24.13
 [0.24.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...v0.24.12
 [0.24.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.10...v0.24.11
