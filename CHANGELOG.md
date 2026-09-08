@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reject unknown `Figure` and specialized `Legend` keyword arguments while preserving custom plot, block, and backend theme overrides (issue [#4217](https://github.com/MakieOrg/Makie.jl/issues/4217)).
+
 - Fixed a segfault in CairoMakie when saving a vector graphic (pdf, svg, eps) of a figure while recording it with a `VideoStream` [#5772](https://github.com/MakieOrg/Makie.jl/pull/5772).
 - Added support for exporting .mov video files. Transparent-background rendering for .mov outputs is now supported [#5764](https://github.com/MakieOrg/Makie.jl/pull/5764).
 - Increased precision of `Vec3f` to `Quaternionf` conversion to reduce quantization/improve precision around `Vec3f(0, 0, ±1)` rotations in `meshscatter`. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
