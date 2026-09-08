@@ -61,8 +61,13 @@ import Mantle: VertexShader, FragmentShader, GeometryShader, Flat,
 The Vulkan backend module, for the four things the OVERLAY path still needs from
 it, or `nothing` where that backend is not loaded.
 
-`ensure_compiled_with_shader!`, `pack_gfx_args`, `pin!` and `alloc_index_buffer`
-are backend internals, not Mantle API, and the overlay compositor calls all four.
+`ensure_compiled_with_shader!`, `pack_gfx_args` and `pin!` are backend internals,
+not Mantle API, and the overlay compositor calls all three.
+
+`alloc_index_buffer` was a fourth, at five call sites. It is `Mantle.indexbuffer`
+now: a portable verb, because the difference it covers is real — Vulkan requires
+the index-buffer usage bit at allocation and Metal does not — and a real
+difference is what a backend hook is for.
 They were written `Mantle.ensure_compiled_with_shader!` and so on, which worked
 while the runtime lived in Mantle and became `UndefVarError` the moment it moved
 into `MantleVulkanExt`.

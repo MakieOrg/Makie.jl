@@ -82,7 +82,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
                 update_buffer!(robj, :lastlen, lastlen_data)
                 update_buffer!(robj, :valid_vertex, valid_data)
                 update_buffer!(robj, :thickness, thickness_data)
-                robj.buffers[:indices] = vulkanbackend().alloc_index_buffer(UInt32.(indices))
+                robj.buffers[:indices] = Mantle.indexbuffer(robj.backend, UInt32.(indices))
                 robj.vertex_count = length(indices)
             end
             # Always update uniforms (cheap)
@@ -129,7 +129,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
                 :lastlen => Mantle.devicearray(backend, lastlen_data),
                 :valid_vertex => Mantle.devicearray(backend, valid_data),
                 :thickness => Mantle.devicearray(backend, thickness_data),
-                :indices => vulkanbackend().alloc_index_buffer(UInt32.(indices)),
+                :indices => Mantle.indexbuffer(backend, UInt32.(indices)),
             ),
             uniforms = Dict{Symbol, Any}(
                 :projectionview => pv,
@@ -234,7 +234,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
             update_buffer!(robj, :lastlen, lastlen_data)
             update_buffer!(robj, :valid_vertex, valid_data)
             update_buffer!(robj, :thickness, thickness_data)
-            robj.buffers[:indices] = vulkanbackend().alloc_index_buffer(UInt32.(indices))
+            robj.buffers[:indices] = Mantle.indexbuffer(robj.backend, UInt32.(indices))
             robj.uniforms[:projectionview] = pv
             robj.uniforms[:model] = model
             robj.uniforms[:resolution] = res
@@ -257,7 +257,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
                 :lastlen => Mantle.devicearray(backend, lastlen_data),
                 :valid_vertex => Mantle.devicearray(backend, valid_data),
                 :thickness => Mantle.devicearray(backend, thickness_data),
-                :indices => vulkanbackend().alloc_index_buffer(UInt32.(indices)),
+                :indices => Mantle.indexbuffer(backend, UInt32.(indices)),
             ),
             uniforms = Dict{Symbol, Any}(
                 :projectionview => pv,

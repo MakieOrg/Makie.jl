@@ -182,7 +182,7 @@ function update_robj!(robj::RenderObject, args::NamedTuple, changed::NamedTuple)
             # GPU buffer — update in place (capacity-aware resize + copyto)
             if value isa AbstractArray
                 if name === :indices
-                    robj.buffers[name] = vulkanbackend().alloc_index_buffer(UInt32.(value))
+                    robj.buffers[name] = Mantle.indexbuffer(robj.backend, UInt32.(value))
                 else
                     buf = robj.buffers[name]
                     resize!(buf, length(value))
@@ -220,7 +220,7 @@ function construct_robj(pipeline::GraphicsPipeline, args::NamedTuple, arg_names:
         value = args[name]
         if is_gpu_buffer(value)
             if name === :indices
-                buffers[name] = vulkanbackend().alloc_index_buffer(UInt32.(value))
+                buffers[name] = Mantle.indexbuffer(backend, UInt32.(value))
             else
                 buffers[name] = Adapt.adapt(backend, value)
             end
