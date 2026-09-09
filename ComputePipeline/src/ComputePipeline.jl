@@ -373,7 +373,7 @@ is_node_value_valid(x) = true
 is_node_value_valid(x::RefValue) = isassigned(x) ? is_node_value_valid(x[]) : false
 # shouldn't have those in input.value or computed.value[]
 function is_node_value_valid(::Union{T, RefValue{T}}) where {
-        T <: Union{Computed, Input, ComputeGraph, ComputeEdge, SkipUpdate}
+        T <: Union{Computed, Input, ComputeGraph, ComputeEdge, SkipUpdate},
     }
     return false
 end
@@ -1008,18 +1008,20 @@ function locked_resolve!(edge::TypedEdge)
             end
             set_result!(edge, result)
         elseif isnothing(result)
-            if LOG_NOTHING_SKIP
+            if LOG_NOTHING_SPLAT || LOG_NOTHING_SKIP
                 @warn(
-                    "Returning nothing in `map!` and `register_computation!` callbacks " *
+                    "Returning `nothing` in `map!` and `register_computation!` callbacks " *
                         "has been deprecated in favor of returning `skip_update` to allow " *
-                        "outputs to update to `nothing`. " * source_info_str(edge)
+                        "outputs to update to `nothing`. Setting all outputs to `nothing` " *
+                        "should be done with a tuple. " * source_info_str(edge)
                 )
             else
                 Base.depwarn(
-                    "Returning nothing in `map!` and `register_computation!` callbacks " *
+                    "Returning `nothing` in `map!` and `register_computation!` callbacks " *
                         "has been deprecated in favor of returning `skip_update` to allow " *
-                        "outputs to update to `nothing`. Use
-                    `ComputePipeline.log_nothing_skip(true)` to find problematic methods.",
+                        "outputs to update to `nothing`.  Setting all outputs to `nothing` " *
+                        "should be done with a tuple. Use " *
+                        "`ComputePipeline.log_nothing_skip(true)` to find problematic methods.",
                     :locked_resolve!
                 )
             end
