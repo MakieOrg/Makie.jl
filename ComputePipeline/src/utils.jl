@@ -75,7 +75,7 @@ end
 function select!(callback, graph::AbstractComputeGraph, selection_inputs, choices::Vector, output::OutputNodeTypes)
     selector = Symbol(output, :_selector)
     map!(callback, graph, selection_inputs, selector)
-    map!(select, graph, [selector, choices...], output)
+    select!(callback, graph, selector, choices, output)
     return
 end
 
