@@ -1,6 +1,6 @@
 function extract_attributes!(attr::ComputeGraph, inputs::Vector{Symbol}, output::Symbol)
     # Make a namedtuple that holds all the attributes we need
-    return register_computation!(attr, inputs, [output]) do inputs, changed, outputs
+    return register_computation!(attr, inputs, [output]) do inputs, @nospecialize(changed), @nospecialize(outputs)
         return (inputs,)
     end
 end

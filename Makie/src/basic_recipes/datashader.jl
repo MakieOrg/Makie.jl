@@ -399,18 +399,22 @@ function Makie.plot!(p::DataShader{<:Tuple{<:AbstractVector{<:Point}}})
     add_input!(p.attributes, :pixel_area, scene.viewport)
     canvas_computation!(p)
 
-    register_computation!(p, [:points, :point_transform], [:data_limits]) do (points, f), _, _
-        return (fast_bb(points, f),)
+    map!(p, [:points, :point_transform], :data_limits) do points, f
+        return fast_bb(points, f)
     end
 
-    register_computation!(p, [:canvas, :points, :point_transform, :method, :colorrange], [:canvas_with_aggregation, :raw_colorrange]) do (canvas, points, f, method, crange), changed, _
+    map!(
+        p,
+        [:canvas, :points, :point_transform, :method, :colorrange],
+        [:canvas_with_aggregation, :raw_colorrange]
+    ) do canvas, points, f, method, crange
         Aggregation.aggregate!(canvas, points; point_transform = f, method = method)
         if crange isa Automatic
             cr = Vec2f(distinct_extrema_nan(canvas.data_extrema))
         else
             cr = Vec2f(crange)
         end
-        return (canvas, cr)
+        return canvas, cr
     end
     image!(
         p, p.canvas_with_aggregation, p.operation, p.local_operation;
@@ -449,9 +453,9 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     add_axis_limits!(p)
     add_input!(p.attributes, :pixel_area, scene.viewport)
     canvas_computation!(p)
-    register_computation!(p, [:points, :point_transform], [:data_limits]) do (categories, f), _, _
+    map!(p, [:points, :point_transform], :data_limits) do categories, f
         rects = map(points -> fast_bb(points, f), values(categories))
-        return (reduce(union, rects),)
+        return reduce(union, rects)
     end
     categories = p.points[]
     canvas = p.canvas[]
@@ -460,14 +464,14 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
             for (k, v) in categories
     )
 
-    register_computation!(p, [:canvas, :points], [:canvas_with_aggregation, :total_value]) do (canvas, cats), _, _
+    map!(p, [:canvas, :points], [:canvas_with_aggregation, :total_value]) do canvas, cats
         for (k, c) in canvases
             Base.resize!(c, canvas.resolution)
             c.bounds = canvas.bounds
         end
         aggregate_categories!(canvases, cats; method = p.method[])
         total_value = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
-        return (canvases, total_value)
+        return canvases, total_value
     end
     colors = Dict(k => Makie.wong_colors()[i] for (i, (k, v)) in enumerate(categories))
     p._categories = colors

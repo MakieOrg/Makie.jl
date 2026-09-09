@@ -10,7 +10,7 @@ end
 # Track the changes from the backends view (we prune updates that don't actually change anything)
 function all_changes!(plot)
     all_outputs = collect(keys(plot.attributes.outputs))
-    return register_computation!(plot.attributes, all_outputs, [:changed]) do attr, changeset, _
+    return register_computation!(plot.attributes, all_outputs, [:changed]) do attr, changeset, @nospecialize(_)
         res = Dict{Symbol, Any}()
         for k in keys(attr)
             changeset[k] && (res[k] = attr[k])

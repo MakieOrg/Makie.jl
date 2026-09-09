@@ -1150,3 +1150,31 @@ end
         @test leg.margin[] == (4, 3, 2, 1)
     end
 end
+
+@testset "Legend onplot updates" begin
+    f = Figure()
+    a = Axis(f[1, 1])
+    l = Legend(f[1, 2], a)
+    @test isempty(l.plots[])
+    @test isempty(l.labels[])
+
+    p = scatter!(a, rand(10))
+    @test isempty(l.plots[])
+    @test isempty(l.labels[])
+
+    p1 = scatter!(a, rand(10), label = "scatter 1")
+    @test l.plots[] == [p1]
+    @test l.labels[] == ["scatter 1"]
+
+    p2 = scatter!(a, rand(10), label = "scatter 2")
+    @test l.plots[] == [p1, p2]
+    @test l.labels[] == ["scatter 1", "scatter 2"]
+
+    delete!(a, p1)
+    @test l.plots[] == [p2]
+    @test l.labels[] == ["scatter 2"]
+
+    delete!(a, p)
+    @test l.plots[] == [p2]
+    @test l.labels[] == ["scatter 2"]
+end

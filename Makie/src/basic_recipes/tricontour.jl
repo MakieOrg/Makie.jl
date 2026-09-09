@@ -124,7 +124,7 @@ function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:
     end
 
     map!(c, [:color, :line_colors], :final_color) do col, lc
-        return isnothing(col) ? lc : col
+        return something(col, lc)
     end
 
     lines!(
