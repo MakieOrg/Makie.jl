@@ -2000,7 +2000,7 @@ returned by the parent edge callback.
 function unsafe_init!(node::Computed, value)
     if !isdefined(node, :value)
         node.value = value isa RefValue ? value : RefValue(value)
-    elseif !isassigned(node, :value)
+    elseif !isassigned(node.value)
         # Maybe set_type! happened, but resolve definitely didn't since it has
         # no value. So we don't need mark_dirty! here...
         node.value[] = deref(value)

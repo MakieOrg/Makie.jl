@@ -1734,6 +1734,6 @@ end
 
     update!(graph, user_choice = 3, x = 5, y = 2)
     check_state(graph, [1, 1, 1, 1, 1, 1, 1])
-    @test graph.output[] == 5+2
+    @test graph.output[] == 5 + 2
     check_state(graph, [0, 0, 0, 1, 1, 0, 0])
 end
