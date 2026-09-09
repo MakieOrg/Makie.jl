@@ -287,7 +287,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         if visible || used
             return (get_minor_tickvalues(ticks, scale, values, limits...),)
         else
-            return isnothing(cached) ? (Float64[],) : nothing
+            return isnothing(cached) ? (Float64[],) : skip_update
         end
     end
 

@@ -57,7 +57,7 @@ function create_shader(scene::Scene, plot::Voxels)
     Makie.register_world_normalmatrix!(attr, :voxel_model)
     Makie.add_computation!(attr, Val(:uniform_clip_planes), :model, :voxel_model)
 
-    # TODO: this is a waste, should just be "make N instances with no data"
+    # TODO: this is a waste. It should just be "make N instances with no data"
     register_computation!(attr, [:chunk_u8, :gap], [:dummy_data]) do (chunk, gap), changed, cached
         N = sum(size(chunk))
         N_instances = ifelse(gap > 0.01, 2 * N, N + 3)
@@ -70,7 +70,7 @@ function create_shader(scene::Scene, plot::Voxels)
                 dummy_data .= 0
                 return (dummy_data,)
             else
-                return nothing
+                return skip_update
             end
         end
     end

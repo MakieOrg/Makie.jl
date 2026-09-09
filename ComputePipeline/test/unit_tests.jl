@@ -160,7 +160,7 @@ end
     # bitstype
     register_computation!(graph, [:in1, :in2], [:merged]) do inputs, changed, cached
         counter[:merged] += 1
-        return (changed.in1 ? inputs[1] + inputs[2] : nothing,)
+        return (changed.in1 ? inputs[1] + inputs[2] : skip_update,)
     end
     register_computation!(graph, [:merged], [:merged2]) do inputs, changed, cached
         counter[:merged2] += 1

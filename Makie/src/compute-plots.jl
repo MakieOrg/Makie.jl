@@ -352,7 +352,7 @@ function register_positions_transformed_f32c!(
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
-            pos = changed[1] ? el32convert(positions) : nothing
+            pos = changed[1] ? el32convert(positions) : skip_update
             return (pos,)
         elseif false # is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
@@ -1020,7 +1020,7 @@ function register_pattern_uv_transform!(attr; modelname = :model_f32c, colorname
                 return (uvt,)
             end
         else
-            return nothing
+            return skip_update
         end
     end
     return

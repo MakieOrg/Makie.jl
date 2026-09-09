@@ -41,7 +41,10 @@ The callback function of the computation always takes 3 arguments:
 2. `changed::NamedTuple{input_names, Bool}` which contains information on which inputs have changed since the computation was last triggered.
 3. `cached::Union{Nothing, Tuple}` which contains the data of the previous output(s) in order, or nothing if no previous output exists.
 
-The output should be either a tuple with equal size to the output names set in `register_computations!()`, or `nothing` if the result is the same as the previous.
+The output should be either a tuple with equal size to the output names set in `register_computations!()`, or `skip_update` if the result is the same as the previous.
+
+!!! note
+    Returning `nothing` or `(..., nothing, ...)` to skip updates of outputs has been deprecated in ComputePipeline 0.2 (Makie 0.25) to allow outputs to update to `nothing`. As a replacement `skip_update` has been introduced.
 
 Alternatively to `register_computation!(f, graph, inputs, outputs)` you can also use `map!(f, graph, inputs, outputs)`.
 `map!()` simplifies the structure of the callback function `f` by passing the inputs directly as arguments, without `changed` or `cached`.
