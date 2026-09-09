@@ -17,7 +17,7 @@ function add_computation!(attr, ::Val{:uniform_pattern}, ::Val{:uniform_pattern_
         register_computation!(
             attr, [:linestyle], [:uniform_pattern, :uniform_pattern_length]
         ) do (linestyle,), changed, cached
-            if isnothing(linestyle)
+            if isnothing(linestyle) || length(linestyle) < 2
                 sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
                 len = 1.0f0 # should be irrelevant, compat for strictly solid lines
             else

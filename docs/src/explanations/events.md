@@ -64,7 +64,7 @@ Events from the backend are stored in Observables within the `Events` struct. Yo
 
 There are three mouse events one can react to:
 
-- `events.mousebutton` which holds a `MouseButtonEvent` with relevant `button` and `action`
+- `events.mousebutton` which holds the latest `MouseButtonEvent` containing a `button` and `action`
 - `events.mouseposition` which holds the current cursor position relative to the window as `NTuple{2, Float64}` in pixel
 - `events.scroll` which holds an `NTuple{2, Float64}` of the last scroll change
 
@@ -119,7 +119,7 @@ end
 
 on(events(scene).mouseposition) do mp
     mb = events(scene).mousebutton[]
-    if mb.button == Mouse.left && (mb.action == Mouse.press || mb.action == Mouse.repeat)
+    if mb.button == Mouse.left && mb.action == Mouse.press
         points[][end] = mp
         notify(points)
     end

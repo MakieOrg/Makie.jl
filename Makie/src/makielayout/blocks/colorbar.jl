@@ -57,8 +57,23 @@ function extract_colormap(plot::Plot{volumeslices})
 end
 
 function extract_colormap(plot::Union{Contourf, Tricontourf})
-    levels = ComputePipeline.get_observable!(plot.computed_levels)
-    limits = lift(l -> (l[1], l[end]), levels)
+    inverse_colorscale = map(inverse_transform, plot.colorscale)
+    if isnothing(inverse_colorscale[])
+        @warn "Colorbar for $(plotsym(typeof(plot))) with `colorscale = $(plot.colorscale[])` can not compute pre-colorscale color values because `Makie.inverse_transform($(plot.colorscale[]))` is missing. Showing transformed values in ticks instead."
+    end
+    levels = map(inverse_colorscale, plot.computed_levels) do iscale, levels
+        return apply_scale(iscale, levels)
+    end
+    limits = map(inverse_colorscale, plot.computed_colorrange) do iscale, cr
+        return apply_scale(iscale, cr)
+    end
+    colormap = map(inverse_colorscale, plot.computed_colormap, plot.computed_colorrange) do iscale, cm, cr
+        vals = minimum(cr) .+ (maximum(cr) - minimum(cr)) .* cm.values
+        vals = apply_scale(iscale, vals)
+        vals .= (vals .- minimum(vals)) ./ (maximum(vals) - minimum(vals))
+        return PlotUtils.CategoricalColorGradient(cm.colors, vals)
+    end
+
     function extend_color(color, computed)
         color === nothing && return automatic
         color == :auto || color == automatic && return computed
@@ -67,18 +82,22 @@ function extract_colormap(plot::Union{Contourf, Tricontourf})
     elow = lift(extend_color, plot.extendlow, plot.computed_lowcolor)
     ehigh = lift(extend_color, plot.extendhigh, plot.computed_highcolor)
     return ColorMapping(
-        levels[], levels, plot.computed_colormap, limits,
+        levels[], levels, colormap, limits,
         plot.colorscale, Observable(1.0), elow, ehigh, plot.nan_color
     )
 end
 
 function extract_colormap(plot::Tricontour)
-    levels = ComputePipeline.get_observable!(plot.computed_levels)
-    colorrange = ComputePipeline.get_observable!(plot.computed_colorrange)
+    levels = map(plot.colorscale, plot.computed_levels) do scale, levels
+        return apply_scale(inverse_transform(scale), levels)
+    end
+    colorrange = map(plot.colorscale, plot.computed_colorrange) do scale, range
+        return apply_scale.(inverse_transform(scale), range)
+    end
     return ColorMapping(
         levels[], levels, plot.colormap, colorrange,
         plot.colorscale, Observable(1.0),
-        Observable(automatic), Observable(automatic), Observable(:transparent)
+        plot.lowclip, plot.highclip, plot.nan_color
     )
 end
 

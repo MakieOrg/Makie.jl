@@ -41,7 +41,7 @@ similar to how [`surface`](@ref) works.
     extendhigh = nothing
     mixin_generic_plot_attributes()...
     # TODO, Isoband doesn't seem to support nans?
-    mixin_colormap_attributes(allow = (:colormap, :colorscale, :nan_color))...
+    mixin_colormap_attributes(exclude = (:lowclip, :highclip))...
 end
 
 # these attributes are computed dynamically and needed for colorbar e.g.
@@ -178,19 +178,26 @@ end
 
 
 function register_contourf_computations!(graph, argname)
-    map!(graph, [argname, :levels, :mode], :computed_levels) do zs, levels, mode
+    map!(apply_scale, graph, [:colorscale, argname], :scaled_zs)
+
+    map!(graph, [:scaled_zs, :colorscale, :levels, :mode], :computed_levels) do zs, scale, levels, mode
         if levels isa Integer
             mi, ma = extrema_nan(vec(zs))
             if isapprox(mi, ma)
                 delta = max(one(mi), abs(mi))
                 return Float32.(range(mi - delta, ma + delta; length = levels + 1))
             end
+            return _get_isoband_levels(Val(mode), levels, vec(zs))
+        else
+            return _get_isoband_levels(Val(mode), apply_scale(scale, levels), vec(zs))
         end
-        return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
     map!(edges -> length(edges) - 1, graph, :computed_levels, :nlevels)
 
-    map!(extrema_nan, graph, :computed_levels, :computed_colorrange)
+    map!(graph, [:colorrange, :colorscale, :computed_levels], :computed_colorrange) do colorrange, scale, levels
+        return combined_colorrange(scale, colorrange, extrema_nan(levels))
+    end
+
     map!(graph, [:nlevels, :colormap, :extendlow, :extendhigh], :base_colormap) do n, cmap, elow, ehigh
         _cmap = to_colormap(cmap)
 
@@ -231,10 +238,9 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
 
     register_contourf_computations!(graph, :z)
 
-
     register_computation!(
         graph,
-        [:x, :y, :z, :computed_levels, :extendlow, :extendhigh],
+        [:x, :y, :scaled_zs, :computed_levels, :extendlow, :extendhigh],
         [:polys, :computed_colors]
     ) do (xs, ys, zs, levels, _low, _high), changed, cached
         is_extended_low = !isnothing(_low)
@@ -250,19 +256,16 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
     end
 
     return poly!(
-        c,
-        c.polys,
+        c, c.attributes, c.polys,
         colormap = c.computed_colormap,
         colorrange = c.computed_colorrange,
+        colorscale = identity,
         highclip = c.computed_highcolor,
         lowclip = c.computed_lowcolor,
-        nan_color = c.nan_color,
         color = c.computed_colors,
         strokewidth = 0,
         strokecolor = :transparent,
         shading = NoShading,
-        inspectable = c.inspectable,
-        transparency = c.transparency
     )
 end
 

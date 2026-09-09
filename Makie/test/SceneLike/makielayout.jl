@@ -1149,3 +1149,12 @@ end
         @test leg.margin[] == (4, 3, 2, 1)
     end
 end
+
+@testset "LScene limits" begin
+    f, a, p = scatter([Point3f(1, 2, 3)])
+    @test !any(iszero, widths(a.scene.plots[1].arg1[]))
+    f, a, p = scatter([Point3f(1, 2, 3), Point3f(1, 2, 0)])
+    @test !any(iszero, widths(a.scene.plots[1].arg1[]))
+    f, a, p = scatter([Point3f(1, 2, 3), Point3f(1, 0, 0)])
+    @test !any(iszero, widths(a.scene.plots[1].arg1[]))
+end

@@ -6,7 +6,7 @@ import DelaunayTriangulation as DelTri
         zs = Float32[0.0, 0.5, 1.0, 0.25, 0.75]
 
         @testset "integer levels" begin
-            lvls = _get_tricontour_levels(zs, 5)
+            lvls = _get_tricontour_levels(zs, identity, 5)
             @test lvls isa Vector{Float32}
             @test length(lvls) == 5
             @test first(lvls) ≈ 0.0f0
@@ -16,13 +16,13 @@ import DelaunayTriangulation as DelTri
 
         @testset "vector levels passed through" begin
             explicit = [0.2f0, 0.5f0, 0.8f0]
-            lvls = _get_tricontour_levels(zs, explicit)
+            lvls = _get_tricontour_levels(zs, identity, explicit)
             @test lvls == Float32.(explicit)
         end
 
         @testset "constant field returns empty levels" begin
             zs_const = fill(3.14f0, 10)
-            lvls = _get_tricontour_levels(zs_const, 8)
+            lvls = _get_tricontour_levels(zs_const, identity, 8)
             @test isempty(lvls)
         end
     end

@@ -197,6 +197,27 @@ function register_colormapping_without_color!(attr::ComputeGraph)
     return
 end
 
+function process_color_value(scale, value, auto)
+    if value === automatic
+        return auto
+    elseif value isa Real
+        return apply_scale(scale, value)
+    end
+end
+
+# calculated_colorrange is assumed to already be scaled
+function combined_colorrange(colorscale, user_colorrange, calculated_colorrange)
+    if user_colorrange === automatic
+        return calculated_colorrange
+    else
+        low = process_color_value(colorscale, first(user_colorrange), first(calculated_colorrange))
+        high = process_color_value(colorscale, last(user_colorrange), last(calculated_colorrange))
+        low == high || return Vec2f(low, high)
+        delta = max(0.5f0, abs(Float32(low)))
+        return Vec2f(low - delta, high + delta)
+    end
+end
+
 function register_colormapping!(attr::ComputeGraph, colorname = :color)
     register_colormapping_without_color!(attr)
 
@@ -229,17 +250,8 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     ) do colorrange, colorscale, autorange
         if isnothing(autorange) # colors are actual colors, so no colormapping
             return nothing
-        elseif colorrange === automatic
-            return autorange
-        elseif first(colorrange) == automatic
-            return Vec2f((first(autorange), last(colorrange)))
-        elseif last(colorrange) == automatic
-            return Vec2f((first(colorrange), last(autorange)))
         else
-            lo, hi = apply_scale(colorscale, colorrange)
-            lo == hi || return Vec2f(lo, hi)
-            delta = max(0.5f0, abs(Float32(lo)))
-            return Vec2f(lo - delta, hi + delta)
+            return combined_colorrange(colorscale, colorrange, autorange)
         end
     end
 end
