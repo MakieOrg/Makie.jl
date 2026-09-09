@@ -5,14 +5,13 @@
 
 function get_image_pipeline!(screen)
     get!(screen.gfx_pipelines, :image) do
-        GraphicsPipeline(;
-            vertex=image_overlay_vertex,
-            fragment=image_overlay_fragment,
-            blend=Premultiplied(),
-            topology=TriangleList(),
-            cull=NoCull(),
-            depth=DepthOff(),
-        )
+        GraphicsPipeline(; vertex = VertexShader(image_overlay_vertex;
+                                                outputs = (uv = Vec2f,)),
+                           fragment = FragmentShader(image_overlay_fragment),
+                           blend = Premultiplied(),
+                           topology = TriangleList(),
+                           cull = NoCull(),
+                           depth = DepthOff())
     end
 end
 
@@ -53,25 +52,22 @@ function image_overlay_vertex(
     end
 
     ndc = screen_to_ndc(pos, res[1], res[2])
-    set_position!(Vec4f(ndc[1], ndc[2], 0f0, 1f0))
-    gfx_output(0, uv)
-    return nothing
+    return (position = Vec4f(ndc[1], clip_y(ndc[2]), 0f0, 1f0), uv = uv)
 end
 
 # ── Fragment Shader ──
 # Samples the RGBA texture at interpolated UV, premultiplies alpha.
 
 function image_overlay_fragment(
+    inputs,
     screen_bl::Vec2f,
     screen_tr::Vec2f,
     res::Vec2f,
 )
-    uv = gfx_input(Vec2f, 0)
     tex = GfxTexture2D(UInt32(0))
-    color = tex[uv]
+    color = tex[inputs.uv]
 
     # Premultiply alpha for Porter-Duff compositing
     a = color[4]
-    gfx_output(0, Vec4f(color[1] * a, color[2] * a, color[3] * a, a))
-    return nothing
+    return Vec4f(color[1] * a, color[2] * a, color[3] * a, a)
 end

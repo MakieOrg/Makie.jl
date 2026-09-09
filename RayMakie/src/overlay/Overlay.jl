@@ -17,10 +17,10 @@ include("primitives.jl")    # SDF helpers (aastep, smoothstep) — used by fragm
 
 # Graphics pipeline infrastructure
 include("gfx_pipeline.jl")  # framebuffer, atlas, screen_to_ndc
-include("renderobject.jl")  # LavaRenderObject, update_robj!, construct_robj
+include("renderobject.jl")  # RenderObject, update_robj!, construct_robj
 
 # Shader files (each contains vert/geom/frag + pipeline + setup function)
-include("lava_lines.jl")
-include("lava_scatter.jl")
-include("lava_mesh.jl")
+include("lines.jl")
+include("scatter.jl")
+include("mesh.jl")
 include("gfx_image.jl")

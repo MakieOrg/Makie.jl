@@ -1,5 +1,5 @@
 # =============================================================================
-# LavaRenderObject — Vulkan graphics pipeline render object
+# RenderObject — Vulkan graphics pipeline render object
 # =============================================================================
 # Analogous to GLMakie's RenderObject. Holds everything needed to draw in a
 # single render pass: compiled pipeline, GPU buffers, texture bindings, draw config.
@@ -8,7 +8,7 @@
 # Uses Lava imports from gfx_pipeline.jl (included before this file)
 
 """
-    LavaRenderObject
+    RenderObject
 
 Holds a fully compiled Lava graphics pipeline plus all GPU resources needed to draw.
 Created once, updated in-place via `update!` on its device arrays.
@@ -23,7 +23,7 @@ Created once, updated in-place via `update!` on its device arrays.
 - `visible`: Whether to draw this object
 - `viewport`: `Nothing` or `(x, y, w, h)` for per-scene Vulkan dynamic viewport
 """
-mutable struct LavaRenderObject
+mutable struct RenderObject
     pipeline::GraphicsPipeline
     # The backend this object's buffers and textures live on. Carried rather
     # than looked up: `update_texture!` and `update_buffer!` are handed only the
@@ -46,7 +46,7 @@ mutable struct LavaRenderObject
     push_data::Vector{UInt8}  # 8-byte push constant (BDA pointer), reused
 end
 
-function LavaRenderObject(pipeline::GraphicsPipeline;
+function RenderObject(pipeline::GraphicsPipeline;
                           backend,
                           buffers=Dict{Symbol, AbstractGPUArray}(),
                           uniforms=Dict{Symbol, Any}(),
@@ -56,18 +56,18 @@ function LavaRenderObject(pipeline::GraphicsPipeline;
                           instances=1,
                           visible=true,
                           viewport=nothing)
-    LavaRenderObject(pipeline, backend, buffers, uniforms, arg_names, bindings,
+    RenderObject(pipeline, backend, buffers, uniforms, arg_names, bindings,
                      vertex_count, instances, visible, viewport,
                      nothing, Vector{UInt8}(undef, 8))
 end
 
 """
-    build_args(robj::LavaRenderObject) -> Tuple
+    build_args(robj::RenderObject) -> Tuple
 
 Build the args tuple for shader invocation from named buffers and uniforms,
 in the order specified by `robj.arg_names`.
 """
-function build_args(robj::LavaRenderObject)
+function build_args(robj::RenderObject)
     return ntuple(length(robj.arg_names)) do i
         name = robj.arg_names[i]
         if haskey(robj.buffers, name)
@@ -75,20 +75,20 @@ function build_args(robj::LavaRenderObject)
         elseif haskey(robj.uniforms, name)
             robj.uniforms[name]
         else
-            error("LavaRenderObject: missing arg '$name' in buffers or uniforms")
+            error("RenderObject: missing arg '$name' in buffers or uniforms")
         end
     end
 end
 
 """
-    update_buffer!(robj::LavaRenderObject, name::Symbol, data::AbstractArray)
+    update_buffer!(robj::RenderObject, name::Symbol, data::AbstractArray)
 
 Update a named GPU buffer.  `Base.resize!` on a pooled device array is capacity-aware
 (no Vulkan alloc when the new size fits the existing VkBuffer) and retires
 the old VkBuffer via deferred-free on genuine growth — no GC pressure, no
 per-call CPU sync.
 """
-function update_buffer!(robj::LavaRenderObject, name::Symbol, data::AbstractArray)
+function update_buffer!(robj::RenderObject, name::Symbol, data::AbstractArray)
     if haskey(robj.buffers, name)
         buf = robj.buffers[name]
         resize!(buf, length(data))
@@ -100,11 +100,11 @@ function update_buffer!(robj::LavaRenderObject, name::Symbol, data::AbstractArra
 end
 
 """
-    update_texture!(robj::LavaRenderObject, image_data; filter=:linear, wrap=:clamp)
+    update_texture!(robj::RenderObject, image_data; filter=:linear, wrap=:clamp)
 
 Update or create the texture bindings on a render object.
 """
-function update_texture!(robj::LavaRenderObject, image_data; filter=:linear, wrap=:clamp)
+function update_texture!(robj::RenderObject, image_data; filter=:linear, wrap=:clamp)
     tex = Texture2D(robj.backend, image_data)
     sampler = Sampler(robj.backend; filter, wrap)
     robj.bindings = bind_textures([SampledTexture(tex, sampler)])
@@ -112,12 +112,12 @@ function update_texture!(robj::LavaRenderObject, image_data; filter=:linear, wra
 end
 
 """
-    build_draw_args(robj::LavaRenderObject, arg_names::Tuple)
+    build_draw_args(robj::RenderObject, arg_names::Tuple)
 
 Build the args tuple for `pack_gfx_args` from named buffers and uniforms.
 Order matches the shader function signature.
 """
-function build_draw_args(robj::LavaRenderObject, arg_names::NTuple{N, Symbol}) where N
+function build_draw_args(robj::RenderObject, arg_names::NTuple{N, Symbol}) where N
     return ntuple(N) do i
         name = arg_names[i]
         if haskey(robj.buffers, name)
@@ -125,38 +125,23 @@ function build_draw_args(robj::LavaRenderObject, arg_names::NTuple{N, Symbol}) w
         elseif haskey(robj.uniforms, name)
             robj.uniforms[name]
         else
-            error("LavaRenderObject: missing arg '$name' — not in buffers or uniforms")
+            error("RenderObject: missing arg '$name' — not in buffers or uniforms")
         end
     end
 end
 
-"""
-    compile_robj!(robj::LavaRenderObject, arg_names; color_format, descriptor_set_layout=nothing)
+# DELETED: `compile_robj!` and `gfx_type_tuple`.
+#
+# Both were dead — nothing called the first and only the first called the second —
+# and between them they held the last two things this package had no business
+# holding: a reach into `MantleVulkanExt` for `ensure_compiled_with_shader!`, and
+# a hard `Lava.DeviceArray`, which is a name that does not resolve without a
+# Vulkan driver.
+#
+# What they did is `Mantle.compile_draw` in `draw_renderobject!`: it takes the
+# RESOLVED arguments and each backend derives its own device signature from them,
+# so there is no type tuple to build here and no descriptor-set layout to thread.
 
-Ensure the pipeline is compiled for the current arg types. Returns (vert_shader, compiled).
-"""
-function compile_robj!(robj::LavaRenderObject, args::Tuple;
-                       color_format=RGBA{Float32},
-                       descriptor_set_layout=nothing)
-    pipeline = robj.pipeline
-    tt = gfx_type_tuple(args)
-    ds_layout = descriptor_set_layout
-    if ds_layout === nothing && robj.bindings !== nothing
-        ds_layout = robj.bindings.layout
-    end
-    vert_shader, compiled = vulkanbackend().ensure_compiled_with_shader!(pipeline,
-        pipeline.vertex, pipeline.fragment, tt, tt;
-        color_format, descriptor_set_layout=ds_layout)
-    return vert_shader, compiled
-end
-
-"""Convert args tuple to device-side types (host GPU array → device array)."""
-function gfx_type_tuple(args)
-    types = map(args) do arg
-        arg isa AbstractGPUArray ? typeof(Lava.LavaDeviceArray(arg)) : typeof(arg)
-    end
-    return Tuple{types...}
-end
 
 # =============================================================================
 # update_robj! — mirrors GLMakie's update_robjs! exactly
@@ -168,11 +153,11 @@ end
 """
     update_robj!(robj, args, changed)
 
-Update a LavaRenderObject from changed compute graph outputs.
+Update a RenderObject from changed compute graph outputs.
 Mirrors GLMakie's `update_robjs!` — iterates `changed`, updates only what changed.
 Arrays → `update!` GPU buffer. Scalars → set uniform.
 """
-function update_robj!(robj::LavaRenderObject, args::NamedTuple, changed::NamedTuple)
+function update_robj!(robj::RenderObject, args::NamedTuple, changed::NamedTuple)
     for name in keys(args)
         changed[name] || continue
         value = args[name]
@@ -182,7 +167,7 @@ function update_robj!(robj::LavaRenderObject, args::NamedTuple, changed::NamedTu
             # GPU buffer — update in place (capacity-aware resize + copyto)
             if value isa AbstractArray
                 if name === :indices
-                    robj.buffers[name] = vulkanbackend().alloc_index_buffer(robj.backend, UInt32.(value))
+                    robj.buffers[name] = Mantle.indexbuffer(robj.backend, UInt32.(value))
                 else
                     buf = robj.buffers[name]
                     resize!(buf, length(value))
@@ -197,14 +182,14 @@ function update_robj!(robj::LavaRenderObject, args::NamedTuple, changed::NamedTu
 end
 
 # =============================================================================
-# construct_robj — create a LavaRenderObject from initial args
+# construct_robj — create a RenderObject from initial args
 # =============================================================================
 # Called on first render. Separates args into buffers (arrays) vs uniforms (scalars).
 
 """
     construct_robj(pipeline, args, arg_names; backend, vertex_count, bindings)
 
-Create a LavaRenderObject from initial args NamedTuple.
+Create a RenderObject from initial args NamedTuple.
 Arrays become GPU buffers, scalars become uniforms.
 """
 # Check if a value should be a GPU buffer (mutable Vector) vs a uniform (scalar/Vec/Mat).
@@ -220,7 +205,7 @@ function construct_robj(pipeline::GraphicsPipeline, args::NamedTuple, arg_names:
         value = args[name]
         if is_gpu_buffer(value)
             if name === :indices
-                buffers[name] = vulkanbackend().alloc_index_buffer(backend, UInt32.(value))
+                buffers[name] = Mantle.indexbuffer(backend, UInt32.(value))
             else
                 buffers[name] = Adapt.adapt(backend, value)
             end
@@ -228,7 +213,7 @@ function construct_robj(pipeline::GraphicsPipeline, args::NamedTuple, arg_names:
             uniforms[name] = value
         end
     end
-    LavaRenderObject(pipeline;
+    RenderObject(pipeline;
         backend, buffers, uniforms, arg_names, bindings,
         vertex_count, instances)
 end

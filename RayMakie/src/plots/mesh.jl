@@ -7,14 +7,14 @@
 #   - Trace path:   push to Hikari scene, BLAS/HWTLAS-traced.
 #                   Returns NamedTuple (handle, mat_idx, material, instance_idx).
 #   - Overlay path: rasterized on top of the rendered film via Lava graphics
-#                   pipeline. Returns a LavaRenderObject.
+#                   pipeline. Returns a RenderObject.
 #
 # A single :trace_renderobject node delegates to:
 #
 #   mesh_trace_create!  / mesh_trace_update!     (trace path)
 #   mesh_overlay_create! / mesh_overlay_update!  (overlay path)
 #
-# `last.trace_renderobject` carries enough information (LavaRenderObject vs
+# `last.trace_renderobject` carries enough information (RenderObject vs
 # NamedTuple with :handle) to detect a path switch and force a re-create.
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
@@ -169,7 +169,7 @@ function mesh_overlay_dispatch!(screen, scene, plot, args, last_robj)
     pv = Mat4f(scene.camera.projectionview[])
     model_mat = Mat4f(args.model_f32c)
 
-    if last_robj isa LavaRenderObject
+    if last_robj isa RenderObject
         return mesh_overlay_update!(last_robj, flat_positions, flat_colors, pv, model_mat)
     end
     return mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat)
@@ -227,7 +227,7 @@ end
 function mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat)
     pipeline = get_mesh_pipeline!(screen)
     backend = screen.config.device
-    return LavaRenderObject(pipeline;
+    return RenderObject(pipeline;
         backend,
         arg_names = (:positions, :colors, :projectionview, :model),
         buffers = Dict{Symbol, AbstractGPUArray}(
@@ -243,7 +243,7 @@ function mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat
     )
 end
 
-function mesh_overlay_update!(robj::LavaRenderObject, flat_positions, flat_colors, pv, model_mat)
+function mesh_overlay_update!(robj::RenderObject, flat_positions, flat_colors, pv, model_mat)
     update_buffer!(robj, :positions, flat_positions)
     update_buffer!(robj, :colors, flat_colors)
     robj.uniforms[:projectionview] = pv

@@ -18,43 +18,56 @@ import Makie.Observables
 # into, the textures, the queue, the host array. All of it needs one.
 #
 # It was all `Lava` until 2026-08-27, when the runtime moved out of the compiler.
-import Lava
-# The shader half: stage intrinsics a shader BODY calls, and the device-side
-# array. Lava is the Julia→SPIR-V compiler and needs no device, so importing it
-# here costs nothing on a machine with no Vulkan loader.
+# DELETED in phase 1.5: see Mantle/docs/mantle-owns-it.md
 #
-# `Premultiplied`, `NoCull` and `DepthOff` are NOT in this list any more: blend,
-# cull and depth state describe a pipeline rather than compile one, so they moved
-# to Mantle with the rest of the runtime's vocabulary and are imported below.
-import Lava: vertex_index, instance_index, set_position!, set_point_size!,
-             frag_coord_x, frag_coord_y, gfx_output, gfx_input,
-             gfx_output_flat, gfx_input_flat,
-             dFdx, dFdy,
-             emit_vertex!, end_primitive!, primitive_id_in,
-             sample_texture_2d, LavaDeviceArray, GeometryConfig,
-             LineListAdjacency, LineStripAdjacency, LineList, TriangleStrip, PointList,
-             GfxTexture2D,
-             geom_input, geom_input_position
+# `import Lava` and the 26 shader names taken from it. The comment that stood
+# here claimed "Lava is the Julia→SPIR-V compiler and needs no device, so
+# importing it here costs nothing on a machine with no Vulkan loader". That
+# contract held until Lava depended on Vulkan again, and then this line was
+# what stopped RayMakie loading on a Mac.
+#
+# Nine of the 26 (`vertex_index`, `frag_coord_*`, the topologies) Mantle already
+# declared, so they were being taken from the wrong package even while it
+# worked. Seven more — `set_position!`, `gfx_output`/`gfx_input` and their flat
+# variants, `geom_input`, `geom_input_position` — are Lava's older
+# location-based varying API, which Mantle's declarative `varyings = (…)` and a
+# vertex stage returning `(position = …, …)` replace outright. Phase 2.8 ports
+# the shaders rather than porting the names.
 import Mantle
 # The runtime half, and all of it Mantle's portable spelling. These used to be
 # `VulkanFramebuffer` / `VulkanTexture2D` / `VulkanSampler` / `VulkanBatchQueue`
 # — driver-named concretes that only exist when `MantleVulkanExt` is loaded, so
 # naming them here made RayMakie a package that could not load on a Mac. The
 # abstract types are Mantle's; the backend supplies the concretes.
-import Mantle: GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
+import Mantle: DeviceArray, GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
                Texture2D, Sampler, SampledTexture, bind_textures,
                transition_image!,
                BatchQueue, allocate_batch_queue!, release_batch_queue!,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
 import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
+# The stages a pipeline is made of, and the device-side names a shader body calls.
+# Phase 2.8 ported the shaders instead of the names: each stage declares its own
+# `outputs`, a field that belongs to the primitive is `Flat{T}` there, and a
+# geometry body emits through `emit!`/`endprimitive!` so the same source can reach
+# a native geometry stage or a mesh stage.
+import Mantle: VertexShader, FragmentShader, GeometryShader, Flat,
+               emit!, endprimitive!,
+               vertex_index, instance_index, frag_coord_x, frag_coord_y, clip_y,
+               dFdx, dFdy, sample_texture_2d,
+               LineStripAdjacency, TriangleStrip, PointList, LineList
 
 """
 The Vulkan backend module, for the four things the OVERLAY path still needs from
 it, or `nothing` where that backend is not loaded.
 
-`ensure_compiled_with_shader!`, `pack_gfx_args`, `pin!` and `alloc_index_buffer`
-are backend internals, not Mantle API, and the overlay compositor calls all four.
+`ensure_compiled_with_shader!`, `pack_gfx_args` and `pin!` are backend internals,
+not Mantle API, and the overlay compositor calls all three.
+
+`alloc_index_buffer` was a fourth, at five call sites. It is `Mantle.indexbuffer`
+now: a portable verb, because the difference it covers is real — Vulkan requires
+the index-buffer usage bit at allocation and Metal does not — and a real
+difference is what a backend hook is for.
 They were written `Mantle.ensure_compiled_with_shader!` and so on, which worked
 while the runtime lived in Mantle and became `UndefVarError` the moment it moved
 into `MantleVulkanExt`.
@@ -133,7 +146,7 @@ wants_hw_accel(integrator) = integrator isa Hikari.VolPath && integrator.hw_acce
 
 # =============================================================================
 # Legacy Overlay Render Objects (kept for backward compat during transition)
-# All new draw_atomic methods produce LavaRenderObject instead.
+# All new draw_atomic methods produce RenderObject instead.
 # =============================================================================
 
 abstract type OverlayRenderObject end

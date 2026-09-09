@@ -1,5 +1,5 @@
 # =============================================================================
-# Overlay Rendering — draws LavaRenderObjects via Lava graphics pipeline
+# Overlay Rendering — draws RenderObjects via Lava graphics pipeline
 # =============================================================================
 
 # `e` is the EMITTER of the closed command buffer the overlays go into — a
@@ -7,8 +7,8 @@
 # not a queue. It used to take the queue and draw into whatever batch the queue
 # had open; a queue holds nothing open any more (Mantle, step 7), so the caller
 # opens the buffer and this writes into it.
-function render_overlays!(screen, e, target; scenes=nothing)
-    render_overlays_gfx!(screen, e, target; scenes)
+function render_overlays!(screen, target, color_eltype; scenes=nothing)
+    render_overlays_gfx!(screen, target, color_eltype; scenes)
 end
 
 # =============================================================================
@@ -34,52 +34,44 @@ function render_subscene_backgrounds!(postprocess, root_scene)
 end
 
 # =============================================================================
-# Draw a single LavaRenderObject inside the active render pass
+# Draw a single RenderObject inside the active render pass
 # =============================================================================
 
-function draw_lava_renderobject!(screen, e, robj::LavaRenderObject, viewport, color_format, default_vp)
-    # `Mantle.set_viewport!` takes plain numbers and derives the scissor —
-    # including the clamping a flipped (negative-height) viewport needs. That
-    # arithmetic used to live here, spelled in `VK.Viewport`/`VK.Rect2D`, which
-    # is how a renderer ended up owning a driver's rectangle rules.
-    if viewport !== nothing
-        Mantle.set_viewport!(e, viewport...)
-    else
-        Mantle.set_viewport!(e, default_vp...)
-    end
+function draw_renderobject!(screen, p, robj::RenderObject, viewport, color_eltype, default_vp)
+    # `Mantle.viewport!` takes plain numbers and derives the scissor — including
+    # the clamping a flipped viewport needs. That arithmetic used to live here,
+    # spelled in `VK.Viewport`/`VK.Rect2D`, which is how a renderer ended up
+    # owning a driver's rectangle rules.
+    Mantle.viewport!(p, (viewport === nothing ? default_vp : viewport)...)
 
-    args = build_args(robj)
-    tt = gfx_type_tuple(args)
-    ds_layout = robj.bindings !== nothing ? robj.bindings.layout : nothing
-    vert_shader, compiled = vulkanbackend().ensure_compiled_with_shader!(robj.pipeline,
-        robj.pipeline.vertex, robj.pipeline.fragment, tt, tt;
-        ctx=e.ctx, color_format=color_format, descriptor_set_layout=ds_layout)
+    # `todevice`: a screen keeps the BACKEND its user named, and every verb below
+    # wants the device.
+    dev = Mantle.todevice(screen.config.device)
+    args = map(a -> Mantle.resolve(dev, a), build_args(robj))
+    # `Mantle.compile_draw` and not the Vulkan extension's
+    # `ensure_compiled_with_shader!`: it takes the RESOLVED arguments and each
+    # backend bakes their device form its own way, which is why there is no
+    # `push_info` to pack against here any more. `pack_gfx_args` and the
+    # descriptor-set layout went with it.
+    compiled = Mantle.compile_draw(dev, robj.pipeline, (color_eltype,), nothing, args, args)
 
-    if robj.bindings !== nothing
-        Mantle.use_bindings!(e, compiled, robj.bindings)
-    end
-
-    # The argument bytes belong to the buffer being written (`e.owner`): given
-    # back when its submission has passed, which is when the draw is done with them.
-    push_data = vulkanbackend().pack_gfx_args(e.owner, args, vert_shader.push_info)
+    robj.bindings === nothing || Mantle.bindings!(p, compiled, robj.bindings)
 
     if haskey(robj.buffers, :indices)
         ib = robj.buffers[:indices]
-        Mantle.draw_indexed_in_pass!(e, compiled, length(ib);
-            push_data=push_data, indices_buffer=ib.buf[].buffer)
+        Mantle.draw!(p, compiled, args, length(ib); indices = Mantle.resolve(dev, ib))
     else
-        Mantle.draw_in_pass!(e, compiled, robj.vertex_count;
-            push_data=push_data, instances=robj.instances)
+        Mantle.draw!(p, compiled, args, robj.vertex_count; instances = robj.instances)
     end
-
-    vulkanbackend().pin!(e, compiled)
-    for (_, buf) in robj.buffers
-        vulkanbackend().pin!(e, buf)
-    end
+    # No `pin!`. What the draw reads is reachable from `robj`, which outlives the
+    # frame; `Mantle.hold!` is for the case where it is not, and this is not that
+    # case. `pin!` was the Vulkan backend deciding a lifetime, which is the thing
+    # `docs/mantle-owns-it.md` 2.2 moved into core.
+    return nothing
 end
 
 # =============================================================================
-# Main render pass — collect and draw all LavaRenderObjects
+# Main render pass — collect and draw all RenderObjects
 # =============================================================================
 
 """
@@ -98,7 +90,7 @@ render objects and then nobody drew them, which is also why an `Axis3` came out
 with no spines, ticks or labels.
 """
 function collect_overlay_robjs(state::RayMakieState; scenes = nothing)
-    robjs = Tuple{LavaRenderObject, NTuple{4, Float32}}[]
+    robjs = Tuple{RenderObject, NTuple{4, Float32}}[]
 
     overlay_scenes = if scenes !== nothing
         scenes
@@ -129,7 +121,7 @@ function collect_overlay_robjs(state::RayMakieState; scenes = nothing)
                            plot = typeof(ap), exception = (e, catch_backtrace()), maxlog = 1)
                     return nothing
                 end
-                robj isa LavaRenderObject && robj.visible && push!(robjs, (robj, vp_rect))
+                robj isa RenderObject && robj.visible && push!(robjs, (robj, vp_rect))
                 return nothing
             end
         end
@@ -138,47 +130,84 @@ function collect_overlay_robjs(state::RayMakieState; scenes = nothing)
 end
 
 """
+    require_drawable(backend, pipeline)
+
+Throw unless `backend` can run every stage this pipeline declares.
+
+Asked before the pass opens rather than discovered from a shader compile, which
+is what `supports_geometry_stage` exists for. It THROWS, and that is the point: an
+overlay that cannot be drawn is not a degraded image, it is a WRONG one — no axis
+grid, no ticks, no labels, no scatter, no lines — and a renderer that drops it and
+reports success produces something nobody reading the picture can tell is
+incomplete.
+
+There was a skip-with-a-warning here. It is gone on purpose. The fix is
+`Mantle.lower_geometry_to_mesh`, which everything else is already in place for.
+"""
+function require_drawable(backend, p::Mantle.GraphicsPipeline)
+    if p.geometry !== nothing && !Mantle.supports_geometry_stage(backend)
+        error("""
+            $(nameof(typeof(backend))) has no geometry stage and this overlay needs one,
+            so it CANNOT be drawn — and it must not be silently dropped.
+
+              vertex stage    $(Mantle.stagefunction(p.vertex))
+              geometry stage  $(Mantle.stagefunction(p.geometry))
+
+            Apple removed the geometry stage; the replacement is the mesh pipeline,
+            which this backend has. Metal emits AIR mesh programs, a mesh stage has
+            the compute builtins and threadgroup memory, KernelInterface's portable
+            mesh vocabulary lowers onto it, and `Mantle.MeshPipeline` compiles and
+            draws. The only missing piece is the translation.
+
+            IMPLEMENT `Mantle.lower_geometry_to_mesh` and build this pipeline through
+            it. The design is decided and written out at the top of
+            Mantle/src/graphics/lowering.jl. Do not reintroduce a skip.""")
+    end
+    if p.tess_control !== nothing && !Mantle.supports_tessellation(backend)
+        error("$(nameof(typeof(backend))) has no tessellation, and this overlay " *
+              "declares one: $(Mantle.stagefunction(p.vertex)).")
+    end
+    return nothing
+end
+
+"""
     render_overlays_gfx!(screen, e, target; scenes=nothing)
 
-Render overlay plots (scatter, lines, text, mesh) via the Lava graphics pipeline
-directly onto `target` (a `WindowTarget` or `OffscreenTarget`), into the closed
+Render overlay plots (scatter, lines, text, mesh) through Mantle's graphics
+pipeline directly onto `target` (a `WindowTarget` or `OffscreenTarget`), into the closed
 command buffer `e` emits into.
 
 When `scenes` is provided, only plots from those scenes are rendered (used for
 uncovered overlay rendering). Otherwise, uses the current screen state's scene.
 """
-function render_overlays_gfx!(screen, e, target; scenes=nothing)
+function render_overlays_gfx!(screen, target, color_eltype; scenes=nothing)
     state = screen.state
     robjs = collect_overlay_robjs(state; scenes)
-
     isempty(robjs) && return
 
-    # Render directly to target, into the caller's command buffer
-
-    if target isa Mantle.WindowTarget
-        win = target.window
-        w, h = Mantle.size(win)
-        view = win.views[win.current_image_idx + 1]
-        image = win.images[win.current_image_idx + 1]
-    else
-        fb = target.fb
-        w, h = fb.width, fb.height
-        view = fb.color_view
-        image = fb.color_image
+    # Every pipeline checked BEFORE the pass opens, so one this backend cannot run
+    # is a named error rather than a half-composited frame or a missing overlay.
+    backend = screen.config.device
+    for rv in robjs
+        require_drawable(backend, rv[1].pipeline)
     end
 
-    # No clear — overlays are alpha-blended on top of existing content
-    Mantle.begin_pass!(e, view, image, w, h; clear_color=nothing)
+    # `target_extent`, not four lines of field access per target kind. Reaching
+    # into `win.views[win.current_image_idx + 1]` and `fb.color_view` was this
+    # package knowing a driver's swapchain bookkeeping; `Mantle.pass!` resolves
+    # the attachment from the target and there is nothing left to branch on.
+    w, h = Mantle.target_extent(target)
 
-    # Y-flipped: negative height puts clip-space +Y at the top, matching Makie's
-    # pixel convention. `set_viewport!` derives the scissor from exactly this.
+    # Y-flipped: a negative height puts clip-space +Y at the top, matching
+    # Makie's pixel convention. `viewport!` derives the scissor from exactly this.
     default_vp = (0f0, Float32(h), Float32(w), -Float32(h))
-    Mantle.set_viewport!(e, default_vp...)
 
-    fmt = target isa Mantle.WindowTarget ? target.window.format : target.fb.color_format
-    for (robj, robj_vp) in robjs
-        draw_lava_renderobject!(screen, e, robj, robj_vp, fmt, default_vp)
+    # No clear — overlays are alpha-blended on top of what is already there.
+    Mantle.pass!(screen.config.device, target) do p
+        Mantle.viewport!(p, default_vp...)
+        for (robj, robj_vp) in robjs
+            draw_renderobject!(screen, p, robj, robj_vp, color_eltype, default_vp)
+        end
     end
-
-    Mantle.end_pass!(e)
+    return nothing
 end
