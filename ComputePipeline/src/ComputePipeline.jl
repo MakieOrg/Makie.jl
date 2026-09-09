@@ -295,7 +295,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         foreach(node -> node.dirty = false, edge.outputs)
 
     else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output. Value: $result")
+        error("The edge callback $f must return a Tuple with one element per output but returned a $(typeof(result)).")
     end
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
@@ -368,10 +368,13 @@ struct ComputeGraph <: AbstractComputeGraph
     obs_to_update::Vector{Observable}
 end
 
+# This is used for typed edge initialization
 is_node_value_valid(x) = true
-is_node_value_valid(x::RefValue) = isassigned(x) ? is_node_value_valid(x[]) : true
+is_node_value_valid(x::RefValue) = isassigned(x) ? is_node_value_valid(x[]) : false
 # shouldn't have those in input.value or computed.value[]
-function is_node_value_valid(::Union{T, RefValue{T}}) where {T <: Union{Computed, Input, ComputeGraph, ComputeEdge}}
+function is_node_value_valid(::Union{T, RefValue{T}}) where {
+        T <: Union{Computed, Input, ComputeGraph, ComputeEdge, SkipUpdate}
+    }
     return false
 end
 
@@ -939,7 +942,7 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
 end
 
 function set_result!(edge::TypedEdge, result, i, value)
-    if LOG_NOTHING_SKIP && isnothing(values)
+    if LOG_NOTHING_SKIP && isnothing(value)
         @warn(
             "Returning nothing in `map!` and `register_computation!` callbacks " *
                 "has been deprecated in favor of returning `skip_update` to allow " *
@@ -2036,8 +2039,10 @@ returned by the parent edge callback.
 function unsafe_init!(node::Computed, value)
     if isdefined(node, :value)
         error("Node already initialized.")
-    else
+    elseif is_node_value_valid(value)
         node.value = value isa RefValue ? value : RefValue(value)
+    else
+        error("Initializing a node to $(typeof(value)) is not allowed.")
     end
 
     return unsafe_init!(node.parent)
