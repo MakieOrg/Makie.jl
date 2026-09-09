@@ -48,32 +48,36 @@ unwrap_explicit_update(x::ComputePipeline.ExplicitUpdate) = x.data
 
 export ExplicitUpdate, unwrap_explicit_update
 
-"""
-    pick_ifelse(graph, condition, choice1, choice2, output)
 
-Calls `map!(ifelse, graph, [condition, choice1, choice2], output)` which sets
-`output` to `choice1` or `choice2` based on `condition` when resolved.
 
-This uses a special path in `resolve!` to only evaluate one of the two branches.
 """
-function pick_ifelse(graph, condition, choice1, choice2, output::Symbol)
-    map!(ifelse, graph, [condition, choice1, choice2], output)
+    select(graph, selector, choices, output)
+    select(callback, graph, selection_inputs, choices, output)
+
+Selects one of the `choices` nodes based on the index given in the `selector`
+node and forwards it to the `output` node without resolving the other `choices`.
+
+Alternatively, a `callback` and one or more `selection_inputs` can be given to
+define the selected index based on the result of `callback(selection_inputs...)`.
+
+This calls `map!(select, graph, [selector, choices...], output)` internally. If
+a callback is given, it will generate a `selector` node beforehand.
+"""
+function select(graph, selector::InputNodeTypes, choices::Vector, output::OutputNodeTypes)
+    map!(select, graph, [selector, choices...], output)
+    node = get_node(graph, selector)
+    if is_initialized(node)
+        node.value[] isa Int || error("Selector node $(node.name) must contain an $Int, but is initialized to $(node.value[])")
+    else
+        ComputePipeline.set_type!(node, Int)
+    end
     return
 end
 
-"""
-    pick_ifelse(callback, graph, condition_inputs, choice1, choice2, output)
 
-Adds `map!(callback, graph, condition_inputs, anon_node)` to map the
-`condition_inputs` to a boolean node using `callback` and
-`map!(ifelse, graph, [anon_node, choice1, choice2], output)` to pick `choice1`
-or `choice2` based on the result.
-
-This uses a special path in `resolve!` to only evaluate one of the two branches.
-"""
-function pick_ifelse(callback, graph, condition_inputs, choice1, choice2, output::Symbol)
-    condition = Symbol(output, :_picker)
-    map!(callback, graph, condition_inputs, condition)
-    map!(ifelse, graph, [condition, choice1, choice2], output)
+function select(callback, graph, selection_inputs, choices::Vector, output::OutputNodeTypes)
+    selector = Symbol(output, :_selector)
+    map!(callback, graph, selection_inputs, selector)
+    map!(select, graph, [selector, choices...], output)
     return
 end
