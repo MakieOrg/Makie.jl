@@ -1004,7 +1004,7 @@ function locked_resolve!(edge::ComputeEdge)
         edge.inputs_dirty[1] = false
 
         # resolve and forward picked choice
-        idx = edge.inputs[1].value[]::Int
+        idx = 1 + edge.inputs[1].value[]::Int
         locked_resolve!(edge.inputs[idx])
         edge.inputs_dirty[idx] = false
         new_value = edge.inputs[idx].value[]

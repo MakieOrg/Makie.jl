@@ -48,11 +48,9 @@ unwrap_explicit_update(x::ComputePipeline.ExplicitUpdate) = x.data
 
 export ExplicitUpdate, unwrap_explicit_update
 
-
-
 """
-    select(graph, selector, choices, output)
-    select(callback, graph, selection_inputs, choices, output)
+    select!(graph, selector, choices, output)
+    select!(callback, graph, selection_inputs, choices, output)
 
 Selects one of the `choices` nodes based on the index given in the `selector`
 node and forwards it to the `output` node without resolving the other `choices`.
@@ -63,7 +61,7 @@ define the selected index based on the result of `callback(selection_inputs...)`
 This calls `map!(select, graph, [selector, choices...], output)` internally. If
 a callback is given, it will generate a `selector` node beforehand.
 """
-function select(graph, selector::InputNodeTypes, choices::Vector, output::OutputNodeTypes)
+function select!(graph::AbstractComputeGraph, selector::InputNodeTypes, choices::Vector, output::OutputNodeTypes)
     map!(select, graph, [selector, choices...], output)
     node = get_node(graph, selector)
     if is_initialized(node)
@@ -74,10 +72,11 @@ function select(graph, selector::InputNodeTypes, choices::Vector, output::Output
     return
 end
 
-
-function select(callback, graph, selection_inputs, choices::Vector, output::OutputNodeTypes)
+function select!(callback, graph::AbstractComputeGraph, selection_inputs, choices::Vector, output::OutputNodeTypes)
     selector = Symbol(output, :_selector)
     map!(callback, graph, selection_inputs, selector)
     map!(select, graph, [selector, choices...], output)
     return
 end
+
+export select!
