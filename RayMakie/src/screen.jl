@@ -719,19 +719,18 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         # Slow path: blit to offscreen framebuffer, render overlays on top, readback
         w, h = size(screen.output_buffer, 2), size(screen.output_buffer, 1)
         fb = Mantle.Framebuffer(screen.config.device, w, h; depth=false, color_format=COMPOSITE_FORMAT)
-        bq = get_gfx_bq!(screen)
         target = Mantle.OffscreenTarget(fb)
-        Mantle.blit!(bq, target, screen.output_buffer; clear=false)
-        # The overlays go into one closed buffer of their own, submitted on the
-        # way out; the readback below is a later submission on the same queue,
-        # ordered behind it, and waits for its own copy. Nothing to flush and
-        # nothing to wait for here — the queue holds nothing open.
-        vulkanbackend().oneshot!(bq; tag = :overlays) do e
-            for scene_state in screen.scene_states
-                screen.state = scene_state
-                poll_all_plots(screen, scene_state.makie_scene)
-                render_overlays!(screen, e, target)
-            end
+        # `Mantle.blit!` and `Mantle.pass!`, both core's. This was a batch queue,
+        # the Vulkan extension's `oneshot!` reached through `Base.get_extension`,
+        # and a `blit!` that only that backend had — three names a package which
+        # must name no backend had no business holding. Each pass is its own
+        # submission and they are ordered on the device's queue, so the readback
+        # below is behind them with nothing to flush here.
+        Mantle.blit!(screen.config.device, target, screen.output_buffer; clear=false)
+        for scene_state in screen.scene_states
+            screen.state = scene_state
+            poll_all_plots(screen, scene_state.makie_scene)
+            render_overlays!(screen, target, COMPOSITE_FORMAT)
         end
 
         # Readback framebuffer (has TRANSFER_SRC_BIT, unlike swapchain images)
@@ -811,15 +810,26 @@ signalling the present. It used to be three calls each drawing into whatever
 the queue had open and a `present_frame!` that took that batch over; the queue
 holds nothing open any more (Mantle, step 7).
 """
+# STILL VULKAN-SHAPED, and knowingly. The `colorbuffer` path above is portable
+# now; this one is not, because `presentready!` is a layout transition that has to
+# be recorded INTO the same buffer that is then handed to `present_frame!` with a
+# semaphore. Metal presents a `CAMetalDrawable` from its own command buffer and
+# has no such handshake, so the portable shape is a `present!(dev, win) do p …`
+# verb that does not exist yet — and guessing at it is how the last set of
+# backend-shaped calls got written.
+#
+# What is portable here is already portable: `blit!` and `render_overlays!` take a
+# device and a target. Only the wrapper is Vulkan's.
 function present_composited!(screen::Screen, bq, win)
     Mantle.acquire_next_image!(win)
     win_target = Mantle.WindowTarget(win)
+    dev = screen.config.device
     frame = vulkanbackend().oneshot(bq) do e
-        Mantle.blit!(e, win_target, screen.output_buffer; clear=false)
+        Mantle.blit!(dev, win_target, screen.output_buffer; clear=false)
         for ss in screen.scene_states
             screen.state = ss
             poll_all_plots(screen, ss.makie_scene)
-            render_overlays!(screen, e, win_target)
+            render_overlays!(screen, win_target, Mantle.blittarget(win_target))
         end
         vulkanbackend().presentready!(e, win)
     end

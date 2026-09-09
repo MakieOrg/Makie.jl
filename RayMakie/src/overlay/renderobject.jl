@@ -130,33 +130,18 @@ function build_draw_args(robj::RenderObject, arg_names::NTuple{N, Symbol}) where
     end
 end
 
-"""
-    compile_robj!(robj::RenderObject, arg_names; color_format, descriptor_set_layout=nothing)
+# DELETED: `compile_robj!` and `gfx_type_tuple`.
+#
+# Both were dead — nothing called the first and only the first called the second —
+# and between them they held the last two things this package had no business
+# holding: a reach into `MantleVulkanExt` for `ensure_compiled_with_shader!`, and
+# a hard `Lava.DeviceArray`, which is a name that does not resolve without a
+# Vulkan driver.
+#
+# What they did is `Mantle.compile_draw` in `draw_renderobject!`: it takes the
+# RESOLVED arguments and each backend derives its own device signature from them,
+# so there is no type tuple to build here and no descriptor-set layout to thread.
 
-Ensure the pipeline is compiled for the current arg types. Returns (vert_shader, compiled).
-"""
-function compile_robj!(robj::RenderObject, args::Tuple;
-                       color_format=RGBA{Float32},
-                       descriptor_set_layout=nothing)
-    pipeline = robj.pipeline
-    tt = gfx_type_tuple(args)
-    ds_layout = descriptor_set_layout
-    if ds_layout === nothing && robj.bindings !== nothing
-        ds_layout = robj.bindings.layout
-    end
-    vert_shader, compiled = vulkanbackend().ensure_compiled_with_shader!(pipeline,
-        pipeline.vertex, pipeline.fragment, tt, tt;
-        color_format, descriptor_set_layout=ds_layout)
-    return vert_shader, compiled
-end
-
-"""Convert args tuple to device-side types (host GPU array → device array)."""
-function gfx_type_tuple(args)
-    types = map(args) do arg
-        arg isa AbstractGPUArray ? typeof(Lava.DeviceArray(arg)) : typeof(arg)
-    end
-    return Tuple{types...}
-end
 
 # =============================================================================
 # update_robj! — mirrors GLMakie's update_robjs! exactly
