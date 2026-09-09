@@ -308,6 +308,8 @@ If any of outputs is requested and not up to date, the edge will be resolved.
 This then resolves every input in `inputs` that is dirty, causing more edges to resolve recursively.
 
 ```@example
+using ComputePipeline
+
 graph = ComputeGraph()
 add_input!(graph, :user_choice, 1) do x
     @info "user choice"
@@ -347,6 +349,7 @@ If the inputs nodes are expensive to resolve it would be nice to skip them if th
 This can be done with `select!(graph, selector, choices, output)` where the `selector` node returns an index selecting which of the `choices` should forward to the `output`:
 
 ```@example
+using ComputePipeline # hide
 graph = ComputeGraph()
 add_input!(graph, :user_choice, 1) do x
     @info "user choice"
