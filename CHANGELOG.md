@@ -2,11 +2,22 @@
 
 ## Unreleased
 
-- `Axis` spines now end exactly at the axis corners and rely on a `:square` linecap for corner coverage, instead of baking a half-spine-width extension into the geometry. Tick marks are anchored on the spine centerline rather than on a spine edge: a mark is `ticksize` long and `tickalign` (`0` = out, `1` = in) slides it across the centerline. Both changes keep exported figures (SVG/PDF) aligned — and keep ticks from riding into the plot area — when the stroke width is changed in an external editor. `ticksize` and `minorticksize` now default to `automatic`, resolving to `5 + spinewidth / 2` and `3 + spinewidth / 2`, so that the mark left visible outside the spine keeps its size at any spine width; figures that set a tick size explicitly get marks that appear `spinewidth / 2` shorter [#5765](https://github.com/MakieOrg/Makie.jl/pull/5765).
+- Changed `Axis` spines to end exactly at the axis corners and rely on a `:square` linecap for corner coverage, instead of baking a half-spine-width extension into the geometry. Tick marks are anchored on the spine centerline rather than on a spine edge: a mark is `ticksize` long and `tickalign` (`0` = out, `1` = in) slides it across the centerline. Both changes keep exported figures (SVG/PDF) aligned — and keep ticks from riding into the plot area — when the stroke width is changed in an external editor. `ticksize` and `minorticksize` now default to `automatic`, resolving to `5 + spinewidth / 2` and `3 + spinewidth / 2`, so that the mark left visible outside the spine keeps its size at any spine width; figures that set a tick size explicitly get marks that appear `spinewidth / 2` shorter [#5765](https://github.com/MakieOrg/Makie.jl/pull/5765).
+- Fixed a segfault in CairoMakie when saving a vector graphic (pdf, svg, eps) of a figure while recording it with a `VideoStream` [#5772](https://github.com/MakieOrg/Makie.jl/pull/5772).
+- Added support for exporting .mov video files. Transparent-background rendering for .mov outputs is now supported [#5764](https://github.com/MakieOrg/Makie.jl/pull/5764).
+- Increased precision of `Vec3f` to `Quaternionf` conversion to reduce quantization/improve precision around `Vec3f(0, 0, ±1)` rotations in `meshscatter`. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added nan handling to `volume` algorithms `:absorption` and `:mip` as well as 3D `countour` plots. These cases now respect `nan_color` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed `empty!(root_scene)` and `empty(fig)` disconnecting mouseposition and render_tick event sources in GLMakie [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added support for per level `linewidth` in `contour` plot. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed `tri/contourf` colormap sampling with `extendlow = :auto` and/or `extendhigh = :auto`. Previously this generated nlevels + 1 categories and sampled between them, now it generates nlevels categories and samples them directly. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed `bracket!` dropping z values [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added `matcap` support to `arrows3d!` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Changed `arrows2d` and `arrows3d` color handling to allow `color` (and `head/shaft/tailcolor`) to be given as a 2 or 3D array if they match the size of at least one argument. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Fixed CairoMakie `matcap` not rendering with the correct orientation. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+
 
 ## [0.24.14] - 2026-08-27
 
-- Added support for exporting .mov video files. Transparent-background rendering for .mov outputs is now supported [#5764](https://github.com/MakieOrg/Makie.jl/pull/5764).
 - Fixed WGLMakie's precompilation regression [#5767](https://github.com/MakieOrg/Makie.jl/pull/5767).
 - Fixed `BoundsError` in CairoMakie when clip planes remove all points of a plot, fixed `apply_transform(::Mat4, ::Plane3)` producing a `NaN`-distance plane that clips everything when the transform collapses the plane's normal direction, and fixed `Axis3` collapsing dimensions with zero-width limits [#5759](https://github.com/MakieOrg/Makie.jl/pull/5759).
 - Fixed log-scale `Axis` interactions producing invalid limits. [#5736](https://github.com/MakieOrg/Makie.jl/pull/5736)
@@ -81,8 +92,8 @@
 - Allow to set low or high bound of the colorrange and let the other side stay adaptive [#5555](https://github.com/MakieOrg/Makie.jl/pull/5555)
 - Barplot `bar_labels` now support `RichText` (e.g. subscript/superscript) both directly and via `label_formatter` [#5578](https://github.com/MakieOrg/Makie.jl/pull/5578)
 - CairoMakie now batches glyphs from the same text string into a single PDF/SVG text object, so that text can be selected and edited as a unit in vector editors like Inkscape and Illustrator [#5561](https://github.com/MakieOrg/Makie.jl/pull/5561)
-- Fixed `annotation` not showing lines/arrows when `text` is blank [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
-- Fixed error/nan offsets in `annotation!()` when an annotation is perfectly centered [#5568](https://github.com/MakieOrg/Makie.jl/pull/5568)
+- Fixed `annotation` not showing lines/arrows when `text` is blank. [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
+- Fixed error/nan offsets in `annotation!()` when an annotation is perfectly centered. [#5568](https://github.com/MakieOrg/Makie.jl/pull/5568)
 
 ## [0.24.9] - 2026-03-04
 
