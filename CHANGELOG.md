@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Changed `Axis` spines to end exactly at the axis corners and rely on a `:square` linecap for corner coverage, instead of baking a half-spine-width extension into the geometry. Tick marks are anchored on the spine centerline rather than on a spine edge: a mark is `ticksize` long and `tickalign` (`0` = out, `1` = in) slides it across the centerline. Both changes keep exported figures (SVG/PDF) aligned — and keep ticks from riding into the plot area — when the stroke width is changed in an external editor. `ticksize` and `minorticksize` now default to `automatic`, resolving to `5 + spinewidth / 2` and `3 + spinewidth / 2`, so that the mark left visible outside the spine keeps its size at any spine width; figures that set a tick size explicitly get marks that appear `spinewidth / 2` shorter [#5765](https://github.com/MakieOrg/Makie.jl/pull/5765).
 - Fixed a segfault in CairoMakie when saving a vector graphic (pdf, svg, eps) of a figure while recording it with a `VideoStream` [#5772](https://github.com/MakieOrg/Makie.jl/pull/5772).
 - Added support for exporting .mov video files. Transparent-background rendering for .mov outputs is now supported [#5764](https://github.com/MakieOrg/Makie.jl/pull/5764).
 - Increased precision of `Vec3f` to `Quaternionf` conversion to reduce quantization/improve precision around `Vec3f(0, 0, ±1)` rotations in `meshscatter`. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
