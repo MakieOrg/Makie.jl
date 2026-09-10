@@ -3,7 +3,10 @@ module FigureAttributeTestRecipes
     using Makie: make_block_docstring
 
     @recipe(FigureThemePlot, values) do scene
-        Attributes(color = Makie.inherit(scene, :figure_old_plot_color, :red))
+        Attributes(
+            color = Makie.inherit(scene, :figure_old_plot_color, :red),
+            theme_color = theme(scene, :figure_old_plot_theme_color; default = :red),
+        )
     end
 
     @recipe FigureInheritedPlot (values,) begin
@@ -18,6 +21,7 @@ module FigureAttributeTestRecipes
             legacy_color = Makie.inherit(scene, :figure_old_block_color, :red)
             nested_color = Makie.inherit(scene, (:FigureNestedTheme, :color), :red)
             theme_color = theme(scene, :figure_direct_theme_color)
+            keyword_theme_color = theme(scene, :figure_block_theme_color; default = :red)
         end
     end
 
@@ -72,6 +76,10 @@ end
     inherited = Figure(figure_plot_color = :purple)
     @test Makie.lookup_default(FigureAttributeTestRecipes.FigureInheritedPlot, inherited.scene, :color) === :purple
     @test Axis(f[1, 1]).xgridvisible[] === false
+
+    f = Figure(figure_old_plot_theme_color = :blue, figure_block_theme_color = :green)
+    @test Makie.default_theme(f.scene, FigureAttributeTestRecipes.FigureThemePlot)[:theme_color][] === :blue
+    @test Makie.to_value(Makie.default_attribute_values(FigureAttributeTestRecipes.FigureThemeBlock, f.scene)[:keyword_theme_color]) === :green
 
     with_theme(; custom_figure_setting = :red) do
         f = Figure(custom_figure_setting = :blue)

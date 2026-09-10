@@ -10,14 +10,16 @@ plotsym(x) = :plot
 function _inherited_theme_keys(expr)
     names = Set{Symbol}()
     expr isa Expr || return names
-    if expr.head in (:call, :macrocall) && length(expr.args) >= 3
-        func = expr.args[1]
+    # Semicolon keyword arguments insert a :parameters node before positional arguments.
+    args = expr.head === :call ? filter(arg -> !Meta.isexpr(arg, :parameters), expr.args) : expr.args
+    if expr.head in (:call, :macrocall) && length(args) >= 3
+        func = args[1]
         if func isa Expr && func.head === :.
             func = func.args[end]
         end
         func = func isa QuoteNode ? func.value : func
         if func in (:theme, :inherit, Symbol("@inherit"))
-            key = expr.args[3]
+            key = args[3]
             if key isa Expr && key.head === :tuple && !isempty(key.args)
                 key = first(key.args)
             end
