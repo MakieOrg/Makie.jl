@@ -376,6 +376,14 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
                 i_frame += 1
                 t = i_frame / fps
             end
+            # What the event ACTUALLY took, which only a `WaitUntil` can cut short.
+            # Carrying the nominal timeout forward instead starts the next event's
+            # window in the future, and its loop then records every frame in
+            # between — so a predicate satisfied in two seconds still cost its full
+            # timeout in recorded video. Measured on the video editor's
+            # walkthrough: two 240 s timeouts, both satisfied within seconds, put
+            # 480 s of nothing into a 12-minute take.
+            current_duration = t - t_event
 
             mouseevents = mouseevents_end(event)
             for mouseevent in mouseevents
