@@ -1646,23 +1646,23 @@ closable). The active tab is the scalar `active` attribute.
         "Number of vertices used to render rounded tab corners."
         cornersegments = 10
         "Background color of the active tab header."
-        tabcolor_active = :white
+        tabcolor_active = @inherit((:colors, :background))
         "Background color of inactive tab headers."
-        tabcolor_inactive = :white
-        "Background color of a hovered, inactive tab header (brief gray feedback while pointing/clicking)."
-        tabcolor_hover = RGBf(0.92, 0.92, 0.92)
+        tabcolor_inactive = @inherit((:colors, :surface_subtle))
+        "Background color of a hovered, inactive tab header (brief feedback while pointing/clicking)."
+        tabcolor_hover = @inherit((:colors, :surface))
         "Color of the active tab label."
-        labelcolor_active = :black
+        labelcolor_active = @inherit((:colors, :text))
         "Color of inactive tab labels."
-        labelcolor_inactive = RGBf(0.4, 0.4, 0.4)
+        labelcolor_inactive = @inherit((:colors, :text_muted))
         "Color of the close (×) icon when idle."
-        closecolor = RGBf(0.5, 0.5, 0.5)
+        closecolor = @inherit((:colors, :text_muted))
         "Color of the close (×) icon when hovered."
-        closecolor_hover = RGBf(0, 0, 0)
+        closecolor_hover = @inherit((:colors, :text))
         "Gap in pixels between adjacent tab headers."
         tabgap = 0
         "Color of the thin separator line drawn under the header strip (broken under the active tab)."
-        separator_color = RGBf(0.82, 0.82, 0.82)
+        separator_color = @inherit((:colors, :border))
         "Thickness in pixels of the header bottom separator."
         separator_thickness = 1
         "Padding (in pixels) forwarded to each tab's content area."

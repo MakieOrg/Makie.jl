@@ -44,13 +44,25 @@ function initialize_block!(t::Tabs, labels::AbstractVector = ["Tab 1", "Tab 2"];
 
     on(_ -> refresh_visibility!(t), blockscene, t.active)
 
+    # `receives_events`, as every other interactive block asks it: a `Tabs` whose
+    # scene is hidden or covered still has its header rects, and `tab_at` answers
+    # from those alone. A dismissed dialog left in the figure then swallowed the
+    # click meant for the dialog on top of it — measured: two modals each holding
+    # a `Tabs` at the same place, the click switched the HIDDEN one's tab and the
+    # visible one stayed on tab 1.
     on(blockscene, blockscene.events.mouseposition) do pos
+        if !Makie.receives_events(blockscene)
+            t.hovered[] = 0
+            t.close_hovered[] = 0
+            return Consume(false)
+        end
         t.hovered[] = tab_at(t, pos)
         t.close_hovered[] = close_at(t, pos)
         return Consume(false)
     end
 
     on(blockscene, blockscene.events.mousebutton; priority = 60) do ev
+        Makie.receives_events(blockscene) || return Consume(false)
         if ev.button == Mouse.left && ev.action == Mouse.press
             pos = blockscene.events.mouseposition[]
             # Close button takes precedence over the tab body click: clicking
