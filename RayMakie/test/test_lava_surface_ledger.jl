@@ -1,36 +1,26 @@
 """
-What RayMakie still names from Lava, and why each one is allowed to stay.
+What RayMakie still names from Lava: nothing, and this is what holds it there.
 
 This file used to be a debt ledger. `Lava.` in RayMakie's source meant a Makie
 backend reaching into a Vulkan runtime — queues, framebuffers, render passes,
-`present_frame!` — and the list existed to stop it growing while that runtime was
-moved out. On 2026-08-27 it was: **124 references across 8 files.**
+`present_frame!` — and the list existed to stop it growing while that runtime
+was moved out. On 2026-08-27 it was **124 references across 8 files**; after the
+runtime moved it was **31 across 2**, all of them shader-stage intrinsics and
+pipeline-description enums.
 
-The move happened, and it is now **31 across 2**, all of one kind. Everything
-that needed a device went to Mantle: `GraphicsPipeline`, `VulkanFramebuffer`,
-`VulkanTexture2D`, `VulkanBatchQueue`, `vk_context`, `blit!`, `present_frame!`,
-`acquire_next_image!`, `begin_pass!`, `LavaArray`. What is left is what a
-shader is written IN and what a pipeline is DESCRIBED with:
+It is **zero** now, and the last thirty-one went for the reason the previous
+ninety-three did: what a shader is written IN is not a compiler's to own either.
+`vertex_index`, `frag_coord_x`, `emit_vertex!`, `sample_texture_2d` and the rest
+are declared in `KernelInterface`, which both backends depend on and each
+overrides for its own target; `TriangleList`, `GeometryConfig` and the other
+enums are there too, because a pipeline description a compiler must read is not
+a runtime's to define. `LavaDeviceArray` went last: a stage signature says
+`AbstractVector{Vec3f}` now, because what it receives is whichever device array
+the backend that compiled it hands over.
 
-  * **shader-stage intrinsics** — `gfx_input`/`gfx_output`, `emit_vertex!`,
-    `frag_coord_x`, `dFdx`, `set_position!`, `sample_texture_2d`,
-    `vertex_index`. These are the graphics counterpart of what
-    `KernelInterface` holds for compute, and they belong to whoever lowers them.
-  * **pipeline-description enums** — `TriangleList`, `NoCull`, `DepthOff`,
-    `Premultiplied`, `GeometryConfig`. Pure Julia, no Vulkan: `graphics/types.jl`
-    describes what a pipeline should be, and Mantle's `graphics/pipeline.jl`
-    builds it. That is why one stayed and the other left.
-  * **`LavaDeviceArray`** — the `(pointer, dims)` pair a kernel receives. Its
-    host counterpart `LavaArray` is Mantle's, and the two sitting on opposite
-    sides is the split stated in miniature.
-
-So the ledger's meaning inverted. It no longer says "this should be zero"; it
-says **this is compiler vocabulary, and nothing that needs a device may join
-it**. A `Lava.BatchQueue` reappearing here would mean the split had come undone.
-
-Counts are not pinned per name — RayMakie writes `LavaDeviceArray` wherever a
-kernel signature needs it and that moves with ordinary edits. The name SETS are,
-which is what catches a new kind of reference.
+So the ledger's meaning has inverted twice, and this is the final form: **a
+Makie backend names no compiler at all**. A single `Lava.` reference reappearing
+here means the split has come undone.
 
 Parsed rather than grepped: `import Lava: a, b,` continues across lines, and a
 regex either misses the continuation or matches the word in a comment.
@@ -43,30 +33,10 @@ worse trade than the copy.
 
 using Test
 
-const LAVA_SURFACE = Dict(
-    # Shader-stage intrinsics and the enums a pipeline is described with.
-    "src/RayMakie.jl" => Set([
-        # `Premultiplied`, `TriangleList`, `NoCull` and `DepthOff` were here
-        # until the runtime moved out of the compiler: blend, cull, depth and
-        # topology describe a pipeline rather than compile one, so they are
-        # imported from Mantle now and are no longer part of the Lava surface.
-        # `RayMakie.jl` says so at its import; this list had not caught up.
-        "PointList", "LineList", "LineListAdjacency", "LineStripAdjacency",
-        "TriangleStrip", "GeometryConfig", "GfxTexture2D",
-        "vertex_index", "instance_index", "primitive_id_in",
-        "set_position!", "set_point_size!",
-        "frag_coord_x", "frag_coord_y", "dFdx", "dFdy",
-        "gfx_input", "gfx_input_flat", "gfx_output", "gfx_output_flat",
-        "geom_input", "geom_input_position",
-        "emit_vertex!", "end_primitive!", "sample_texture_2d",
-        "LavaDeviceArray",
-    ]),
-    # The device-side array, in a kernel argument type.
-    "src/overlay/renderobject.jl" => Set(["LavaDeviceArray"]),
-)
+const LAVA_SURFACE = Dict{String, Set{String}}()
 
-"""Where the surface stood after the split. It may fall; it may not rise."""
-const LAVA_SURFACE_BUDGET = 31
+"""Where the surface stands. It may fall; it may not rise."""
+const LAVA_SURFACE_BUDGET = 0
 
 """
 Every `Lava.<name>` and every name in an `import Lava: …` list, as `name =>

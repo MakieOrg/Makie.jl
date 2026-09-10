@@ -36,10 +36,10 @@ make_screen(scene) = RayMakie.Screen(scene; integrator = Hikari.VolPath(samples 
     @test !isempty(rt_states)
 
     # The structural assertions. A raster fallback leaves the TLAS empty and
-    # hands back a `LavaRenderObject` instead of a Hikari scene handle.
+    # hands back a `RenderObject` instead of a Hikari scene handle.
     @test any(s -> Raycore.n_instances(s.hikari_scene.accel) > 0, rt_states)
     robj = plt[:trace_renderobject][]
-    @test !(robj isa RayMakie.LavaRenderObject)
+    @test !(robj isa RayMakie.RenderObject)
     @test hasproperty(robj, :handle)
 
     # And the consequence, so a regression is visible in the image too: a

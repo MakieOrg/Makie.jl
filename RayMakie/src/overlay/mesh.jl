@@ -17,8 +17,8 @@ function get_mesh_pipeline!(screen)
 end
 
 function mesh_overlay_vertex(
-    positions::DeviceArray{Vec3f, 1},
-    colors::DeviceArray{Vec4f, 1},
+    positions::AbstractVector{Vec3f},
+    colors::AbstractVector{Vec4f},
     projectionview::Mat4f,
     model::Mat4f,
 )
@@ -31,8 +31,8 @@ end
 
 function mesh_overlay_fragment(
     inputs,
-    positions::DeviceArray{Vec3f, 1},
-    colors::DeviceArray{Vec4f, 1},
+    positions::AbstractVector{Vec3f},
+    colors::AbstractVector{Vec4f},
     projectionview::Mat4f,
     model::Mat4f,
 )

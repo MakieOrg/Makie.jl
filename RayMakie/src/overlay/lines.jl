@@ -66,12 +66,18 @@ const LINES_GEOM_OUT = (quad_sdf = Vec3f, truncation = Vec2f, linestart = Float3
                         cumulative_length = Flat{Float32}, capmode = Flat{Vec2f},
                         linepoints = Flat{Vec4f}, miter_vecs = Flat{Vec4f})
 
+# `AbstractVector`, not `Mantle.DeviceArray`: a `DeviceArray` is the HOST handle
+# for a pool region — its own docstring says it is not an array and does not
+# index — and what a stage actually receives is the backend's device array, a
+# `LavaDeviceArray` on one and an `MtlDeviceVector` on the other. Annotating the
+# handle type meant the stage had no method for the argument it was compiled
+# with, which surfaces as `jl_f_throw_methoderror` inside a vertex shader.
 function lines_vertex(
-    vertex::DeviceArray{Vec3f, 1},      # per-vertex position (f32c transformed)
-    color::DeviceArray{Vec4f, 1},       # per-vertex RGBA color
-    lastlen::DeviceArray{Float32, 1},   # cumulative screen-space length
-    valid_vertex::DeviceArray{Float32, 1}, # 0/1/2 validity flag
-    thickness::DeviceArray{Float32, 1}, # per-vertex linewidth
+    vertex::AbstractVector{Vec3f},      # per-vertex position (f32c transformed)
+    color::AbstractVector{Vec4f},       # per-vertex RGBA color
+    lastlen::AbstractVector{Float32},   # cumulative screen-space length
+    valid_vertex::AbstractVector{Float32}, # 0/1/2 validity flag
+    thickness::AbstractVector{Float32}, # per-vertex linewidth
     projectionview::Mat4f,
     model::Mat4f,
     px_per_unit::Float32,
@@ -105,11 +111,11 @@ end
 
 function lines_geometry(
     gs, prim,
-    vertex::DeviceArray{Vec3f, 1},
-    color::DeviceArray{Vec4f, 1},
-    lastlen::DeviceArray{Float32, 1},
-    valid_vertex::DeviceArray{Float32, 1},
-    thickness::DeviceArray{Float32, 1},
+    vertex::AbstractVector{Vec3f},
+    color::AbstractVector{Vec4f},
+    lastlen::AbstractVector{Float32},
+    valid_vertex::AbstractVector{Float32},
+    thickness::AbstractVector{Float32},
     projectionview::Mat4f,
     model::Mat4f,
     px_per_unit::Float32,
@@ -365,11 +371,11 @@ end
 function lines_fragment(
     inputs,
     # BDA args (same signature as vertex/geometry — Lava passes all args to all stages)
-    vertex::DeviceArray{Vec3f, 1},
-    color::DeviceArray{Vec4f, 1},
-    lastlen::DeviceArray{Float32, 1},
-    valid_vertex::DeviceArray{Float32, 1},
-    thickness::DeviceArray{Float32, 1},
+    vertex::AbstractVector{Vec3f},
+    color::AbstractVector{Vec4f},
+    lastlen::AbstractVector{Float32},
+    valid_vertex::AbstractVector{Float32},
+    thickness::AbstractVector{Float32},
     projectionview::Mat4f,
     model::Mat4f,
     px_per_unit::Float32,

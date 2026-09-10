@@ -139,8 +139,8 @@ mutable struct Screen <: Makie.MakieScreen
     gfx_atlas_bindings::Any
     gfx_atlas_size::Int
     fb_readback_buf::Any
-    # Per-screen graphics VulkanBatchQueue — isolated from compute/transfer
-    gfx_bq::Any  # Mantle.BatchQueue
+    # Per-screen graphics submission channel — isolated from compute/transfer
+    gfx_bq::Any  # Mantle.SubmitChannel
     # Per-screen graphics pipeline cache (no globals!)
     gfx_pipelines::Dict{Symbol, GraphicsPipeline}
 
@@ -174,7 +174,7 @@ function get_gfx_bq!(screen::Screen)
     if screen.gfx_bq === nothing
         screen.gfx_bq = Mantle.allocate_batch_queue!(screen.config.device)
     end
-    return screen.gfx_bq::Mantle.BatchQueue
+    return screen.gfx_bq::Mantle.SubmitChannel
 end
 
 function renderloop_running(screen::Screen)
@@ -326,7 +326,7 @@ function Base.close(screen::Screen)
     # The graphics queue goes back. It drains on the way out, which is what
     # retires everything the overlay pass recorded against it.
     if screen.gfx_bq !== nothing
-        Mantle.release_batch_queue!(screen.gfx_bq::Mantle.BatchQueue)
+        Mantle.release_batch_queue!(screen.gfx_bq::Mantle.SubmitChannel)
         screen.gfx_bq = nothing
     end
 

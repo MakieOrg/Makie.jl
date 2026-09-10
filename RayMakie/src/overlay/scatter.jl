@@ -24,8 +24,26 @@ const SCATTER_GEOM_OUT = (uv = Vec2f, colour = Flat{Vec4f}, vp_from_u = Flat{Flo
 
 # ─── Per-vertex attribute: either a single value (uniform) or array (per-element) ───
 const PerVertex{T} = Union{T, AbstractVector{<:T}}
-@inline gpu_read(arr::DeviceArray, idx) = arr[idx]
-@inline gpu_read(scalar, idx) = scalar
+# The ELEMENT TYPE is passed, and it is not decoration: an attribute is either
+# one value for every vertex or one per vertex, and NEITHER shape can be told
+# from the argument alone.
+#
+#   * `Mantle.DeviceArray` is the host handle for a pool region — its own
+#     docstring says it does not index — and never reaches a stage. Dispatching
+#     on it sent every per-vertex array to the scalar method, so `pos[1]` was
+#     the first COMPONENT of the array's first element.
+#   * `AbstractVector` catches the array, and catches a `Vec4f` too: a `Vec` is
+#     a `StaticVector`. A uniform colour then read as `colour[idx]`, one float.
+#
+# With the type in hand both questions are one dispatch and the wrong shape is a
+# `MethodError` at compile rather than a picture that is subtly wrong.
+#
+# The array method CONVERTS rather than requiring the exact element type: a
+# position buffer is `Point3f` where the stage wants `Vec3f`, and the two are the
+# same three floats. The uniform method is the more specific of the two for any
+# `T` that is itself a vector, so a `Vec4f` uniform still takes it.
+@inline gpu_read(::Type{T}, xs::AbstractVector, idx) where {T} = T(xs[idx])
+@inline gpu_read(::Type{T}, x::T, idx) where {T} = x
 
 function get_scatter_pipeline!(screen)
     get!(screen.gfx_pipelines, :scatter) do
@@ -79,12 +97,12 @@ function scatter_vertex(
     gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32,
 )
     idx = vertex_index()
-    pos = gpu_read(gpu_positions, idx)
+    pos = gpu_read(Vec3f, gpu_positions, idx)
 
     w4 = model_f32c * Vec4f(pos[1], pos[2], pos[3], 1f0)
     world_pos = Vec3f(w4[1], w4[2], w4[3])
 
-    moff = gpu_read(marker_offset, idx)
+    moff = gpu_read(Vec3f, marker_offset, idx)
     scaled_moff = Vec3f(f32c_scale[1]*moff[1], f32c_scale[2]*moff[2], f32c_scale[3]*moff[3])
     g_marker_offset = if gpu_transform_marker != Int32(0)
         mc1 = Vec3f(model_f32c[1,1], model_f32c[2,1], model_f32c[3,1])
@@ -95,8 +113,8 @@ function scatter_vertex(
         scaled_moff
     end
 
-    qoff = gpu_read(quad_offset, idx)
-    qscl = gpu_read(quad_scale, idx)
+    qoff = gpu_read(Vec2f, quad_offset, idx)
+    qscl = gpu_read(Vec2f, quad_scale, idx)
     g_offset_width = Vec4f(f32c_scale[1]*qoff[1], f32c_scale[2]*qoff[2],
                            f32c_scale[1]*qscl[1], f32c_scale[2]*qscl[2])
 
@@ -107,11 +125,11 @@ function scatter_vertex(
             world_pos = world_pos,
             marker_offset = g_marker_offset,
             offset_width = g_offset_width,
-            rotation = gpu_read(gpu_rotation, idx),
-            colour = gpu_read(gpu_colors, idx),
-            uv_bbox = gpu_read(sdf_uv, idx),
-            stroke_colour = gpu_read(gpu_stroke_color, idx),
-            glow_colour = gpu_read(gpu_glow_color, idx))
+            rotation = gpu_read(Vec4f, gpu_rotation, idx),
+            colour = gpu_read(Vec4f, gpu_colors, idx),
+            uv_bbox = gpu_read(Vec4f, sdf_uv, idx),
+            stroke_colour = gpu_read(Vec4f, gpu_stroke_color, idx),
+            glow_colour = gpu_read(Vec4f, gpu_glow_color, idx))
 end
 
 # =============================================================================

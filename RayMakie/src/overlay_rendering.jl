@@ -53,7 +53,11 @@ function draw_renderobject!(screen, p, robj::RenderObject, viewport, color_eltyp
     # backend bakes their device form its own way, which is why there is no
     # `push_info` to pack against here any more. `pack_gfx_args` and the
     # descriptor-set layout went with it.
-    compiled = Mantle.compile_draw(dev, robj.pipeline, (color_eltype,), nothing, args, args)
+    # The bindings travel with the COMPILE as well as with the bind: on one
+    # backend a pipeline that samples textures is built around their descriptor
+    # set layout, and a set bound against a pipeline that was not is invalid.
+    compiled = Mantle.compile_draw(dev, robj.pipeline, (color_eltype,), nothing, args, args;
+                                   bindings = robj.bindings)
 
     robj.bindings === nothing || Mantle.bindings!(p, compiled, robj.bindings)
 

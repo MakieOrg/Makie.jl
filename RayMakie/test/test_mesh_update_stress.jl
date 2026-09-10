@@ -114,7 +114,7 @@ Mantle.supports_batch_queue(BE) && @testset "mesh overlay — 2D mesh, vertex up
     screen = make_screen(scene)
     Makie.colorbuffer(screen)
     initial = robj_of(plt)
-    @test initial isa RayMakie.LavaRenderObject
+    @test initial isa RayMakie.RenderObject
     initial_vert_count = initial.vertex_count
     @test initial_vert_count == 6     # 2 triangles × 3 vertices
 
@@ -148,7 +148,7 @@ Mantle.supports_batch_queue(BE) && @testset "mesh overlay — per-vertex color, 
     screen = make_screen(scene)
     Makie.colorbuffer(screen)
     initial = robj_of(plt)
-    @test initial isa RayMakie.LavaRenderObject
+    @test initial isa RayMakie.RenderObject
 
     for f in 1:30
         colors[] = [Makie.RGBAf(rand(), rand(), rand(), 1) for _ in 1:n_verts]

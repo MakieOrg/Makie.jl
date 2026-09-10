@@ -35,14 +35,14 @@ import Makie.Observables
 # the shaders rather than porting the names.
 import Mantle
 # The runtime half, and all of it Mantle's portable spelling. These used to be
-# `VulkanFramebuffer` / `VulkanTexture2D` / `VulkanSampler` / `VulkanBatchQueue`
+# `VulkanFramebuffer` / `VulkanTexture2D` / `VulkanSampler` / the submission channel
 # — driver-named concretes that only exist when `MantleVulkanExt` is loaded, so
 # naming them here made RayMakie a package that could not load on a Mac. The
 # abstract types are Mantle's; the backend supplies the concretes.
 import Mantle: DeviceArray, GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
                Texture2D, Sampler, SampledTexture, bind_textures,
                transition_image!,
-               BatchQueue, allocate_batch_queue!, release_batch_queue!,
+               SubmitChannel, allocate_batch_queue!, release_batch_queue!,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
 import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
