@@ -1,5 +1,9 @@
 using Test
-using Makie, RayMakie, Hikari, Lava, GeometryBasics, Raycore
+# No `using Lava`: none of this file names one, and loading it drags in the
+# Vulkan loader — which is not there on every machine this suite runs on, so
+# the whole file errored before its first test rather than running on the
+# backend `runtests.jl` already found and activated.
+using Makie, RayMakie, Hikari, GeometryBasics, Raycore
 import ColorTypes
 
 # Moving a `mesh!` did nothing under hardware ray tracing, which is the default.

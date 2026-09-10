@@ -23,13 +23,19 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
         pv = Mat4f(scene.camera.projectionview[])
         viewport = scene.viewport[]
         vw, vh = viewport.widths
-        vo = viewport.origin
 
+        # The scene's OWN pixels, with no viewport origin added: the draw is
+        # recorded under this scene's viewport, so the stage's `screen_to_ndc` maps
+        # `[0, vw] x [0, vh]` onto exactly that rect. Adding the origin and then
+        # dividing by the ROOT resolution — which is what this did, and what `res`
+        # below still had to be for it — described the quad in window coordinates
+        # and had them re-mapped into the axis a second time: an `image!` or a
+        # `heatmap!` came out shrunk and pushed towards one corner of its own axis.
+        # `lines` and `scatter` have always worked in the scene's own space.
         function project_to_screen(dx, dy)
             p4 = pv * model * Vec4f(dx, dy, 0f0, 1f0)
             ndc = Vec2f(p4[1] / p4[4], p4[2] / p4[4])
-            Point2f(vo[1] + (ndc[1] + 1f0) * 0.5f0 * vw,
-                    vo[2] + (ndc[2] + 1f0) * 0.5f0 * vh)
+            Point2f((ndc[1] + 1f0) * 0.5f0 * vw, (ndc[2] + 1f0) * 0.5f0 * vh)
         end
 
         p_bl = project_to_screen(x_min, y_min)
@@ -50,8 +56,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
         # Reinterpret RGBA{Float32} → NTuple{4,Float32} for texture upload
         img_ntuple = collect(reinterpret(NTuple{4, Float32}, rgba_data))
 
-        # Get root resolution for viewport
-        root_w, root_h = size(screen.state.makie_scene)
+        # The scene's own size, to match the pixels `project_to_screen` produced.
+        root_w, root_h = round(Int, vw), round(Int, vh)
 
         if !isnothing(last) && last.trace_renderobject isa RenderObject
             # UPDATE existing render object

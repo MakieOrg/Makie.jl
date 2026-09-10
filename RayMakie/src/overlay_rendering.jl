@@ -134,34 +134,32 @@ end
 
 Throw unless `backend` can run every stage this pipeline declares.
 
-Asked before the pass opens rather than discovered from a shader compile, which
-is what `supports_geometry_stage` exists for. It THROWS, and that is the point: an
-overlay that cannot be drawn is not a degraded image, it is a WRONG one — no axis
-grid, no ticks, no labels, no scatter, no lines — and a renderer that drops it and
-reports success produces something nobody reading the picture can tell is
-incomplete.
+Asked before the pass opens rather than discovered from a shader compile. It
+THROWS, and that is the point: an overlay that cannot be drawn is not a degraded
+image, it is a WRONG one — no axis grid, no ticks, no labels, no scatter, no
+lines — and a renderer that drops it and reports success produces something nobody
+reading the picture can tell is incomplete. There was a skip-with-a-warning here
+and it is gone on purpose.
 
-There was a skip-with-a-warning here. It is gone on purpose. The fix is
-`Mantle.lower_geometry_to_mesh`, which everything else is already in place for.
+A geometry stage needs EITHER a backend that has one or a backend that has a mesh
+pipeline, because `Mantle.compile_draw` lowers a geometry pipeline onto a mesh one
+where the stage does not exist. That is why this asks two questions and not one,
+and why nothing above here branches on which of the two ran.
 """
 function require_drawable(backend, p::Mantle.GraphicsPipeline)
-    if p.geometry !== nothing && !Mantle.supports_geometry_stage(backend)
+    if p.geometry !== nothing && !Mantle.supports_geometry_stage(backend) &&
+            !Mantle.supports_mesh_pipeline(backend)
         error("""
-            $(nameof(typeof(backend))) has no geometry stage and this overlay needs one,
-            so it CANNOT be drawn — and it must not be silently dropped.
+            $(nameof(typeof(backend))) has neither a geometry stage nor a mesh
+            pipeline, and this overlay declares a geometry stage, so it CANNOT be
+            drawn — and it must not be silently dropped.
 
               vertex stage    $(Mantle.stagefunction(p.vertex))
               geometry stage  $(Mantle.stagefunction(p.geometry))
 
-            Apple removed the geometry stage; the replacement is the mesh pipeline,
-            which this backend has. Metal emits AIR mesh programs, a mesh stage has
-            the compute builtins and threadgroup memory, KernelInterface's portable
-            mesh vocabulary lowers onto it, and `Mantle.MeshPipeline` compiles and
-            draws. The only missing piece is the translation.
-
-            IMPLEMENT `Mantle.lower_geometry_to_mesh` and build this pipeline through
-            it. The design is decided and written out at the top of
-            Mantle/src/graphics/lowering.jl. Do not reintroduce a skip.""")
+            A backend with a mesh pipeline runs this through
+            `Mantle.lower_geometry_to_mesh`, which is what Metal does. One with
+            neither has to grow one of the two.""")
     end
     if p.tess_control !== nothing && !Mantle.supports_tessellation(backend)
         error("$(nameof(typeof(backend))) has no tessellation, and this overlay " *

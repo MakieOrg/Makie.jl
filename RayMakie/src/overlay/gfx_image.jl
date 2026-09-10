@@ -7,7 +7,7 @@ function get_image_pipeline!(screen)
     get!(screen.gfx_pipelines, :image) do
         GraphicsPipeline(; vertex = VertexShader(image_overlay_vertex;
                                                 outputs = (uv = Vec2f,)),
-                           fragment = FragmentShader(image_overlay_fragment),
+                           fragment = FragmentShader(image_overlay_fragment; textures = 1),
                            blend = Premultiplied(),
                            topology = TriangleList(),
                            cull = NoCull(),
@@ -52,7 +52,7 @@ function image_overlay_vertex(
     end
 
     ndc = screen_to_ndc(pos, res[1], res[2])
-    return (position = Vec4f(ndc[1], clip_y(ndc[2]), 0f0, 1f0), uv = uv)
+    return (position = Vec4f(ndc[1], ndc[2], 0f0, 1f0), uv = uv)
 end
 
 # ── Fragment Shader ──
@@ -64,10 +64,18 @@ function image_overlay_fragment(
     screen_tr::Vec2f,
     res::Vec2f,
 )
-    tex = GfxTexture2D(UInt32(0))
-    color = tex[inputs.uv]
+    # `sample_texture_2d` per component, which is the portable verb every backend
+    # answers. `GfxTexture2D(0)[uv]` was Lava's spelling and stopped existing when
+    # the shader vocabulary moved to KernelInterface — the name resolved to nothing,
+    # and an image or a heatmap failed to compile its fragment stage while every
+    # other overlay in the same figure drew.
+    u = inputs.uv[1]
+    v = inputs.uv[2]
+    r = sample_texture_2d(UInt32(0), u, v, UInt32(0))
+    g = sample_texture_2d(UInt32(0), u, v, UInt32(1))
+    b = sample_texture_2d(UInt32(0), u, v, UInt32(2))
+    a = sample_texture_2d(UInt32(0), u, v, UInt32(3))
 
     # Premultiply alpha for Porter-Duff compositing
-    a = color[4]
-    return Vec4f(color[1] * a, color[2] * a, color[3] * a, a)
+    return Vec4f(r * a, g * a, b * a, a)
 end

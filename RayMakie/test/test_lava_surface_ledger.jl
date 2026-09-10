@@ -24,13 +24,16 @@ shader is written IN and what a pipeline is DESCRIBED with:
     host counterpart `LavaArray` is Mantle's, and the two sitting on opposite
     sides is the split stated in miniature.
 
-So the ledger's meaning inverted. It no longer says "this should be zero"; it
-says **this is compiler vocabulary, and nothing that needs a device may join
-it**. A `Lava.BatchQueue` reappearing here would mean the split had come undone.
+Then the second half happened too. The shader-stage intrinsics and the pipeline
+enums moved to `KernelInterface` and Mantle — a shader is written in the portable
+vocabulary and lowered by whichever backend compiles it, and `LavaDeviceArray`
+became `AbstractVector` in the signatures that named it. So the count is now
+**0 across 0 files**: RayMakie names NOTHING from Lava, which is what makes
+`using Metal, Mantle` enough to render with.
 
-Counts are not pinned per name — RayMakie writes `LavaDeviceArray` wherever a
-kernel signature needs it and that moves with ordinary edits. The name SETS are,
-which is what catches a new kind of reference.
+The ledger keeps its meaning at zero. It says: nothing from Lava may come back —
+not a queue, not a framebuffer, and not an intrinsic either, because a shader
+that names one is a shader only one backend can compile.
 
 Parsed rather than grepped: `import Lava: a, b,` continues across lines, and a
 regex either misses the continuation or matches the word in a comment.
@@ -43,30 +46,10 @@ worse trade than the copy.
 
 using Test
 
-const LAVA_SURFACE = Dict(
-    # Shader-stage intrinsics and the enums a pipeline is described with.
-    "src/RayMakie.jl" => Set([
-        # `Premultiplied`, `TriangleList`, `NoCull` and `DepthOff` were here
-        # until the runtime moved out of the compiler: blend, cull, depth and
-        # topology describe a pipeline rather than compile one, so they are
-        # imported from Mantle now and are no longer part of the Lava surface.
-        # `RayMakie.jl` says so at its import; this list had not caught up.
-        "PointList", "LineList", "LineListAdjacency", "LineStripAdjacency",
-        "TriangleStrip", "GeometryConfig", "GfxTexture2D",
-        "vertex_index", "instance_index", "primitive_id_in",
-        "set_position!", "set_point_size!",
-        "frag_coord_x", "frag_coord_y", "dFdx", "dFdy",
-        "gfx_input", "gfx_input_flat", "gfx_output", "gfx_output_flat",
-        "geom_input", "geom_input_position",
-        "emit_vertex!", "end_primitive!", "sample_texture_2d",
-        "LavaDeviceArray",
-    ]),
-    # The device-side array, in a kernel argument type.
-    "src/overlay/renderobject.jl" => Set(["LavaDeviceArray"]),
-)
+const LAVA_SURFACE = Dict{String, Set{String}}()
 
-"""Where the surface stood after the split. It may fall; it may not rise."""
-const LAVA_SURFACE_BUDGET = 31
+"""Where the surface stands. It may not rise."""
+const LAVA_SURFACE_BUDGET = 0
 
 """
 Every `Lava.<name>` and every name in an `import Lava: …` list, as `name =>

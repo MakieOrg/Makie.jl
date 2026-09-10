@@ -12,7 +12,11 @@
 #                             could have served it
 #   topology_rebuilds       — faces or uv changed too, so a new BVH is required
 # Both stay put when an update took the in-place path.
-using Test, Makie, RayMakie, Lava, Hikari, GeometryBasics, Raycore
+# No `using Lava`: none of this file names one, and loading it drags in the
+# Vulkan loader — which is not there on every machine this suite runs on, so
+# the whole file errored before its first test rather than running on the
+# backend `runtests.jl` already found and activated.
+using Test, Makie, RayMakie, Hikari, GeometryBasics, Raycore
 using GeometryBasics: Point3f, Vec2f, Vec3f, Rect3f, Sphere
 
 robj_of(plt) = to_value(plt.attributes[:trace_renderobject])

@@ -5,6 +5,8 @@ using GeometryBasics: SVector
 using Makie: Observable, on, colorbuffer, to_value
 using Makie: Quaternionf
 using GeometryBasics: VecTypes
+# `StaticVector` tells one value apart from a buffer of them in a shader; see `gpu_read`.
+using StaticArrays: StaticVector
 using Colors: N0f8, Colorant
 using ImageCore: RGBA, RGB, clamp01nan
 import Makie.Observables
@@ -53,9 +55,9 @@ import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
 # a native geometry stage or a mesh stage.
 import Mantle: VertexShader, FragmentShader, GeometryShader, Flat,
                emit!, endprimitive!,
-               vertex_index, instance_index, frag_coord_x, frag_coord_y, clip_y,
-               dFdx, dFdy, sample_texture_2d,
-               LineStripAdjacency, TriangleStrip, PointList, LineList
+               vertex_index, VertexIndex, instance_index, frag_coord_x, frag_coord_y,
+               clip_y, dFdx, dFdy, sample_texture_2d,
+               LineStripAdjacency, LineListAdjacency, TriangleStrip, PointList, LineList
 
 """
 The Vulkan backend module, for the four things the OVERLAY path still needs from
@@ -550,6 +552,29 @@ function collect_overlay_scenes!(result, scene::Makie.Scene)
     end
     for child in scene.children
         collect_overlay_scenes!(result, child)
+    end
+end
+
+"""
+    overlay_root_states(screen) -> Vector{RayMakieState}
+
+The scene states whose overlays are drawn: one per INDEPENDENT scene tree.
+
+`collect_overlay_robjs` walks a state's scene AND every scene under it, so a child
+scene that also has a state of its own would have its plots drawn TWICE — once from
+the root, and once from itself. The two draws do not even land in the same place:
+the viewport is measured as `root_h - origin_y`, and from a child state `root_h` is
+that child's own height, so the second copy sits off by the difference. In an `Axis`
+inside a `Figure` that was every line, sprite and glyph drawn again 55 pixels up.
+"""
+function overlay_root_states(screen)
+    states = screen.scene_states
+    return filter(states) do ss
+        # By SCENE and not by state: `scene_contains` counts a scene as containing
+        # itself, and two states over the same scene would otherwise each rule the
+        # other out and neither would be drawn.
+        !any(other -> other.makie_scene !== ss.makie_scene &&
+                      scene_contains(other.makie_scene, ss.makie_scene), states)
     end
 end
 

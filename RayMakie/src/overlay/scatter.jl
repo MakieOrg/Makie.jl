@@ -24,7 +24,18 @@ const SCATTER_GEOM_OUT = (uv = Vec2f, colour = Flat{Vec4f}, vp_from_u = Flat{Flo
 
 # ─── Per-vertex attribute: either a single value (uniform) or array (per-element) ───
 const PerVertex{T} = Union{T, AbstractVector{<:T}}
-@inline gpu_read(arr::DeviceArray, idx) = arr[idx]
+#
+# `AbstractVector` and not `Mantle.DeviceArray`: the latter is the HOST handle for a
+# buffer, and what a shader is handed is whatever the backend's device-side array is
+# — `MtlDeviceVector` on Metal, and nothing that shares a supertype with it. Dispatch
+# on the host type sent every buffer down the scalar branch on any backend but the one
+# it was written for, and the shader then read the array WHERE IT MEANT A VERTEX: the
+# first symptom is a `MethodError` for `Vec4f(::MtlDeviceVector, …)` at compile time.
+#
+# A `Vec` is an `AbstractVector` too and is one value for every vertex, which is what
+# the `StaticVector` method is for.
+@inline gpu_read(arr::AbstractVector, idx) = arr[idx]
+@inline gpu_read(v::StaticVector, idx) = v
 @inline gpu_read(scalar, idx) = scalar
 
 function get_scatter_pipeline!(screen)
@@ -34,7 +45,7 @@ function get_scatter_pipeline!(screen)
             geometry = GeometryShader(scatter_geometry; outputs = SCATTER_GEOM_OUT,
                                       input = PointList(), output = TriangleStrip(),
                                       max_vertices = 4),
-            fragment = FragmentShader(scatter_fragment),
+            fragment = FragmentShader(scatter_fragment; textures = 1),
             blend = Premultiplied(),
             topology = PointList(),
             cull = NoCull(),
@@ -61,7 +72,15 @@ end
 # Names match compute graph outputs (gpu_* for converted, direct for others)
 # =============================================================================
 
+# The index is a PARAMETER, and the arg-less spelling below hands it the builtin.
+# Both are needed and they are the same number; see the same pair in
+# `overlay/lines.jl` for why, and `KernelInterface.VertexIndex` for the contract.
+# The fallback's arity is `length(SCATTER_ARG_NAMES)`, fixed so it cannot match
+# its own forwarded call.
+scatter_vertex(args::Vararg{Any,23}) = scatter_vertex(VertexIndex(vertex_index()), args...)
+
 function scatter_vertex(
+    vertexid::VertexIndex,
     gpu_positions::AbstractVector{<:Vec3f},
     gpu_colors::PerVertex{Vec4f},
     quad_offset,     # PerVertex — Vec2f or Vector{Vec2f}
@@ -78,7 +97,7 @@ function scatter_vertex(
     gpu_billboard::Int32, depth_shift::Float32,
     gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32,
 )
-    idx = vertex_index()
+    idx = vertexid.value
     pos = gpu_read(gpu_positions, idx)
 
     w4 = model_f32c * Vec4f(pos[1], pos[2], pos[3], 1f0)
@@ -205,7 +224,7 @@ function scatter_geometry(
         ux = (c == Int32(1) || c == Int32(2)) ? uv_mn[1] : uv_mx[1]
         uy = (c == Int32(1) || c == Int32(3)) ? uv_mx[2] : uv_mn[2]
         v = vclip + trans * Vec4f(bx, by, 0f0, 0f0)
-        pos = Vec4f(v[1], clip_y(v[2]), v[3] + v[4] * depth_shift, v[4])
+        pos = gl_to_clip_depth(Vec4f(v[1], v[2], v[3] + v[4] * depth_shift, v[4]))
         emit!(gs, merge((position = pos, uv = Vec2f(ux, uy)), flat))
     end
     endprimitive!(gs)
@@ -307,6 +326,15 @@ const SCATTER_ARG_NAMES = (
     :gpu_stroke_width, :gpu_glow_width, :gpu_billboard, :depth_shift,
     :gpu_atlas_width, :gpu_sdf_marker_shape,
 )
+
+# `scatter_vertex`'s native-path arity is written out as a literal, and this is
+# what stops the two drifting: an argument added here without adding one there
+# would leave the arg-less spelling matching nothing, on the backend that has a
+# geometry stage only.
+length(SCATTER_ARG_NAMES) == 23 || error(
+    "SCATTER_ARG_NAMES has $(length(SCATTER_ARG_NAMES)) entries and " *
+    "`scatter_vertex(args::Vararg{Any,23})` expects 23. Update the fallback's " *
+    "arity in this file to match.")
 
 # =============================================================================
 # setup_scatter! — registers conversions + robj

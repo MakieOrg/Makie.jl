@@ -17,22 +17,22 @@ function get_mesh_pipeline!(screen)
 end
 
 function mesh_overlay_vertex(
-    positions::DeviceArray{Vec3f, 1},
-    colors::DeviceArray{Vec4f, 1},
+    positions::AbstractVector{Vec3f},
+    colors::AbstractVector{Vec4f},
     projectionview::Mat4f,
     model::Mat4f,
 )
     vid = vertex_index()
     pos = positions[vid]
     clip = projectionview * model * Vec4f(pos[1], pos[2], pos[3], 1f0)
-    return (position = Vec4f(clip[1], clip_y(clip[2]), clip[3], clip[4]),
+    return (position = gl_to_clip_depth(clip),
             colour = colors[vid])
 end
 
 function mesh_overlay_fragment(
     inputs,
-    positions::DeviceArray{Vec3f, 1},
-    colors::DeviceArray{Vec4f, 1},
+    positions::AbstractVector{Vec3f},
+    colors::AbstractVector{Vec4f},
     projectionview::Mat4f,
     model::Mat4f,
 )

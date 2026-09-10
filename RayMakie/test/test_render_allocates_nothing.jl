@@ -20,7 +20,11 @@
 #
 # Everything measured lives inside a function — locals, not globals — because a
 # non-const global read boxes its way into the count.
-using Test, Makie, RayMakie, Lava, Hikari, GeometryBasics
+# No `using Lava`: none of this file names one, and loading it drags in the
+# Vulkan loader — which is not there on every machine this suite runs on, so
+# the whole file errored before its first test rather than running on the
+# backend `runtests.jl` already found and activated.
+using Test, Makie, RayMakie, Hikari, GeometryBasics
 using GeometryBasics: Point3f, Vec3f, Rect3f, Sphere
 
 function allocfree_scene()
@@ -44,7 +48,31 @@ function sample_bytes(screen, n)
     # and no forced GC, 0 of 30 after one, 0 of 30 after another. The claim
     # under test is the STEADY state of a still scene, which that is not.
     GC.gc(true); GC.gc(true)
-    return [(@allocated RayMakie.render!(screen; finalize_framebuffer = false)) for _ in 1:n]
+    # …and then render again, because the collection above only QUEUED the work.
+    # A finalizer that hands a GPU region back puts it on the pool's retire list,
+    # and `reclaim!` — which every `run!` calls — is what walks and coalesces it.
+    # With the samples measured immediately after a GC, that walk landed INSIDE
+    # one of them: 41 KB in a suite that had dropped a few hundred regions in the
+    # files before this one, against a few hundred bytes for the same scene
+    # measured alone. The steady state is what this file is about, and the frame
+    # after a collection is not it.
+    for _ in 1:3
+        RayMakie.render!(screen; finalize_framebuffer = false)
+    end
+    # And with the collector OFF for the measurement itself. Draining first is not
+    # enough in a suite that has run a dozen files before this one: a GC firing
+    # inside one of the twenty samples runs whatever finalizers are pending THERE,
+    # and a finalizer handing a GPU region back allocates — 41 KB in one sample of
+    # twenty, against a few hundred bytes for every other and for the same scene
+    # measured alone. What this file claims is what a still sample costs, and a
+    # collection that happens to land in it is not that.
+    GC.enable(false)
+    bytes = try
+        [(@allocated RayMakie.render!(screen; finalize_framebuffer = false)) for _ in 1:n]
+    finally
+        GC.enable(true)
+    end
+    return bytes
 end
 
 @testset "a sample of a still scene allocates nothing" begin

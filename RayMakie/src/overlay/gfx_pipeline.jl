@@ -36,13 +36,40 @@ function get_atlas_bindings(screen)
     return bindings
 end
 
+# ── Depth: OpenGL's clip range to this one ──────────────────────────────────
+#
+# Makie's cameras build OpenGL-convention projections, where a visible point has
+# clip z in `[-w, w]`. Vulkan and Metal both keep `[0, w]` and clip everything
+# below it, so a GL matrix has to be remapped or half its range is thrown away.
+#
+# What that cost was an `Axis` with no frame and no tick marks. Makie stacks its
+# decorations in z — the ticks at 10 and the spines at 20 — and with the pixel
+# camera's `-0.0001` z scale those became clip z of -0.001 and -0.002: inside GL's
+# range, just outside this one, and clipped away by the near plane while the
+# background at z = -100 (clip z +0.01) came through. Nothing reported it, because
+# a clipped primitive is not an error.
+#
+# `0.5 * (z + w)`, which is the standard GL-to-Vulkan depth remap and leaves the
+# ordering it encodes untouched.
+@inline gl_to_clip_depth(clip::Vec4f) =
+    Vec4f(clip[1], clip[2], 0.5f0 * (clip[3] + clip[4]), clip[4])
+
 # ── Screen-to-NDC conversion (shared by vertex shaders) ──
 #
-# Y FLIP RATIONALE (DO NOT CHANGE — confirmed correct 2026-03-24):
+# Y FLIP RATIONALE:
 #   Makie screen space: y=0 at bottom, y=h at top.
 #   With negative viewport (0, h, w, -h), NDC y=-1 maps to fb bottom, y=+1 to fb top.
 #   But Makie y=0 (bottom) should map to NDC y=+1 (top of viewport), so we NEGATE.
 #   Formula: ndc_y = -(pos_y/res*2 - 1). Verified: screen_y=0 → ndc_y=+1, screen_y=h → ndc_y=-1.
+#
+# That negation is the ONLY one a shader here writes. `KernelInterface.clip_y` is
+# NOT for this and used to be called on the `position` these stages return: it
+# answers "this backend's clip y given the portable one", and the backend ALREADY
+# applies it to every position a stage writes. Calling it here applied the mirror
+# a second time, which on Vulkan is invisible (there it is the identity) and on
+# Metal drew every sprite and every glyph upside down — text at the bottom of a
+# figure came out at the top, mirrored. The lines stages called it twice, in the
+# vertex and again in the geometry, which cancelled and hid the same mistake.
 #
 # WRONG APPROACHES TRIED AND REVERTED:
 #   - Adding +0.5px offset to pos (pixel center alignment) → worsened scores
