@@ -28,13 +28,21 @@ The density pairs can be sourced from the same or from different data.
     "Orientation of the violins (`:vertical` or `:horizontal`)"
     orientation = :vertical
     """
-    Sets the width of the bounding box of each violin. When `dodge` is used this
-    sets combined width of all dodged violins in a single category/x value.
+    Sets the width of the bounding box of each violin. When `dodge` is used, width can be a
+    single value or a vector of `n_dodge` values. As a single value it specifies the
+    combined width of all dodged elements in a single category/x value. As multiple values
+    it specifies the relative width of each of the dodged elements times the total width:
+    that is, `mean(width)` will comprise the full width of each category/x value. Variable
+    dodge widths can be useful when combining multiple elements (e.g. box plots and violins)
+    in the same figure at different dodge positions: each plot element would correspond to a
+    distinct dodge index in this case. Note that violin does not support variable widths, so
+    the `dodge` indices used for the violins should correspond to homogenous valued widths
+    within the width vector.
     """
     width = automatic
     """
     Dodge can be used to separate violins drawn at the same `x` position/category.
-    For this each violin is given an integer value corresponding to its position
+    Each violin is given an integer value corresponding to its position
     relative to the given `x` positions. E.g. with `positions = [1, 1, 1, 2, 2, 2]`
     we have 3 violins at each position which can be separated by `dodge = [1, 2, 3, 1, 2, 3]`.
     """
@@ -46,7 +54,11 @@ The density pairs can be sourced from the same or from different data.
     n_dodge = automatic
     "Size of the gap between violins. The modified width is `width * (1 - gap)`."
     gap = 0.2
-    "Sets the gap between dodged violins relative to their size."
+    """
+    Sets the gap between dodged violins relative to their size. Can be a single
+    number or `n_dodge - 1` numbers to indicate a different gap between
+    each dodged element.
+    """
     dodge_gap = 0.03
     "Specify values to trim the `violin`. Can be a `Tuple` or a `Function` (e.g. `datalimits=extrema`)."
     datalimits = (-Inf, Inf)
@@ -149,6 +161,20 @@ function plot!(plot::Violin)
     ) do specs, scale_type, show_median, max_density, orientation, violinwidth
         @assert scale_type ∈ [:area, :count, :width] "Invalid scale type: $(scale_type)"
 
+        # widths can be passed as vector (e.g. see `compute_x_and_width` for details) but
+        # these should all map to a constant width for the violin plots when
+        # `compute_x_and_width` is called above
+        violinwidth = if length(violinwidth) > 1
+            if allequal(violinwidth)
+                first(violinwidth)
+            else
+                throw(ArgumentError("Non-constant width across different violins in a violin "*
+                                    "plot are not supported."))
+            end
+        else
+            violinwidth
+        end
+
         # for horizontal violin just flip all components
         point_func = Point2f
         if orientation === :horizontal
@@ -181,6 +207,7 @@ function plot!(plot::Violin)
             elseif scale_type === :width
                 scale = scale / (extrema_nan(spec.kde.density) |> last)
             end
+
             xl = reverse(spec.x .- spec.kde.density .* scale)
             xr = spec.x .+ spec.kde.density .* scale
             yl = reverse(spec.kde.x)

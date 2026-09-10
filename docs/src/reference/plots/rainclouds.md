@@ -7,6 +7,9 @@ rainclouds
 "Raincloud" plots are a combination of a (half) violin plot, box plot and scatter plots. The
 three together can make an appealing and informative visual, particularly for large N datasets.
 
+!!! note
+    Ultimately, variable length `dodge` and `width` values provide a more principled,
+    flexible approach to creating raincloud plots. See the [dodging](@ref) explanation for details.
 
 ```@figure rainclouds
 using Random
