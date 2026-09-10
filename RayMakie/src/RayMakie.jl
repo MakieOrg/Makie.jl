@@ -5,9 +5,7 @@ using GeometryBasics: SVector
 using Makie: Observable, on, colorbuffer, to_value
 using Makie: Quaternionf
 using GeometryBasics: VecTypes
-# `StaticVector` and not `VecTypes`: `gpu_read` needs a type that is STRICTLY
-# more specific than `AbstractVector`, and `VecTypes` is a Union with `NTuple`,
-# which is not one — the two methods would be ambiguous again.
+# `StaticVector` tells one value apart from a buffer of them in a shader; see `gpu_read`.
 using StaticArrays: StaticVector
 using Colors: N0f8, Colorant
 using ImageCore: RGBA, RGB, clamp01nan
@@ -39,14 +37,14 @@ import Makie.Observables
 # the shaders rather than porting the names.
 import Mantle
 # The runtime half, and all of it Mantle's portable spelling. These used to be
-# `VulkanFramebuffer` / `VulkanTexture2D` / `VulkanSampler` / the submission channel
+# `VulkanFramebuffer` / `VulkanTexture2D` / `VulkanSampler` / `VulkanBatchQueue`
 # — driver-named concretes that only exist when `MantleVulkanExt` is loaded, so
 # naming them here made RayMakie a package that could not load on a Mac. The
 # abstract types are Mantle's; the backend supplies the concretes.
 import Mantle: DeviceArray, GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
                Texture2D, Sampler, SampledTexture, bind_textures,
                transition_image!,
-               SubmitChannel, allocate_batch_queue!, release_batch_queue!,
+               BatchQueue, allocate_batch_queue!, release_batch_queue!,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
 import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
@@ -57,9 +55,9 @@ import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
 # a native geometry stage or a mesh stage.
 import Mantle: VertexShader, FragmentShader, GeometryShader, Flat,
                emit!, endprimitive!,
-               vertex_index, instance_index, frag_coord_x, frag_coord_y, clip_y,
-               dFdx, dFdy, sample_texture_2d,
-               LineStripAdjacency, TriangleStrip, PointList, LineList
+               vertex_index, VertexIndex, instance_index, frag_coord_x, frag_coord_y,
+               clip_y, dFdx, dFdy, sample_texture_2d,
+               LineStripAdjacency, LineListAdjacency, TriangleStrip, PointList, LineList
 
 """
 The Vulkan backend module, for the four things the OVERLAY path still needs from
@@ -554,6 +552,29 @@ function collect_overlay_scenes!(result, scene::Makie.Scene)
     end
     for child in scene.children
         collect_overlay_scenes!(result, child)
+    end
+end
+
+"""
+    overlay_root_states(screen) -> Vector{RayMakieState}
+
+The scene states whose overlays are drawn: one per INDEPENDENT scene tree.
+
+`collect_overlay_robjs` walks a state's scene AND every scene under it, so a child
+scene that also has a state of its own would have its plots drawn TWICE — once from
+the root, and once from itself. The two draws do not even land in the same place:
+the viewport is measured as `root_h - origin_y`, and from a child state `root_h` is
+that child's own height, so the second copy sits off by the difference. In an `Axis`
+inside a `Figure` that was every line, sprite and glyph drawn again 55 pixels up.
+"""
+function overlay_root_states(screen)
+    states = screen.scene_states
+    return filter(states) do ss
+        # By SCENE and not by state: `scene_contains` counts a scene as containing
+        # itself, and two states over the same scene would otherwise each rule the
+        # other out and neither would be drawn.
+        !any(other -> other.makie_scene !== ss.makie_scene &&
+                      scene_contains(other.makie_scene, ss.makie_scene), states)
     end
 end
 

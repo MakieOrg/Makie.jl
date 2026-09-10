@@ -25,7 +25,7 @@ function mesh_overlay_vertex(
     vid = vertex_index()
     pos = positions[vid]
     clip = projectionview * model * Vec4f(pos[1], pos[2], pos[3], 1f0)
-    return (position = Vec4f(clip[1], clip_y(clip[2]), clip[3], clip[4]),
+    return (position = gl_to_clip_depth(clip),
             colour = colors[vid])
 end
 

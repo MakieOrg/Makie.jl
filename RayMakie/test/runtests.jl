@@ -16,14 +16,48 @@ using Test
 # candidate is loaded and then Mantle is asked what actually registered.
 using Mantle
 
+"""
+The one line of a load failure worth printing, without the colours it came in.
+
+A backend that is installed and unloadable is the ORDINARY case here: this suite
+tries Lava first and runs on Metal, and on a Mac the Lava attempt ends in a
+`libvulkan.dylib` that is not there. Reported with `exception = err` that was a
+sixty-line backtrace, twice over (Pkg also prints the failed precompilation live),
+before the first test — noise a reader has to scroll past to reach a real failure.
+What matters is the sentence naming the missing loader.
+"""
+function loadreason(err)
+    plain = replace(sprint(showerror, err), r"\e\[[0-9;]*m" => "")
+    lines = split(plain, '\n')
+    for l in lines
+        i = findfirst("ERROR: ", l)
+        i === nothing || return String(strip(l[(last(i) + 1):end]))
+    end
+    return String(strip(first(filter(!isempty, strip.(lines)); init = "")))
+end
+
 const BACKEND = let found = nothing
     for name in ("Lava", "Metal")
         id = Base.identify_package(name)
         id === nothing && continue
-        try
-            Base.require(id)
+        why = try
+            # The attempt's own output goes to a temp file: the loader writes its
+            # error to stderr and Pkg its live precompile log to stdout, and
+            # neither is what someone running RayMakie's tests asked to see.
+            mktemp() do _, io
+                redirect_stdout(io) do
+                    redirect_stderr(io) do
+                        Base.require(id)
+                    end
+                end
+            end
+            nothing
         catch err
-            @info "RayMakie tests: $name is installed but not loadable here" exception = err
+            err
+        end
+        if why !== nothing
+            @info "RayMakie tests: $name is installed but not loadable here. " *
+                  loadreason(why)
             continue
         end
         avail = Base.invokelatest(Mantle.availablebackends)

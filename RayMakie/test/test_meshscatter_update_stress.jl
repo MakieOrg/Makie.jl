@@ -450,10 +450,18 @@ end
     @test c_origin !== nothing
 
     # Frame 2: cube far offscreen → mostly empty
+    #
+    # Above the sampler's NOISE, which the default 0.08 sits inside at 8 samples:
+    # an empty frame still had 429 pixels that far from the four-corner reference,
+    # against a ÷3 bound of 426, so this read as "the cube is still there" on an
+    # image that visibly had none. The cube itself is nowhere near the margin —
+    # measured across thresholds on an empty frame and a cube frame:
+    # 0.08 → 429 vs 1279, 0.12 → 8 vs 882, 0.15 → 0 vs 864. Both counts use the
+    # same threshold, so the ratio still means what it says.
     positions[] = gpuarray([Point3f(100f0, 0, 0)])
     img_off     = Makie.colorbuffer(screen)
-    n_off       = lit_count(img_off)
-    @test n_off < n_origin ÷ 3                  # >3× drop in lit pixels
+    n_off       = lit_count(img_off; thresh = 0.15f0)
+    @test n_off < lit_count(img_origin; thresh = 0.15f0) ÷ 3   # >3x drop in lit pixels
 
     # Frame 3: cube shifted left in world space → centroid shifts in image
     positions[] = gpuarray([Point3f(-1.5f0, 0, 0)])

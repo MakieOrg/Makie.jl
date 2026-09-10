@@ -66,13 +66,23 @@ const LINES_GEOM_OUT = (quad_sdf = Vec3f, truncation = Vec2f, linestart = Float3
                         cumulative_length = Flat{Float32}, capmode = Flat{Vec2f},
                         linepoints = Flat{Vec4f}, miter_vecs = Flat{Vec4f})
 
-# `AbstractVector`, not `Mantle.DeviceArray`: a `DeviceArray` is the HOST handle
-# for a pool region — its own docstring says it is not an array and does not
-# index — and what a stage actually receives is the backend's device array, a
-# `LavaDeviceArray` on one and an `MtlDeviceVector` on the other. Annotating the
-# handle type meant the stage had no method for the argument it was compiled
-# with, which surfaces as `jl_f_throw_methoderror` inside a vertex shader.
+# The index is a PARAMETER, and the arg-less spelling below hands it the builtin.
+#
+# Both are needed and they are the same number. Where the geometry stage exists
+# the rasteriser supplies the index and there is nothing to pass; where it does
+# not, `Mantle.lower_geometry_to_mesh` runs this body once per input vertex of a
+# primitive from ONE mesh invocation, at indices it computes out of the index
+# buffer — and a zero-argument builtin cannot answer differently on each of those
+# calls. `KernelInterface.VertexIndex`'s docstring has the rest.
+#
+# The fallback's arity is fixed rather than `args...`: at 15 it cannot match its
+# own forwarded call, so a signature that drifts out of step with
+# `plots/lines.jl`'s `arg_names` is a `MethodError` naming this function instead of
+# a recursion that overflows inside a shader compile.
+lines_vertex(args::Vararg{Any,15}) = lines_vertex(VertexIndex(vertex_index()), args...)
+
 function lines_vertex(
+    vertexid::VertexIndex,
     vertex::AbstractVector{Vec3f},      # per-vertex position (f32c transformed)
     color::AbstractVector{Vec4f},       # per-vertex RGBA color
     lastlen::AbstractVector{Float32},   # cumulative screen-space length
@@ -90,13 +100,13 @@ function lines_vertex(
     miter_limit::Float32,
     pattern_length::Float32,
 )
-    vid = vertex_index()
+    vid = vertexid.value
     pos = vertex[vid]
 
     # Project: projectionview * model * position
     clip = projectionview * model * Vec4f(pos[1], pos[2], pos[3], 1f0)
     clip = Vec4f(clip[1], clip[2], clip[3] + clip[4] * depth_shift, clip[4])
-    return (position = Vec4f(clip[1], clip_y(clip[2]), clip[3], clip[4]),
+    return (position = gl_to_clip_depth(clip),
             colour = color[vid],
             lastlen = px_per_unit * lastlen[vid],
             valid = valid_vertex[vid],
@@ -337,7 +347,7 @@ function lines_geometry(
             vp = bp + offset
             ndc_x = 2f0 * vp[1] / (px_per_unit * resolution[1]) - 1f0
             ndc_y = 2f0 * vp[2] / (px_per_unit * resolution[2]) - 1f0
-            pos = Vec4f(ndc_x, clip_y(ndc_y), vp[3], 1f0)
+            pos = Vec4f(ndc_x, ndc_y, vp[3], 1f0)
 
             VP1 = Vec2f(vp[1] - p1[1], vp[2] - p1[2])
             VP2 = Vec2f(vp[1] - p2[1], vp[2] - p2[2])
@@ -490,7 +500,7 @@ function get_lines_pipeline!(screen)
             geometry = GeometryShader(lines_geometry; outputs = LINES_GEOM_OUT,
                                       input = LineStripAdjacency(),
                                       output = TriangleStrip(), max_vertices = 4),
-            fragment = FragmentShader(lines_fragment),
+            fragment = FragmentShader(lines_fragment; textures = 1),
             blend = Premultiplied(),
             # STRIP, not list. `lines_generate_indices` is a port of GLMakie's
             # `generate_indices`, which builds a GL_LINE_STRIP_ADJACENCY list:
@@ -506,8 +516,39 @@ function get_lines_pipeline!(screen)
     end
 end
 
+"""
+The same stages as [`get_lines_pipeline!`](@ref) over a LIST of segments.
+
+`linesegments` gives every segment its own four indices — `i1 i1 i2 i2`, the
+adjacency form with each end doubled because a segment has no neighbour to miter
+against — and four indices per primitive with none shared is exactly
+`LineListAdjacency`.
+
+Drawn as a STRIP, which is what this used to share with the joined pipeline, the
+4-wide window also lands on every BOUNDARY between two segments: indices
+`i1 i1 i2 i2 j1 j1 j2 j2` yield a primitive whose middle pair is `i2, j1`, and a
+line is drawn from the end of one segment to the start of the next. In a plot that
+is every grid line joined corner to corner by a diagonal, and it is not specific to
+one backend: the strip window is what both APIs mean by the topology.
+"""
+function get_line_segments_pipeline!(screen)
+    get!(screen.gfx_pipelines, :line_segments) do
+        GraphicsPipeline(;
+            vertex = VertexShader(lines_vertex; outputs = LINES_VERTEX_OUT),
+            geometry = GeometryShader(lines_geometry; outputs = LINES_GEOM_OUT,
+                                      input = LineListAdjacency(),
+                                      output = TriangleStrip(), max_vertices = 4),
+            fragment = FragmentShader(lines_fragment; textures = 1),
+            blend = Premultiplied(),
+            topology = LineListAdjacency(),
+            cull = NoCull(),
+            depth = DepthOff(),
+        )
+    end
+end
+
 # TODO: line_segment vertex/geometry shaders (simpler: no joints, GL_LINES topology)
-# For now, LineSegments can reuse the joined lines pipeline with dummy adjacency.
+# For now, LineSegments reuses the joined lines STAGES over the list topology above.
 
 # =============================================================================
 # CPU-side data preparation (matching GLMakie plot-primitives.jl)

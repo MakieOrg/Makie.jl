@@ -727,9 +727,15 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         # submission and they are ordered on the device's queue, so the readback
         # below is behind them with nothing to flush here.
         Mantle.blit!(screen.config.device, target, screen.output_buffer; clear=false)
+        # Poll EVERY state — each resolves its own scene's plots — and then draw
+        # from the roots only, because a root's collection already covers the
+        # scenes below it. See `overlay_root_states`.
         for scene_state in screen.scene_states
             screen.state = scene_state
             poll_all_plots(screen, scene_state.makie_scene)
+        end
+        for scene_state in overlay_root_states(screen)
+            screen.state = scene_state
             render_overlays!(screen, target, COMPOSITE_FORMAT)
         end
 
@@ -829,6 +835,9 @@ function present_composited!(screen::Screen, bq, win)
         for ss in screen.scene_states
             screen.state = ss
             poll_all_plots(screen, ss.makie_scene)
+        end
+        for ss in overlay_root_states(screen)
+            screen.state = ss
             render_overlays!(screen, win_target, Mantle.blittarget(win_target))
         end
         vulkanbackend().presentready!(e, win)

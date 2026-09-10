@@ -24,36 +24,19 @@ const SCATTER_GEOM_OUT = (uv = Vec2f, colour = Flat{Vec4f}, vp_from_u = Flat{Flo
 
 # ─── Per-vertex attribute: either a single value (uniform) or array (per-element) ───
 const PerVertex{T} = Union{T, AbstractVector{<:T}}
-# The ELEMENT TYPE is passed, and it is not decoration: an attribute is either
-# one value for every vertex or one per vertex, and NEITHER shape can be told
-# from the argument alone.
 #
-#   * `Mantle.DeviceArray` is the host handle for a pool region — its own
-#     docstring says it does not index — and never reaches a stage. Dispatching
-#     on it sent every per-vertex array to the scalar method, so `pos[1]` was
-#     the first COMPONENT of the array's first element.
-#   * `AbstractVector` catches the array, and catches a `Vec4f` too: a `Vec` is
-#     a `StaticVector`. A uniform colour then read as `colour[idx]`, one float.
+# `AbstractVector` and not `Mantle.DeviceArray`: the latter is the HOST handle for a
+# buffer, and what a shader is handed is whatever the backend's device-side array is
+# — `MtlDeviceVector` on Metal, and nothing that shares a supertype with it. Dispatch
+# on the host type sent every buffer down the scalar branch on any backend but the one
+# it was written for, and the shader then read the array WHERE IT MEANT A VERTEX: the
+# first symptom is a `MethodError` for `Vec4f(::MtlDeviceVector, …)` at compile time.
 #
-# With the type in hand both questions are one dispatch and the wrong shape is a
-# `MethodError` at compile rather than a picture that is subtly wrong.
-#
-# The uniform method dispatches on `StaticVector`, which is STRICTLY more
-# specific than `AbstractVector`, and not on `x::T`. `Tuple{Type{T}, T, Any}`
-# and `Tuple{Type{T}, AbstractVector, Any}` are AMBIGUOUS — neither implies the
-# other, because `T` is not constrained to be a vector — and Julia resolved the
-# ambiguity to the ARRAY method: `gpu_read(Vec4f, Vec4f(.1,.2,.3,1), 2)`
-# answered `Vec4f(0.2, 0.2, 0.2, 0.2)`, one component splatted, and past the
-# fourth vertex it read out of bounds. Every uniform colour, markersize,
-# rotation and marker offset was wrong on screen with no error anywhere, and
-# `test_gpu_read.jl` pins each shape.
-#
-# Both methods CONVERT rather than requiring the exact type: a position buffer
-# is `Point3f` where the stage wants `Vec3f`, and the two are the same three
-# floats.
-@inline gpu_read(::Type{T}, xs::AbstractVector, idx) where {T} = T(xs[idx])
-@inline gpu_read(::Type{T}, x::StaticVector, idx) where {T} = T(x)
-@inline gpu_read(::Type{T}, x::Number, idx) where {T} = T(x)
+# A `Vec` is an `AbstractVector` too and is one value for every vertex, which is what
+# the `StaticVector` method is for.
+@inline gpu_read(arr::AbstractVector, idx) = arr[idx]
+@inline gpu_read(v::StaticVector, idx) = v
+@inline gpu_read(scalar, idx) = scalar
 
 function get_scatter_pipeline!(screen)
     get!(screen.gfx_pipelines, :scatter) do
@@ -62,7 +45,7 @@ function get_scatter_pipeline!(screen)
             geometry = GeometryShader(scatter_geometry; outputs = SCATTER_GEOM_OUT,
                                       input = PointList(), output = TriangleStrip(),
                                       max_vertices = 4),
-            fragment = FragmentShader(scatter_fragment),
+            fragment = FragmentShader(scatter_fragment; textures = 1),
             blend = Premultiplied(),
             topology = PointList(),
             cull = NoCull(),
@@ -89,7 +72,15 @@ end
 # Names match compute graph outputs (gpu_* for converted, direct for others)
 # =============================================================================
 
+# The index is a PARAMETER, and the arg-less spelling below hands it the builtin.
+# Both are needed and they are the same number; see the same pair in
+# `overlay/lines.jl` for why, and `KernelInterface.VertexIndex` for the contract.
+# The fallback's arity is `length(SCATTER_ARG_NAMES)`, fixed so it cannot match
+# its own forwarded call.
+scatter_vertex(args::Vararg{Any,23}) = scatter_vertex(VertexIndex(vertex_index()), args...)
+
 function scatter_vertex(
+    vertexid::VertexIndex,
     gpu_positions::AbstractVector{<:Vec3f},
     gpu_colors::PerVertex{Vec4f},
     quad_offset,     # PerVertex — Vec2f or Vector{Vec2f}
@@ -106,13 +97,13 @@ function scatter_vertex(
     gpu_billboard::Int32, depth_shift::Float32,
     gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32,
 )
-    idx = vertex_index()
-    pos = gpu_read(Vec3f, gpu_positions, idx)
+    idx = vertexid.value
+    pos = gpu_read(gpu_positions, idx)
 
     w4 = model_f32c * Vec4f(pos[1], pos[2], pos[3], 1f0)
     world_pos = Vec3f(w4[1], w4[2], w4[3])
 
-    moff = gpu_read(Vec3f, marker_offset, idx)
+    moff = gpu_read(marker_offset, idx)
     scaled_moff = Vec3f(f32c_scale[1]*moff[1], f32c_scale[2]*moff[2], f32c_scale[3]*moff[3])
     g_marker_offset = if gpu_transform_marker != Int32(0)
         mc1 = Vec3f(model_f32c[1,1], model_f32c[2,1], model_f32c[3,1])
@@ -123,8 +114,8 @@ function scatter_vertex(
         scaled_moff
     end
 
-    qoff = gpu_read(Vec2f, quad_offset, idx)
-    qscl = gpu_read(Vec2f, quad_scale, idx)
+    qoff = gpu_read(quad_offset, idx)
+    qscl = gpu_read(quad_scale, idx)
     g_offset_width = Vec4f(f32c_scale[1]*qoff[1], f32c_scale[2]*qoff[2],
                            f32c_scale[1]*qscl[1], f32c_scale[2]*qscl[2])
 
@@ -135,11 +126,11 @@ function scatter_vertex(
             world_pos = world_pos,
             marker_offset = g_marker_offset,
             offset_width = g_offset_width,
-            rotation = gpu_read(Vec4f, gpu_rotation, idx),
-            colour = gpu_read(Vec4f, gpu_colors, idx),
-            uv_bbox = gpu_read(Vec4f, sdf_uv, idx),
-            stroke_colour = gpu_read(Vec4f, gpu_stroke_color, idx),
-            glow_colour = gpu_read(Vec4f, gpu_glow_color, idx))
+            rotation = gpu_read(gpu_rotation, idx),
+            colour = gpu_read(gpu_colors, idx),
+            uv_bbox = gpu_read(sdf_uv, idx),
+            stroke_colour = gpu_read(gpu_stroke_color, idx),
+            glow_colour = gpu_read(gpu_glow_color, idx))
 end
 
 # =============================================================================
@@ -233,7 +224,7 @@ function scatter_geometry(
         ux = (c == Int32(1) || c == Int32(2)) ? uv_mn[1] : uv_mx[1]
         uy = (c == Int32(1) || c == Int32(3)) ? uv_mx[2] : uv_mn[2]
         v = vclip + trans * Vec4f(bx, by, 0f0, 0f0)
-        pos = Vec4f(v[1], clip_y(v[2]), v[3] + v[4] * depth_shift, v[4])
+        pos = gl_to_clip_depth(Vec4f(v[1], v[2], v[3] + v[4] * depth_shift, v[4]))
         emit!(gs, merge((position = pos, uv = Vec2f(ux, uy)), flat))
     end
     endprimitive!(gs)
@@ -335,6 +326,15 @@ const SCATTER_ARG_NAMES = (
     :gpu_stroke_width, :gpu_glow_width, :gpu_billboard, :depth_shift,
     :gpu_atlas_width, :gpu_sdf_marker_shape,
 )
+
+# `scatter_vertex`'s native-path arity is written out as a literal, and this is
+# what stops the two drifting: an argument added here without adding one there
+# would leave the arg-less spelling matching nothing, on the backend that has a
+# geometry stage only.
+length(SCATTER_ARG_NAMES) == 23 || error(
+    "SCATTER_ARG_NAMES has $(length(SCATTER_ARG_NAMES)) entries and " *
+    "`scatter_vertex(args::Vararg{Any,23})` expects 23. Update the fallback's " *
+    "arity in this file to match.")
 
 # =============================================================================
 # setup_scatter! — registers conversions + robj

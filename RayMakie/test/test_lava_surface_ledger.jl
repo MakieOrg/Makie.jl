@@ -1,26 +1,39 @@
 """
-What RayMakie still names from Lava: nothing, and this is what holds it there.
+What RayMakie still names from Lava, and why each one is allowed to stay.
 
 This file used to be a debt ledger. `Lava.` in RayMakie's source meant a Makie
 backend reaching into a Vulkan runtime — queues, framebuffers, render passes,
-`present_frame!` — and the list existed to stop it growing while that runtime
-was moved out. On 2026-08-27 it was **124 references across 8 files**; after the
-runtime moved it was **31 across 2**, all of them shader-stage intrinsics and
-pipeline-description enums.
+`present_frame!` — and the list existed to stop it growing while that runtime was
+moved out. On 2026-08-27 it was: **124 references across 8 files.**
 
-It is **zero** now, and the last thirty-one went for the reason the previous
-ninety-three did: what a shader is written IN is not a compiler's to own either.
-`vertex_index`, `frag_coord_x`, `emit_vertex!`, `sample_texture_2d` and the rest
-are declared in `KernelInterface`, which both backends depend on and each
-overrides for its own target; `TriangleList`, `GeometryConfig` and the other
-enums are there too, because a pipeline description a compiler must read is not
-a runtime's to define. `LavaDeviceArray` went last: a stage signature says
-`AbstractVector{Vec3f}` now, because what it receives is whichever device array
-the backend that compiled it hands over.
+The move happened, and it is now **31 across 2**, all of one kind. Everything
+that needed a device went to Mantle: `GraphicsPipeline`, `VulkanFramebuffer`,
+`VulkanTexture2D`, `VulkanBatchQueue`, `vk_context`, `blit!`, `present_frame!`,
+`acquire_next_image!`, `begin_pass!`, `LavaArray`. What is left is what a
+shader is written IN and what a pipeline is DESCRIBED with:
 
-So the ledger's meaning has inverted twice, and this is the final form: **a
-Makie backend names no compiler at all**. A single `Lava.` reference reappearing
-here means the split has come undone.
+  * **shader-stage intrinsics** — `gfx_input`/`gfx_output`, `emit_vertex!`,
+    `frag_coord_x`, `dFdx`, `set_position!`, `sample_texture_2d`,
+    `vertex_index`. These are the graphics counterpart of what
+    `KernelInterface` holds for compute, and they belong to whoever lowers them.
+  * **pipeline-description enums** — `TriangleList`, `NoCull`, `DepthOff`,
+    `Premultiplied`, `GeometryConfig`. Pure Julia, no Vulkan: `graphics/types.jl`
+    describes what a pipeline should be, and Mantle's `graphics/pipeline.jl`
+    builds it. That is why one stayed and the other left.
+  * **`LavaDeviceArray`** — the `(pointer, dims)` pair a kernel receives. Its
+    host counterpart `LavaArray` is Mantle's, and the two sitting on opposite
+    sides is the split stated in miniature.
+
+Then the second half happened too. The shader-stage intrinsics and the pipeline
+enums moved to `KernelInterface` and Mantle — a shader is written in the portable
+vocabulary and lowered by whichever backend compiles it, and `LavaDeviceArray`
+became `AbstractVector` in the signatures that named it. So the count is now
+**0 across 0 files**: RayMakie names NOTHING from Lava, which is what makes
+`using Metal, Mantle` enough to render with.
+
+The ledger keeps its meaning at zero. It says: nothing from Lava may come back —
+not a queue, not a framebuffer, and not an intrinsic either, because a shader
+that names one is a shader only one backend can compile.
 
 Parsed rather than grepped: `import Lava: a, b,` continues across lines, and a
 regex either misses the continuation or matches the word in a comment.
@@ -35,7 +48,7 @@ using Test
 
 const LAVA_SURFACE = Dict{String, Set{String}}()
 
-"""Where the surface stands. It may fall; it may not rise."""
+"""Where the surface stands. It may not rise."""
 const LAVA_SURFACE_BUDGET = 0
 
 """

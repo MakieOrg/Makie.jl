@@ -99,7 +99,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
                 sdf_data = Float32.(Makie.linestyle_to_sdf(ls))
                 pat_length = Float32(last(ls) - first(ls))
                 robj.uniforms[:pattern_length] = pat_length
-                sdf_2d = reshape(sdf_data, 1, length(sdf_data))
+                # (N, 1) and not (1, N): a texture is `data[x, y]`, so the pattern runs
+                # along the FIRST index. As a row it was one texel wide, and sampling it
+                # along u gave the same value everywhere — a dashed line drawn solid. It
+                # used to reach the driver as N-by-1 anyway, because both uploads read a
+                # single-row matrix as one contiguous run whichever way the dimensions
+                # were named.
+                sdf_2d = reshape(sdf_data, length(sdf_data), 1)
                 update_texture!(robj, sdf_2d; filter=:linear, wrap=:repeat)
             end
             return (robj,)
@@ -153,7 +159,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             sdf_data = Float32.(Makie.linestyle_to_sdf(ls))
             pat_length = Float32(last(ls) - first(ls))
             robj.uniforms[:pattern_length] = pat_length
-            sdf_2d = reshape(sdf_data, 1, length(sdf_data))
+            # (N, 1) and not (1, N): a texture is `data[x, y]`, so the pattern runs
+            # along the FIRST index. As a row it was one texel wide, and sampling it
+            # along u gave the same value everywhere — a dashed line drawn solid. It
+            # used to reach the driver as N-by-1 anyway, because both uploads read a
+            # single-row matrix as one contiguous run whichever way the dimensions
+            # were named.
+            sdf_2d = reshape(sdf_data, length(sdf_data), 1)
             update_texture!(robj, sdf_2d; filter=:linear, wrap=:repeat)
         else
             # Dummy texture — fragment shader always references binding 0
@@ -244,7 +256,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
             return (robj,)
         end
 
-        pipeline = get_lines_pipeline!(screen)
+        pipeline = get_line_segments_pipeline!(screen)
         backend = screen.config.device
         robj = RenderObject(pipeline;
             backend,

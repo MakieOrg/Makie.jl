@@ -2,7 +2,11 @@
 # Tests via Makie API only — no internal function calls.
 
 using Test
-using Makie, RayMakie, Lava, Hikari
+# No `using Lava`: none of this file names one, and loading it drags in the
+# Vulkan loader — which is not there on every machine this suite runs on, so
+# the whole file errored before its first test rather than running on the
+# backend `runtests.jl` already found and activated.
+using Makie, RayMakie, Hikari
 using Mantle: Mat3x4f
 import Mantle, KernelAbstractions as KA
 
