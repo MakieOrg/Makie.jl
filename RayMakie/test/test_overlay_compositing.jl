@@ -34,7 +34,8 @@
 
 using Test, Makie, RayMakie, Hikari, GeometryBasics, Colors
 using Makie: Scene, cam3d!, campixel!, mesh!, lines!, scatter!, text!,
-             cameracontrols, update_cam!, Point2f, Point3f, Vec3f, Sphere, RGBf, PointLight
+             cameracontrols, update_cam!, Point2f, Point3f, Vec3f, Sphere, RGBf, RGBAf,
+             PointLight, AmbientLight
 
 const SPHERE_LIGHTS = [PointLight(RGBf(60, 60, 60), Vec3f(4, 4, 6))]
 
@@ -46,8 +47,8 @@ make_screen(scene) = RayMakie.Screen(scene; integrator = Hikari.VolPath(samples 
 # A raytraced scene viewed from (0, -6, 3): sphere at the origin, overlays above
 # it. Fixed camera because bug 2 is about the near plane's relation to the view
 # distance, so a moved camera would move the thing under test.
-function rt_scene(; size = (96, 96), background = :white)
-    sc = Scene(; size, lights = copy(SPHERE_LIGHTS), ambient = RGBf(0.15, 0.15, 0.15),
+function rt_scene(; size = (96, 96), background = :white, lights = copy(SPHERE_LIGHTS))
+    sc = Scene(; size, lights = lights, ambient = RGBf(0.15, 0.15, 0.15),
                backgroundcolor = background)
     cam3d!(sc)
     mesh!(sc, Sphere(Point3f(0), 1.0f0); material = Hikari.Diffuse(Kd = (0.8, 0.2, 0.2)))
@@ -169,4 +170,35 @@ end
     for f in (red, green, blue)
         @test maximum(abs, Float64.(f.(plain[lo:end, :])) .- Float64.(f.(with_overlay[lo:end, :]))) < 0.01
     end
+end
+
+"`rt_scene`, plus a light that has no position — what the case below turns on."
+ambient_scene(; background) =
+    rt_scene(; background, lights = [SPHERE_LIGHTS..., AmbientLight(RGBf(0.3, 0.3, 0.35))])
+
+@testset "a miss is a miss under an infinite light too" begin
+    # `postprocess!` used to answer "did this ray escape?" with `isinf(depth)`.
+    # Hikari writes `Inf` for a miss only while the scene has NO infinite light;
+    # add one — an ambient, a sun, an environment map — and it writes a large
+    # finite value instead, so `isinf` found that NOTHING had escaped and every
+    # pixel came back opaque. The editor's lego scene has an `AmbientLight`, and
+    # over the footage it therefore replaced the picture instead of overlaying
+    # it: 0 of 179 774 misses reported as misses. `Hikari.missed` is the
+    # threshold test that answers both cases, and this asserts they agree.
+    lit  = Makie.colorbuffer(make_screen(ambient_scene(background = RGBAf(0, 0, 0, 0))))
+    dark = Makie.colorbuffer(make_screen(rt_scene(; background = RGBAf(0, 0, 0, 0))))
+
+    @test alpha(lit[end, 1]) < 0.01                             # a corner ray escapes…
+    @test alpha(lit[end, 1]) == alpha(dark[end, 1])             # …the light changes nothing
+    @test alpha(lit[size(lit, 1) ÷ 2, size(lit, 2) ÷ 2]) > 0.99 # and the sphere is covered
+    # A 96×96 view of one sphere is mostly miss. An `isinf` test reported none.
+    @test count(p -> alpha(p) < 0.5, lit) > length(lit) ÷ 2
+
+    # …and with an OPAQUE background the ambient wins over it, because it is
+    # radiance the render actually put there — `sky`. Without that, an
+    # environment map comes back as a flat rectangle of background colour. The
+    # alpha still comes from the background, so this frame is fully covered.
+    opaque = Makie.colorbuffer(make_screen(ambient_scene(background = :white)))
+    @test alpha(opaque[end, 1]) > 0.99
+    @test red(opaque[end, 1]) < 0.9
 end

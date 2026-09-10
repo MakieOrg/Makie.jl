@@ -41,6 +41,9 @@ Configuration for RayMakie rendering.
 
 * `integrator`: The integrator to use for rendering (default: `VolPath()`)
   - `VolPath(; samples=64, max_depth=8)` - Volumetric path tracing
+* `samples`: What one finished frame costs, in samples (default: `nothing`, the
+  integrator's own `samples_per_pixel`). `colorbuffer(screen; samples)` overrides
+  it per read — see there for why the count belongs to the read.
 * `exposure`: Exposure multiplier for postprocessing (default: 1.0)
 * `tonemap`: Tonemapping method (default: :aces)
   - `:reinhard` - Simple Reinhard L/(1+L)
@@ -62,6 +65,15 @@ Configuration for RayMakie rendering.
 """
 struct ScreenConfig
     integrator::Hikari.Integrator
+    # What ONE finished frame costs, in samples. `nothing` leaves it to the
+    # integrator's own `samples_per_pixel`.
+    #
+    # A screen setting rather than an integrator one, because the SAME integrator
+    # serves both timescales: a live preview reads one sample at a time and lets
+    # them accumulate while nothing moves, and a finished frame — a bake, an
+    # export — renders the whole budget in one call. So the number belongs to the
+    # read, and `colorbuffer`'s `samples` keyword overrides even this one.
+    samples::Union{Nothing, Int}
     exposure::Float32
     tonemap::Union{Symbol, Nothing}
     gamma::Union{Float32, Nothing}
@@ -72,7 +84,7 @@ struct ScreenConfig
     title::String
     vsync::Bool
 
-    function ScreenConfig(integrator, exposure, tonemap, gamma, device=Raycore.KA.CPU(),
+    function ScreenConfig(integrator, samples, exposure, tonemap, gamma, device=Raycore.KA.CPU(),
                           denoise=false, denoise_config=nothing,
                           visible=true, title="RayMakie", vsync=true)
         actual_integrator = integrator isa Makie.Automatic ? VolPath(; hw_accel=true) : integrator
@@ -80,8 +92,12 @@ struct ScreenConfig
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
         actual_device = device isa Makie.Automatic ? Lava.LavaBackend() : device
         actual_visible = visible isa Makie.Automatic ? true : visible
-        return new(actual_integrator, actual_exposure, tonemap, actual_gamma, actual_device,
-                   denoise, denoise_config, actual_visible, string(title), vsync)
+        # A number typed into a settings form arrives as a `Float64` — it went
+        # through a text box, which has no way to know the field wants an `Int`.
+        actual_samples = (samples === nothing || samples isa Makie.Automatic) ? nothing :
+                         max(1, round(Int, samples))
+        return new(actual_integrator, actual_samples, actual_exposure, tonemap, actual_gamma,
+                   actual_device, denoise, denoise_config, actual_visible, string(title), vsync)
     end
 end
 
@@ -441,6 +457,21 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
     return state.film
 end
 
+"""
+    scenebackground(scene) -> RGBA{Float32}
+
+The scene's background colour, ALPHA INCLUDED.
+
+Dropped here (`RGBA(r, g, b, 1f0)`), it made every pixel of every frame opaque,
+and a scene composited over something else replaced the picture instead of
+overlaying it. `Hikari.postprocess!` reads this alpha as the alpha of the escaped
+fraction of a pixel, so a transparent background is what makes a ray that hit
+nothing come back as uncovered — including the half-covered fringe, which comes
+back already premultiplied.
+"""
+scenebackground(scene) = (c = to_color(scene.backgroundcolor[]);
+                          RGBA{Float32}(red(c), green(c), blue(c), alpha(c)))
+
 function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     screen.state = scene_state
     film = scene_state.film
@@ -450,8 +481,7 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
         # Overlay-only: the scene's own background is all this contributes, and
         # the plots are drawn later by the overlay pass. Nothing reads this
         # state's depth buffer — the overlay framebuffer has no depth attachment.
-        bg = scene_state.makie_scene.backgroundcolor[]
-        fill!(film.postprocess, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
+        fill!(film.postprocess, scenebackground(scene_state.makie_scene))
 
         # Poll compute graph for overlay data
         poll_all_plots(screen, scene_state.makie_scene)
@@ -469,6 +499,7 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     # `lines!`. The denoiser is the only consumer of normal and albedo, but depth
     # is not optional.
     tlas = scene_state.hikari_scene.accel
+    has_inf = false
     if Raycore.n_instances(tlas) > 0
         lights = scene_state.hikari_scene.lights
         has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
@@ -477,9 +508,8 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
         adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
         Hikari.fill_aux_buffers!(film, adapted_scene, camera; has_infinite_lights=has_inf)
     else
-        # Nothing to hit, so every ray escapes. `Inf`, not a large finite value:
-        # the test in `postprocess_kernel!` is `isinf`, and 1f30 failed it — an
-        # empty scene rendered black instead of showing its background.
+        # Nothing to hit, so every ray escapes. Any depth `Hikari.missed` accepts
+        # will do; `Inf` is the clearest.
         fill!(film.depth, Inf32)
     end
 
@@ -490,13 +520,18 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     end
 
     # Postprocess (tonemap, gamma, exposure)
-    root_bg = screen.scene.backgroundcolor[]
-    bg_rgb = RGB{Float32}(red(root_bg), green(root_bg), blue(root_bg))
+    #
+    # `sky`: whether an infinite light — an environment map, a sun, an ambient —
+    # already painted the rays that escaped. Then their colour stays; without it
+    # the background paints over the sky and an environment map comes back as a
+    # flat rectangle. The ALPHA still comes from the background either way, so a
+    # caller asking for transparency gets coverage and not a sky.
     Hikari.postprocess!(film;
         exposure = config.exposure,
         tonemap = config.tonemap,
         gamma = config.gamma,
-        background = bg_rgb,
+        background = scenebackground(screen.scene),
+        sky = has_inf,
     )
 
     # NOTE: Overlay rendering for 3D renderable scenes is intentionally skipped.
@@ -511,8 +546,7 @@ end
 # Postprocess all scenes and composite into output buffer — shared by
 # colorbuffer() and interactive_window().
 function postprocess_and_composite!(screen::Screen)
-    bg = screen.scene.backgroundcolor[]
-    fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
+    fill!(screen.output_buffer, scenebackground(screen.scene))
     for scene_state in screen.scene_states
         scene_state.overlay_only && continue
         postprocess_scene_state!(screen, scene_state)
@@ -525,8 +559,7 @@ end
 # GPU-only variant: same as postprocess_and_composite! but skips the CPU download.
 # Returns the GPU output_buffer directly (no Array() copy).
 function postprocess_and_composite_gpu!(screen::Screen)
-    bg = screen.scene.backgroundcolor[]
-    fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
+    fill!(screen.output_buffer, scenebackground(screen.scene))
     for scene_state in screen.scene_states
         # Only RT scenes produce content in film.postprocess that needs compositing.
         # Overlay-only scenes render directly to the window via render_overlays!.
@@ -591,7 +624,17 @@ function composite_scene!(output::AbstractMatrix{RGBA{Float32}}, scene_state::Ra
     KernelAbstractions.synchronize(backend)
 end
 
-function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative; figure = nothing, clear=true)
+"""
+    Makie.colorbuffer(screen, format; clear = true, samples = nothing)
+
+`samples` is how many samples THIS read renders, overriding the screen's own
+`samples` and the integrator's `samples_per_pixel` in that order. With
+`clear = false` they accumulate onto what is already in the film, which is what
+makes a live preview converge at one sample per read while the playhead stands
+still.
+"""
+function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative;
+                           figure = nothing, clear=true, samples=nothing)
     if isempty(screen.scene_states)
         # Only init the scene -- don't open a window or start the render loop.
         # colorbuffer renders all samples synchronously and returns the result;
@@ -609,7 +652,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # Render each scene for the configured number of samples
     # VolPath uses an outer loop (each render! = 1 sample).
     integrator = screen.config.integrator
-    samples = integrator.samples_per_pixel
+    samples = something(samples, screen.config.samples, integrator.samples_per_pixel)
     for scene_state in screen.scene_states
         screen.state = scene_state
         # Always clear film at the start of colorbuffer — ensures correct accumulation
@@ -651,8 +694,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     has_overlays = any(ss -> !isempty(collect_overlay_robjs(ss)), screen.scene_states)
 
     # Postprocess + composite into output_buffer (on GPU)
-    bg = screen.scene.backgroundcolor[]
-    fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
+    fill!(screen.output_buffer, scenebackground(screen.scene))
     for scene_state in screen.scene_states
         scene_state.overlay_only && continue
         postprocess_scene_state!(screen, scene_state)

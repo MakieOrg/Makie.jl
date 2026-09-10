@@ -47,6 +47,7 @@ const TEST_FILES = [
     "test_pbrt_import_settings.jl",
     "test_material_precedence.jl",
     "test_overlay_compositing.jl",
+    "test_sample_budget.jl",
     "test_figure_scene_routing.jl",
     "test_lava_meshscatter_pervec.jl",
     "test_meshscatter_update_stress.jl",

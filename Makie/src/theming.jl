@@ -215,6 +215,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
 
     RayMakie = Attributes(
         integrator = automatic,  # VolPath() by default, or FastWavefront()
+        samples = nothing,   # samples per finished frame; nothing → the integrator's own
         exposure = 1.0f0,
         tonemap = :aces,
         gamma = 2.2f0,
