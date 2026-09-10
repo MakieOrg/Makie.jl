@@ -1011,10 +1011,12 @@ function locked_resolve!(edge::ComputeEdge)
         # resolve and forward picked choice
         idx = 1 + edge.inputs[1].value[]::Int
         if !(2 <= idx <= length(edge.inputs))
-            throw(SelectException(
-                "Selection index $(idx - 1) is out of bounds for indexing $(length(edge.inputs) - 1) inputs.",
-                edge
-            ))
+            throw(
+                SelectException(
+                    "Selection index $(idx - 1) is out of bounds for indexing $(length(edge.inputs) - 1) inputs.",
+                    edge
+                )
+            )
         end
         locked_resolve!(edge.inputs[idx])
         edge.inputs_dirty[idx] = false
