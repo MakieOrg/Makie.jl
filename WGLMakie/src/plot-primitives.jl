@@ -698,7 +698,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
 
     # Stroking needs the de-indexed mesh path, which replaces the shared vertices by one
     # per triangle corner, so it is only taken when stroking is enabled at plot creation.
-    if !iszero(plot.strokewidth[])
+    if plot.stroke_enabled[]::Bool
         register_wgl_mesh_expansion!(attr)
         register_wgl_mesh_stroke!(attr)
         return create_wgl_renderobject(
