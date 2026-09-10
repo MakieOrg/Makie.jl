@@ -5,6 +5,38 @@ to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
 # Will get overloaded by recipe Macro
 plotsym(x) = :plot
 
+# Collect literal theme lookups while recipe/block definitions are still syntax.
+# Do not evaluate default expressions just to validate a Figure keyword.
+function _inherited_theme_keys(expr)
+    names = Set{Symbol}()
+    expr isa Expr || return names
+    # Semicolon keyword arguments insert a :parameters node before positional arguments.
+    args = expr.head === :call ? filter(arg -> !Meta.isexpr(arg, :parameters), expr.args) : expr.args
+    if expr.head in (:call, :macrocall) && length(args) >= 3
+        func = args[1]
+        if func isa Expr && func.head === :.
+            func = func.args[end]
+        end
+        func = func isa QuoteNode ? func.value : func
+        if func in (:theme, :inherit, Symbol("@inherit"))
+            key = args[3]
+            if key isa Expr && key.head === :tuple && !isempty(key.args)
+                key = first(key.args)
+            end
+            # Unquoted symbols are keys only in the new @inherit syntax.
+            if key isa QuoteNode && key.value isa Symbol
+                push!(names, key.value)
+            elseif key isa Symbol && func === Symbol("@inherit")
+                push!(names, key)
+            end
+        end
+    end
+    for arg in expr.args
+        union!(names, _inherited_theme_keys(arg))
+    end
+    return names
+end
+
 func2string(func::Function) = string(nameof(func))
 
 plotfunc(::Plot{F}) where {F} = F
@@ -189,6 +221,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
         ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
         $(Makie).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
+        $(Makie).inherited_theme_keys(::Type{<:$PlotType}) = $(QuoteNode(Tuple(_inherited_theme_keys(theme_func))))
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
     end
@@ -432,6 +465,12 @@ end
 function types_for_plot_arguments end
 
 documented_attributes(_) = nothing
+
+function inherited_theme_keys(T::Type{<:Plot})
+    attrs = documented_attributes(T)
+    isnothing(attrs) && return ()
+    return Tuple(meta.default_value.key for meta in values(attrs.d) if meta.default_value isa Inherit)
+end
 filtered_attributes(T; kwargs...) = filter_attributes(documented_attributes(T); kwargs...)
 
 function attribute_names(T::Type{<:Plot})

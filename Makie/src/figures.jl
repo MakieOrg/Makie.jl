@@ -106,6 +106,70 @@ end
 to_rectsides(n::Number) = to_rectsides((n, n, n, n))
 to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t...)
 
+const FIGURE_SCENE_KEYWORDS = (
+    :figure_padding, :viewport, :events, :clear, :transform_func, :camera,
+    :camera_controls, :transformation, :plots, :children, :current_screens,
+    :parent, :visible, :ssao, :lights, :theme, :deregister_callbacks, :resolution,
+)
+
+function _block_theme_keys!(names, T)
+    children = subtypes(T)
+    if isempty(children)
+        push!(names, nameof(T))
+        union!(names, inherited_theme_keys(T))
+    else
+        foreach(child -> _block_theme_keys!(names, child), children)
+    end
+    return names
+end
+
+function _backend_theme_keys!(names, T)
+    for child in subtypes(T)
+        push!(names, nameof(parentmodule(child)))
+        _backend_theme_keys!(names, child)
+    end
+    return names
+end
+
+function attribute_names(::Type{Figure})
+    names = union(Set(FIGURE_SCENE_KEYWORDS), keys(MAKIE_DEFAULT_THEME), keys(current_default_theme()))
+    # Recipes are parameterizations of Plot, rather than distinct subtypes.
+    # Inspect their plotsym methods so recipes loaded after Makie are included.
+    for method in methods(plotsym)
+        signature = Base.unwrap_unionall(method.sig)
+        length(signature.parameters) == 2 || continue
+        argument = Base.unwrap_unionall(signature.parameters[2])
+        argument isa DataType && argument <: Type || continue
+        plot_type = argument.parameters[1]
+        plot_type = plot_type isa TypeVar ? plot_type.ub : plot_type
+        plot_type isa Type || continue
+        plot_type <: Plot && plot_type !== Plot || continue
+        push!(names, plotsym(plot_type))
+        union!(names, inherited_theme_keys(plot_type))
+    end
+    _block_theme_keys!(names, Block)
+    _backend_theme_keys!(names, MakieScreen)
+    return names
+end
+
+function _check_figure_kwargs(kwargs)
+    # Most figures only use built-in keys. Avoid walking recipes and block types
+    # unless there is an extension key (or a typo) to resolve.
+    isempty(kwargs) && return
+    current_theme = current_default_theme()
+    local_theme = get(kwargs, :theme, nothing)
+    unknown = Set{Symbol}(
+        key for key in keys(kwargs) if !(
+                key in FIGURE_SCENE_KEYWORDS || haskey(MAKIE_DEFAULT_THEME, key) ||
+                haskey(current_theme, key) || (!isnothing(local_theme) && haskey(local_theme, key))
+            )
+    )
+    isempty(unknown) && return
+    setdiff!(unknown, attribute_names(Figure))
+    isempty(unknown) || throw(InvalidAttributeError(Figure, "figure", unknown))
+    return
+end
+
 """
     Figure(; [figure_padding,] kwargs...)
 
@@ -115,10 +179,14 @@ one number or a tuple of four numbers for left, right, bottom and top paddings v
 
 All other keyword arguments such as `size` and `backgroundcolor` are forwarded to the
 [`Scene`](@ref) owned by the figure which acts as the container for all other visual objects.
+Unknown keyword arguments raise an `InvalidAttributeError`. Figure-local theme overrides
+may use registered plot and block names, inherited theme keys, and backend names.
+Additional custom theme entries can be supplied explicitly with `theme = Attributes(...)`.
 """
 function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
+    _check_figure_kwargs(kwargs_dict)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera = campixel!, clear = true, kwargs_dict...)
     padding = convert(Observable{Any}, padding)

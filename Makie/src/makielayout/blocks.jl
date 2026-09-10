@@ -4,6 +4,9 @@ function attribute_default_expressions end
 function _attribute_docs end
 function has_forwarded_layout end
 
+# Keep inheritance sources available without evaluating a block's default values.
+inherited_theme_keys(::Type{<:Block}) = ()
+
 symbol_to_block(symbol::Symbol) = symbol_to_block(Val(symbol))
 symbol_to_block(::Val) = nothing
 
@@ -80,6 +83,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
         export $name
         $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $name
+        $(Makie).inherited_theme_keys(::Type{$name}) = $(QuoteNode(Tuple(union(Set{Symbol}(), (_inherited_theme_keys(a.default) for a in something(attrs, []))...))))
         function $(Makie).is_attribute(::Type{$(name)}, sym::Symbol)
             return sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end

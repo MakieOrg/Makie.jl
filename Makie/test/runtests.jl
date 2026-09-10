@@ -55,6 +55,8 @@ end
         include("SceneLike/figures.jl")
         include("SceneLike/makielayout.jl")
         include("SceneLike/PolarAxis.jl")
+        # Defines extension block types after the built-in block inventory tests.
+        include("SceneLike/figure_attributes.jl")
     end
 
     @testset "Conversion & Projection Pipeline" begin
