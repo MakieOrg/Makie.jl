@@ -1032,35 +1032,54 @@ function count_mesh_edges(faces, canonical_ids)
     return counts
 end
 
-function corner_wings(incident_edges, positions, v, o1, o2, own_min_width)
+# Picks up to two wing edges for the corner `v` of a triangle whose other corners are
+# `o1` and `o2`, and writes them into `indices`/`widths` at `slot` and `slot + 1`
+# (index 0 marks an unused slot). The two candidates closest in angle to the triangle's
+# own edges are kept, tracked in a single pass so that no intermediate list is built.
+function corner_wings!(indices, widths, slot, incident_edges, positions, v, o1, o2, own_min_width)
     at(u) = to_ndim(Point3d, positions[u], 0)
     direction(u) = normalize(Vec3d(at(u) - at(v)))
     d1 = direction(o1)
     d2 = direction(o2)
     plane_normal = normalize(cross(d1, d2))
 
-    # A wing that leaves the triangle's plane belongs to a face seen at an angle, so its
-    # stroke band should not continue onto this triangle (it would project as a stray
-    # band across the face). Slight non-planarity is allowed for curved surfaces.
-    function is_in_plane((u, _))
-        out_of_plane = abs(dot(plane_normal, direction(u)))
-        return !isnan(out_of_plane) && out_of_plane < 0.3
-    end
-    wings = filter(((u, _),) -> u != o1 && u != o2, incident_edges)
-    # A wing band can only enter this triangle by crossing one of the triangle's own
-    # edges at the corner. If those are themselves stroked at least as wide, the
-    # junction is already covered and the wing would only risk painting stray bands
-    # on curved surfaces (e.g. a triangle sphere with strokeedges = :all).
-    wings = filter!(((_, width),) -> width > own_min_width, wings)
-    wings = filter!(is_in_plane, wings)
-    length(wings) <= 2 && return wings
+    best_u = 0
+    best_w = 0.0f0
+    best_score = -Inf
+    second_u = 0
+    second_w = 0.0f0
+    second_score = -Inf
 
-    function wedge_closeness((u, _))
+    for (u, width) in incident_edges
+        (u == o1 || u == o2) && continue
+        # A wing band can only enter this triangle by crossing one of the triangle's own
+        # edges at the corner. If those are themselves stroked at least as wide, the
+        # junction is already covered and the wing would only risk painting stray bands
+        # on curved surfaces (e.g. a triangle sphere with strokeedges = :all).
+        width > own_min_width || continue
         du = direction(u)
+        # A wing that leaves the triangle's plane belongs to a face seen at an angle, so
+        # its stroke band should not continue onto this triangle (it would project as a
+        # stray band across the face). Slight non-planarity is allowed for curved surfaces.
+        out_of_plane = abs(dot(plane_normal, du))
+        (!isnan(out_of_plane) && out_of_plane < 0.3) || continue
+
         score = max(dot(du, d1), dot(du, d2))
-        return isnan(score) ? -Inf : score
+        isnan(score) && (score = -Inf)
+        # `*_u == 0` keeps empty slots fillable when every candidate scores -Inf
+        if best_u == 0 || score > best_score
+            second_u, second_w, second_score = best_u, best_w, best_score
+            best_u, best_w, best_score = u, width, score
+        elseif second_u == 0 || score > second_score
+            second_u, second_w, second_score = u, width, score
+        end
     end
-    return partialsort(wings, 1:2; by = wedge_closeness, rev = true)
+
+    indices[slot] = best_u
+    widths[slot] = best_w
+    indices[slot + 1] = second_u
+    widths[slot + 1] = second_w
+    return
 end
 
 """
@@ -1118,18 +1137,15 @@ function stroke_edge_data(mesh, gl_faces, strokeedges::Symbol)
             end
         )
 
-        indices .= 0
-        widths .= 0.0f0
         for i in 1:3
             v = corners[i]
             o1 = corners[mod1(i + 1, 3)]
             o2 = corners[mod1(i + 2, 3)]
             own_min_width = min(edge_widths[t][i], edge_widths[t][mod1(i + 2, 3)])
-            wings = corner_wings(get(incident, v, no_wings), positions, v, o1, o2, own_min_width)
-            for (j, (u, width)) in enumerate(wings)
-                indices[2 * (i - 1) + j] = u
-                widths[2 * (i - 1) + j] = width
-            end
+            corner_wings!(
+                indices, widths, 2 * (i - 1) + 1, get(incident, v, no_wings),
+                positions, v, o1, o2, own_min_width
+            )
         end
         wing_indices[t] = Vec{6, Int32}(indices)
         wing_widths[t] = Vec{6, Float32}(widths)
@@ -1138,12 +1154,22 @@ function stroke_edge_data(mesh, gl_faces, strokeedges::Symbol)
     return edge_widths, wing_indices, wing_widths
 end
 
+# The edge data only depends on whether stroking is on, not on how wide the stroke is.
+# Depending on this flag rather than on :strokewidth keeps width changes from
+# recomputing the mesh adjacency, which is by far the most expensive part of stroking.
+function register_stroke_enabled!(attr)
+    haskey(attr, :stroke_enabled) && return
+    map!(!iszero, attr, :strokewidth, :stroke_enabled)
+    return
+end
+
 function register_mesh_stroke!(attr)
+    register_stroke_enabled!(attr)
     return map!(
-        attr, [:mesh, :faces, :strokeedges, :strokewidth],
+        attr, [:mesh, :faces, :strokeedges, :stroke_enabled],
         [:stroke_edge_widths, :stroke_wing_indices, :stroke_wing_widths]
-    ) do mesh, gl_faces, strokeedges, strokewidth
-        if iszero(strokewidth)
+    ) do mesh, gl_faces, strokeedges, stroke_enabled
+        if !stroke_enabled
             return (Vec3f[], Vec{6, Int32}[], Vec{6, Float32}[])
         end
         return stroke_edge_data(mesh, gl_faces, strokeedges)
@@ -1190,11 +1216,12 @@ end
 function register_surface_stroke!(attr)
     haskey(attr, :stroke_edge_widths) && return
     haskey(attr, :positions_transformed_f32c) || add_surface_vertex_positions!(attr)
+    register_stroke_enabled!(attr)
     map!(
-        attr, [:positions_transformed_f32c, :z, :strokeedges, :strokewidth],
+        attr, [:positions_transformed_f32c, :z, :strokeedges, :stroke_enabled],
         [:stroke_edge_widths, :stroke_wing_indices, :stroke_wing_widths, :stroke_faces]
-    ) do positions, z, strokeedges, strokewidth
-        if iszero(strokewidth)
+    ) do positions, z, strokeedges, stroke_enabled
+        if !stroke_enabled
             return (Vec3f[], Vec{6, Int32}[], Vec{6, Float32}[], GLTriangleFace[])
         end
         m = surface2mesh(positions, size(z))
