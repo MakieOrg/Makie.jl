@@ -144,11 +144,6 @@ function Base.eltype(computed::Computed)
     return eltype(computed.value)
 end
 
-struct ResolveException{E <: Exception} <: Exception
-    start::Computed
-    error::E
-end
-
 struct TypedEdge{InputTuple, OutputTuple, F}
     callback::F
     inputs::InputTuple
@@ -177,6 +172,16 @@ struct ComputeEdge{T} <: AbstractEdge
     # Mainly needed for mark_dirty!(edge) to propagate to all dependents
     dependents::Vector{ComputeEdge{T}}
     typed_edge::RefValue{TypedEdge}
+end
+
+struct ResolveException{E <: Exception} <: Exception
+    start::Computed
+    error::E
+end
+
+struct SelectException <: Exception
+    msg::String
+    edge::ComputeEdge
 end
 
 function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
@@ -979,16 +984,63 @@ function locked_resolve!(computed::Computed)
     return
 end
 
+# Not actually called, but maybe useful for understanding what it does?
+"""
+    select(idx::Int, choices...)
+
+Returns `choices[idx]`.
+
+This function is not directly called when used as the callback in `map` or
+`register_computation!`. It is instead replaced by resolving the node which
+supplies `idx` and node which supplies `choices[idx]`, leaving all other nodes
+unresolved/dirty. The edge output gets the result as if `select` was called
+directly, but doesn't pay the cost of resolving unused inputs.
+"""
+select(i::Int, choices...) = choices[i]
+
 function locked_resolve!(edge::ComputeEdge)
     edge.got_resolved[] && return
-    foreach(locked_resolve!, edge.inputs)
-    if !isassigned(edge.typed_edge)
-        edge.typed_edge[] = TypedEdge(edge)
+
+    # special case to resolve just one of many options
+    # Note: dispatching on callback type is much slower than ===
+    if edge.callback === select
+        # resolve selected index
+        locked_resolve!(edge.inputs[1])
+        edge.inputs_dirty[1] = false
+
+        # resolve and forward picked choice
+        idx = 1 + edge.inputs[1].value[]::Int
+        if !(2 <= idx <= length(edge.inputs))
+            throw(
+                SelectException(
+                    "Selection index $(idx - 1) is out of bounds for indexing $(length(edge.inputs) - 1) inputs.",
+                    edge
+                )
+            )
+        end
+        locked_resolve!(edge.inputs[idx])
+        edge.inputs_dirty[idx] = false
+        new_value = edge.inputs[idx].value[]
+
+        output = edge.outputs[1]
+        if isdefined(output, :value) && isassigned(output.value)
+            output.dirty = is_same(output.value[], new_value)
+            output.value[] = new_value
+        else
+            output.dirty = true
+            output.value = RefValue(new_value)
+        end
     else
-        locked_resolve!(edge.typed_edge[])
+        foreach(locked_resolve!, edge.inputs)
+        if !isassigned(edge.typed_edge)
+            edge.typed_edge[] = TypedEdge(edge)
+        else
+            locked_resolve!(edge.typed_edge[])
+        end
+        fill!(edge.inputs_dirty, false)
     end
+
     edge.got_resolved[] = true
-    fill!(edge.inputs_dirty, false)
     for dep in edge.dependents
         mark_input_dirty!(edge, dep)
     end
@@ -1563,6 +1615,7 @@ struct MapFunctionWrapper{pack, FT} <: Function
 end
 
 MapFunctionWrapper(::typeof(compute_identity), pack = true) = compute_identity
+MapFunctionWrapper(::typeof(select), pack = true) = select
 
 function (x::MapFunctionWrapper{true})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
@@ -1958,10 +2011,14 @@ This function makes no checks to confirm that the given value matches the type
 returned by the parent edge callback.
 """
 function unsafe_init!(node::Computed, value)
-    if isdefined(node, :value)
-        error("Node already initialized.")
-    else
+    if !isdefined(node, :value)
         node.value = value isa RefValue ? value : RefValue(value)
+    elseif !isassigned(node.value)
+        # Maybe set_type! happened, but resolve definitely didn't since it has
+        # no value. So we don't need mark_dirty! here...
+        node.value[] = deref(value)
+    else
+        error("Node already initialized.")
     end
 
     return unsafe_init!(node.parent)
@@ -2025,6 +2082,9 @@ set_type!(graph.output, Union{Int, Float64, String})
 ```
 """
 function set_type!(node::Computed, T::Type)
+    # Should be the same as is_initialized(node) in practice, but it's a little
+    # safer to only work with not-yet-defined node.value's because otherwise
+    # there is a ref that could be used somewhere already.
     if isdefined(node, :value)
         error("Node already initialized.")
     else
