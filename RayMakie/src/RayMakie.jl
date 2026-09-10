@@ -44,7 +44,7 @@ import Mantle
 import Mantle: DeviceArray, GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
                Texture2D, Sampler, SampledTexture, bind_textures,
                transition_image!,
-               BatchQueue, allocate_batch_queue!, release_batch_queue!,
+               allocate_batch_queue!, release_batch_queue!,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
 import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
