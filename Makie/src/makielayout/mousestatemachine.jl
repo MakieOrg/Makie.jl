@@ -137,7 +137,15 @@ function addmouseevents!(scene, bbox::Observables.AbstractObservable{<:Rect2}; p
     # bboxes as soon as the blockscene inherits an offset viewport (e.g. for
     # a widget placed inside a Subfigure/Tabs content scene).
     to_px(scene) = Point2f(events(scene).mouseposition[])
-    is_mouse_over_relevant_area() = scene.visible[] && (to_px(scene) in bbox[])
+    # …and inside the scene it is drawn in. A scrollable `Subfigure` moves its
+    # content freely past its viewport, so a widget scrolled out of sight still
+    # sits somewhere in the window: on its own bbox alone it went on swallowing
+    # presses meant for whatever is drawn there (measured: a panel 1213 px tall in
+    # a 714 px viewport put its buttons over the timeline underneath). The scene
+    # already knows that boundary — it is what clips the drawing — so events use
+    # the same one instead of the content being hidden block by block.
+    is_mouse_over_relevant_area() = scene.visible[] && (to_px(scene) in bbox[]) &&
+        (to_px(scene) in viewport(scene)[])
     return _addmouseevents!(scene, is_mouse_over_relevant_area, to_px, priority)
 end
 

@@ -168,54 +168,16 @@ function initialize_block!(sf::Subfigure)
             append!(stack, flatten_layout_content(block))
             v ? unhide!(block) : hide!(block)
         end
-        v && clip_content_to_viewport!()
         return
     end
 
-    """
-    Scrolled-out content must also stop RECEIVING clicks. A block's mouse
-    machinery gates on its own `blockscene.visible` and its own bbox — and a
-    scrollable subfigure moves content freely past its viewport, so a widget
-    scrolled out of sight still sits somewhere in the window and swallows
-    presses meant for whatever is drawn there (measured: a panel 1213 px tall in
-    a 714 px viewport put its buttons over the timeline underneath, where they
-    ate the clicks). Hide what does not intersect the viewport.
-    """
-    function clip_content_to_viewport!()
-        is_visible[] || return
-        vp = scene.viewport[]
-        (widths(vp)[1] <= 0 || widths(vp)[2] <= 0) && return
-        stack = flatten_layout_content(sf.layout)
-        while !isempty(stack)
-            block = pop!(stack)
-            append!(stack, flatten_layout_content(block))
-            bb = block.layoutobservables.computedbbox[]
-            all(isfinite, bb.origin) && all(isfinite, bb.widths) || continue
-            outside = bb.origin[1] + bb.widths[1] < left(vp) || bb.origin[1] > right(vp) ||
-                bb.origin[2] + bb.widths[2] < bottom(vp) || bb.origin[2] > top(vp)
-            outside ? hide!(block) : unhide!(block)
-        end
-        return
-    end
-    onany(blockscene, layout_bbox, scene.viewport) do _, _
-        clip_content_to_viewport!()
-        return
-    end
-    # …and again once the content layout has SETTLED. `layout_bbox` moves at the
-    # start of a relayout, so culling from it alone decides what is on screen from
-    # positions the layout has not finished changing: folding a card left the
-    # wrong cards hidden, and a hidden card takes no clicks, so the next click
-    # went nowhere. Scrolling one pixel put it right, which is what made folding
-    # look intermittent rather than broken.
-    #
     # The content layout's own `computedbbox` fires when GridLayoutBase is done,
-    # which is the moment both answers — how tall the content is, and what of it
-    # is in view — are worth asking for.
+    # which is when "how tall is the content" is worth asking.
     on(blockscene, layout.layoutobservables.computedbbox) do _
         refresh_contentsize!(sf)
-        clip_content_to_viewport!()
         return
     end
+
     on(blockscene, blockscene.events.mousebutton) do ev
         if ev.action == Mouse.release && drag_state[][1] !== :none
             drag_state[] = (:none, 0.0f0, Vec2f(0, 0))
