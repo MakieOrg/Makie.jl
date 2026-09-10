@@ -97,6 +97,8 @@ const TEST_FILES = [
     # Source-only, no device: the architecture ledger goes first so it is
     # reported before anything that can take a device down with it.
     "test_lava_surface_ledger.jl",
+    # Pure dispatch, no device: which `gpu_read` a scatter attribute takes.
+    "test_gpu_read.jl",
     # CPU-only (no render), so it fails fast and before anything touches a device.
     "test_pbrt_import_settings.jl",
     "test_hw_accel_switch.jl",

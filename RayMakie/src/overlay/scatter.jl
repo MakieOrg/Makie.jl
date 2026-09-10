@@ -38,12 +38,22 @@ const PerVertex{T} = Union{T, AbstractVector{<:T}}
 # With the type in hand both questions are one dispatch and the wrong shape is a
 # `MethodError` at compile rather than a picture that is subtly wrong.
 #
-# The array method CONVERTS rather than requiring the exact element type: a
-# position buffer is `Point3f` where the stage wants `Vec3f`, and the two are the
-# same three floats. The uniform method is the more specific of the two for any
-# `T` that is itself a vector, so a `Vec4f` uniform still takes it.
+# The uniform method dispatches on `StaticVector`, which is STRICTLY more
+# specific than `AbstractVector`, and not on `x::T`. `Tuple{Type{T}, T, Any}`
+# and `Tuple{Type{T}, AbstractVector, Any}` are AMBIGUOUS — neither implies the
+# other, because `T` is not constrained to be a vector — and Julia resolved the
+# ambiguity to the ARRAY method: `gpu_read(Vec4f, Vec4f(.1,.2,.3,1), 2)`
+# answered `Vec4f(0.2, 0.2, 0.2, 0.2)`, one component splatted, and past the
+# fourth vertex it read out of bounds. Every uniform colour, markersize,
+# rotation and marker offset was wrong on screen with no error anywhere, and
+# `test_gpu_read.jl` pins each shape.
+#
+# Both methods CONVERT rather than requiring the exact type: a position buffer
+# is `Point3f` where the stage wants `Vec3f`, and the two are the same three
+# floats.
 @inline gpu_read(::Type{T}, xs::AbstractVector, idx) where {T} = T(xs[idx])
-@inline gpu_read(::Type{T}, x::T, idx) where {T} = x
+@inline gpu_read(::Type{T}, x::StaticVector, idx) where {T} = T(x)
+@inline gpu_read(::Type{T}, x::Number, idx) where {T} = T(x)
 
 function get_scatter_pipeline!(screen)
     get!(screen.gfx_pipelines, :scatter) do

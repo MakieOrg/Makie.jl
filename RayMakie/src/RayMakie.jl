@@ -5,6 +5,10 @@ using GeometryBasics: SVector
 using Makie: Observable, on, colorbuffer, to_value
 using Makie: Quaternionf
 using GeometryBasics: VecTypes
+# `StaticVector` and not `VecTypes`: `gpu_read` needs a type that is STRICTLY
+# more specific than `AbstractVector`, and `VecTypes` is a Union with `NTuple`,
+# which is not one — the two methods would be ambiguous again.
+using StaticArrays: StaticVector
 using Colors: N0f8, Colorant
 using ImageCore: RGBA, RGB, clamp01nan
 import Makie.Observables

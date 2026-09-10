@@ -34,7 +34,7 @@ function allocfree_scene()
 end
 
 function sample_bytes(screen, n)
-    for _ in 1:5
+    for _ in 1:n
         RayMakie.render!(screen; finalize_framebuffer = false)
     end
     # Drain the finalizers of everything the compile and the earlier test files
@@ -44,6 +44,15 @@ function sample_bytes(screen, n)
     # and no forced GC, 0 of 30 after one, 0 of 30 after another. The claim
     # under test is the STEADY state of a still scene, which that is not.
     GC.gc(true); GC.gc(true)
+    # TWO windows, and the first is thrown away — the same rule
+    # `Mantle/test/vulkan/test_dispatch_allocation.jl` states, for the same
+    # reason. A render SUBMITS and does not wait, so the queue's in-flight list
+    # grows until the device catches up and its Vector reallocates on the way:
+    # measured 3488 B in the FIRST sample of a window and 0 in all nineteen
+    # after it, then 0 in every sample of the next window. The claim under test
+    # is the steady state of a still scene, and a list still reaching its
+    # working depth is not it.
+    [(@allocated RayMakie.render!(screen; finalize_framebuffer = false)) for _ in 1:n]
     return [(@allocated RayMakie.render!(screen; finalize_framebuffer = false)) for _ in 1:n]
 end
 
