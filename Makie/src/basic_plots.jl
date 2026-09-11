@@ -54,7 +54,7 @@ function generic_plot_attributes(attr)
         inspector_clear = attr[:inspector_clear],
         inspector_hover = attr[:inspector_hover],
         clip_planes = attr[:clip_planes],
-        rasterize = attr[:rasterize]
+        rasterize = attr[:rasterize],
     )
 end
 
