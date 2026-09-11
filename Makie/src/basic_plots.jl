@@ -529,7 +529,8 @@ Note that `meshscatter` is much better for plotting a single mesh at multiple po
     """
     Sets the width of the stroke along visible mesh edges in pixels. A width of 0 disables stroking.
     The stroke is drawn inwards from each edge as part of the mesh surface itself, replacing the
-    face color rather than being layered on top.
+    face color rather than being layered on top. In WGLMakie, stroking must be enabled when the
+    plot is created to take effect.
     """
     strokewidth = 0.0
     """

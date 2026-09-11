@@ -618,6 +618,54 @@ function register_wgl_mesh_stroke!(attr)
     return
 end
 
+# Inputs of the de-indexed (stroked) mesh and surface programs.
+function deindexed_mesh_inputs()
+    return [
+        # Special
+        :space,
+        # Needs explicit handling
+        :uniform_colormap, :uniform_color, :uniform_colorrange, :pattern,
+        :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :wgl_uv_transform, :fetch_pixel, :primitive_shading, :color_mapping_type,
+        :depth_shift,
+        :wgl_mesh_positions, :wgl_mesh_faces, :wgl_mesh_vertex_index,
+        :wgl_mesh_normals, :wgl_mesh_uv, :wgl_mesh_vertex_color,
+        :strokewidth, :strokecolor, :wgl_stroke_data, :wgl_viewport_origin,
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
+    ]
+end
+
+# JS buffers and uniforms keep the standard names, so updates of the de-indexed
+# buffers have to be renamed to reach them
+function deindexed_mesh_renames()
+    return Dict(
+        :wgl_mesh_positions => :positions_transformed_f32c,
+        :wgl_mesh_faces => :faces,
+        :wgl_mesh_vertex_index => :vertex_index,
+        :wgl_mesh_normals => :normals,
+        :wgl_mesh_uv => :texturecoordinates,
+        :wgl_mesh_vertex_color => :vertex_color,
+        :wgl_stroke_data => :stroke_data,
+        :wgl_viewport_origin => :viewport_origin,
+    )
+end
+
+# Inputs of the regular indexed mesh and surface programs.
+function indexed_mesh_inputs()
+    return [
+        # Special
+        :space,
+        # Needs explicit handling
+        :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
+        :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :wgl_uv_transform, :fetch_pixel, :primitive_shading, :color_mapping_type,
+        :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
+    ]
+end
+
 function create_shader(::Scene, plot::Union{Heatmap, Image})
     attr = plot.attributes
     if plot isa Image
@@ -647,35 +695,19 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
     backend_colors!(attr)
     add_primitive_shading!(scene, attr)
-    register_wgl_mesh_expansion!(attr)
-    register_wgl_mesh_stroke!(attr)
-    inputs = [
-        # Special
-        :space,
-        # Needs explicit handling
-        :uniform_colormap, :uniform_color, :uniform_colorrange, :pattern,
-        :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
-        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :wgl_uv_transform, :fetch_pixel, :primitive_shading, :color_mapping_type,
-        :depth_shift,
-        :wgl_mesh_positions, :wgl_mesh_faces, :wgl_mesh_vertex_index,
-        :wgl_mesh_normals, :wgl_mesh_uv, :wgl_mesh_vertex_color,
-        :strokewidth, :strokecolor, :wgl_stroke_data, :wgl_viewport_origin,
-        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
-    ]
-    # JS buffers and uniforms keep the standard names, so updates of the de-indexed
-    # buffers have to be renamed to reach them
-    rename_updates = Dict(
-        :wgl_mesh_positions => :positions_transformed_f32c,
-        :wgl_mesh_faces => :faces,
-        :wgl_mesh_vertex_index => :vertex_index,
-        :wgl_mesh_normals => :normals,
-        :wgl_mesh_uv => :texturecoordinates,
-        :wgl_mesh_vertex_color => :vertex_color,
-        :wgl_stroke_data => :stroke_data,
-        :wgl_viewport_origin => :viewport_origin,
-    )
-    return create_wgl_renderobject(mesh_program, attr, inputs; rename_updates)
+
+    # Stroking needs the de-indexed mesh path, which replaces the shared vertices by one
+    # per triangle corner, so it is only taken when stroking is enabled at plot creation.
+    if plot.stroke_enabled[]::Bool
+        register_wgl_mesh_expansion!(attr)
+        register_wgl_mesh_stroke!(attr)
+        return create_wgl_renderobject(
+            mesh_program, attr, deindexed_mesh_inputs();
+            rename_updates = deindexed_mesh_renames()
+        )
+    end
+
+    return create_wgl_renderobject(mesh_program, attr, indexed_mesh_inputs())
 end
 
 
@@ -724,45 +756,13 @@ function create_shader(scene::Scene, plot::Surface)
         Makie.register_surface_stroke!(attr)
         register_wgl_mesh_expansion!(attr)
         register_wgl_mesh_stroke!(attr)
-        inputs = [
-            # Special
-            :space,
-            # Needs explicit handling
-            :uniform_colormap, :uniform_color, :uniform_colorrange, :pattern,
-            :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
-            :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-            :wgl_uv_transform, :fetch_pixel, :primitive_shading, :color_mapping_type,
-            :depth_shift,
-            :wgl_mesh_positions, :wgl_mesh_faces, :wgl_mesh_vertex_index,
-            :wgl_mesh_normals, :wgl_mesh_uv, :wgl_mesh_vertex_color,
-            :strokewidth, :strokecolor, :wgl_stroke_data, :wgl_viewport_origin,
-            :uniform_clip_planes, :uniform_num_clip_planes, :visible,
-        ]
-        rename_updates = Dict(
-            :wgl_mesh_positions => :positions_transformed_f32c,
-            :wgl_mesh_faces => :faces,
-            :wgl_mesh_vertex_index => :vertex_index,
-            :wgl_mesh_normals => :normals,
-            :wgl_mesh_uv => :texturecoordinates,
-            :wgl_mesh_vertex_color => :vertex_color,
-            :wgl_stroke_data => :stroke_data,
-            :wgl_viewport_origin => :viewport_origin,
+        return create_wgl_renderobject(
+            mesh_program, attr, deindexed_mesh_inputs();
+            rename_updates = deindexed_mesh_renames()
         )
-        return create_wgl_renderobject(mesh_program, attr, inputs; rename_updates)
     end
 
-    inputs = [
-        # Special
-        :space,
-        # Needs explicit handling
-        :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
-        :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
-        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :wgl_uv_transform, :fetch_pixel, :primitive_shading, :color_mapping_type,
-        :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
-    ]
-    return create_wgl_renderobject(mesh_program, attr, inputs)
+    return create_wgl_renderobject(mesh_program, attr, indexed_mesh_inputs())
 end
 
 function create_volume_shader(attr)
