@@ -400,8 +400,7 @@ end
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args) where {P}
     inputs = _register_input_arguments!(attr, input_args)
     expanded_args = _register_expand_arguments!(P, attr, inputs, to_value.(input_args))
-    _register_argument_conversions!(P, attr, user_kw, expanded_args)
-    return
+    return _register_argument_conversions!(P, attr, user_kw, expanded_args)
 end
 
 function _register_input_arguments!(attr::ComputeGraph, input_args::Tuple)
@@ -585,70 +584,117 @@ function error_check_convert_arguments(P, args, user_kw, args_converted)
 end
 
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw, args) where {P}
-    dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))::DimConversions
-    add_input!(attr, :dim_conversions, dim_converts)
-
     add_convert_kwargs!(attr, user_kw, P, args)
     kw = attr.convert_kwargs[]
     args_converted = convert_arguments(P, args...; kw...)
-    error_check_convert_arguments(P, args, user_kw, args_converted)
+    rtype = error_check_convert_arguments(P, args, user_kw, args_converted)
     status = got_converted(P, conversion_trait(P, args...), args_converted)
 
-    # Controls whether the plot is forced to apply dim converts or allowed to
-    # use plain data in a dim_convert scene. Typically true for plots to scenes
-    # and false for plots to other plots
-    force_dimconverts = pop!(user_kw, :force_dimconverts)::Bool
-    doc_attr = documented_attributes(P)
-    space::Symbol = if haskey(user_kw, :space)
-        to_value(user_kw[:space])
+    if status === SpecApi
+        # convert_arguments produces SpecApi outputs
+
+        # SpecApi outputs can be either Tuples or values
+        map!(attr, [:args, :convert_kwargs], :converted) do dim_converted, convert_kwargs
+            val = convert_arguments(P, dim_converted...; convert_kwargs...)
+            rtype = error_check_convert_arguments(P, dim_converted, convert_kwargs, val)
+            return rtype === :Tuple ? val : (val,)
+        end
+        converted = rtype === :Tuple ? args_converted : (args_converted,)
+        ComputePipeline.unsafe_init!(attr.converted, converted)
+
+        if converted[1] isa Union{PlotSpec, AbstractVector{PlotSpec}}
+            # We will jump to the PlotList constructor which uses plotspecs as
+            # the converted name
+            map!(attr, :converted, :plotspecs) do x
+                return x[1] isa PlotSpec ? [x[1]] : x[1]
+            end
+            return :PlotSpec
+        else
+            # BlockSpec or GridLayoutSpec don't have a specialized constructor
+            # and connect_plot! method (yet), so they need the usual outputs
+            n_args = length(converted)
+            map!(attr, :converted, [argument_names(P, n_args)...]) do converted
+                return converted # destructure
+            end
+
+            add_input!(attr, :f32c, :uninitialized)
+
+            return :SpecApi
+        end
+
     else
-        default = get_flat_default(doc_attr, :space, :data)
-        default isa Symbol ? default : :data
+        # Normals plot processing - this can still produce SpecApi outputs if
+        # dim converts need to happen before convect_arguments
+
+        dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))::DimConversions
+        add_input!(attr, :dim_conversions, dim_converts)
+
+        # Controls whether the plot is forced to apply dim converts or allowed to
+        # use plain data in a dim_convert scene. Typically true for plots to scenes
+        # and false for plots to other plots
+        force_dimconverts = pop!(user_kw, :force_dimconverts)::Bool
+        doc_attr = documented_attributes(P)
+        space::Symbol = if haskey(user_kw, :space)
+            to_value(user_kw[:space])
+        else
+            default = get_flat_default(doc_attr, :space, :data)
+            default isa Symbol ? default : :data
+        end
+
+        # TODO: Can't infer types here because dim_conversions[i] are of unknown type
+        dim_converted = if !is_data_space(space)
+            # dim converts do not apply in relative, pixel or clip space
+            ComputePipeline.alias!(attr, :args, :dim_converted)
+            args
+        elseif force_dimconverts && needs_dimconvert(dim_converts)
+            add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
+        elseif (status === true || status === SpecApi)
+            # Nothing needs to be done, since we can just use convert_arguments without dim_converts
+            # And just pass the arguments through
+            ComputePipeline.alias!(attr, :args, :dim_converted)
+            args
+        elseif isnothing(status) || status === false # we don't know (e.g. recipes) or incomplete conversion
+            add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
+        end
+        # backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
+
+        map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
+            val = convert_arguments(P, dim_converted...; convert_kwargs...)
+            rtype = error_check_convert_arguments(P, dim_converted, convert_kwargs, val)
+            return rtype === :Tuple ? val : (val,)
+        end
+
+        # If dim converts didn't do anything we can use the previous result of
+        # `convert_arguments()` to init the node
+        if attr.dim_converted[] === args
+            result_type = error_check_convert_arguments(P, args, user_kw, args_converted)
+            x = result_type === :Tuple ? args_converted : (args_converted,)
+            ComputePipeline.unsafe_init!(attr.converted, x)
+        end
+
+        converted = attr[:converted][]
+        n_args = length(converted)
+        converted_names = argument_names(P, n_args)
+        map!(attr, :converted, [converted_names...]) do converted
+            return converted # destructure
+        end
+
+        add_input!(attr, :transform_func, identity)
+        ComputePipeline.set_type!(attr.transform_func, Any)
+
+        add_input!(attr, :f32c, :uninitialized)
+
+        if length(converted) == 1 && converted[1] isa Union{PlotSpec, AbstractArray{PlotSpec}}
+            # We will jump to the PlotList constructor which needs :plotspecs as
+            # the converted output
+            map!(x -> x isa PlotSpec ? [x] : vec(x), attr, converted_names[1], :plotspecs)
+            return :PlotSpec
+        elseif length(converted) == 1 && converted[1] isa Union{BlockSpec, GridLayoutSpec}
+            return :SpecApi
+        else
+            return :Plot
+        end
     end
-
-    # TODO: Can't infer types here because dim_conversions[i] are of unknown type
-    dim_converted = if !is_data_space(space)
-        # dim converts do not apply in relative, pixel or clip space
-        ComputePipeline.alias!(attr, :args, :dim_converted)
-        args
-    elseif force_dimconverts && needs_dimconvert(dim_converts)
-        add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
-    elseif (status === true || status === SpecApi)
-        # Nothing needs to be done, since we can just use convert_arguments without dim_converts
-        # And just pass the arguments through
-        ComputePipeline.alias!(attr, :args, :dim_converted)
-        args
-    elseif isnothing(status) || status === false # we don't know (e.g. recipes) or incomplete conversion
-        add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
-    end
-    # backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
-
-    map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
-        val = convert_arguments(P, dim_converted...; convert_kwargs...)
-        rtype = error_check_convert_arguments(P, dim_converted, convert_kwargs, val)
-        return rtype === :Tuple ? val : (val,)
-    end
-
-    # If dim converts didn't do anything we can use the previous result of
-    # `convert_arguments()` to init the node
-    if attr.dim_converted[] === args
-        result_type = error_check_convert_arguments(P, args, user_kw, args_converted)
-        x = result_type === :Tuple ? args_converted : (args_converted,)
-        ComputePipeline.unsafe_init!(attr.converted, x)
-    end
-
-    converted = attr[:converted][]
-    n_args = length(converted)
-    map!(attr, :converted, [argument_names(P, n_args)...]) do converted
-        return converted # destructure
-    end
-
-    add_input!(attr, :transform_func, identity)
-    ComputePipeline.set_type!(attr.transform_func, Any)
-
-    add_input!(attr, :f32c, :uninitialized)
-
-    return
 end
 
 function register_marker_computations!(attr::ComputeGraph)
@@ -880,7 +926,16 @@ end
 function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
     graph = ComputeGraph()
 
-    register_arguments!(P, graph, user_attributes, user_args)
+    converted_as = register_arguments!(P, graph, user_attributes, user_args)
+
+    # Shortcut for PlotSpec results in convert_arguments
+    if converted_as === :PlotSpec
+        return build_plotlist(graph, user_attributes)
+    end
+
+    # :SpecApi (BlockSpec or GridLayoutSpec) or :Plot
+    # TODO: Shortcut for BlockSpec and GridLayoutSpec
+
     converted = graph.converted[]
     PTrait = conversion_trait(P, graph.args[]...)
     if got_converted(P, PTrait, converted) == false
