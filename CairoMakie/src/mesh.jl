@@ -31,105 +31,44 @@ end
 
 function draw_atomic(scene::Scene, screen::Screen, primitive::Makie.Mesh)
     Makie.compute_colors!(primitive.attributes)
-    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
-        draw_mesh2D(scene, screen, primitive.attributes)
+    if use_vector_hatch(scene, primitive.attributes)
+        draw_mesh_hatched(scene, screen, primitive.attributes)
     else
-        draw_mesh3D(scene, screen, primitive.attributes)
+        draw_mesh_rasterized(scene, screen, primitive.attributes)
     end
     return nothing
 end
 
-function draw_mesh2D(scene, screen, attr::ComputeGraph)
-    # TODO: no clip_planes?
-    vs = cairo_project_to_screen(attr)
-    fs = attr.faces[]
-    uv = attr.texturecoordinates[]
-    uv_transform = attr.pattern_uv_transform[]
+# LinePattern colors stay vector-drawable in vector backends, unless a stroke or a
+# custom uv_transform requires the rasterizer's per-fragment sampling.
+function use_vector_hatch(scene, attr::ComputeGraph)
+    iszero(attr.strokewidth[]) || return false
+    # Check the raw color, since the compute graph rasterizes AbstractPattern
+    # (including LinePattern) to a Sampler, losing the vector-drawable LinePattern struct.
+    attr.color[] isa Makie.LinePattern || return false
     # FRAGILE: access the raw user-provided uv_transform before the compute graph
     # converts LinePattern → Sampler. This depends on ComputeGraph internals.
     raw_uv_transform = haskey(attr.inputs, :uv_transform) ? attr.inputs[:uv_transform].value : Makie.automatic
-    if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
-        uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
-    end
-    # Check raw color before compute_colors, since the compute graph
-    # rasterizes AbstractPattern (including LinePattern) to a Sampler,
-    # losing the vector-drawable LinePattern struct.
-    color_attr = attr.color[]
-    # Only use vector hatch path for default uv_transform. If the user provides
-    # an explicit uv_transform, preserve existing rasterized pattern semantics.
-    if color_attr isa Makie.LinePattern && raw_uv_transform === Makie.automatic
-        offset = linepattern_offset(scene, attr.model[])
-        return draw_mesh2D(screen.context, color_attr, vs, fs, offset)
-    end
-    color = compute_colors(attr)
-    cols = per_face_colors(color, nothing, fs, nothing, uv)
-    if cols isa Cairo.CairoPattern
-        align_pattern(cols, scene, attr.model[])
-    end
-    return draw_mesh2D(screen, cols, vs, fs)
+    raw_uv_transform === Makie.automatic || return false
+    return Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
 end
 
-
-function draw_mesh2D(screen, color, vs::Vector, fs::Vector{GLTriangleFace})
-    return draw_mesh2D(screen.context, color, vs, fs)
+function draw_mesh_hatched(scene, screen, attr::ComputeGraph)
+    vs = cairo_project_to_screen(attr)
+    fs = attr.faces[]
+    pattern = attr.color[]::Makie.LinePattern
+    offset = linepattern_offset(scene, attr.model[])
+    return draw_mesh2D(screen.context, pattern, vs, fs, offset)
 end
 
-function flush_pattern(ctx, pattern, reopen = true)
+function flush_pattern(ctx, pattern)
     Cairo.set_source(ctx, pattern)
     Cairo.close_path(ctx)
     Cairo.paint(ctx)
     Cairo.destroy(pattern)
     # Reset any lingering pattern state
     Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
-
-    if reopen
-        pattern = Cairo.CairoPatternMesh()
-    end
-
-    return pattern
-end
-
-const MAX_PATCHES_PER_PATTERN = Ref{Int64}(16384)  # TODO: tune
-
-function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace})
-    # Prioritize colors of the mesh if present
-    # This is a hack, which needs cleaning up in the Mesh plot type!
-
-    cnt = 0
-    flusheach = MAX_PATCHES_PER_PATTERN[]
-    pattern = Cairo.CairoPatternMesh()
-
-    for i in eachindex(fs)
-        c1, c2, c3 = per_face_cols[i]
-        t1, t2, t3 = vs[fs[i]] #triangle points
-
-        # don't draw any mesh faces with NaN components.
-        if isnan(t1) || isnan(t2) || isnan(t3)
-            continue
-        end
-
-        cnt += 1
-        Cairo.mesh_pattern_begin_patch(pattern)
-
-        Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
-        Cairo.mesh_pattern_line_to(pattern, t2[1], t2[2])
-        Cairo.mesh_pattern_line_to(pattern, t3[1], t3[2])
-
-        mesh_pattern_set_corner_color(pattern, 0, c1)
-        mesh_pattern_set_corner_color(pattern, 1, c2)
-        mesh_pattern_set_corner_color(pattern, 2, c3)
-
-        Cairo.mesh_pattern_end_patch(pattern)
-
-        if cnt % flusheach == 0
-            pattern = flush_pattern(ctx, pattern)
-        end
-    end
-
-    if cnt % flusheach != 0
-        flush_pattern(ctx, pattern, false)
-    end
-    return nothing
+    return
 end
 
 function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::Vector, fs::Vector{GLTriangleFace})
@@ -274,7 +213,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
 
         Cairo.mesh_pattern_end_patch(pattern)
 
-        flush_pattern(ctx, pattern, false)
+        flush_pattern(ctx, pattern)
     end
 
     return
@@ -298,35 +237,6 @@ function _transform_to_world(f32_model, tf, pos)
     end
 end
 
-
-# Mesh + surface entry point
-function draw_mesh3D(scene, screen, plot::ComputeGraph)
-    clip_planes = plot.clip_planes[]::Vector{Plane3f}
-    uv_transform = plot.pattern_uv_transform[]::Union{Nothing, Mat{2, 3, Float32, 6}}
-
-    # per-element in meshscatter
-    world_points = Makie.apply_model(
-        plot.model_f32c[]::Mat4f,
-        plot.positions_transformed_f32c[]::Union{Vector{Point3f}, Vector{Point2f}}
-    )
-    screen_points = cairo_project_to_screen(plot, output_type = Point3f)::Vector{Point3f}
-    meshfaces = plot.faces[]::Vector{GLTriangleFace}
-    meshnormals = plot.normals[]::Union{Nothing, Vector{Vec3f}}
-    _meshuvs = plot.texturecoordinates[]
-
-    if (_meshuvs isa AbstractVector{<:Vec3})
-        error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
-    end
-    meshuvs::Union{Nothing, Vector{Vec2f}} = _meshuvs
-
-    color = compute_colors(plot)
-
-    return draw_mesh3D(
-        scene, screen, plot,
-        world_points, screen_points, meshfaces, meshnormals, meshuvs,
-        uv_transform, color, clip_planes
-    )
-end
 
 function draw_mesh3D(
         scene, screen, plot::ComputeGraph,
@@ -519,8 +429,10 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Makie.Surface)
     attr = plot.attributes
     Makie.add_computation!(attr, Val(:surface_as_mesh))
     Makie.register_pattern_uv_transform!(attr)
+    Makie.register_surface_stroke!(attr)
+    Makie.compute_colors!(attr)
 
-    draw_mesh3D(scene, screen, attr)
+    draw_mesh_rasterized(scene, screen, attr, grid_size = size(attr.z[]))
     return nothing
 end
 

@@ -978,7 +978,7 @@ end
 function assemble_surface_robj!(data, screen::Screen, attr, args, input2glname)
     colorname = add_mesh_color_attributes!(
         screen, attr, data,
-        args.scaled_color,
+        args.surface_color,
         args.alpha_colormap,
         args.scaled_colorrange,
     )
@@ -996,14 +996,20 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     Makie.register_world_normalmatrix!(attr)
     Makie.register_view_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
+    Makie.register_surface_stroke_data!(attr)
 
     map!(z -> (size(z, 1) - 1) * (size(z, 2) - 1), attr, :z, :instances)
+
+    # the surface shader always samples an image texture, so uniform colors become 1x1
+    map!(attr, :scaled_color, :surface_color) do color
+        return color isa Colorant ? fill(RGBAf(color), 1, 1) : color
+    end
 
     inputs = [
         # Special
         :space,
         # Needs explicit handling
-        :alpha_colormap, :scaled_color, :scaled_colorrange,
+        :alpha_colormap, :surface_color, :scaled_colorrange,
     ]
     uniforms = [
         :x_transformed_f32c, :y_transformed_f32c, :z_transformed_f32c,
@@ -1012,16 +1018,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :view_normalmatrix,
         :invert_normals, :pattern_uv_transform, :fetch_pixel,
+        :strokewidth, :strokecolor, :stroke_data_packed,
     ]
 
     input2glname = Dict{Symbol, Symbol}(
         :x_transformed_f32c => :position_x, :y_transformed_f32c => :position_y,
         :z_transformed_f32c => :position_z,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :scaled_color => :image,
+        :surface_color => :image,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
         :model_f32c => :model,
-        :pattern_uv_transform => :uv_transform
+        :pattern_uv_transform => :uv_transform,
+        :stroke_data_packed => :stroke_data,
     )
 
     robj = register_robj!(assemble_surface_robj!, screen, scene, plot, inputs, uniforms, input2glname)
@@ -1091,6 +1099,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.register_world_normalmatrix!(attr)
     Makie.register_view_normalmatrix!(attr)
+    Makie.register_stroke_data!(attr)
 
     inputs = [
         # Special
@@ -1104,6 +1113,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :view_normalmatrix, :pattern_uv_transform, :fetch_pixel,
         :interpolate_in_fragment_shader,
+        :strokewidth, :strokecolor, :stroke_data_packed,
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -1112,6 +1122,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :lowclip_color => :lowclip, :highclip_color => :highclip,
         :scaled_color => :image, :model_f32c => :model,
         :pattern_uv_transform => :uv_transform,
+        :stroke_data_packed => :stroke_data,
     )
 
     robj = register_robj!(assemble_mesh_robj!, screen, scene, plot, inputs, uniforms, input2glname)
