@@ -11,7 +11,7 @@ function cairo_draw(screen::Screen, scene::Scene)
     Cairo.save(screen.context)
     draw_background(screen, scene)
 
-    allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot)
+    allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
     sort!(allplots; by = Makie.zvalue2d)
     # If the backend is not a vector surface (i.e., PNG/ARGB),
     # then there is no point in rasterizing twice.
@@ -38,13 +38,16 @@ function cairo_draw(screen::Screen, scene::Scene)
 
         # When a plot is too large to save with a reasonable file size on a vector backend,
         # the user can choose to rasterize it when plotting to vector backends, by using the
-        # `rasterize` keyword argument.  This can be set to a Bool or an Int which describes
+        # `rasterize` keyword argument. This can be set to an Int which describes
         # the density of rasterization (in terms of a direct scaling factor.)
+        # 0 means no rasterization.
         # TODO: In future, this can also be set to a Tuple{Module, Int} which describes
         # the backend module which should be used to render the scene, and the pixel density
         # at which it should be rendered.
-        if to_value(get(p, :rasterize, false)) != false && should_rasterize
-            draw_plot_as_image(pparent, screen, p, p[:rasterize][])
+        # TODO: Should this work recursively, starting with non-CairoMakie-primitive recipes?
+        rasterize = p.rasterize[]::Int
+        if should_rasterize && rasterize != 0
+            draw_plot_as_image(pparent, screen, p, rasterize)
         else # draw vector
             draw_plot(pparent, screen, p)
         end
@@ -64,7 +67,9 @@ CairoMakie can treat them as atomic plots and render them directly.
 Plots with children are by default recursed into.  This can be overridden
 by defining specific dispatches for `is_cairomakie_atomic_plot` for a given plot type.
 """
-is_cairomakie_atomic_plot(plot::Plot) = Makie.is_atomic_plot(plot) || isempty(plot.plots) || to_value(get(plot, :rasterize, false)) != false
+is_cairomakie_atomic_plot(plot::Plot) = Makie.is_atomic_plot(plot) || isempty(plot.plots)
+is_cairomakie_atomic_plot_or_rasterized(plot::Plot) = is_cairomakie_atomic_plot(plot) || plot.rasterize[]::Int > 0
+
 
 """
     check_parent_plots(f, plot::Plot)::Bool
