@@ -347,11 +347,11 @@ function add_resolved_shading!(plot::Union{Mesh, MeshScatter}, scene)
         elseif p_shading isa Bool
             p_shading ? s_shading : NoShading
         else
-            @error "$(plotsym(typeof(plot))) did not correctly define `shading` as either a Bool or a Makie.ShadingAlgorithm. Defaulting to `shading = true`."
+            @error "Found $(plotsym(typeof(plot))) plot that did not correctly define `shading` as either a Bool or a Makie.ShadingAlgorithm. Defaulting to `shading = true`."
             s_shading
         end
         if mode != NoShading && isnothing(normals)
-            @warn "$(plotsym(typeof(plot))) has `shading = $p_shading` but does not define normals, so the mesh can not be shaded. Using `NoShading` instead."
+            @warn "Found $(plotsym(typeof(plot))) using `shading = $p_shading` that is missing the normals required for shading. Switching to `NoShading/false`."
             mode = NoShading
         end
         return mode, mode != NoShading
@@ -387,13 +387,13 @@ end
 
 Sets the shading algorithm of the scene. This is only valid before displaying these scene.
 """
-set_shading_algorithm!(scene, mode) = set_shading_algorithm!(get_scene(scene).compute, mode)
+function set_shading_algorithm!(scene, mode)
+    isopen(get_scene(scene)) && @warn "Changing the shading mode requires the scene/figure to be redisplayed."
+    set_shading_algorithm!(get_scene(scene).compute, mode)
+    return
+end
 function set_shading_algorithm!(graph::ComputeGraph, mode::Union{Automatic, Makie.ShadingAlgorithm})
-    if haskey(graph, :lighting_mode)
-        error("Shading mode has already been set.")
-    else
-        graph.shading = mode
-    end
+    graph.shading[] = mode
     return
 end
 
@@ -417,7 +417,7 @@ Not to be used with `MultiLightShading`.
 set_directional_light!(scene; kwargs...) = set_directional_light!(get_scene(scene).compute; kwargs...)
 function set_directional_light!(graph::ComputeGraph; kwargs...)
     lights = graph[:lights][]::Vector{AbstractLight}
-    if graph[:shading][]::ShadingAlgorithm == MultiLightShading || length(lights) != 1 || !isa(first(lights), DirectionalLight)
+    if graph[:lighting_mode][]::ShadingAlgorithm == MultiLightShading || length(lights) != 1 || !isa(first(lights), DirectionalLight)
         error("Cannot set directional light - Scene not in FastShading mode.")
     end
     light = lights[1]
