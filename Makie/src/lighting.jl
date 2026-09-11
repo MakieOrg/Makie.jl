@@ -253,26 +253,17 @@ function add_light_computation!(graph, scene, lights)
         return final_dir
     end
 
-    return
-end
-
-# shading is a compile time variable for robjs, but it is allowed to change
-# when the robj is recompiled (e.g. screen reopened) so we make it dynamic
-# here. It should not be used outside of renderobject construction
-function get_shading_mode(scene)
-    graph = scene.compute
-    if !haskey(graph, :lighting_mode)
-        map!(graph, [:shading, :lights], :lighting_mode) do shading, _lights
-            if shading === automatic
-                lights = filter(l -> !isa(l, EnvironmentLight), _lights)
-                is_fast = length(lights) == 0 || (length(lights) == 1 && lights[1] isa DirectionalLight)
-                return ifelse(is_fast, FastShading, MultiLightShading)
-            else
-                return shading
-            end
+    map!(graph, [:shading, :lights], :lighting_mode) do shading, _lights
+        if shading === automatic
+            lights = filter(l -> !isa(l, EnvironmentLight), _lights)
+            is_fast = length(lights) == 0 || (length(lights) == 1 && lights[1] isa DirectionalLight)
+            return ifelse(is_fast, FastShading, MultiLightShading)
+        else
+            return shading
         end
     end
-    return graph[:lighting_mode][]::ShadingAlgorithm
+
+    return
 end
 
 # These return the number of parameter slots they used
@@ -338,6 +329,55 @@ function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
     end
 end
 
+################################################################################
+# Plot Interface
+
+
+add_resolved_shading!(@nospecialize(plot), scene) = nothing
+
+function add_resolved_shading!(plot::Union{Mesh, MeshScatter}, scene)
+    normals_name = haskey(plot, :normal) ? :normal : :normals
+    map!(
+        plot,
+        [scene.compute.lighting_mode, :shading, normals_name],
+        [:shading_mode, :use_shading]
+    ) do s_shading, p_shading, normals
+        mode = if p_shading isa ShadingAlgorithm
+            p_shading
+        elseif p_shading isa Bool
+            p_shading ? s_shading : NoShading
+        else
+            @error "$(plotsym(typeof(plot))) did not correctly define `shading` as either a Bool or a Makie.ShadingAlgorithm. Defaulting to `shading = true`."
+            s_shading
+        end
+        if mode != NoShading && isnothing(normals)
+            @warn "$(plotsym(typeof(plot))) has `shading = $p_shading` but does not define normals, so the mesh can not be shaded. Using `NoShading` instead."
+            mode = NoShading
+        end
+        return mode, mode != NoShading
+    end
+    return
+end
+
+function add_resolved_shading!(plot::Union{Surface, Volume, Voxels}, scene)
+    map!(
+        plot,
+        [scene.compute.lighting_mode, :shading],
+        [:shading_mode, :use_shading]
+    ) do s_shading, p_shading
+        if p_shading isa ShadingAlgorithm
+            return p_shading, p_shading != NoShading
+        elseif p_shading == true
+            return s_shading, s_shading != NoShading
+        elseif p_shading == false
+            return NoShading, false
+        else
+            @error "$(plotsym(typeof(plot))) did not correctly define `shading` as either a Bool or a Makie.ShadingAlgorithm. Defaulting to `shading = true`."
+            return s_shading, s_shading != NoShading
+        end
+    end
+    return
+end
 
 ################################################################################
 # User Interface

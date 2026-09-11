@@ -581,7 +581,7 @@ function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outpu
     return register_computation!(f, p.attributes, inputs, outputs)
 end
 
-function Base.map!(f, p::Plot, inputs::Union{Vector{Symbol}, Vector{Computed}, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
+function Base.map!(f, p::Plot, inputs::Union{Vector, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
     return map!(f, p.attributes, inputs, outputs)
 end
 
@@ -874,9 +874,9 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         register_camera!(scene, plot)
     end
     calculated_attributes!(Plot{Func}, plot)
+    add_resolved_shading!(plot, scene)
 
     plot!(plot)
-
 
     documented_attr = plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw
