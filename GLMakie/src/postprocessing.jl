@@ -155,44 +155,46 @@ function ssao_postprocessor(framebuffer, shader_cache)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
     color_id = framebuffer[:color][1]
 
-    full_render = screen -> begin
-        fb = screen.framebuffer
-        w, h = size(fb)
+    full_render = let normal_occ_id = normal_occ_id
+        screen -> begin
+            fb = screen.framebuffer
+            w, h = size(fb)
 
-        # Setup rendering
-        # SSAO - calculate occlusion
-        glDrawBuffer(normal_occ_id)  # occlusion buffer
-        glViewport(0, 0, w, h)
-        glEnable(GL_SCISSOR_TEST)
-        ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
+            # Setup rendering
+            # SSAO - calculate occlusion
+            glDrawBuffer(normal_occ_id)  # occlusion buffer
+            glViewport(0, 0, w, h)
+            glEnable(GL_SCISSOR_TEST)
+            ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
 
-        for (screenid, scene) in screen.screens
-            # Select the area of one leaf scene
-            # This should be per scene because projection may vary between
-            # scenes. It should be a leaf scene to avoid repeatedly shading
-            # the same region (though this is not guaranteed...)
-            isempty(scene.children) || continue
-            a = viewport(scene)[]
-            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
-            # update uniforms
-            data1[:projection] = Mat4f(scene.camera.projection[])
-            data1[:bias] = scene.ssao.bias[]
-            data1[:radius] = scene.ssao.radius[]
-            GLAbstraction.render(pass1)
+            for (screenid, scene) in screen.screens
+                # Select the area of one leaf scene
+                # This should be per scene because projection may vary between
+                # scenes. It should be a leaf scene to avoid repeatedly shading
+                # the same region (though this is not guaranteed...)
+                isempty(scene.children) || continue
+                a = viewport(scene)[]
+                glScissor(ppu(minimum(a))..., ppu(widths(a))...)
+                # update uniforms
+                data1[:projection] = Mat4f(scene.camera.projection[])
+                data1[:bias] = scene.ssao.bias[]
+                data1[:radius] = scene.ssao.radius[]
+                GLAbstraction.render(pass1)
+            end
+
+            # SSAO - blur occlusion and apply to color
+            glDrawBuffer(color_id)  # color buffer
+            for (screenid, scene) in screen.screens
+                # Select the area of one leaf scene
+                isempty(scene.children) || continue
+                a = viewport(scene)[]
+                glScissor(ppu(minimum(a))..., ppu(widths(a))...)
+                # update uniforms
+                data2[:blur_range] = scene.ssao.blur
+                GLAbstraction.render(pass2)
+            end
+            glDisable(GL_SCISSOR_TEST)
         end
-
-        # SSAO - blur occlusion and apply to color
-        glDrawBuffer(color_id)  # color buffer
-        for (screenid, scene) in screen.screens
-            # Select the area of one leaf scene
-            isempty(scene.children) || continue
-            a = viewport(scene)[]
-            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
-            # update uniforms
-            data2[:blur_range] = scene.ssao.blur
-            GLAbstraction.render(pass2)
-        end
-        glDisable(GL_SCISSOR_TEST)
     end
 
     require_context(shader_cache.context)
@@ -249,21 +251,23 @@ function fxaa_postprocessor(framebuffer, shader_cache)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
 
     color_id = framebuffer[:color][1]
-    full_render = screen -> begin
-        fb = screen.framebuffer
-        w, h = size(fb)
+    full_render = let luma_id = luma_id
+        screen -> begin
+            fb = screen.framebuffer
+            w, h = size(fb)
 
-        # FXAA - calculate LUMA
-        glDrawBuffer(luma_id)
-        glViewport(0, 0, w, h)
-        # necessary with negative SSAO bias...
-        glClearColor(1, 1, 1, 1)
-        glClear(GL_COLOR_BUFFER_BIT)
-        GLAbstraction.render(pass1)
+            # FXAA - calculate LUMA
+            glDrawBuffer(luma_id)
+            glViewport(0, 0, w, h)
+            # necessary with negative SSAO bias...
+            glClearColor(1, 1, 1, 1)
+            glClear(GL_COLOR_BUFFER_BIT)
+            GLAbstraction.render(pass1)
 
-        # FXAA - perform anti-aliasing
-        glDrawBuffer(color_id)  # color buffer
-        GLAbstraction.render(pass2)
+            # FXAA - perform anti-aliasing
+            glDrawBuffer(color_id)  # color buffer
+            GLAbstraction.render(pass2)
+        end
     end
 
     require_context(shader_cache.context)

@@ -23,14 +23,11 @@ function on_latest(f, observable::Observable; update = false, spawn = false, thr
 end
 
 
-function on_latest(f, to_track, observable::Observable; update = false, spawn = false, throttle = 0.0)
-    task_lock = Threads.ReentrantLock()
-    last_task = nothing
-    has_changed = Threads.Atomic{Bool}(false)
-    function run_f(new_value)
+function _run_f(f, current_value, observable, throttle, has_changed)
+    while true
         t1 = time()
         try
-            f(new_value)
+            f(current_value)
             tdiff = time() - t1
             if throttle > 0.0 && tdiff < throttle
                 sleep(throttle - tdiff)
@@ -44,19 +41,28 @@ function on_latest(f, to_track, observable::Observable; update = false, spawn = 
         # But `==` would be better, considering, that one could arrive at an old value.
         # This should be configurable, but since async_latest is needed for working on big data as input
         # we assume for now that `==` is prohibitive as the default
-        return if has_changed[]
+        if has_changed[]
             has_changed[] = false
-            run_f(observable[]) # needs to be recursive
+            current_value = observable[] # needs to be recursive
+        else
+            break
         end
     end
+    return nothing
+end
+
+function on_latest(f, to_track, observable::Observable; update = false, spawn = false, throttle = 0.0)
+    task_lock = Threads.ReentrantLock()
+    last_task_ref = Ref{Union{Nothing, Task}}(nothing)
+    has_changed = Threads.Atomic{Bool}(false)
 
     function on_callback(new_value)
         return lock(task_lock) do
-            if isnothing(last_task) || istaskdone(last_task)
+            if isnothing(last_task_ref[]) || istaskdone(last_task_ref[])
                 if spawn
-                    last_task = Threads.@spawn run_f(new_value)
+                    last_task_ref[] = Threads.@spawn _run_f(f, new_value, observable, throttle, has_changed)
                 else
-                    last_task = Threads.@async run_f(new_value)
+                    last_task_ref[] = Threads.@async _run_f(f, new_value, observable, throttle, has_changed)
                 end
             else
                 has_changed[] = true
@@ -80,7 +86,7 @@ function onany_latest(f, observables...; update = false, spawn = false, throttle
     return on_latest((args) -> f(args...), result; update = update, spawn = spawn, throttle = throttle)
 end
 
-function map_latest!(f, result::Observable, observables...; update = false, spawn = false, throttle = 0.0)
+function ComputePipeline.map_latest!(f, result::Observable, observables...; update = false, spawn = false, throttle = 0.0)
     callback = Observables.MapCallback(f, result, observables)
     return onany_latest(callback, observables...; update = update, spawn = spawn, throttle = throttle)
 end
@@ -88,6 +94,6 @@ end
 function map_latest(f, observables...; spawn = false, ignore_equal_values = false, throttle = 0.0)
     first_value = f(map(to_value, observables)...)
     result = Observable(first_value; ignore_equal_values = ignore_equal_values)
-    map_latest!(f, result, observables..., spawn = spawn, throttle = throttle)
+    ComputePipeline.map_latest!(f, result, observables...; spawn = spawn, throttle = throttle)
     return result
 end

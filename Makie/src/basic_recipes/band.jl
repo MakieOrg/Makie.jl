@@ -11,6 +11,12 @@ Both bounds can be passed together as `lowerupper`, a vector of intervals.
     documented_attributes(Mesh)...
     "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."
     direction = :x
+    "Sets the color of the lines at the lower and upper limits of the band"
+    strokecolor = @inherit patchstrokecolor
+    "Sets the colormap that is sampled for numeric `strokecolor`s."
+    strokecolormap = @inherit colormap
+    "Sets the width of the lines at the lower and upper limits of the band"
+    strokewidth = @inherit patchstrokewidth
     shading = NoShading
 end
 
@@ -27,10 +33,9 @@ function band_connect(n)
     return [GLTriangleFace.(ns, ns .+ 1, ns2); GLTriangleFace.(ns .+ 1, ns2 .+ 1, ns2)]
 end
 
+_nanpoint(::Type{<:Point3}) = Point3(NaN)
+_nanpoint(::Type{<:Point2}) = Point2(NaN)
 function Makie.plot!(plot::Band)
-    @extract plot (lowerpoints, upperpoints)
-    nanpoint(::Type{<:Point3}) = Point3(NaN)
-    nanpoint(::Type{<:Point2}) = Point2(NaN)
     map!(plot, [:lowerpoints, :upperpoints, :direction], :coordinates) do lowerpoints, upperpoints, direction
         n = length(lowerpoints)
         @assert n == length(upperpoints) "length of lower band is not equal to length of upper band!"
@@ -42,15 +47,17 @@ function Makie.plot!(plot::Band)
         # if either x, upper or lower is NaN, all of them should be NaN to cut out a whole band segment and not just a triangle
         for i in 1:n
             if isnan(lowerpoints[i]) || isnan(upperpoints[i])
-                concat[i] = nanpoint(eltype(concat))
-                concat[n + i] = nanpoint(eltype(concat))
+                concat[i] = _nanpoint(eltype(concat))
+                concat[n + i] = _nanpoint(eltype(concat))
             end
         end
         return concat
     end
+
     map!(plot, [:lowerpoints], :connectivity) do lowerpoints
         return band_connect(length(lowerpoints))
     end
+
     map!(plot, [:lowerpoints, :color], :colors) do lowerpoints, c
         if c isa AbstractVector
             # if the same number of colors is given as there are
@@ -69,7 +76,33 @@ function Makie.plot!(plot::Band)
         end
     end
 
-    return mesh!(plot, plot.attributes, plot.coordinates, plot.connectivity, color = plot.colors)
+    mesh!(plot, plot.attributes, plot.coordinates, plot.connectivity, color = plot.colors)
+
+    map!(plot, :strokecolor, :linecolor) do strokecolor
+        if strokecolor isa AbstractVector
+            return vcat(strokecolor, strokecolor[1:1], strokecolor)
+        else
+            return strokecolor
+        end
+    end
+
+    map!(plot, [:lowerpoints, :upperpoints, :direction], :merged_points) do lower, upper, direction
+        ps = copy(lower)
+        push!(ps, eltype(ps)(NaN))
+        append!(ps, upper)
+        if direction === :y
+            ps .= reverse.(ps)
+        end
+        return ps
+    end
+
+    lines!(
+        plot, plot.attributes, plot.merged_points,
+        linewidth = plot.strokewidth, color = plot.linecolor,
+        fxaa = false
+    )
+
+    return
 end
 
 function fill_view(x, y1, y2, where::Nothing)

@@ -1,0 +1,52 @@
+name: Post reference image status
+
+# Runs in the base repository's context when a CI run completes, so it can post
+# commit statuses even for fork PRs, whose own CI token is read-only.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  statuses: write
+  actions: read
+
+jobs:
+  post-status:
+    name: Post status linking to the review page
+    runs-on: ubuntu-latest
+    if: contains(fromJSON('["pull_request", "merge_group"]'), github.event.workflow_run.event)
+    steps:
+      - name: Locate status data artifact in the CI run
+        id: locate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/artifacts?per_page=100" > artifacts.json
+          echo "status_id=$(jq -r '[.artifacts[] | select(.name == "refimage_status") | .id] | first // ""' artifacts.json)" >> "$GITHUB_OUTPUT"
+      - name: Post status
+        if: steps.locate.outputs.status_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/artifacts/${{ steps.locate.outputs.status_id }}/zip" > refimage_status.zip
+          unzip refimage_status.zip
+
+          # The artifact was produced by the (possibly fork-controlled) CI run,
+          # so validate its contents before using them.
+          state=$(jq -r '.state' refimage_status.json)
+          description=$(jq -r '.description' refimage_status.json)
+          review_artifact_id=$(jq -r '.review_artifact_id' refimage_status.json)
+          description_pattern='^[A-Za-z0-9/, ]{1,140}$'
+          if ! [[ "$state" =~ ^(success|failure)$ && "$review_artifact_id" =~ ^[0-9]+$ && "$description" =~ $description_pattern ]]; then
+            echo "::error::Invalid status data: state=$state description=$description review_artifact_id=$review_artifact_id"
+            exit 1
+          fi
+
+          gh api "repos/${{ github.repository }}/statuses/$SHA" \
+            -f state="$state" \
+            -f context="reference images" \
+            -f target_url="$RUN_URL/artifacts/$review_artifact_id" \
+            -f description="$description"

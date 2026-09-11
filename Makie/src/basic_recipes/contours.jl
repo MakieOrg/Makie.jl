@@ -25,12 +25,26 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
     """
     levels = 5
+    "Sets the width of contour lines. Can be set per level."
     linewidth = 1.0
+    "Sets the dash pattern of contour lines. See `?lines`."
     linestyle = nothing
+    """
+    Sets the type of line cap used for contour lines. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
+    """
+    Controls the rendering at line corners. Options are `:miter` for sharp corners,
+    `:bevel` for cut-off corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
+    """"
+    Sets the minimum inner line join angle below which miter joins truncate. See
+    also `Makie.miter_distance_to_angle`.
+    """
     miter_limit = @inherit miter_limit
-    enable_depth = true
     """
     If `true`, adds text labels to the contour lines.
     """
@@ -49,6 +63,8 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     Sets the tolerance for sampling of a `level` in 3D contour plots.
     """
     isorange = automatic
+    "Controls whether 3D contours consider depth. Turning this off may improve performance."
+    enable_depth = true
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
 end
@@ -63,43 +79,42 @@ with z-elevation for each level.
     documented_attributes(Contour)...
 end
 
-function label_info(lev, vertices, col)
+function label_info(lev, vertices)
     mid = ceil(Int, 0.5f0 * length(vertices))
     # take 3 pts around half segment
     pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
-    return to_ndim.(Point3f, pts, lev)..., col
+    return tuple(to_ndim.(Point3f, pts, lev)...)
 end
 
-function contourlines(::Type{<:T}, contours, cols, labels) where {T <: Union{Contour3d, Contour}}
+function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d, Contour}}
     PT = T <: Contour3d ? Point3f : Point2f
 
     points = PT[]
-    colors = RGBA{Float32}[]
+    # index relates to the drawn line segments, outputs is (level, count)
+    elements_per_segment = Pair{UInt32, UInt32}[]
     levels = Float32[]
     lbl_pos_low = PT[]
     lbl_pos_center = PT[]
     lbl_pos_high = PT[]
-    lbl_color = RGBAf[]
 
-    for (color, c) in zip(cols, Contours.levels(contours))
+    for (lvl, c) in enumerate(Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
                 push!(points, to_ndim(PT, p, c.level))
             end
             push!(points, PT(NaN32))
-            append!(colors, fill(color, length(elem.vertices) + 1))
+            push!(elements_per_segment, lvl => length(elem.vertices) + 1)
 
             if labels
-                p1, p2, p3, col = label_info(c.level, elem.vertices, color)
+                p1, p2, p3 = label_info(c.level, elem.vertices)
                 push!(levels, c.level)
                 push!(lbl_pos_low, p1)
                 push!(lbl_pos_center, p2)
                 push!(lbl_pos_high, p3)
-                push!(lbl_color, col)
             end
         end
     end
-    return points, colors, levels, lbl_pos_low, lbl_pos_center, lbl_pos_high, lbl_color
+    return points, elements_per_segment, levels, lbl_pos_low, lbl_pos_center, lbl_pos_high
 end
 
 to_levels(x::AbstractVector{<:Number}, cnorm) = x
@@ -161,12 +176,12 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         # isosurfaces
         # GLMakie texture size is typically limited 8192+
         # WGLMakie texture size may be limited to 4096+
-        N = ceil(Int, 2.5 * (max - min) / isorange)
-        if N > 4096
+        N_raw = ceil(Int, 2.5 * (max - min) / isorange)
+        if N_raw > 4096
             min_isorange = (max - min) / 4096
             @warn "Isorange maybe too small to resolve iso surfaces. Try `isorange > $min_isorange`"
         end
-        N = clamp(N, 100, 4096)
+        N = clamp(N_raw, 100, 4096)
 
         clip_range = tight_colorrange[1] - isorange .. tight_colorrange[2] + isorange
         return map(1:N) do i
@@ -181,7 +196,7 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     end
 
     volume!(
-        plot, Attributes(plot),
+        plot, plot.attributes,
         plot.converted_1, plot.converted_2, plot.converted_3, plot.converted_4,
         alpha = 1.0, # don't apply alpha 2 times
         algorithm = 7, # contour algorithm
@@ -216,18 +231,18 @@ function color_per_level(::Nothing, colormap, colorscale, colorrange, a, levels)
     end
 end
 
-function contourlines(x, y, z::AbstractMatrix{ET}, levels, level_colors, labels, T) where {ET}
+function contourlines(x, y, z::AbstractMatrix{ET}, levels, labels, T) where {ET}
     # Compute contours
     xv, yv = to_vector(x, size(z, 1), ET), to_vector(y, size(z, 2), ET)
     contours = Contours.contours(xv, yv, z, convert(Vector{ET}, levels))
-    return contourlines(T, contours, level_colors, labels)
+    return contourlines(T, contours, labels)
 end
 
 # Overload for matrix-like x and y lookups for contours
 # Just removes the `to_vector` invocation
-function contourlines(x::AbstractMatrix{<:Real}, y::AbstractMatrix{<:Real}, z::AbstractMatrix{ET}, levels, level_colors, labels, T) where {ET}
+function contourlines(x::AbstractMatrix{<:Real}, y::AbstractMatrix{<:Real}, z::AbstractMatrix{ET}, levels, labels, T) where {ET}
     contours = Contours.contours(x, y, z, convert(Vector{ET}, levels))
-    return contourlines(T, contours, level_colors, labels)
+    return contourlines(T, contours, labels)
 end
 
 function has_changed(old_args, new_args)
@@ -238,9 +253,20 @@ function has_changed(old_args, new_args)
     return false
 end
 
+repeat_level_data_per_vertex(counts, x) = x
+function repeat_level_data_per_vertex(counts, x::AbstractVector{T}) where {T}
+    output = T[]
+    for (lvl, count) in counts
+        append!(output, fill(x[lvl], count))
+    end
+    return output
+end
+
 function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     map!(nan_extrema, plot, :converted_3, :zrange)
     map!(plot, [:levels, :zrange], :zlevels) do levels, zrange
+        zmin, zmax = zrange
+        isapprox(zmin, zmax) && return eltype(zrange)[]
         if levels isa AbstractVector{<:Number}
             return levels
         elseif levels isa Integer
@@ -249,7 +275,12 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
             error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
         end
     end
-    map!(default_automatic, plot, [:colorrange, :zrange], :computed_colorrange)
+    map!(plot, [:colorrange, :zrange], :computed_colorrange) do colorrange, zrange
+        zmin, zmax = default_automatic(colorrange, zrange)
+        isapprox(zmin, zmax) || return (zmin, zmax)
+        delta = max(one(zmin), abs(zmin))
+        return (zmin - delta, zmax + delta)
+    end
 
     map!(
         color_per_level, plot,
@@ -259,36 +290,46 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
 
     map!(
         plot,
-        [:converted_1, :converted_2, :converted_3, :zlevels, :level_colors, :labels],
-        [:contour_points, :contour_colors, :computed_levels, :lbl_pos1, :lbl_pos2, :lbl_pos3, :computed_lbl_colors]
+        [:converted_1, :converted_2, :converted_3, :zlevels, :labels],
+        [:contour_points, :elements_per_segment, :computed_levels, :lbl_pos1, :lbl_pos2, :lbl_pos3]
     ) do args...
         return contourlines(args..., T)
     end
+
+    map!(plot, [:elements_per_segment, :level_colors, :labels], :computed_lbl_colors) do counts, colors, labels
+        return labels ? [colors[i] for (i, _) in counts] : RGBAf[]
+    end
+
+    map!(repeat_level_data_per_vertex, plot, [:elements_per_segment, :level_colors], :contour_colors)
+    map!(repeat_level_data_per_vertex, plot, [:elements_per_segment, :linewidth], :contour_linewidth)
 
     # TODO:
     # Should we make yes/no labels a constructor-time decisions so we can avoid
     # all the extra work for it entirely?
     # (i.e. no text plot, no boundingboxes, no projections?)
 
-    # TODO: Is this necessary?
-    map!(plot, [:lbl_pos1, :lbl_pos2, :lbl_pos3], :text_positions) do ps1, ps2, ps3
-        return map(ps1, ps2, ps3) do p1, p2, p3
+    map!(plot, [:lbl_pos1, :lbl_pos2, :lbl_pos3], [:text_positions, :raw_lbl_directions]) do ps1, ps2, ps3
+        # TODO: Is this necessary?
+        pos = map(ps1, ps2, ps3) do p1, p2, p3
             p = ifelse(isnan(p2), p1, p2)
             return ifelse(isnan(p), p3, p)
         end
+        return pos, ps3 .- ps1
     end
 
     map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
-        return formatter.(levels)
+        # Allow inconsistent output types (String, LaTexString, RichText) from formatter
+        return Ref{Any}(formatter.(levels))
     end
 
     map!(plot, [:labelcolor, :computed_lbl_colors], :text_color) do user_color, computed_color
         return ifelse(user_color === nothing, computed_color, to_color(user_color))
     end
 
+    # transform directions to pixel-space angles
     register_projected_rotations_2d!(
         plot,
-        startpoint_name = :lbl_pos1, endpoint_name = :lbl_pos3,
+        position_name = :text_positions, direction_name = :raw_lbl_directions,
         output_name = :text_rotation,
         rotation_transform = to_upright_angle
     )
@@ -352,7 +393,7 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     lines!(
         plot, plot.masked_lines;
         color = plot.contour_colors,
-        linewidth = plot.linewidth,
+        linewidth = plot.contour_linewidth,
         linestyle = plot.linestyle,
         linecap = plot.linecap,
         joinstyle = plot.joinstyle,

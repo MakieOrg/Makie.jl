@@ -27,8 +27,6 @@ similar to how [`surface`](@ref) works.
     This can be used for example to draw bands for the upper 90% while excluding the lower 10% with `levels = 0.1:0.1:1.0, mode = :relative`.
     """
     mode = :normal
-    colormap = @inherit colormap
-    colorscale = identity
     """
     In `:normal` mode, if you want to show a band from `-Inf` to the low edge,
     set `extendlow` to `:auto` to give the extension the same color as the first level,
@@ -41,9 +39,9 @@ similar to how [`surface`](@ref) works.
     (default `nothing` means no extended band).
     """
     extendhigh = nothing
-    # TODO, Isoband doesn't seem to support nans?
-    nan_color = :transparent
     mixin_generic_plot_attributes()...
+    # TODO, Isoband doesn't seem to support nans?
+    mixin_colormap_attributes(exclude = (:lowclip, :highclip))...
 end
 
 # these attributes are computed dynamically and needed for colorbar e.g.
@@ -158,28 +156,6 @@ function calculate_contourf_polys!(
     return (polys, colors)
 end
 
-
-function compute_contourf_colormap(levels, cmap, elow, ehigh)
-    levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
-    n = length(levels_scaled)
-
-    _cmap = to_colormap(cmap)
-
-    if elow === :auto && ehigh !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical = true)[2:end]
-        cm = cgrad(cm_base, levels_scaled; categorical = true)
-    elseif ehigh === :auto && elow !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical = true)[1:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical = true)
-    elseif ehigh === :auto && elow === :auto
-        cm_base = cgrad(_cmap, n + 2; categorical = true)[2:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical = true)
-    else
-        cm = cgrad(_cmap, levels_scaled; categorical = true)
-    end
-    return cm
-end
-
 function compute_lowcolor(el, cmap)
     if isnothing(el)
         return RGBAf(0, 0, 0, 0)
@@ -202,15 +178,58 @@ end
 
 
 function register_contourf_computations!(graph, argname)
-    map!(graph, [argname, :levels, :mode], :computed_levels) do zs, levels, mode
-        return _get_isoband_levels(Val(mode), levels, vec(zs))
+    map!(apply_scale, graph, [:colorscale, argname], :scaled_zs)
+
+    map!(graph, [:scaled_zs, :colorscale, :levels, :mode], :computed_levels) do zs, scale, levels, mode
+        if levels isa Integer
+            mi, ma = extrema_nan(vec(zs))
+            if isapprox(mi, ma)
+                delta = max(one(mi), abs(mi))
+                return Float32.(range(mi - delta, ma + delta; length = levels + 1))
+            end
+            return _get_isoband_levels(Val(mode), levels, vec(zs))
+        else
+            return _get_isoband_levels(Val(mode), apply_scale(scale, levels), vec(zs))
+        end
+    end
+    map!(edges -> length(edges) - 1, graph, :computed_levels, :nlevels)
+
+    map!(graph, [:colorrange, :colorscale, :computed_levels], :computed_colorrange) do colorrange, scale, levels
+        return combined_colorrange(scale, colorrange, extrema_nan(levels))
     end
 
-    map!(extrema_nan, graph, :computed_levels, :computed_colorrange)
-    map!(compute_contourf_colormap, graph, [:computed_levels, :colormap, :extendlow, :extendhigh], :computed_colormap)
+    map!(graph, [:nlevels, :colormap, :extendlow, :extendhigh], :base_colormap) do n, cmap, elow, ehigh
+        _cmap = to_colormap(cmap)
+
+        if elow === :auto && ehigh !== :auto
+            return cgrad(_cmap, n + 1; categorical = true)[2:end]
+        elseif ehigh === :auto && elow !== :auto
+            return cgrad(_cmap, n + 1; categorical = true)[1:(end - 1)]
+        elseif ehigh === :auto && elow === :auto
+            return cgrad(_cmap, n + 2; categorical = true)[2:(end - 1)]
+        else
+            return _cmap
+        end
+    end
+    map!(graph, [:base_colormap, :computed_levels], :computed_colormap) do base_cmap, edges
+        edges_scaled = (edges .- minimum(edges)) ./ (maximum(edges) - minimum(edges))
+        return cgrad(base_cmap, edges_scaled; categorical = true)
+    end
     map!(compute_lowcolor, graph, [:extendlow, :colormap], :computed_lowcolor)
     map!(compute_highcolor, graph, [:extendhigh, :colormap], :computed_highcolor)
 
+    return
+end
+
+function _calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
+    levels = copy(levels)
+    @assert issorted(levels)
+    is_extended_low && pushfirst!(levels, -Inf)
+    is_extended_high && push!(levels, Inf)
+    lows = levels[1:(end - 1)]
+    highs = levels[2:end]
+
+    calculate_contourf_polys!(polys, colors, xs, ys, zs, lows, highs)
     return
 end
 
@@ -219,21 +238,9 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
 
     register_contourf_computations!(graph, :z)
 
-    function calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
-        levels = copy(levels)
-        @assert issorted(levels)
-        is_extended_low && pushfirst!(levels, -Inf)
-        is_extended_high && push!(levels, Inf)
-        lows = levels[1:(end - 1)]
-        highs = levels[2:end]
-
-        calculate_contourf_polys!(polys, colors, xs, ys, zs, lows, highs)
-        return
-    end
-
     register_computation!(
         graph,
-        [:x, :y, :z, :computed_levels, :extendlow, :extendhigh],
+        [:x, :y, :scaled_zs, :computed_levels, :extendlow, :extendhigh],
         [:polys, :computed_colors]
     ) do (xs, ys, zs, levels, _low, _high), changed, cached
         is_extended_low = !isnothing(_low)
@@ -244,25 +251,32 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
         else
             polys, colors = empty!.(values(cached))
         end
-        calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
+        _calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
         return (polys, colors)
     end
 
     return poly!(
-        c,
-        c.polys,
+        c, c.attributes, c.polys,
         colormap = c.computed_colormap,
         colorrange = c.computed_colorrange,
+        colorscale = identity,
         highclip = c.computed_highcolor,
         lowclip = c.computed_lowcolor,
-        nan_color = c.nan_color,
         color = c.computed_colors,
         strokewidth = 0,
         strokecolor = :transparent,
         shading = NoShading,
-        inspectable = c.inspectable,
-        transparency = c.transparency
     )
+end
+
+# `inner` ⊆ `outer` iff any vertex or edge-midpoint is strictly inside (midpoints catch vertices shared on `outer`'s boundary, #5651)
+function _is_ring_contained(inner, outer)
+    any(p -> PolygonOps.inpolygon(p, outer) == 1, inner) && return true
+    @inbounds for i in firstindex(inner):(lastindex(inner) - 1)
+        mid = (inner[i] .+ inner[i + 1]) ./ 2
+        PolygonOps.inpolygon(mid, outer) == 1 && return true
+    end
+    return false
 end
 
 """
@@ -279,13 +293,9 @@ function _group_polys(points, ids)
 
     polys_lastdouble = [push!(p, first(p)) for p in polys]
 
-    # this matrix stores whether poly i is contained in j
-    # because the marching squares algorithm won't give us any
-    # intersecting or overlapping polys, it should be enough to
-    # check if a single point is contained, saving some computation time
+    # whether poly i is contained in j (marching squares yields no intersecting polys)
     containment_matrix = [
-        p1 != p2 &&
-            PolygonOps.inpolygon(first(p1), p2) == 1
+        p1 !== p2 && _is_ring_contained(p1, p2)
             for p1 in polys_lastdouble, p2 in polys_lastdouble
     ]
 

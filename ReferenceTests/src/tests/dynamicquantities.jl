@@ -2,7 +2,7 @@ using Test
 import ReferenceTests.DynamicQuantities as DQ
 
 @reference_test "DQ combining units, error for numbers" begin
-    f, ax, pl = scatter(((1:600:(100 * 60))DQ.u"s" .|> DQ.us"min"), 1:10, markersize = 20, color = 1:10)
+    f, ax, pl = scatter(((1:600:(100 * 60)) .* DQ.u"s") .|> DQ.us"min", 1:10, markersize = 20, color = 1:10)
     scatter!(ax, (1:10)DQ.u"hr", 1:10; markersize = 20, color = 1:10, colormap = :reds)
     @test_throws ResolveException scatter!(ax, rand(10), 1:10) # should error!
     f

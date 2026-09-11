@@ -6,8 +6,6 @@
 
 using Pkg
 Pkg.activate(@__DIR__)
-Pkg.instantiate()
-pkg"registry up"
 Pkg.update()
 
 using JSON, AlgebraOfGraphics, CairoMakie, DataFrames, Bootstrap
@@ -108,7 +106,12 @@ fgrid = AlgebraOfGraphics.data(df) *
     mapping(:name, colnames .=> (x -> x / 1.0e9) .=> "time (s)", color = :name, layout = dims(1) => renamer(colnames)) *
     visual(RainClouds, orientation = :horizontal, markersize = 5, show_median = false, plot_boxplots = false) |>
     draw(
-    scales(Color = (; legend = false)),
+    scales(
+        Color = (; legend = false),
+        # AoG ≥ 0.11 wraps 5 facets as 3 × 2; pin a landscape 2 × 3 layout with
+        # the bootstrapped-ratios panel filling the [2, 3] slot.
+        Layout = (; palette = [(1, 1), (1, 2), (1, 3), (2, 1), (2, 2)]),
+    ),
     facet = (; linkxaxes = false),
     axis = (; xticklabelrotation = pi / 4, width = 200, height = 150),
     figure = (; title = "$Package Benchmarks")

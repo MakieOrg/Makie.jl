@@ -25,6 +25,81 @@ end
     @test p2 isa Scatter
 end
 
+@testset "FigureAxis" begin
+    fap = scatter(rand(100, 2))
+    @test fap isa Makie.FigureAxisPlot
+    fig, ax, p = scatter(rand(100, 2))
+    @test fig isa Figure
+    @test ax isa Axis
+    @test p isa Scatter
+
+    # Now create just a
+    fa = Makie.FigureAxis(fig, ax)
+    @test fa isa Makie.FigureAxis
+    # Test iterate here as well
+    fig2, ax2 = fa
+    # and they are still the exact same
+    @test fig2 === fig
+    @test ax2 === ax
+end
+@testset "Argument-level axis hints" begin
+    # Data types can define preferred_axis_attributes(AxisType, args...)
+    # to provide axis defaults when used as plot arguments.
+    struct _AxisHintData
+        xlabel::String
+        ylabel::String
+    end
+    function Makie.preferred_axis_attributes(::Type{<:Axis}, d::_AxisHintData, args...)
+        return (xlabel = d.xlabel, ylabel = d.ylabel)
+    end
+    function Makie.convert_arguments(::Type{<:Scatter}, d::_AxisHintData)
+        return ([Point2f(i, sin(i)) for i in 1:5],)
+    end
+
+    fig = Figure()
+    ax, p = scatter(fig[1, 1], _AxisHintData("arg_x", "arg_y"))
+    @test ax.xlabel[] == "arg_x"
+    @test ax.ylabel[] == "arg_y"
+
+    # User axis keyword overrides argument-level hints
+    ax2, p2 = scatter(fig[1, 2], _AxisHintData("arg_x", "arg_y"), axis = (ylabel = "override",))
+    @test ax2.xlabel[] == "arg_x"
+    @test ax2.ylabel[] == "override"
+
+    # Non-hinting arguments are unaffected
+    fig = Figure()
+    ax, p = scatter(fig[1, 1], [1, 2, 3], [4, 5, 6])
+    @test ax.xlabel[] == ""
+    @test ax.ylabel[] == ""
+
+    # Auto-created Figure
+    fig, ax, p = scatter(_AxisHintData("auto_x", "auto_y"))
+    @test ax.xlabel[] == "auto_x"
+    @test ax.ylabel[] == "auto_y"
+
+    # opt-out
+    fig, ax, p = scatter(_AxisHintData("auto_x", "auto_y"), use_axis_hints = false)
+    @test ax.xlabel[] == ""
+    @test ax.ylabel[] == ""
+
+    # opt-in
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    scatter!(ax, _AxisHintData("auto_x", "auto_y"), use_axis_hints = true)
+    @test ax.xlabel[] == "auto_x"
+    @test ax.ylabel[] == "auto_y"
+
+    # skipped opt-in after first plot
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    scatter!(ax, rand(10))
+    @test ax.xlabel[] == ""
+    @test ax.ylabel[] == ""
+    scatter!(ax, _AxisHintData("auto_x", "auto_y"), use_axis_hints = true)
+    @test ax.xlabel[] == "auto_x"
+    @test ax.ylabel[] == "auto_y"
+end
+
 @testset "AxisPlot and Axes" begin
     fig = Figure()
     @test current_axis() === nothing

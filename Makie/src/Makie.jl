@@ -17,6 +17,7 @@ using Base64
 # It invalidates half of Makie. Simplest fix is to load it early on in Makie
 # So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
 import FilePaths
+using Pkg.Artifacts # load early to cut down REPLExt init time
 using LaTeXStrings
 using MathTeXEngine
 using Random
@@ -48,7 +49,7 @@ using ComputePipeline
 
 import Unitful
 import UnicodeFun
-import RelocatableFolders
+using RelocatableFolders: @path
 import StatsBase
 import Distributions
 import KernelDensity
@@ -83,9 +84,8 @@ import InverseFunctions
 
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
-export Pixel, px, Unit, plotkey, attributes, used_attributes
+export plotkey, attributes, used_attributes
 export Linestyle
-using Pkg.Artifacts
 assetpath(files...) = normpath(joinpath(artifact"MakieAssets", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))
 
@@ -115,6 +115,8 @@ include("basic_plots.jl")
 include("conversion.jl")
 include("bezier.jl")
 include("types.jl")
+include("richtext.jl")
+include("tick_format.jl")
 include("utilities/Plane.jl")
 include("utilities/timing.jl")
 include("utilities/texture_atlas.jl")
@@ -137,7 +139,6 @@ include("float32-scaling.jl")
 
 include("interfaces.jl")
 include("compute-plots.jl")
-include("units.jl")
 include("shorthands.jl")
 
 # camera types + functions
@@ -146,6 +147,7 @@ include("camera/camera.jl")
 include("camera/camera2d.jl")
 include("camera/camera3d.jl")
 include("camera/old_camera3d.jl")
+include("camera/stagecamera.jl")
 
 include("utilities/projection_utils.jl")
 
@@ -176,6 +178,7 @@ include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/tricontourf.jl")
+include("basic_recipes/tricontour.jl")
 include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/voronoiplot.jl")
@@ -183,6 +186,7 @@ include("basic_recipes/voxels.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/textlabel.jl")
+include("basic_recipes/editabletext.jl")
 include("basic_recipes/tooltip.jl")
 
 include("basic_recipes/makiecore_examples/scatter.jl")
@@ -289,13 +293,9 @@ export DateTimeTicks
 export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, data_limits
 
-# Spaces for widths and markers
-const PixelSpace = Pixel
-export SceneSpace, PixelSpace, Pixel
-
 # camera related
-export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
-export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!
+export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, StageCamera, cam2d!, cam2d
+export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!, stage_cam!
 export update_cam!, rotate_cam!, translate_cam!, zoom!
 export viewport, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
@@ -402,6 +402,9 @@ function __init__()
         @warn "The global configuration file is no longer supported." *
             "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
+    # Register atexit for runtime cleanup (when Julia exits normally)
+    # Note: This doesn't affect precompilation since __init__ doesn't run during precompile
+    atexit(cleanup_globals)
     return
 end
 
@@ -413,6 +416,7 @@ include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
+include("basic_recipes/pathtext.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
@@ -428,6 +432,26 @@ export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, 
 export FastPixel
 export update!
 export Ann
+
+"""
+    cleanup_globals()
+
+Cleans up global state (figures, tasks, caches) for precompilation compatibility.
+On Julia 1.11+, this is called automatically via atexit (which runs before serialization).
+On Julia 1.10, this must be called manually after precompilation workloads.
+"""
+function cleanup_globals()
+    cleanup_current_figure()
+    cleanup_tasks()
+    empty!(FONT_CACHE)
+    empty!(DEFAULT_FONT)
+    empty!(ALTERNATIVE_FONTS)
+    return
+end
+
+export cleanup_globals
+
+const SHARED_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile.jl")
 
 include("precompiles.jl")
 

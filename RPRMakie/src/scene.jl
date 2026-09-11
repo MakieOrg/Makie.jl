@@ -318,9 +318,9 @@ function render(screen; clear = true, iterations = screen.iterations)
     return framebuffer2
 end
 
-function Makie.colorbuffer(screen::Screen)
+function Makie.colorbuffer(screen::Screen; figure = nothing)
     if !screen.setup_scene
-        display(screen, screen.scene)
+        display(screen, screen.scene; figure = figure)
     end
     data_1d = RPR.get_data(render(screen))
     r = reverse(reshape(data_1d, screen.fb_size), dims = 2)
@@ -330,7 +330,7 @@ function Makie.colorbuffer(screen::Screen)
     end
 end
 
-function Base.display(screen::Screen, scene::Scene; display_kw...)
+function Base.display(screen::Screen, scene::Scene; figure = nothing, display_kw...)
     screen.scene = scene
     rpr_scene = to_rpr_scene(screen.context, screen.matsys, scene)
     screen.rpr_scene = rpr_scene

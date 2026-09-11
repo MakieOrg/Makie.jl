@@ -46,7 +46,19 @@ current_figure() = lock(() -> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
 
 Set `fig` as the current active figure.
 """
-current_figure!(fig) = lock(() -> (CURRENT_FIGURE[] = fig), CURRENT_FIGURE_LOCK)
+function current_figure!(fig)
+    lock(CURRENT_FIGURE_LOCK) do
+        CURRENT_FIGURE[] = fig
+    end
+    return fig
+end
+
+function cleanup_current_figure()
+    lock(CURRENT_FIGURE_LOCK) do
+        CURRENT_FIGURE[] = nothing
+    end
+    return
+end
 
 """
     current_axis()

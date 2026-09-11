@@ -11,12 +11,7 @@ function bbox2string(bbox::Rect3)
     p0 = origin(bbox)
     p1 = p0 .+ widths(bbox)
     return @sprintf(
-        """
-        Bounding Box:
-         x: (%0.3f, %0.3f)
-         y: (%0.3f, %0.3f)
-         z: (%0.3f, %0.3f)
-        """,
+        "Bounding Box:\n x: (%0.3f, %0.3f)\n y: (%0.3f, %0.3f)\n z: (%0.3f, %0.3f)",
         p0[1], p1[1], p0[2], p1[2], p0[3], p1[3]
     )
 end
@@ -25,11 +20,7 @@ function bbox2string(bbox::Rect2)
     p0 = origin(bbox)
     p1 = p0 .+ widths(bbox)
     return @sprintf(
-        """
-        Bounding Box:
-         x: (%0.3f, %0.3f)
-         y: (%0.3f, %0.3f)
-        """,
+        "Bounding Box:\n x: (%0.3f, %0.3f)\n y: (%0.3f, %0.3f)",
         p0[1], p1[1], p0[2], p1[2]
     )
 end

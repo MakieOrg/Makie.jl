@@ -9,7 +9,13 @@ vertical positions `ys`. A `Triangulation` from DelaunayTriangulation.jl can als
 for specifying the triangles, otherwise an unconstrained triangulation of `xs` and `ys` is computed.
 """
 @recipe Tricontourf begin
-    "Can be either an `Int` which results in n bands delimited by n+1 equally spaced levels, or it can be an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 bands."
+    # tricontourf stacks layers onto itself, so alpha doesn't (always) work as expected
+    mixin_colormap_attributes(exclude = (:lowclip, :highclip))...
+    """
+    Can be either an `Int` which results in n bands delimited by n+1 equally spaced
+    levels, or it can be an `AbstractVector{<:Real}` that lists n consecutive edges
+    from low to high, which result in n-1 bands.
+    """
     levels = 10
     """
     Sets the way in which a vector of levels is interpreted,
@@ -19,11 +25,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     """
     mode = :normal
     "Sets the colormap from which the band colors are sampled."
-    colormap = @inherit colormap
-    "Color transform function"
-    colorscale = identity
-    "The alpha value of the colormap or color attribute."
-    alpha = 1.0
+    colormap = @inherit colormap :viridis
     """
     This sets the color of an optional additional band from
     `minimum(zs)` to the lowest value in `levels`.
@@ -42,7 +44,6 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     If it's `nothing`, no band is added.
     """
     extendhigh = nothing
-    nan_color = :transparent
     """
     The mode with which the points in `xs` and `ys` are triangulated.
     Passing `DelaunayTriangulation()` performs a Delaunay triangulation.
@@ -51,15 +52,14 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     or as a `Triangulation` from DelaunayTriangulation.jl.
     """
     triangulation = DelaunayTriangulation()
-    edges = nothing
     mixin_generic_plot_attributes()...
 end
 
-function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
+function used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
     return (:triangulation,)
 end
 
-function Makie.convert_arguments(
+function convert_arguments(
         ::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
         triangulation = DelaunayTriangulation()
     )
@@ -82,51 +82,51 @@ function Makie.convert_arguments(
     return (tri, z)
 end
 
-function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
+function _calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
+    levels = copy(levels)
+    # adjust outer levels to be inclusive
+    levels[1] = prevfloat(levels[1])
+    levels[end] = nextfloat(levels[end])
+    @assert issorted(levels)
+    is_extended_low && pushfirst!(levels, -Inf)
+    is_extended_high && push!(levels, Inf)
+    lows = levels[1:(end - 1)]
+    highs = levels[2:end]
+
+    xs = [DelTri.getx(p) for p in DelTri.each_point(triangulation)] # each_point preserves indices
+    ys = [DelTri.gety(p) for p in DelTri.each_point(triangulation)]
+
+    trianglelist = compute_triangulation(triangulation)
+    filledcontours = filled_tricontours(xs, ys, zs, trianglelist, levels)
+
+    levelcenters = (highs .+ lows) ./ 2
+
+    for (fc, lc) in zip(filledcontours, levelcenters)
+        pointvecs = map(fc.polylines) do vecs
+            map(Point2f, vecs)
+        end
+        if isempty(pointvecs)
+            continue
+        end
+
+        for pointvec in pointvecs
+            p = Polygon(pointvec)
+            push!(polys, p)
+            push!(colors, lc)
+        end
+    end
+    return
+end
+
+function plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
     graph = c.attributes
 
     # prepare levels, colormap related nodes
     register_contourf_computations!(graph, :converted_2)
 
-    function calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
-        levels = copy(levels)
-        # adjust outer levels to be inclusive
-        levels[1] = prevfloat(levels[1])
-        levels[end] = nextfloat(levels[end])
-        @assert issorted(levels)
-        is_extended_low && pushfirst!(levels, -Inf)
-        is_extended_high && push!(levels, Inf)
-        lows = levels[1:(end - 1)]
-        highs = levels[2:end]
-
-        xs = [DelTri.getx(p) for p in DelTri.each_point(triangulation)] # each_point preserves indices
-        ys = [DelTri.gety(p) for p in DelTri.each_point(triangulation)]
-
-        trianglelist = compute_triangulation(triangulation)
-        filledcontours = filled_tricontours(xs, ys, zs, trianglelist, levels)
-
-        levelcenters = (highs .+ lows) ./ 2
-
-        for (fc, lc) in zip(filledcontours, levelcenters)
-            pointvecs = map(fc.polylines) do vecs
-                map(Point2f, vecs)
-            end
-            if isempty(pointvecs)
-                continue
-            end
-
-            for pointvec in pointvecs
-                p = Makie.Polygon(pointvec)
-                push!(polys, p)
-                push!(colors, lc)
-            end
-        end
-        return
-    end
-
     register_computation!(
         graph,
-        [:converted_1, :converted_2, :computed_levels, :computed_lowcolor, :computed_highcolor],
+        [:converted_1, :scaled_zs, :computed_levels, :computed_lowcolor, :computed_highcolor],
         [:polys, :computed_colors]
     ) do (tri, zs, levels, low, high), changed, cached
         is_extended_low = !isnothing(low)
@@ -137,25 +137,22 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         else
             polys, colors = empty!.(values(cached))
         end
-        calculate_polys!(polys, colors, tri, zs, levels, is_extended_low, is_extended_high)
+        _calculate_polys!(polys, colors, tri, zs, levels, is_extended_low, is_extended_high)
         return (polys, colors)
     end
 
     return poly!(
         c,
+        c.attributes,
         c.polys,
         colormap = c.computed_colormap,
-        colorscale = c.colorscale,
         colorrange = c.computed_colorrange,
-        alpha = c.alpha,
+        colorscale = identity,
         highclip = c.computed_highcolor,
         lowclip = c.computed_lowcolor,
-        nan_color = c.nan_color,
         color = c.computed_colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        inspectable = c.inspectable,
-        transparency = c.transparency
     )
 end
 

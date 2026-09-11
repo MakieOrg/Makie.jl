@@ -41,6 +41,7 @@ Returns `default` if `a == automatic` and `a` otherwise.
 default_automatic(::Automatic, b) = b
 default_automatic(a, b) = a
 default_automatic(x, ::Automatic) = throw(MethodError(default_automatic, (x, automatic)))
+default_automatic(::Automatic, ::Automatic) = automatic
 
 """
     default_automatic(default)
@@ -266,7 +267,8 @@ end
         if any_wrong_length
             error("All non scalars need same length, Found lengths for each argument: $lengths, $(map(typeof, args))")
         end
-        if (maxlen > 1) && (length(last(indices)) > maxlen) # assuming indices sorted
+        isempty(indices) && return
+        if (maxlen > 1) && (last(indices) > maxlen) # assuming indices sorted
             error("Indices must be in range. Found $(last(indices)) > $maxlen.")
         end
         # skip if there's a zero length element (like an empty annotations collection, etc)

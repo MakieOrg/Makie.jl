@@ -89,7 +89,7 @@ void main(){
     mat4 pview = projection * view;
     mat4 trans = get_transform_marker() ? model_f32c : mat4(1.0);
 
-    vec4 position_world = model_f32c * vec4(tovec3(get_positions_transformed_f32c()), 1);
+    vec4 position_world = model_f32c * vec4(tovec3(get_wgl_positions()), 1);
     process_clip_planes(position_world.xyz);
 
     // Compute centre of billboard in clipping coordinates
@@ -147,9 +147,14 @@ void main(){
     // add padding for AA, stroke and glow (non native distancefields don't need
     // AA padding but CIRCLE etc do)
     float ppu = get_px_per_unit();
-    vec2 padded_bbox_size = bbox_radius + (
+    float bbox_buf = (
         ANTIALIAS_RADIUS + max(0.0, get_strokewidth() * ppu) + max(0.0, get_glowwidth() * ppu)
     ) / viewport_from_sprite_scale;
+    // Multiply the buffer by sign(bbox_radius) so that markersize == 0 cleanly
+    // collapses the padded bbox to zero (0*Inf == NaN propagates to gl_Position
+    // and gets culled). Without this, markersize == 0 would produce visible AA
+    // padding, matching GLMakie's geometry shader behavior.
+    vec2 padded_bbox_size = bbox_radius + sign(bbox_radius) * bbox_buf;
     vec2 uv_pad_scale = padded_bbox_size / bbox_radius;
 
     frag_color = tovec4(get_vertex_color());

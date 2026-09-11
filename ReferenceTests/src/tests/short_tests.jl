@@ -67,7 +67,7 @@ end
 
 @reference_test "contour levels and colors" begin
     f = Figure()
-    contour(f[1, 1], RNG.randn(50, 40), levels = 3)
+    contour(f[1, 1], RNG.randn(50, 40), levels = 3, linewidth = [1, 3, 1])
     contour(f[1, 2], RNG.randn(50, 40), levels = [0.1, 0.5, 0.8])
     contour(
         f[2, 1], RNG.randn(33, 30), levels = [0.1, 0.5, 0.9],
@@ -313,10 +313,44 @@ end
     r = range(-2, 1, length = 31)
     f, a, p = surface(-2 .. 1, -2 .. 1, [0.25 * (x * x + y * y) - 1 for x in r, y in r], matcap = img)
     mesh!(a, Sphere(Point3f(0), 1.0f0), matcap = img)
-    meshscatter!(a, [Point3f(x, y, 0.25 * (x * x + y * y) - 1.5) for x in (-2.25, 1.25) for y in (-2.25, 1.25)], matcap = img, markersize = 0.5)
+    ps = [Point3f(x, y, 0.25 * (x * x + y * y) - 1.5) for x in (-2.25, 1.25) for y in (-2.25, 1.25)]
+    meshscatter!(a, ps, matcap = img, markersize = 0.5)
+    _ps = map((a, b) -> 0.5 .* (a .+ b), ps, ps[[2, 4, 1, 3]])
+    vs = [Vec3f(0, 1, 0), Vec3f(1, 0, 0), Vec3f(-1, 0, 0), Vec3f(0, -1, 0)]
+    arrows3d!(a, _ps, vs, matcap = img, align = :center)
     f
 end
 
+@recipe HintLines begin end
+Makie.conversion_trait(::Type{<:HintLines}) = PointBased()
+Makie.plot!(p::HintLines) = lines!(p, p.attributes, p[1])
+
+Makie.preferred_axis_type(::HintLines, ::AbstractVector{<:VecTypes{3}}) = Axis3
+function Makie.preferred_axis_attributes(::Type{<:Axis}, ::HintLines)
+    return (
+        xlabel = "x", ylabel = "y label", title = "Title",
+        xticklabelsize = 10, xticklabelrotation = 0.3,
+        xgridvisible = false,
+    )
+end
+function Makie.preferred_axis_attributes(::Type{<:Axis3}, ::HintLines)
+    return (
+        title = "3D", xticklabelsize = 10, zticklabelsize = 5,
+        xypanelcolor = RGBf(0.7, 0.9, 1),
+        yzpanelcolor = RGBf(0.7, 0.9, 1),
+        xzpanelcolor = RGBf(0.7, 0.9, 1),
+    )
+end
+
+@reference_test "Axis Hints" begin
+    f = Figure()
+    hintlines(f[1, 1], 1:10, sin.(1:10))
+    a, p = hintlines(
+        f[1, 2], 1:10, sin.(1:10), cos.(1:10),
+        axis = (; xzpanelcolor = RGBf(1, 0.9, 0.7))
+    )
+    f
+end
 
 # Needs a way to disable autolimits on show
 # @reference_test "interactions after close" begin
@@ -336,3 +370,25 @@ end
 #     # reference test the zoomed out plot
 #     f
 # end
+
+@reference_test "StructArrays compat" begin
+    # Test construction and update
+    ps1 = StructArray(Point2f[(1, 2), (3, 4)])
+    ps2 = StructArray(Point2f[(1, 3), (3, 5)])
+    img = StructArray(to_color.([:red :orange; :green :blue]))
+
+    f, a, bp = band(ps1, ps2)
+    a, ip = image(f[1, 2], img)
+    a, pp = poly(f[2, 1], StructArray(Point2f.([1, 2, 1], [1, 1, 2])))
+    st = Makie.Stepper(f)
+    Makie.step!(st)
+
+    ps1 = StructArray(Point2f[(1, 1), (3, 4)])
+    ps2 = StructArray(Point2f[(1, 3), (3, 5)])
+    img = StructArray(to_color.([:red :cyan; :green :blue]))
+    update!(bp, arg1 = ps1, arg2 = ps2)
+    update!(ip, arg1 = img)
+    update!(pp, arg1 = StructArray(Point2f.([1, 2, 2], [1, 1, 2])))
+    Makie.step!(st)
+    st
+end

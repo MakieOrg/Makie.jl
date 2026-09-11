@@ -27,12 +27,21 @@ end
 
 @reference_test "poly and colormap" begin
     # example by @Paulms from MakieOrg/Makie.jl#310
-    points = Point2f[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
+    points = Point2f[[0, 0], [1, 0], [1, 1], [0, 1]]
     colors = [0.0, 0.0, 0.5, 0.0]
-    fig, ax, polyplot = poly(points, color = colors, colorrange = (0.0, 1.0))
-    points = Point2f[[0.1, 0.1], [0.2, 0.1], [0.2, 0.2], [0.1, 0.2]]
+    fig, ax, polyplot = poly(points, color = colors, colorrange = (0.0, 1.0), colormap = :terrain)
+    points = Point2f[[1, 1], [2, 1], [2, 2], [1, 2]]
     colors = [0.5, 0.5, 1.0, 0.3]
     poly!(ax, points, color = colors, colorrange = (0.0, 1.0))
+
+    poly!(
+        [Rect(i, j, 0.25, 0.25) for i in 0.1:0.4:1.8 for j in 0.1:0.75:1.6],
+        color = :transparent,
+        strokewidth = 2,
+        strokecolor = 1:15,
+        strokecolormap = :matter,
+    )
+
     fig
 end
 
@@ -178,12 +187,12 @@ end
     f, ax, p = lines(t, μ, color = :yellow, linewidth = 2) # plot mean line
     translate!(p, 0, 0, 1) # make it draw on top
     σ = vec(std(X, dims = 1))  # stddev
-    band!(ax, t, μ + σ, μ - σ)   # plot stddev band
+    band!(ax, t, μ + σ, μ - σ, strokewidth = 3)   # plot stddev band
 
     # vertical version
     ax2, p = lines(f[1, 2], μ, t, color = :yellow, linewidth = 2)
     translate!(p, 0, 0, 1)
-    band!(ax2, t, μ + σ, μ - σ, direction = :y, alpha = 0.5)   # plot stddev band
+    band!(ax2, t, μ + σ, μ - σ, direction = :y, color = (:red, 0.5), strokewidth = 3, strokecolor = µ)   # plot stddev band
 
     # array colors
     band(f[2, 1], t, μ + σ, μ - σ, direction = :x, color = eachindex(t))
@@ -847,31 +856,40 @@ end
     y = RNG.randn(50)
     z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
 
-    f, ax, tr = tricontourf(x, y, z)
+    f = Figure(size = (500, 600))
+    ax, tr = tricontourf(f[1, 1][1, 1], x, y, z, clip_planes = [Plane3f(Vec3f(0, 1, 0), 0.0f0)])
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
-    Colorbar(f[1, 2], tr)
-    f
-end
+    Colorbar(f[1, 1][1, 2], tr)
 
-@reference_test "tricontourf extendhigh extendlow" begin
-    x = RNG.randn(50)
-    y = RNG.randn(50)
-    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
-
-    f, ax, tr = tricontourf(x, y, z, levels = -1.8:0.2:-0.4, extendhigh = :red, extendlow = :orange)
+    ax, tr = tricontourf(f[1, 2][1, 1], x, y, z, levels = -1.8:0.2:-0.4, extendhigh = :red, extendlow = :orange)
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
-    Colorbar(f[1, 2], tr)
-    f
-end
+    Colorbar(f[1, 2][1, 2], tr)
 
-@reference_test "tricontourf relative mode" begin
-    x = RNG.randn(50)
-    y = RNG.randn(50)
-    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
-
-    f, ax, tr = tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1, colormap = :batlow)
+    ax, tr = tricontourf(f[2, 1][1, 1], x, y, z, mode = :relative, levels = 0.2:0.1:1, colormap = :batlow)
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black, colormap = :batlow)
-    Colorbar(f[1, 2], tr)
+    Colorbar(f[2, 1][1, 2], tr)
+
+    ax, tr = tricontourf(
+        f[2, 2][1, 1], x, y, z, levels = -2.2:0.2:-0.2,
+        colorrange = (-1.8, -0.4), extendhigh = :red, extendlow = :orange
+    )
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+    Colorbar(f[2, 2][1, 2], tr)
+
+    # TODO: Why does 1 .- z or just using z look like it's missing/occluding levels?
+    z .= 5 .+ z
+
+    ax, tr = tricontourf(f[3, 1][1, 1], x, y, z .^ 2, colorscale = sqrt, colormap = :terrain)
+    Colorbar(f[3, 1][1, 2], tr)
+    ax, tr = tricontourf(f[3, 2][1, 1], x, y, z .^ 2, colorscale = sqrt, levels = (2:0.5:5) .^ 2)
+    Colorbar(f[3, 2][1, 2], tr)
+
+    # Reference plots - the above should look the same (with different Colorbar limits, spacing)
+    # ax, tr = tricontourf(f[4, 1][1, 1], x, y, abs.(z), colormap = :terrain)
+    # Colorbar(f[4, 1][1, 2], tr)
+    # ax, tr = tricontourf(f[4, 2][1, 1], x, y, abs.(z), levels = 2:0.5:5)
+    # Colorbar(f[4, 2][1, 2], tr)
+
     f
 end
 
@@ -987,6 +1005,47 @@ end
     f
 end
 
+@reference_test "tricontour" begin
+    x = RNG.randn(50)
+    y = RNG.randn(50)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
+
+    x2 = RNG.rand(30)
+    y2 = RNG.rand(30)
+    z2 = sin.(2π .* x2) .* cos.(2π .* y2)
+
+    f = Figure(size = (500, 600))
+    ax1, tr1 = tricontour(f[1, 1][1, 1], x, y, z; levels = 8, linewidth = 3)
+    scatter!(ax1, x, y; color = z, strokewidth = 1, strokecolor = :black)
+    Colorbar(f[1, 1][1, 2], tr1)
+
+    ax2, tr2 = tricontour(f[1, 2], x, y, z; levels = 8, color = :black, clip_planes = [Plane3f(Vec3f(-1, 1, 0), -1)])
+
+    ax3, tr3 = tricontour(
+        f[2, 1][1, 1], x2, y2, z2; levels = -0.9:0.2:0.9, colormap = :RdBu, linewidth = 2,
+    )
+    Colorbar(f[2, 1][1, 2], tr3)
+
+    ax4, tr4 = tricontour(
+        f[2, 2][1, 1], x2, y2, z2; levels = -0.9:0.2:0.9, colormap = :RdBu, linewidth = 4,
+        colorrange = (-0.6, 0.6), lowclip = :cyan, highclip = :orange, alpha = 0.5
+    )
+    Colorbar(f[2, 2][1, 2], tr4)
+
+    ax, tr = tricontour(f[3, 1][1, 1], x, y, z .^ 2; levels = 8, linewidth = 5, colorscale = sqrt)
+    Colorbar(f[3, 1][1, 2], tr)
+    ax, tr = tricontour(f[3, 2][1, 1], x, y, z .^ 2; levels = (0:0.5:3.5) .^ 2, linewidth = 5, colorscale = sqrt)
+    Colorbar(f[3, 2][1, 2], tr)
+
+    # Reference: above should match colors and shapes (not Colorbar ticks)
+    # ax, tr = tricontour(f[4, 1][1, 1], x, y, abs.(z); levels = 8, linewidth = 5)
+    # Colorbar(f[4, 1][1, 2], tr)
+    # ax, tr = tricontour(f[4, 2][1, 1], x, y, abs.(z); levels = 0:0.5:3.5, linewidth = 5)
+    # Colorbar(f[4, 2][1, 2], tr)
+
+    f
+end
+
 @reference_test "contour labels 2D" begin
     paraboloid = (x, y) -> 10(x^2 + y^2)
 
@@ -1038,24 +1097,56 @@ end
     fig
 end
 
-@reference_test "filled contour 2d with curvilinear grid" begin
+@reference_test "contourf" begin
+    # filled contour 2d with curvilinear grid
     x = -10:10
     y = -10:10
-    # The curvilinear grid:
     xs = [x + 0.01y^3 for x in x, y in y]
     ys = [y + 10cos(x / 40) for x in x, y in y]
-
-    # Now, for simplicity, we calculate the `Z` values to be
-    # the radius from the center of the grid (0, 10).
     zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
-
-    # We can use Makie's tick finders to get some nice looking contour levels.
-    # This could also be Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
-    # but it's more stable as a test if we hardcode it.
     levels = 0:4:20
+    fig = Figure(size = (500, 600))
+    ax, ctr = contourf(fig[1, 1], xs, ys, zs; levels = levels)
 
-    # and now, we plot!
-    fig, ax, ctr = contourf(xs, ys, zs; levels = levels)
+    # contourf bug #3683 + clip planes
+    x = y = LinRange(0, 1, 4)
+    ymin, ymax = 0.4, 0.6
+    steepness = 0.1
+    foo(x, y) = (tanh((y - ymin) / steepness) - tanh((y - ymax) / steepness) - 1)
+    z = [foo(_x, _y) for _x in x, _y in y]
+    ax, cof = contourf(fig[1, 2][1, 1], x, y, z, levels = 2, clip_planes = [Plane3f(Vec3f(1, 1, 0), 0.2f0)])
+    Colorbar(fig[1, 2][1, 2], cof)
+
+    # colormapping tests
+    # ... with irregularly space levels
+    x = y = range(-2, 2, length = 31)
+    z = [sqrt(sin(x - 1)^2 + cos(y)^2) for x in x, y in y]
+    ax, cof = contourf(
+        fig[2, 1][1, 1], x, y, z, levels = sqrt.(range(0.04, 1.9, 8)),
+        extendlow = :red, extendhigh = :blue
+    )
+    Colorbar(fig[2, 1][1, 2], cof)
+
+    # ... with regularly spaced levels
+    _, cof = contourf(
+        fig[2, 2][1, 1], x, y, z, extendlow = :red, extendhigh = :blue,
+        colormap = :magma, colorrange = (0.2, 1.3), alpha = 0.5
+    )
+    Colorbar(fig[2, 2][1, 2], cof)
+
+    # colorscale + levels
+    _, cof = contourf(fig[3, 1][1, 1], x, y, (1 .+ z) .^ 2, colorscale = sqrt, colormap = :thermal)
+    Colorbar(fig[3, 1][1, 2], cof)
+
+    _, cof = contourf(fig[3, 2][1, 1], x, y, (1 .+ z) .^ 2, levels = (1:0.15:2.5) .^ 2, colorscale = sqrt)
+    Colorbar(fig[3, 2][1, 2], cof)
+
+    # references - the above should match these
+    # _, cof = contourf(fig[4, 1][1, 1], x, y, 1 .+ z, colormap = :thermal)
+    # Colorbar(fig[4, 1][1, 2], cof)
+
+    # _, cof = contourf(fig[4, 2][1, 1], x, y, 1 .+ z, levels = 1:0.15:2.5)
+    # Colorbar(fig[4, 2][1, 2], cof)
 
     fig
 end
@@ -1214,10 +1305,10 @@ end
     f, ax, l = lines(0 .. 9, sin; axis = (; xgridvisible = false, ygridvisible = false))
     ylims!(ax, -1.5, 1.5)
 
-    bracket!(pi / 2, 1, 5pi / 2, 1, offset = 5, text = "Period length", style = :square)
+    bracket!(pi / 2, 1, 5pi / 2, 1, offset = 5, text = L"\text{Period length}\,\mathcal{T} = 2\pi", style = :square)
 
     bracket!(
-        pi / 2, 1, pi / 2, -1, text = "Amplitude", orientation = :down,
+        pi / 2, 1, pi / 2, -1, text = rich(rich("Amp", color = :red, font = :bold), rich("litude", color = :darkred)), orientation = :down,
         linestyle = :dash, rotation = 0, align = (:right, :center), textoffset = 4, linewidth = 2, color = :red, textcolor = :red
     )
 
@@ -1226,11 +1317,15 @@ end
         text = "Falling", offset = 10, orientation = :up, color = :purple, textcolor = :purple
     )
 
-    bracket!(
+    p1 = bracket!(
         Point(5.5, sin(5.5)), Point(7.0, sin(7.0)),
         text = "Rising", offset = 10, orientation = :down, color = :orange, textcolor = :orange,
         fontsize = 30, textoffset = 30, width = 50
     )
+    translate!(p1, 0, 0, 150)
+    p2 = mesh!(Rect2f(6.5, -1, 2, 1), color = :black, shading = NoShading)
+    translate!(p2, 0, 0, 100)
+
     f
 end
 
@@ -1238,7 +1333,10 @@ end
     f = Figure()
     ax = Axis(f[1, 1])
 
-    bracket!(
+    p = mesh!(Rect2f(3.2, 2, 1.6, 2), color = :lightblue, shading = NoShading, fxaa = false)
+    translate!(p, 0, 0, 100)
+
+    p = bracket!(
         ax,
         1:5,
         2:6,
@@ -1247,8 +1345,9 @@ end
         text = ["A", "B", "C", "D", "E"],
         orientation = :down,
     )
+    translate!(p, 0, 0, 150)
 
-    bracket!(
+    p = bracket!(
         ax,
         [(Point2f(i, i - 0.7), Point2f(i + 2, i - 0.7)) for i in 1:5],
         text = ["F", "G", "H", "I", "J"],
@@ -1258,6 +1357,7 @@ end
         textcolor = [:red, :blue, :green, :orange, :brown],
         fontsize = range(12, 24, length = 5),
     )
+    translate!(p, 0, 0, 150)
 
     # https://github.com/MakieOrg/Makie.jl/issues/3569
     b = bracket!(
@@ -1361,6 +1461,42 @@ end
 @reference_test "Stephist" begin
     stephist(RNG.rand(10000))
     current_figure()
+end
+
+@reference_test "MultiHist" begin
+    data1 = RNG.rand(100) .* 2.0 .- 1.0
+    data2 = RNG.randn(150)
+    data = vcat(data1, data2)
+    groups = vcat(fill(1, 100), fill(2, 150))
+
+    fig = Figure(size = (400, 600))
+    hist(
+        fig[1, 1], data; stack = groups,
+        color = :stack, colormap = :Set3_10,
+    )
+    hist(
+        fig[1, 2], [data1, data2]; dodge = [1, 2],
+        color = :dodge, colormap = :Set3_10,
+    )
+    hist(
+        fig[2, 1], data; dodge = groups,
+        color = [:red, :lightgreen], strokewidth = 2, strokecolor = :blue
+    )
+    hist(
+        fig[2, 2], [data1, data2]; stack = [1, 2],
+        color = :values, strokewidth = 2, strokecolor = :red
+    )
+    hist(
+        fig[3, 1], [data1, data2]; stack = [1, 2],
+        weights = [abs.(data1), abs.(data2)],
+        color = :stack,
+    )
+    hist(
+        fig[3, 2], [data1, data2]; dodge = [1, 2],
+        weights = [abs.(data1), abs.(data2)], bins = 15,
+        color = vcat(1:15, 36:50), colormap = :RdBu
+    )
+    fig
 end
 
 @reference_test "LaTeXStrings linesegment offsets" begin
@@ -1714,18 +1850,6 @@ end
     fig
 end
 
-@reference_test "contourf bug #3683" begin
-    x = y = LinRange(0, 1, 4)
-    ymin, ymax = 0.4, 0.6
-    steepness = 0.1
-    f(x, y) = (tanh((y - ymin) / steepness) - tanh((y - ymax) / steepness) - 1)
-    z = [f(_x, _y) for _x in x, _y in y]
-
-    fig, ax, cof = contourf(x, y, z, levels = 2)
-    Colorbar(fig[1, 2], cof)
-    fig
-end
-
 @reference_test "Violin plots differently scaled" begin
     fig = Figure()
     xs = vcat([fill(i, i * 1000) for i in 1:4]...)
@@ -1852,7 +1976,7 @@ end
 end
 
 @reference_test "boxplot" begin
-    fig = Figure()
+    fig = Figure(size = (500, 900))
 
     categories = vcat(fill(1, 300), fill(2, 300), fill(3, 300))
     values = RNG.randn(900) .+ range(-1, 1, length = 900)
@@ -1883,13 +2007,24 @@ end
         ax_vert, categories, values, orientation = :vertical, weights = weights,
         gap = 0.5,
         show_notch = true, notchwidth = 0.75,
-        markersize = 5, strokewidth = 2.0, strokecolor = :black,
-        medianlinewidth = 5, mediancolor = :orange,
-        whiskerwidth = 1.0, whiskerlinewidth = 3, whiskercolor = :green,
-        outlierstrokewidth = 1.0, outlierstrokecolor = :red,
+        markersize = 5, outlierstrokewidth = 1.0, outlierstrokecolor = :red,
+        strokewidth = 2.0, strokecolor = :black, strokestyle = :dash,
+        medianlinewidth = 5, mediancolor = :orange, medianlinestyle = :dot,
+        whiskerwidth = 1.0, whiskerlinewidth = 3, whiskercolor = :green, whiskerlinestyle = :dot,
         width = 1.5,
     )
     boxplot!(ax_horiz, categories, values; orientation = :horizontal, width = categories ./ 3)
+
+    boxplot(
+        fig[3:4, 1:2], categories, values,
+        orientation = :vertical, weights = weights,
+        gap = 0.5, show_notch = true, notchwidth = 0.75,
+        show_outliers = false,
+        strokewidth = 10, strokecolor = :darkred, strokejoinstyle = :round,
+        medianlinewidth = 10, mediancolor = :green, medianlinecap = :round,
+        whiskerwidth = 1.0, whiskerlinewidth = 10, whiskercolor = :black, whiskerlinecap = :round,
+        width = 1.5,
+    )
 
     fig
 end
@@ -1951,6 +2086,8 @@ end
     qqplot(fig[1, 2], xs, ys, qqline = :none, markersize = 15, marker = Rect, markercolor = :red)
     qqplot(fig[2, 1], xs, ys, qqline = :fit, linestyle = :dash, linewidth = 6)
     qqplot(fig[2, 2], xs, ys, qqline = :identity, color = :orange)
+    qqplot(fig[3, 1], ys, distribution = Distributions.Normal)
+    qqplot(fig[3, 2], RNG.rand(30), distribution = Distributions.Beta, qqline = :fit)
     fig
 end
 
@@ -2299,6 +2436,27 @@ end
     st
 end
 
+@reference_test "arrows2d z-order" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+
+    # arrow 1 (column 1) should be plotted semi-transparently over arrow 2, but will be
+    # rendered first if z-order is not used; arrow 3 for comparison of intended outcome
+    x = [0.0, +0.5, 0.0]; u = [1.0, 0.0, 1.0]
+    y = [0.0, -0.5, 0.3]; v = [0.0, 1.0, 0.0]
+    z = [0.0, -1.0, 1.0]; w = [0.0, 0.0, 2.0]
+    colors = [(:red, 0.5), :blue, (:red, 0.5)]
+    tipclr = [:green, :yellow, :violet]
+    pl = arrows2d!(
+        ax, x, y, z, u, v, w;
+        color = colors, tipcolor = tipclr, tailcolor = :black,
+        strokemask = 0, shaftwidth = 20,
+        tipwidth = 56, tailwidth = 56,
+        tiplength = 32, taillength = 32,
+    )
+    fig
+end
+
 # Adjusted from 2d version
 @reference_test "arrows3d updates" begin
     grad_func(p) = 0.2 * p .- 0.01 * p .^ 3
@@ -2402,6 +2560,47 @@ end
         ax, 7, -0.5, 3pi / 2, -1.0,
         text = "Corner", path = Ann.Paths.Corner(), labelspace = :data,
         linewidth = 3, shrink = (0, 30)
+    )
+    annotation!(
+        ax, 0, -100, 10, sin(10),
+        style = Ann.Styles.LineArrow(),
+    )
+    ylims!(ax, -1.5, 1.8)
+    annotation!(
+        ax, pi / 2, 1.0, 5pi / 2, 1.0,
+        text = "", style = Ann.Styles.WithText(
+            Ann.Styles.LineArrow();
+            text = "one period", fontsize = 12
+        ),
+        path = Ann.Paths.Arc(0.3), labelspace = :data,
+        color = :purple, shrink = (5.0, 5.0),
+    )
+
+    f
+end
+
+@reference_test "Transformed rotations" begin
+    f = Figure(size = (600, 700))
+    a = PolarAxis(f[1, 1])
+    p = streamplot!(a, p -> Point2f(1, 0), 0 .. 2pi, 0 .. 5, gridsize = (10, 10))
+    a = PolarAxis(f[2, 1])
+    p = contour!(
+        a, 0 .. 2pi, 0 .. 5, [sqrt(x^2 + y^2) for x in range(-1, 1, 30), y in range(-1, 1, 30)],
+        labels = true, colormap = :magma, linewidth = 3
+    )
+
+    a = LScene(f[1, 2])
+    p = streamplot!(
+        a, p -> Point3f(p[2], p[3], p[1]), -1 .. 1, -1 .. 1, -1 .. 1, gridsize = (5, 5, 5),
+        arrow_size = 0.2, transformation = Transformation(Makie.PointTrans{3}(p -> Point(p[2], p[3], p[1])))
+    )
+    a = LScene(f[2, 2])
+    cam3d!(a)
+    p = contour3d!(
+        a, -1 .. 1, -1 .. 1,
+        [cos(x) - sin(y) - x * y for x in range(-1, 1, 30), y in range(-1, 1, 30)],
+        labels = true, colormap = :magma, linewidth = 3,
+        transformation = Transformation(Makie.PointTrans{3}(p -> Point(p[2], p[3], p[1])))
     )
 
     f

@@ -107,17 +107,26 @@ end
 ############################################################################
 
 function _chosen_limits(rz, ax)
-    r = positivize(Rect2(rz.from, rz.to .- rz.from))
-    lims = ax.finallimits[]
+    mini = min.(rz.from, rz.to)
+    maxi = max.(rz.from, rz.to)
+    lims_mini, lims_maxi = extrema(ax.finallimits[])
     # restrict to y change
     if rz.restrict_x || !ax.xrectzoom[]
-        r = Rect2(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2])
+        mini = Point2(lims_mini[1], mini[2])
+        maxi = Point2(lims_maxi[1], maxi[2])
     end
     # restrict to x change
     if rz.restrict_y || !ax.yrectzoom[]
-        r = Rect2(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2])
+        mini = Point2(mini[1], lims_mini[2])
+        maxi = Point2(maxi[1], lims_maxi[2])
     end
-    return r
+    return _clamp_rectanglezoom_limits(mini, maxi, lims_mini, lims_maxi)
+end
+
+function _clamp_rectanglezoom_limits(selected_mini, selected_maxi, visible_mini, visible_maxi)
+    clamped_min = clamp.(selected_mini, visible_mini, visible_maxi)
+    clamped_max = clamp.(selected_maxi, visible_mini, visible_maxi)
+    return Rect2(clamped_min, Vec2(clamped_max .- clamped_min))
 end
 
 function _selection_vertices(ax_scene, outer, inner)
@@ -141,6 +150,12 @@ function _selection_vertices(ax_scene, outer, inner)
     return [proj(obl), proj(obr), proj(otr), proj(otl), proj(ibl), proj(ibr), proj(itr), proj(itl)]
 end
 
+function _rectanglezoom_data_position(ax::Axis, point, transform, inverse_transform)
+    transformed_limits = Makie.apply_transform(transform, ax.finallimits[])
+    clamped_point = rectclamp(point, transformed_limits)
+    return Makie.apply_transform(inverse_transform, clamped_point)
+end
+
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     # only rectangle zoom if modifier is pressed (defaults to true)
     ispressed(ax.scene, r.modifier) || return Consume(false)
@@ -157,8 +172,8 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     end
 
     if event.type === MouseEventTypes.leftdragstart
-        data = Makie.apply_transform(inv_transf, event.data)
-        prev_data = Makie.apply_transform(inv_transf, event.prev_data)
+        data = _rectanglezoom_data_position(ax, event.data, transf, inv_transf)
+        prev_data = _rectanglezoom_data_position(ax, event.prev_data, transf, inv_transf)
 
         r.from = prev_data
         r.to = data
@@ -167,9 +182,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         return Consume(true)
 
     elseif event.type === MouseEventTypes.leftdrag
-        # clamp mouse data to shown limits
-        rect = Makie.apply_transform(transf, ax.finallimits[])
-        data = Makie.apply_transform(inv_transf, rectclamp(event.data, rect))
+        data = _rectanglezoom_data_position(ax, event.data, transf, inv_transf)
 
         r.to = data
         r.rectnode[] = _chosen_limits(r, ax)
@@ -210,20 +223,24 @@ function positivize(r::Rect2)
     return Rect2(Point2(newori), Vec2(newwidths))
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
+function limit_reset_waspressed(lr::LimitReset, ax, idx, keys)
+    state = ispressed(ax.scene, keys)
+    processed = lr.prev_pressed[idx] && !state
+    lr.prev_pressed[idx] = state
+    return processed
+end
 
-    if event.type === MouseEventTypes.leftclick
-        if ispressed(ax.scene, Keyboard.left_control)
-            if ispressed(ax.scene, Keyboard.left_shift)
-                autolimits!(ax)
-            else
-                reset_limits!(ax)
-            end
-            return Consume(true)
-        end
+function process_interaction(lr::LimitReset, event, ax::Axis)
+    processed = false
+    if limit_reset_waspressed(lr, ax, 1, ax.recomputelimitskey[])
+        autolimits!(ax)
+        processed = true
     end
-
-    return Consume(false)
+    if limit_reset_waspressed(lr, ax, 2, ax.resetlimitskey[])
+        reset_limits!(ax)
+        processed = true
+    end
+    return Consume(processed)
 end
 
 
@@ -286,7 +303,10 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
             Rectd(newxorigin, newyorigin, newxwidth, newywidth)
         end
         inv_transf = Makie.inverse_transform(transf)
-        tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
+        newlimits = Makie.apply_transform(inv_transf, newrect_trans)
+        if _axis_limits_are_valid(ax, newlimits)
+            tlimits[] = newlimits
+        end
     end
 
     # NOTE this might be problematic if if we add scrolling to something like Menu
@@ -349,7 +369,10 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
     inv_transf = Makie.inverse_transform(transf)
     newrect_trans = Rectd(Vec2(xori, yori), widths(tlimits_trans))
-    tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
+    newlimits = Makie.apply_transform(inv_transf, newrect_trans)
+    if _axis_limits_are_valid(ax, newlimits)
+        tlimits[] = newlimits
+    end
 
     return Consume(true)
 end
@@ -503,27 +526,25 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
     return Consume(true)
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
-    consumed = false
-    if event.type === MouseEventTypes.leftclick
-        if ispressed(ax.scene, Keyboard.left_control)
-            ax.zoom_mult[] = 1.0
-            if ispressed(ax.scene, Keyboard.left_shift)
-                autolimits!(ax)
-            else
-                reset_limits!(ax)
-            end
-            consumed = true
-        end
-        if ispressed(ax.scene, Keyboard.left_shift)
-            ax.axis_offset[] = Vec2d(0)
-            ax.elevation[] = pi / 8
-            ax.azimuth[] = 1.275 * pi
-            consumed = true
-        end
+function process_interaction(lr::LimitReset, event::MouseEvent, ax::Axis3)
+    processed = false
+    if limit_reset_waspressed(lr, ax, 1, ax.recomputelimitskey[])
+        ax.zoom_mult[] = 1.0
+        autolimits!(ax)
+        processed = true
     end
-
-    return Consume(consumed)
+    if limit_reset_waspressed(lr, ax, 2, ax.resetlimitskey[])
+        ax.zoom_mult[] = 1.0
+        reset_limits!(ax)
+        processed = true
+    end
+    if limit_reset_waspressed(lr, ax, 3, ax.resetrotationkey[])
+        ax.axis_offset[] = Vec2d(0)
+        ax.elevation[] = pi / 8
+        ax.azimuth[] = 1.275 * pi
+        processed = true
+    end
+    return Consume(processed)
 end
 
 function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}, ax::Axis3)

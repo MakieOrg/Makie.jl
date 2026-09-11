@@ -72,11 +72,31 @@ void main(){
         clip_pos += vec4(2.0 * marker_offset / vec3(resolution, 1), 0);
         gl_PointSize = px_per_unit * scale.x;
     } else {
-        // to have a billboard, we project the upvector
+        // To get a billboard-like marker we want to know how many pixels the
+        // marker spans in screen space. We project a second point offset by
+        // the marker scale along the camera up-vector, then take the screen-
+        // space distance between the two NDC y coordinates.
         vec3 scale_vec = upvector * f32c_scale.y * scale.x;
         vec4 up_clip = full_projectionview * vec4(world_position.xyz + scale_vec, 1);
-        float yup = abs(up_clip.y - clip_pos.y) / clip_pos.w;
-        gl_PointSize = ceil(0.5 * yup *  px_per_unit * resolution.y);
+        // Each clip-space point must be divided by its own w before the
+        // subtraction (perspective divide) - otherwise points near the
+        // camera plane (clip_pos.w -> 0) or behind it (clip_pos.w < 0) blow
+        // gl_PointSize up to +/-Inf and on some drivers (AMD) the resulting
+        // command stream triggers a hard context loss.
+        float w0 = clip_pos.w;
+        float w1 = up_clip.w;
+        if (w0 < 1e-6 || w1 < 1e-6) {
+            // Point is at or behind the near plane; emit a zero-sized point
+            // so it doesn't render but also doesn't feed a bad value to the
+            // rasterizer.
+            gl_PointSize = 0.0;
+        } else {
+            float yup = abs(up_clip.y / w1 - clip_pos.y / w0);
+            // gl_PointSize is clamped by the driver to GL_POINT_SIZE_RANGE,
+            // but NaN/+Inf may still survive on some implementations; clamp
+            // explicitly to a generous-but-finite upper bound.
+            gl_PointSize = clamp(ceil(0.5 * yup * px_per_unit * resolution.y), 0.0, 1024.0);
+        }
         clip_pos += full_projectionview * vec4(f32c_scale * marker_offset, 0);
     }
     gl_Position = vec4(clip_pos.xy, clip_pos.z + (clip_pos.w * depth_shift), clip_pos.w);

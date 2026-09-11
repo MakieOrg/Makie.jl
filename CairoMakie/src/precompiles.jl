@@ -2,17 +2,22 @@ using PrecompileTools
 
 macro compile(block)
     return quote
-        figlike = $(esc(block))
-        Makie.colorbuffer(figlike)
+        # Run the workload inside a `let` body, to avoid storing
+        # f, ax, pl as module level globals that get stored in package images
+        let
+            figlike = $(esc(block))
+            Makie.colorbuffer(figlike)
+        end
     end
 end
 
 let
     @compile_workload begin
         CairoMakie.activate!()
-        base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
-        shared_precompile = joinpath(base_path, "shared-precompile.jl")
-        include(shared_precompile)
+        include(Makie.SHARED_PRECOMPILE_PATH)
+        # Cleanup globals to avoid serializing stale state (fonts, figures, tasks)
+        # Note: __init__ doesn't run during precompilation, so we must always clean up here
+        Makie.cleanup_globals()
     end
 end
 precompile(openurl, (String,))

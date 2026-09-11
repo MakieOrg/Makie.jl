@@ -93,9 +93,47 @@ function _process_arrow_arguments(pos, pos_or_dir, align, lengthscale, norm, arg
     end
 end
 
+_arrows_arg_size(args::Tuple) = _arrows_arg_size(args...)
+function _arrows_arg_size(args...)
+    s = size(args[1])
+    for arg in args
+        s = ndims(arg) > 1 ? size(arg) : s
+    end
+    return s
+end
+
+_arrows_arg_size(::VecTypes, ::VecTypes) = (1,)
+_arrows_arg_size(pos::AbstractArray, ::Function) = size(pos)
+_arrows_arg_size(x::RealVector, y::RealVector, ::Function) = (length(x), length(y))
+_arrows_arg_size(x::RealVector, y::RealVector, z::RealVector, ::Function) = (length(x), length(y), length(z))
+
+function register_arrow_color_flattening!(plot)
+    map!(args -> Ref{Tuple}(_arrows_arg_size(args)), plot, :args, :arg_size)
+
+    for colorname in (:tipcolor, :shaftcolor, :tailcolor)
+        map!(
+            plot, [colorname, :color, :arg_size], Symbol(:resolved_, colorname)
+        ) do component_color, fallback, arg_size
+            color = default_automatic(component_color, fallback)
+            if length(arg_size) > 1 && !isa(color, ShaderAbstractions.Sampler) &&
+                    isa(color, AbstractArray) && size(color) == arg_size
+                return vec(color)
+            else
+                # This continues to allow 2D textures if as long as the texture
+                # does not match the size of x/y/z/u/v/w
+                return color
+            end
+        end
+    end
+    return
+end
+
 function mixin_arrow_attributes()
     return @DocumentedAttributes begin
-        "Sets the color of the arrow. Can be overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`."
+        """
+        Sets the color of the arrow either for all arrows or per arrow. Can be
+        overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`.
+        """
         color = :black
         "Sets the color of the arrow tail. Defaults to `color`"
         tailcolor = automatic
@@ -334,13 +372,14 @@ function _apply_arrow_transform(m::GeometryBasics.Mesh, R::Mat2, origin, offset)
 end
 
 function Makie.plot!(plot::Arrows2D)
+    register_arrow_color_flattening!(plot)
+
     map!(
         _process_arrow_arguments, plot,
         [:points, :directions, :align, :lengthscale, :normalize, :argmode],
         [:startpoints, :endpoints]
     )
 
-    # TODO: Doesn't dropping the third dimension here break z order?
     register_projected_positions!(
         plot, Point3f, input_name = :startpoints, output_name = :pixel_startpoints, output_space = :pixel
     )
@@ -350,6 +389,9 @@ function Makie.plot!(plot::Arrows2D)
 
     map!(plot, [:pixel_startpoints, :pixel_endpoints], :pixel_directions) do startpoints, endpoints
         return Point2f.(endpoints) .- Point2f.(startpoints)
+    end
+    map!(plot, [:pixel_startpoints], :sortperm_startpoints) do ps
+        return sortperm(ps, by = v -> v[3])
     end
 
     map!(
@@ -392,14 +434,14 @@ function Makie.plot!(plot::Arrows2D)
     map!(
         plot,
         [
-            :pixel_startpoints, :pixel_directions, :arrow_metrics, :strokemask,
+            :pixel_startpoints, :pixel_directions, :sortperm_startpoints, :arrow_metrics, :strokemask,
             :should_component_render, :tail, :shaft, :tip,
         ],
         :meshes
-    ) do ps, dirs, metrics, mask, should_render, shapes...
+    ) do ps, dirs, order, metrics, mask, should_render, shapes...
         meshes = GeometryBasics.Mesh[]
 
-        for i in eachindex(metrics)
+        for i in order
             # rotate + translate
             startpoint = ps[i]
             direction = dirs[i]
@@ -423,16 +465,20 @@ function Makie.plot!(plot::Arrows2D)
     register_colormapping_without_color!(plot.attributes)
     map!(to_color, plot, :nan_color, :converted_nan_color)
 
-    for key in [:tailcolor, :shaftcolor, :tipcolor]
+    for (input, output) in (
+            :resolved_tailcolor => :scaled_tailcolor,
+            :resolved_shaftcolor => :scaled_shaftcolor,
+            :resolved_tipcolor => :scaled_tipcolor,
+        )
         map!(
-            plot, [key, :color, :colorscale, :alpha], Symbol(:scaled_, key)
-        ) do maybe_color, default, colorscale, alpha
+            plot, [input, :colorscale, :alpha, :sortperm_startpoints], output
+        ) do color, colorscale, alpha, order
 
-            color = to_color(default_automatic(maybe_color, default))
+            color = to_color(color)
             return if color isa Union{Real, AbstractArray{<:Real}}
-                clamp.(el32convert(apply_scale(colorscale, color)), -floatmax(Float32), floatmax(Float32))
+                clamp.(el32convert(apply_scale(colorscale, color[order])), -floatmax(Float32), floatmax(Float32))
             elseif color isa AbstractArray
-                add_alpha.(color, alpha)
+                add_alpha.(color[order], alpha)
             else
                 add_alpha(color, alpha)
             end
@@ -586,11 +632,26 @@ $_arrow_args_docs
     More vertices will improve the roundness of the mesh but be more costly.
     """
     quality = 32
+    """
+    Applies a "material capture" texture to the generated mesh. A matcap encodes
+    lighting and color data of a material on a circular texture which is sampled
+    based on normal vectors.
+    """
+    matcap = nothing
 
     mixin_shading_attributes()...
     mixin_arrow_attributes()...
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
+
+    """
+    Sets the color of the arrow either for all arrows or per arrow. Can be
+    overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`.
+
+    This can also be a 2D image (texture) that applies per arrow component if
+    `tip`, `tail` and `shaft` are changed to mesh that includes texture coordinates.
+    """
+    color = :black
 end
 
 conversion_trait(::Type{<:Arrows3D}) = ArrowLike()
@@ -605,9 +666,7 @@ function to_mesh(prim::GeometryBasics.GeometryPrimitive, n)
 end
 
 function Makie.plot!(plot::Arrows3D)
-    map!(default_automatic, plot, [:tailcolor, :color], :resolved_tailcolor)
-    map!(default_automatic, plot, [:shaftcolor, :color], :resolved_shaftcolor)
-    map!(default_automatic, plot, [:tipcolor, :color], :resolved_tipcolor)
+    register_arrow_color_flattening!(plot)
 
     map!(
         _process_arrow_arguments, plot,
@@ -673,10 +732,7 @@ function Makie.plot!(plot::Arrows3D)
         return metrics
     end
 
-    # normalize if not yet normalized
-    map!(plot, [:world_directions, :normalize], :normalized_dir) do dirs, normalized
-        return normalized ? dirs : LinearAlgebra.normalize.(dirs)
-    end
+    map!(dirs -> normalize.(dirs), plot, :world_directions, :normalized_dir)
     map!(dirs -> to_ndim.(Vec3f, dirs, 0), plot, :normalized_dir, :rot)
 
     map!(metrics -> [Vec3f(2r, 2r, l) for (l, r, _, _, _, _) in metrics], plot, :arrow_metrics, :tail_scale)

@@ -9,30 +9,72 @@ Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text la
 By default each label is rotated parallel to the line between the bracket points.
 """
 @recipe Bracket (positions,) begin
-    "The offset of the bracket perpendicular to the line from start to end point in screen units.
-    The direction depends on the `orientation` attribute."
+    """
+    The offset of the bracket perpendicular to the line from start to end point in screen units.
+    The direction depends on the `orientation` attribute.
+    """
     offset = 0
     """
     The width of the bracket (perpendicularly away from the line from start to end point) in screen units.
     """
     width = 15
+    """
+    The text(s) displayed at the center of the bracket(s).
+    """
     text = ""
+    "The font used for text."
     font = @inherit font
     "Which way the bracket extends relative to the line from start to end point. Can be `:up` or `:down`."
     orientation = :up
+    "The alignment of text."
     align = (:center, :center)
+    """
+    Undirected offset between text and the center of the bracket. By default
+    this is set to 75% of the fontsize. The direction of the offset is always
+    perpendicular to the line from the start to the end point.
+    """
     textoffset = automatic
+    "Sets the fontsize of text"
     fontsize = @inherit fontsize
+    """
+    Sets the rotation of text. By default text is rotated to be parallel to the
+    line from the start to end point of the bracket, and never upside-down.
+    """
     rotation = automatic
+    "Sets the color of the bracket line."
     color = @inherit linecolor
+    "Sets the color of the text."
     textcolor = @inherit textcolor
+    "Sets the width of the bracket line."
     linewidth = @inherit linewidth
-    linestyle = :solid
+    "Sets the line pattern of the bracket line. See `?lines` for more information."
+    linestyle = nothing
+    """
+    Sets the type of line cap used for bracket lines. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
+    """
+    Controls the rendering at line corners. Options are `:miter` for sharp corners,
+    `:bevel` for cut-off corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
+    """"
+    Sets the minimum inner line join angle below which miter joins truncate. See
+    also `Makie.miter_distance_to_angle`.
+    """
     miter_limit = @inherit miter_limit
+    "Sets the justification of multi-line text."
     justification = automatic
+    """
+    Sets the style of drawn bracket. The current options are `:curly` for curly
+    braces `}` and `:square` for brackets `]`. More bracket types can be
+    implemented by providing a method of `Makie.bracket_bezierpath(...)`, see
+    `?Makie.bracket_bezierpath`.
+    """
     style = :curly
+    "Sets the space for the start and end points of brackets."
     space = :data
 end
 
@@ -62,14 +104,15 @@ function plot!(pl::Bracket)
     map!(pairs -> first.(pairs), pl, :positions, :startpoints)
     map!(pairs -> last.(pairs), pl, :positions, :endpoints)
 
-    # TODO: Don't throw away z, that pins z to 0
-    register_projected_positions!(pl, Point2f, input_name = :startpoints, output_space = :pixel)
-    register_projected_positions!(pl, Point2f, input_name = :endpoints, output_space = :pixel)
+    register_projected_positions!(pl, input_name = :startpoints, output_space = :pixel)
+    register_projected_positions!(pl, input_name = :endpoints, output_space = :pixel)
 
-    map!(pl, [:pixel_startpoints, :pixel_endpoints, :orientation], :pixel_directions) do startpoints, endpoints, orientation
+    map!(
+        pl, [:pixel_startpoints, :pixel_endpoints, :orientation], :pixel_directions
+    ) do startpoints, endpoints, orientation
         return broadcast(startpoints, endpoints, orientation) do p1, p2, orientation
             orientation in (:up, :down) || error("Orientation must be :up or :down but is $(repr(orientation)).")
-            v = p2 - p1
+            v = Point2f(p2) - Point2f(p1)
             d1 = normalize(v)
             d2 = Vec2f(-d1[2], d1[1])
             if (orientation === :up) != (d2[2] >= 0)
@@ -84,21 +127,31 @@ function plot!(pl::Bracket)
     map!(
         pl,
         [:pixel_startpoints, :pixel_endpoints, :pixel_directions, :offset, :width, :style, :text],
-        [:bp, :text_tuples]
+        [:bezierpaths, :text_tuples]
     ) do startpoints, endpoints, directions, offset, width, style, text
 
         # TODO: add a broadcast/map version of broadcast_foreach doing this:
         bps = BezierPath[]
-        text_pos = Tuple{String, Point2f}[]
+        text_pos = Tuple{Union{String, LaTeXStrings.LaTeXString, RichText}, Point3f}[]
 
-        broadcast_foreach(startpoints, endpoints, directions, offset, width, style, text) do p1, p2, dir, offset, width, style, str
+        broadcast_foreach(
+            startpoints, endpoints, directions, offset, width, style, text
+        ) do p1, p2, dir, offset, width, style, str
             off = offset * dir
-            b, textpoint = bracket_bezierpath(style, p1 + off, p2 + off, dir, width)
-            push!(text_pos, (str, textpoint))
+            b, textpoint = bracket_bezierpath(style, Point2f(p1) + off, Point2f(p2) + off, dir, width)
+            push!(text_pos, (str, Point3f(textpoint..., 0.5 * (p1[3] + p2[3]))))
             push!(bps, b)
             return
         end
         return bps, text_pos
+    end
+
+    map!(
+        pl, [:pixel_startpoints, :pixel_endpoints, :bezierpaths], :bezierpath_points
+    ) do startpoints, endpoints, bezierpaths
+        return map(startpoints, endpoints, bezierpaths) do p1, p2, bp
+            return to_vertices!(Point3f[], bp, 0.5 * (p1[3] + p2[3]))
+        end
     end
 
     map!(pl, [:rotation, :pixel_directions], :autorotations) do rots, dirs
@@ -111,11 +164,12 @@ function plot!(pl::Bracket)
         end
     end
 
-    # Avoid scale!() / translate!() / rotate!() to affect these
+    # Avoid scale!() / translate!() / rotate!() affecting these a second time
     series!(
-        pl, pl.bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth,
-        linestyle = pl.linestyle, linecap = pl.linecap, joinstyle = pl.joinstyle,
-        miter_limit = pl.miter_limit, transformation = :nothing
+        pl, pl.bezierpath_points; space = :pixel, solid_color = pl.color,
+        linewidth = pl.linewidth, linestyle = pl.linestyle, linecap = pl.linecap,
+        joinstyle = pl.joinstyle, miter_limit = pl.miter_limit,
+        transformation = :nothing
     )
     text!(
         pl, pl.text_tuples, space = :pixel, align = pl.align, offset = pl.finaltextoffset,
@@ -133,6 +187,14 @@ function data_limits(pl::Bracket)
 end
 boundingbox(pl::Bracket, space::Symbol = :data) = apply_transform_and_model(pl, data_limits(pl))
 
+"""
+    bracket_bezierpath(::Val{style}, p1, p2, dir, width)
+
+Returns a `BezierPath` connecting the given endpoints of a bracket `p1` and
+`p2` as well as an anchor point for text. `dir` is the direction perpendicular
+to `p2 - p1` in which bracket should expand. `width` is how much it should expand.
+This method can be overloaded to implement a new `style::Symbol` for `bracket()`.
+"""
 bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)
 
 function bracket_bezierpath(::Val{:curly}, p1, p2, d, width)

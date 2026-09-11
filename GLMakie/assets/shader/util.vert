@@ -265,6 +265,10 @@ void process_clip_planes(vec3 world_pos)
         gl_ClipDistance[i] = 1.0;
 }
 
+vec3 safe_normalize(vec3 v) {
+    float n = length(v);
+    return n < 1e-20 ? v : v / n;
+}
 
 uniform float depth_shift;
 

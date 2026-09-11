@@ -64,6 +64,43 @@ end
     fig
 end
 
+@reference_test "Menu search" begin
+    fig = Figure(size = (200, 300))
+
+    fruits = [
+        "Apple", "Apricot", "Banana", "Blackberry", "Blueberry",
+        "Cherry", "Cranberry", "Date", "Elderberry", "Fig",
+        "Grape", "Grapefruit", "Honeydew", "Kiwi", "Lemon",
+        "Lime", "Mango", "Nectarine", "Orange", "Papaya",
+    ]
+
+    sm = Menu(
+        fig[1, 1], options = fruits, searchable = true,
+        search_placeholder = "type to filter...", prompt = "Searchable menu..."
+    )
+
+    Box(fig[2, 1], color = :tomato, strokevisible = false)
+    fig
+
+    st = Makie.Stepper(fig)
+
+    click(events(fig), (100, 270))
+    Makie.step!(st) # check default open
+
+    events(fig).unicode_input[] = 'g'
+    Makie.step!(st) # check search
+
+    click(events(fig), (100, 200))
+    Makie.step!(st) # check selection
+
+    click(events(fig), (100, 270))
+    Makie.step!(st) # check search reset
+    click(events(fig), (100, 200))
+    Makie.step!(st) # check selection without search
+
+    st
+end
+
 @reference_test "Label with text wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     fig = Figure(size = (1000, 660))
@@ -125,16 +162,12 @@ end
 end
 
 # https://github.com/MakieOrg/Makie.jl/issues/3579
-@reference_test "Axis yticksmirrored" begin
-    f = Figure(size = (200, 200))
-    Axis(f[1, 1], yticksmirrored = true, yticksize = 10, ytickwidth = 4, spinewidth = 5)
-    Colorbar(f[1, 2])
-    f
-end
-@reference_test "Axis xticksmirrored" begin
-    f = Figure(size = (200, 200))
-    Axis(f[1, 1], xticksmirrored = true, xticksize = 10, xtickwidth = 4, spinewidth = 5)
-    Colorbar(f[0, 1], vertical = false)
+@reference_test "Axis ticksmirrored" begin
+    f = Figure(size = (400, 200))
+    Axis(f[1, 1][1, 1], yticksmirrored = true, yticksize = 10, ytickwidth = 4, spinewidth = 5)
+    Colorbar(f[1, 1][1, 2])
+    Axis(f[1, 2][1, 1], xticksmirrored = true, xticksize = 10, xtickwidth = 4, spinewidth = 5)
+    Colorbar(f[1, 2][0, 1], vertical = false)
     f
 end
 
@@ -196,7 +229,8 @@ end
 
     li = lines!(
         1:10,
-        label = "Line" => (; linewidth = 4, color = :gray60, linestyle = :dot),
+        linecap = :round,
+        label = "Line" => (; linewidth = 8, color = :gray60, linestyle = :dot),
     )
     sc = scatter!(
         1:10,
@@ -209,16 +243,16 @@ end
             label => (; markersize = 30, color = i) for (i, label) in enumerate(["blue", "green", "yellow"])
         ]
     )
-    Legend(f[1, 2], ax)
+    Legend(f[1, 2], ax, patchsize = (60, 30))
     Legend(
         f[1, 3],
         [
             sc => (; markersize = 30, alpha = 0.3),
-            [li => (; color = :red, alpha = 0.3, linewidth = 4), sc => (; color = :cyan)],
-            [li, sc] => Dict(:color => :cyan),
+            [li => (; color = :red, alpha = 0.3, linewidth = 8), sc => (; color = :cyan)],
+            [li, sc] => Dict(:color => :cyan, :linecap => :butt),
         ],
         ["Scatter", "Line and Scatter", "Another"],
-        patchsize = (40, 20)
+        patchsize = (60, 30)
     )
     f
 end
@@ -582,6 +616,15 @@ end
     f
 end
 
+@reference_test "collapsed Axis3" begin
+    # See #5759
+    fig = Figure()
+    ax = Axis3(fig[1, 1], aspect = :data, limits = (0, 1, 0, 1, 5, 5))
+    scatter!(ax, [0.2, 0.8], [0.2, 0.8], [5.0, 5.0], color = [1, 2], markersize = 20)
+    scatter!(ax, [0.2, 0.8], [0.8, 0.2], [4.9, 5.1], color = :red, markersize = 20)
+    fig
+end
+
 @reference_test "Colorbar for recipes" begin
     fig, ax, pl = barplot(1:3; color = 1:3, colormap = Makie.Categorical(:viridis), figure = (; size = (800, 800)))
     Colorbar(fig[1, 2], pl; size = 100)
@@ -619,11 +662,14 @@ end
     )
     Colorbar(fig[2, 3][1, 2], hm; ticks = -1:0.25:1)
 
+    signed_sqrt(x) = sign(x) * sqrt(abs(x))
+    signed_square(x) = sign(x) * x * x
+    Makie.inverse_transform(::typeof(signed_sqrt)) = signed_square
     ax, hm = contourf(
         fig[3, :][1, 1], xs, ys, zs;
-        colormap = :Spectral, colorscale = sqrt, levels = [0, 0.25, 0.5, 1]
+        colormap = :Spectral, colorscale = signed_sqrt, levels = [0, 0.25, 0.5, 1]
     )
-    Colorbar(fig[3, :][1, 2], hm; width = 200)
+    cb = Colorbar(fig[3, :][1, 2], hm; width = 200)
 
     fig
 end
@@ -633,17 +679,13 @@ end
     x = 0:0.1:51
     y = 0:0.1:51
     z = [y for x in x, y in y]
-    fig, ax, plt = contourf(x, y, z; levels = l)
+    fig = Figure(size = (400, 600))
+    ax, plt = contourf(fig[1, 1], x, y, z; levels = l)
     cb = Colorbar(fig[1, 2], plt; tellheight = false)
 
-    fig
-end
-
-@reference_test "Categorical Colorbar with nan_color" begin
     arr = [0 0 NaN; 1 1 NaN; 3 3 NaN]
-    fig = Figure(size = (300, 200))
-    a, hm = heatmap(fig[1, 1], arr; colormap = Makie.Categorical(:Paired_8), colorrange = (1, 3), lowclip = :black)
-    Colorbar(fig[1, 2], hm)
+    a, hm = heatmap(fig[2, 1], arr; colormap = Makie.Categorical(:Paired_8), colorrange = (1, 3), lowclip = :black)
+    Colorbar(fig[2, 2], hm)
     fig
 end
 
@@ -695,12 +737,12 @@ end
         xscale = log10,
         yscale = log2,
         title = rich("A ", rich("title", color = :red, font = :bold_italic)),
-        xlabel = rich("X", subscript("label", fontsize = 25)),
-        ylabel = rich("Y", superscript("label")),
+        xlabel = "X" * subscript("label", fontsize = 25),
+        ylabel = "Y" * superscript("label"),
     )
     gl = GridLayout(f[1, 2], tellheight = false)
     Label(gl[1, 1], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)))
-    Label(gl[2, 1], rich("X", superscript("super"), subscript("sub")))
+    Label(gl[2, 1], "X" * superscript("super") * subscript("sub"))
     Label(gl[3, 1], rich(left_subsup("92", "238"), "U"))
     Label(gl[4, 1], rich("SO", subsup("4", "2−")))
     Label(gl[5, 1], rich("x", subsup("f", "g")))
@@ -734,14 +776,14 @@ end
 
     tb2 = Makie.Textbox(f[2, 1], width = 100)
     Makie.set!(tb2, "1234567890qwertyuiop")
-    tb2.cursorindex[] = 20
+    tb2.editor.cursors[] = [Makie.EditCursor(20)]
     Makie.focus!(tb2)
     send(e, Keyboard.backspace)
     Makie.defocus!(tb2)
 
     tb3 = Makie.Textbox(f[3, 1], width = 100)
     Makie.set!(tb3, "1234567890qwertyuiop")
-    tb3.cursorindex[] = 20
+    tb3.editor.cursors[] = [Makie.EditCursor(20)]
     Makie.focus!(tb3)
     click(e, 259, 173) # between 7 and 8
     send(e, Keyboard.left)
@@ -750,8 +792,8 @@ end
 
     tb4 = Makie.Textbox(f[4, 1], width = 100)
     Makie.set!(tb4, "1234567890qwertyuiop")
-    tb4.cursorindex[] = 20
-    tb4.cursorindex[] = 10
+    tb4.editor.cursors[] = [Makie.EditCursor(20)]
+    tb4.editor.cursors[] = [Makie.EditCursor(10)]
     Makie.focus!(tb4)
     for _ in 1:8
         send(e, Keyboard.backspace)

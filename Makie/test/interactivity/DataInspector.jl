@@ -6,8 +6,8 @@
         @test Makie.position2string(Vec(pi, pi)) == "x: 3.141593\ny: 3.141593"
         @test Makie.position2string(Vec(pi, pi, pi)) == "x: 3.141593\ny: 3.141593\nz: 3.141593"
 
-        @test Makie.bbox2string(Rect2(pi, pi, 1, 1)) == "Bounding Box:\n x: (3.142, 4.142)\n y: (3.142, 4.142)\n"
-        @test Makie.bbox2string(Rect3(Point3(pi), Vec3(1))) == "Bounding Box:\n x: (3.142, 4.142)\n y: (3.142, 4.142)\n z: (3.142, 4.142)\n"
+        @test Makie.bbox2string(Rect2(pi, pi, 1, 1)) == "Bounding Box:\n x: (3.142, 4.142)\n y: (3.142, 4.142)"
+        @test Makie.bbox2string(Rect3(Point3(pi), Vec3(1))) == "Bounding Box:\n x: (3.142, 4.142)\n y: (3.142, 4.142)\n z: (3.142, 4.142)"
 
         @test Makie.color2text(pi) == "3.142"
         @test Makie.color2text(:red) == "red"

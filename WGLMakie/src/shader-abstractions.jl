@@ -1,5 +1,19 @@
 import ShaderAbstractions as SA
 
+# Use highp precision to avoid float overflows in uniforms (e.g. preprojection
+# matrices for 3D scatter plots can produce values exceeding the f16 range that
+# `mediump` uses on some drivers, leading to Inf values and missing geometry).
+const SHADER_PRECISION_HEADER = """
+#version 300 es
+precision highp int;
+precision highp float;
+precision highp sampler2D;
+precision highp sampler3D;
+precision highp isampler2D;
+precision highp isampler3D;
+precision highp usampler2D;
+precision highp usampler3D;
+"""
 
 to_vertex_dict(dict::Dict) = dict
 
@@ -72,8 +86,8 @@ function create_shader(vertex_attr, uniforms, vertshader, fragshader)
         println(io)
         println(io, vertshader)
     end
-    vert = SA.vertex_header(context) * src
-    frag = SA.fragment_header(context) * uniform_block * fragshader
+    vert = SHADER_PRECISION_HEADER * src
+    frag = SHADER_PRECISION_HEADER * "\nout vec4 fragment_color;\n" * uniform_block * fragshader
     up(x) = replace(x, "#version 300 es" => "")
     filter!(((name, _),) -> !endswith(string(name), "_getter"), uniforms)
     return Dict(

@@ -13,17 +13,20 @@ Creates a tooltip pointing at `position` displaying the given `string
     placement = :above
     "Sets the alignment of the tooltip relative `position`. With `align = 0.5` the tooltip is centered above/below/left/right the `position`."
     align = 0.5
+    "Controls whether the plot is included when calculating x limits."
     xautolimits = false
+    "Controls whether the plot is included when calculating y limits."
     yautolimits = false
+    "Controls whether the plot is included when calculating z limits."
     zautolimits = false
 
     # Text
     "Sets the padding around text in the tooltip. This is given as `(left, right, bottom, top)` offsets."
-    textpadding = (4, 4, 4, 4) # LRBT
+    textpadding = (5, 5, 3, 3) # LRBT
     "Sets the text color."
     textcolor = @inherit textcolor
     "Sets the text size in screen units."
-    fontsize = 16
+    fontsize = @inherit fontsize
     "Sets the font."
     font = @inherit font
     "Gives text an outline if set to a positive value."
@@ -37,13 +40,13 @@ Creates a tooltip pointing at `position` displaying the given `string
     "Sets the background color of the tooltip."
     backgroundcolor = :white
     "Sets the size of the triangle pointing at `position`."
-    triangle_size = 10
+    triangle_size = 7
 
     # Outline
     "Sets the color of the tooltip outline."
     outline_color = :black
     "Sets the linewidth of the tooltip outline."
-    outline_linewidth = 2.0f0
+    outline_linewidth = 1.0f0
     "Sets the linestyle of the tooltip outline."
     outline_linestyle = nothing
 

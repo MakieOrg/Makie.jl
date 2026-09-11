@@ -25,7 +25,7 @@ documentation) and `position` is the position of the inspected object.
 lbls = ["Type A", "Type B"]
 fig, ax, p = scatter(
     rand(10), color = rand(1:2, 10), colormap = [:red, :blue],
-    inspector_label = (self, i, pos) -> lbls[self.color[][i]]
+    inspector_label = (self, i, pos) -> lbls[trunc(Int, self.color[][i])]
 )
 DataInspector(fig)
 fig

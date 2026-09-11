@@ -91,4 +91,25 @@
         pl = Scatter((1:4,), Dict{Symbol, Any}())
         @test Set(propertynames(pl)) == keys(pl.attributes.outputs)
     end
+
+    @testset "Menu option resize before display" begin
+        fig = Figure()
+        menu = Menu(fig[1, 1]; options = zip(["no options"], [nothing]))
+        labels = ["A", "B", "C", "D", "E", "F", "G", "H"]
+        values = collect(1:8)
+        menu.options[] = zip(labels, values)
+        p = menu.blockscene.children[1].plots[2]
+        # should not error
+        p.positions_transformed_f32c[]
+        p.quad_offset[]
+        p.sdf_marker_shape[]
+        p.sdf_uv[]
+        @test true
+    end
+
+    @testset "#5744 to_rotation resolution" begin
+        v = normalize(Vec3f(0.001, 0, -1))
+        @assert v !== Vec3f(0, 0, -1)
+        @test to_rotation(v) !== to_rotation(Vec3f(0, 0, -1))
+    end
 end
