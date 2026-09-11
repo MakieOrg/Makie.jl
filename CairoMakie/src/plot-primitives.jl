@@ -11,7 +11,7 @@ function cairo_draw(screen::Screen, scene::Scene)
     Cairo.save(screen.context)
     draw_background(screen, scene)
 
-    allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot)
+    allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
     sort!(allplots; by = Makie.zvalue2d)
     # If the backend is not a vector surface (i.e., PNG/ARGB),
     # then there is no point in rasterizing twice.
@@ -67,7 +67,9 @@ CairoMakie can treat them as atomic plots and render them directly.
 Plots with children are by default recursed into.  This can be overridden
 by defining specific dispatches for `is_cairomakie_atomic_plot` for a given plot type.
 """
-is_cairomakie_atomic_plot(plot::Plot) = Makie.is_atomic_plot(plot) || isempty(plot.plots) || to_value(get(plot, :rasterize, false)) != false
+is_cairomakie_atomic_plot(plot::Plot) = Makie.is_atomic_plot(plot) || isempty(plot.plots)
+is_cairomakie_atomic_plot_or_rasterized(plot::Plot) = is_cairomakie_atomic_plot(plot) || plot.rasterize[]::Int > 0
+
 
 """
     check_parent_plots(f, plot::Plot)::Bool

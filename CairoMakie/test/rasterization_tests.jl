@@ -34,19 +34,15 @@ end
 Makie.plot!(p::RasterizeTest) = scatter!(p, rand(10))
 
 @testset "rasterize availability" begin
+    # only the top level matters because CairoMakie rasterizes everything below
     f,a,p = rasterizetest(1)
     @test haskey(p, :rasterize)
     @test p.rasterize[] == 0
-    @test haskey(p.plots[1], :rasterize)
-    @test p.plots[1].rasterize[] == 0
 
     p.rasterize[] = 10
     @test p.rasterize[] == 10
-    @test p.plots[1].rasterize[] == 10
 
     f,a,p = rasterizetest(1, rasterize = true)
     @test haskey(p, :rasterize)
     @test p.rasterize[] == 1
-    @test haskey(p.plots[1], :rasterize)
-    @test p.plots[1].rasterize[] == 1
 end

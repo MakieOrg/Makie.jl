@@ -407,10 +407,6 @@ end
     if !isnothing(conversion)
         get!(attributes, :dim_conversions, conversion)
     end
-    # force this to inherit
-    if scene isa Plot
-        get!(attributes, :rasterize, scene.rasterize)
-    end
     plot = Plot{default_plot_func(F, args)}(args, attributes)
     plot!(scene, plot)
     return plot
