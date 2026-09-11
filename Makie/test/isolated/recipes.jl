@@ -9,7 +9,7 @@ old recipe docstring
     return Attributes(
         a = a,
         b = theme(scene, :x),
-        c = Attributes(
+        c = (
             a = 1,
             b = Attributes(c = 3)
         ),
