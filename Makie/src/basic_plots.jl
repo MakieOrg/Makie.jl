@@ -35,6 +35,7 @@ function generic_plot_attributes!(attr)
     attr[:inspector_clear] = automatic
     attr[:inspector_hover] = automatic
     attr[:clip_planes] = automatic
+    attr[:rasterize] = false
     return attr
 end
 
@@ -53,6 +54,7 @@ function generic_plot_attributes(attr)
         inspector_clear = attr[:inspector_clear],
         inspector_hover = attr[:inspector_hover],
         clip_planes = attr[:clip_planes],
+        rasterize = attr[:rasterize]
     )
 end
 
@@ -89,6 +91,8 @@ function mixin_generic_plot_attributes()
         parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
         """
         clip_planes = @inherit clip_planes automatic
+        "Controls whether CairoMakie rasterizes a plot (true, >0) or not (false, 0). If an integer is given, it sets the pixel density for rasterization."
+        rasterize = @inherit rasterize false
     end
 end
 

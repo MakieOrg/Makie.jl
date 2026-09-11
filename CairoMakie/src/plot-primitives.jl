@@ -38,13 +38,16 @@ function cairo_draw(screen::Screen, scene::Scene)
 
         # When a plot is too large to save with a reasonable file size on a vector backend,
         # the user can choose to rasterize it when plotting to vector backends, by using the
-        # `rasterize` keyword argument.  This can be set to a Bool or an Int which describes
+        # `rasterize` keyword argument. This can be set to an Int which describes
         # the density of rasterization (in terms of a direct scaling factor.)
+        # 0 means no rasterization.
         # TODO: In future, this can also be set to a Tuple{Module, Int} which describes
         # the backend module which should be used to render the scene, and the pixel density
         # at which it should be rendered.
-        if to_value(get(p, :rasterize, false)) != false && should_rasterize
-            draw_plot_as_image(pparent, screen, p, p[:rasterize][])
+        # TODO: Should this work recursively, starting with non-CairoMakie-primitive recipes?
+        rasterize = p.rasterize[]::Int
+        if should_rasterize && rasterize != 0
+            draw_plot_as_image(pparent, screen, p, rasterize)
         else # draw vector
             draw_plot(pparent, screen, p)
         end

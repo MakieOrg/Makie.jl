@@ -93,7 +93,6 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     else
         add_input!(attr, key, val)
         # maybe best to not make assumptions about user attributes?
-        # CairoMakie rasterize needs this (or be treated with more care)
         attr[key].value = RefValue{Any}(nothing)
     end
     return plot
@@ -803,6 +802,12 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         register_camera!(scene, plot)
     end
     calculated_attributes!(Plot{Func}, plot)
+
+    if !haskey(plot, :rasterize)
+        # just always convert for for simplicity
+        convert = AttributeConvert(:rasterize, plotsym(typeof(plot)))
+        add_input!(convert, plot.attributes, :rasterize, get(plot.kw, :rasterize, false))
+    end
 
     plot!(plot)
 
