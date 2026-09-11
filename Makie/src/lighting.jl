@@ -228,7 +228,7 @@ function add_light_computation!(graph, scene, lights)
     end
 
     add_input!((k, c) -> RGBf(to_color(c)), graph, :ambient_color, ambient_color)
-    add_input!(graph, :lights, convert(Vector{AbstractLight}, filtered_lights))
+    add_input!((k, lights) -> convert(Vector{AbstractLight}, lights), graph, :lights, filtered_lights)
     add_input!(graph, :shading, get(scene.theme, :shading, automatic))
     graph[:shading].value = RefValue{Any}(nothing) # allow shading to switch between automatic and ShadingAlgorithm
 
