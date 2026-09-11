@@ -721,7 +721,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         fb = Mantle.Framebuffer(screen.config.device, w, h; depth=false, color_format=COMPOSITE_FORMAT)
         target = Mantle.OffscreenTarget(fb)
         # `Mantle.blit!` and `Mantle.pass!`, both core's. This was a batch queue,
-        # the Vulkan extension's `oneshot!` reached through `Base.get_extension`,
+        # the Vulkan backend's `oneshot!`, reached through a module lookup,
         # and a `blit!` that only that backend had — three names a package which
         # must name no backend had no business holding. Each pass is its own
         # submission and they are ordered on the device's queue, so the readback
@@ -830,7 +830,7 @@ function present_composited!(screen::Screen, bq, win)
     Mantle.acquire_next_image!(win)
     win_target = Mantle.WindowTarget(win)
     dev = screen.config.device
-    frame = vulkanbackend().oneshot(bq) do e
+    frame = Mantle.oneshot(bq) do e
         Mantle.blit!(dev, win_target, screen.output_buffer; clear=false)
         for ss in screen.scene_states
             screen.state = ss
@@ -840,7 +840,7 @@ function present_composited!(screen::Screen, bq, win)
             screen.state = ss
             render_overlays!(screen, win_target, Mantle.blittarget(win_target))
         end
-        vulkanbackend().presentready!(e, win)
+        Mantle.presentready!(e, win)
     end
     Mantle.present_frame!(bq, win, frame)
     return nothing

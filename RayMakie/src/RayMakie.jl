@@ -80,10 +80,11 @@ backend-agnostic, and it should SAY so until the graphics API grows the verbs it
 needs. `use_bindings!(bq, …)` next door is the same gap from the other side — a
 Vulkan-shaped signature left in the portable API.
 
-A function and not a `const`, so it resolves per call: an extension is loaded
-when its triggers are, and that can be after this module.
+DELETED: `vulkanbackend()`, which fetched `MantleVulkanExt` by name and had to
+be a function rather than a `const` so it could resolve after the extension's
+triggers loaded. There is no extension — `Mantle` compiles its backend in at
+parse time — so the two call sites in `screen.jl` name `Mantle` directly.
 """
-vulkanbackend() = Base.get_extension(Mantle, :MantleVulkanExt)
 # No `import Mantle: VK`. The Vulkan handle types this file used to reach for —
 # viewport, scissor, pixel format — are the runtime's, not a renderer's, and a
 # module-level `const … = VK.FORMAT_…` is what stopped RayMakie loading without
