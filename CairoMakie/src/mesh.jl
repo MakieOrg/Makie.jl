@@ -303,7 +303,7 @@ function draw_mesh3D(
         uv_transform, color, clip_planes, model = plot.model_f32c[]::Mat4f
     )
 
-    local shading::Bool = plot.shading[] && (scene.compute.shading[] != NoShading)
+    local shading = plot.use_shading[]::Bool
 
     if meshuvs isa Vector{Vec2f} && uv_transform !== nothing
         uvt = uv_transform::Mat{2, 3, Float32, 6}

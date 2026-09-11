@@ -142,7 +142,9 @@ end
 
 function register_light_attributes!(screen, scene, attr, uniforms)
     # plot does not support shading
-    haskey(attr, :shading) || return
+    if !haskey(attr, :shading) || attr[:use_shading][]::Bool == false
+        return
+    end
 
     # On re-display these are already registered. To allow compiling shaders
     # with different light settings we need to clear old computations
@@ -159,10 +161,7 @@ function register_light_attributes!(screen, scene, attr, uniforms)
     end
 
     # Nothing to generate if we don't shade
-    shading = Makie.get_shading_mode(scene)
-    if !attr[:shading][] || (shading == NoShading)
-        return
-    end
+    shading = attr[:shading_mode][]::Makie.ShadingAlgorithm
 
     add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
 
@@ -204,7 +203,7 @@ function construct_robj(constructor!, screen, scene, attr, args, uniforms, input
     )
 
     if haskey(attr, :shading)
-        data[:shading] = attr[:shading][] ? Makie.get_shading_mode(scene) : NoShading
+        data[:shading] = haskey(attr, :shading_mode) ? attr[:shading_mode][]::Makie.ShadingAlgorithm : NoShading
     end
 
     for name in uniforms
@@ -525,7 +524,6 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     attr = generic_robj_setup(screen, scene, plot)
 
-    Makie.add_computation!(attr, Val(:disassemble_mesh), :marker)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))

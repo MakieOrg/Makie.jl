@@ -581,7 +581,7 @@ function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outpu
     return register_computation!(f, p.attributes, inputs, outputs)
 end
 
-function Base.map!(f, p::Plot, inputs::Union{Vector{Symbol}, Vector{Computed}, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
+function Base.map!(f, p::Plot, inputs::Union{Vector, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
     return map!(f, p.attributes, inputs, outputs)
 end
 
@@ -874,9 +874,9 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         register_camera!(scene, plot)
     end
     calculated_attributes!(Plot{Func}, plot)
+    add_resolved_shading!(plot, scene)
 
     plot!(plot)
-
 
     documented_attr = plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw
@@ -1035,14 +1035,22 @@ function calculated_attributes!(::Type{MeshScatter}, plot::Plot)
     register_colormapping!(attr)
     register_position_transforms!(attr)
     register_pattern_uv_transform!(attr)
+    map!(attr, :marker, [:vertex_position, :faces, :normal, :uv]) do mesh
+        faces = decompose(GLTriangleFace, mesh)
+        normals = decompose_normals(mesh)
+        texturecoordinates = decompose_uv(mesh)
+        positions = decompose(Point3f, mesh)
+        return (positions, faces, normals, texturecoordinates)
+    end
     map!(Rect3d, attr, :marker, :marker_bb)
     map!(meshscatter_data_limits, attr, [:positions, :marker_bb, :markersize, :rotation], :data_limits)
-    return map!(
+    map!(
         meshscatter_boundingbox, attr, [
             :positions_transformed, :model,
             :transform_marker, :marker_bb, :markersize, :rotation,
         ], :boundingbox
     )
+    return
 end
 
 

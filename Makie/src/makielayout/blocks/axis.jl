@@ -175,7 +175,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect)
 
-    scene = Scene(blockscene, viewport = scenearea, visible = false)
+    scene = Scene(blockscene, viewport = scenearea, visible = false, shading = NoShading)
     # Hide to block updates, will be unhidden! in constructor who calls this!
     @assert !scene.visible[]
     ax.scene = scene
