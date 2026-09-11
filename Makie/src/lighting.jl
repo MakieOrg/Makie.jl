@@ -262,18 +262,17 @@ end
 function get_shading_mode(scene)
     graph = scene.compute
     if !haskey(graph, :lighting_mode)
-        register_computation!(graph, Symbol[:shading, :lights], [:lighting_mode]) do (shading, _lights), changed, cached
-            mode = if shading === automatic
+        map!(graph, [:shading, :lights], :lighting_mode) do shading, _lights
+            if shading === automatic
                 lights = filter(l -> !isa(l, EnvironmentLight), _lights)
                 is_fast = length(lights) == 0 || (length(lights) == 1 && lights[1] isa DirectionalLight)
-                ifelse(is_fast, FastShading, MultiLightShading)
+                return ifelse(is_fast, FastShading, MultiLightShading)
             else
-                shading
-            end::Makie.ShadingAlgorithm
-            return (mode,)
+                return shading
+            end
         end
     end
-    return graph[:lighting_mode][]
+    return graph[:lighting_mode][]::ShadingAlgorithm
 end
 
 # These return the number of parameter slots they used
@@ -308,9 +307,11 @@ function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
     # TODO: Maybe be smarter with view and DirectionalLight?
     # I.e. only apply and update them, not all lights?
     # Though the array will need to be pushed to the gpu as long as any are present anyway...
-    return register_computation!(
-        scene.compute, [:lights, :eye_to_world], [:N_lights, :light_types, :light_colors, :light_parameters]
-    ) do (lights, iview), changed, cached
+    return map!(
+        scene.compute,
+        [:lights, :eye_to_world],
+        [:N_lights, :light_types, :light_colors, :light_parameters]
+    ) do lights, iview
 
         n_lights = 0
         n_params = 0
@@ -333,7 +334,7 @@ function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
         parameters = Float32[]
         foreach(light -> push_parameters!(parameters, light, iview), usable_lights)
 
-        return (n_lights, types, colors, parameters)
+        return n_lights, types, colors, parameters
     end
 end
 
@@ -375,8 +376,8 @@ Not to be used with `MultiLightShading`.
 """
 set_directional_light!(scene; kwargs...) = set_directional_light!(get_scene(scene).compute; kwargs...)
 function set_directional_light!(graph::ComputeGraph; kwargs...)
-    lights = graph[:lights][]
-    if graph[:shading][] == MultiLightShading || length(lights) != 1 || !isa(first(lights), DirectionalLight)
+    lights = graph[:lights][]::Vector{AbstractLight}
+    if graph[:shading][]::ShadingAlgorithm == MultiLightShading || length(lights) != 1 || !isa(first(lights), DirectionalLight)
         error("Cannot set directional light - Scene not in FastShading mode.")
     end
     light = lights[1]
@@ -393,7 +394,7 @@ included in the lights list.)
 """
 set_light!(scene, idx; kwargs...) = set_light!(get_scene(scene).compute, idx; kwargs...)
 function set_light!(graph::ComputeGraph, idx; kwargs...)
-    lights = graph[:lights][]
+    lights = graph[:lights][]::Vector{AbstractLight}
     light = lights[idx]
     T = typeof(light)
     data = map(name -> get(kwargs, name, getfield(light, name)), fieldnames(T))
@@ -410,7 +411,7 @@ the lights list.)
 """
 set_light!(scene, idx, light::AbstractLight) = set_light!(get_scene(scene).compute, idx, light)
 function set_light!(graph::ComputeGraph, idx, light::AbstractLight)
-    lights = graph[:lights][]
+    lights = graph[:lights][]::Vector{AbstractLight}
     lights[idx] = light
     update!(graph, lights = lights)
     return
@@ -423,7 +424,7 @@ Returns the current lights vector of the scene. The ambient light is not include
 in here.
 """
 get_lights(scene) = get_lights(get_scene(scene).compute)
-get_lights(graph::ComputeGraph) = graph[:lights][]
+get_lights(graph::ComputeGraph) = graph[:lights][]::Vector{AbstractLight}
 
 """
     set_lights!(scene, lights)
@@ -447,7 +448,7 @@ Adds a new light to the active lights. The light should not be an AmbientLight.
 """
 push_light!(scene, light) = push_light!(get_scene(scene).compute, light)
 function push_light!(graph::ComputeGraph, light::AbstractLight)
-    lights = graph[:lights][]
+    lights = graph[:lights][]::Vector{AbstractLight}
     push!(lights, light)
     update!(graph, lights = lights)
     return
