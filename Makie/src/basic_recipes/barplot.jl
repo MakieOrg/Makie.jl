@@ -24,15 +24,64 @@ end
 
 # `fillto` is related to `y-axis` transformation only, thus we expect `tf::Tuple`
 function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
-    _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <:Real}}
-    if in_y_direction && tf[2] isa _logT || (!in_y_direction && tf[1] isa _logT)
-        # x-scale log and !(in_y_direction) is equiavlent to y-scale log in_y_direction
-        # use the minimal non-zero y divided by 2 as lower bound for log scale
-        smart_fillto = minimum(y -> y <= 0 ? oftype(y, Inf) : y, ys) / 2
+    if is_log_transform(tf, in_y_direction)
+        smart_fillto = smart_log_fillto(ys)
         return clamp.(ys, smart_fillto, Inf), smart_fillto
     else
         return ys, offset
     end
+end
+
+is_log_transform(tf, in_y_direction) = false
+function is_log_transform(tf::Tuple, in_y_direction)
+    _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <:Real}}
+    # x-scale log and !(in_y_direction) is equiavlent to y-scale log in_y_direction
+    return in_y_direction ? tf[2] isa _logT : tf[1] isa _logT
+end
+
+# use the minimal non-zero y divided by 2 as lower bound for log scale
+smart_log_fillto(ys) = minimum(y -> y <= 0 ? oftype(y, Inf) : y, ys) / 2
+
+"""
+    bar_default_stack_fillto(tf, tos, in_y_direction)::Real
+
+Returns the default baseline of stacked bars for the given transform `tf`. This is
+zero unless the value axis is log scaled, in which case half the minimum positive
+stack total is used, mirroring [`bar_default_fillto`](@ref).
+
+In order to customize this for your own transformation type, you can dispatch on
+`tf`.
+
+## Arguments
+- `tf`: `plot.transformation.transform_func[]`.
+- `tos`: The cumulative stack heights (`to` values) computed by `stack_grouped_from_to`.
+"""
+bar_default_stack_fillto(tf, tos, in_y_direction) = 0.0
+function bar_default_stack_fillto(tf::Tuple, tos, in_y_direction)
+    is_log_transform(tf, in_y_direction) || return 0.0
+    fillto = smart_log_fillto(tos)
+    return isfinite(fillto) ? fillto : 0.0
+end
+
+"""
+    clamp_stack_to_fillto!(from, to, fillto)
+
+Clamps the stack boundaries `from`/`to` so that stacks of positive values never
+extend below `fillto` and stacks of negative values never extend above it. This
+makes `fillto` the baseline of the stack and, for a log scaled axis, replaces the
+zeros that would otherwise map to `-Inf` (dropping the whole segment).
+"""
+function clamp_stack_to_fillto!(from, to, fillto)
+    for i in eachindex(from, to)
+        if from[i] >= 0 && to[i] >= 0
+            from[i] = max(from[i], fillto)
+            to[i] = max(to[i], fillto)
+        else
+            from[i] = min(from[i], fillto)
+            to[i] = min(to[i], fillto)
+        end
+    end
+    return from, to
 end
 
 """
@@ -45,6 +94,11 @@ Plots bars of the given `heights` at the given (scalar) `positions`.
     Controls the baseline of the bars. This is zero in the default `automatic` case
     unless the barplot is in a log-scaled `Axis`. With a log scale, the automatic
     default is half the minimum value because zero is an invalid value for a log scale.
+
+    When `stack` is used, `fillto` must be a single number and acts as the baseline
+    of each stack: positive stacks never extend below it and negative stacks never
+    extend above it. With a log scale, the automatic default is half the minimum
+    positive stack total.
     """
     fillto = automatic
     "Offsets all bars by the given real value. Can also be set per-bar."
@@ -350,7 +404,6 @@ function Makie.plot!(p::BarPlot)
                 y, fillto = bar_default_fillto(transformation, y, offset, in_y_direction)
             end
         elseif eltype(stack) <: Integer
-            fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
             if !iszero(offset)
                 @warn "Ignore keyword offset when keyword stack is provided"
                 offset = 0.0
@@ -358,6 +411,12 @@ function Makie.plot!(p::BarPlot)
             i_stack = stack
 
             from, to = stack_grouped_from_to(i_stack, y, (x = x̂,))
+            if fillto === automatic
+                fillto = bar_default_stack_fillto(transformation, to, in_y_direction)
+            elseif !(fillto isa Real)
+                throw(ArgumentError("`fillto` must be a single number when `stack` is provided, got $(typeof(fillto))"))
+            end
+            iszero(fillto) || clamp_stack_to_fillto!(from, to, fillto)
             y, fillto = to, from
         else
             ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`") |> throw
