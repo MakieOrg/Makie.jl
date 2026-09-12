@@ -1,0 +1,185 @@
+<!DOCTYPE html><HTML lang="en"><head><meta charset="UTF-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><link href="../../../libs/highlight/github.min.css" rel="stylesheet"/><link href="../../../css/franklin.css" rel="stylesheet"/><link href="../../../css/minimal-mistakes.css" rel="stylesheet"/><link href="../../../css/makie.css" rel="stylesheet"/><link href="../../../assets/icon_transparent.png" rel="icon"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/><style>
+    .stork-wrapper {
+      width:99%
+    }
+    .stork-wrapper .stork-results {
+      max-height: 42vh;
+    }
+</style><title>tricontourf · Makie</title></head><body class="layout--single"><div class="site-container"><div class="masthead"><div class="masthead__inner-wrap"><div class="masthead__menu"><nav class="greedy-nav" id="site-nav"><a class="title-icon" href="../../.."><img src="../../../assets/makie_logo_transparent.svg"/></a><ul class="visible-links"><li class="masthead__menu-item"><a href="https://github.com/JuliaPlots/Makie.jl"><img class="masthead-icon" src="../../../assets/GitHub-Mark-64px.png"/></a></li><li class="masthead__menu-item"><a href="../..">Reference</a></li><li class="masthead__menu-item"><a href="../../../tutorials/">Tutorials</a></li><li class="masthead__menu-item"><a href="../../../how-to/">How-Tos</a></li><li class="masthead__menu-item"><a href="../../../explanations/">Explanations</a></li><li class="masthead__menu-item"><a href="../../../api/">API</a></li><li class="masthead__menu-item"><a href="../../../news/">News</a></li><li class="masthead__menu-item" id="masthead-search-button"><script>
+                            function toggleSearchOverlay(){
+                                const overlay = document.querySelector("#makiesearch-overlay-container");
+                                overlay.classList.toggle("hidden");
+                                overlay.querySelector("input").focus();
+                                overlay.onclick = function(e){
+                                    if (e.target !== this){
+                                        return
+                                    }
+                                    this.classList.toggle("hidden");
+                                };
+                            }
+                        </script><button onclick="toggleSearchOverlay()"><i class="fas fa-search"></i> Search</button></li></ul><button class="greedy-nav__toggle" type="button"><span class="visually-hidden">Toggle menu</span><div class="navicon"></div></button><ul class="hidden-links hidden"></ul></nav></div></div></div><div id="main" role="main"><div id="overlay"></div><div class="hidden" id="makiesearch-overlay-container"><div id="makiesearch-overlay-container-inner"><div id="makiesearch-overlay"></div></div></div><div class="content-table-hidden" id="content-table-container"><button id="on-this-page" onclick="toggle_content_table_visibility()">On this page</button><script>
+            function toggle_content_table_visibility(){
+              const c = document.querySelector("#content-table-container");
+              const ct = c.querySelector("#content-table");
+              const vh = window.visualViewport.height;
+              ct.style.height = `${Math.min(ct.scrollHeight, 0.66*vh)}px`;
+              c.classList.toggle("content-table-hidden");
+            }
+          </script><div id="content-table"><ul class="page-content"><li><a href="#examples">Examples</a></li><li><ul><li><a href="#triangulation_modes">Triangulation modes</a></li><li><a href="#relative_mode">Relative mode</a></li></ul></li></ul></div></div><div id="navbar-container"><div id="navbar"><div id="makiesearch"></div><ul><li><div class="tocitem-container"><a href="../../..">Home</a></div></li><li><input checked="" class="collapse-toggle" id="menuitem-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2"><i class="docs-chevron"></i></label><a href="../..">Reference</a></div><ul><li><input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-1"><i class="docs-chevron"></i></label><a href="../../blocks">Blocks</a></div><ul><li><div class="tocitem-container"><a href="../../blocks/axis">Axis</a></div></li><li><div class="tocitem-container"><a href="../../blocks/axis3">Axis3</a></div></li><li><div class="tocitem-container"><a href="../../blocks/box">Box</a></div></li><li><div class="tocitem-container"><a href="../../blocks/button">Button</a></div></li><li><div class="tocitem-container"><a href="../../blocks/colorbar">Colorbar</a></div></li><li><div class="tocitem-container"><a href="../../blocks/gridlayout">GridLayout</a></div></li><li><div class="tocitem-container"><a href="../../blocks/intervalslider">IntervalSlider</a></div></li><li><div class="tocitem-container"><a href="../../blocks/label">Label</a></div></li><li><div class="tocitem-container"><a href="../../blocks/legend">Legend</a></div></li><li><div class="tocitem-container"><a href="../../blocks/lscene">LScene</a></div></li><li><div class="tocitem-container"><a href="../../blocks/menu">Menu</a></div></li><li><div class="tocitem-container"><a href="../../blocks/polaraxis">PolarAxis</a></div></li><li><div class="tocitem-container"><a href="../../blocks/slider">Slider</a></div></li><li><div class="tocitem-container"><a href="../../blocks/slidergrid">SliderGrid</a></div></li><li><div class="tocitem-container"><a href="../../blocks/textbox">Textbox</a></div></li><li><div class="tocitem-container"><a href="../../blocks/toggle">Toggle</a></div></li></ul></li><li><input checked="" class="collapse-toggle" id="menuitem-2-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-2"><i class="docs-chevron"></i></label><a href="..">Plots</a></div><ul><li><div class="tocitem-container"><a href="../ablines">ablines</a></div></li><li><div class="tocitem-container"><a href="../arc">arc</a></div></li><li><div class="tocitem-container"><a href="../arrows">arrows</a></div></li><li><div class="tocitem-container"><a href="../band">band</a></div></li><li><div class="tocitem-container"><a href="../barplot">barplot</a></div></li><li><div class="tocitem-container"><a href="../boxplot">boxplot</a></div></li><li><div class="tocitem-container"><a href="../bracket">bracket</a></div></li><li><div class="tocitem-container"><a href="../contour">contour</a></div></li><li><div class="tocitem-container"><a href="../contour3d">contour3d</a></div></li><li><div class="tocitem-container"><a href="../contourf">contourf</a></div></li><li><div class="tocitem-container"><a href="../crossbar">crossbar</a></div></li><li><div class="tocitem-container"><a href="../datashader">datashader</a></div></li><li><div class="tocitem-container"><a href="../density">density</a></div></li><li><div class="tocitem-container"><a href="../ecdf">ecdfplot</a></div></li><li><div class="tocitem-container"><a href="../errorbars">errorbars</a></div></li><li><div class="tocitem-container"><a href="../heatmap">heatmap</a></div></li><li><div class="tocitem-container"><a href="../hexbin">hexbin</a></div></li><li><div class="tocitem-container"><a href="../hist">hist</a></div></li><li><div class="tocitem-container"><a href="../hvlines">hlines and vlines</a></div></li><li><div class="tocitem-container"><a href="../hvspan">hspan and vspan</a></div></li><li><div class="tocitem-container"><a href="../image">image</a></div></li><li><div class="tocitem-container"><a href="../lines">lines</a></div></li><li><div class="tocitem-container"><a href="../linesegments">linesegments</a></div></li><li><div class="tocitem-container"><a href="../mesh">mesh</a></div></li><li><div class="tocitem-container"><a href="../meshscatter">meshscatter</a></div></li><li><div class="tocitem-container"><a href="../pie">pie</a></div></li><li><div class="tocitem-container"><a href="../poly">poly</a></div></li><li><div class="tocitem-container"><a href="../qqplot">qqplot and qqnorm</a></div></li><li><div class="tocitem-container"><a href="../rainclouds">rainclouds</a></div></li><li><div class="tocitem-container"><a href="../rangebars">rangebars</a></div></li><li><div class="tocitem-container"><a href="../scatter">scatter</a></div></li><li><div class="tocitem-container"><a href="../scatterlines">scatterlines</a></div></li><li><div class="tocitem-container"><a href="../series">series</a></div></li><li><div class="tocitem-container"><a href="../spy">spy</a></div></li><li><div class="tocitem-container"><a href="../stairs">stairs</a></div></li><li><div class="tocitem-container"><a href="../stem">stem</a></div></li><li><div class="tocitem-container"><a href="../stephist">stephist</a></div></li><li><div class="tocitem-container"><a href="../streamplot">streamplot</a></div></li><li><div class="tocitem-container"><a href="../surface">surface</a></div></li><li><div class="tocitem-container"><a href="../text">text</a></div></li><li><div class="tocitem-container"><a href="../tooltip">tooltip</a></div></li><li><div class="tocitem-container"><a class="active" href="">tricontourf</a></div></li><li><div class="tocitem-container"><a href="../triplot">triplot</a></div></li><li><div class="tocitem-container"><a href="../violin">violin</a></div></li><li><div class="tocitem-container"><a href="../volume">volume</a></div></li><li><div class="tocitem-container"><a href="../volumeslices">volumeslices</a></div></li><li><div class="tocitem-container"><a href="../voronoiplot">voronoiplot</a></div></li><li><div class="tocitem-container"><a href="../waterfall">waterfall</a></div></li><li><div class="tocitem-container"><a href="../wireframe">wireframe</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-2-3" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-3"><i class="docs-chevron"></i></label><a href="../../scene">Scene</a></div><ul><li><div class="tocitem-container"><a href="../../scene/SSAO">SSAO</a></div></li><li><div class="tocitem-container"><a href="../../scene/lighting">Lighting</a></div></li><li><div class="tocitem-container"><a href="../../scene/matcap">Matcap</a></div></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-3"><i class="docs-chevron"></i></label><a href="../../../tutorials">Tutorials</a></div><ul><li><div class="tocitem-container"><a href="../../../tutorials/aspect-tutorial">Aspect ratio and size control tutorial</a></div></li><li><div class="tocitem-container"><a href="../../../tutorials/basic-tutorial">Basic Tutorial</a></div></li><li><div class="tocitem-container"><a href="../../../tutorials/layout-tutorial">Layout Tutorial</a></div></li><li><div class="tocitem-container"><a href="../../../tutorials/scenes">Scene tutorial</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-4"><i class="docs-chevron"></i></label><a href="../../../how-to">How-Tos</a></div><ul><li><div class="tocitem-container"><a href="../../../how-to/draw-boxes-around-subfigures">How to draw boxes around subfigures</a></div></li><li><div class="tocitem-container"><a href="../../../how-to/save-figure-with-transparency">How to save a <code>Figure</code> with transparency</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5"><i class="docs-chevron"></i></label><a href="../../../explanations">Explanations</a></div><ul><li><div class="tocitem-container"><a href="../../../explanations/animation">Animations</a></div></li><li><input class="collapse-toggle" id="menuitem-5-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5-2"><i class="docs-chevron"></i></label><a href="../../../explanations/backends">Backends</a></div><ul><li><div class="tocitem-container"><a href="../../../explanations/backends/cairomakie">CairoMakie</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/backends/glmakie">GLMakie</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/backends/rprmakie">RPRMakie</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/backends/wglmakie">WGLMakie</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../../explanations/blocks">Blocks</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/cameras">Cameras</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/colors">Colors</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/events">Events</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/faq">Frequently Asked Questions</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/figure">Figures</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/fonts">Fonts</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/headless">Headless</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/inspector">Inspecting Data</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/latex">LaTeX</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/layouting">How layouts work</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/nodes">Observables &amp; Interaction</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/plot_method_signatures">Plot Method Signatures</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/recipes">Plot Recipes</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/scenes">Scenes</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/specapi">SpecApi</a></div></li><li><input class="collapse-toggle" id="menuitem-5-19" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5-19"><i class="docs-chevron"></i></label><a href="../../../explanations/theming">Theming</a></div><ul><li><div class="tocitem-container"><a href="../../../explanations/theming/predefined_themes">Predefined themes</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../../explanations/transparency">Basic transparency</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../../api">API</a></div></li><li><div class="tocitem-container"><a href="../../../news">Changelog</a></div></li></ul></div></div><div class="franklin-content"><h1 id="tricontourf"><a class="header-anchor" href="#tricontourf">tricontourf</a></h1><div class="docstring"><div class="doc-header" id="tricontourf"><a href="#tricontourf">tricontourf</a></div><div class="doc-content"><pre><code>tricontourf(triangles::Triangulation, zs; kwargs...)
+tricontourf(xs, ys, zs; kwargs...)</code></pre><p>Plots a filled tricontour of the height information in <code>zs</code> at the horizontal positions <code>xs</code> and vertical positions <code>ys</code>. A <code>Triangulation</code> from DelaunayTriangulation.jl can also be provided instead of <code>xs</code> and <code>ys</code> for specifying the triangles, otherwise an unconstrained triangulation of <code>xs</code> and <code>ys</code> is computed.</p><h2>Attributes</h2><h3>Specific to <code>Tricontourf</code></h3><ul><li><p><code>levels = 10</code> can be either an <code>Int</code> which results in n bands delimited by n+1 equally spaced levels, or it can be an <code>AbstractVector{&lt;:Real}</code> that lists n consecutive edges from low to high, which result in n-1 bands.</p></li><li><p><code>mode = :normal</code> sets the way in which a vector of levels is interpreted, if it's set to <code>:relative</code>, each number is interpreted as a fraction between the minimum and maximum values of <code>zs</code>. For example, <code>levels = 0.1:0.1:1.0</code> would exclude the lower 10% of data.</p></li><li><p><code>extendlow = nothing</code>. This sets the color of an optional additional band from <code>minimum(zs)</code> to the lowest value in <code>levels</code>. If it's <code>:auto</code>, the lower end of the colormap is picked and the remaining colors are shifted accordingly. If it's any color representation, this color is used. If it's <code>nothing</code>, no band is added.</p></li><li><p><code>extendhigh = nothing</code>. This sets the color of an optional additional band from the highest value of <code>levels</code> to <code>maximum(zs)</code>. If it's <code>:auto</code>, the high end of the colormap is picked and the remaining colors are shifted accordingly. If it's any color representation, this color is used. If it's <code>nothing</code>, no band is added.</p></li><li><p><code>triangulation = DelaunayTriangulation()</code>. The mode with which the points in <code>xs</code> and <code>ys</code> are triangulated. Passing <code>DelaunayTriangulation()</code> performs a Delaunay triangulation. You can also pass a preexisting triangulation as an <code>AbstractMatrix{&lt;:Int}</code> with size (3, n), where each column specifies the vertex indices of one triangle, or as a <code>Triangulation</code> from DelaunayTriangulation.jl.</p></li></ul><h3>Generic</h3><ul><li><p><code>visible::Bool = true</code> sets whether the plot will be rendered or not.</p></li><li><p><code>overdraw::Bool = false</code> sets whether the plot will draw over other plots. This specifically means ignoring depth checks in GL backends.</p></li><li><p><code>transparency::Bool = false</code> adjusts how the plot deals with transparency. In GLMakie <code>transparency = true</code> results in using Order Independent Transparency.</p></li><li><p><code>fxaa::Bool = false</code> adjusts whether the plot is rendered with fxaa (anti-aliasing).</p></li><li><p><code>inspectable::Bool = true</code> sets whether this plot should be seen by <code>DataInspector</code>.</p></li><li><p><code>depth_shift::Float32 = 0f0</code> adjusts the depth value of a plot after all other transformations, i.e. in clip space, where <code>0 &lt;= depth &lt;= 1</code>. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).</p></li><li><p><code>model::Makie.Mat4f</code> sets a model matrix for the plot. This replaces adjustments made with <code>translate!</code>, <code>rotate!</code> and <code>scale!</code>.</p></li><li><p><code>color</code> sets the color of the plot. It can be given as a named color <code>Symbol</code> or a <code>Colors.Colorant</code>. Transparency can be included either directly as an alpha value in the <code>Colorant</code> or as an additional float in a tuple <code>(color, alpha)</code>. The color can also be set for each scattered marker by passing a <code>Vector</code> of colors or be used to index the <code>colormap</code> by passing a <code>Real</code> number or <code>Vector{&lt;: Real}</code>.</p></li><li><p><code>colormap::Union{Symbol, Vector{&lt;:Colorant}} = :viridis</code> sets the colormap from which the band colors are sampled.</p></li><li><p><code>colorscale::Function = identity</code> color transform function.</p></li></ul><h2>Attributes</h2><p>Available attributes and their defaults for <code>Plot{Makie.tricontourf}</code> are: </p><pre><code>  colormap       :viridis
+  colorscale     identity
+  edges          "nothing"
+  extendhigh     "nothing"
+  extendlow      "nothing"
+  inspectable    true
+  levels         10
+  mode           :normal
+  nan_color      :transparent
+  transparency   false
+  triangulation  Makie.DelaunayTriangulation()</code></pre></div></div><h2 id="examples"><a class="header-anchor" href="#examples">Examples</a></h2><pre><code class="language-julia">using CairoMakie
+
+using Random
+Random.seed!(1234)
+
+x = randn(50)
+y = randn(50)
+z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* randn.()
+
+f, ax, tr = tricontourf(x, y, z)
+scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+Colorbar(f[1, 2], tr)
+f</code></pre><p></p><p><a id="example_b25c1b2f"><img height="450" src="../../../assets/reference/plots/tricontourf/code/output/example_b25c1b2f.svg" width="600"/></a></p><pre><code class="language-julia">using CairoMakie
+
+using Random
+Random.seed!(1234)
+
+x = randn(200)
+y = randn(200)
+z = x .* y
+
+f, ax, tr = tricontourf(x, y, z, colormap = :batlow)
+scatter!(x, y, color = z, colormap = :batlow, strokewidth = 1, strokecolor = :black)
+Colorbar(f[1, 2], tr)
+f</code></pre><p></p><p><a id="example_d4498528"><img height="450" src="../../../assets/reference/plots/tricontourf/code/output/example_d4498528.svg" width="600"/></a></p><h4 id="triangulation_modes"><a class="header-anchor" href="#triangulation_modes">Triangulation modes</a></h4><p>Manual triangulations can be passed as a 3xN matrix of integers, where each column of three integers specifies the indices of the corners of one triangle in the vector of points.</p><pre><code class="language-julia">using CairoMakie
+
+using Random
+Random.seed!(123)
+
+n = 20
+angles = range(0, 2pi, length = n+1)[1:end-1]
+x = [cos.(angles); 2 .* cos.(angles .+ pi/n)]
+y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
+z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5.*randn.()
+
+triangulation_inner = reduce(hcat, map(i -&gt; [0, 1, n] .+ i, 1:n))
+triangulation_outer = reduce(hcat, map(i -&gt; [n-1, n, 0] .+ i, 1:n))
+triangulation = hcat(triangulation_inner, triangulation_outer)
+
+f, ax, _ = tricontourf(x, y, z, triangulation = triangulation,
+    axis = (; aspect = 1, title = "Manual triangulation"))
+scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+
+tricontourf(f[1, 2], x, y, z, triangulation = Makie.DelaunayTriangulation(),
+    axis = (; aspect = 1, title = "Delaunay triangulation"))
+scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+
+f</code></pre><p></p><p><a id="example_480fd0da"><img height="450" src="../../../assets/reference/plots/tricontourf/code/output/example_480fd0da.svg" width="600"/></a></p><p>By default, <code>tricontourf</code> performs unconstrained triangulations. Greater control over the triangulation, such as allowing for enforced boundaries, can be achieved by using <a href="https://github.com/DanielVandH/DelaunayTriangulation.jl">DelaunayTriangulation.jl</a> and passing the resulting triangulation as the first argument of <code>tricontourf</code>. For example, the above annulus can also be plotted as follows:</p><pre><code class="language-julia">using CairoMakie
+using DelaunayTriangulation
+using Random
+
+Random.seed!(123)
+
+n = 20
+angles = range(0, 2pi, length = n+1)[1:end-1]
+x = [cos.(angles); 2 .* cos.(angles .+ pi/n)]
+y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
+z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5.*randn.()
+
+inner = [n:-1:1; n] # clockwise inner 
+outer = [(n+1):(2n); n+1] # counter-clockwise outer
+boundary_nodes = [[outer], [inner]]
+points = [x'; y']
+tri = triangulate(points; boundary_nodes = boundary_nodes)
+f, ax, _ = tricontourf(tri, z;
+    axis = (; aspect = 1, title = "Constrained triangulation\nvia DelaunayTriangulation.jl"))
+scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+f</code></pre><p></p><p><a id="example_fe94d4a8"><img height="450" src="../../../assets/reference/plots/tricontourf/code/output/example_fe94d4a8.svg" width="600"/></a></p><p>Boundary nodes make it possible to support more complicated regions, possibly with holes, than is possible by only providing points themselves.</p><pre><code class="language-julia">using CairoMakie
+using DelaunayTriangulation
+
+## Start by defining the boundaries, and then convert to the appropriate interface 
+curve_1 = [
+    [(0.0, 0.0), (5.0, 0.0), (10.0, 0.0), (15.0, 0.0), (20.0, 0.0), (25.0, 0.0)],
+    [(25.0, 0.0), (25.0, 5.0), (25.0, 10.0), (25.0, 15.0), (25.0, 20.0), (25.0, 25.0)],
+    [(25.0, 25.0), (20.0, 25.0), (15.0, 25.0), (10.0, 25.0), (5.0, 25.0), (0.0, 25.0)],
+    [(0.0, 25.0), (0.0, 20.0), (0.0, 15.0), (0.0, 10.0), (0.0, 5.0), (0.0, 0.0)]
+] # outer-most boundary: counter-clockwise  
+curve_2 = [
+    [(4.0, 6.0), (4.0, 14.0), (4.0, 20.0), (18.0, 20.0), (20.0, 20.0)],
+    [(20.0, 20.0), (20.0, 16.0), (20.0, 12.0), (20.0, 8.0), (20.0, 4.0)],
+    [(20.0, 4.0), (16.0, 4.0), (12.0, 4.0), (8.0, 4.0), (4.0, 4.0), (4.0, 6.0)]
+] # inner boundary: clockwise 
+curve_3 = [
+    [(12.906, 10.912), (16.0, 12.0), (16.16, 14.46), (16.29, 17.06),
+    (13.13, 16.86), (8.92, 16.4), (8.8, 10.9), (12.906, 10.912)]
+] # this is inside curve_2, so it's counter-clockwise 
+curves = [curve_1, curve_2, curve_3]
+points = [
+    (3.0, 23.0), (9.0, 24.0), (9.2, 22.0), (14.8, 22.8), (16.0, 22.0),
+    (23.0, 23.0), (22.6, 19.0), (23.8, 17.8), (22.0, 14.0), (22.0, 11.0),
+    (24.0, 6.0), (23.0, 2.0), (19.0, 1.0), (16.0, 3.0), (10.0, 1.0), (11.0, 3.0),
+    (6.0, 2.0), (6.2, 3.0), (2.0, 3.0), (2.6, 6.2), (2.0, 8.0), (2.0, 11.0),
+    (5.0, 12.0), (2.0, 17.0), (3.0, 19.0), (6.0, 18.0), (6.5, 14.5),
+    (13.0, 19.0), (13.0, 12.0), (16.0, 8.0), (9.8, 8.0), (7.5, 6.0),
+    (12.0, 13.0), (19.0, 15.0)
+]
+boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
+edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
+
+## Extract the x, y 
+tri = triangulate(points; boundary_nodes = boundary_nodes, segments = edges)
+z = [(x - 1) * (y + 1) for (x, y) in DelaunayTriangulation.each_point(tri)] # note that each_point preserves the index order
+f, ax, _ = tricontourf(tri, z, levels = 30; axis = (; aspect = 1))
+f</code></pre><p></p><p><a id="example_66d76e09"><img height="450" src="../../../assets/reference/plots/tricontourf/code/output/example_66d76e09.svg" width="600"/></a></p><pre><code class="language-julia">using CairoMakie
+using DelaunayTriangulation
+
+using Random
+Random.seed!(1234)
+
+θ = [LinRange(0, 2π * (1 - 1/19), 20); 0]
+xy = Vector{Vector{Vector{NTuple{2,Float64}}}}()
+cx = [0.0, 3.0]
+for i in 1:2
+    push!(xy, [[(cx[i] + cos(θ), sin(θ)) for θ in θ]])
+    push!(xy, [[(cx[i] + 0.5cos(θ), 0.5sin(θ)) for θ in reverse(θ)]])
+end
+boundary_nodes, points = convert_boundary_points_to_indices(xy)
+tri = triangulate(points; boundary_nodes=boundary_nodes)
+z = [(x - 3/2)^2 + y^2 for (x, y) in DelaunayTriangulation.each_point(tri)] # note that each_point preserves the index order
+
+f, ax, tr = tricontourf(tri, z, colormap = :matter)
+f</code></pre><p></p><p><a id="example_1e653572"><img height="450" src="../../../assets/reference/plots/tricontourf/code/output/example_1e653572.svg" width="600"/></a></p><h4 id="relative_mode"><a class="header-anchor" href="#relative_mode">Relative mode</a></h4><p>Sometimes it's beneficial to drop one part of the range of values, usually towards the outer boundary. Rather than specifying the levels to include manually, you can set the <code>mode</code> attribute to <code>:relative</code> and specify the levels from 0 to 1, relative to the current minimum and maximum value.</p><pre><code class="language-julia">using CairoMakie
+
+using Random
+Random.seed!(1234)
+
+x = randn(50)
+y = randn(50)
+z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* randn.()
+
+f, ax, tr = tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1)
+scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+Colorbar(f[1, 2], tr)
+f</code></pre><p></p><p><a id="example_650805b3"><img height="450" src="../../../assets/reference/plots/tricontourf/code/output/example_650805b3.svg" width="600"/></a></p><div class="page-foot"><div class="copyright">
+    © Makie.jl. Last modified: May 07, 2024. Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia programming language</a>.
+      <p>These docs were autogenerated using Makie: v0.20.10, GLMakie: v0.9.11, CairoMakie: v0.11.12, WGLMakie: v0.9.10</p></div></div></div></div><div class="page__footer"><footer><div class="page__footer-follow"><ul class="social-icons"><li><a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer"><i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i> Twitter</a></li><li><a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer"><i aria-hidden="true" class="fab fa-fw fa-github"></i> GitHub</a></li></ul></div><div class="page__footer-copyright">© Makie.jl. Powered by <a href="https://github.com/tlienart/Franklin.jl">Franklin</a> &amp; <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">Minimal Mistakes</a>.</div></footer></div></div><script src="../../../../versions.js" type="text/javascript"></script><script src="../../../siteinfo.js" type="text/javascript"></script><script src="../../../libs/warner.js" type="text/javascript"></script><script src="../../../libs/navbar.js"></script><link href="../../../pagefind/pagefind-ui.css" rel="stylesheet"/><script src="../../../pagefind/pagefind-ui.js" type="text/javascript"></script><script>
+        window.addEventListener('DOMContentLoaded', (event) => {
+            new PagefindUI({
+              element: "#makiesearch",
+              showImages: false
+            });
+            new PagefindUI({
+              element: "#makiesearch-overlay",
+              showImages: false
+            });
+        });
+    </script><script async="" defer="" src="https://api.makie.org/latest.js"></script><noscript><img alt="" referrerpolicy="no-referrer-when-downgrade" src="https://api.makie.org/noscript.gif"/></noscript><script src="../../../libs/highlight/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});</script></body></HTML>

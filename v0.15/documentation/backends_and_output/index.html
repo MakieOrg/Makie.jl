@@ -1,0 +1,1065 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../libs/highlight/github.min.css" rel="stylesheet"/>
+    <link href="../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../css/makie.css" rel="stylesheet"/>
+    <link href="../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <title>
+      Backends &amp; Output
+    </title>
+    <script src="../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../..">
+                <img src="../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../examples/">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="..">
+                    Documentation
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <form action="../../search/index.html" id="lunrSearchForm" name="lunrSearchForm">
+              <input class="search-input" name="q" placeholder="Search docs" type="text"/>
+            </form>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../examples">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/layoutables">
+                        Layoutables &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/plotting_functions">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/abline">
+                            abline!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvlines">
+                            hlines! and vlines!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvspan">
+                            hspan! and vspan!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="..">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../api_reference">
+                        API reference
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input checked="" class="collapse-toggle" id="menuitem-4-3" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-3">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a class="active" href="">
+                        Backends &amp; Output
+                      </a>
+                    </div>
+                    <ul class="page-content">
+                      <li>
+                        <a href="#backends_output">
+                          Backends &amp; Output
+                        </a>
+                      </li>
+                      <li>
+                        <ul>
+                          <li>
+                            <a href="#activating_backends">
+                              Activating Backends
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#glmakie">
+                              GLMakie
+                            </a>
+                          </li>
+                          <li>
+                            <ul>
+                              <li>
+                                <a href="#special_glmakie_properties">
+                                  Special GLMakie Properties
+                                </a>
+                              </li>
+                              <li>
+                                <ul>
+                                  <li>
+                                    <a href="#window_parameters">
+                                      Window Parameters
+                                    </a>
+                                  </li>
+                                </ul>
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <a href="#cairomakie">
+                              CairoMakie
+                            </a>
+                          </li>
+                          <li>
+                            <ul>
+                              <li>
+                                <a href="#special_cairomakie_properties">
+                                  Special CairoMakie Properties
+                                </a>
+                              </li>
+                              <li>
+                                <ul>
+                                  <li>
+                                    <a href="#inline_plot_type">
+                                      Inline Plot Type
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#resolution_scaling">
+                                      Resolution Scaling
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#z-order">
+                                      Z-Order
+                                    </a>
+                                  </li>
+                                </ul>
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <a href="#wglmakie">
+                              WGLMakie
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#miscellaneous_tips">
+                              Miscellaneous Tips
+                            </a>
+                          </li>
+                          <li>
+                            <ul>
+                              <li>
+                                <a href="#forcing_dedicated_gpu_use_in_linux">
+                                  Forcing Dedicated GPU Use In Linux
+                                </a>
+                              </li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="figure_size">
+                            Exporting a Figure with physical dimensions
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="wglmakie">
+                            JSServe and WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../layoutables">
+                        Layoutables
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../news">
+                        News
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../remote">
+                        Remote servers
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-20" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-20">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="backends_output">
+            <a class="header-anchor" href="#backends_output">
+              Backends &amp; Output
+            </a>
+          </h1>
+          <p>
+            Makie is the frontend package that defines all plotting functions. It is reexported by every backend, so you don't have to specifically install or import it.
+          </p>
+          <p>
+            There are three main backends which concretely implement all abstract rendering capabilities defined in Makie:
+          </p>
+          <table>
+            <tbody>
+              <tr>
+                <th align="left">
+                  Package
+                </th>
+                <th align="left">
+                  Description
+                </th>
+              </tr>
+              <tr>
+                <td align="left">
+                  <a href="https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie">
+                    <code>
+                      GLMakie.jl
+                    </code>
+                  </a>
+                </td>
+                <td align="left">
+                  GPU-powered, interactive 2D and 3D plotting in standalone
+                  <code>
+                    GLFW.jl
+                  </code>
+                  windows.
+                </td>
+              </tr>
+              <tr>
+                <td align="left">
+                  <a href="https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie">
+                    <code>
+                      CairoMakie.jl
+                    </code>
+                  </a>
+                </td>
+                <td align="left">
+                  <code>
+                    Cairo.jl
+                  </code>
+                  based, non-interactive 2D backend for publication-quality vector graphics.
+                </td>
+              </tr>
+              <tr>
+                <td align="left">
+                  <a href="https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie">
+                    <code>
+                      WGLMakie.jl
+                    </code>
+                  </a>
+                </td>
+                <td align="left">
+                  WebGL-based interactive 2D and 3D plotting that runs within browsers.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <h3 id="activating_backends">
+            <a class="header-anchor" href="#activating_backends">
+              Activating Backends
+            </a>
+          </h3>
+          <p>
+            You can activate any backend by
+            <code>
+              using
+            </code>
+            the appropriate package and calling its
+            <code>
+              activate!
+            </code>
+            function.
+          </p>
+          <p>
+            Example with WGLMakie:
+          </p>
+          <pre><code class="language-julia">using WGLMakie
+WGLMakie.activate!()</code>          </pre>
+          <h2 id="glmakie">
+            <a class="header-anchor" href="#glmakie">
+              GLMakie
+            </a>
+          </h2>
+          <p>
+            <a href="https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie">
+              GLMakie
+            </a>
+            is the native, desktop-based backend, and is the most feature-complete. It requires an OpenGL enabled graphics card with OpenGL version 3.3 or higher.
+          </p>
+          <h3 id="special_glmakie_properties">
+            <a class="header-anchor" href="#special_glmakie_properties">
+              Special GLMakie Properties
+            </a>
+          </h3>
+          <h4 id="window_parameters">
+            <a class="header-anchor" href="#window_parameters">
+              Window Parameters
+            </a>
+          </h4>
+          <p>
+            You can set parameters of the window with the function
+            <code>
+              set_window_config!
+            </code>
+            which only takes effect when opening a new window.
+          </p>
+          <pre><code class="language-julia">set_window_config!(;
+    renderloop = renderloop,
+    vsync = false,
+    framerate = 30.0,
+    float = false,
+    pause_rendering = false,
+    focus_on_show = false,
+    decorated = true,
+    title = "Makie"
+)</code>          </pre>
+          <h2 id="cairomakie">
+            <a class="header-anchor" href="#cairomakie">
+              CairoMakie
+            </a>
+          </h2>
+          <p>
+            <a href="https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie">
+              CairoMakie
+            </a>
+            uses Cairo.jl to draw vector graphics to SVG and PDF. You should use it if you want to achieve the highest-quality plots for publications, as the rendering process of the GL backends works via bitmaps and is geared more towards speed than pixel-perfection.
+          </p>
+          <h3 id="special_cairomakie_properties">
+            <a class="header-anchor" href="#special_cairomakie_properties">
+              Special CairoMakie Properties
+            </a>
+          </h3>
+          <h4 id="inline_plot_type">
+            <a class="header-anchor" href="#inline_plot_type">
+              Inline Plot Type
+            </a>
+          </h4>
+          <p>
+            You can choose the type of plot that is displayed inline in, e.g., VSCode, Pluto.jl, or any other environment, by setting it via the
+            <code>
+              activate!
+            </code>
+            function.
+          </p>
+          <pre><code class="language-julia">CairoMakie.activate!(type = "png")
+CairoMakie.activate!(type = "svg")</code>          </pre>
+          <h4 id="resolution_scaling">
+            <a class="header-anchor" href="#resolution_scaling">
+              Resolution Scaling
+            </a>
+          </h4>
+          <p>
+            When you save a CairoMakie figure, you can change the mapping from figure resolution to pixels (when saving to png) or points (when saving to svg or pdf). This way you can easily scale the resulting image up or down without having to change any plot element sizes.
+          </p>
+          <p>
+            Just specify
+            <code>
+              pt_per_unit
+            </code>
+            when saving vector formats and
+            <code>
+              px_per_unit
+            </code>
+            when saving pngs.
+            <code>
+              px_per_unit
+            </code>
+            defaults to 1 and
+            <code>
+              pt_per_unit
+            </code>
+            defaults to 0.75. When embedding svgs in websites,
+            <code>
+              1px
+            </code>
+            is equivalent to
+            <code>
+              0.75pt
+            </code>
+            . This means that by default, saving a png or an svg results in an embedded image of the same apparent size. If you require an exact size in
+            <code>
+              pt
+            </code>
+            , consider setting
+            <code>
+              pt_per_unit = 1
+            </code>
+            .
+          </p>
+          <p>
+            Here's an example:
+          </p>
+          <pre><code class="language-julia">fig = Figure(resolution = (800, 600))
+
+save("normal.pdf", fig) # size = 600 x 450 pt
+save("larger.pdf", fig, pt_per_unit = 2) # size = 1600 x 1200 pt
+save("smaller.pdf", fig, pt_per_unit = 0.5) # size = 400 x 300 pt
+
+save("normal.png", fig) # size = 800 x 600 px
+save("larger.png", fig, px_per_unit = 2) # size = 1600 x 1200 px
+save("smaller.png", fig, px_per_unit = 0.5) # size = 400 x 300 px</code>          </pre>
+          <h4 id="z-order">
+            <a class="header-anchor" href="#z-order">
+              Z-Order
+            </a>
+          </h4>
+          <p>
+            CairoMakie as a 2D engine has no concept of z-clipping, therefore its 3D capabilities are quite limited. The z-values of 3D plots will have no effect and will be projected flat onto the canvas. Z-layering is approximated by sorting all plot objects by their z translation value before drawing, after that by parent scene and then insertion order. Therefore, if you want to draw something on top of something else, but it ends up below, try translating it forward via
+            <code>
+              translate!(obj, 0, 0, some_positive_z_value)
+            </code>
+            .
+          </p>
+          <h2 id="wglmakie">
+            <a class="header-anchor" href="#wglmakie">
+              WGLMakie
+            </a>
+          </h2>
+          <p>
+            <a href="https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie">
+              WGLMakie
+            </a>
+            is the Web-based backend, and is still experimental (though relatively feature-complete). Only serving it on a webpage or in Pluto.jl / Ijulia are currently supported. VSCode integration should come soon.
+          </p>
+          <h2 id="miscellaneous_tips">
+            <a class="header-anchor" href="#miscellaneous_tips">
+              Miscellaneous Tips
+            </a>
+          </h2>
+          <h3 id="forcing_dedicated_gpu_use_in_linux">
+            <a class="header-anchor" href="#forcing_dedicated_gpu_use_in_linux">
+              Forcing Dedicated GPU Use In Linux
+            </a>
+          </h3>
+          <p>
+            Normally the dedicated GPU is used for rendering. If instead an integrated GPU is used, one can tell Julia to use the dedicated GPU while launching julia as
+            <code>
+              $ sudo DRI_PRIME=1 julia
+            </code>
+            in the bash terminal.
+          </p>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: October 16, 2021. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.15.3, GLMakie: v0.4.7, CairoMakie: v0.6.6, WGLMakie: v0.4.7
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../libs/navbar.js"></script>
+    <script src="../../libs/lunr/lunr.min.js"></script>
+    <script src="../../libs/lunr/lunr_index.js"></script>
+    <script src="../../libs/lunr/lunrclient.min.js"></script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script src="../../libs/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});    </script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>

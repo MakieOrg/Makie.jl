@@ -1,0 +1,1688 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../css/makie.css" rel="stylesheet"/>
+    <link href="../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/>
+    <title>
+      Plotting functions
+    </title>
+    <script src="../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../..">
+                <img src="../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="..">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../documentation/">
+                    Documentation
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../api/">
+                    API
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../news/">
+                    News
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <div class="stork-wrapper">
+              <input class="stork-input" data-stork="makiesearch" placeholder="Search documentation"/>
+              <div class="stork-output" data-stork="makiesearch-output"></div>
+            </div>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="..">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../blocks">
+                        Blocks &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/slidergrid">
+                            SliderGrid
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../blocks/toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input checked="" class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a class="active" href="">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul class="page-content">
+                      <li>
+                        <a href="#plotting_functions">
+                          Plotting functions
+                        </a>
+                      </li>
+                    </ul>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="ablines">
+                            ablines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="contour3d">
+                            contour3d
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="ecdf">
+                            ecdfplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="hexbin">
+                            hexbin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="hvlines">
+                            hlines and vlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="hvspan">
+                            hspan and vspan
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="pie">
+                            pie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="qqplot">
+                            qqplot and qqnorm
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="rainclouds">
+                            rainclouds
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="spy">
+                            spy
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="tooltip">
+                            tooltip
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="tricontourf">
+                            tricontourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="waterfall">
+                            waterfall
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/aspect-tutorial">
+                        Aspect ratio and size control tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/scenes">
+                        Scene tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../documentation">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../documentation/backends">
+                        Backends
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../documentation/backends/cairomakie">
+                            CairoMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../documentation/backends/glmakie">
+                            GLMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../documentation/backends/rprmakie">
+                            RPRMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../documentation/backends/wglmakie">
+                            WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/blocks">
+                        Blocks
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/figure_size">
+                        Exporting a Figure with physical dimensions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/headless">
+                        Headless
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-19" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-19">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../documentation/theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../documentation/theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/transparency">
+                        Basic transparency
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../api">
+                    API
+                  </a>
+                </div>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../news">
+                    News
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="plotting_functions">
+            <a class="header-anchor" href="#plotting_functions">
+              Plotting functions
+            </a>
+          </h1>
+          <div class="plotting-functions-grid">
+            <div class="plotting-functions-item">
+              <a href="ablines">
+                <h2>
+                  ablines
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="ablines#example_6848846738315747837">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/ablines/code/output/example_6848846738315747837_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="arrows">
+                <h2>
+                  arrows
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="arrows#example_9883520935434685512">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/arrows/code/output/example_9883520935434685512_thumb.png"/>
+                </a>
+                <a href="arrows#example_10620001607858332930">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/arrows/code/output/example_10620001607858332930_thumb.png"/>
+                </a>
+                <a href="arrows#example_12353082695823418219">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/arrows/code/output/example_12353082695823418219_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="band">
+                <h2>
+                  band
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="band#example_9359515497322258932">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/band/code/output/example_9359515497322258932_thumb.png"/>
+                </a>
+                <a href="band#example_8292429359926883662">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/band/code/output/example_8292429359926883662_thumb.png"/>
+                </a>
+                <a href="band#example_14517209639679423928">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/band/code/output/example_14517209639679423928_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="barplot">
+                <h2>
+                  barplot
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="barplot#example_10201018643527795852">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/barplot/code/output/example_10201018643527795852_thumb.png"/>
+                </a>
+                <a href="barplot#example_5927553096457567262">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/barplot/code/output/example_5927553096457567262_thumb.png"/>
+                </a>
+                <a href="barplot#example_18247593978837929480">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/barplot/code/output/example_18247593978837929480_thumb.png"/>
+                </a>
+                <a href="barplot#example_9666531564447451966">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/barplot/code/output/example_9666531564447451966_thumb.png"/>
+                </a>
+                <a href="barplot#example_3779009896143803655">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/barplot/code/output/example_3779009896143803655_thumb.png"/>
+                </a>
+                <a href="barplot#example_6570482436889449670">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/barplot/code/output/example_6570482436889449670_thumb.png"/>
+                </a>
+                <a href="barplot#example_12155264431229140691">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/barplot/code/output/example_12155264431229140691_thumb.png"/>
+                </a>
+                <a href="barplot#example_12155264431229140691">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/barplot/code/output/example_12155264431229140691_thumb.png"/>
+                </a>
+                <a href="barplot#example_11429484351244137713">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/barplot/code/output/example_11429484351244137713_thumb.png"/>
+                </a>
+                <a href="barplot#example_9730935723775148367">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/barplot/code/output/example_9730935723775148367_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="boxplot">
+                <h2>
+                  boxplot
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="boxplot#example_17461365198005726612">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/boxplot/code/output/example_17461365198005726612_thumb.png"/>
+                </a>
+                <a href="boxplot#example_9771359016727164319">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/boxplot/code/output/example_9771359016727164319_thumb.png"/>
+                </a>
+                <a href="boxplot#example_16218349022248852214">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/boxplot/code/output/example_16218349022248852214_thumb.png"/>
+                </a>
+                <a href="boxplot#example_17337306338178233965">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/boxplot/code/output/example_17337306338178233965_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="contour">
+                <h2>
+                  contour
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="contour#example_13778198954531227406">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/contour/code/output/example_13778198954531227406_thumb.png"/>
+                </a>
+                <a href="contour#example_4354820594963588780">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/contour/code/output/example_4354820594963588780_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="contour3d">
+                <h2>
+                  contour3d
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="contour3d#example_7707503251515660327">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/contour3d/code/output/example_7707503251515660327_thumb.png"/>
+                </a>
+                <a href="contour3d#example_13327946343266074808">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/contour3d/code/output/example_13327946343266074808_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="contourf">
+                <h2>
+                  contourf
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="contourf#example_7980066061261654854">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/contourf/code/output/example_7980066061261654854_thumb.png"/>
+                </a>
+                <a href="contourf#example_17985262337804058437">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/contourf/code/output/example_17985262337804058437_thumb.png"/>
+                </a>
+                <a href="contourf#example_6384677292517661974">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/contourf/code/output/example_6384677292517661974_thumb.png"/>
+                </a>
+                <a href="contourf#example_17906142951531255981">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/contourf/code/output/example_17906142951531255981_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="crossbar">
+                <h2>
+                  crossbar
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="crossbar#example_12782073539260587544">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/crossbar/code/output/example_12782073539260587544_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="density">
+                <h2>
+                  density
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="density#example_10366909781502109655">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/density/code/output/example_10366909781502109655_thumb.png"/>
+                </a>
+                <a href="density#example_2792377378805266584">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/density/code/output/example_2792377378805266584_thumb.png"/>
+                </a>
+                <a href="density#example_16398121521559458228">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/density/code/output/example_16398121521559458228_thumb.png"/>
+                </a>
+                <a href="density#example_11415990753665754361">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/density/code/output/example_11415990753665754361_thumb.png"/>
+                </a>
+                <a href="density#example_12004976609857512860">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/density/code/output/example_12004976609857512860_thumb.png"/>
+                </a>
+                <a href="density#example_4858755910983998096">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/density/code/output/example_4858755910983998096_thumb.png"/>
+                </a>
+                <a href="density#example_4431428902701880328">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/density/code/output/example_4431428902701880328_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="ecdf">
+                <h2>
+                  ecdfplot
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="ecdf#example_15132160182515731073">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/ecdf/code/output/example_15132160182515731073_thumb.png"/>
+                </a>
+                <a href="ecdf#example_3873355836640899290">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/ecdf/code/output/example_3873355836640899290_thumb.png"/>
+                </a>
+                <a href="ecdf#example_4633394883468088688">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/ecdf/code/output/example_4633394883468088688_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="errorbars">
+                <h2>
+                  errorbars
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="errorbars#example_2860138958589524965">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/errorbars/code/output/example_2860138958589524965_thumb.png"/>
+                </a>
+                <a href="errorbars#example_3182597523889711865">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/errorbars/code/output/example_3182597523889711865_thumb.png"/>
+                </a>
+                <a href="errorbars#example_667866158251804397">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/errorbars/code/output/example_667866158251804397_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="heatmap">
+                <h2>
+                  heatmap
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="heatmap#example_8313519807182894418">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/heatmap/code/output/example_8313519807182894418_thumb.png"/>
+                </a>
+                <a href="heatmap#mandelbrot_heatmap">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/heatmap/code/output/mandelbrot_heatmap_thumb.png"/>
+                </a>
+                <a href="heatmap#example_15629119583555834733">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/heatmap/code/output/example_15629119583555834733_thumb.png"/>
+                </a>
+                <a href="heatmap#example_5346148150471741978">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/heatmap/code/output/example_5346148150471741978_thumb.png"/>
+                </a>
+                <a href="heatmap#example_8616154158412338004">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/heatmap/code/output/example_8616154158412338004_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="hexbin">
+                <h2>
+                  hexbin
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="hexbin#example_9029317422593179263">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hexbin/code/output/example_9029317422593179263_thumb.png"/>
+                </a>
+                <a href="hexbin#example_9124742654726036403">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hexbin/code/output/example_9124742654726036403_thumb.png"/>
+                </a>
+                <a href="hexbin#example_18242827435007152970">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hexbin/code/output/example_18242827435007152970_thumb.png"/>
+                </a>
+                <a href="hexbin#example_5127601701889583586">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hexbin/code/output/example_5127601701889583586_thumb.png"/>
+                </a>
+                <a href="hexbin#example_5588386128454257573">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hexbin/code/output/example_5588386128454257573_thumb.png"/>
+                </a>
+                <a href="hexbin#example_3602361136370964606">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hexbin/code/output/example_3602361136370964606_thumb.png"/>
+                </a>
+                <a href="hexbin#example_14727280331027661797">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hexbin/code/output/example_14727280331027661797_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="hist">
+                <h2>
+                  hist
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="hist#example_4910872000538227325">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hist/code/output/example_4910872000538227325_thumb.png"/>
+                </a>
+                <a href="hist#example_18267513311309602405">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hist/code/output/example_18267513311309602405_thumb.png"/>
+                </a>
+                <a href="hist#example_7412694190589125397">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hist/code/output/example_7412694190589125397_thumb.png"/>
+                </a>
+                <a href="hist#example_13489931002935402878">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hist/code/output/example_13489931002935402878_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="hvlines">
+                <h2>
+                  hlines and vlines
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="hvlines#example_14190056973592732823">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hvlines/code/output/example_14190056973592732823_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="hvspan">
+                <h2>
+                  hspan and vspan
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="hvspan#example_16063035256945583048">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/hvspan/code/output/example_16063035256945583048_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="image">
+                <h2>
+                  image
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="image#example_17247350919867677199">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/image/code/output/example_17247350919867677199_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="lines">
+                <h2>
+                  lines
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="lines#example_1172809264890731229">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/lines/code/output/example_1172809264890731229_thumb.png"/>
+                </a>
+                <a href="lines#example_7074135003858240162">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/lines/code/output/example_7074135003858240162_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="linesegments">
+                <h2>
+                  linesegments
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="linesegments#example_18273109458115946992">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/linesegments/code/output/example_18273109458115946992_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="mesh">
+                <h2>
+                  mesh
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="mesh#example_6593528168321052293">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/mesh/code/output/example_6593528168321052293_thumb.png"/>
+                </a>
+                <a href="mesh#example_11931447296362129448">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/mesh/code/output/example_11931447296362129448_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="meshscatter">
+                <h2>
+                  meshscatter
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="meshscatter#example_7900654464093817663">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/meshscatter/code/output/example_7900654464093817663_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="pie">
+                <h2>
+                  pie
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="pie#example_3731355268903130381">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/pie/code/output/example_3731355268903130381_thumb.png"/>
+                </a>
+                <a href="pie#example_9649408673783848679">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/pie/code/output/example_9649408673783848679_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="poly">
+                <h2>
+                  poly
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="poly#example_8625803814786268701">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/poly/code/output/example_8625803814786268701_thumb.png"/>
+                </a>
+                <a href="poly#example_18102543717723798854">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/poly/code/output/example_18102543717723798854_thumb.png"/>
+                </a>
+                <a href="poly#example_155296734968649911">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/poly/code/output/example_155296734968649911_thumb.png"/>
+                </a>
+                <a href="poly#example_16156679654596174881">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/poly/code/output/example_16156679654596174881_thumb.png"/>
+                </a>
+                <a href="poly#example_14774811347364040333">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/poly/code/output/example_14774811347364040333_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="qqplot">
+                <h2>
+                  qqplot and qqnorm
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="qqplot#example_13777899108433805606">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/qqplot/code/output/example_13777899108433805606_thumb.png"/>
+                </a>
+                <a href="qqplot#example_9691093552756571072">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/qqplot/code/output/example_9691093552756571072_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="rainclouds">
+                <h2>
+                  rainclouds
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="rainclouds#example_13222721075935979891">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/rainclouds/code/output/example_13222721075935979891_thumb.png"/>
+                </a>
+                <a href="rainclouds#example_14694726257844088493">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/rainclouds/code/output/example_14694726257844088493_thumb.png"/>
+                </a>
+                <a href="rainclouds#example_13151825656733319566">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/rainclouds/code/output/example_13151825656733319566_thumb.png"/>
+                </a>
+                <a href="rainclouds#example_13630873212271715322">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/rainclouds/code/output/example_13630873212271715322_thumb.png"/>
+                </a>
+                <a href="rainclouds#example_12120781167121877391">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/rainclouds/code/output/example_12120781167121877391_thumb.png"/>
+                </a>
+                <a href="rainclouds#example_5086022738554779352">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/rainclouds/code/output/example_5086022738554779352_thumb.png"/>
+                </a>
+                <a href="rainclouds#example_4858774243463866941">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/rainclouds/code/output/example_4858774243463866941_thumb.png"/>
+                </a>
+                <a href="rainclouds#example_8783989339827969684">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/rainclouds/code/output/example_8783989339827969684_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="rangebars">
+                <h2>
+                  rangebars
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="rangebars#example_9654007011086475781">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/rangebars/code/output/example_9654007011086475781_thumb.png"/>
+                </a>
+                <a href="rangebars#example_11953518998762468277">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/rangebars/code/output/example_11953518998762468277_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="scatter">
+                <h2>
+                  scatter
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="scatter#basic_scatter">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/basic_scatter_thumb.png"/>
+                </a>
+                <a href="scatter#example_15058795300197317928">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_15058795300197317928_thumb.png"/>
+                </a>
+                <a href="scatter#example_10467212759110287489">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_10467212759110287489_thumb.png"/>
+                </a>
+                <a href="scatter#example_15943589726930756528">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_15943589726930756528_thumb.png"/>
+                </a>
+                <a href="scatter#example_10360417360819006100">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_10360417360819006100_thumb.png"/>
+                </a>
+                <a href="scatter#example_17982073732603255127">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_17982073732603255127_thumb.png"/>
+                </a>
+                <a href="scatter#example_2092270845345587403">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_2092270845345587403_thumb.png"/>
+                </a>
+                <a href="scatter#example_1255246370425287059">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_1255246370425287059_thumb.png"/>
+                </a>
+                <a href="scatter#example_1987983708282497465">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_1987983708282497465_thumb.png"/>
+                </a>
+                <a href="scatter#example_18097959354152403277">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_18097959354152403277_thumb.png"/>
+                </a>
+                <a href="scatter#example_11641811732775141231">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_11641811732775141231_thumb.png"/>
+                </a>
+                <a href="scatter#example_15620327277386764272">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_15620327277386764272_thumb.png"/>
+                </a>
+                <a href="scatter#example_15366688679476222808">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_15366688679476222808_thumb.png"/>
+                </a>
+                <a href="scatter#example_12425206804685228712">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatter/code/output/example_12425206804685228712_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="scatterlines">
+                <h2>
+                  scatterlines
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="scatterlines#example_14776298041594337046">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/scatterlines/code/output/example_14776298041594337046_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="series">
+                <h2>
+                  series
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="series#example_7311781155296145089">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/series/code/output/example_7311781155296145089_thumb.png"/>
+                </a>
+                <a href="series#example_12752399590744753062">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/series/code/output/example_12752399590744753062_thumb.png"/>
+                </a>
+                <a href="series#example_8661798765127785560">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/series/code/output/example_8661798765127785560_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="spy">
+                <h2>
+                  spy
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="spy#example_17386318551435071846">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/spy/code/output/example_17386318551435071846_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="stairs">
+                <h2>
+                  stairs
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="stairs#example_7983703081124967899">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/stairs/code/output/example_7983703081124967899_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="stem">
+                <h2>
+                  stem
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="stem#example_2158021735388137543">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/stem/code/output/example_2158021735388137543_thumb.png"/>
+                </a>
+                <a href="stem#example_5877535483521712768">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/stem/code/output/example_5877535483521712768_thumb.png"/>
+                </a>
+                <a href="stem#example_8534873898302593712">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/stem/code/output/example_8534873898302593712_thumb.png"/>
+                </a>
+                <a href="stem#example_15964671494016948088">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/stem/code/output/example_15964671494016948088_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="streamplot">
+                <h2>
+                  streamplot
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="streamplot#example_9964871898818172244">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/streamplot/code/output/example_9964871898818172244_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="surface">
+                <h2>
+                  surface
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="surface#example_16727783950946070566">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/surface/code/output/example_16727783950946070566_thumb.png"/>
+                </a>
+                <a href="surface#example_15233031959006224144">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/surface/code/output/example_15233031959006224144_thumb.png"/>
+                </a>
+                <a href="surface#example_4973197361418928937">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/surface/code/output/example_4973197361418928937_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="text">
+                <h2>
+                  text
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="text#example_13499497670050232177">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/text/code/output/example_13499497670050232177_thumb.png"/>
+                </a>
+                <a href="text#example_16751939021695298905">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/text/code/output/example_16751939021695298905_thumb.png"/>
+                </a>
+                <a href="text#example_2966964012588699511">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/text/code/output/example_2966964012588699511_thumb.png"/>
+                </a>
+                <a href="text#example_9809826067918186485">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/text/code/output/example_9809826067918186485_thumb.png"/>
+                </a>
+                <a href="text#example_12102303236745611737">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/text/code/output/example_12102303236745611737_thumb.png"/>
+                </a>
+                <a href="text#example_1417485764476973202">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/text/code/output/example_1417485764476973202_thumb.png"/>
+                </a>
+                <a href="text#example_1530459737266322330">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/text/code/output/example_1530459737266322330_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="tooltip">
+                <h2>
+                  tooltip
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="tooltip#example_3071221591409710058">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/tooltip/code/output/example_3071221591409710058_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="tricontourf">
+                <h2>
+                  tricontourf
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="tricontourf#example_12852177328729593935">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/tricontourf/code/output/example_12852177328729593935_thumb.png"/>
+                </a>
+                <a href="tricontourf#example_15296904017056708671">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/tricontourf/code/output/example_15296904017056708671_thumb.png"/>
+                </a>
+                <a href="tricontourf#example_5192598533606812709">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/tricontourf/code/output/example_5192598533606812709_thumb.png"/>
+                </a>
+                <a href="tricontourf#example_7280075066285086727">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/tricontourf/code/output/example_7280075066285086727_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="violin">
+                <h2>
+                  violin
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="violin#example_13182032786428854878">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/violin/code/output/example_13182032786428854878_thumb.png"/>
+                </a>
+                <a href="violin#example_16205955828205438504">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/violin/code/output/example_16205955828205438504_thumb.png"/>
+                </a>
+                <a href="violin#example_806607254131513180">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/violin/code/output/example_806607254131513180_thumb.png"/>
+                </a>
+                <a href="violin#example_8904550328190667863">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/violin/code/output/example_8904550328190667863_thumb.png"/>
+                </a>
+                <a href="violin#example_7763123958684645725">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/violin/code/output/example_7763123958684645725_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="volume">
+                <h2>
+                  volume
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="volume#example_18412623800959278449">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/volume/code/output/example_18412623800959278449_thumb.png"/>
+                </a>
+                <a href="volume#example_12497874149190181864">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/volume/code/output/example_12497874149190181864_thumb.png"/>
+                </a>
+                <a href="volume#example_16888753378026393892">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/volume/code/output/example_16888753378026393892_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="volumeslices">
+                <h2>
+                  volumeslices
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="volumeslices#example_11872547240983249710">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/volumeslices/code/output/example_11872547240983249710_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="waterfall">
+                <h2>
+                  waterfall
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="waterfall#example_10448004870160825484">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/waterfall/code/output/example_10448004870160825484_thumb.png"/>
+                </a>
+                <a href="waterfall#example_13954012298839594358">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/waterfall/code/output/example_13954012298839594358_thumb.png"/>
+                </a>
+                <a href="waterfall#example_17457802745984131740">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/waterfall/code/output/example_17457802745984131740_thumb.png"/>
+                </a>
+                <a href="waterfall#example_6936188115957499170">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/waterfall/code/output/example_6936188115957499170_thumb.png"/>
+                </a>
+                <a href="waterfall#example_13365502442967251696">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/waterfall/code/output/example_13365502442967251696_thumb.png"/>
+                </a>
+                <a href="waterfall#example_5313543370909876466">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/waterfall/code/output/example_5313543370909876466_thumb.png"/>
+                </a>
+                <a href="waterfall#example_16283516057630021035">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/waterfall/code/output/example_16283516057630021035_thumb.png"/>
+                </a>
+              </div>
+            </div>
+            <div class="plotting-functions-item">
+              <a href="wireframe">
+                <h2>
+                  wireframe
+                </h2>
+              </a>
+              <div class="plotting-functions-thumbcontainer">
+                <a href="wireframe#example_12121718683131721059">
+                  <img class="plotting-function-thumb" src="../../assets/examples/plotting_functions/wireframe/code/output/example_12121718683131721059_thumb.png"/>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: December 02, 2022. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.18.4, GLMakie: v0.7.4, CairoMakie: v0.9.4, WGLMakie: v0.7.4
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../libs/navbar.js"></script>
+    <script src="https://files.stork-search.net/releases/v1.4.2/stork.js"></script>
+    <img id="stork-library-path-placeholder" src="../../libs/stork" style="display:none"/>
+    <script>
+      storkfolder = document.querySelector("#stork-library-path-placeholder").src;
+      stork.register("makiesearch", `${storkfolder}/index.st`);
+        </script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>

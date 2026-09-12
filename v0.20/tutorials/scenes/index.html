@@ -1,0 +1,265 @@
+<!DOCTYPE html><HTML lang="en"><head><meta charset="UTF-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><link href="../../libs/highlight/github.min.css" rel="stylesheet"/><link href="../../css/franklin.css" rel="stylesheet"/><link href="../../css/minimal-mistakes.css" rel="stylesheet"/><link href="../../css/makie.css" rel="stylesheet"/><link href="../../assets/icon_transparent.png" rel="icon"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/><style>
+    .stork-wrapper {
+      width:99%
+    }
+    .stork-wrapper .stork-results {
+      max-height: 42vh;
+    }
+</style><title>Scene tutorial · Makie</title></head><body class="layout--single"><div class="site-container"><div class="masthead"><div class="masthead__inner-wrap"><div class="masthead__menu"><nav class="greedy-nav" id="site-nav"><a class="title-icon" href="../.."><img src="../../assets/makie_logo_transparent.svg"/></a><ul class="visible-links"><li class="masthead__menu-item"><a href="https://github.com/JuliaPlots/Makie.jl"><img class="masthead-icon" src="../../assets/GitHub-Mark-64px.png"/></a></li><li class="masthead__menu-item"><a href="../../reference/">Reference</a></li><li class="masthead__menu-item"><a href="..">Tutorials</a></li><li class="masthead__menu-item"><a href="../../how-to/">How-Tos</a></li><li class="masthead__menu-item"><a href="../../explanations/">Explanations</a></li><li class="masthead__menu-item"><a href="../../api/">API</a></li><li class="masthead__menu-item"><a href="../../news/">News</a></li><li class="masthead__menu-item" id="masthead-search-button"><script>
+                            function toggleSearchOverlay(){
+                                const overlay = document.querySelector("#makiesearch-overlay-container");
+                                overlay.classList.toggle("hidden");
+                                overlay.querySelector("input").focus();
+                                overlay.onclick = function(e){
+                                    if (e.target !== this){
+                                        return
+                                    }
+                                    this.classList.toggle("hidden");
+                                };
+                            }
+                        </script><button onclick="toggleSearchOverlay()"><i class="fas fa-search"></i> Search</button></li></ul><button class="greedy-nav__toggle" type="button"><span class="visually-hidden">Toggle menu</span><div class="navicon"></div></button><ul class="hidden-links hidden"></ul></nav></div></div></div><div id="main" role="main"><div id="overlay"></div><div class="hidden" id="makiesearch-overlay-container"><div id="makiesearch-overlay-container-inner"><div id="makiesearch-overlay"></div></div></div><div class="content-table-hidden" id="content-table-container"><button id="on-this-page" onclick="toggle_content_table_visibility()">On this page</button><script>
+            function toggle_content_table_visibility(){
+              const c = document.querySelector("#content-table-container");
+              const ct = c.querySelector("#content-table");
+              const vh = window.visualViewport.height;
+              ct.style.height = `${Math.min(ct.scrollHeight, 0.66*vh)}px`;
+              c.classList.toggle("content-table-hidden");
+            }
+          </script><div id="content-table"><ul class="page-content"><li><a href="#scenes_and_subwindows">Scenes and subwindows</a></li><li><a href="#window_events">Window Events</a></li><li><a href="#projections_and_camera">Projections and Camera</a></li><li><a href="#interaction_with_axis_layouts">Interaction with Axis &amp; Layouts</a></li><li><a href="#transformations_and_scene_graph">Transformations and Scene graph</a></li></ul></div></div><div id="navbar-container"><div id="navbar"><div id="makiesearch"></div><ul><li><div class="tocitem-container"><a href="../..">Home</a></div></li><li><input class="collapse-toggle" id="menuitem-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2"><i class="docs-chevron"></i></label><a href="../../reference">Reference</a></div><ul><li><input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-1"><i class="docs-chevron"></i></label><a href="../../reference/blocks">Blocks</a></div><ul><li><div class="tocitem-container"><a href="../../reference/blocks/axis">Axis</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/axis3">Axis3</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/box">Box</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/button">Button</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/colorbar">Colorbar</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/gridlayout">GridLayout</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/intervalslider">IntervalSlider</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/label">Label</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/legend">Legend</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/lscene">LScene</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/menu">Menu</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/polaraxis">PolarAxis</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/slider">Slider</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/slidergrid">SliderGrid</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/textbox">Textbox</a></div></li><li><div class="tocitem-container"><a href="../../reference/blocks/toggle">Toggle</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-2"><i class="docs-chevron"></i></label><a href="../../reference/plots">Plots</a></div><ul><li><div class="tocitem-container"><a href="../../reference/plots/ablines">ablines</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/arc">arc</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/arrows">arrows</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/band">band</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/barplot">barplot</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/boxplot">boxplot</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/bracket">bracket</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/contour">contour</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/contour3d">contour3d</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/contourf">contourf</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/crossbar">crossbar</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/datashader">datashader</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/density">density</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/ecdf">ecdfplot</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/errorbars">errorbars</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/heatmap">heatmap</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/hexbin">hexbin</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/hist">hist</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/hvlines">hlines and vlines</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/hvspan">hspan and vspan</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/image">image</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/lines">lines</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/linesegments">linesegments</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/mesh">mesh</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/meshscatter">meshscatter</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/pie">pie</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/poly">poly</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/qqplot">qqplot and qqnorm</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/rainclouds">rainclouds</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/rangebars">rangebars</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/scatter">scatter</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/scatterlines">scatterlines</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/series">series</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/spy">spy</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/stairs">stairs</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/stem">stem</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/stephist">stephist</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/streamplot">streamplot</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/surface">surface</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/text">text</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/tooltip">tooltip</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/tricontourf">tricontourf</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/triplot">triplot</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/violin">violin</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/volume">volume</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/volumeslices">volumeslices</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/voronoiplot">voronoiplot</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/waterfall">waterfall</a></div></li><li><div class="tocitem-container"><a href="../../reference/plots/wireframe">wireframe</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-2-3" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-3"><i class="docs-chevron"></i></label><a href="../../reference/scene">Scene</a></div><ul><li><div class="tocitem-container"><a href="../../reference/scene/SSAO">SSAO</a></div></li><li><div class="tocitem-container"><a href="../../reference/scene/lighting">Lighting</a></div></li><li><div class="tocitem-container"><a href="../../reference/scene/matcap">Matcap</a></div></li></ul></li></ul></li><li><input checked="" class="collapse-toggle" id="menuitem-3" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-3"><i class="docs-chevron"></i></label><a href="..">Tutorials</a></div><ul><li><div class="tocitem-container"><a href="../aspect-tutorial">Aspect ratio and size control tutorial</a></div></li><li><div class="tocitem-container"><a href="../basic-tutorial">Basic Tutorial</a></div></li><li><div class="tocitem-container"><a href="../layout-tutorial">Layout Tutorial</a></div></li><li><div class="tocitem-container"><a class="active" href="">Scene tutorial</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-4"><i class="docs-chevron"></i></label><a href="../../how-to">How-Tos</a></div><ul><li><div class="tocitem-container"><a href="../../how-to/draw-boxes-around-subfigures">How to draw boxes around subfigures</a></div></li><li><div class="tocitem-container"><a href="../../how-to/save-figure-with-transparency">How to save a <code>Figure</code> with transparency</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5"><i class="docs-chevron"></i></label><a href="../../explanations">Explanations</a></div><ul><li><div class="tocitem-container"><a href="../../explanations/animation">Animations</a></div></li><li><input class="collapse-toggle" id="menuitem-5-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5-2"><i class="docs-chevron"></i></label><a href="../../explanations/backends">Backends</a></div><ul><li><div class="tocitem-container"><a href="../../explanations/backends/cairomakie">CairoMakie</a></div></li><li><div class="tocitem-container"><a href="../../explanations/backends/glmakie">GLMakie</a></div></li><li><div class="tocitem-container"><a href="../../explanations/backends/rprmakie">RPRMakie</a></div></li><li><div class="tocitem-container"><a href="../../explanations/backends/wglmakie">WGLMakie</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../explanations/blocks">Blocks</a></div></li><li><div class="tocitem-container"><a href="../../explanations/cameras">Cameras</a></div></li><li><div class="tocitem-container"><a href="../../explanations/colors">Colors</a></div></li><li><div class="tocitem-container"><a href="../../explanations/events">Events</a></div></li><li><div class="tocitem-container"><a href="../../explanations/faq">Frequently Asked Questions</a></div></li><li><div class="tocitem-container"><a href="../../explanations/figure">Figures</a></div></li><li><div class="tocitem-container"><a href="../../explanations/fonts">Fonts</a></div></li><li><div class="tocitem-container"><a href="../../explanations/headless">Headless</a></div></li><li><div class="tocitem-container"><a href="../../explanations/inspector">Inspecting Data</a></div></li><li><div class="tocitem-container"><a href="../../explanations/latex">LaTeX</a></div></li><li><div class="tocitem-container"><a href="../../explanations/layouting">How layouts work</a></div></li><li><div class="tocitem-container"><a href="../../explanations/nodes">Observables &amp; Interaction</a></div></li><li><div class="tocitem-container"><a href="../../explanations/plot_method_signatures">Plot Method Signatures</a></div></li><li><div class="tocitem-container"><a href="../../explanations/recipes">Plot Recipes</a></div></li><li><div class="tocitem-container"><a href="../../explanations/scenes">Scenes</a></div></li><li><div class="tocitem-container"><a href="../../explanations/specapi">SpecApi</a></div></li><li><input class="collapse-toggle" id="menuitem-5-19" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5-19"><i class="docs-chevron"></i></label><a href="../../explanations/theming">Theming</a></div><ul><li><div class="tocitem-container"><a href="../../explanations/theming/predefined_themes">Predefined themes</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../explanations/transparency">Basic transparency</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../api">API</a></div></li><li><div class="tocitem-container"><a href="../../news">Changelog</a></div></li></ul></div></div><div class="franklin-content"><h1 id="scene_tutorial"><a class="header-anchor" href="#scene_tutorial">Scene tutorial</a></h1><p>The scene constructor:</p><pre><code class="language-julia">scene = Scene(;
+    # clear everything behind scene
+    clear = true,
+    # the camera struct of the scene.
+    visible = true,
+    # ssao and light are explained in more detail in `Documetation/Lighting`
+    ssao = Makie.SSAO(),
+    # Creates lights from theme, which right now defaults to `
+    # set_theme!(lightposition=:eyeposition, ambient=RGBf(0.5, 0.5, 0.5))`
+    lights = Makie.automatic,
+    backgroundcolor = :gray,
+    size = (500, 500);
+    # gets filled in with the currently set global theme
+    theme_kw...
+)</code></pre><p>A scene is doing four things:</p><ul><li><p>holds a local theme, that gets applied to all plot objects in that scene</p></li><li><p>manages the camera, projection and transformation matrices</p></li><li><p>defines the window size. For sub-scenes, the child scene can have smaller window areas than the parent area.</p></li><li><p>holds a reference to all window events</p></li></ul><h2 id="scenes_and_subwindows"><a class="header-anchor" href="#scenes_and_subwindows">Scenes and subwindows</a></h2><p>With scenes, one can create subwindows. The window extends are given by a <code>Rect{2, Int}</code> and the position is always in window pixels and relative to the parent.</p><pre><code class="language-julia">using GLMakie, Makie
+GLMakie.activate!()
+scene = Scene(backgroundcolor=:gray)
+subwindow = Scene(scene, viewport=Rect(100, 100, 200, 200), clear=true, backgroundcolor=:white)
+scene</code></pre><p></p><p><a id="example_8c180ae6"><img height="450" src="../../assets/tutorials/scenes/code/output/example_8c180ae6.png" width="600"/></a></p><p>When using <code>Scenes</code> directly, one needs to manually set up the camera and center the camera to the content of the scene As described in more detail the camera section, we have multiple <code>cam***!</code> functions to set a certain projection and camera type for the scene.</p><pre><code class="language-julia">cam3d!(subwindow)
+meshscatter!(subwindow, rand(Point3f, 10), color=:gray)
+center!(subwindow)
+scene</code></pre><p></p><p><a id="example_da233646"><img height="450" src="../../assets/tutorials/scenes/code/output/example_da233646.png" width="600"/></a></p><p>Instead of a white background, we can also stop clearing the background to make the scene see-through, and give it an outline instead. The easiest way to create an outline is, to make a sub scene with a projection that goes from 0..1 for the whole window. To make a subscene with a certain projection type, Makie offers for each camera function a version without <code>!</code>, that will create a subscene, and apply the camera type. We call the space that goes from 0..1 <code>relative</code> space, so <code>camrelative</code> will give this projection:</p><pre><code class="language-julia">subwindow.clear = false
+relative_space = Makie.camrelative(subwindow)
+# this draws a line at the scene window boundary
+lines!(relative_space, Rect(0, 0, 1, 1))
+scene</code></pre><p></p><p><a id="example_43040ac8"><img height="450" src="../../assets/tutorials/scenes/code/output/example_43040ac8.png" width="600"/></a></p><p>We can also now give the parent scene a more exciting background by using <code>campixel!</code> and plotting an image to the window:</p><pre><code class="language-julia">campixel!(scene)
+w, h = size(scene) # get the size of the scene in pixels
+# this draws a line at the scene window boundary
+image!(scene, [sin(i/w) + cos(j/h) for i in 1:w, j in 1:h])
+scene</code></pre><p></p><p><a id="example_9ae234ea"><img height="450" src="../../assets/tutorials/scenes/code/output/example_9ae234ea.png" width="600"/></a></p><p>We can fix this by translating the scene further back:</p><pre><code class="language-julia">translate!(scene.plots[1], 0, 0, -10000)
+scene</code></pre><p></p><p><a id="example_6cdc80d2"><img height="450" src="../../assets/tutorials/scenes/code/output/example_6cdc80d2.png" width="600"/></a></p><p>We need a fairly high translation, since the far + near plane for <code>campixel!</code> goes from <code>-1000</code> to <code>1000</code>, while for <code>cam3d!</code> those get automatically adjusted to the camera parameters. Both end up in the same depthbuffer, transformed to the range <code>0..1</code> by the far &amp; near plane, so to stay behind the 3d scene, it needs to be set to a high value.</p><p>With <code>clear = true</code> we wouldn't have this problem!</p><p>In GLMakie, we can actually take a look at the depthbuffer, to see how it looks now:</p><pre><code class="language-julia">screen = display(scene) # use display, to get a reference to the screen object
+depth_color = GLMakie.depthbuffer(screen)
+close(screen)
+# Look at result:
+f, ax, pl = heatmap(depth_color)
+Colorbar(f[1, 2], pl)
+f</code></pre><p></p><p><a id="example_be215c6a"><img height="450" src="../../assets/tutorials/scenes/code/output/example_be215c6a.png" width="600"/></a></p><h2 id="window_events"><a class="header-anchor" href="#window_events">Window Events</a></h2><p>Every scene also holds a reference to all global window events:</p><pre><code class="language-julia">scene.events</code></pre><pre><code class="plaintext code-output">Events:
+  window_area:      GeometryBasics.HyperRectangle{2, Int64}([0, 0], [600, 450])
+  window_dpi:       96.09458128078816
+  window_open:      false
+  mousebutton:      Makie.MouseButtonEvent(Makie.Mouse.none, Makie.Mouse.release)
+  mousebuttonstate: Set{Makie.Mouse.Button}()
+  mouseposition:    (0.0, 0.0)
+  scroll:           (0.0, 0.0)
+  keyboardbutton:   Makie.KeyEvent(Makie.Keyboard.unknown, Makie.Keyboard.release)
+  keyboardstate:    Set{Makie.Keyboard.Button}()
+  unicode_input:    \0
+  dropped_files:    String[]
+  hasfocus:         false
+  entered_window:   false
+</code></pre><p>We can use those events to e.g. move the subwindow. If you execute the below in GLMakie, you can move the sub-window around by pressing left mouse &amp; ctrl:</p><pre><code class="language-julia">on(scene.events.mouseposition) do mousepos
+    if ispressed(subwindow, Mouse.left &amp; Keyboard.left_control)
+        subwindow.viewport[] = Rect(Int.(mousepos)..., 200, 200)
+    end
+end</code></pre><h2 id="projections_and_camera"><a class="header-anchor" href="#projections_and_camera">Projections and Camera</a></h2><p>We've already talked a bit about cameras, but not really how it works. Lets start from zero. By default, the scene x/y extends go from -1 to 1. So, to draw a rectangle outlining the scene window, the following rectangle does the job:</p><pre><code class="language-julia">scene = Scene(backgroundcolor=:gray)
+lines!(scene, Rect2f(-1, -1, 2, 2), linewidth=5, color=:black)
+scene</code></pre><p></p><p><a id="example_017ad1f3"><img height="450" src="../../assets/tutorials/scenes/code/output/example_017ad1f3.png" width="600"/></a></p><p>this is, because the projection matrix and view matrix are the identity matrix by default, and Makie's unit space is what's called <code>Clip space</code> in the OpenGL world</p><pre><code class="language-julia">cam = Makie.camera(scene) # this is how to access the scenes camera</code></pre><pre><code class="plaintext code-output">Camera:
+  0 steering observables connected
+  pixel_space: Float32[0.0033333334 0.0 0.0 -1.0; 0.0 0.0044444446 0.0 -1.0; 0.0 0.0 -0.0001 -0.0; 0.0 0.0 0.0 1.0]
+  view: Float32[1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
+  projection: Float32[1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
+  projectionview: Float32[1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
+  resolution: Float32[600.0, 450.0]
+  lookat: Float32[0.0, 0.0, 0.0]
+  eyeposition: Float32[1.0, 1.0, 1.0]
+</code></pre><p>One can change the mapping, to e.g. draw from -3 to 5 with an orthographic projection matrix:</p><pre><code class="language-julia">cam.projection[] = Makie.orthographicprojection(-3f0, 5f0, -3f0, 5f0, -100f0, 100f0)
+scene</code></pre><p></p><p><a id="example_f41e43ad"><img height="450" src="../../assets/tutorials/scenes/code/output/example_f41e43ad.png" width="600"/></a></p><p>one can also change the camera to a perspective 3d projection:</p><pre><code class="language-julia">w, h = size(scene)
+nearplane = 0.1f0
+farplane = 100f0
+aspect = Float32(w / h)
+cam.projection[] = Makie.perspectiveprojection(45f0, aspect, nearplane, farplane)
+# Now, we also need to change the view matrix
+# to "put" the camera into some place.
+eyeposition = Vec3f(10)
+lookat = Vec3f(0)
+upvector = Vec3f(0, 0, 1)
+cam.view[] = Makie.lookat(eyeposition, lookat, upvector)
+scene</code></pre><p></p><p><a id="example_ec52546f"><img height="450" src="../../assets/tutorials/scenes/code/output/example_ec52546f.png" width="600"/></a></p><h2 id="interaction_with_axis_layouts"><a class="header-anchor" href="#interaction_with_axis_layouts">Interaction with Axis &amp; Layouts</a></h2><p>The Axis contains a scene, which has the projection set to make the coordinates go from <code>(x/y)limits_min ... (x/y)limits_max</code>. That's what we plot into. Besides that, it's a normal scene, which we can use to create subscenes with smaller window size or a different projection.</p><p>So, we can use <code>camrelative</code> and friends to e.g. plot in the middle of the axis:</p><pre><code class="language-julia">figure, axis, plot_object = scatter(1:4)
+relative_projection = Makie.camrelative(axis.scene);
+scatter!(relative_projection, [Point2f(0.5)], color=:red)
+# offset &amp; text are in pixelspace
+text!(relative_projection, "Hi", position=Point2f(0.5), offset=Vec2f(5))
+lines!(relative_projection, Rect(0, 0, 1, 1), color=:blue, linewidth=3)
+figure</code></pre><p></p><p><a id="example_9c4da820"><img height="450" src="../../assets/tutorials/scenes/code/output/example_9c4da820.png" width="600"/></a></p><h2 id="transformations_and_scene_graph"><a class="header-anchor" href="#transformations_and_scene_graph">Transformations and Scene graph</a></h2><p>So far we've been discussing only camera transformations of the scene. In contrast, there are also scene transformations, or commonly referred to as world transformations. To learn more about the different spaces, <a href="https://learnopengl.com/Getting-started/Coordinate-Systems">learn opengl</a> offers some pretty nice explanations</p><p>The "world" transformation is implemented via the <code>Transformation</code> struct in Makie. Scenes and plots both contain these, so these types are considered as "Makie.Transformable". The transformation of a scene will get inherited by all plots added to the scene. An easy way to manipulate any <code>Transformable</code> is via these 3 functions:</p><p></p><div class="docstring"><div class="doc-header" id="translate!"><a href="#translate!">translate!</a></div><div class="doc-content"><pre><code>translate!(t::Transformable, xyz::VecTypes)
+translate!(t::Transformable, xyz...)</code></pre><p>Apply an absolute translation to the given <code>Transformable</code> (a Scene or Plot), translating it to <code>x, y, z</code>.</p><pre><code>translate!(Accum, t::Transformable, xyz...)</code></pre><p>Translate the given <code>Transformable</code> (a Scene or Plot), relative to its current position.</p></div></div><div class="docstring"><div class="doc-header" id="rotate!"><a href="#rotate!">rotate!</a></div><div class="doc-content"><pre><code>rotate!(Accum, t::Transformable, axis_rot...)</code></pre><p>Apply a relative rotation to the transformable, by multiplying by the current rotation.</p><pre><code>rotate!(t::Transformable, axis_rot::Quaternion)
+rotate!(t::Transformable, axis_rot::AbstractFloat)
+rotate!(t::Transformable, axis_rot...)</code></pre><p>Apply an absolute rotation to the transformable. Rotations are all internally converted to <code>Quaternion</code>s.</p></div></div><div class="docstring"><div class="doc-header" id="scale!"><a href="#scale!">scale!</a></div><div class="doc-content"><pre><code>scale!(t::Transformable, x, y)
+scale!(t::Transformable, x, y, z)
+scale!(t::Transformable, xyz)
+scale!(t::Transformable, xyz...)</code></pre><p>Scale the given <code>Transformable</code> (a Scene or Plot) to the given arguments. Can take <code>x, y</code> or <code>x, y, z</code>. This is an absolute scaling, and there is no option to perform relative scaling.</p></div></div><p></p><pre><code class="language-julia">scene = Scene()
+cam3d!(scene)
+sphere_plot = mesh!(scene, Sphere(Point3f(0), 0.5), color=:red)
+scale!(scene, 0.5, 0.5, 0.5)
+rotate!(scene, Vec3f(1, 0, 0), 0.5) # 0.5 rad around the y axis
+scene</code></pre><p></p><p><a id="example_a5c5927e"><img height="450" src="../../assets/tutorials/scenes/code/output/example_a5c5927e.png" width="600"/></a></p><p>One can also transform the plot objects directly, which then adds the transformation from the plot object on top of the transformation from the scene. One can add subscenes and interact with those dynamically. Makie offers here what's usually referred to as a scene graph.</p><pre><code class="language-julia">translate!(sphere_plot, Vec3f(0, 0, 1))
+scene</code></pre><p></p><p><a id="example_76d8fa2b"><img height="450" src="../../assets/tutorials/scenes/code/output/example_76d8fa2b.png" width="600"/></a></p><p>The scene graph can be used to create rigid transformations, like for a robot arm:</p><pre><code class="language-julia">parent = Scene()
+cam3d!(parent; clipping_mode = :static)
+
+# One can set the camera lookat and eyeposition, by getting the camera controls and using `update_cam!`
+camc = cameracontrols(parent)
+update_cam!(parent, camc, Vec3f(0, 8, 0), Vec3f(4.0, 0, 0))
+# One may need to adjust the
+# near and far clip plane when adjusting the camera manually
+camc.far[] = 100f0
+s1 = Scene(parent, camera=parent.camera)
+mesh!(s1, Rect3f(Vec3f(0, -0.1, -0.1), Vec3f(5, 0.2, 0.2)))
+s2 = Scene(s1, camera=parent.camera)
+mesh!(s2, Rect3f(Vec3f(0, -0.1, -0.1), Vec3f(5, 0.2, 0.2)), color=:red)
+translate!(s2, 5, 0, 0)
+s3 = Scene(s2, camera=parent.camera)
+mesh!(s3, Rect3f(Vec3f(-0.2), Vec3f(0.4)), color=:blue)
+translate!(s3, 5, 0, 0)
+parent</code></pre><p></p><p><a id="example_5d162538"><img height="450" src="../../assets/tutorials/scenes/code/output/example_5d162538.png" width="600"/></a></p><pre><code class="language-julia"># Now, rotate the "joints"
+rotate!(s2, Vec3f(0, 1, 0), 0.5)
+rotate!(s3, Vec3f(1, 0, 0), 0.5)
+parent</code></pre><p></p><p><a id="example_a0974cd1"><img height="450" src="../../assets/tutorials/scenes/code/output/example_a0974cd1.png" width="600"/></a></p><p>With this basic principle, we can even bring robots to life :) <a href="https://github.com/Kevin-Mattheus-Moerman">Kevin Moerman</a> was so nice to supply a Lego mesh, which we're going to animate! When the scene graph is really just about a transformation graph, one can use the <code>Transformation</code> struct directly, which is what we're going to do here. This is more efficient and easier than creating a scene for each model.</p><pre><code class="language-julia">using MeshIO, FileIO, GeometryBasics
+
+colors = Dict(
+    "eyes" =&gt; "#000",
+    "belt" =&gt; "#000059",
+    "arm" =&gt; "#009925",
+    "leg" =&gt; "#3369E8",
+    "torso" =&gt; "#D50F25",
+    "head" =&gt; "yellow",
+    "hand" =&gt; "yellow"
+)
+
+origins = Dict(
+    "arm_right" =&gt; Point3f(0.1427, -6.2127, 5.7342),
+    "arm_left" =&gt; Point3f(0.1427, 6.2127, 5.7342),
+    "leg_right" =&gt; Point3f(0, -1, -8.2),
+    "leg_left" =&gt; Point3f(0, 1, -8.2),
+)
+
+rotation_axes = Dict(
+    "arm_right" =&gt; Vec3f(0.0000, -0.9828, 0.1848),
+    "arm_left" =&gt; Vec3f(0.0000, 0.9828, 0.1848),
+    "leg_right" =&gt; Vec3f(0, -1, 0),
+    "leg_left" =&gt; Vec3f(0, 1, 0),
+)
+
+function plot_part!(scene, parent, name::String)
+    # load the model file
+    m = load(assetpath("lego_figure_" * name * ".stl"))
+    # look up color
+    color = colors[split(name, "_")[1]]
+    # Create a child transformation from the parent
+    child = Transformation(parent)
+    # get the transformation of the parent
+    ptrans = Makie.transformation(parent)
+    # get the origin if available
+    origin = get(origins, name, nothing)
+    # center the mesh to its origin, if we have one
+    if !isnothing(origin)
+        centered = m.position .- origin
+        m = GeometryBasics.Mesh(meta(centered; normals=m.normals), faces(m))
+        translate!(child, origin)
+    else
+        # if we don't have an origin, we need to correct for the parents translation
+        translate!(child, -ptrans.translation[])
+    end
+    # plot the part with transformation &amp; color
+    return mesh!(scene, m; color=color, transformation=child)
+end
+
+function plot_lego_figure(s, floor=true)
+    # Plot hierarchical mesh and put all parts into a dictionary
+    figure = Dict()
+    figure["torso"] = plot_part!(s, s, "torso")
+        figure["head"] = plot_part!(s, figure["torso"], "head")
+            figure["eyes_mouth"] = plot_part!(s, figure["head"], "eyes_mouth")
+        figure["arm_right"] = plot_part!(s, figure["torso"], "arm_right")
+            figure["hand_right"] = plot_part!(s, figure["arm_right"], "hand_right")
+        figure["arm_left"] = plot_part!(s, figure["torso"], "arm_left")
+            figure["hand_left"] = plot_part!(s, figure["arm_left"], "hand_left")
+        figure["belt"] = plot_part!(s, figure["torso"], "belt")
+            figure["leg_right"] = plot_part!(s, figure["belt"], "leg_right")
+            figure["leg_left"] = plot_part!(s, figure["belt"], "leg_left")
+
+    # lift the little guy up
+    translate!(figure["torso"], 0, 0, 20)
+    # add some floor
+    floor &amp;&amp; mesh!(s, Rect3f(Vec3f(-400, -400, -2), Vec3f(800, 800, 2)), color=:white)
+    return figure
+end
+
+# Finally, lets let him walk and record it as a video with the new, experimental ray tracing backend.
+
+# Note: RPRMakie is still not very stable and rendering out the video is quite slow on CI, so the shown video is prerendered!
+
+using RPRMakie
+# iterate rendering 200 times, to get less noise and more light
+RPRMakie.activate!(iterations=200)
+
+radiance = 50000
+# Note, that only RPRMakie supports `EnvironmentLight` so far
+lights = [
+    EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
+    PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
+]
+s = Scene(size=(500, 500), lights=lights)
+cam3d!(s)
+c = cameracontrols(s)
+c.near[] = 5
+c.far[] = 1000
+update_cam!(s, c, Vec3f(100, 30, 80), Vec3f(0, 0, -10))
+figure = plot_lego_figure(s)
+
+rot_joints_by = 0.25*pi
+total_translation = 50
+animation_strides = 10
+
+a1 = LinRange(0, rot_joints_by, animation_strides)
+angles = [a1; reverse(a1[1:end-1]); -a1[2:end]; reverse(-a1[1:end-1]);]
+nsteps = length(angles); #Number of animation steps
+translations = LinRange(0, total_translation, nsteps)
+
+Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, angle)
+    #Rotate right arm+hand
+    for name in ["arm_left", "arm_right",
+                            "leg_left", "leg_right"]
+        rotate!(figure[name], rotation_axes[name], angle)
+    end
+    translate!(figure["torso"], translation, 0, 20)
+end</code></pre><video autoplay="" controls="" mute="" src="../../assets/lego_walk.mp4"></video><div class="page-foot"><div class="copyright">
+    © Makie.jl. Last modified: May 07, 2024. Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia programming language</a>.
+      <p>These docs were autogenerated using Makie: v0.20.10, GLMakie: v0.9.11, CairoMakie: v0.11.12, WGLMakie: v0.9.10</p></div></div></div></div><div class="page__footer"><footer><div class="page__footer-follow"><ul class="social-icons"><li><a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer"><i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i> Twitter</a></li><li><a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer"><i aria-hidden="true" class="fab fa-fw fa-github"></i> GitHub</a></li></ul></div><div class="page__footer-copyright">© Makie.jl. Powered by <a href="https://github.com/tlienart/Franklin.jl">Franklin</a> &amp; <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">Minimal Mistakes</a>.</div></footer></div></div><script src="../../../versions.js" type="text/javascript"></script><script src="../../siteinfo.js" type="text/javascript"></script><script src="../../libs/warner.js" type="text/javascript"></script><script src="../../libs/navbar.js"></script><link href="../../pagefind/pagefind-ui.css" rel="stylesheet"/><script src="../../pagefind/pagefind-ui.js" type="text/javascript"></script><script>
+        window.addEventListener('DOMContentLoaded', (event) => {
+            new PagefindUI({
+              element: "#makiesearch",
+              showImages: false
+            });
+            new PagefindUI({
+              element: "#makiesearch-overlay",
+              showImages: false
+            });
+        });
+    </script><script async="" defer="" src="https://api.makie.org/latest.js"></script><noscript><img alt="" referrerpolicy="no-referrer-when-downgrade" src="https://api.makie.org/noscript.gif"/></noscript><script src="../../libs/highlight/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});</script></body></HTML>

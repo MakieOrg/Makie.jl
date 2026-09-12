@@ -1,0 +1,1681 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../css/makie.css" rel="stylesheet"/>
+    <link href="../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <title>
+      News
+    </title>
+    <script src="../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../..">
+                <img src="../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../examples/">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="..">
+                    Documentation
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <form action="../../search/index.html" id="lunrSearchForm" name="lunrSearchForm">
+              <input class="search-input" name="q" placeholder="Search docs" type="text"/>
+            </form>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../examples">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/layoutables">
+                        Layoutables &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/plotting_functions">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/abline">
+                            abline!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/ecdf">
+                            ecdfplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvlines">
+                            hlines! and vlines!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvspan">
+                            hspan! and vspan!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/pie">
+                            pie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/qqplot">
+                            qqplot and qqnorm
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/spy">
+                            spy
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/aspect-tutorial">
+                        Aspect ratio and size control tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/scenes">
+                        Scene tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="..">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../api_reference">
+                        API reference
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-3" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-3">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../backends">
+                        Backends
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/cairomakie">
+                            CairoMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/glmakie">
+                            GLMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/rprmakie">
+                            RPRMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/wglmakie">
+                            WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../figure_size">
+                        Exporting a Figure with physical dimensions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../headless">
+                        Headless
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../layoutables">
+                        Layoutables
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a class="active" href="">
+                        News
+                      </a>
+                    </div>
+                    <ul class="page-content">
+                      <li>
+                        <a href="#news">
+                          News
+                        </a>
+                      </li>
+                      <li>
+                        <ul>
+                          <li>
+                            <a href="#master">
+                              Master
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#v016">
+                              v0.16
+                            </a>
+                          </li>
+                          <li>
+                            <ul>
+                              <li>
+                                <a href="#big_changes">
+                                  Big Changes
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#small_changes">
+                                  Small Changes
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#all_other_changes">
+                                  All other changes
+                                </a>
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <a href="#v0153">
+                              v0.15.3
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#v0152">
+                              v0.15.2
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#v0151">
+                              v0.15.1
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#v0150">
+                              v0.15.0
+                            </a>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-21" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-21">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../transparency">
+                        Basic transparency
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="news">
+            <a class="header-anchor" href="#news">
+              News
+            </a>
+          </h1>
+          <h2 id="master">
+            <a class="header-anchor" href="#master">
+              Master
+            </a>
+          </h2>
+          <ul>
+            <li>
+              <p>
+                Fix WGLMakie performance bug and add option to set fps via
+                <code>
+                  WGLMakie.activate!(fps=30)
+                </code>
+              </p>
+            </li>
+            <li>
+              <p>
+                implement
+                <code>
+                  nan_color
+                </code>
+                ,
+                <code>
+                  lowclip
+                </code>
+                ,
+                <code>
+                  highclip
+                </code>
+                for
+                <code>
+                  image(::Matrix{Float})
+                </code>
+                in shader
+              </p>
+            </li>
+            <li>
+              <p>
+                clean up mesh shader and implement
+                <code>
+                  nan_color
+                </code>
+                ,
+                <code>
+                  lowclip
+                </code>
+                ,
+                <code>
+                  highclip
+                </code>
+                for
+                <code>
+                  mesh(m; color::Matrix{Float})
+                </code>
+                on the shader
+              </p>
+            </li>
+            <li>
+              <p>
+                allow
+                <code>
+                  GLMakie.Buffer
+                </code>
+                <code>
+                  GLMakie.Sampler
+                </code>
+                be used in
+                <code>
+                  GeometryBasics.Mesh
+                </code>
+                to partially update parts of a mesh/texture and different interpolation and clamping modes for the texture.
+              </p>
+            </li>
+          </ul>
+          <h2 id="v016">
+            <a class="header-anchor" href="#v016">
+              v0.16
+            </a>
+          </h2>
+          <h4 id="big_changes">
+            <a class="header-anchor" href="#big_changes">
+              Big Changes
+            </a>
+          </h4>
+          <ul>
+            <li>
+              <p>
+                add ECDF plot
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1310">
+                  #1310
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                add Order Independent Transparency to GLMakie
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1418">
+                  #1418
+                </a>
+                ,
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1506">
+                  #1506
+                </a>
+                . This type of transparency is now used with
+                <code>
+                  transpareny = true
+                </code>
+                . The old transparency handling is available with
+                <code>
+                  transparency = false
+                </code>
+                .
+              </p>
+            </li>
+            <li>
+              <p>
+                fix blurry text in GLMakie and WGLMakie
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1494">
+                  #1494
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                A new experimental Backend for ray tracing got introduced:
+                <a href="https://makie.juliaplots.org/stable/documentation/backends/rprmakie/">
+                  RPRMakie
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                <strong>
+                  Breaking
+                </strong>
+                Remove
+                <code>
+                  Node
+                </code>
+                alias
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1307">
+                  #1307
+                </a>
+                ,
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1393">
+                  #1393
+                </a>
+                . To upgrade, simply replace all occurrences of
+                <code>
+                  Node
+                </code>
+                with
+                <code>
+                  Observable
+                </code>
+              </p>
+            </li>
+            <li>
+              <p>
+                <strong>
+                  Breaking
+                </strong>
+                clean up Scene type
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1192">
+                  #1192
+                </a>
+                ,
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1393">
+                  #1393
+                </a>
+                . Long story short, Scene() doesn't create any axes or limits anymore. All keywords like
+                <code>
+                  raw
+                </code>
+                ,
+                <code>
+                  show_axis
+                </code>
+                have been removed. A scene now always works like when using the deprecated
+                <code>
+                  raw=true
+                </code>
+                . All the high level functionality like showing an axis and adding a 3d camera has been moved to
+                <code>
+                  LScene
+                </code>
+                . See the new
+                <code>
+                  Scene
+                </code>
+                tutorial for more info: https://makie.juliaplots.org/dev/tutorials/scenes/
+              </p>
+            </li>
+            <li>
+              <p>
+                <strong>
+                  lights got moved to scene
+                </strong>
+                <a href="https://makie.juliaplots.org/stable/documentation/lighting">
+                  lighting docs
+                </a>
+                and
+                <a href="https://makie.juliaplots.org/stable/documentation/backends/rprmakie/">
+                  RPRMakie examples
+                </a>
+              </p>
+            </li>
+          </ul>
+          <h4 id="small_changes">
+            <a class="header-anchor" href="#small_changes">
+              Small Changes
+            </a>
+          </h4>
+          <ul>
+            <li>
+              <p>
+                Added the
+                <code>
+                  Cycled
+                </code>
+                type, which can be used to select the i-th value from the current cycler for a specific attribute.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1248">
+                  #1248
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                The plot function
+                <code>
+                  scatterlines
+                </code>
+                now uses
+                <code>
+                  color
+                </code>
+                as
+                <code>
+                  markercolor
+                </code>
+                if
+                <code>
+                  markercolor
+                </code>
+                is
+                <code>
+                  automatic
+                </code>
+                . Also, cycling of the
+                <code>
+                  color
+                </code>
+                attribute is enabled.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1463">
+                  #1463
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Added the function
+                <code>
+                  resize_to_layout!
+                </code>
+                , which allows to resize a
+                <code>
+                  Figure
+                </code>
+                so that it contains its top
+                <code>
+                  GridLayout
+                </code>
+                without additional whitespace or clipping.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1438">
+                  #1438
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Cleanup lighting in 3D contours and isosurfaces
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1434">
+                  #1434
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Adjust attributes of volumeslices to follow the normal structure
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1404">
+                  #1404
+                </a>
+                . This allows you to adjust attributes like
+                <code>
+                  colormap
+                </code>
+                without going through nested attributes.
+              </p>
+            </li>
+            <li>
+              <p>
+                Add depth to 3D contours and isosurfaces
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1395">
+                  #1395
+                </a>
+                ,
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1393">
+                  #1393
+                </a>
+                . This allows them to intersect correctly with other 3D objects.
+              </p>
+            </li>
+            <li>
+              <p>
+                Restrict 3D scene camera to one scene
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1394">
+                  #1394
+                </a>
+                ,
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1393">
+                  #1393
+                </a>
+                . This fixes issues with multiple scenes fighting over events consumed by the camera. You can select a scene by cleaning on it.
+              </p>
+            </li>
+            <li>
+              <p>
+                add depth shift attribute for GLMakie and WGLMakie
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1382">
+                  #1382
+                </a>
+                ,
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1393">
+                  #1393
+                </a>
+                . This can used to adjust render order similar to
+                <code>
+                  overdraw
+                </code>
+              </p>
+            </li>
+            <li>
+              <p>
+                simplify automatic width computation in barplots
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1223">
+                  #1223
+                </a>
+                ,
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1393">
+                  #1393
+                </a>
+                . If no
+                <code>
+                  width
+                </code>
+                attribute is passed, the default width is computed as the minimum difference between consecutive
+                <code>
+                  x
+                </code>
+                positions. Gap between bars are given by the (multiplicative)
+                <code>
+                  gap
+                </code>
+                attribute. The actual bar width equals
+                <code>
+                  width * (1 - gap)
+                </code>
+                .
+              </p>
+            </li>
+            <li>
+              <p>
+                add logical expressions for
+                <code>
+                  ispressed
+                </code>
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1222">
+                  #1222
+                </a>
+                ,
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1393">
+                  #1393
+                </a>
+                . This moves a lot of control over hotkeys towards the user. With these changes one can now set an hotkey to trigger on any or no key, collections of keys and logical combinations of keys (i.e. "A is pressed and B is not pressed").
+              </p>
+            </li>
+            <li>
+              <p>
+                fix issues with Menu render order
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1411">
+                  #1411
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                add label_rotation to barplot
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1401">
+                  #1401
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                fix issue where
+                <code>
+                  pixelcam!
+                </code>
+                does not remove controls from other cameras
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1504">
+                  #1504
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                add conversion for offsetarrays
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1260">
+                  #1260
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  qqplot
+                </code>
+                <code>
+                  qqline
+                </code>
+                options are now
+                <code>
+                  :identity
+                </code>
+                ,
+                <code>
+                  :fit
+                </code>
+                ,
+                <code>
+                  :fitrobust
+                </code>
+                and
+                <code>
+                  :none
+                </code>
+                (the default)
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1563">
+                  #1563
+                </a>
+                . Fixed numeric error due to double computation of quantiles when fitting
+                <code>
+                  qqline
+                </code>
+                . Deprecated
+                <code>
+                  plot(q::QQPair)
+                </code>
+                method as it does not have enough information for correct
+                <code>
+                  qqline
+                </code>
+                fit.
+              </p>
+            </li>
+          </ul>
+          <h4 id="all_other_changes">
+            <a class="header-anchor" href="#all_other_changes">
+              All other changes
+            </a>
+          </h4>
+          <p>
+            Are collected
+            <a href="https://github.com/JuliaPlots/Makie.jl/pull/1521">
+              in this PR
+            </a>
+            and in the
+            <a href="https://github.com/JuliaPlots/Makie.jl/releases/tag/v0.16.0">
+              release notes
+            </a>
+            .
+          </p>
+          <h2 id="v0153">
+            <a class="header-anchor" href="#v0153">
+              v0.15.3
+            </a>
+          </h2>
+          <ul>
+            <li>
+              <p>
+                The functions
+                <code>
+                  labelslidergrid!
+                </code>
+                and
+                <code>
+                  labelslider!
+                </code>
+                now set fixed widths for the value column with a heuristic. It is possible now to pass
+                <code>
+                  Formatting.format
+                </code>
+                format strings as format specifiers in addition to the previous functions.
+              </p>
+            </li>
+            <li>
+              <p>
+                fix 2D arrow rotations in
+                <code>
+                  streamplot
+                </code>
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1352">
+                  #1352
+                </a>
+              </p>
+            </li>
+          </ul>
+          <h2 id="v0152">
+            <a class="header-anchor" href="#v0152">
+              v0.15.2
+            </a>
+          </h2>
+          <ul>
+            <li>
+              <p>
+                Reenabled Julia 1.3 support.
+              </p>
+            </li>
+            <li>
+              <p>
+                Use
+                <a href="https://github.com/Kolaru/MathTeXEngine.jl/releases/tag/v0.2.0">
+                  MathTexEngine v0.2
+                </a>
+                .
+              </p>
+            </li>
+            <li>
+              <p>
+                Depend on new GeometryBasics, which changes all the Vec/Point/Quaternion/RGB/RGBA - f0 aliases to just f. For example,
+                <code>
+                  Vec2f0
+                </code>
+                is changed to
+                <code>
+                  Vec2f
+                </code>
+                . Old aliases are still exported, but deprecated and will be removed in the next breaking release. For more details and an upgrade script, visit
+                <a href="https://github.com/JuliaGeometry/GeometryBasics.jl/pull/97">
+                  GeometryBasics#97
+                </a>
+                .
+              </p>
+            </li>
+            <li>
+              <p>
+                Added
+                <code>
+                  hspan!
+                </code>
+                and
+                <code>
+                  vspan!
+                </code>
+                functions
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1264">
+                  #1264
+                </a>
+                .
+              </p>
+            </li>
+          </ul>
+          <h2 id="v0151">
+            <a class="header-anchor" href="#v0151">
+              v0.15.1
+            </a>
+          </h2>
+          <ul>
+            <li>
+              <p>
+                Switched documentation framework to Franklin.jl.
+              </p>
+            </li>
+            <li>
+              <p>
+                Added a specialization for
+                <code>
+                  volumeslices
+                </code>
+                to DataInspector.
+              </p>
+            </li>
+            <li>
+              <p>
+                Fix
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1238">
+                  1 element
+                  <code>
+                    hist
+                  </code>
+                </a>
+                and make it
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1150">
+                  easier to move
+                  <code>
+                    hist
+                  </code>
+                </a>
+                .
+              </p>
+            </li>
+          </ul>
+          <h2 id="v0150">
+            <a class="header-anchor" href="#v0150">
+              v0.15.0
+            </a>
+          </h2>
+          <ul>
+            <li>
+              <p>
+                <code>
+                  LaTeXString
+                </code>
+                s can now be used as input to
+                <code>
+                  text
+                </code>
+                and therefore as labels for
+                <code>
+                  Axis
+                </code>
+                ,
+                <code>
+                  Legend
+                </code>
+                , or other comparable objects. Mathematical expressions are typeset using
+                <a href="https://github.com/Kolaru/MathTeXEngine.jl">
+                  MathTeXEngine.jl
+                </a>
+                which offers a fast approximation of LaTeX typesetting.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1022">
+                  #1022
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Added
+                <code>
+                  Symlog10
+                </code>
+                and
+                <code>
+                  pseudolog10
+                </code>
+                axis scales for log scale approximations that work with zero and negative values.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1109">
+                  #1109
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Colorbar limits can now be passed as the attribute
+                <code>
+                  colorrange
+                </code>
+                similar to plots.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1066">
+                  #1066
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Added the option to pass three vectors to heatmaps and other plots using
+                <code>
+                  SurfaceLike
+                </code>
+                conversion.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1101">
+                  #1101
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Added
+                <code>
+                  stairs
+                </code>
+                plot recipe.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1086">
+                  #1086
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Removed
+                <code>
+                  FigurePosition
+                </code>
+                and
+                <code>
+                  FigureSubposition
+                </code>
+                types. Indexing into a
+                <code>
+                  Figure
+                </code>
+                like
+                <code>
+                  fig[1, 1]
+                </code>
+                now returns
+                <code>
+                  GridPosition
+                </code>
+                and
+                <code>
+                  GridSubposition
+                </code>
+                structs, which can be used in the same way as the types they replace. Because of an underlying change in
+                <code>
+                  GridLayoutBase.jl
+                </code>
+                , it is now possible to do
+                <code>
+                  Axis(gl[1, 1])
+                </code>
+                where
+                <code>
+                  gl
+                </code>
+                is a
+                <code>
+                  GridLayout
+                </code>
+                that is a sublayout of a
+                <code>
+                  Figure
+                </code>
+                's top layout.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1075">
+                  #1075
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Bar plots and histograms have a new option for adding text labels.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1069">
+                  #1069
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                It is possible to specify one linewidth value per segment in
+                <code>
+                  linesegments
+                </code>
+                .
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/992">
+                  #992
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Added a new 3d camera that allows for better camera movements using keyboard and mouse.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1024">
+                  #1024
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Fixed the application of scale transformations to
+                <code>
+                  surface
+                </code>
+                .
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1070">
+                  #1070
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Added an option to set a custom callback function for the
+                <code>
+                  RectangleZoom
+                </code>
+                axis interaction to enable other use cases than zooming.
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1104">
+                  #1104
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                Fixed rendering of
+                <code>
+                  heatmap
+                </code>
+                s with one or more reversed ranges in CairoMakie, as in
+                <code>
+                  heatmap(1:10, 10:-1:1, rand(10, 10))
+                </code>
+                .
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1100">
+                  #1100
+                </a>
+              </p>
+            </li>
+            <li>
+              <p>
+                fixed volume slice recipe and add docs for it
+                <a href="https://github.com/JuliaPlots/Makie.jl/pull/1123">
+                  #1123
+                </a>
+              </p>
+            </li>
+          </ul>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: March 16, 2022. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.16.6, GLMakie: v0.5.5, CairoMakie: v0.7.5, WGLMakie: v0.5.5
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../libs/navbar.js"></script>
+    <script src="../../libs/lunr/lunr.min.js"></script>
+    <script src="../../libs/lunr/lunr_index.js"></script>
+    <script src="../../libs/lunr/lunrclient.min.js"></script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>

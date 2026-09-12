@@ -1,0 +1,1470 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../../libs/highlight/github.min.css" rel="stylesheet"/>
+    <link href="../../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../../css/makie.css" rel="stylesheet"/>
+    <link href="../../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/>
+    <title>
+      GridLayout
+    </title>
+    <script src="../../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../../..">
+                <img src="../../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../..">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../documentation/">
+                    Documentation
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../api/">
+                    API
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../news/">
+                    News
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <div class="stork-wrapper">
+              <input class="stork-input" data-stork="makiesearch" placeholder="Search documentation"/>
+              <div class="stork-output" data-stork="makiesearch-output"></div>
+            </div>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../..">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input checked="" class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="..">
+                        Blocks &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a class="active" href="">
+                            GridLayout
+                          </a>
+                        </div>
+                        <ul class="page-content">
+                          <li>
+                            <a href="#gridlayout">
+                              GridLayout
+                            </a>
+                          </li>
+                          <li>
+                            <ul>
+                              <li>
+                                <a href="#setting_column_and_row_sizes_correctly">
+                                  Setting column and row sizes correctly
+                                </a>
+                              </li>
+                              <li>
+                                <ul>
+                                  <li>
+                                    <a href="#fixed">
+                                      Fixed
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#relative">
+                                      Relative
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#auto">
+                                      Auto
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#aspect">
+                                      Aspect
+                                    </a>
+                                  </li>
+                                </ul>
+                              </li>
+                              <li>
+                                <a href="#nesting">
+                                  Nesting
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#alignment">
+                                  Alignment
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#spanned_placement">
+                                  Spanned Placement
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#adding_rows_and_columns_by_indexing">
+                                  Adding rows and columns by indexing
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#trimming_empty_rows_and_columns">
+                                  Trimming empty rows and columns
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#tweaking_space_between_rows_and_columns">
+                                  Tweaking space between rows and columns
+                                </a>
+                              </li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../slidergrid">
+                            SliderGrid
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../plotting_functions">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/ablines">
+                            ablines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/contour3d">
+                            contour3d
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/ecdf">
+                            ecdfplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/hexbin">
+                            hexbin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/hvlines">
+                            hlines and vlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/hvspan">
+                            hspan and vspan
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/pie">
+                            pie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/qqplot">
+                            qqplot and qqnorm
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/rainclouds">
+                            rainclouds
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/spy">
+                            spy
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/tooltip">
+                            tooltip
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/tricontourf">
+                            tricontourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/waterfall">
+                            waterfall
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/aspect-tutorial">
+                        Aspect ratio and size control tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/scenes">
+                        Scene tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../documentation">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../documentation/backends">
+                        Backends
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/cairomakie">
+                            CairoMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/glmakie">
+                            GLMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/rprmakie">
+                            RPRMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/wglmakie">
+                            WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/blocks">
+                        Blocks
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/figure_size">
+                        Exporting a Figure with physical dimensions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/headless">
+                        Headless
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-19" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-19">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../documentation/theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/transparency">
+                        Basic transparency
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../../api">
+                    API
+                  </a>
+                </div>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../../news">
+                    News
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="gridlayout">
+            <a class="header-anchor" href="#gridlayout">
+              GridLayout
+            </a>
+          </h1>
+          <h2 id="setting_column_and_row_sizes_correctly">
+            <a class="header-anchor" href="#setting_column_and_row_sizes_correctly">
+              Setting column and row sizes correctly
+            </a>
+          </h2>
+          <p>
+            There are four different types of sizes you can give rows and columns.
+          </p>
+          <h3 id="fixed">
+            <a class="header-anchor" href="#fixed">
+              Fixed
+            </a>
+          </h3>
+          <p>
+            <code>
+              Fixed(scene_units)
+            </code>
+            is used to set a column or row to an absolute size, independent of its content. This only really makes sense if there is variable width content in the column or row, that can shrink or expand to meet this size. You will probably not need
+            <code>
+              Fixed
+            </code>
+            sizes very often.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+Axis(f[1, 1], title = "My column has size Fixed(400)")
+Axis(f[1, 2], title = "My column has size Auto()")
+
+colsize!(f.layout, 1, Fixed(400))
+# colsize!(f.layout, 1, 400) would also work
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_12690952718529778265">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_12690952718529778265.svg"/>
+            </a>
+          </p>
+          <h3 id="relative">
+            <a class="header-anchor" href="#relative">
+              Relative
+            </a>
+          </h3>
+          <p>
+            <code>
+              Relative(fraction)
+            </code>
+            is used to set a column or row to a size that is a certain fraction of the available width or height. This is useful, e.g., if you want a column to span 50% of the available width, no matter what other content is there. In this case, you would use
+            <code>
+              Relative(1/2)
+            </code>
+            . The available width is the width of the GridLayout minus the space taken by row or column gaps including protrusions.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+Axis(f[1, 1], title = "My column has size Relative(2/3)")
+Axis(f[1, 2], title = "My column has size Auto()")
+Colorbar(f[1, 3])
+
+colsize!(f.layout, 1, Relative(2/3))
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_17124422269675321167">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_17124422269675321167.svg"/>
+            </a>
+          </p>
+          <h3 id="auto">
+            <a class="header-anchor" href="#auto">
+              Auto
+            </a>
+          </h3>
+          <p>
+            The
+            <code>
+              Auto
+            </code>
+            size is a bit more complex to understand. It has two parameters, the Boolean
+            <code>
+              trydetermine
+            </code>
+            and the number
+            <code>
+              ratio
+            </code>
+            . The default is
+            <code>
+              Auto() == Auto(true, 1)
+            </code>
+            . This is also the default row height and column width.
+          </p>
+          <p>
+            A column or row that is sized
+            <code>
+              Auto(true)
+            </code>
+            tries to fit its own size to its content.
+          </p>
+          <p>
+            When a
+            <code>
+              GridLayout
+            </code>
+            is solved, it looks at the content in each row or column and checks if it reports a fixed size. Many objects can report their own width or height because their content has a specific size, such as
+            <code>
+              Label
+            </code>
+            . Other objects are often used with a user-set width or height, for example
+            <code>
+              Colorbar(scene, width = 30)
+            </code>
+            . In this case, the
+            <code>
+              GridLayout
+            </code>
+            can also see that the colorbar has a width of 30 units and fit the column width to that value. Objects like
+            <code>
+              Axis
+            </code>
+            on the other hand are usually not set to a specific size.
+          </p>
+          <p>
+            Only objects that span a
+            <em>
+              single
+            </em>
+            row or column report their width or height, respectively. If
+            <em>
+              multiple
+            </em>
+            rows or columns are spanned, it's not well defined how the space that the object needs should be distributed.
+          </p>
+          <p>
+            If there is more than one object with a fixed width or height in an
+            <code>
+              Auto(true)
+            </code>
+            sized column, the maximum size is used.
+          </p>
+          <p>
+            If a column or row is sized
+            <code>
+              Auto(false)
+            </code>
+            , fixed-size objects are ignored. It can also happen of course, that there is no fixed-size object in a row or column with
+            <code>
+              Auto(true)
+            </code>
+            size. In both these cases, columns or rows determine their size by what remains after all
+            <code>
+              Fixed
+            </code>
+            ,
+            <code>
+              Relative
+            </code>
+            ,
+            <code>
+              Aspect
+            </code>
+            and size-inferred
+            <code>
+              Auto(true)
+            </code>
+            columns or rows have been calculated. Each undetermined
+            <code>
+              Auto
+            </code>
+            column gets a share of the remaining space that is proportional to its
+            <code>
+              ratio
+            </code>
+            parameter.
+          </p>
+          <p>
+            For example, let's say there are two columns left with undetermined
+            <code>
+              Auto
+            </code>
+            size when 300 units space remain. Column 1 has ratio
+            <code>
+              1
+            </code>
+            while column 2 has ratio
+            <code>
+              2
+            </code>
+            . The first column will get
+            <code>
+              1 / (1 + 2) * 300 == 100
+            </code>
+            units, while the second column gets
+            <code>
+              2 / (1 + 2) * 300 == 200
+            </code>
+            units.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+Axis(f[1, 1], title = "My column infers my width\nof 200 units")
+Axis(f[1, 2], title = "My column gets 1/3rd\nof the remaining space")
+Axis(f[1, 3], title = "My column gets 2/3rds\nof the remaining space")
+
+colsize!(f.layout, 2, Auto(1)) # equivalent to Auto(true, 1)
+colsize!(f.layout, 3, Auto(2)) # equivalent to Auto(true, 2)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_10038204996247234343">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_10038204996247234343.svg"/>
+            </a>
+          </p>
+          <h3 id="aspect">
+            <a class="header-anchor" href="#aspect">
+              Aspect
+            </a>
+          </h3>
+          <p>
+            This size is also a little bit trickier to understand. The syntax is
+            <code>
+              Aspect(reference, ratio)
+            </code>
+            . A column with a width of
+            <code>
+              Aspect(1, 2.0)
+            </code>
+            is set to 2.0 times the height of row 1, no matter what that height is. Therefore, the grid cell at [1, 1] will always have an aspect ratio of 2 to 1. The opposite pattern applies to rows with
+            <code>
+              Aspect
+            </code>
+            size.
+          </p>
+          <p>
+            Aspect sized columns or rows are very useful when you want to constrain the aspect ratio of a grid cell. For example, a plot that is always supposed to be square. Enforcing the aspect
+            <em>
+              on the layout level is better
+            </em>
+            than setting
+            <code>
+              axis.aspect = AxisAspect(1)
+            </code>
+            in most cases, because it ensures an
+            <em>
+              intact layout
+            </em>
+            where all grid cell borders are aligned visually. An
+            <code>
+              Axis
+            </code>
+            with
+            <code>
+              aspect = AxisAspect(1)
+            </code>
+            on the other hand simply shrinks so it remains square, but this will break alignment with other grid content.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+Axis(f[1, 1], title = "I'm square and aligned")
+Box(f[1, 2], color = (:blue, 0.1), strokecolor = :transparent)
+Axis(f[1, 2], aspect = AxisAspect(1),
+    title = "I'm square but break the layout.\nMy actual cell is the blue rect.")
+Axis(f[2, 1])
+Axis(f[2, 2])
+
+rowsize!(f.layout, 2, Relative(2/3))
+colsize!(f.layout, 1, Aspect(1, 1))
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_17530907837569725910">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_17530907837569725910.svg"/>
+            </a>
+          </p>
+          <div class="admonition note">
+            <p class="admonition-title">
+              Note
+            </p>
+            <p>
+              Keep in mind that if you set too many constraints on row and column sizes, a GridLayout can easily be too big or too small. It's good to have variable-width elements to fill the remaining space if you use an element with fixed size or fixed aspect ratio.
+            </p>
+          </div>
+          <h2 id="nesting">
+            <a class="header-anchor" href="#nesting">
+              Nesting
+            </a>
+          </h2>
+          <p>
+            Grids can be nested inside other grids, and so on, to arbitrary depths. The top grid's parent should be the scene in which the layout is placed. When you place a grid inside another grid, that grid is automatically made its parent. Grids also are by default set to alignmode Inside which means that the content edges are aligned to the grid's bounding box, excluding the outer protrusions. This way, plots in nested grids are nicely aligned along their spines.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+subgl_left = GridLayout()
+subgl_left[1:2, 1:2] = [Axis(f) for i in 1:2, j in 1:2]
+
+subgl_right = GridLayout()
+subgl_right[1:3, 1] = [Axis(f) for i in 1:3]
+
+f.layout[1, 1] = subgl_left
+f.layout[1, 2] = subgl_right
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_2813727490192073800">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_2813727490192073800.svg"/>
+            </a>
+          </p>
+          <h2 id="alignment">
+            <a class="header-anchor" href="#alignment">
+              Alignment
+            </a>
+          </h2>
+          <p>
+            Here you can see the difference between the align modes Outside with and without margins and the Inside alignmode. Only the standard Inside mode aligns the axis spines of the contained axes nicely. The Outside mode is mostly useful for the main GridLayout so that there some space between the window edges and the plots. You can see that the normal axis looks the same as the one placed inside the grid with Inside alignment, and they are both effectively aligned exactly the same.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure(resolution = (800, 800))
+
+Axis(f[1, 1], title = "No grid layout")
+Axis(f[2, 1], title = "No grid layout")
+Axis(f[3, 1], title = "No grid layout")
+
+Axis(f[1, 2], title = "Inside", alignmode = Inside())
+Axis(f[2, 2], title = "Outside", alignmode = Outside())
+Axis(f[3, 2], title = "Outside(50)", alignmode = Outside(50))
+
+[Box(f[i, 2], color = :transparent, strokecolor = :red) for i in 1:3]
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_14920892378540243727">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_14920892378540243727.svg"/>
+            </a>
+          </p>
+          <h2 id="spanned_placement">
+            <a class="header-anchor" href="#spanned_placement">
+              Spanned Placement
+            </a>
+          </h2>
+          <p>
+            Elements in a grid layout can span multiple rows and columns. You can specify them with the range syntax and colons for the full width or height. You can also use end to specify the last row or column.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+Axis(f[1, 1:2], title = "[1, 1:2]")
+Axis(f[2:4, 1:2], title = "[2:4, 1:2]")
+Axis(f[:, 3], title = "[:, 3]")
+Axis(f[1:3, 4], title = "[1:3, 4]")
+Axis(f[end, end], title = "[end, end]")
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_5420049533503203765">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_5420049533503203765.svg"/>
+            </a>
+          </p>
+          <h2 id="adding_rows_and_columns_by_indexing">
+            <a class="header-anchor" href="#adding_rows_and_columns_by_indexing">
+              Adding rows and columns by indexing
+            </a>
+          </h2>
+          <p>
+            If you index outside of the current range of a grid layout, you do not get an error. Instead, the layout automatically resizes to contain the new indices. This is very useful if you want to iteratively build a layout, or add super or side titles.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure(resolution = (800, 800))
+
+Axis(f[1, 1])
+for i in 1:3
+    Axis(f[:, end+1])
+    Axis(f[end+1, :])
+end
+
+Label(f[0, :], text = "Super Title", textsize = 50)
+Label(f[end+1, :], text = "Sub Title", textsize = 50)
+Label(f[1:end-1, 0], text = "Left Text", textsize = 50,
+    rotation = pi/2)
+Label(f[1:end-1, end+1], text = "Right Text", textsize = 50,
+    rotation = -pi/2)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_3848852645837225028">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_3848852645837225028.svg"/>
+            </a>
+          </p>
+          <p>
+            If you have rows from 1 to 3 and index into row 0, the rows now range from 0 to 3. If you then index into row -1, the rows range from -1 to 3 and so on. This behavior has changed since GridLayoutBase.jl
+            <code>
+              v0.7.0
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure(resolution = (800, 800))
+
+for i in 1:3, j in 1:3
+    Axis(f[i, j])
+end
+
+Label(f[0, :], text = "First Supertitle", textsize = 20)
+Label(f[-1, :], text = "Second Supertitle", textsize = 30)
+Label(f[-2, :], text = "Third Supertitle", textsize = 40)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_817410463752364355">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_817410463752364355.svg"/>
+            </a>
+          </p>
+          <h2 id="trimming_empty_rows_and_columns">
+            <a class="header-anchor" href="#trimming_empty_rows_and_columns">
+              Trimming empty rows and columns
+            </a>
+          </h2>
+          <p>
+            If you change a layout interactively and end up with unused rows or columns,
+            <code>
+              trim!
+            </code>
+            will remove those for you.
+          </p>
+          <p>
+            Here we start with two axes:
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+ax1 = Axis(f[1, 1], title = "Axis 1")
+ax2 = Axis(f[1, 2], title = "Axis 2")
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_13155675561127572497">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_13155675561127572497.svg"/>
+            </a>
+          </p>
+          <p>
+            Now we decide that we'd like the second axis better if it was below the first one. We move it two the new cell, and the old unused column is left blank.
+          </p>
+          <pre><code class="language-julia">f[2, 1] = ax2
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_9762787239640071586">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_9762787239640071586.svg"/>
+            </a>
+          </p>
+          <p>
+            We can get rid of the unused space with
+            <code>
+              trim!
+            </code>
+            :
+          </p>
+          <pre><code class="language-julia">trim!(f.layout)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_10905903078526271472">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_10905903078526271472.svg"/>
+            </a>
+          </p>
+          <h2 id="tweaking_space_between_rows_and_columns">
+            <a class="header-anchor" href="#tweaking_space_between_rows_and_columns">
+              Tweaking space between rows and columns
+            </a>
+          </h2>
+          <p>
+            You can use
+            <code>
+              rowgap!
+            </code>
+            and
+            <code>
+              colgap!
+            </code>
+            to change the spacing between rows or columns respectively.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+fig = Figure()
+
+axs = [Axis(fig[i, j]) for i in 1:3, j in 1:3]
+axs[1, 1].title = "Group A"
+axs[1, 2].title = "Group B.1"
+axs[1, 3].title = "Group B.2"
+
+hidedecorations!.(axs, grid=false)
+
+colgap!(fig.layout, 1, Relative(0.15))
+
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_701624613800466984">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_701624613800466984.svg"/>
+            </a>
+          </p>
+          <p>
+            All spaces can be changed at once by omitting the index of the gap to resize.
+          </p>
+          <pre><code class="language-julia">rowgap!(fig.layout, 50)
+
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_8430063235735896023">
+              <img alt="" src="../../../assets/examples/blocks/gridlayout/code/output/example_8430063235735896023.svg"/>
+            </a>
+          </p>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: December 02, 2022. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.18.4, GLMakie: v0.7.4, CairoMakie: v0.9.4, WGLMakie: v0.7.4
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../../libs/navbar.js"></script>
+    <script src="https://files.stork-search.net/releases/v1.4.2/stork.js"></script>
+    <img id="stork-library-path-placeholder" src="../../../libs/stork" style="display:none"/>
+    <script>
+      storkfolder = document.querySelector("#stork-library-path-placeholder").src;
+      stork.register("makiesearch", `${storkfolder}/index.st`);
+        </script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script src="../../../libs/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});    </script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>

@@ -1,0 +1,4 @@
+[input]
+base_directory = "../.."
+url_prefix = ""
+html_selector = ".franklin-content"
