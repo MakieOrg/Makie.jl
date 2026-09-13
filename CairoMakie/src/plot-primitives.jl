@@ -68,7 +68,7 @@ Plots with children are by default recursed into.  This can be overridden
 by defining specific dispatches for `is_cairomakie_atomic_plot` for a given plot type.
 """
 is_cairomakie_atomic_plot(plot::Plot) = Makie.is_atomic_plot(plot) || isempty(plot.plots)
-is_cairomakie_atomic_plot_or_rasterized(plot::Plot) = is_cairomakie_atomic_plot(plot) || plot.rasterize[]::Int > 0
+is_cairomakie_atomic_plot_or_rasterized(plot::Plot) = is_cairomakie_atomic_plot(plot) || Int(plot.rasterize[]::Integer) > 0
 
 
 """
