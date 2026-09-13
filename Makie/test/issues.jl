@@ -114,7 +114,7 @@
         labels = ["A", "B", "C", "D", "E", "F", "G", "H"]
         values = collect(1:8)
         menu.options[] = zip(labels, values)
-        p = menu.blockscene.children[1].plots[2]
+        p = menu.menuscene.plots[2]
         # should not error
         p.positions_transformed_f32c[]
         p.quad_offset[]

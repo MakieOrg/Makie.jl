@@ -420,7 +420,7 @@ function create_recipe_expr(Tsym, args, attrblock, export_recipe = true)
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname, $(esc(:ArgType))}
 
-        const $attr_placeholder = $(build_documented_attributes(attrblock))
+        const $attr_placeholder = $(build_documented_attributes(attrblock, source = Tsym))
         $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))

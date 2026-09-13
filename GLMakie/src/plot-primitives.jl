@@ -8,7 +8,7 @@ draw_atomic(::Screen, ::Scene, ::PlotList) = nothing
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     gl_switch_context!(screen.glscreen)
-    add_scene!(screen, scene)
+    # add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
@@ -18,7 +18,7 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     elseif x isa Makie.PlotList
         # ignore unless not yet displayed
         Makie.for_each_atomic_plot(x) do plot
-            if !haskey(screen.cache, objectid(plot))
+            if !haskey(plot, :gl_renderobject)
                 insert!(screen, scene, plot)
             end
         end
@@ -65,10 +65,13 @@ function flag_float64(robj)
         AbstractArray{<:VecTypes{N, Float64}} where {N},
         Observable,
     }
+    allowed = (:gl_zindex, :zindex)
     for (k, v) in robj.buffers
+        k in allowed && continue
         v isa banned_types && error("$k in vertexarray is a banned type $(typeof(v))")
     end
     for (k, v) in robj.uniforms
+        k in allowed && continue
         v isa banned_types && error("$k in uniforms is a banned type: $(typeof(v))")
     end
     return
@@ -98,6 +101,8 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
         # println("Updating ", name)
         if name === :visible
             robj.visible = value
+        elseif name === :gl_zindex
+            robj.zindex = value
         elseif gl_name === :indices || gl_name === :faces
             if robj.indices isa GLAbstraction.GPUArray
                 GLAbstraction.update!(robj.indices, value)
@@ -216,6 +221,7 @@ function construct_robj(constructor!, screen, scene, attr, args, uniforms, input
         :num_clip_planes => 0, # default for in-shader resolution of clip planes
         # TODO: integrate this into the OIT Render Stage
         :oit_scale => screen.config.transparency_weight_scale,
+        :zindex => args.gl_zindex,
     )
 
     if haskey(attr, :shading)
@@ -233,8 +239,11 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     attr = plot.attributes
 
     # These must always be there!
-    push!(uniforms, :uniform_clip_planes, :uniform_num_clip_planes, :depth_shift, :visible, :fxaa)
-    push!(uniforms, :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction)
+    core_attributes = Symbol[
+        :uniform_clip_planes, :uniform_num_clip_planes, :depth_shift, :visible, :fxaa, :gl_zindex,
+        :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction
+    ]
+    append!(uniforms, core_attributes)
     haskey(attr, :preprojection) && push!(uniforms, :preprojection)
     push!(input2glname, :uniform_clip_planes => :clip_planes)
     get!(input2glname, :uniform_num_clip_planes, :num_clip_planes) # don't overwrite
@@ -256,6 +265,8 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         error("Duplicate robj inputs detected in $merged_inputs: $duplicates")
     end
 
+    map!(Makie.zvalue2d, plot, [:zindex, :model], :gl_zindex)
+
     robj = let
         args = NamedTuple(map(key -> key => getproperty(attr, key)[], merged_inputs))
         robj = construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
@@ -264,7 +275,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     end
 
     # Filter out unused inputs and static attributes to prevent overwrite
-    always_keep = Set([:visible, :indices, :faces, :instances, :fxaa])
+    always_keep = Set([:visible, :indices, :faces, :instances, :fxaa, :gl_zindex])
     filter!(merged_inputs) do name
         glname = get(input2glname, name, name)
         if in(glname, always_keep)
@@ -302,8 +313,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     attr.gl_renderobject[]
 
     screen.cache2plot[robj.id] = plot
-    screen.cache[objectid(plot)] = robj
-    push!(screen, scene, robj)
+    insert_robj!(screen.render_context, scene, robj)
 
     # For debugging/checking uniforms
     # missing_uniforms(robj, [inputs; uniforms;], input2glname)

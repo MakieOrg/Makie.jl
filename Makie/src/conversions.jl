@@ -2391,6 +2391,7 @@ end
 
 
 convert_attribute(value, ::key"depth_shift") = Float32(value)
+convert_attribute(value, ::key"zindex") = Float64(value)
 
 
 # SAMPLER overloads

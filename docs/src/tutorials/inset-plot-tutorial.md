@@ -78,6 +78,9 @@ It is important to make sure that the inset plot is rendered above the main plot
 translate!(ax_inset.blockscene, 0, 0, 150)
 ```
 
+!!! note
+    This is no longer necessary in Makie 0.25+
+
 ### 7. Add a Legend
 
 Let's add a legend to clarify what each line represents.

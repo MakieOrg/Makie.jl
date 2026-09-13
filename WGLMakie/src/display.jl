@@ -456,6 +456,7 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
         end
         scene_ser = serialize_scene(scene)
         parent = scene.parent
+        idx = findfirst(sibling -> sibling === scene, parent.children)
         parent_uuid = js_uuid(parent)
         err = "Cannot find scene js_uuid(scene) == $(parent_uuid)"
         evaljs_value(
@@ -466,7 +467,7 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
                     throw new Error($(err))
                 }
                 const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
-                parent.scene_children.push(new_scene);
+                parent.scene_children.splice($idx, 0, new_scene);
             })
             """
         )
@@ -511,6 +512,11 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
     return
 end
 
+function Makie.insert_scene!(screen::Screen, scene::Scene)
+    session = get_screen_session(screen; error = "Root parent scene needs to be displayed to insert additional scenes")
+    insert_scene!(session, screen, scene)
+    return
+end
 
 function all_plots_scenes(scene::Scene; scene_uuids = String[], plots = Plot[])
     push!(scene_uuids, js_uuid(scene))

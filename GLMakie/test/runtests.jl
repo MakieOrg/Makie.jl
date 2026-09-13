@@ -41,8 +41,8 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         # are modified in which case the numbers should just be updated
         f, a, p = scatter(rand(10))
         colorbuffer(f)
-        @test length(p.attributes.inputs) == 37
-        @test length(p.attributes.outputs) == 83
+        @test length(p.attributes.inputs) == 38
+        @test length(p.attributes.outputs) == 85
     end
 
     @testset "Reference Tests" begin
@@ -176,7 +176,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         shaders = vcat([[shader for shader in values(shaders)] for shaders in values(screen.shader_cache.shader_cache)]...)
         programs = [program for program in values(screen.shader_cache.program_cache)]
         pipeline = copy(screen.render_pipeline.stages)
-        robjs = last.(screen.renderlist)
+        robjs = [robj for group in screen.render_context.groups for (_, robj) in group.renderobjects]
 
         GLMakie.destroy!(screen)
 
@@ -238,7 +238,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         end
 
         @testset "PostProcessors" begin
-            @test length(pipeline) == 10
+            @test length(pipeline) == 11
             for stage in pipeline
                 if hasfield(typeof(stage), :robj)
                     validate_robj(getfield(stage, :robj))

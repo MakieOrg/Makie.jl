@@ -123,11 +123,16 @@ end
 
 block_kwargs(::Type{Axis}) = Set([:palette])
 function initialize_block!(ax::Axis; palette = nothing)
-    blockscene = ax.blockscene
     elements = Dict{Symbol, Any}()
     ax.elements = elements
 
-    scene = Scene(blockscene, viewport = Rect2i(0, 0, 0, 0), visible = false)
+    scene = Scene(
+        ax.blockscene, viewport = Rect2i(0, 0, 0, 0), visible = false,
+        clear = map(c -> alpha(to_color(c)) == 1, ax.backgroundcolor),
+        backgroundcolor = ax.backgroundcolor
+    )
+    decoration_scene = Scene(ax.blockscene, camera = campixel!)
+    ax.decoration_scene = decoration_scene
     add_input!(ax, :viewport, scene.viewport)
     # Hide to block updates, will be unhidden! in constructor who calls this!
     @assert !scene.visible[]
@@ -150,11 +155,13 @@ function initialize_block!(ax::Axis; palette = nothing)
         ax.scene.theme.palette = palette_attr
     end
 
+    # Note: This is now a fallback for transparent backgroundcolors
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
     background = poly!(
-        blockscene, ax.viewport; color = ax.backgroundcolor, inspectable = false,
-        shading = NoShading, strokecolor = :transparent
+        ax.blockscene, ax.viewport; color = ax.backgroundcolor, inspectable = false,
+        shading = NoShading, strokecolor = :transparent,
+        visible = map(c -> alpha(to_color(c)) != 1, ax.backgroundcolor)
     )
     translate!(background, 0, 0, -100)
     elements[:background] = background
@@ -211,7 +218,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     map!(ylimits, ax, :finallimits, :finalylimits)
 
     xaxis = LineAxis(
-        blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :xaxis),
+        decoration_scene, ComputePipeline.ComputeGraphView(ax.attributes, :xaxis),
         endpoints = ax.xaxis_endpoints, limits = ax.finalxlimits,
         flipped = ax.xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
@@ -230,7 +237,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.xaxis = xaxis
 
     yaxis = LineAxis(
-        blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :yaxis),
+        decoration_scene, ComputePipeline.ComputeGraphView(ax.attributes, :yaxis),
         endpoints = ax.yaxis_endpoints, limits = ax.finalylimits,
         flipped = ax.yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
@@ -291,7 +298,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     map!((a, b) -> a && b, ax, [:xticksmirrored, :xticksvisible], :mirroredxticksvisible)
     xticksmirrored_lines = linesegments!(
-        blockscene, ax.xticksmirrored_points, visible = ax.mirroredxticksvisible,
+        decoration_scene, ax.xticksmirrored_points, visible = ax.mirroredxticksvisible,
         linewidth = ax.xtickwidth, color = ax.xtickcolor
     )
     translate!(xticksmirrored_lines, 0, 0, 10)
@@ -303,7 +310,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     map!((a, b) -> a && b, ax, [:yticksmirrored, :yticksvisible], :mirroredyticksvisible)
     yticksmirrored_lines = linesegments!(
-        blockscene, ax.yticksmirrored_points, visible = ax.mirroredyticksvisible,
+        decoration_scene, ax.yticksmirrored_points, visible = ax.mirroredyticksvisible,
         linewidth = ax.ytickwidth, color = ax.ytickcolor
     )
     translate!(yticksmirrored_lines, 0, 0, 10)
@@ -315,7 +322,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     map!((a, b) -> a && b, ax, [:xticksmirrored, :xminorticksvisible], :mirroredxminorticksvisible)
     xminorticksmirrored_lines = linesegments!(
-        blockscene, ax.xminorticksmirrored, visible = ax.mirroredxminorticksvisible,
+        decoration_scene, ax.xminorticksmirrored, visible = ax.mirroredxminorticksvisible,
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor
     )
     translate!(xminorticksmirrored_lines, 0, 0, 10)
@@ -327,13 +334,13 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     map!((a, b) -> a && b, ax, [:yticksmirrored, :yminorticksvisible], :mirroredyminorticksvisible)
     yminorticksmirrored_lines = linesegments!(
-        blockscene, ax.yminorticksmirrored, visible = ax.mirroredyminorticksvisible,
+        decoration_scene, ax.yminorticksmirrored, visible = ax.mirroredyminorticksvisible,
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor
     )
     translate!(yminorticksmirrored_lines, 0, 0, 10)
 
     xoppositeline = linesegments!(
-        blockscene, ax.xoppositelinepoints, linewidth = ax.spinewidth,
+        decoration_scene, ax.xoppositelinepoints, linewidth = ax.spinewidth,
         visible = ax.xoppositespinevisible, color = ax.xoppositespinecolor,
         inspectable = false,
         linestyle = nothing
@@ -342,7 +349,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(xoppositeline, 0, 0, 20)
 
     yoppositeline = linesegments!(
-        blockscene, ax.yoppositelinepoints, linewidth = ax.spinewidth,
+        decoration_scene, ax.yoppositelinepoints, linewidth = ax.spinewidth,
         visible = ax.yoppositespinevisible, color = ax.yoppositespinecolor,
         inspectable = false,
         linestyle = nothing
@@ -391,7 +398,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     xgridlines = linesegments!(
-        blockscene, ax.xgrid_points, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
+        decoration_scene, ax.xgrid_points, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
         color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -399,7 +406,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:xgridlines] = xgridlines
 
     xminorgridlines = linesegments!(
-        blockscene, ax.xminorgrid_points, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
+        decoration_scene, ax.xminorgrid_points, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
         color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -407,7 +414,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:xminorgridlines] = xminorgridlines
 
     ygridlines = linesegments!(
-        blockscene, ax.ygrid_points, linewidth = ax.ygridwidth, visible = ax.ygridvisible,
+        decoration_scene, ax.ygrid_points, linewidth = ax.ygridwidth, visible = ax.ygridvisible,
         color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -415,7 +422,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:ygridlines] = ygridlines
 
     yminorgridlines = linesegments!(
-        blockscene, ax.yminorgrid_points, linewidth = ax.yminorgridwidth, visible = ax.yminorgridvisible,
+        decoration_scene, ax.yminorgrid_points, linewidth = ax.yminorgridwidth, visible = ax.yminorgridvisible,
         color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -439,7 +446,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     map!(align -> (align, :bottom), ax, :titlealign, :titlealign_tuple)
 
     subtitlet = text!(
-        blockscene,
+        decoration_scene,
         ax.subtitlepos,
         text = ax.subtitle,
         visible = ax.subtitlevisible,
@@ -468,7 +475,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
 
     titlet = text!(
-        blockscene, ax.titlepos,
+        decoration_scene, ax.titlepos,
         text = ax.title,
         visible = ax.titlevisible,
         fontsize = ax.titlesize,
@@ -1987,7 +1994,7 @@ end
 
 function axis_bounds_with_decoration(axis::Axis)
     # Filter out the zoomrect + background plot
-    lims = Makie.data_limits(axis.blockscene.plots, p -> p isa Mesh || p isa Poly)
+    lims = Makie.data_limits(axis.decoration_scene.plots)
     return Makie.parent_transform(axis.blockscene) * lims
 end
 

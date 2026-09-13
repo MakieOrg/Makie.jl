@@ -45,7 +45,7 @@
     elseif Symbol(Makie.current_backend()) == :GLMakie
         screen = scene.current_screens[1]
         for plt in (hm, hm2)
-            robj = screen.cache[objectid(plt)]
+            robj = plt.gl_renderobject[]
             shaders = first(values(robj.variants)).program.shader
             names = [string(shader.name) for shader in shaders]
             @test any(name -> endswith(name, "heatmap.vert"), names) && any(name -> endswith(name, "heatmap.frag"), names)
@@ -861,4 +861,51 @@ end
         image!(s, -1 .. 1, -1 .. 1, rotr90(vals[idx]))
     end
     s
+end
+
+@reference_test "Scene (insertion) order and clearing" begin
+    scene = Scene(size = (600, 450), backgroundcolor = :darkblue, clear = true)
+    # trigger screen creation so we see what dynamically adding scenes does
+    colorbuffer(scene)
+
+    # TODO: plots trigger scene insertion, potentially causing order differences
+    # TODO: clear all first causes plots behind scenes to still render
+    scene2 = Scene(scene, viewport = Observable(Rect2i(50, 50, 150, 150)),
+        backgroundcolor = :darkred, clear = true)
+    scene3 = Scene(scene, viewport = Observable(Rect2i(100, 100, 150, 150)),
+        backgroundcolor = :darkgreen, clear = true)
+
+    scene4 = Scene(scene, viewport = Observable(Rect2i(350, 50, 150, 150)),
+        backgroundcolor = :darkred, clear = true)
+    scene5 = Scene(scene, viewport = Observable(Rect2i(400, 100, 150, 150)),
+        backgroundcolor = :darkgreen, clear = true)
+
+    text!(scene3, "scene3", color = RGBf(1,0,1), align = (:center, :center), fontsize = 32)
+    text!(scene2, "scene2", color = :cyan, align = (:center, :center), fontsize = 32)
+
+    text!(scene4, "scene4", color = :cyan, align = (:center, :center), fontsize = 32)
+    text!(scene5, "scene5", color = RGBf(1,0,1), align = (:center, :center), fontsize = 32)
+
+    # TODO: no insert on scene causes scenes to not display
+    scene6 = Scene(scene, viewport = Observable(Rect2i(100, 300, 400, 100)),
+        backgroundcolor = :gray, clear = true)
+    scene7 = Scene(scene, viewport = Observable(Rect2i(150, 325, 300, 50)),
+        backgroundcolor = :black, clear = true)
+
+    # TODO: insertion order:   scene7 plots first, scene8 second
+    #       depth-first order: scene8 plots first, scene7 second <- want this?
+    # TODO: Should this be allowed to spill out of scene6?
+    scene8 = Scene(scene6, viewport = Observable(Rect2i(275, 275, 50, 150)),
+        backgroundcolor = :orange, clear = true)
+
+    sleep(1) # for WGLMakie?
+    st = Makie.Stepper(scene)
+    Makie.step!(st)
+
+    # emptying a scene/deleting scenes from the scene tree should delete them
+    # from the backend screen too
+    empty!(scene)
+    Makie.step!(st)
+
+    st
 end
