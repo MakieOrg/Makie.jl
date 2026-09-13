@@ -207,6 +207,7 @@ include("themes/theme_latexfonts.jl")
 
 # layouting of plots
 include("layouting/transformation.jl")
+include("layouting/resampling.jl")
 include("layouting/data_limits.jl")
 include("layouting/text_layouting.jl")
 include("layouting/boundingbox.jl")

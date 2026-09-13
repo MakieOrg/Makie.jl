@@ -62,6 +62,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     patchstrokewidth = 0,
     size = (600, 450), # 4/3 aspect ratio
     visible = true,
+    resampler = nothing,
     Axis = Attributes(),
     Axis3 = Attributes(),
     legend = Attributes(),

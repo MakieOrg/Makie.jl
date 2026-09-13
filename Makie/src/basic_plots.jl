@@ -35,6 +35,7 @@ function generic_plot_attributes!(attr)
     attr[:inspector_clear] = automatic
     attr[:inspector_hover] = automatic
     attr[:clip_planes] = automatic
+    attr[:resampler] = nothing
     return attr
 end
 
@@ -53,6 +54,7 @@ function generic_plot_attributes(attr)
         inspector_clear = attr[:inspector_clear],
         inspector_hover = attr[:inspector_hover],
         clip_planes = attr[:clip_planes],
+        resampler = attr[:resampler],
     )
 end
 
@@ -112,6 +114,10 @@ function mixin_generic_plot_attributes()
         parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
         """
         clip_planes = @inherit clip_planes automatic
+        """
+        TODO: docs
+        """
+        resampler = @inherit resampler nothing
     end
 end
 
