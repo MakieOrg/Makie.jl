@@ -4,9 +4,6 @@
 WGLMakie uses [Bonito](https://github.com/SimonDanisch/Bonito.jl) to generate the HTML and JavaScript for displaying the plots. On the JavaScript side, we use [ThreeJS](https://threejs.org/) and [WebGL](https://en.wikipedia.org/wiki/WebGL) to render the plots.
 Moving more of the implementation to JavaScript is currently the goal and will give us a better JavaScript API, and more interaction without a running Julia server.
 
-!!! warning
-    The WGLMakie documentation examples are not being built correctly as part of the move from Documenter to VitePress. For working examples of WGLMakie integration, see the [Bonito plotting documentation](https://simondanisch.github.io/Bonito.jl/stable/plotting.html) for Documenter integration, or [BonitoBook examples](https://bonitobook.org/website/examples/) where Bonito is used to generate a static site.
-
 ## Notebook & IDE Environments
 
 !!! tip
@@ -204,7 +201,11 @@ Here is an example of how to use this in Franklin:
 ```@example wglmakie
 using WGLMakie
 using Bonito, Markdown
-Page() # for Franklin, you still need to configure
+# The docs build registers `DocumenterVitepress.BonitoPlugin()`, which ships
+# Bonito's JS/CSS bundle once through the site's `public/` folder, so the
+# default `Page()` (Bonito's `DocumenterAssets` mode) works without inlining
+# a copy of the bundle into every figure.
+Page()
 WGLMakie.activate!()
 Makie.inline!(true) # Make sure to inline plots into Documenter output!
 scatter(1:4, color=1:4)
