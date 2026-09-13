@@ -45,7 +45,7 @@ function cairo_draw(screen::Screen, scene::Scene)
         # the backend module which should be used to render the scene, and the pixel density
         # at which it should be rendered.
         # TODO: Should this work recursively, starting with non-CairoMakie-primitive recipes?
-        rasterize = p.rasterize[]::Int
+        rasterize = Int(p.rasterize[]::Integer)
         if should_rasterize && rasterize != 0
             draw_plot_as_image(pparent, screen, p, rasterize)
         else # draw vector
