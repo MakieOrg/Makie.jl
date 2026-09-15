@@ -139,10 +139,13 @@ mutable struct Screen <: Makie.MakieScreen
     gfx_atlas_bindings::Any
     gfx_atlas_size::Int
     fb_readback_buf::Any
-    # Per-screen graphics submission channel — isolated from compute/transfer
-    gfx_bq::Any  # Mantle.SubmitChannel
     # Per-screen graphics pipeline cache (no globals!)
     gfx_pipelines::Dict{Symbol, GraphicsPipeline}
+    # One compiled frame plan per target kind — `:window` and `:readback` — each
+    # with the signature it was built for. See `frame_plan!`: a plan bakes every
+    # pipeline, argument, count and viewport rectangle, so it is rebuilt when one
+    # of those changes and reused for every frame in between.
+    frame_plans::Dict{Symbol, Tuple{Any, Any, Any, Any}}
 
     function Screen(scene, state, config)
         s = new(scene, state, RayMakieState[], nothing, nothing, config,   # …, output_buffer, memory, …
@@ -152,8 +155,8 @@ mutable struct Screen <: Makie.MakieScreen
                 nothing, (0, 0),   # overlay_fb
                 nothing, nothing, nothing, 0,  # gfx_atlas
                 nothing,           # fb_readback_buf
-                nothing,           # gfx_bq
-                Dict{Symbol, GraphicsPipeline}()) # gfx_pipelines
+                Dict{Symbol, GraphicsPipeline}(), # gfx_pipelines
+                Dict{Symbol, Tuple{Any, Any, Any, Any}}()) # frame_plans
         # Only set the stop flag from the finalizer — never wait on tasks or
         # touch GLFW from GC (runs during allocation, can't yield or call C libs safely).
         finalizer(s -> (s.stop_renderloop[] = true), s)
@@ -162,20 +165,6 @@ mutable struct Screen <: Makie.MakieScreen
 end
 
 Base.wait(screen::Screen) = !isnothing(screen.rendertask) && wait(screen.rendertask)
-
-"""
-Get or create the screen's dedicated graphics queue.
-
-Takes the screen's DEVICE. The call was argument-free, which only the Vulkan
-backend answers — it reaches for the implicit global context — so on any other
-backend this was a `MethodError` the first time a screen needed a queue.
-"""
-function get_gfx_bq!(screen::Screen)
-    if screen.gfx_bq === nothing
-        screen.gfx_bq = Mantle.allocate_batch_queue!(screen.config.device)
-    end
-    return screen.gfx_bq::Mantle.SubmitChannel
-end
 
 function renderloop_running(screen::Screen)
     return !screen.stop_renderloop[] && !isnothing(screen.rendertask) && !istaskdone(screen.rendertask)
@@ -323,12 +312,12 @@ function Base.close(screen::Screen)
 
     close(screen.config.integrator)
 
-    # The graphics queue goes back. It drains on the way out, which is what
-    # retires everything the overlay pass recorded against it.
-    if screen.gfx_bq !== nothing
-        Mantle.release_batch_queue!(screen.gfx_bq::Mantle.SubmitChannel)
-        screen.gfx_bq = nothing
-    end
+    # No queue to hand back. A screen held a `Mantle.SubmitChannel` for its
+    # overlay pass and a second one to present on, and both are gone: a frame is
+    # a `Mantle.Plan` and `run!` decides what it is submitted on. Which is the
+    # answer to "do we even need batch queues if Mantle batches from the graph"
+    # — no, and this package is the last thing that was asking for one.
+    empty!(screen.frame_plans)
 
     # No flush, and nothing reaching into Lava. This used to call
     # `vk_flush!` + `flush_deferred_frees!` through `Base.loaded_modules`,
@@ -716,37 +705,38 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     KernelAbstractions.synchronize(screen.config.device)
 
     if has_overlays
-        # Slow path: blit to offscreen framebuffer, render overlays on top, readback
-        w, h = size(screen.output_buffer, 2), size(screen.output_buffer, 1)
-        fb = Mantle.Framebuffer(screen.config.device, w, h; depth=false, color_format=COMPOSITE_FORMAT)
-        target = Mantle.OffscreenTarget(fb)
-        # `Mantle.blit!` and `Mantle.pass!`, both core's. This was a batch queue,
-        # the Vulkan backend's `oneshot!`, reached through a module lookup,
-        # and a `blit!` that only that backend had — three names a package which
-        # must name no backend had no business holding. Each pass is its own
-        # submission and they are ordered on the device's queue, so the readback
-        # below is behind them with nothing to flush here.
-        Mantle.blit!(screen.config.device, target, screen.output_buffer; clear=false)
-        # Poll EVERY state — each resolves its own scene's plots — and then draw
-        # from the roots only, because a root's collection already covers the
-        # scenes below it. See `overlay_root_states`.
+        # The composited frame as a GRAPH: one pass holding the blit and every
+        # overlay, then a copy pass into a buffer the host reads. This was a
+        # `Framebuffer`, a `Mantle.blit!`, a `Mantle.pass!` and a
+        # `readback_framebuffer` that came back BGRA and had to be unswizzled
+        # here — four steps and a channel order, for what is two passes and an
+        # element type the caller names.
+        h, w = size(screen.output_buffer)
+        # Poll EVERY state — each resolves its own scene's plots — before
+        # collecting, because a plot that has not been polled has no render
+        # object to collect. Drawing is from the roots only.
         for scene_state in screen.scene_states
             screen.state = scene_state
             poll_all_plots(screen, scene_state.makie_scene)
         end
-        for scene_state in overlay_root_states(screen)
-            screen.state = scene_state
-            render_overlays!(screen, target, COMPOSITE_FORMAT)
-        end
-
-        # Readback framebuffer (has TRANSFER_SRC_BIT, unlike swapchain images)
-        pixels = Mantle.readback_framebuffer(fb)
-
-        # Convert BGRA UInt8 tuples -> RGBA{Float32} matrix (row-major -> column-major)
+        robjs = overlay_robjs(screen)
+        plan, out = frame_plan!(screen, :readback,
+                                g -> Mantle.Transient.Image(g, COMPOSITE_FORMAT, (w, h)),
+                                Mantle.Clear((0f0, 0f0, 0f0, 1f0)),
+                                screen.output_buffer, robjs, w, h;
+                                finish = function (g, img)
+                                    buf = Mantle.Transient.Buffer(g, COMPOSITE_FORMAT, w * h)
+                                    Mantle.copy!(g, "read", buf, img)
+                                    buf
+                                end)
+        Mantle.run!(plan)
+        KernelAbstractions.synchronize(screen.config.device)
+        # `(w, h)` because an image copy packs ROWS, so the column index varies
+        # fastest — the transposition `checkblitsize` names.
+        pixels = reshape(Array(Mantle.storage(out)), w, h)
         result = Matrix{RGBA{Float32}}(undef, h, w)
         for col in 1:w, row in 1:h
-            p = pixels[col, row]
-            result[row, col] = RGBA{Float32}(p[3]/255f0, p[2]/255f0, p[1]/255f0, p[4]/255f0)
+            result[row, col] = RGBA{Float32}(pixels[col, row])
         end
     else
         # Fast path: download RGBA{Float32} directly from GPU
@@ -804,45 +794,40 @@ function Base.display(screen::Screen, scene::Scene; figure = nothing, display_kw
 end
 
 """
-    present_composited!(screen, bq, win)
+    present_composited!(screen, win)
 
-One frame to the window: acquire an image, blit the composited output buffer
-onto it, draw every scene's overlays over that, and present.
+One frame to the window: the composited output buffer blitted onto it and every
+scene's overlays drawn over that, presented.
 
-One closed command buffer, made with `oneshot` and handed to `present_frame!`,
-because that is what a frame IS to the swapchain: the blit, the overlays and
-the transition to `PRESENT_SRC` in one submission, waiting on the image and
-signalling the present. It used to be three calls each drawing into whatever
-the queue had open and a `present_frame!` that took that batch over; the queue
-holds nothing open any more (Mantle, step 7).
 """
-# STILL VULKAN-SHAPED, and knowingly. The `colorbuffer` path above is portable
-# now; this one is not, because `presentready!` is a layout transition that has to
-# be recorded INTO the same buffer that is then handed to `present_frame!` with a
-# semaphore. Metal presents a `CAMetalDrawable` from its own command buffer and
-# has no such handshake, so the portable shape is a `present!(dev, win) do p …`
-# verb that does not exist yet — and guessing at it is how the last set of
-# backend-shaped calls got written.
+# PORTABLE now. It was "still Vulkan-shaped, and knowingly": `presentready!` is a
+# layout transition that had to be recorded into the same one-shot buffer that
+# was then handed to `present_frame!` with a semaphore, Metal presents a
+# `CAMetalDrawable` from its own command buffer and has no such handshake, and
+# the note here said the portable shape was "a `present!(dev, win) do p …` verb
+# that does not exist yet".
 #
-# What is portable here is already portable: `blit!` and `render_overlays!` take a
-# device and a target. Only the wrapper is Vulkan's.
-function present_composited!(screen::Screen, bq, win)
-    Mantle.acquire_next_image!(win)
-    win_target = Mantle.WindowTarget(win)
-    dev = screen.config.device
-    frame = Mantle.oneshot(bq) do e
-        Mantle.blit!(dev, win_target, screen.output_buffer; clear=false)
-        for ss in screen.scene_states
-            screen.state = ss
-            poll_all_plots(screen, ss.makie_scene)
-        end
-        for ss in overlay_root_states(screen)
-            screen.state = ss
-            render_overlays!(screen, win_target, Mantle.blittarget(win_target))
-        end
-        Mantle.presentready!(e, win)
+# It did exist — as the GRAPH. `Mantle.Surface(g, win)` makes the window an
+# attachment and `run!` owns the whole sequence: poll, acquire, record, present,
+# in that order and no other, per backend. So the acquire, the one-shot, the
+# transition, the present and the batch queue are all gone from this package,
+# and what is left says what a frame IS rather than how one driver submits it.
+function present_composited!(screen::Screen, win)
+    w, h = size(win)
+    # Polling resolves each scene's plots and so decides what there is to draw;
+    # it has to happen before the robjs are collected, not inside the frame.
+    for ss in screen.scene_states
+        screen.state = ss
+        poll_all_plots(screen, ss.makie_scene)
     end
-    Mantle.present_frame!(bq, win, frame)
+    robjs = overlay_robjs(screen)
+    # `Mantle.Keep`, not a clear: the first draw in the pass is the blit, which
+    # covers every pixel, and clearing under it is one full-target write a frame
+    # for nothing.
+    plan, _ = frame_plan!(screen, :window,
+                          g -> Mantle.Surface(g, win), Mantle.Keep,
+                          screen.output_buffer, robjs, w, h)
+    Mantle.run!(plan)
     return nothing
 end
 
@@ -894,15 +879,11 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
     # The screen's device, not the implicit global context: only the Vulkan
     # backend answers the argument-free form.
     #
-    # And a SECOND channel only where the backend has one to give. Presenting on
-    # its own channel lets a frame composite while the next one is already being
-    # drawn, which is why it is asked for; Metal owns exactly one `MTLCommandQueue`
-    # per device and refuses, by name, with `supports_batch_queue`. Sharing the
-    # graphics channel there costs the overlap and nothing else — the present and
-    # the draw are ordered on one queue instead of two.
-    own_present = Mantle.supports_batch_queue(screen.config.device)
-    present_bq = own_present ? Mantle.allocate_batch_queue!(screen.config.device) :
-                               get_gfx_bq!(screen)
+    # No presentation channel. A frame is a `Mantle.Plan` now and `run!` submits
+    # it; which channel that is, and whether the backend has more than one, is
+    # core's business. This package used to ask for a second one so a frame could
+    # composite while the next was drawn — a scheduling decision, made here,
+    # about a backend it is not allowed to name.
 
     screen.rendertask = @async begin
         yield()
@@ -915,7 +896,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
             KernelAbstractions.synchronize(screen.config.device)
 
-            present_composited!(screen, present_bq, win)
+            present_composited!(screen, win)
             Mantle.waitidle(screen.config.device)
 
             while !screen.stop_renderloop[]
@@ -945,7 +926,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
 
                 screen.stop_renderloop[] && break
 
-                present_composited!(screen, present_bq, win)
+                present_composited!(screen, win)
                 Mantle.waitidle(screen.config.device)
 
                 # Cache composited frame for colorbuffer() to return without blocking.
@@ -982,19 +963,8 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             catch e
                 @warn "RayMakie: closing the render window failed during teardown" exception = (e, catch_backtrace())
             end
-            # Hand the presentation queue back. Dropping it instead leaks its
-            # command pool, timeline semaphore and argument slabs for the life of
-            # the device, and every start_renderloop! allocated a fresh one.
-            # Only what we allocated. On a one-channel backend `present_bq` IS
-            # the screen's graphics channel, and handing that back here would
-            # free a channel the screen still owns and will use again.
-            if own_present
-                try
-                    Mantle.release_batch_queue!(present_bq)
-                catch e
-                    @warn "RayMakie: releasing the presentation queue failed" exception = (e, catch_backtrace())
-                end
-            end
+            # Nothing to hand back: the loop allocated no channel. The frame
+            # plans go with the screen.
             screen.rendertask = nothing
         end
     end

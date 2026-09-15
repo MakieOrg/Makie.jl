@@ -2,14 +2,10 @@
 # Overlay Rendering — draws RenderObjects via Lava graphics pipeline
 # =============================================================================
 
-# `e` is the EMITTER of the closed command buffer the overlays go into — a
-# frame's one-shot in the render loop, an overlay one-shot in `colorbuffer` —
-# not a queue. It used to take the queue and draw into whatever batch the queue
-# had open; a queue holds nothing open any more (Mantle, step 7), so the caller
-# opens the buffer and this writes into it.
-function render_overlays!(screen, target, color_eltype; scenes=nothing)
-    render_overlays_gfx!(screen, target, color_eltype; scenes)
-end
+# DELETED: `render_overlays!` / `render_overlays_gfx!`, which opened a
+# `Mantle.pass!` and recorded every overlay into it, per frame. A frame is a
+# GRAPH now — see `frame_plan!` — so the overlays are declared beside the blit
+# instead of recorded after it, and the two submissions became one.
 
 # =============================================================================
 # Sub-scene backgrounds (GPU fill)
@@ -37,40 +33,28 @@ end
 # Draw a single RenderObject inside the active render pass
 # =============================================================================
 
-function draw_renderobject!(screen, p, robj::RenderObject, viewport, color_eltype, default_vp)
-    # `Mantle.viewport!` takes plain numbers and derives the scissor — including
-    # the clamping a flipped viewport needs. That arithmetic used to live here,
-    # spelled in `VK.Viewport`/`VK.Rect2D`, which is how a renderer ended up
-    # owning a driver's rectangle rules.
-    Mantle.viewport!(p, (viewport === nothing ? default_vp : viewport)...)
-
-    # `todevice`: a screen keeps the BACKEND its user named, and every verb below
-    # wants the device.
-    dev = Mantle.todevice(screen.config.device)
-    args = map(a -> Mantle.resolve(dev, a), build_args(robj))
-    # `Mantle.compile_draw` and not the Vulkan extension's
-    # `ensure_compiled_with_shader!`: it takes the RESOLVED arguments and each
-    # backend bakes their device form its own way, which is why there is no
-    # `push_info` to pack against here any more. `pack_gfx_args` and the
-    # descriptor-set layout went with it.
-    # The bindings travel with the COMPILE as well as with the bind: on one
-    # backend a pipeline that samples textures is built around their descriptor
-    # set layout, and a set bound against a pipeline that was not is invalid.
-    compiled = Mantle.compile_draw(dev, robj.pipeline, (color_eltype,), nothing, args, args;
-                                   bindings = robj.bindings)
-
-    robj.bindings === nothing || Mantle.bindings!(p, compiled, robj.bindings)
-
-    if haskey(robj.buffers, :indices)
-        ib = robj.buffers[:indices]
-        Mantle.draw!(p, compiled, args, length(ib); indices = Mantle.resolve(dev, ib))
-    else
-        Mantle.draw!(p, compiled, args, robj.vertex_count; instances = robj.instances)
-    end
-    # No `pin!`. What the draw reads is reachable from `robj`, which outlives the
-    # frame; `Mantle.hold!` is for the case where it is not, and this is not that
-    # case. `pin!` was the Vulkan backend deciding a lifetime, which is the thing
-    # `docs/mantle-owns-it.md` 2.2 moved into core.
+function declare_overlay_draw!(p, robj::RenderObject, cell, viewport, default_vp)
+    # DECLARED, not recorded. `Mantle.draw!` on a `PassHandle` pushes a `DrawCall`
+    # onto the graph's pass and the plan compiles it once; the hand-recorded
+    # version called `Mantle.compile_draw` here, every frame, for every object.
+    #
+    # `cell` is a `Mantle.DrawBinding`, and it is why this plan survives a zoom.
+    # `projectionview` and `model` are ARGUMENTS — plain `Mat4f` values in the
+    # tuple — a tick count is a VERTEX COUNT, and a relaid-out plot gets a new
+    # index buffer. All four change when the limits do and none of them is a plot
+    # appearing or disappearing, so all four are rebound rather than baked; see
+    # `rebind_overlay_args!`.
+    #
+    # The SAME list on both stages, which is what a Makie render object is: the
+    # fragment stage reads the colormap its vertex stage indexed. One push
+    # constant range, two stages declaring the same layout over it.
+    Mantle.draw!(p, robj.pipeline, cell;
+                 frag_args = Mantle.drawargs(cell),
+                 viewport = viewport === nothing ? default_vp : viewport,
+                 bindings = robj.bindings)
+    # No `pin!` and no `hold!`. What the draw reads is reachable from `robj`,
+    # which outlives the plan; the plan holds what it names for as long as it
+    # lives, which is core's job and not this package's.
     return nothing
 end
 
@@ -173,43 +157,170 @@ function require_drawable(backend, p::Mantle.GraphicsPipeline)
 end
 
 """
-    render_overlays_gfx!(screen, e, target; scenes=nothing)
+    frame_draws!(p, screen, source, cells, robjs, w, h)
 
-Render overlay plots (scatter, lines, text, mesh) through Mantle's graphics
-pipeline directly onto `target` (a `WindowTarget` or `OffscreenTarget`), into the closed
-command buffer `e` emits into.
+Declare a whole composited frame onto one render pass: the traced image, then
+every overlay on top of it.
 
-When `scenes` is provided, only plots from those scenes are rendered (used for
-uncovered overlay rendering). Otherwise, uses the current screen state's scene.
+ONE pass, because that is what it is. It used to be `Mantle.blit!` — itself a
+pass with one fullscreen draw — followed by a second `Mantle.pass!` for the
+overlays, two submissions where the second only ever ran straight after the
+first. The graph makes the difference visible: the blit is a draw like any
+other, it just wants a different viewport, and per-draw viewports are why it
+can share the pass.
 """
-function render_overlays_gfx!(screen, target, color_eltype; scenes=nothing)
-    state = screen.state
-    robjs = collect_overlay_robjs(state; scenes)
-    isempty(robjs) && return
-
-    # Every pipeline checked BEFORE the pass opens, so one this backend cannot run
-    # is a named error rather than a half-composited frame or a missing overlay.
-    backend = screen.config.device
-    for rv in robjs
-        require_drawable(backend, rv[1].pipeline)
-    end
-
-    # `target_extent`, not four lines of field access per target kind. Reaching
-    # into `win.views[win.current_image_idx + 1]` and `fb.color_view` was this
-    # package knowing a driver's swapchain bookkeeping; `Mantle.pass!` resolves
-    # the attachment from the target and there is nothing left to branch on.
-    w, h = Mantle.target_extent(target)
-
+function frame_draws!(p, screen, source, cells, robjs, w, h)
     # Y-flipped: a negative height puts clip-space +Y at the top, matching
-    # Makie's pixel convention. `viewport!` derives the scissor from exactly this.
+    # Makie's pixel convention, and this is the default every overlay that does
+    # not name its own rect takes.
     default_vp = (0f0, Float32(h), Float32(w), -Float32(h))
+    # The blit is NOT y-flipped — `Mantle.blit!` spells it `viewport!(p, 0, 0, w, h)`
+    # and its shader is written for that. Two conventions in one pass is exactly
+    # the case a per-draw viewport exists for.
+    Mantle.checkblitsize(source, w, h)
+    Mantle.draw!(p, Mantle.BLIT_PIPELINE, (), 3;
+                 frag_args = (source, Int32(w), Int32(h)),
+                 viewport = (0f0, 0f0, Float32(w), Float32(h)))
+    for (i, (robj, vp)) in enumerate(robjs)
+        declare_overlay_draw!(p, robj, cells[i], vp, default_vp)
+    end
+    return nothing
+end
 
-    # No clear — overlays are alpha-blended on top of what is already there.
-    Mantle.pass!(screen.config.device, target) do p
-        Mantle.viewport!(p, default_vp...)
-        for (robj, robj_vp) in robjs
-            draw_renderobject!(screen, p, robj, robj_vp, color_eltype, default_vp)
+"""
+    frame_signature(robjs, w, h)
+
+What a frame plan FIXES, as opposed to what it merely reads.
+
+A plan compiles each pipeline around its argument TYPES and fixes whether each
+draw is indexed. It fixes none of the values: the arguments, the count, the
+index buffer and the instance count all live in a `Mantle.DrawBinding` per
+object and are rebound every frame. So a camera move, a tick recount, a colour
+change and new contents in an existing buffer are all invisible here, which is
+the point. What is left rebuilds a plan: a plot appearing or disappearing, a
+plot's pipeline or argument types changing, a viewport moving, a window opening
+or resizing.
+"""
+function frame_signature(robjs, w, h)
+    (w, h,
+     map(robjs) do (robj, vp)
+         # `isnothing(indices)` and not the buffer's identity: WHETHER a draw is
+         # indexed decides which command the backend records and so is compiled
+         # in, but WHICH buffer holds the indices is rebound.
+         (objectid(robj), objectid(robj.pipeline), vp, objectid(robj.bindings),
+          isnothing(get(robj.buffers, :indices, nothing)),
+          # The argument TYPES, because those are the pipeline and the layout.
+          # Not the values, not the counts, not the buffers' identities — a
+          # camera move, a tick recount and new data in an existing plot all
+          # leave this untouched, which is the whole point.
+          map(typeof, build_args(robj)))
+     end)
+end
+
+"""
+    overlay_binding(robj, dev) -> Mantle.DrawBinding
+
+Everything `robj` re-reads each frame, in the cell its draw will read it from.
+
+An indexed draw's count is an INDEX count; a non-indexed one's is a vertex count
+and carries the instance count with it. That choice is compiled in — it decides
+which command the backend records — so it is made here, once, and `rebind!` can
+only ever supply the same kind.
+"""
+function overlay_binding(robj::RenderObject, dev)
+    ix = get(robj.buffers, :indices, nothing)
+    args = build_args(robj)
+    return ix === nothing ?
+        Mantle.DrawBinding(dev, args, robj.vertex_count; instances = robj.instances) :
+        Mantle.DrawBinding(dev, args, length(ix); indices = ix)
+end
+
+"""
+    rebind_overlay_args!(cells, robjs, dev)
+
+Put this frame's values into the cells the plan draws from.
+
+This is the per-frame work, and all of it: no compile, no graph, no recording.
+`Mantle.rebind!` refuses a value of a different type, which is the check
+`frame_signature` does not have to make — a changed type is a changed pipeline
+and would have rebuilt the plan anyway.
+"""
+function rebind_overlay_args!(cells, robjs, dev)
+    for (i, (robj, _)) in enumerate(robjs)
+        ix = get(robj.buffers, :indices, nothing)
+        args = build_args(robj)
+        if ix === nothing
+            Mantle.rebind!(cells[i], dev, args, robj.vertex_count;
+                           instances = robj.instances)
+        else
+            Mantle.rebind!(cells[i], dev, args, length(ix); indices = ix)
         end
     end
     return nothing
+end
+
+"""
+    frame_plan!(screen, key, mktarget, clear, source, robjs, w, h; finish)
+
+The compiled plan for one composited frame, built on first use and reused until
+[`frame_signature`](@ref) changes.
+
+`mktarget(g)` makes the attachment inside the graph being built — a
+`Mantle.Surface` for the window, a `Mantle.Transient.Image` for a readback.
+`finish(g, target)` runs AFTER the render pass is declared and answers with
+whatever the caller needs back out of the plan: a readback adds a copy pass and
+hands back the buffer it copies into. Two callbacks and not one because the
+order the passes are declared in is the order they read: a copy that names the
+target has to be declared after the pass that fills it. `key` separates the two
+target kinds, because a screen has both and they are not interchangeable.
+"""
+function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
+                     finish = (g, target) -> nothing)
+    # `todevice`: a screen keeps the BACKEND its user named, and a graph is
+    # built on the device.
+    dev = Mantle.todevice(screen.config.device)
+    sig = (key, objectid(source), frame_signature(robjs, w, h))
+    cached = get(screen.frame_plans, key, nothing)
+    if cached !== nothing && cached[1] == sig
+        rebind_overlay_args!(cached[4], robjs, dev)
+        return cached[2], cached[3]
+    end
+
+    cells = [overlay_binding(robj, dev) for (robj, _) in robjs]
+    g = Mantle.Graph(dev)
+    target = mktarget(g)
+    Mantle.render!(g, "frame", target => clear) do p
+        frame_draws!(p, screen, source, cells, robjs, w, h)
+    end
+    extra = finish(g, target)
+    # NOT `record!`: a windowed plan draws to a different swapchain image every
+    # frame and core refuses to record one. An unrecorded plan re-emits per
+    # frame, which is also what lets a rebound cell be seen — a recording packs
+    # its arguments once and `Mantle.rebind!` on one is refused by name.
+    plan = Mantle.Plan(g)
+    screen.frame_plans[key] = (sig, plan, extra, cells)
+    return plan, extra
+end
+
+"""
+    overlay_robjs(screen; scenes = nothing)
+
+Every overlay draw for the whole screen, from the ROOT states only.
+
+`collect_overlay_robjs` answers for one state; a root's collection already
+covers the scenes below it. Polling is separate and has to touch every state,
+because each resolves its own scene's plots — see `poll_all_plots`.
+"""
+function overlay_robjs(screen; scenes = nothing)
+    robjs = Tuple{RenderObject, NTuple{4, Float32}}[]
+    for ss in overlay_root_states(screen)
+        screen.state = ss
+        append!(robjs, collect_overlay_robjs(ss; scenes))
+    end
+    # Every pipeline checked BEFORE the graph is built, so one this backend
+    # cannot run is a named error rather than a half-composited frame.
+    for (robj, _) in robjs
+        require_drawable(screen.config.device, robj.pipeline)
+    end
+    return robjs
 end

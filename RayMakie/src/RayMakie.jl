@@ -41,10 +41,11 @@ import Mantle
 # — driver-named concretes that only exist when `MantleVulkanExt` is loaded, so
 # naming them here made RayMakie a package that could not load on a Mac. The
 # abstract types are Mantle's; the backend supplies the concretes.
+# No `allocate_batch_queue!` / `release_batch_queue!`: a frame is a `Mantle.Plan`
+# and `run!` owns the submission, so this package names no queue at all.
 import Mantle: DeviceArray, GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
                Texture2D, Sampler, SampledTexture, bind_textures,
                transition_image!,
-               allocate_batch_queue!, release_batch_queue!,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
 import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
