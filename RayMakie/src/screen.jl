@@ -126,7 +126,12 @@ mutable struct Screen <: Makie.MakieScreen
     window::Any                 # Nothing or a Mantle.Window
     rendertask::Union{Nothing, Task}
     stop_renderloop::Threads.Atomic{Bool}
-    last_colorbuffer::Union{Nothing, Matrix{RGB{N0f8}}}
+    # The last presented frame, as the RAW snapshot rather than the converted
+    # one. Converting it cost 1.3 ms of every frame the render loop drew, to
+    # serve a `colorbuffer` call that usually never comes; the snapshot itself
+    # is 0.12 ms and does have to happen per frame, because the buffer it copies
+    # is being overwritten by the next one.
+    last_colorbuffer::Union{Nothing, Matrix{RGBA{Float32}}}
     # Cached state for uncovered overlay rendering
     uncovered_state::Union{Nothing, RayMakieState}
     # Per-screen overlay caches
@@ -648,11 +653,20 @@ loop, for three `clamp`s.
 """
 function tosrgb8(cpu::AbstractMatrix{RGBA{Float32}})
     out = Matrix{RGB{N0f8}}(undef, size(cpu))
-    @inbounds for i in eachindex(cpu, out)
+    @inbounds @simd for i in eachindex(cpu, out)
         c = cpu[i]
-        out[i] = RGB{N0f8}(clamp01nan(c.r), clamp01nan(c.g), clamp01nan(c.b))
+        out[i] = RGB{N0f8}(n0f8(c.r), n0f8(c.g), n0f8(c.b))
     end
     return out
+end
+
+# `RGB{N0f8}(::Float32)` rounds and then CHECKS the result is in range, which it
+# cannot vectorise around. The clamp has already made that impossible, so the
+# check is the only thing left and it costs more than the arithmetic: 2.4 ns a
+# pixel against 0.4.
+@inline function n0f8(x::Float32)
+    v = isnan(x) ? 0f0 : (x < 0f0 ? 0f0 : (x > 1f0 ? 1f0 : x))
+    return reinterpret(N0f8, unsafe_trunc(UInt8, v * 255f0 + 0.5f0))
 end
 
 """
@@ -687,7 +701,10 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # If the render loop is running, return the last composited frame.
     if renderloop_running(screen)
         buf = screen.last_colorbuffer
-        buf !== nothing && return format == Makie.GLNative ? Makie.jl_to_gl_format(buf) : buf
+        if buf !== nothing
+            rgb = tosrgb8(buf)
+            return format == Makie.GLNative ? Makie.jl_to_gl_format(rgb) : rgb
+        end
         # No frame yet -- fall through to render one
     end
 
@@ -968,7 +985,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                 # swallowing it here meant `colorbuffer` quietly returned a stale
                 # image — the loop keeps going, but not silently.
                 try
-                    screen.last_colorbuffer = tosrgb8(Array(screen.output_buffer))
+                    screen.last_colorbuffer = Array(screen.output_buffer)
                 catch e
                     @warn "RayMakie: reading back the frame failed; colorbuffer will return the previous one" exception = (e, catch_backtrace())
                 end
