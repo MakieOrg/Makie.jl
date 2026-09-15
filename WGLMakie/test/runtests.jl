@@ -46,7 +46,7 @@ edisplay = Bonito.use_electron_display(devtools = true)
         f, a, p = scatter(rand(10))
         colorbuffer(f)
         @test length(p.attributes.inputs) == 37
-        @test length(p.attributes.outputs) == 92
+        @test length(p.attributes.outputs) == 93
     end
 
     @testset "refimages" begin

@@ -19,31 +19,31 @@ end
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 17
     @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.program_cache) == 9
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 17
     @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.program_cache) == 9
 
     # Same for linesegments
     display(screen, linesegments(1:4))
     @test length(cache.shader_cache) == 17
     @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.program_cache) == 9
 
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
     @test length(cache.shader_cache) == 19
     @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 11
+    @test length(cache.program_cache) == 10
 
     # For second time no new shaders should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
     @test length(cache.shader_cache) == 19
     @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 11
+    @test length(cache.program_cache) == 10
 end
 
 @testset "unit tests" begin
@@ -190,7 +190,7 @@ end
 
     @test ax.scene.plots == [hmp, lp, tp]
 
-    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots...])
+    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots[1]])
 
     empty!(ax)
 
@@ -536,4 +536,29 @@ end
     @test eltype(p4.gl_renderobject[][:volumedata]) === RGBA{Float16}
     # @test eltype(p5.gl_renderobject[][:image]) === RGBA{N0f8}
     # @test eltype(p6.gl_renderobject[].vertexarray.buffers["intensity"]) === N0f8
+end
+
+struct RasterizedMarker end
+
+Makie.to_spritemarker(m::RasterizedMarker) = m
+
+function Makie.rasterize_marker_for_gpu(::RasterizedMarker, markersize, px_per_unit)
+    n = max(2, round(Int, first(Makie.to_2d_scale(markersize)) * px_per_unit))
+    return fill(RGBAf(1, 0, 0, 1), n, n)
+end
+
+@testset "markers rasterize at the screen's px_per_unit" begin
+    s = Scene(camera = campixel!, size = (100, 100))
+    p = scatter!(s, Point2f(50, 50), marker = RasterizedMarker(), markersize = 20)
+    screen = display(GLMakie.Screen(visible = false, px_per_unit = 2), s)
+    @test size(p.image[]) == (40, 40)
+
+    screen.px_per_unit[] = 4
+    @test size(p.image[]) == (80, 80)
+
+    GLMakie.closeall()
+    screen = display(GLMakie.Screen(visible = false, px_per_unit = 1), s)
+    @test size(p.image[]) == (20, 20)
+
+    GLMakie.closeall()
 end

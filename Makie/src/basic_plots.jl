@@ -650,12 +650,52 @@ function deprecated_attributes(::Type{<:MeshScatter})
 end
 
 """
+    glyphs(positions)
+
+Renders a flat batch of font glyphs from the texture atlas, one glyph per entry in
+`positions`. This is the primitive `Text` lowers its glyphs to. Each glyph is placed at
+`project(position) + marker_offset`, with `position` acting in `space` and `marker_offset`
+in `markerspace`. `Glyphs` has no notion of strings or lines; that layout lives in `Text`.
+"""
+@recipe Glyphs (positions,) begin
+    "Index of each glyph within its font."
+    glyph_indices = UInt64[]
+    "Font of each glyph."
+    font = NativeFont[]
+    "Per-glyph offset from `position`, in `markerspace` units."
+    marker_offset = Point3f[]
+    "Per-glyph size (fontsize), in `markerspace` units."
+    scale = Vec2f[]
+    "Color of each glyph."
+    color = :black
+    "Rotation of each glyph."
+    rotation = 0.0
+    "Color of the outline around each glyph."
+    strokecolor = (:black, 0.0)
+    "Width of the outline around each glyph. The GL backends only support one width for all glyphs."
+    strokewidth = 0
+    "Color of the glow effect around each glyph."
+    glowcolor = (:black, 0.0)
+    "Size of the glow effect around each glyph."
+    glowwidth = 0.0
+    "Space in which `scale` and `marker_offset` act. See `Makie.spaces()`."
+    markerspace = :pixel
+    "Controls whether the model matrix (without translation) applies to the glyphs themselves."
+    transform_marker = false
+    mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
+    fxaa = false
+end
+
+"""
 Plots one or multiple texts passed via the `text` keyword.
 """
 @recipe Text (positions,) begin
     "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
     text = ""
-    "Sets the color of the text. One can set one color per glyph by passing a `Vector{<:Colorant}`, or one colorant for the whole text. If color is a vector of numbers, the colormap args are used to map the numbers to colors."
+    "An optional text handler object that intercepts matching text inputs and lays them out with a custom engine (it just needs `Makie.layout_text` methods for the input types it accepts). `nothing` (default) uses the built-in glyph/rich/LaTeX paths. Unhandled input types fall through to the built-in path, so handled and unhandled strings can be mixed."
+    text_handler = @inherit text_handler
+    "Sets the color of the text. One can set one color per string by passing a `Vector{<:Colorant}`, or one colorant for all of them. If color is a vector of numbers, the colormap args are used to map the numbers to colors. To color parts of one string differently, use `rich` text."
     color = @inherit textcolor
     "Sets the font. Can be a `Symbol` which will be looked up in the `fonts` dictionary or a `String` specifying the (partial) name of a font or the file path of a font file"
     font = @inherit font
