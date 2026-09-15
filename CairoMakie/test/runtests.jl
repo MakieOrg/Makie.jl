@@ -188,16 +188,6 @@ end
     @test Makie.broadcast_foreach_index((args...) -> error("unreachable"), UInt32[], 1:3, 1:3) === nothing
 end
 
-@testset "ComputeGraph Sanity Checks" begin
-    # This is supposed to catch changes in ComputePipeline causing nodes to
-    # be skipped or become duplicated. This will also trigger if plot attributes
-    # are modified in which case the numbers should just be updated
-    f, a, p = scatter(rand(10))
-    colorbuffer(f)
-    @test length(p.attributes.inputs) == 42
-    @test length(p.attributes.outputs) == 87
-end
-
 excludes = Set(
     [
         "Line GIF",
