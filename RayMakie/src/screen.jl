@@ -636,6 +636,46 @@ function composite_scene!(output::AbstractMatrix{RGBA{Float32}}, scene_state::Ra
     KernelAbstractions.synchronize(backend)
 end
 
+"""
+    tosrgb8(cpu) -> Matrix{RGB{N0f8}}
+
+The composited frame in the form `colorbuffer` hands back, done in ONE dispatch.
+
+A function for the same reason [`unswizzle`](@ref) is: `Screen.output_buffer` is
+declared `AbstractMatrix{RGBA{Float32}}`, so written inline the `map` closure is
+called dynamically once per pixel — half a million times a frame, in the render
+loop, for three `clamp`s.
+"""
+function tosrgb8(cpu::AbstractMatrix{RGBA{Float32}})
+    out = Matrix{RGB{N0f8}}(undef, size(cpu))
+    @inbounds for i in eachindex(cpu, out)
+        c = cpu[i]
+        out[i] = RGB{N0f8}(clamp01nan(c.r), clamp01nan(c.g), clamp01nan(c.b))
+    end
+    return out
+end
+
+"""
+    unswizzle(pixels, w, h) -> Matrix{RGBA{Float32}}
+
+The readback as Makie wants it: `(height, width)`, `RGBA{Float32}`.
+
+`(w, h)` going in because an image copy packs ROWS, so the column index varies
+fastest — the transposition `Mantle.checkblitsize` names.
+
+A FUNCTION, not the loop written where it is called, and that is the whole point
+of it. The plan cache hands its buffer back as `Any`, so inline the element type
+is unknown and each of a million conversions is a dynamic dispatch: 130 of the
+193 ms a 800x600 frame took, in one line, for arithmetic that is about two.
+"""
+function unswizzle(pixels::AbstractMatrix, w::Integer, h::Integer)
+    result = Matrix{RGBA{Float32}}(undef, h, w)
+    @inbounds for col in 1:w, row in 1:h
+        result[row, col] = RGBA{Float32}(pixels[col, row])
+    end
+    return result
+end
+
 function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative; figure = nothing, clear=true)
     if isempty(screen.scene_states)
         # Only init the scene -- don't open a window or start the render loop.
@@ -731,13 +771,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
                                 end)
         Mantle.run!(plan)
         KernelAbstractions.synchronize(screen.config.device)
-        # `(w, h)` because an image copy packs ROWS, so the column index varies
-        # fastest — the transposition `checkblitsize` names.
-        pixels = reshape(Array(Mantle.storage(out)), w, h)
-        result = Matrix{RGBA{Float32}}(undef, h, w)
-        for col in 1:w, row in 1:h
-            result[row, col] = RGBA{Float32}(pixels[col, row])
-        end
+        result = unswizzle(reshape(Array(Mantle.storage(out)), w, h), w, h)
     else
         # Fast path: download RGBA{Float32} directly from GPU
         result = Array(screen.output_buffer)
@@ -934,8 +968,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                 # swallowing it here meant `colorbuffer` quietly returned a stale
                 # image — the loop keeps going, but not silently.
                 try
-                    cpu_buf = Array(screen.output_buffer)
-                    screen.last_colorbuffer = map(c -> RGB{N0f8}(clamp01nan(c.r), clamp01nan(c.g), clamp01nan(c.b)), cpu_buf)
+                    screen.last_colorbuffer = tosrgb8(Array(screen.output_buffer))
                 catch e
                     @warn "RayMakie: reading back the frame failed; colorbuffer will return the previous one" exception = (e, catch_backtrace())
                 end
