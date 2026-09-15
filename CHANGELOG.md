@@ -4,7 +4,7 @@
 
 - **breaking** Moved `FFMPEG_jll` from a hard dependency to a package extension to avoid pulling in GPL-licensed libraries (e.g. libx264). `record`, `VideoStream`, `convert_video`, and `extract_frames` now require `FFMPEG_jll` to be available in the active environment; Makie will load it automatically on first use. A custom ffmpeg binary can be configured via `Makie.ffmpeg_path!(path)` (or persistently via Preferences.jl). [#5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
 - Expanded scope of dim converts [#5323](https://github.com/MakieOrg/Makie.jl/pull/5323)
-  - **breaking** most plot recipes now set the target types for their conversions. This means `plot!(::PlotType{<:Tuple{<:MyArgType}})` requires introducing a conversion trait and extending `Makie.types_for_plot_arguments()`. See docs.
+  - **breaking** most plot recipes now set the target types for their conversions. This means adding `plot!(::MakiePlotType{<:Tuple{<:MyArgType}})` requires introducing a conversion trait and extending `Makie.types_for_plot_arguments()` to work. See docs.
   - **breaking** `UnitfulConversion` no longer rescales units and dropped the `units_in_label` option/field.
   - **breaking** The dim converts interface has changed. See dim converts docs.
   - Added `argument_dims()` and `argument_dim_kwargs()` to handle dim converts for various argument configurations, including point-like arguments, dimensionless arguments (i.e. not dim-convertible) and handling of attributes like `direction` and `orientation`.
@@ -12,6 +12,10 @@
   - Added support for x/y/zlabel suffixes based on dim converts via Axis/Axis3 attributes.
   - Adjusted conversion logic to avoid applying dim converts when `space != :data`, and allow early `convert_arguments()` application when dim converts are forced. (I.e. when the parent scene/Axis/etc. has set dim converts.)
   - Added `force_dimconverts` as a generic plot keyword argument. This can be set to `false` to allow a numeric plot to plot in a scene with fixed dim converts. (E.g. for axis decorations.)
+- Added dim converts for colors and color-like arguments. The latter can be adressed as dim 4 in `argument_dims`. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
+- Added `dim_conversion` attribute and processing to `Colorbar`, including extraction of color dim converts from plots [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
+- **mildly breaking** Reworked `Colorbar` to use the ComputeGraph infrastructure and reworked the `extract_colormap` interface. Deprecated `limits` in favor of `colorrange`. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
+- Fixed Colorbar `tickformat` and `ticks` not working with categorical colors, NaN/Inf producing `(color)scale` + color combinations breaking the Colorbar and added safeguards against unsorted `colorrange`s. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
 - Reworked `barplot` to allow infinitely long bars in `Axis`, e.g. for log transforms [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
 - Updated `Legend` to toggle visibility in the root plot associated with a legend entry instead of its child plots. This fixes issues with some recipes erroring when toggling visibility and avoids showing child plots which are hidden by the recipe. [#5209](https://github.com/MakieOrg/Makie.jl/pull/5209)
   - **breaking** Custom implementations of `legendelements(::Plot, legend)` should no longer set `plots` in the `LegendElement`s they create. Custom `LegendElement` structs no longer need to contain `plots`.

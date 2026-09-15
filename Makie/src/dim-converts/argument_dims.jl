@@ -10,7 +10,8 @@ the attributes defined via `argument_dim_kwargs(P)`.
 The return type of this function can be `nothing` to indicate that the plot/trait
 arguments are not compatible with dim converts or a `tuple` otherwise. The
 elements can be `1, 2, 3` to connect the argument to the respective dim convert,
-or `0` to mark it as non-dimensonal. Trailing `0`s can be omitted. Point-like
+4 to convert it with a plot local dim convert (typically for color values) or
+`0` to mark it as non-dimensonal. Trailing `0`s can be omitted. Point-like
 arguments can be represented by an inner tuple, range or array of integers.
 
 For example:
@@ -93,9 +94,9 @@ function _argument_dims(args; direction::Symbol = :y, orientation::Symbol = :ver
 end
 
 
-argument_dims(::ImageLike, x, y, z) = (1, 2)
-argument_dims(::VertexGrid, x, y, z) = (1, 2) # contour, contourf
-argument_dims(::CellGrid, x, y, z) = (1, 2)
+argument_dims(::ImageLike, x, y, z) = (1, 2, 4)
+argument_dims(::VertexGrid, x, y, z) = (1, 2, 4) # contour, contourf
+argument_dims(::CellGrid, x, y, z) = (1, 2, 4)
 argument_dims(::VolumeLike, x, y, z, volume) = (1, 2, 3)
 
 argument_dims(::Type{<:Mesh}, ps::VecTypesVector{N}, faces) where {N} = (1:N,)

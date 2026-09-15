@@ -58,7 +58,7 @@ function boundingbox(p::Spy, space::Symbol = :data)
     return apply_transform_and_model(p, data_limits(p))
 end
 
-argument_dims(::Type{<:Spy}, x, y, mat) = (1, 2)
+argument_dims(::Type{<:Spy}, x, y, mat) = (1, 2, 4)
 
 function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix{T}) where {T}
     Tr = Makie.float_type(T)
