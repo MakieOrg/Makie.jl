@@ -86,6 +86,15 @@ function label_info(lev, vertices)
     return tuple(to_ndim.(Point3f, pts, lev)...)
 end
 
+# Contours.jl traces cells in `Dict` order, so a closed contour line can start at
+# any of its vertices depending on hash order. Rotating to a fixed start keeps
+# label placement and line dash phase stable across Julia versions.
+function canonical_start(vertices)
+    length(vertices) > 2 && first(vertices) == last(vertices) || return vertices
+    i = argmin(@view vertices[begin:(end - 1)])
+    return [@view(vertices[i:(end - 1)]); @view(vertices[begin:i])]
+end
+
 function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d, Contour}}
     PT = T <: Contour3d ? Point3f : Point2f
 
@@ -99,14 +108,15 @@ function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d
 
     for (lvl, c) in enumerate(Contours.levels(contours))
         for elem in Contours.lines(c)
-            for p in elem.vertices
+            vertices = canonical_start(elem.vertices)
+            for p in vertices
                 push!(points, to_ndim(PT, p, c.level))
             end
             push!(points, PT(NaN32))
-            push!(elements_per_segment, lvl => length(elem.vertices) + 1)
+            push!(elements_per_segment, lvl => length(vertices) + 1)
 
             if labels
-                p1, p2, p3 = label_info(c.level, elem.vertices)
+                p1, p2, p3 = label_info(c.level, vertices)
                 push!(levels, c.level)
                 push!(lbl_pos_low, p1)
                 push!(lbl_pos_center, p2)
