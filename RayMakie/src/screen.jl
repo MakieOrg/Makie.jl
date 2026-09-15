@@ -893,7 +893,16 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
     screen.stop_renderloop[] = false
     # The screen's device, not the implicit global context: only the Vulkan
     # backend answers the argument-free form.
-    present_bq = Mantle.allocate_batch_queue!(screen.config.device)
+    #
+    # And a SECOND channel only where the backend has one to give. Presenting on
+    # its own channel lets a frame composite while the next one is already being
+    # drawn, which is why it is asked for; Metal owns exactly one `MTLCommandQueue`
+    # per device and refuses, by name, with `supports_batch_queue`. Sharing the
+    # graphics channel there costs the overlap and nothing else — the present and
+    # the draw are ordered on one queue instead of two.
+    own_present = Mantle.supports_batch_queue(screen.config.device)
+    present_bq = own_present ? Mantle.allocate_batch_queue!(screen.config.device) :
+                               get_gfx_bq!(screen)
 
     screen.rendertask = @async begin
         yield()
@@ -976,10 +985,15 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             # Hand the presentation queue back. Dropping it instead leaks its
             # command pool, timeline semaphore and argument slabs for the life of
             # the device, and every start_renderloop! allocated a fresh one.
-            try
-                Mantle.release_batch_queue!(present_bq)
-            catch e
-                @warn "RayMakie: releasing the presentation queue failed" exception = (e, catch_backtrace())
+            # Only what we allocated. On a one-channel backend `present_bq` IS
+            # the screen's graphics channel, and handing that back here would
+            # free a channel the screen still owns and will use again.
+            if own_present
+                try
+                    Mantle.release_batch_queue!(present_bq)
+                catch e
+                    @warn "RayMakie: releasing the presentation queue failed" exception = (e, catch_backtrace())
+                end
             end
             screen.rendertask = nothing
         end
