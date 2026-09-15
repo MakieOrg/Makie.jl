@@ -1043,9 +1043,10 @@ function free_state_gpu!(state::RayMakieState)
         set isa Raycore.MultiTypeSet || continue
         Raycore.free!(set)
     end
-    # `media_interfaces` is still a `KA.allocate` on the Hikari side, so this is
-    # still a `finalize`. It is the last one here; when Hikari's scene data moves
-    # onto a `DeviceMemory` it goes the way of the rest.
+    # `media_interfaces` is still a standalone `devicearray` on the Hikari side —
+    # GC'd, not pool-retired — so this is still a `finalize`. It is the last one
+    # here; when Hikari's scene data moves onto a `DeviceMemory` it goes the way
+    # of the rest.
     finalize(state.hikari_scene.media_interfaces)
     state.hikari_scene = nothing
 end
