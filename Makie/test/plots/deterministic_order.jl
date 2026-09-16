@@ -1,18 +1,15 @@
 using Makie, Test
 using Random: MersenneTwister, shuffle
 
-@testset "Closed contour lines start at a fixed vertex" begin
+@testset "Closed cycles start at a fixed element" begin
     loop = [(1.0, 1.0), (0.0, 1.0), (0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
     rotated = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0)]
-    @test Makie.canonical_start(loop) == Makie.canonical_start(rotated) == rotated
+    @test Makie.canonical_cycle_start(loop) == Makie.canonical_cycle_start(rotated) == rotated
+
+    @test Makie.canonical_cycle_start([3, 4, 1, 2, 3]) == [1, 2, 3, 4, 1]
 
     open_line = [(1.0, 1.0), (0.0, 1.0), (0.0, 0.0)]
-    @test Makie.canonical_start(open_line) == open_line
-end
-
-@testset "Convex hull cycle starts at a fixed vertex" begin
-    @test Makie.canonical_hull_cycle([3, 4, 1, 2, 3]) == [1, 2, 3, 4, 1]
-    @test Makie.canonical_hull_cycle([1, 2, 3, 4, 1]) == [1, 2, 3, 4, 1]
+    @test Makie.canonical_cycle_start(open_line) == open_line
 end
 
 @testset "hexbin bin order independent of input order" begin

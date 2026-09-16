@@ -162,16 +162,9 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
     return ghost_edges
 end
 
-# The hull is a closed cycle whose starting vertex depends on the hash order inside
-# DelaunayTriangulation, which would shift the dash pattern of the drawn outline.
-function canonical_hull_cycle(idx)
-    length(idx) > 2 && first(idx) == last(idx) || return idx
-    i = argmin(@view idx[begin:(end - 1)])
-    return [@view(idx[i:(end - 1)]); @view(idx[begin:i])]
-end
-
 function get_triangulation_convex_hull!(convex_hull, tri)
-    idx = canonical_hull_cycle(DelTri.get_convex_hull_vertices(tri))
+    # DelaunayTriangulation hands out the hull starting at an arbitrary vertex
+    idx = canonical_cycle_start(DelTri.get_convex_hull_vertices(tri))
     empty!(convex_hull)
     sizehint!(convex_hull, length(idx))
     for i in idx
