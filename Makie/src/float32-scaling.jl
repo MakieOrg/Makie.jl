@@ -64,6 +64,8 @@ function f32_convert_matrix(ls::LinearScaling)
     translation = to_ndim(Vec3d, ls.offset, 0)
     return transformationmatrix(translation, scale)
 end
+inv_f32_convert_matrix(ls::LinearScaling) = f32_convert_matrix(inv(ls))
+
 function f32_convert_matrix(ls::LinearScaling, space::Symbol)
     return is_data_space(space) ? f32_convert_matrix(ls) : Mat4d(I)
 end

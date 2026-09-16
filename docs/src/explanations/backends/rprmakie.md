@@ -41,8 +41,11 @@ ax = LScene(fig[1, 1]; show_axis = false, scenekw=(lights=lights,))
 # Note that since RPRMakie doesn't yet support text (this is being worked on!),
 # you can't show a 3d axis yet.
 
-# to create materials, one needs access to the RPR context.
-# Note, if you create an Screen manually, don't display the scene or fig anymore, since that would create a new RPR context, in which resources from the manually created Context would be invalid. Since RPRs error handling is pretty bad, this usually results in Segfaults.
+# To create materials, one needs access to the RPR context.
+# Note, if you create an Screen manually, don't display the scene or fig
+# anymore, since that would create a new RPR context, in which resources from the
+# manually created Context would be invalid. Since RPRs error handling is pretty
+# bad, this usually results in Segfaults.
 # See below how to render a picture with a manually created context
 screen = RPRMakie.Screen(ax.scene; iterations=10, plugin=RPR.Northstar)
 matsys = screen.matsys
@@ -55,7 +58,8 @@ mat = RPR.Chrome(matsys)
 mesh!(ax, Sphere(Point3f(0), 1), material=mat)
 
 # There are three main ways to turn a Makie scene into a picture:
-# Get the colorbuffer of the Screen. Screen also has `show` overloaded for the mime `image\png` so it should display in IJulia/Jupyter/VSCode.
+# Get the colorbuffer of the Screen. Screen also has `show` overloaded for the MIME `image/png`
+# so it should display in IJulia/Jupyter/VSCode.
 image = colorbuffer(screen)::Matrix{RGB{N0f8}}
 # Replace a specific (sub) LScene with RPR, and display the whole scene interactively in RPRMakie
 using RPRMakie
@@ -200,9 +204,9 @@ using RPRMakie, GeometryBasics, RPRMakie, RadeonProRender
 using Colors, FileIO
 using Colors: N0f8
 
-f = (u, v) -> cos(v) * (6 - (5 / 4 + sin(3 * u)) * sin(u - 3 * v))
-g = (u, v) -> sin(v) * (6 - (5 / 4 + sin(3 * u)) * sin(u - 3 * v))
-h = (u, v) -> -cos(u - 3 * v) * (5 / 4 + sin(3 * u));
+f = (u, v) -> cos(v) * (6 - (5 / 4 + sin(3u)) * sin(u - 3v))
+g = (u, v) -> sin(v) * (6 - (5 / 4 + sin(3u)) * sin(u - 3v))
+h = (u, v) -> -cos(u - 3v) * (5 / 4 + sin(3u));
 u = range(0; stop=2π, length=150)
 v = range(0; stop=2π, length=150)
 radiance = 500
@@ -210,12 +214,12 @@ lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
           PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
 
 fig = Figure(; size=(1500, 1000))
-ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
+ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights))
 screen = RPRMakie.Screen(size(ax.scene); plugin=RPR.Tahoe)
 material = RPR.UberMaterial(screen.matsys)
 
-surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient=Vec3f(0.5), diffuse=Vec3f(1), specular=0.5,
-         colormap=:balance, material=material)
+surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient=Vec3f(0.5), diffuse=Vec3f(1),
+         specular=0.5, colormap=:balance, material)
 
 function Input(fig, val::RGB)
     hue = Slider(fig; range=1:380, width=200)
@@ -232,7 +236,7 @@ end
 function Input(fig, val::Vec4)
     s = Slider(fig; range=LinRange(0, 1, 100), width=200)
     set_close_to!(s, first(val))
-    return map(x -> Vec4f(x), s.value), s
+    return map(Vec4f, s.value), s
 end
 
 function Input(fig, val::Bool)
@@ -240,18 +244,38 @@ function Input(fig, val::Bool)
     return toggle.active, toggle
 end
 
-sliders = (reflection_color=Input(fig, RGB(0, 0, 0)), reflection_weight=Input(fig, Vec4(0)),
-           reflection_roughness=Input(fig, Vec4(0)), reflection_anisotropy=Input(fig, Vec4(0)),
-           reflection_anisotropy_rotation=Input(fig, Vec4(0)), reflection_mode=Input(fig, Vec4(0)),
-           reflection_ior=Input(fig, Vec4(0)), reflection_metalness=Input(fig, Vec4(0)),
-           refraction_color=Input(fig, RGB(0, 0, 0)), refraction_weight=Input(fig, Vec4(0)),
-           refraction_roughness=Input(fig, Vec4(0)), refraction_ior=Input(fig, Vec4(0)),
-           refraction_absorption_color=Input(fig, RGB(0, 0, 0)),
-           refraction_absorption_distance=Input(fig, Vec4(0)), refraction_caustics=Input(fig, true),
-           sss_scatter_color=Input(fig, RGB(0, 0, 0)), sss_scatter_distance=Input(fig, Vec4(0)),
-           sss_scatter_direction=Input(fig, Vec4(0)), sss_weight=Input(fig, Vec4(0)),
-           sss_multiscatter=Input(fig, false), backscatter_weight=Input(fig, Vec4(0)),
-           backscatter_color=Input(fig, RGB(0, 0, 0)))
+reflection_sliders = (
+    reflection_color=Input(fig, RGB(0, 0, 0)),
+    reflection_weight=Input(fig, Vec4(0)),
+    reflection_roughness=Input(fig, Vec4(0)),
+    reflection_anisotropy=Input(fig, Vec4(0)),
+    reflection_anisotropy_rotation=Input(fig, Vec4(0)),
+    reflection_mode=Input(fig, Vec4(0)),
+    reflection_ior=Input(fig, Vec4(0)),
+    reflection_metalness=Input(fig, Vec4(0)),
+)
+refraction_sliders = (
+    refraction_color=Input(fig, RGB(0, 0, 0)),
+    refraction_weight=Input(fig, Vec4(0)),
+    refraction_roughness=Input(fig, Vec4(0)),
+    refraction_ior=Input(fig, Vec4(0)),
+    refraction_absorption_color=Input(fig, RGB(0, 0, 0)),
+    refraction_absorption_distance=Input(fig, Vec4(0)),
+    refraction_caustics=Input(fig, true),
+)
+sss_sliders = (
+    sss_scatter_color=Input(fig, RGB(0, 0, 0)),
+    sss_scatter_distance=Input(fig, Vec4(0)),
+    sss_scatter_direction=Input(fig, Vec4(0)),
+    sss_weight=Input(fig, Vec4(0)),
+    sss_multiscatter=Input(fig, false),
+)
+backscatter_sliders = (
+    backscatter_weight=Input(fig, Vec4(0)),
+    backscatter_color=Input(fig, RGB(0, 0, 0))
+)
+sliders = merge(reflection_sliders, refraction_sliders,
+                sss_sliders, backscatter_sliders)
 
 labels = []
 inputs = []

@@ -9,10 +9,10 @@ Grid(ranges::AbstractRange...) = Grid(ranges)
 function Grid(a::Array{T, N}) where {N, T}
     s = Vec{N, Float32}(size(a))
     smax = maximum(s)
-    s = s ./ smax
+    s_normal = s ./ smax
     return Grid(
         ntuple(Val{N}) do i
-            range(0, stop = s[i], length = size(a, i))
+            range(0, stop = s_normal[i], length = size(a, i))
         end
     )
 end

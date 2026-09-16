@@ -153,10 +153,8 @@ function to_image(p::LinePattern)
     # If both have different nonzero alpha... what do we want then?
     c1 = ifelse(c1.alpha == 0, RGBAf(c2.r, c2.g, c2.b, 0), c1)
     c2 = ifelse(c2.alpha == 0, RGBAf(c1.r, c1.g, c1.b, 0), c2)
-    return map(sdf) do dist
-        f = Float32(clamp((dist + AA_radius) / (2 * AA_radius), 0, 1))
-        return c1 * (1.0f0 - f) + c2 * f
-    end
+    f = @. Float32(clamp((sdf + AA_radius) / (2 * AA_radius), 0, 1))
+    return @. c1 * (1.0f0 - f) + c2 * f
 end
 
 

@@ -77,7 +77,7 @@ function attributenames(::Type{LegendEntry})
     return (
         :label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
         :patchsize, :patchstrokecolor, :patchstrokewidth, :patchcolor,
-        :linepoints, :linewidth, :linecolor, :linestyle, :linecolorrange, :linecolormap,
+        :linepoints, :linewidth, :linecolor, :linestyle, :linecap, :joinstyle, :linecolorrange, :linecolormap,
         :markerpoints, :markersize, :markerstrokewidth, :markercolor, :markerstrokecolor, :markercolorrange, :markercolormap,
         :polypoints, :polystrokewidth, :polycolor, :polystrokecolor, :polycolorrange, :polycolormap, :alpha,
     )

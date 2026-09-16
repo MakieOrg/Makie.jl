@@ -276,41 +276,8 @@ function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon{N, T}}, Mul
     return (arr,)
 end
 
-function convert_arguments(::PointBased, b::BezierPath)
-    b2 = replace_nonfreetype_commands(b)
-    points = Point2d[]
-    last_point = Point2d(NaN)
-    last_moveto = false
-
-    function poly3(t, p0, p1, p2, p3)
-        return Point2d((1 - t)^3 .* p0 .+ t * p1 * (3 * (1 - t)^2) + p2 * (3 * (1 - t) * t^2) .+ p3 * t^3)
-    end
-
-    for command in b2.commands
-        if command isa MoveTo
-            last_point = command.p
-            last_moveto = true
-        elseif command isa LineTo
-            if last_moveto
-                isempty(points) || push!(points, Point2d(NaN, NaN))
-                push!(points, last_point)
-            end
-            push!(points, command.p)
-            last_point = command.p
-            last_moveto = false
-        elseif command isa CurveTo
-            if last_moveto
-                isempty(points) || push!(points, Point2d(NaN, NaN))
-                push!(points, last_point)
-            end
-            last_moveto = false
-            for t in range(0, 1, length = 30)[2:end]
-                push!(points, poly3(t, last_point, command.c1, command.c2, command.p))
-            end
-            last_point = command.p
-        end
-    end
-    return (points,)
+function convert_arguments(::PointBased, bp::BezierPath)
+    return (to_vertices(bp),)
 end
 
 
@@ -490,10 +457,14 @@ end
 #                                  VolumeLike                                  #
 ################################################################################
 
-function convert_arguments(
-        ::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
-        data::RealArray{3}
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::VolumeDataType)
+    return (
+        to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+        to_endpoints(z, "z", VolumeLike), data,
     )
+end
+
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::RealArray{3})
     return (
         to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
         to_endpoints(z, "z", VolumeLike), el32convert(data),
@@ -502,7 +473,10 @@ end
 
 # TODO: Consider using RGB(A){N0f8} for all of these
 # RGBA/Vec4 is the native data type for :absorptionrgba, :additive
-function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<:Union{VecTypes{3}, VecTypes{4}, RGB, RGBA}, 3})
+function convert_arguments(
+        ::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
+        data::Array{<:Union{VecTypes{3}, VecTypes{4}, RGB, RGBA}, 3}
+    )
     return (
         to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
         to_endpoints(z, "z", VolumeLike), el32convert(data),
@@ -701,7 +675,7 @@ function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVe
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
 
-    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., el32convert.(f.(_x, _y, _z)))
+    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., smallfloat_convert.(f.(_x, _y, _z)))
 end
 
 function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
@@ -803,6 +777,12 @@ el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 el32convert(x::Mat{X, Y, T}) where {X, Y, T} = Mat{X, Y, Float32}(x)
 
+smallfloat_convert(x::N0f8) = x
+smallfloat_convert(x::Float16) = x
+smallfloat_convert(x::Real) = Float32(x)
+smallfloat_convert(x::VecTypes) = smallfloat_convert.(x)
+smallfloat_convert(x::Color) = RGB(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)))
+smallfloat_convert(x::TransparentColor) = RGBA(smallfloat_convert(red(x)), smallfloat_convert(green(x)), smallfloat_convert(blue(x)), smallfloat_convert(alpha(x)))
 
 """
     to_triangles(indices)
@@ -845,9 +825,11 @@ Converts a representation of vertices `v` to its canonical representation as a
 - An `AbstractVector` of `Tuple`s or `StaticVector`s, in which case extra dimensions will
   be either truncated or padded with zeros as required,
 
-- An `AbstractMatrix`"
+- An `AbstractMatrix`
   - if `v` has 2 or 3 rows, it will treat each column as a vertex,
   - otherwise if `v` has 2 or 3 columns, it will treat each row as a vertex.
+
+- A `BezierPath` with an additional function `to_vertices!(buffer, bp[, z = 0])`
 """
 function to_vertices(verts::AbstractVector{<:VecTypes{3, T}}) where {T}
     T_out = float_type(T)
@@ -880,6 +862,45 @@ end
 
 function to_vertices(verts::AbstractMatrix{T}, ::Type{Tout}, ::Val{2}, ::Val{N}) where {T <: Real, Tout, N}
     return Point{N, Tout}[ntuple(j -> Tout(verts[i, j]), N) for i in 1:size(verts, 1)]
+end
+
+to_vertices(bp::BezierPath) = to_vertices!(Point2d[], bp)
+function to_vertices!(output::AbstractVector{PT}, bp::BezierPath, z = 0) where {PT <: VecTypes}
+    b2 = replace_nonfreetype_commands(bp)
+    last_point = PT(NaN)
+    last_moveto = false
+
+    function poly3(t, p0, p1, p2, p3)
+        return Point2d((1 - t)^3 .* p0 .+ t * p1 * (3 * (1 - t)^2) + p2 * (3 * (1 - t) * t^2) .+ p3 * t^3)
+    end
+
+    for command in b2.commands
+        if command isa MoveTo
+            last_point = command.p
+            last_moveto = true
+        elseif command isa LineTo
+            if last_moveto
+                isempty(output) || push!(output, PT(NaN))
+                push!(output, to_ndim(PT, last_point, z))
+            end
+            push!(output, to_ndim(PT, command.p, z))
+            last_point = command.p
+            last_moveto = false
+        elseif command isa CurveTo
+            if last_moveto
+                isempty(output) || push!(output, PT(NaN))
+                push!(output, to_ndim(PT, last_point, z))
+            end
+            last_moveto = false
+            for t in range(0, 1, length = 30)[2:end]
+                p = poly3(t, last_point, command.c1, command.c2, command.p)
+                push!(output, to_ndim(PT, p, z))
+            end
+            last_point = command.p
+        end
+    end
+
+    return output
 end
 
 
@@ -943,6 +964,9 @@ convert_attribute(x, ::key"colorscale") = Ref{Any}(x)
 
 # TODO: is it worth typing this as Ref{Union{Automatic, VecTypes{2}, Tuple{<: Real, <: Real}}} ?
 convert_attribute(x::Automatic, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{<:Any, Automatic}, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{Automatic, <:Any}, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{Automatic, Automatic}, ::key"colorrange") = Ref{Any}(first(x))
 convert_attribute(x, ::key"colorrange") = Ref{Any}(to_colorrange(x))
 to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
@@ -969,6 +993,7 @@ to_color(c::VecTypes{4}) = RGBAf(c[1], c[2], c[3], c[4])
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
 to_color(c::AbstractArray) = to_color.(c)
+#to_color(c::Observable) = lift(to_color, c)
 to_color(c::AbstractArray{<:Colorant, N}) where {N} = convert(Array{RGBAf, N}, c)
 to_color(p::AbstractPattern) = p
 function to_color(c::Tuple{<:Any, <:Number})
@@ -1206,7 +1231,7 @@ end
 
 function line_diff_pattern(ls::Symbol, gaps::GapType = :normal)
     if ls === :solid
-        return nothing
+        return Float32[]
     elseif ls === :dash
         return line_diff_pattern("-", gaps)
     elseif ls === :dot
@@ -1490,12 +1515,14 @@ to_rotation(s::Quaternionf) = s
 to_rotation(s::Quaternion) = Quaternionf(s.data...)
 
 function to_rotation(s::VecTypes{N}) where {N}
-    return if N == 4
-        Quaternionf(s...)
+    if N == 4
+        return Quaternionf(s...)
     elseif N == 3
-        rotation_between(Vec3f(0, 0, 1), to_ndim(Vec3f, s, 0.0))
+        q64 = rotation_between(Vec3d(0, 0, 1), to_ndim(Vec3d, s, 0.0))
+        return Quaternionf(q64.data)
     elseif N == 2
-        rotation_between(Vec3f(0, 1, 0), to_ndim(Vec3f, s, 0.0))
+        q64 = rotation_between(Vec3d(0, 1, 0), to_ndim(Vec3d, s, 0.0))
+        return Quaternionf(q64.data)
     else
         error("The $N dimensional vector $s can't be converted to a rotation.")
     end
@@ -1690,6 +1717,8 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
         end, k
     )
 end
+
+convert_attribute(value, ::key"samples", ::key"volume") = Int32(value)
 
 #=
 The below is the output from:
@@ -2344,6 +2373,7 @@ end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
+convert_attribute(value, ::key"shininess") = Float32(value)
 
 convert_attribute(value, ::key"backlight") = Float32(value)
 

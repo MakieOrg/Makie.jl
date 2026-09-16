@@ -137,8 +137,8 @@ From: [Microsoft/WSL/issues/2855](https://github.com/Microsoft/WSL/issues/2855#i
 WSL runs OpenGL alright, but it is not a supported scenario.
 From a clean Ubuntu install from the store do:
 
-```
-sudo apt install ubuntu-desktop mesa-utils
+```sh
+sudo apt install -y ubuntu-desktop mesa-utils
 export DISPLAY=localhost:0
 glxgears
 ```
@@ -146,19 +146,25 @@ glxgears
 On the Windows side:
 
 1) install [VcXsrv](https://sourceforge.net/projects/vcxsrv/)
-2) choose multiple windows -> display 0 -> start no client -> disable native opengl
+2) choose multiple windows → display 0 → start no client → disable native OpenGL
 
 Troubleshooting:
 
 1. install:
 
    ```sh
-   sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+   sudo apt install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
    ```
 
-2. WSL has some problems with passing through localhost, so one may need to use: `export DISPLAY=192.168.178.31:0`, with the local ip of the pcs network adapter, which runs VcXsrv
+2. WSL has some problems with passing through localhost, so one may need to use: `export DISPLAY=192.168.178.31:0`, with the local IP of the PC's network adapter, which runs VcXsrv
 
-3. One may need `mv /opt/julia-1.5.2/lib/julia/libstdc++.so.6 /opt/julia-1.5.2/lib/julia/libcpp.backup`, another form of [GLFW#198](https://github.com/JuliaGL/GLFW.jl/issues/198)
+3. One may also need
+
+   ```sh
+   mv /opt/julia-1.5.2/lib/julia/libstdc++.so.6 /opt/julia-1.5.2/lib/julia/libcpp.backup
+   ```
+
+   another form of [GLFW.jl#198](https://github.com/JuliaGL/GLFW.jl/issues/198)
 
 ## GLMakie does not show Figure or crashes on full screen mode on macOS
 

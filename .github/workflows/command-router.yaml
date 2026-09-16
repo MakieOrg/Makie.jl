@@ -1,0 +1,65 @@
+# Routes slash commands from pull request comments to per-command workflows.
+#
+# Dispatched by command-trigger.yaml, which has already verified that the comment
+# was written by someone with write access — so this workflow may assume its
+# caller is trusted. Because it runs on the PR's head ref, this file and the
+# command workflows it calls can be edited and tested within a PR before merging.
+#
+# To add a command, write a reusable (workflow_call) workflow and add a job here
+# that calls it, gated on the parsed command. See the commented benchmark example
+# below.
+name: Commands
+on:
+  workflow_dispatch:
+    inputs:
+      comment_body:
+        description: Full body of the triggering comment
+        required: true
+      comment_id:
+        description: ID of the triggering comment (for reactions/replies)
+        required: true
+      pr_number:
+        description: PR the comment was made on
+        required: true
+      head_sha:
+        description: PR head commit
+        required: true
+      base_ref:
+        description: PR base branch
+        required: true
+
+# Minimal by default; each called command workflow widens scope via its own
+# `permissions:` block. Don't rely on the repository's default token scope here.
+permissions:
+  contents: read
+
+jobs:
+  parse:
+    runs-on: ubuntu-latest
+    outputs:
+      command: ${{ steps.cmd.outputs.command }}
+    steps:
+      - name: Extract command
+        id: cmd
+        env:
+          COMMENT_BODY: ${{ inputs.comment_body }}
+        run: |
+          set -euo pipefail
+          command=$(printf '%s' "$COMMENT_BODY" | awk 'NR==1 {print $1}')
+          echo "command=$command" >> "$GITHUB_OUTPUT"
+          echo "Parsed command: $command"
+
+  benchmark:
+    needs: parse
+    if: needs.parse.outputs.command == '/benchmark'
+    permissions:
+      contents: read
+      statuses: write
+    uses: ./.github/workflows/benchmark.yaml
+    with:
+      comment_body: ${{ inputs.comment_body }}
+      pr_number: ${{ inputs.pr_number }}
+      head_sha: ${{ inputs.head_sha }}
+      base_ref: ${{ inputs.base_ref }}
+    secrets:
+      BENCHMARK_KEY: ${{ secrets.BENCHMARK_KEY }}

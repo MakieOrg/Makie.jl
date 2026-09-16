@@ -1,13 +1,11 @@
 module Formatters
-    using Showoff
+    import ..Makie: format_ticks_plain, format_ticks_scientific_string
 
-    function scientific(ticks::AbstractVector)
-        return Showoff.showoff(ticks, :scientific)
-    end
+    scientific(ticks::AbstractVector) = format_ticks_scientific_string(ticks)
 
     function plain(ticks::AbstractVector)
         return try
-            Showoff.showoff(ticks, :plain)
+            format_ticks_plain(ticks; minus_sign = false)
         catch e
             bt = Base.catch_backtrace()
             Base.showerror(stderr, e)
@@ -232,7 +230,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
         axisnames, axisnames_color, axisnames_size, axisrotation, axisalign,
         axisnames_font, titlegap,
         gridcolors, gridthickness, axislinewidth, axiscolors,
-        ttextcolor, trotation, tfontsize, talign, tfont, tgap,
+        ttextcolor, trotation, tfontsize_raw, talign, tfont, tgap,
         padding,
     ) = args3d # splat to names
 
@@ -249,7 +247,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
     origin = Point{N, Float32}(min.(mini, first.(ranges)))
     limit_widths = max.(last.(ranges), maxi) .- origin
     % = minimum(limit_widths) / 100 # percentage
-    tfontsize = (%) .* tfontsize
+    tfontsize = (%) .* tfontsize_raw
     axisnames_size = (%) .* axisnames_size
 
     # index of the direction in which ticks and labels are drawn

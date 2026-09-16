@@ -111,17 +111,20 @@ with_theme(theme) do
     text!(ax, 2.5, -3, text = "color = [1, 2, 3, 4, NaN, 6, 7, 8, 9, 10]\ncolormap = :viridis\ncolorrange = (2, 9)\nnan_color = :red, highclip = :magenta, lowclip = :cyan")
     scatter!(ax, range(1, 4, length = 10), fill(-3, 10), color = [1, 2, 3, 4, NaN, 6, 7, 8, 9, 10], colormap = :viridis, colorrange = (2, 9), nan_color = :red, highclip = :magenta, lowclip = :cyan)
 
-    text!(ax, 2.5, -4, text = "color = HSV.(range(0, 360, 10), 50, 50)")
-    scatter!(ax, range(1, 4, length = 10), fill(-4, 10), color = HSV.(range(0, 360, 10), 50, 50))
+    text!(ax, 2.5, -4, text = "color = [1, 2, 3, 4, NaN, 6, 7, 8, 9, 10]\ncolormap = :viridis\ncolorrange = (3, automatic)\nnan_color = :red, highclip = :magenta, lowclip = :cyan")
+    scatter!(ax, range(1, 4, length = 10), fill(-4, 10), color = [1, 2, 3, 4, NaN, 6, 7, 8, 9, 10], colormap = :viridis, colorrange = (3, Makie.automatic), nan_color = :red, highclip = :magenta, lowclip = :cyan)
 
-    text!(ax, 2.5, -5, text = "color = 1:10\ncolormap = (:viridis, 0.5)\ncolorrange = automatic")
-    scatter!(ax, range(1, 4, length = 10), fill(-5, 10), color = 1:10, colormap = (:viridis, 0.5))
+    text!(ax, 2.5, -5, text = "color = HSV.(range(0, 360, 10), 50, 50)")
+    scatter!(ax, range(1, 4, length = 10), fill(-5, 10), color = HSV.(range(0, 360, 10), 50, 50))
 
-    text!(ax, 2.5, -6, text = "color = 1:10\ncolormap = [:red, :orange, :brown]\ncolorrange = automatic")
-    scatter!(ax, range(1, 4, length = 10), fill(-6, 10), color = 1:10, colormap = [:red, :orange, :brown])
+    text!(ax, 2.5, -6, text = "color = 1:10\ncolormap = (:viridis, 0.5)\ncolorrange = automatic")
+    scatter!(ax, range(1, 4, length = 10), fill(-6, 10), color = 1:10, colormap = (:viridis, 0.5))
 
-    text!(ax, 2.5, -7, text = "color = 1:10\ncolormap = Reverse(:viridis)\ncolorrange = automatic")
-    scatter!(ax, range(1, 4, length = 10), fill(-7, 10), color = 1:10, colormap = Reverse(:viridis))
+    text!(ax, 2.5, -7, text = "color = 1:10\ncolormap = [:red, :orange, :brown]\ncolorrange = automatic")
+    scatter!(ax, range(1, 4, length = 10), fill(-7, 10), color = 1:10, colormap = [:red, :orange, :brown])
+
+    text!(ax, 2.5, -8, text = "color = 1:10\ncolormap = Reverse(:viridis)\ncolorrange = automatic")
+    scatter!(ax, range(1, 4, length = 10), fill(-8, 10), color = 1:10, colormap = Reverse(:viridis))
 
     f
 end

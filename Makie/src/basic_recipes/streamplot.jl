@@ -155,9 +155,10 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
     ind = 0 # index of low discrepancy sequence
     while n_points < prod(resolution) * min(one(dens), dens) # fill up to 100*dens% of mask
         # next index from low discrepancy sequence
+        current_ind = ind
         c = CartesianIndex(
             ntuple(N) do i
-                j = ceil(Int, ((0.5 + acoeff[i] * ind) % 1) * resolution[i])
+                j = ceil(Int, ((0.5 + acoeff[i] * current_ind) % 1) * resolution[i])
                 clamp(j, 1, size(mask, i))
             end
         )

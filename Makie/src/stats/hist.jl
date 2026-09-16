@@ -1,10 +1,35 @@
-const histogram_plot_types = (BarPlot, Heatmap, Volume)
+const histogram_plot_types = (BarPlot, Heatmap, Voxels)
 
 function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any, N}) where {N}
     ptype = plottype(P, histogram_plot_types[N])
-    f(edges) = edges[1:(end - 1)] .+ diff(edges) ./ 2
-    kwargs = N == 1 ? (; width = step(h.edges[1]), gap = 0, dodge_gap = 0) : NamedTuple()
-    return to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
+
+    if N == 1
+        widths = diff(h.edges[1])
+        xs = h.edges[1][1:(end - 1)] .+ 0.5 .* widths
+        return to_plotspec(ptype, (xs, h.weights); width = widths, gap = 0)
+    elseif N == 2
+        return to_plotspec(ptype, (h.edges..., h.weights))
+    else # N == 3
+        for i in 1:3
+            length(h.edges[i]) > 1 || error("Dimension $(('x', 'y', 'z')[i]) needs at least 2 edges.")
+            width = h.edges[i][2] - h.edges[i][1]
+            if !all(≈(width), diff(h.edges[i]))
+                error("3D Histograms must currently use uniform bin sizes for each dimension. Found sizes: $(diff(h.edges[i])) for $(('x', 'y', 'z')[i]).")
+            end
+        end
+        return to_plotspec(ptype, (map(extrema, h.edges)..., h.weights))
+    end
+end
+function convert_arguments(P::Type{Stairs}, h::StatsBase.Histogram{<:Any, 1})
+    # Adding phantomedges, mapping 0 to eps() (for log-scale)
+    xs = Float64.(h.edges[1])
+    push!(xs, xs[end])
+    ys = map(h.weights) do y
+        y == 0 ? eps(Float64) : Float64(y)
+    end
+    pushfirst!(ys, eps())
+    push!(ys, eps())
+    return convert_arguments(P, xs, ys)
 end
 
 function _hist_center_weights(values, edges, normalization, scale_to, wgts)
@@ -134,9 +159,9 @@ Plot a histogram of `values`.
 end
 
 function pick_hist_edges(vals, bins)
-    isempty(vals) && return 1.0:0.0
     if bins isa Int
-        mi, ma = float.(extrema(Iterators.flatten(vals)))
+        isempty(vals) && return 1.0:0.0
+        mi, ma = float.(extrema_nan(Iterators.flatten(vals)))
         if mi == ma
             return (mi - 0.5):(ma + 0.5)
         end
@@ -224,7 +249,25 @@ function plot!(plot::Hist)
         end
     end
 
-    map!(diff, plot, :edges, :widths)
+    map!(plot, [:grouplengths, :edges], :widths) do grouplengths, edges
+        widths = diff(edges)
+
+        # empty input compat || no stacking/dodging
+        if isempty(widths) || isnothing(grouplengths)
+            return widths
+        end
+
+        # Without filtering each group is the same size, with one element/position
+        # per bin. To allow widths to work with stack/dodge groups, we just need
+        # to copy the widths for each group.
+        # With filtering we'd need to match the correct widths and positions
+        N = first(grouplengths)
+        resize!(widths, length(grouplengths) * N)
+        for i in 1:(length(grouplengths) - 1)
+            @views copyto!(widths[(N * i + 1):(N * (i + 1))], widths[1:N])
+        end
+        return widths
+    end
 
     map!(plot, [:points, :color, :groupmap, :grouplengths], :computed_colors) do points, color, groupmap, lengths
         if color === :values
@@ -248,7 +291,7 @@ function plot!(plot::Hist)
 
     # plot the values, not the observables, to be in control of updating
     barplot!(
-        plot, Attributes(plot), plot.points;
+        plot, Attributes(plot), plot.points; width = plot.widths,
         bar_labels = plot.computed_bar_labels, color = plot.computed_colors,
         stack = plot.bar_stack, dodge = plot.bar_dodge
     )

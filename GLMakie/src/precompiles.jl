@@ -21,9 +21,7 @@ let
             close(screen)
             destroy!(screen)
 
-            base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
-            shared_precompile = joinpath(base_path, "shared-precompile.jl")
-            include(shared_precompile)
+            include(Makie.SHARED_PRECOMPILE_PATH)
             try
                 display(plot(x); visible = false)
             catch
