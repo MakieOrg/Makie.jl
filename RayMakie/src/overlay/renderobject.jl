@@ -207,7 +207,11 @@ function construct_robj(pipeline::GraphicsPipeline, args::NamedTuple, arg_names:
             if name === :indices
                 buffers[name] = Mantle.indexbuffer(backend, UInt32.(value))
             else
-                buffers[name] = Adapt.adapt(backend, value)
+                # `Mantle.devicearray`, not `Adapt.adapt`: the backend decides
+                # the storage, and on Metal that is the difference between a
+                # host write being a `memcpy` and being a staged blit. Adapting
+                # went around Mantle to the backend's own default.
+                buffers[name] = Mantle.devicearray(backend, value)
             end
         else
             uniforms[name] = value
