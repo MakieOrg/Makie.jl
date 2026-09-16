@@ -47,11 +47,12 @@ function register_voxel_conversions!(attr)
         return (mini, maxi)
     end
 
-    if attr.chunk[] isa Array{UInt8, 3}
+    T = typeof(attr.chunk[])
+    if T <: Array{UInt8, 3}
         # no need to convert to native type
         ComputePipeline.alias!(attr, :chunk, :chunk_u8)
 
-    elseif attr.chunk[] isa ShaderAbstractions.Sampler
+    elseif T <: ShaderAbstractions.Sampler
         # user managed sampler
         ComputePipeline.alias!(attr, :chunk, :chunk_u8)
         ComputePipeline.alias!(attr, :chunk_u8, :chunk_sampler)
