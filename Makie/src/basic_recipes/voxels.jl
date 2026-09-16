@@ -92,14 +92,10 @@ function register_voxel_conversions!(attr)
 
             if ShaderAbstractions.data(output) !== chunk
                 # resize or full replace
-                # ShaderAbstractions.update!(output, chunk) # errors :)
-                ShaderAbstractions.setfield!(output, :data, chunk)
-                ShaderAbstractions.updater(output).update[] = (update!, (chunk,))
+                ShaderAbstractions.update!(output, chunk)
             else
-                # edit
-                # notify sampler
-                x = view(ShaderAbstractions.data(output), is, js, ks)
-                ShaderAbstractions.updater(output).update[] = (setindex!, (x, is, js, ks))
+                # notify sampler of update in view defined by is, js, ks
+                ShaderAbstractions.update!(output, is, js, ks)
             end
 
             return (output,)
