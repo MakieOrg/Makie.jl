@@ -1,5 +1,6 @@
 using Makie
 using Makie.FreeTypeAbstraction
+using Makie.GeometryBasics: Polygon
 
 
 @testset "Texture atlas" begin
@@ -29,4 +30,16 @@ using Makie.FreeTypeAbstraction
     )
     downsampled_size = ceil.(Int, ext.scale ./ atlas.downsample .+ 2 * atlas.glyph_padding)
     @test downsampled_size == widths(rect)
+end
+
+@testset "BezierPath sdf centering" begin
+    atlas = Makie.get_texture_atlas()
+    for (w, h) in [(1, 1), (1, 2), (2, 1), (sqrt(3), 2)]
+        marker = Makie.to_spritemarker(Polygon(Point2f[(-w, -h), (w, -h), (w, h), (-w, h)]))
+        Makie.insert_glyph!(atlas, marker)
+        x_range, y_range = Makie.sdf_uv_to_pixel(atlas, Makie.glyph_uv_width!(atlas, marker))
+        sdf = atlas.data[x_range, y_range]
+        @test sdf == reverse(sdf, dims = 1)
+        @test sdf == reverse(sdf, dims = 2)
+    end
 end

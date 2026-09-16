@@ -660,7 +660,7 @@ function convert_command(c::CurveTo)
     return false, 3, ftvec.([c.c1, c.c2, c.p]), [FT_Curve_Tag_Cubic, FT_Curve_Tag_Cubic, FT_Curve_Tag_On]
 end
 
-function render_path(path, bitmap_size_px = 256)
+function render_path(path, bitmap_size_px = 256, quantization = 64)
     # in the outline, 1 unit = 1/64px
     scale_factor = bitmap_size_px * 64
 
@@ -671,13 +671,13 @@ function render_path(path, bitmap_size_px = 256)
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    # Minimal size that becomes integer when multiplying by 64 (target size for
-    # atlas). This adds padding to avoid blurring/scaling factors from rounding
-    # during sdf generation
+    # Minimal size that becomes integer when multiplying by `quantization` (the
+    # target size for the atlas). This adds padding to avoid blurring/scaling
+    # factors from rounding during sdf generation
     path_size = widths(bbox(path)) / maximum(widths(bbox(path)))
-    w = ceil(Int, 64 * path_size[1])
-    h = ceil(Int, 64 * path_size[2])
-    path_size = Vec2d(w, h) / 64.0
+    w = ceil(Int, quantization * path_size[1])
+    h = ceil(Int, quantization * path_size[2])
+    path_size = Vec2d(w, h) / quantization
 
     path_unit_rect = fit_to_bbox(path_replaced, Rect2d(Point2d(0), path_size))
 
