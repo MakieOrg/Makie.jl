@@ -850,10 +850,10 @@ end
 @reference_test "Voxel resize" begin
     function make_data(N)
         r = range(-2pi, 2pi, N)
-        return [sin(x)*sin(y) + sin(z) for x in r, y in r, z in r]
+        return [sin(x) * sin(y) + sin(z) for x in r, y in r, z in r]
     end
-    f,a1,p1 = voxels(make_data(10), figure = (size = (300, 500),))
-    a2,p2 = voxels(f[2, 1], -1..1, -1..1, -1..1, trunc.(UInt8, max.(0, 100 .* make_data(10))))
+    f, a1, p1 = voxels(make_data(10), figure = (size = (300, 500),))
+    a2, p2 = voxels(f[2, 1], -1 .. 1, -1 .. 1, -1 .. 1, trunc.(UInt8, max.(0, 100 .* make_data(10))))
     f
 
     st = Stepper(f)
