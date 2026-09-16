@@ -126,12 +126,16 @@ mutable struct Screen <: Makie.MakieScreen
     window::Any                 # Nothing or a Mantle.Window
     rendertask::Union{Nothing, Task}
     stop_renderloop::Threads.Atomic{Bool}
-    # The last presented frame, as the RAW snapshot rather than the converted
-    # one. Converting it cost 1.3 ms of every frame the render loop drew, to
-    # serve a `colorbuffer` call that usually never comes; the snapshot itself
-    # is 0.12 ms and does have to happen per frame, because the buffer it copies
-    # is being overwritten by the next one.
+    # A frame `colorbuffer` asked the render loop for, raw. Filled only when
+    # asked: the loop used to snapshot every frame to serve a call that usually
+    # never comes, and what it snapshotted was `output_buffer` — the image
+    # BEFORE the overlays — so a live window made `colorbuffer` and therefore
+    # `save` produce a figure with no plots in it.
     last_colorbuffer::Union{Nothing, Matrix{RGBA{Float32}}}
+    # Set by `colorbuffer`, cleared by the loop once it has left a frame above.
+    # A flag and not a lock because the loop is an `@async` task on this thread:
+    # the two never run at once, so there is nothing to race.
+    frame_wanted::Threads.Atomic{Bool}
     # Cached state for uncovered overlay rendering
     uncovered_state::Union{Nothing, RayMakieState}
     # Per-screen overlay caches
@@ -155,6 +159,7 @@ mutable struct Screen <: Makie.MakieScreen
     function Screen(scene, state, config)
         s = new(scene, state, RayMakieState[], nothing, nothing, config,   # …, output_buffer, memory, …
                 nothing, nothing, Threads.Atomic{Bool}(false), nothing,  # window, rendertask, stop, last_colorbuffer
+                Threads.Atomic{Bool}(false),                             # frame_wanted
                 nothing,           # uncovered_state
                 nothing, 0,        # cached_atlas
                 nothing, (0, 0),   # overlay_fb
@@ -690,6 +695,93 @@ function unswizzle(pixels::AbstractMatrix, w::Integer, h::Integer)
     return result
 end
 
+"""How long `colorbuffer` waits for the render loop to hand it a frame."""
+const FRAME_REQUEST_TIMEOUT = 5.0
+
+"""
+    requestframe(screen) -> Matrix{RGBA{Float32}} or nothing
+
+Ask the running render loop for a frame, and wait for it.
+
+The loop and this call would otherwise both drive the device, which is a
+deadlock and was one: `colorbuffer` fell through to rendering a frame itself
+while the loop was mid-frame. So the loop draws it, between two of its own
+frames, and this waits.
+
+`nothing` if the loop does not answer within [`FRAME_REQUEST_TIMEOUT`](@ref) —
+it may be blocked in a compile, or stopping.
+"""
+function requestframe(screen::Screen)
+    screen.last_colorbuffer = nothing
+    screen.frame_wanted[] = true
+    t0 = time()
+    while screen.frame_wanted[] && time() - t0 < FRAME_REQUEST_TIMEOUT
+        renderloop_running(screen) || break
+        sleep(0.001)
+    end
+    screen.frame_wanted[] = false
+    return screen.last_colorbuffer
+end
+
+"""
+    answerframe!(screen)
+
+Draw a frame for a waiting [`requestframe`](@ref), if one is waiting.
+"""
+function answerframe!(screen::Screen)
+    screen.frame_wanted[] || return nothing
+    try
+        screen.last_colorbuffer = composited_frame(screen)
+    catch e
+        @warn "RayMakie: rendering the frame `colorbuffer` asked for failed" exception = (e, catch_backtrace())
+    finally
+        # Cleared whatever happened, so a failed frame is a `nothing` answer
+        # rather than a caller waiting out the timeout.
+        screen.frame_wanted[] = false
+    end
+    return nothing
+end
+
+"""
+    composited_frame(screen) -> Matrix{RGBA{Float32}}
+
+The traced image with every overlay drawn on top, read back to the host.
+
+The composited frame as a GRAPH: one pass holding the blit and every overlay,
+then a copy pass into a buffer the host reads. This was a `Framebuffer`, a
+`Mantle.blit!`, a `Mantle.pass!` and a `readback_framebuffer` that came back
+BGRA and had to be unswizzled by its caller — four steps and a channel order,
+for what is two passes and an element type the caller names.
+
+A FUNCTION because the render loop needs it too. A window presents to a
+drawable that Metal will not hand back after presenting, so a screenshot of a
+live window cannot be the frame that was shown; it is this one, drawn again
+offscreen, which is the same picture.
+"""
+function composited_frame(screen::Screen)
+    h, w = size(screen.output_buffer)
+    # Poll EVERY state — each resolves its own scene's plots — before
+    # collecting, because a plot that has not been polled has no render
+    # object to collect. Drawing is from the roots only.
+    for scene_state in screen.scene_states
+        screen.state = scene_state
+        poll_all_plots(screen, scene_state.makie_scene)
+    end
+    robjs = overlay_robjs(screen)
+    plan, out = frame_plan!(screen, :readback,
+                            g -> Mantle.Transient.Image(g, COMPOSITE_FORMAT, (w, h)),
+                            Mantle.Clear((0f0, 0f0, 0f0, 1f0)),
+                            screen.output_buffer, robjs, w, h;
+                            finish = function (g, img)
+                                buf = Mantle.Transient.Buffer(g, COMPOSITE_FORMAT, w * h)
+                                Mantle.copy!(g, "read", buf, img)
+                                buf
+                            end)
+    Mantle.run!(plan)
+    KernelAbstractions.synchronize(screen.config.device)
+    return unswizzle(reshape(Array(Mantle.storage(out)), w, h), w, h)
+end
+
 function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative; figure = nothing, clear=true)
     if isempty(screen.scene_states)
         # Only init the scene -- don't open a window or start the render loop.
@@ -700,11 +792,16 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
 
     # If the render loop is running, return the last composited frame.
     if renderloop_running(screen)
-        buf = screen.last_colorbuffer
+        buf = requestframe(screen)
         if buf !== nothing
             rgb = tosrgb8(buf)
             return format == Makie.GLNative ? Makie.jl_to_gl_format(rgb) : rgb
         end
+        # The loop did not answer in time. Falling through renders a frame from
+        # here, which is what this branch exists to avoid — it contends with the
+        # loop for the device — so say so rather than hang quietly.
+        @warn "RayMakie: the render loop did not produce a frame in $(FRAME_REQUEST_TIMEOUT)s; \
+               rendering one from this task instead" maxlog = 1
         # No frame yet -- fall through to render one
     end
 
@@ -762,33 +859,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     KernelAbstractions.synchronize(screen.config.device)
 
     if has_overlays
-        # The composited frame as a GRAPH: one pass holding the blit and every
-        # overlay, then a copy pass into a buffer the host reads. This was a
-        # `Framebuffer`, a `Mantle.blit!`, a `Mantle.pass!` and a
-        # `readback_framebuffer` that came back BGRA and had to be unswizzled
-        # here — four steps and a channel order, for what is two passes and an
-        # element type the caller names.
-        h, w = size(screen.output_buffer)
-        # Poll EVERY state — each resolves its own scene's plots — before
-        # collecting, because a plot that has not been polled has no render
-        # object to collect. Drawing is from the roots only.
-        for scene_state in screen.scene_states
-            screen.state = scene_state
-            poll_all_plots(screen, scene_state.makie_scene)
-        end
-        robjs = overlay_robjs(screen)
-        plan, out = frame_plan!(screen, :readback,
-                                g -> Mantle.Transient.Image(g, COMPOSITE_FORMAT, (w, h)),
-                                Mantle.Clear((0f0, 0f0, 0f0, 1f0)),
-                                screen.output_buffer, robjs, w, h;
-                                finish = function (g, img)
-                                    buf = Mantle.Transient.Buffer(g, COMPOSITE_FORMAT, w * h)
-                                    Mantle.copy!(g, "read", buf, img)
-                                    buf
-                                end)
-        Mantle.run!(plan)
-        KernelAbstractions.synchronize(screen.config.device)
-        result = unswizzle(reshape(Array(Mantle.storage(out)), w, h), w, h)
+        result = composited_frame(screen)
     else
         # Fast path: download RGBA{Float32} directly from GPU
         result = Array(screen.output_buffer)
@@ -980,15 +1051,11 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                 present_composited!(screen, win)
                 Mantle.waitidle(screen.config.device)
 
-                # Cache composited frame for colorbuffer() to return without blocking.
-                # A failed readback leaves the PREVIOUS frame in the cache, so
-                # swallowing it here meant `colorbuffer` quietly returned a stale
-                # image — the loop keeps going, but not silently.
-                try
-                    screen.last_colorbuffer = Array(screen.output_buffer)
-                catch e
-                    @warn "RayMakie: reading back the frame failed; colorbuffer will return the previous one" exception = (e, catch_backtrace())
-                end
+                # Only when asked. `composited_frame` redraws the frame offscreen
+                # with its overlays, which costs about as much again as
+                # presenting it, and nothing reads the answer unless a
+                # `colorbuffer` is waiting for it right now.
+                answerframe!(screen)
 
                 yield()
             end
