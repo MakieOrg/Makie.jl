@@ -650,15 +650,28 @@ function spawnat(f, tid)
 end
 
 """
-    canonical_cycle_start(elements)
+    canonical_line_order(elements)
 
-Rotate a closed cycle (`first == last`) so that it starts at its smallest element,
-leaving open sequences untouched. Cycles that come out of hashed containers start
-at an arbitrary element, which would otherwise move contour labels and shift the
-dash phase of outlines between Julia versions.
+Bring a traced line into an order that does not depend on where the tracing
+started or which way it ran. A closed cycle (`first == last`) is rotated and
+possibly reversed to the smallest of its vertex sequences, compared element by
+element, an open line is reversed if its last element is smaller than its first.
+Lines that come out of hashed containers start at an arbitrary element and run in
+an arbitrary direction, which would otherwise move and rotate contour labels and
+shift the dash phase of outlines between Julia versions.
 """
-function canonical_cycle_start(elements)
-    length(elements) > 2 && first(elements) == last(elements) || return elements
-    i = argmin(@view elements[begin:(end - 1)])
-    return [@view(elements[i:(end - 1)]); @view(elements[begin:i])]
+function canonical_line_order(elements)
+    if length(elements) > 2 && first(elements) == last(elements)
+        cycle = @view elements[begin:(end - 1)]
+        smallest = minimum(cycle)
+        candidates = (
+            rotate_cycle(c, i) for c in (cycle, reverse(cycle)) for i in eachindex(c) if c[i] == smallest
+        )
+        return close_cycle(minimum(candidates))
+    else
+        return last(elements) < first(elements) ? reverse(elements) : elements
+    end
 end
+
+rotate_cycle(cycle, i) = [@view(cycle[i:end]); @view(cycle[begin:(i - 1)])]
+close_cycle(cycle) = push!(cycle, first(cycle))

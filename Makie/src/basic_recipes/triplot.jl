@@ -164,7 +164,7 @@ end
 
 function get_triangulation_convex_hull!(convex_hull, tri)
     # DelaunayTriangulation hands out the hull starting at an arbitrary vertex
-    idx = canonical_cycle_start(DelTri.get_convex_hull_vertices(tri))
+    idx = canonical_line_order(DelTri.get_convex_hull_vertices(tri))
     empty!(convex_hull)
     sizehint!(convex_hull, length(idx))
     for i in idx

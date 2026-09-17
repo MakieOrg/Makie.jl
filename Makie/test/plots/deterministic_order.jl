@@ -1,15 +1,21 @@
 using Makie, Test
 using Random: MersenneTwister, shuffle
 
-@testset "Closed cycles start at a fixed element" begin
+@testset "Lines are ordered independently of their tracing start and direction" begin
     loop = [(1.0, 1.0), (0.0, 1.0), (0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
     rotated = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0)]
-    @test Makie.canonical_cycle_start(loop) == Makie.canonical_cycle_start(rotated) == rotated
+    canonical = [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 0.0), (0.0, 0.0)]
+    @test Makie.canonical_line_order(loop) == Makie.canonical_line_order(rotated) == canonical
+    @test Makie.canonical_line_order(reverse(loop)) == Makie.canonical_line_order(reverse(rotated)) == canonical
 
-    @test Makie.canonical_cycle_start([3, 4, 1, 2, 3]) == [1, 2, 3, 4, 1]
+    @test Makie.canonical_line_order([3, 4, 1, 2, 3]) == [1, 2, 3, 4, 1]
 
-    open_line = [(1.0, 1.0), (0.0, 1.0), (0.0, 0.0)]
-    @test Makie.canonical_cycle_start(open_line) == open_line
+    touching_loop = [2, 1, 3, 1, 2]
+    touching_rotated = [3, 1, 2, 1, 3]
+    @test Makie.canonical_line_order(touching_loop) == Makie.canonical_line_order(touching_rotated) == [1, 2, 1, 3, 1]
+
+    open_line = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
+    @test Makie.canonical_line_order(open_line) == Makie.canonical_line_order(reverse(open_line)) == open_line
 end
 
 @testset "hexbin bin order independent of input order" begin
