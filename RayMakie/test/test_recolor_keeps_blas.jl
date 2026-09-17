@@ -5,10 +5,11 @@ using Test
 # backend `runtests.jl` already found and activated.
 using Makie, RayMakie, Hikari, GeometryBasics, Raycore
 
-# Recolouring a mesh used to tear down its BLAS and rebuild it: `trace_color_tex`
-# sat in `mesh_trace_dispatch!`'s `needs_rebuild` set beside `faces` and
-# `positions`, even though the colour only ever reaches `extract_material` in
-# `push_to_scene_simple` and never touches the geometry.
+# Recolouring a mesh must not tear down its BLAS and rebuild it.
+# `trace_color_tex` in `mesh_trace_dispatch!`'s `needs_rebuild` set, beside
+# `faces` and `positions`, does exactly that, even though the colour only
+# reaches `extract_material` in `push_to_scene_simple` and never touches the
+# geometry.
 #
 # Nothing about the image says which path ran, so this asserts on the handle: a
 # rebuild calls `delete_trace_handles!` and re-pushes, producing a new TLAS

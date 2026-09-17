@@ -1,9 +1,9 @@
 # Which scene a plot gets drawn against.
 #
 # `init_scene!` walks the scenes that own plots and calls `draw_atomic` for each,
-# with `screen.state` set to that scene's state. It used to enumerate a scene's
-# plots with `Makie.for_each_atomic_plot(rscene)` — which recurses into
-# `scene.children` as well as into a plot's own children. So a PARENT claimed its
+# with `screen.state` set to that scene's state. Enumerating a scene's plots
+# with `Makie.for_each_atomic_plot(rscene)` recurses into `scene.children` as
+# well as into a plot's own children, so a PARENT claims its
 # children's plots.
 #
 # In a `Figure` the root scene is first, carries an `EmptyCamera`, and is

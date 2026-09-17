@@ -152,8 +152,9 @@ end
 
 @testset "the background does not depend on whether an overlay is present" begin
     # `postprocess!` composites the background wherever `isinf(film.depth)`, and
-    # the aux-buffer fill that writes those Infs used to be skipped when there
-    # was neither an overlay nor denoising — so this scene came out black.
+    # the aux-buffer fill that writes those Infs runs unconditionally: skipped
+    # when there is neither an overlay nor denoising, this scene comes out
+    # black.
     plain = Makie.colorbuffer(make_screen(rt_scene()))
 
     with_overlay = let sc = rt_scene()

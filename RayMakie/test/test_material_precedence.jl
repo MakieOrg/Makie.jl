@@ -7,9 +7,9 @@ using RayMakie: extract_material, color_was_set
 #
 # `color` is a CYCLED attribute, so Makie never leaves it unset in
 # `attributes.inputs` — `resolve_cycled!` writes the symbol `:cycled` for every
-# cycled attribute the user did not assign. `extract_material` used to decide
-# "did the user give a colour?" with `!== nothing`, which is true for `:cycled`
-# too, so it merged the palette colour over the material on every plot. The
+# cycled attribute the user did not assign. Deciding "did the user give a
+# colour?" with `!== nothing` is true for `:cycled` too, which merges the
+# palette colour over the material on every plot. The
 # material was accepted, converted and uploaded, and then overwritten: asking for
 # `Diffuse(Kd = green)` rendered the cycler's blue.
 #

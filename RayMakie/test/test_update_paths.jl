@@ -221,7 +221,7 @@ end
         pos[] = [Point3f(i, 0, 0) for i in 1:n]
         RayMakie.poll_all_plots(screen, scene)
         # The instance count must actually follow, not just avoid throwing —
-        # a stale batch would keep the old count and render the wrong scene.
+        # a stale batch keeps the previous count and renders the wrong scene.
         @test Raycore.n_instances(st.hikari_scene.accel) == n
         @test robj_of(plt) !== nothing
     end

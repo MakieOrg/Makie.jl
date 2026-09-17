@@ -1,16 +1,14 @@
 """
 What RayMakie still names from Lava, and why each one is allowed to stay.
 
-This file used to be a debt ledger. `Lava.` in RayMakie's source meant a Makie
-backend reaching into a Vulkan runtime — queues, framebuffers, render passes,
-`present_frame!` — and the list existed to stop it growing while that runtime was
-moved out. On 2026-08-27 it was: **124 references across 8 files.**
+`Lava.` in RayMakie's source means a Makie backend reaching into a Vulkan
+runtime — queues, framebuffers, render passes, `present_frame!` — and this file
+is what keeps the count at zero.
 
-The move happened, and it is now **31 across 2**, all of one kind. Everything
-that needed a device went to Mantle: `GraphicsPipeline`, `VulkanFramebuffer`,
-`VulkanTexture2D`, `VulkanBatchQueue`, `vk_context`, `blit!`, `present_frame!`,
-`acquire_next_image!`, `begin_pass!`, `LavaArray`. What is left is what a
-shader is written IN and what a pipeline is DESCRIBED with:
+Everything that needs a device is Mantle's: `GraphicsPipeline`,
+`VulkanFramebuffer`, `VulkanTexture2D`, `vk_context`, `blit!`, `present_frame!`,
+`acquire_next_image!`, `begin_pass!`, `LavaArray`. The two categories that could
+plausibly stay, and did not:
 
   * **shader-stage intrinsics** — `gfx_input`/`gfx_output`, `emit_vertex!`,
     `frag_coord_x`, `dFdx`, `set_position!`, `sample_texture_2d`,
@@ -24,12 +22,11 @@ shader is written IN and what a pipeline is DESCRIBED with:
     host counterpart `LavaArray` is Mantle's, and the two sitting on opposite
     sides is the split stated in miniature.
 
-Then the second half happened too. The shader-stage intrinsics and the pipeline
-enums moved to `KernelInterface` and Mantle — a shader is written in the portable
-vocabulary and lowered by whichever backend compiles it, and `LavaDeviceArray`
-became `AbstractVector` in the signatures that named it. So the count is now
-**0 across 0 files**: RayMakie names NOTHING from Lava, which is what makes
-`using Metal, Mantle` enough to render with.
+Both of those are `KernelInterface`'s and Mantle's instead: a shader is written
+in the portable vocabulary and lowered by whichever backend compiles it, and
+`LavaDeviceArray` is spelled `AbstractVector` in the signatures that would name
+it. So the count is **0 across 0 files**, which is what makes `using Metal,
+Mantle` enough to render with.
 
 The ledger keeps its meaning at zero. It says: nothing from Lava may come back —
 not a queue, not a framebuffer, and not an intrinsic either, because a shader

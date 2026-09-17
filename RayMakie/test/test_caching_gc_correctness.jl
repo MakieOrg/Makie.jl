@@ -300,12 +300,12 @@ end
         # Regression (2026-04-20): Makie's `free(scene)` → `empty!(scene)` →
         # `delete!(scene, plot)` calls `delete_trace_robj!` while the screen's
         # scene_states are still alive (screen wasn't explicitly closed first).
-        # That path used to resolve the compute graph via `plot.attributes[
-        # :trace_renderobject][]`, which re-ran `draw_atomic` → `push!(scene,
-        # mat)` → `update!(::LavaArray)`, hitting `ArgumentError: Attempt to
-        # use a freed reference` whenever MultiTypeSet cache slots had been
-        # released by an HW-accel rebuild upstream. `delete_trace_robj!` now
-        # wraps the resolution in try/catch and falls through to attribute-
+        # Resolving the compute graph via `plot.attributes[
+        # :trace_renderobject][]` there re-runs `draw_atomic` → `push!(scene,
+        # mat)` → `update!(::LavaArray)`, which hits `ArgumentError: Attempt to
+        # use a freed reference` whenever MultiTypeSet cache slots have been
+        # released by an HW-accel rebuild upstream. `delete_trace_robj!` wraps
+        # the resolution in try/catch and falls through to attribute-
         # delete on failure.
         @testset "empty!(scene) without close(screen) does not crash" begin
             scene = _make_makie_scene(; sz=(16, 16))

@@ -2,9 +2,9 @@
 #
 # `create_scene_state` builds the `Hikari.Scene`, and `hw_accel` picks the accel
 # type THERE — it is baked in at construction. But a second `colorbuffer` on the
-# same Makie scene goes through `apply_screen_config!`, which used to keep the
-# existing scene states and only free the tracer's state. So the second render
-# silently kept the first render's traversal path.
+# same Makie scene goes through `apply_screen_config!`. Keeping the existing
+# scene states there and freeing only the tracer's state makes the second render
+# silently keep the first render's traversal path.
 #
 # Nothing errored and both images were right, which is what made it expensive:
 # any A/B of the two paths measured the first one twice. Measured on an M5 with

@@ -11,12 +11,11 @@ using Test
 
 # Load a GPU backend, and say which one.
 #
-# This file used to load none. `using RayMakie` alone leaves Mantle with no
-# registered backend, so every test that renders died with "Mantle: no GPU
-# backend is available" — 45 of 85 assertions on an Apple machine, reported as
-# errors rather than as "this suite needs a device it cannot find". It passed on
-# a Vulkan box only because something else in the environment had pulled Lava
-# in. The same hole took Mantle's own suite down until 2026-08-29.
+# `using RayMakie` alone leaves Mantle with no registered backend, so every
+# test that renders dies with "Mantle: no GPU backend is available" — reported
+# as errors rather than as "this suite needs a device it cannot find" — and
+# passes on a Vulkan box only if something else in the environment pulled a
+# backend in.
 #
 # Probed rather than named: both packages resolve on any platform, and which one
 # is USABLE is the question. Note that "did the package import" is NOT that
@@ -114,26 +113,10 @@ BACKEND === nothing &&
 # names it is still alive, and `release_batch_queue!` is the way back out; see
 # Mantle's vulkan/test_batch_queue_lifetime.jl for the invariant.
 #
-# Re-checked 2026-08-25, and the reason they were failing had stopped being (4)
-# some time ago: both `test_caching_gc_correctness.jl` and
-# `test_dolphin_update_stress.jl` were calling runtime APIs the per-VulkanBatchQueue
-# deferred-free refactor deleted — `flush_deferred_frees!`, `_live_buffers`,
-# `LIVE_BUFFERS`, `GPU_LIVE_BYTES`. They errored on the first line of every
-# testset, so the exclusion comment above was describing a hazard that no longer
-# applied to a file that could not run at all. Ported to
-# `drain_deferred_frees!(bq)` / `live_buffer_count(ctx)` / `gpu_live_bytes(ctx)`
-# and both are back in the list below (36 and 7 assertions).
-#
-# `test_materials_scene.jl` was the same story and had drifted across THREE
-# independent API moves at once: `Hikari.FilmSensor` -> `PixelSensor` (and
-# `white_balance` -> `whitebalance`), a missing `using Raycore` despite
-# `Raycore.KA.CPU()` being the default argument on four call sites, and `sensor`
-# moving off `ScreenConfig` onto the integrator. Fixed and included.
-#
-# The lesson generalises: an excluded test file rots, and its exclusion note
-# rots with it — this comment claimed a GC-lifetime hazard for files that could
-# not get far enough to reach one. Two of the three are leak regressions, the
-# coverage least likely to be duplicated elsewhere and most likely to matter.
+# An excluded test file rots, and its exclusion note rots with it: a file that
+# cannot reach its first assertion will keep being described by whatever hazard
+# it was excluded for. The leak regressions are the coverage least likely to be
+# duplicated elsewhere, so they are the ones worth keeping runnable.
 
 const TEST_FILES = [
     # Source-only, no device: the architecture ledger goes first so it is
