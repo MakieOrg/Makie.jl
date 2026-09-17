@@ -11,14 +11,13 @@ function initialize_block!(po::PolarAxis; palette = nothing)
 
     po.scene = Scene(
         po.blockscene, scenearea, backgroundcolor = po.backgroundcolor,
-        clear = true, shading = NoShading
+        clear = true
     )
     map!(to_color, po.scene, po.scene.backgroundcolor, po.backgroundcolor)
 
     po.overlay = Scene(
         po.scene, scenearea, clear = false, backgroundcolor = :transparent,
         transformation = Transformation(po.scene, transform_func = identity),
-        shading = NoShading
     )
 
     if !isnothing(palette)

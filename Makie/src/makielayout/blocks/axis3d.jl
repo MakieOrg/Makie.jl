@@ -3,8 +3,6 @@ struct Axis3Camera <: AbstractCamera end
 function initialize_block!(ax::Axis3)
 
     blockscene = ax.blockscene
-    # (For reference) Maybe we want shading in the future on e.g. panels?
-    # blockscene.compute[:shading][] = automatic
 
     on(blockscene, ax.protrusions) do prot
         ax.layoutobservables.protrusions[] = to_protrusions(prot)
