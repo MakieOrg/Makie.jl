@@ -1,4 +1,4 @@
-const SERIALIZATION_FORMAT_VERSION = "v7"
+const SERIALIZATION_FORMAT_VERSION = "v9"
 
 struct TextureAtlas
     rectangle_packer::RectanglePacker{Int32}
@@ -411,10 +411,11 @@ function render(atlas::TextureAtlas, b::BezierPath)
     pad = atlas.glyph_padding
     pixelsize = atlas.pix_per_glyph
 
-    # `sdf` may adjust the size of the source image to make it dividable by
-    # downsample. To avoid this, we use a fitting size here.
-    source_size = floor(Int, 256 / downsample) * downsample
-    bitmap = render_path(b, source_size)
+    # Rendering at `pixelsize * downsample` makes both bitmap dimensions integer
+    # multiples of `downsample`, so `sdistancefield` does not have to round the
+    # padded size up. Rounding would add the extra space on one side only, which
+    # shifts markers with a non-square bounding box off-center in their atlas cell.
+    bitmap = render_path(b, pixelsize * downsample, pixelsize)
 
     # Our downsampeld & padded distancefield
     sd = sdistancefield(bitmap, downsample, pad)

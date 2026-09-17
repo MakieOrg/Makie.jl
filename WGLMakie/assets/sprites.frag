@@ -73,17 +73,18 @@ vec4 fill(vec4 fillcolor, float color, vec2 uv) {
 vec4 fill(vec4 fillcolor, bool image, vec2 uv) { return fillcolor; }
 vec4 fill(vec4 c, sampler2D image, vec2 uv) { return texture(image, uv.yx); }
 
-void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 color, float aa_radius){
-    if (width != 0.0){
-        float t = aastep(min(width, 0.0), max(width, 0.0), signed_distance, aa_radius);
-        vec4 bg_color = mix(color, vec4(strokecolor.rgb, 0), float(signed_distance < 0.5 * width));
-        color = mix(bg_color, strokecolor, t);
-    }
+// Composites src over dst, both with straight (non-premultiplied) alpha. Unlike
+// a plain mix() this preserves coverage where the two layers overlap.
+vec4 blend_over(vec4 dst, vec4 src){
+    float alpha = src.a + dst.a * (1.0 - src.a);
+    if (alpha == 0.0)
+        return vec4(dst.rgb, 0.0);
+    return vec4((src.rgb * src.a + dst.rgb * dst.a * (1.0 - src.a)) / alpha, alpha);
 }
 
 void glow(vec4 glowcolor, float signed_distance, float inside, inout vec4 color){
     float glow_width = get_glowwidth() * get_px_per_unit();
-    float stroke_width = get_strokewidth() * get_px_per_unit();
+    float stroke_width = 0.5 * abs(get_strokewidth() * get_px_per_unit());
     if (glow_width > 0.0){
         float outside = (abs(signed_distance) - stroke_width) / glow_width;
         float alpha = 1.0 - outside;
@@ -175,16 +176,28 @@ void main() {
 
     signed_distance *= frag_uvscale;
 
+    if (shape == DISTANCEFIELD) {
+        // frag_uvscale can only be correct along one axis, so for a sprite that
+        // is not square in pixels the distance is off by the aspect ratio along
+        // the other one. Dividing by the local gradient makes it a distance in
+        // pixels regardless. aa_radius is that gradient times ANTIALIAS_RADIUS,
+        // so no extra texture samples are needed.
+        signed_distance /= max(aa_radius / ANTIALIAS_RADIUS, 1e-6);
+        aa_radius = ANTIALIAS_RADIUS;
+    }
 
-    float stroke_width = get_strokewidth() * get_px_per_unit();
-    float inside_start = max(-stroke_width, 0.0);
-    float inside = aastep(inside_start, signed_distance, aa_radius);
+    // The stroke is centered on the outline of the shape, so it covers
+    // |signed_distance| < 0.5 * stroke_width. The fill covers the whole inside
+    // of the shape and the stroke is drawn over it.
+    float half_stroke = 0.5 * abs(get_strokewidth() * get_px_per_unit());
+    float inside = aastep(0.0, signed_distance, aa_radius);
+    float stroke_coverage = aastep(-half_stroke, half_stroke, signed_distance, aa_radius);
 
     vec4 final_color = fill(frag_color, uniform_color, frag_uv);
     final_color.a = final_color.a * inside;
+    final_color = blend_over(final_color, vec4(frag_strokecolor.rgb, frag_strokecolor.a * stroke_coverage));
 
-    stroke(frag_strokecolor, signed_distance, -stroke_width, final_color, aa_radius);
-    glow(get_glowcolor(), signed_distance, aastep(-stroke_width, signed_distance, aa_radius), final_color);
+    glow(get_glowcolor(), signed_distance, aastep(-half_stroke, signed_distance, aa_radius), final_color);
 
     // debug - show background
     // final_color.a = clamp(final_color.a, 0.0, 1.0);

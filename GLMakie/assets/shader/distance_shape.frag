@@ -116,25 +116,18 @@ vec4 fill(vec4 c, sampler2DArray image, vec2 uv) {
 }
 
 
-void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 color, float aa){
-    if (width != 0.0){
-        float t = aastep2(min(width, 0.0), max(width, 0.0), signed_distance, aa);
-        vec4 bg_color = mix(color, vec4(strokecolor.rgb, 0), float(signed_distance < 0.5 * width));
-        color = mix(bg_color, strokecolor, t);
-    }
-}
-
-void stroke_fxaa(vec4 strokecolor, float signed_distance, float width, inout vec4 color){
-    if (width != 0.0){
-        float t = step(min(width, 0.0), signed_distance) - step(max(width, 0.0), signed_distance);
-        vec4 bg_color = mix(color, vec4(strokecolor.rgb, 0), float(signed_distance < 0.5 * width));
-        color = mix(bg_color, strokecolor, t);
-    }
+// Composites src over dst, both with straight (non-premultiplied) alpha. Unlike
+// a plain mix() this preserves coverage where the two layers overlap.
+vec4 blend_over(vec4 dst, vec4 src){
+    float alpha = src.a + dst.a * (1.0 - src.a);
+    if (alpha == 0.0)
+        return vec4(dst.rgb, 0.0);
+    return vec4((src.rgb * src.a + dst.rgb * dst.a * (1.0 - src.a)) / alpha, alpha);
 }
 
 void glow(vec4 glowcolor, float signed_distance, float inside, inout vec4 color){
     if (glow_width > 0.0){
-        float s_stroke_width = px_per_unit * stroke_width;
+        float s_stroke_width = 0.5 * abs(px_per_unit * stroke_width);
         float s_glow_width = px_per_unit * glow_width;
         float outside = (abs(signed_distance) - s_stroke_width) / s_glow_width;
         float alpha = 1 - outside;
@@ -216,33 +209,40 @@ void main(){
     // See notes in geometry shader where f_viewport_from_u_scale is computed.
     signed_distance *= f_viewport_from_u_scale;
 
-    float s_stroke_width = px_per_unit * stroke_width;
-    float inside_start = max(-s_stroke_width, 0.0);
+    if (shape == DISTANCEFIELD) {
+        // f_viewport_from_u_scale can only be correct along one axis, so for a
+        // sprite that is not square in pixels the distance is off by the aspect
+        // ratio along the other one. Dividing by the local gradient makes it a
+        // distance in pixels regardless. aa_radius is that gradient times
+        // ANTIALIAS_RADIUS, so no extra texture samples are needed.
+        signed_distance /= max(aa_radius / ANTIALIAS_RADIUS, 1e-6);
+        aa_radius = ANTIALIAS_RADIUS;
+    }
+
+    // The stroke is centered on the outline of the shape, so it covers
+    // |signed_distance| < 0.5 * stroke_width. The fill covers the whole inside
+    // of the shape and the stroke is drawn over it.
+    float half_stroke = 0.5 * abs(px_per_unit * stroke_width);
     vec4 final_color = fill(f_color, image, tex_uv);
 
+    float inside, stroke_coverage;
     if (!fxaa){ // anti-aliasing via sdf
-        // For the initial coloring we can use the base pixel color and modulate
-        // its alpha value to create the shape set by the signed distance field. (i.e. inside)
-        float inside = aastep(inside_start, signed_distance, aa_radius);
-        final_color.a = final_color.a * inside;
-
-        // Stroke and glow need to also modulate colors (rgb) to smoothly transition
-        // from one to another.
-        stroke(f_stroke_color, signed_distance, -s_stroke_width, final_color, aa_radius);
-
+        inside = aastep(0.0, signed_distance, aa_radius);
+        stroke_coverage = aastep2(-half_stroke, half_stroke, signed_distance, aa_radius);
     } else { // AA via FXAA
         // Here we don't smooth edges (i.e. use step rather than smoothstep) and
         // let fxaa figure out smoothing/anti-aliasing later. This fixes the
         // halo artifact when rendering at different depths for solid colors
-        float inside = step(inside_start, signed_distance);
-        final_color.a = final_color.a * inside;
-
-        stroke_fxaa(f_stroke_color, signed_distance, -s_stroke_width, final_color);
+        inside = step(0.0, signed_distance);
+        stroke_coverage = step2(-half_stroke, half_stroke, signed_distance);
     }
+
+    final_color.a = final_color.a * inside;
+    final_color = blend_over(final_color, vec4(f_stroke_color.rgb, f_stroke_color.a * stroke_coverage));
 
     // glow is always semi transparent so switching between step and smoothstep
     // is mostly useless here
-    glow(f_glow_color, signed_distance, aastep(-s_stroke_width, signed_distance, aa_radius), final_color);
+    glow(f_glow_color, signed_distance, aastep(-half_stroke, signed_distance, aa_radius), final_color);
 
 
     // TODO: In 3D, we should arguably discard fragments outside the sprite

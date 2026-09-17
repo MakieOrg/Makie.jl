@@ -536,3 +536,31 @@ end
     empty!(scene)
     @test length(screen.render_tick.listeners) == N
 end
+
+@testset "sdf marker stroke" begin
+    GLMakie.closeall()
+    hexagon(a, b) = Makie.GeometryBasics.Polygon(
+        Point2f[(a * cos(t), b * sin(t)) for t in range(pi / 6, 13pi / 6, length = 7)[1:6]]
+    )
+    perimeter(poly) = let p = coordinates(poly)
+        sum(norm(p[mod1(i + 1, length(p))] - p[i]) for i in eachindex(p))
+    end
+
+    function stroke_ink(markersize)
+        scene = Scene(size = (600, 600), camera = campixel!, backgroundcolor = :white)
+        scatter!(
+            scene, [Point2f(300, 300)]; marker = hexagon(1, 1), markersize = markersize,
+            markerspace = :pixel, color = :red, strokewidth = 2, strokecolor = :black
+        )
+        screen = display(GLMakie.Screen(visible = false, px_per_unit = 1, scalefactor = 1), scene)
+        img = Makie.colorbuffer(screen)
+        # red fill and white background both have full red, so the red channel
+        # only picks up the stroke
+        return sum(1 - Float64(px.r) for px in img)
+    end
+
+    for markersize in [Vec2f(100, 100), Vec2f(100, 60)]
+        expected = 2 * perimeter(hexagon(markersize...))
+        @test stroke_ink(markersize) / expected ≈ 1 rtol = 0.07
+    end
+end
