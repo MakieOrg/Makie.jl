@@ -99,14 +99,16 @@ function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d
 
     for (lvl, c) in enumerate(Contours.levels(contours))
         for elem in Contours.lines(c)
-            for p in elem.vertices
+            # Contours.jl traces cells in `Dict` order, so a line starts anywhere and runs either way
+            vertices = canonical_line_order(elem.vertices)
+            for p in vertices
                 push!(points, to_ndim(PT, p, c.level))
             end
             push!(points, PT(NaN32))
-            push!(elements_per_segment, lvl => length(elem.vertices) + 1)
+            push!(elements_per_segment, lvl => length(vertices) + 1)
 
             if labels
-                p1, p2, p3 = label_info(c.level, elem.vertices)
+                p1, p2, p3 = label_info(c.level, vertices)
                 push!(levels, c.level)
                 push!(lbl_pos_low, p1)
                 push!(lbl_pos_center, p2)

@@ -38,7 +38,7 @@ end
     colors = Makie.resample(to_colormap(:Spectral), 20)
     scatter!(RNG.rand(20), RNG.rand(20), markersize = RNG.rand(20) .* 20, color = colors)
 
-    scatter(f[2, 1], -1 .. 1, x -> x^2)
+    scatter(f[2, 1], -1:0.05:1, x -> x^2)
     scatter(f[2, 2], RNG.randn(10), color = :blue, glowcolor = :orange, glowwidth = 10)
     f
 end
