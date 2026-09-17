@@ -5,7 +5,7 @@
 # single render pass: compiled pipeline, GPU buffers, texture bindings, draw config.
 # Created once inside register_computation!, updated in-place on subsequent calls.
 
-# Uses Lava imports from gfx_pipeline.jl (included before this file)
+# Uses the imports in gfx_pipeline.jl, included before this file.
 
 """
     RenderObject
@@ -32,9 +32,9 @@ mutable struct RenderObject
     pipeline::Union{GraphicsPipeline, Mantle.MeshPipeline}
     # The backend this object's buffers and textures live on. Carried rather
     # than looked up: `update_texture!` and `update_buffer!` are handed only the
-    # render object, and they used to name `VulkanTexture2D`/`LavaArray`
-    # directly — which is both a driver dependency and a guess about where the
-    # existing buffers already are.
+    # render object, and naming `VulkanTexture2D`/`LavaArray` there is both a
+    # driver dependency and a guess about where the existing buffers already
+    # are.
     backend::Any
     buffers::Dict{Symbol, AbstractGPUArray}
     uniforms::Dict{Symbol, Any}
@@ -174,14 +174,6 @@ function build_draw_args(robj::RenderObject, arg_names::NTuple{N, Symbol}) where
     end
 end
 
-# DELETED: `compile_robj!` and `gfx_type_tuple`.
-#
-# Both were dead — nothing called the first and only the first called the second —
-# and between them they held the last two things this package had no business
-# holding: a reach into `MantleVulkanExt` for `ensure_compiled_with_shader!`, and
-# a hard `Lava.DeviceArray`, which is a name that does not resolve without a
-# Vulkan driver.
-#
 # What they did is `Mantle.compile_draw` in `draw_renderobject!`: it takes the
 # RESOLVED arguments and each backend derives its own device signature from them,
 # so there is no type tuple to build here and no descriptor-set layout to thread.

@@ -19,28 +19,19 @@ import Makie.Observables
 # `Mantle` is the runtime: the pipeline that gets built, the framebuffer it draws
 # into, the textures, the queue, the host array. All of it needs one.
 #
-# It was all `Lava` until 2026-08-27, when the runtime moved out of the compiler.
-# DELETED in phase 1.5: see Mantle/docs/mantle-owns-it.md
-#
-# `import Lava` and the 26 shader names taken from it. The comment that stood
-# here claimed "Lava is the Julia→SPIR-V compiler and needs no device, so
-# importing it here costs nothing on a machine with no Vulkan loader". That
-# contract held until Lava depended on Vulkan again, and then this line was
-# what stopped RayMakie loading on a Mac.
-#
-# Nine of the 26 (`vertex_index`, `frag_coord_*`, the topologies) Mantle already
-# declared, so they were being taken from the wrong package even while it
-# worked. Seven more — `set_position!`, `gfx_output`/`gfx_input` and their flat
-# variants, `geom_input`, `geom_input_position` — are Lava's older
-# location-based varying API, which Mantle's declarative `varyings = (…)` and a
-# vertex stage returning `(position = …, …)` replace outright. Phase 2.8 ports
-# the shaders rather than porting the names.
+# No `import Lava` and no shader names taken from it. Lava depends on Vulkan, so
+# importing it here is what stops RayMakie loading on a machine with no driver,
+# and the names it would supply are Mantle's anyway: `vertex_index`,
+# `frag_coord_*` and the topologies are declared there, and the
+# location-based varying API (`set_position!`, `gfx_output`/`gfx_input`,
+# `geom_input`) is replaced by a declarative `varyings = (…)` with a vertex
+# stage returning `(position = …, …)`.
 import Mantle
-# The runtime half, and all of it Mantle's portable spelling. These used to be
-# `VulkanFramebuffer` / `VulkanTexture2D` / `VulkanSampler` / `VulkanBatchQueue`
-# — driver-named concretes that only exist when `MantleVulkanExt` is loaded, so
-# naming them here made RayMakie a package that could not load on a Mac. The
-# abstract types are Mantle's; the backend supplies the concretes.
+# The runtime half, and all of it Mantle's portable spelling. A driver-named
+# concrete (`VulkanFramebuffer`, `VulkanTexture2D`, `VulkanSampler`) exists only
+# where that backend does, so naming one here makes RayMakie a package that
+# cannot load on a Mac. The abstract types are Mantle's; the backend supplies
+# the concretes.
 # No `allocate_batch_queue!` / `release_batch_queue!`: a frame is a `Mantle.Plan`
 # and `run!` owns the submission, so this package names no queue at all.
 import Mantle: DeviceArray, GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
@@ -82,15 +73,13 @@ backend-agnostic, and it should SAY so until the graphics API grows the verbs it
 needs. `use_bindings!(bq, …)` next door is the same gap from the other side — a
 Vulkan-shaped signature left in the portable API.
 
-DELETED: `vulkanbackend()`, which fetched `MantleVulkanExt` by name and had to
-be a function rather than a `const` so it could resolve after the extension's
-triggers loaded. There is no extension — `Mantle` compiles its backend in at
-parse time — so the two call sites in `screen.jl` name `Mantle` directly.
+There is no `vulkanbackend()` fetching a backend module by name: `Mantle`
+compiles its backend in at parse time, so the call sites in `screen.jl` name
+`Mantle` directly.
 """
-# No `import Mantle: VK`. The Vulkan handle types this file used to reach for —
-# viewport, scissor, pixel format — are the runtime's, not a renderer's, and a
-# module-level `const … = VK.FORMAT_…` is what stopped RayMakie loading without
-# a driver. Formats are now written as Julia element types (`BGRA{N0f8}`), which
+# No `import Mantle: VK`. The Vulkan handle types — viewport, scissor, pixel
+# format — are the runtime's, not a renderer's, and a module-level
+# `const … = VK.FORMAT_…` is what stops RayMakie loading without a driver. Formats are now written as Julia element types (`BGRA{N0f8}`), which
 # is what `Mantle.vkformat` lowers, and viewport/scissor go through
 # `Mantle.set_viewport!`. What genuinely needs a graphics pipeline is gated on
 # `Mantle.supports_graphics`.
@@ -123,10 +112,6 @@ mutable struct RayMakieState
     camera::Union{Observable, Nothing}
     hikari_scene::Union{Hikari.AbstractScene, Nothing}
     needs_film_clear::Bool
-    # `depth_flipped` used to sit here — a 1x1 device allocation for an overlay
-    # path that flips the index in the kernel instead. Its own comment said it
-    # was unused; it existed to be allocated in two constructors and finalized
-    # in `cleanup!`.
     # This scene's own path tracer, built from the screen's settings; `nothing`
     # for an overlay-only scene. Its own and nobody else's: see `ScreenConfig`.
     integrator::Union{Nothing, Hikari.VolPath}
@@ -656,9 +641,9 @@ function init_scene!(screen, mscene::Makie.Scene)
             # `clipping_mode = :adaptive` those two are FACTORS, not distances:
             # `near = view_dist * near` and
             # `far = max(radius(bounding_sphere) / tand(fov/2), view_dist) * far`.
-            # Writing absolute distances into them (this used to set
-            # `near = dist - 2r`, `far = dist + 2r`) multiplies them by the view
-            # distance a second time, so a camera 6.7 units out got a near plane
+            # Writing absolute distances into them (`near = dist - 2r`,
+            # `far = dist + 2r`) multiplies them by the view distance a second
+            # time, so a camera 6.7 units out gets a near plane
             # at 21.9 — past everything in the scene. The raytraced path never
             # noticed, because `to_trace_camera(::Camera3D, …)` builds its
             # `PerspectiveCamera` from eye/lookat/up/fov and ignores the

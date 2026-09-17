@@ -314,8 +314,8 @@ function pbrt_shape_to_makie!(scene, srec::Hikari.PBRTShapeRecord, pbrt,
     outside_medium = get(media_cache, srec.medium_outer, nothing)
 
     # Area light: same construction Hikari's own scene builder uses, so the two
-    # importers cannot drift. This used to call the keyword constructor, which
-    # normalizes by the D65 constant rather than by the emitter's own spectrum.
+    # importers cannot drift: the keyword constructor normalizes by the D65
+    # constant rather than by the emitter's own spectrum.
     if srec.area_light !== nothing
         emissive = Hikari.Emissive(srec.area_light)
         mesh!(scene, geom; material=Hikari.MediumInterface(mat;

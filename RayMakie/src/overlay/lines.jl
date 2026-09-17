@@ -534,8 +534,8 @@ adjacency form with each end doubled because a segment has no neighbour to miter
 against — and four indices per primitive with none shared is exactly
 `LineListAdjacency`.
 
-Drawn as a STRIP, which is what this used to share with the joined pipeline, the
-4-wide window also lands on every BOUNDARY between two segments: indices
+Drawn as a STRIP — the topology the joined pipeline takes — the 4-wide window
+also lands on every BOUNDARY between two segments: indices
 `i1 i1 i2 i2 j1 j1 j2 j2` yield a primitive whose middle pair is `i2, j1`, and a
 line is drawn from the end of one segment to the start of the next. In a plot that
 is every grid line joined corner to corner by a diagonal, and it is not specific to

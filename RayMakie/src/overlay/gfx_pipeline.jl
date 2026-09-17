@@ -101,9 +101,9 @@ end
 #   Formula: ndc_y = -(pos_y/res*2 - 1). Verified: screen_y=0 → ndc_y=+1, screen_y=h → ndc_y=-1.
 #
 # That negation is the ONLY one a shader here writes. `KernelInterface.clip_y` is
-# NOT for this and used to be called on the `position` these stages return: it
+# NOT for this, and must not be called on the `position` these stages return: it
 # answers "this backend's clip y given the portable one", and the backend ALREADY
-# applies it to every position a stage writes. Calling it here applied the mirror
+# applies it to every position a stage writes. Calling it here applies the mirror
 # a second time, which on Vulkan is invisible (there it is the identity) and on
 # Metal drew every sprite and every glyph upside down — text at the bottom of a
 # figure came out at the top, mirrored. The lines stages called it twice, in the
@@ -130,7 +130,7 @@ end
 # line center at every X position, leaving fragments on one side uncovered.
 # The fix (2026-03-24) changed scores from ~0.049/panel to ~0.003/panel.
 #
-# DO NOT revert to the old BL,BR,TL + BR,TR,TL split.
+# Do NOT use the BL,BR,TL + BR,TR,TL split.
 @inline function quad_corner(vid::Int32)
     # T1: (p1,+n), (p2,+n), (p2,-n)  →  covers +n side of line
     # T2: (p1,+n), (p2,-n), (p1,-n)  →  covers -n side of line

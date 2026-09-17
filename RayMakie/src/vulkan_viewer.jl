@@ -3,7 +3,6 @@
 # Returns the Screen — supports close(screen), colorbuffer(screen), wait(screen).
 
 import GLFW
-# DELETED in phase 1.5: see Mantle/docs/mantle-owns-it.md
 
 # Connect GLFW events to Makie's event system.
 # Mirrors GLMakie's event.jl — mouse Y is flipped (GLFW top-down → Makie bottom-up),

@@ -9,10 +9,10 @@ The pixel reconstruction filter every RayMakie film is built with.
 `xradius`/`yradius` 1.5, `sigma` 0.5, used whenever a scene names no Filter),
 and the default Hikari's own `VolPath` docstring documents.
 
-This was hardcoded as `LanczosSincFilter(Point2f(1), 3)` at three separate call
-sites. Radius 1 is tighter than any pbrt default and made RayMakie's
-reconstruction differ from the reference for every render — visible as soon as a
-render is compared against a pbrt EXR rather than eyeballed.
+One place, because a per-call-site default drifts: `LanczosSincFilter(Point2f(1),
+3)` is tighter than any pbrt default, which makes RayMakie's reconstruction
+differ from the reference for every render, visible as soon as one is compared
+against a pbrt EXR rather than eyeballed.
 """
 PIXEL_FILTER() = Hikari.GaussianFilter(radius = Point2f(1.5f0, 1.5f0), sigma = 0.5f0)
 
@@ -425,8 +425,8 @@ function Base.close(screen::Screen)
     screen.stop_renderloop[] = true
     if screen.rendertask !== nothing && !istaskdone(screen.rendertask)
         # `wait` rethrows whatever ended the loop. Closing a screen must not
-        # propagate that — but a render loop that died is worth saying so, and
-        # this used to be `try wait(screen) catch end`.
+        # propagate that, and a render loop that died is worth saying so, so
+        # this is neither a bare rethrow nor a silent catch.
         try
             wait(screen)
         catch e
@@ -488,12 +488,9 @@ function Base.close(screen::Screen)
         screen.gfx_atlas_hook = nothing
     end
 
-    # No flush, and nothing reaching into Lava. This used to call
-    # `vk_flush!` + `flush_deferred_frees!` through `Base.loaded_modules`,
-    # wrapped in a `try/catch` that swallowed whatever went wrong. Every
-    # allocation above is a pool region now: `free!` retires it, and the next
-    # allocation on this device reclaims it — including across screens, which
-    # is what the reach-through was approximating.
+    # No flush, and nothing reaching into a backend by module lookup. Every
+    # allocation above is a pool region: `free!` retires it and the next
+    # allocation on this device reclaims it, including across screens.
     return nothing
 end
 
@@ -691,9 +688,9 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     # Depth, normal and albedo. Unconditional: `postprocess!` below composites
     # the background wherever `isinf(depth)`, so a frame that skips this reads a
     # depth buffer of zeros, calls nothing escaped, and comes out on a BLACK
-    # background regardless of what the user asked for. This used to be gated on
-    # `need_aux_buffers = has_overlays || denoise`, which made the background
-    # colour of a plain 3D scene depend on whether it happened to contain a
+    # background regardless of what the user asked for. Gated on
+    # `need_aux_buffers = has_overlays || denoise` it would make the background
+    # colour of a plain 3D scene depend on whether it happens to contain a
     # `lines!`. The denoiser is the only consumer of normal and albedo, but depth
     # is not optional.
     tlas = scene_state.hikari_scene.accel
@@ -1077,9 +1074,8 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
             render!(screen; finalize_framebuffer = i == n)
             # No wait between samples. Each sample is one closed submission of
             # the integrator's recorded plan, and the queue orders them; a
-            # device wait here only idled the GPU between samples (and let it
-            # downclock). It dated from an open command buffer that accumulated
-            # every dispatch until something flushed it, which no longer exists.
+            # device wait here would only idle the GPU between samples, and let
+            # it downclock.
         end
     end
     # Check if any overlay rendering is needed. Overlays require the slow path:
@@ -1424,9 +1420,8 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             screen.stop_renderloop[] = true
             # Both are caught because this is a `finally`: throwing here would
             # replace whatever actually ended the loop with a teardown error.
-            # Reported, though — a `device_wait_idle` that fails means the device
-            # is gone, which is the single most useful thing to know here and
-            # was exactly what `catch end` threw away.
+            # Reported, though: a `device_wait_idle` that fails means the device
+            # is gone, which is the single most useful thing to know here.
             try
                 Mantle.waitidle(screen.config.device)
             catch e

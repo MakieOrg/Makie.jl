@@ -70,11 +70,10 @@ with the viewport rect it belongs in.
 Shared with `colorbuffer`, which has to know whether there is anything to draw
 *before* it commits to the slow path (blit to a BGRA framebuffer, render, read
 back, convert). Asking one function both times is what stops "are there
-overlays?" and "which overlays?" from being different questions — they used to
-be, and the first one was answered by `overlay_only`, which is a property of the
-scene's CAMERA. So a 3D scene holding `lines!`, `scatter!` or `text!` built their
-render objects and then nobody drew them, which is also why an `Axis3` came out
-with no spines, ticks or labels.
+overlays?" and "which overlays?" from being different questions. Answering the
+first with `overlay_only`, which is a property of the scene's CAMERA, makes a 3D
+scene holding `lines!`, `scatter!` or `text!` build their render objects and then
+draw none of them: an `Axis3` with no spines, ticks or labels.
 """
 function collect_overlay_robjs(state::RayMakieState, root_scene::Makie.Scene, raster::Bool;
                                scenes = nothing)
@@ -143,9 +142,9 @@ Throw unless `backend` can run every stage this pipeline declares.
 Asked before the pass opens rather than discovered from a shader compile. It
 THROWS, and that is the point: an overlay that cannot be drawn is not a degraded
 image, it is a WRONG one — no axis grid, no ticks, no labels, no scatter, no
-lines — and a renderer that drops it and reports success produces something nobody
-reading the picture can tell is incomplete. There was a skip-with-a-warning here
-and it is gone on purpose.
+lines — and a renderer that drops it and reports success produces something
+nobody reading the picture can tell is incomplete. A skip with a warning is not
+an option here.
 
 A geometry stage needs EITHER a backend that has one or a backend that has a mesh
 pipeline, because `Mantle.compile_draw` lowers a geometry pipeline onto a mesh one

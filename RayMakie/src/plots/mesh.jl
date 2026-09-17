@@ -750,8 +750,8 @@ end
 function update_trace_transform!(hikari_scene, state, robj, transform)
     tlas = hikari_scene.accel
 
-    # `update_transform!(accel, handle, transform)` for BOTH shapes. The single
-    # -handle branch used to take the index-based
+    # `update_transform!(accel, handle, transform)` for BOTH shapes, and not the
+    # index-based
     # `update_instance_transforms!(tlas, transforms, 1, idx)`, which only
     # `Raycore.TLAS` implements — `Mantle.HWTLAS` is batch/handle-addressed and has
     # no such method. So under `hw_accel = true` (the default) moving a `mesh!`

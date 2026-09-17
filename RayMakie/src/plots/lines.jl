@@ -102,10 +102,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
                 robj.uniforms[:pattern_length] = pat_length
                 # (N, 1) and not (1, N): a texture is `data[x, y]`, so the pattern runs
                 # along the FIRST index. As a row it was one texel wide, and sampling it
-                # along u gave the same value everywhere — a dashed line drawn solid. It
-                # used to reach the driver as N-by-1 anyway, because both uploads read a
-                # single-row matrix as one contiguous run whichever way the dimensions
-                # were named.
+                # along u gives the same value everywhere: a dashed line drawn
+                # solid. Both uploads read a single-row matrix as one contiguous
+                # run whichever way the dimensions are named, so only the shape
+                # declared here distinguishes them.
                 sdf_2d = reshape(sdf_data, length(sdf_data), 1)
                 update_texture!(robj, sdf_2d; filter=:linear, wrap=:repeat)
             end
@@ -166,10 +166,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             robj.uniforms[:pattern_length] = pat_length
             # (N, 1) and not (1, N): a texture is `data[x, y]`, so the pattern runs
             # along the FIRST index. As a row it was one texel wide, and sampling it
-            # along u gave the same value everywhere — a dashed line drawn solid. It
-            # used to reach the driver as N-by-1 anyway, because both uploads read a
-            # single-row matrix as one contiguous run whichever way the dimensions
-            # were named.
+            # along u gives the same value everywhere: a dashed line drawn
+            # solid. Both uploads read a single-row matrix as one contiguous
+            # run whichever way the dimensions are named, so only the shape
+            # declared here distinguishes them.
             sdf_2d = reshape(sdf_data, length(sdf_data), 1)
             update_texture!(robj, sdf_2d; filter=:linear, wrap=:repeat)
         else

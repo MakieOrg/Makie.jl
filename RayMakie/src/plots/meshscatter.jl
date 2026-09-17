@@ -87,9 +87,9 @@ end
 # pos_rot_scale_to_mat3x4! — broadcast over Lava primitives
 # -----------------------------------------------------------------------------
 #
-# This used to be six hand-written `@kernel`s in Lava (each combination of
-# scalar/per-instance rotation × Float32/Vec3f/per-instance scale).  All of
-# that collapses to one broadcast over (`quat_to_rot3x3`, `build_4x3_pervec`,
+# One broadcast, and not six hand-written `@kernel`s (each combination of
+# scalar/per-instance rotation × Float32/Vec3f/per-instance scale) over
+# (`quat_to_rot3x3`, `build_4x3_pervec`,
 # wrap as Mat3x4f).  Broadcast itself dispatches per-backend (Vector → CPU
 # loop, LavaArray → GPU broadcast kernel) — no code from us.
 #
