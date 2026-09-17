@@ -648,3 +648,17 @@ function spawnat(f, tid)
     schedule(task)
     return task
 end
+
+"""
+    canonical_cycle_start(elements)
+
+Rotate a closed cycle (`first == last`) so that it starts at its smallest element,
+leaving open sequences untouched. Cycles that come out of hashed containers start
+at an arbitrary element, which would otherwise move contour labels and shift the
+dash phase of outlines between Julia versions.
+"""
+function canonical_cycle_start(elements)
+    length(elements) > 2 && first(elements) == last(elements) || return elements
+    i = argmin(@view elements[begin:(end - 1)])
+    return [@view(elements[i:(end - 1)]); @view(elements[begin:i])]
+end
