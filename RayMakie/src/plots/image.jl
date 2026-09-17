@@ -20,7 +20,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
         y_min, y_max = Float32(minimum(y)), Float32(maximum(y))
 
         # Project corners through camera to screen pixel coords
-        pv = Mat4f(scene.camera.projectionview[])
+        pv = plot_clip_matrix(scene, plot)
         viewport = scene.viewport[]
         vw, vh = viewport.widths
 

@@ -164,9 +164,30 @@ end
 # Overlay path (2D mesh, rasterized via graphics pipeline)
 # -----------------------------------------------------------------------------
 
+"""
+    plot_clip_matrix(scene, plot) -> Mat4f
+
+The projection that takes `plot`'s vertices to clip space, chosen by the SPACE
+the plot declares.
+
+`scene.camera.projectionview` is the data-space one and was used for every plot
+regardless. A plot with `space = :pixel` — Makie's rectangle-zoom rubber band is
+one — then had its pixel coordinates fed to clip space through a matrix that is
+the identity for that space, putting every vertex hundreds of units outside the
+[-1, 1] volume, so it rasterised nothing. Dragging a zoom rectangle applied the
+right limits on release and drew no rectangle on the way, which is what "the
+zoom rectangle does nothing" looked like.
+
+`Makie.space_to_clip` is the accessor that answers this and it was used nowhere
+in this backend; the four coordinate spaces are not a special case to branch on,
+they are what the attribute means.
+"""
+plot_clip_matrix(scene, plot) =
+    Mat4f(Makie.space_to_clip(scene.camera, Makie.to_value(get(plot, :space, :data))))
+
 function mesh_overlay_dispatch!(screen, scene, plot, args, last_robj)
     flat_positions, flat_colors = mesh_overlay_flat_arrays(plot, args)
-    pv = Mat4f(scene.camera.projectionview[])
+    pv = plot_clip_matrix(scene, plot)
     model_mat = Mat4f(args.model_f32c)
 
     if last_robj isa RenderObject
