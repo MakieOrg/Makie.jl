@@ -87,7 +87,7 @@ using ComputePipeline: MapFunctionWrapper
     reflect_cached(inputs, changed, cached) = cached === nothing ? (rand(Int),) : (cached[1],)
     register_computation!(reflect_cached, graph, [:in1, :in4], [:cached14])
 
-    discard(inputs, changed, outputs) = inputs[:in1] < 10 ? nothing : (inputs[1],)
+    discard(inputs, changed, outputs) = inputs[:in1] < 10 ? skip_update : (inputs[1],)
     register_computation!(discard, graph, [:in1], [:discard10])
 
     merge_data(inputs, changed, outputs) = (inputs[1] .+ inputs[2],)
