@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Scatter marker strokes are now centered on the marker outline in GLMakie and WGLMakie, matching CairoMakie, instead of being drawn outside it [#5793](https://github.com/MakieOrg/Makie.jl/pull/5793).
+- Fixed `strokewidth` being scaled by the sprite's aspect ratio for markers with a non-square bounding box (e.g. `hexbin` tiles) in GLMakie and WGLMakie [#5793](https://github.com/MakieOrg/Makie.jl/pull/5793).
 - Fixed scatter markers with a non-square bounding box (e.g. `hexbin` tiles) being drawn slightly off-center in GLMakie and WGLMakie [#5793](https://github.com/MakieOrg/Makie.jl/pull/5793).
 - Allowed FFMPEG_jll 9 [#5789](https://github.com/MakieOrg/Makie.jl/pull/5789).
 - Contour labels, `voronoiplot` colors, `triplot` convex hulls, `hexbin` draw order and `datashader` category colors no longer depend on `Dict` iteration order, so they stay the same across Julia versions [#5792](https://github.com/MakieOrg/Makie.jl/pull/5792).
