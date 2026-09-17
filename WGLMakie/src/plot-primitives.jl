@@ -470,8 +470,8 @@ function add_uv_mesh!(attr)
 
             if x isa EndPoints && y isa EndPoints && Makie.is_identity_transform(t)
                 init = isnothing(last) # these are constant after init
-                faces = init ? decompose(GLTriangleFace, Rect2f(rect)) : nothing
-                uv = init ? decompose_uv(Rect2f(rect)) : nothing
+                faces = init ? decompose(GLTriangleFace, Rect2f(rect)) : skip_update
+                uv = init ? decompose_uv(Rect2f(rect)) : skip_update
                 return (faces, uv, decompose(Point2d, Rect2d(rect)))
             else
                 px = WGLMakie.xy_convert(x, size(z, 1))
