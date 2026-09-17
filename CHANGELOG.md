@@ -26,6 +26,7 @@
 - Added `colorrange` to `tricontourf` and `contourf` and `alpha` to `contourf`. Fixed passthrough of `visible`, `fxaa`, `clip_planes`, `overdraw` and `depth_shift`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
 - Fixed colorscale handling in `tricontourf` and `contourf`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
 - Fixed error when passing `missing` values to `hist` and `stephist` [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
+- Updated `voxels` to allow for resizes [#5494](https://github.com/MakieOrg/Makie.jl/pull/5494)
 - Added `rasterize` as a generic plot attribute, fixed `rasterize` getting fixed to a `Bool` or `Int` and fixed rasterize warning in recipes. [#5783](https://github.com/MakieOrg/Makie.jl/pull/5783)
 - Added a warning when using `shading = true` with a mesh that does not include or can't generate normals. [#5782](https://github.com/MakieOrg/Makie.jl/pull/5782)
 

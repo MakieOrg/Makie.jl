@@ -97,7 +97,9 @@ function plot_updates(args, changed)
     for (name, value) in pairs(args)
         if changed[name] && !isnothing(value) && !(name in disallowed)
             _val = if value isa Sampler
-                [Int32[size(value.data)...], serialize_three(value.data)]
+                # Without the `Any` the serialized array may get promoted, e.g.
+                # [Int32[], UInt8[]] promotes the second array to Int32
+                Any[Int32[size(value.data)...], serialize_three(value.data)]
             else
                 # Check if value is an array with all identical elements
                 if Makie.is_vector_attribute(value) && length(value) > 1 && all(x -> x == value[1], value)
