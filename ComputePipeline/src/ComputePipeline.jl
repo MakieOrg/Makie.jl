@@ -975,9 +975,10 @@ end
 function set_result!(edge::TypedEdge, result, i, value)
     if LOG_NOTHING_SKIP && isnothing(value)
         @warn(
-            "Returning nothing in `map!` and `register_computation!` callbacks " *
-                "has been deprecated in favor of returning `skip_update` to allow " *
-                "outputs to update to `nothing`. " * source_info_str(edge)
+            "Found `map!` or `register_computation!` callback which returns " *
+                "nothing for one of its outputs. This might be incorrect since " *
+                "nothing has been replaced by `skip_update` for marking outputs " *
+                "as unchanged. " * source_info_str(edge)
         )
     end
 
