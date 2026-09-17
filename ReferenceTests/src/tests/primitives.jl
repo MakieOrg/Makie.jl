@@ -859,8 +859,8 @@ end
     st = Stepper(f)
     Makie.step!(st)
 
-    update!(p1, arg1 = rand(10, 10, 10))
-    update!(p2, arg4 = rand(UInt8, 10, 10, 10))
+    update!(p1, arg1 = collect(reshape(1:1000, (10, 10, 10))))
+    update!(p2, arg4 = reshape(UInt8.(mod.(1:1000, 255)), (10, 10, 10)))
     Makie.step!(st)
 
     update!(p1, arg1 = make_data(20))
