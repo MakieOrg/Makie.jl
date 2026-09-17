@@ -15,15 +15,34 @@ end
 
 # ── Atlas texture (per-screen, accessed via screen fields) ──
 
+"""
+The glyph atlas on the device, re-uploaded when — and only when — Makie has
+rasterised something new into it.
+
+Asked of the atlas rather than inferred from it. The previous version compared
+`length(atlas.data)`, and an atlas is ONE fixed-size image that glyphs are packed
+into: the length is the same forever, so the texture was uploaded once and every
+glyph rasterised after that never reached the GPU. It showed up as tick labels
+that would not update — zoom an axis until a label needs a digit no earlier label
+used and that label draws whatever the atlas held in those texels before.
+"""
 function get_atlas_bindings(screen)
     atlas = Makie.get_texture_atlas()
-    atlas_data = atlas.data
-    atlas_len = length(atlas_data)
 
-    if screen.gfx_atlas_size == atlas_len && screen.gfx_atlas_bindings !== nothing
+    # Registered once, and kept so `close` can take it off again: an atlas is
+    # global and outlives any one screen, so a hook per screen that never comes
+    # off is a leak that also keeps the screen alive.
+    if screen.gfx_atlas_hook === nothing
+        hook = (_sd, _area) -> (screen.gfx_atlas_dirty[] = true; nothing)
+        screen.gfx_atlas_hook = hook
+        Makie.font_render_callback!(hook, atlas)
+    end
+
+    if !screen.gfx_atlas_dirty[] && screen.gfx_atlas_bindings !== nothing
         return screen.gfx_atlas_bindings
     end
 
+    atlas_data = atlas.data
     atlas_f32 = Float32.(atlas_data)
     tex = Texture2D(screen.config.device, atlas_f32)
     sampler = Sampler(screen.config.device; filter=:linear, wrap=:clamp)
@@ -32,7 +51,7 @@ function get_atlas_bindings(screen)
     screen.gfx_atlas_tex = tex
     screen.gfx_atlas_sampler = sampler
     screen.gfx_atlas_bindings = bindings
-    screen.gfx_atlas_size = atlas_len
+    screen.gfx_atlas_dirty[] = false
     return bindings
 end
 

@@ -146,7 +146,16 @@ mutable struct Screen <: Makie.MakieScreen
     gfx_atlas_tex::Any
     gfx_atlas_sampler::Any
     gfx_atlas_bindings::Any
-    gfx_atlas_size::Int
+    # Set by the callback Makie's atlas runs when it rasterises a glyph, cleared
+    # when the texture is re-uploaded. NOT the atlas's length, which is what this
+    # used to compare: the atlas is one fixed-size image that glyphs are packed
+    # INTO, so its length never changes and the upload happened exactly once —
+    # every glyph rasterised afterwards stayed on the CPU. Zooming an axis until
+    # a tick label needed a digit no earlier label had drew that label out of
+    # whatever the atlas held there before.
+    gfx_atlas_dirty::Threads.Atomic{Bool}
+    # The registered callback, kept so it can be removed when the screen closes.
+    gfx_atlas_hook::Any
     fb_readback_buf::Any
     # Per-screen graphics pipeline cache (no globals!)
     gfx_pipelines::Dict{Symbol, GraphicsPipeline}
@@ -169,7 +178,8 @@ mutable struct Screen <: Makie.MakieScreen
                 nothing,           # uncovered_state
                 nothing, 0,        # cached_atlas
                 nothing, (0, 0),   # overlay_fb
-                nothing, nothing, nothing, 0,  # gfx_atlas
+                nothing, nothing, nothing,     # gfx_atlas tex/sampler/bindings
+                Threads.Atomic{Bool}(true), nothing,  # gfx_atlas dirty/hook
                 nothing,           # fb_readback_buf
                 Dict{Symbol, GraphicsPipeline}(), # gfx_pipelines
                 Dict{Symbol, Tuple{Any, Any, Any, Any}}(), # frame_plans
@@ -338,6 +348,13 @@ function Base.close(screen::Screen)
     # answer to "do we even need batch queues if Mantle batches from the graph"
     # — no, and this package is the last thing that was asking for one.
     empty!(screen.frame_plans)
+
+    # The atlas is global and outlives this screen, so the hook has to come off
+    # or it keeps the screen alive and marks a dead one dirty forever.
+    if screen.gfx_atlas_hook !== nothing
+        Makie.remove_font_render_callback!(Makie.get_texture_atlas(), screen.gfx_atlas_hook)
+        screen.gfx_atlas_hook = nothing
+    end
 
     # No flush, and nothing reaching into Lava. This used to call
     # `vk_flush!` + `flush_deferred_frees!` through `Base.loaded_modules`,

@@ -50,8 +50,7 @@ function declare_overlay_draw!(p, robj::RenderObject, cell, viewport, default_vp
     # constant range, two stages declaring the same layout over it.
     Mantle.draw!(p, robj.pipeline, cell;
                  frag_args = Mantle.drawargs(cell),
-                 viewport = viewport === nothing ? default_vp : viewport,
-                 bindings = robj.bindings)
+                 viewport = viewport === nothing ? default_vp : viewport)
     # No `pin!` and no `hold!`. What the draw reads is reachable from `robj`,
     # which outlives the plan; the plan holds what it names for as long as it
     # lives, which is core's job and not this package's.
@@ -207,7 +206,10 @@ function frame_signature(robjs, w, h)
          # `isnothing(indices)` and not the buffer's identity: WHETHER a draw is
          # indexed decides which command the backend records and so is compiled
          # in, but WHICH buffer holds the indices is rebound.
-         (objectid(robj), objectid(robj.pipeline), vp, objectid(robj.bindings),
+         # No `bindings` here: they are rebound per frame now, so a changed
+         # texture table is not a reason to rebuild a plan — and an `objectid`
+         # never caught a table updated in place anyway.
+         (objectid(robj), objectid(robj.pipeline), vp,
           isnothing(get(robj.buffers, :indices, nothing)),
           # The argument TYPES, because those are the pipeline and the layout.
           # Not the values, not the counts, not the buffers' identities — a
@@ -231,8 +233,9 @@ function overlay_binding(robj::RenderObject, dev)
     ix = get(robj.buffers, :indices, nothing)
     args = build_args(robj)
     return ix === nothing ?
-        Mantle.DrawBinding(dev, args, robj.vertex_count; instances = robj.instances) :
-        Mantle.DrawBinding(dev, args, length(ix); indices = ix)
+        Mantle.DrawBinding(dev, args, robj.vertex_count; instances = robj.instances,
+                           bindings = robj.bindings) :
+        Mantle.DrawBinding(dev, args, length(ix); indices = ix, bindings = robj.bindings)
 end
 
 """
@@ -251,9 +254,10 @@ function rebind_overlay_args!(cells, robjs, dev)
         args = build_args(robj)
         if ix === nothing
             Mantle.rebind!(cells[i], dev, args, robj.vertex_count;
-                           instances = robj.instances)
+                           instances = robj.instances, bindings = robj.bindings)
         else
-            Mantle.rebind!(cells[i], dev, args, length(ix); indices = ix)
+            Mantle.rebind!(cells[i], dev, args, length(ix); indices = ix,
+                           bindings = robj.bindings)
         end
     end
     return nothing
