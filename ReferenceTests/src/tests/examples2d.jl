@@ -1285,7 +1285,7 @@ end
         x, y,
         bins = 40,
         axis = (aspect = DataAspect(),),
-        colorrange = (10, 300),
+        colorrange = (10.5, 300.5), # not integer, so no bin count sits exactly on the clip boundary
         highclip = :red,
         lowclip = :pink,
         strokewidth = 1,
