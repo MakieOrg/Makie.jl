@@ -2,12 +2,13 @@
 
 ## Unreleased
 
+- Fixed `contourf` and `tricontourf` drawing a constant field in two colors, by placing the constant value in the middle of a band instead of on a band edge [#5787](https://github.com/MakieOrg/Makie.jl/pull/5787).
 - Allowed FFMPEG_jll 9 [#5789](https://github.com/MakieOrg/Makie.jl/pull/5789).
 - Contour labels, `voronoiplot` colors, `triplot` convex hulls, `hexbin` draw order and `datashader` category colors no longer depend on `Dict` iteration order, so they stay the same across Julia versions [#5792](https://github.com/MakieOrg/Makie.jl/pull/5792).
 - Fixed a segfault in CairoMakie when saving a vector graphic (pdf, svg, eps) of a figure while recording it with a `VideoStream` [#5772](https://github.com/MakieOrg/Makie.jl/pull/5772).
 - Added support for exporting .mov video files. Transparent-background rendering for .mov outputs is now supported [#5764](https://github.com/MakieOrg/Makie.jl/pull/5764).
 - Increased precision of `Vec3f` to `Quaternionf` conversion to reduce quantization/improve precision around `Vec3f(0, 0, ±1)` rotations in `meshscatter`. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
-- Added nan handling to `volume` algorithms `:absorption` and `:mip` as well as 3D `countour` plots. These cases now respect `nan_color` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
+- Added nan handling to `volume` algorithms `:absorption` and `:mip` as well as 3D `contour` plots. These cases now respect `nan_color` [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Fixed `empty!(root_scene)` and `empty(fig)` disconnecting mouseposition and render_tick event sources in GLMakie [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Added support for per level `linewidth` in `contour` plot. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
 - Fixed `tri/contourf` colormap sampling with `extendlow = :auto` and/or `extendhigh = :auto`. Previously this generated nlevels + 1 categories and sampled between them, now it generates nlevels categories and samples them directly. [#5758](https://github.com/MakieOrg/Makie.jl/pull/5758)
@@ -26,6 +27,8 @@
 - Fixed colorscale handling in `tricontourf` and `contourf`. [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
 - Fixed error when passing `missing` values to `hist` and `stephist` [#5730](https://github.com/MakieOrg/Makie.jl/pull/5730)
 - Updated `voxels` to allow for resizes [#5494](https://github.com/MakieOrg/Makie.jl/pull/5494)
+- Added `rasterize` as a generic plot attribute, fixed `rasterize` getting fixed to a `Bool` or `Int` and fixed rasterize warning in recipes. [#5783](https://github.com/MakieOrg/Makie.jl/pull/5783)
+- Added a warning when using `shading = true` with a mesh that does not include or can't generate normals. [#5782](https://github.com/MakieOrg/Makie.jl/pull/5782)
 
 ## [0.24.14] - 2026-08-27
 
