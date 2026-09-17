@@ -155,6 +155,12 @@ mutable struct Screen <: Makie.MakieScreen
     # pipeline, argument, count and viewport rectangle, so it is rebuilt when one
     # of those changes and reused for every frame in between.
     frame_plans::Dict{Symbol, Tuple{Any, Any, Any, Any}}
+    # Rendered pixels per Makie unit. 1 offscreen; the display's content scale
+    # for a window, which is what GLMakie's `scalefactor` defaults to. A Makie
+    # figure is laid out in UNITS and drawn in PIXELS, and on a Retina panel
+    # those differ by two: without this the window came out half the size
+    # GLMakie gives, because `size(scene)` was handed to the drawable as pixels.
+    px_per_unit::Float32
 
     function Screen(scene, state, config)
         s = new(scene, state, RayMakieState[], nothing, nothing, config,   # …, output_buffer, memory, …
@@ -166,7 +172,8 @@ mutable struct Screen <: Makie.MakieScreen
                 nothing, nothing, nothing, 0,  # gfx_atlas
                 nothing,           # fb_readback_buf
                 Dict{Symbol, GraphicsPipeline}(), # gfx_pipelines
-                Dict{Symbol, Tuple{Any, Any, Any, Any}}()) # frame_plans
+                Dict{Symbol, Tuple{Any, Any, Any, Any}}(), # frame_plans
+                1.0f0)                                      # px_per_unit
         # Only set the stop flag from the finalizer — never wait on tasks or
         # touch GLFW from GC (runs during allocation, can't yield or call C libs safely).
         finalizer(s -> (s.stop_renderloop[] = true), s)
@@ -200,6 +207,9 @@ function Base.show(io::IO, ::MIME"text/plain", screen::Screen)
 end
 
 Base.size(screen::Screen) = isnothing(screen.scene) ? (0, 0) : size(screen.scene)
+
+"""Makie's backend hook: how many pixels one scene unit is drawn at."""
+Makie.px_per_unit(screen::Screen)::Float64 = Float64(screen.px_per_unit)
 
 function Base.resize!(screen::Screen, w::Int, h::Int)
     (w > 0 && h > 0) || return nothing
@@ -963,6 +973,20 @@ frame), presents to the window, and handles input events.
 function start_renderloop!(screen::Screen, root_scene::Scene)
     w, h = size(root_scene)
 
+    # BEFORE the precompile render below, because that is what builds the render
+    # objects and they bake `px_per_unit` into their arguments.
+    #
+    # The scale the display actually uses, the way GLMakie takes it: a figure
+    # `size = (600, 450)` is 600x450 UNITS, so the window is 600x450 points and
+    # the drawable is that times the scale. Asking Mantle for `w, h` gave a
+    # drawable of exactly that many PIXELS — which on a 2x panel is a 300x225
+    # point window, half the size GLMakie shows.
+    GLFW.Init()
+    sx, _sy = GLFW.GetMonitorContentScale(GLFW.GetPrimaryMonitor())
+    screen.px_per_unit = Float32(sx <= 0 ? 1 : sx)
+    ppu = screen.px_per_unit
+    pw, ph = round(Int, w * ppu), round(Int, h * ppu)
+
     # Compile the ray-tracing pipeline + kernels BEFORE opening the window.
     # `render!` draws to an offscreen film (no window needed), so the first —
     # potentially slow — shader compile happens here instead of inside the
@@ -979,9 +1003,17 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
         @info "RayMakie: pipeline ready ($(round(time() - t0, digits=1))s) — opening window"
     end
 
-    win = Mantle.Window(screen.config.device, w, h; title=screen.config.title, vsync=screen.config.vsync,
+    # `pw, ph` — the DRAWABLE, in pixels. Mantle divides by the content scale to
+    # size the GLFW window, so the window comes out `w x h` points.
+    win = Mantle.Window(screen.config.device, pw, ph; title=screen.config.title, vsync=screen.config.vsync,
                             color_format=COMPOSITE_FORMAT)
     screen.window = win
+    # The film and `output_buffer` are sized in PIXELS, like the drawable they
+    # are blitted into. The loop below re-checks this on every frame, but the
+    # FIRST present happens before it — and a 600x450 source into a 1200x900
+    # target is a `DimensionMismatch` that kills the loop on frame one.
+    resize!(screen, pw, ph)
+    w, h = pw, ph
     connect_glfw_events!(root_scene, win.handle, screen.stop_renderloop)
 
     # Track camera changes to clear the film for re-accumulation

@@ -322,5 +322,10 @@ function overlay_robjs(screen; scenes = nothing)
     for (robj, _) in robjs
         require_drawable(screen.config.device, robj.pipeline)
     end
-    return robjs
+    # `Makie.viewport` answers in UNITS and the target is in PIXELS, so the
+    # rectangles are scaled by the same number the drawable was. At
+    # `px_per_unit == 1` this is the identity and nothing moves.
+    ppu = screen.px_per_unit
+    ppu == 1 && return robjs
+    return [(robj, map(v -> v * ppu, vp)) for (robj, vp) in robjs]
 end

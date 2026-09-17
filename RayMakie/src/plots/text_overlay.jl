@@ -67,7 +67,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
         Float32(haskey(plot, :strokewidth) ? to_value(plot.strokewidth) : 0f0))
     haskey(attr, :gpu_glow_width) || Makie.ComputePipeline.add_constant!(attr, :gpu_glow_width, 0f0)
     haskey(attr, :depth_shift) || Makie.ComputePipeline.add_constant!(attr, :depth_shift, 0f0)
-    haskey(attr, :px_per_unit) || Makie.ComputePipeline.add_constant!(attr, :px_per_unit, 1f0)
+    haskey(attr, :px_per_unit) || Makie.ComputePipeline.add_constant!(attr, :px_per_unit, screen.px_per_unit)
 
     atlas = Makie.get_texture_atlas()
     haskey(attr, :gpu_atlas_width) || Makie.ComputePipeline.add_constant!(attr, :gpu_atlas_width, Float32(size(atlas.data, 1)))

@@ -57,13 +57,9 @@ function connect_glfw_events!(scene::Makie.Scene, window::GLFW.Window, stop_ref:
         events.dropped_files[] = String.(files)
     end)
 
-    # Window resize. The callback is handed the window size in POINTS and
-    # `window_area` is in PIXELS — see `poll_glfw_events!` — so it asks for the
-    # framebuffer rather than using what it was given. Setting points here and
-    # pixels there meant the two fought on every resize, one per frame.
-    GLFW.SetWindowSizeCallback(window, (_, _w, _h) -> begin
-        fw, fh = GLFW.GetFramebufferSize(window)
-        area = Makie.Recti(0, 0, Int(fw), Int(fh))
+    # Window resize. POINTS, like the poll — see `poll_glfw_events!`.
+    GLFW.SetWindowSizeCallback(window, (_, w, h) -> begin
+        area = Makie.Recti(0, 0, Int(w), Int(h))
         area != events.window_area[] && (events.window_area[] = area)
     end)
 end
@@ -71,31 +67,23 @@ end
 function poll_glfw_events!(scene::Makie.Scene, window::GLFW.Window, frame_count::Int, last_time::Float64)
     events = scene.events
 
-    # Window area in PIXELS, which is what this backend's scene, drawable and
-    # `output_buffer` are all sized in.
-    w, h = GLFW.GetFramebufferSize(window)
-    area = Makie.Recti(0, 0, w, h)
+    # Both in UNITS, which is what Makie lays a figure out in and what GLFW
+    # reports a cursor in. The drawable is `px_per_unit` times bigger — that is
+    # the renderer's business and none of the event system's.
+    #
+    # This used to mix the two: `window_area` came from `GetFramebufferSize`
+    # (PIXELS) while the cursor was flipped with `GetWindowSize` (POINTS), so on
+    # a Retina panel every position Makie saw was half of where the pointer was.
+    # `is_mouseinside` answered for a spot up and left of the real one, and a
+    # drag that should have been a zoom rectangle over the top-right of an axis
+    # landed near its middle or outside it entirely.
+    winw, winh = GLFW.GetWindowSize(window)
+    area = Makie.Recti(0, 0, Int(winw), Int(winh))
     area != events.window_area[] && (events.window_area[] = area)
 
-    # Mouse position in the SAME units, which is the whole point of doing it
-    # here. GLFW reports the cursor in POINTS and `window_area` above is in
-    # PIXELS, so on a Retina panel every coordinate Makie saw was half of where
-    # the pointer actually was: `is_mouseinside` answered for a spot up and left
-    # of the real one, scroll-zoom centred there, and a drag that should have
-    # been a zoom rectangle over the top-right of an axis landed near its middle
-    # or outside it entirely — which is what "the zoom rectangle does nothing"
-    # looks like from the other side.
-    #
-    # The ratio and not a stored scale factor: it is the two numbers GLFW just
-    # gave, so a window dragged between a Retina and a non-Retina display is
-    # right on the next frame without anything to invalidate.
-    winw, winh = GLFW.GetWindowSize(window)
-    sx = winw == 0 ? 1.0 : w / winw
-    sy = winh == 0 ? 1.0 : h / winh
+    # Y flips from GLFW (top-down) to Makie (bottom-up).
     x, y = GLFW.GetCursorPos(window)
-    # Y flips from GLFW (top-down) to Makie (bottom-up) BEFORE scaling, because
-    # the flip is about the window's own height.
-    mp = (Float64(x) * sx, Float64(winh - y) * sy)
+    mp = (Float64(x), Float64(winh - y))
     mp != events.mouseposition[] && (events.mouseposition[] = mp)
 
     # Frame tick

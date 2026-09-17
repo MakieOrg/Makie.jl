@@ -395,7 +395,7 @@ function setup_scatter!(screen, scene, plot, attr, backend)
 
     # Constants
     atlas = Makie.get_texture_atlas()
-    haskey(attr, :px_per_unit) || Makie.ComputePipeline.add_constant!(attr, :px_per_unit, 1f0)
+    haskey(attr, :px_per_unit) || Makie.ComputePipeline.add_constant!(attr, :px_per_unit, screen.px_per_unit)
     haskey(attr, :gpu_stroke_width) || Makie.ComputePipeline.add_constant!(attr, :gpu_stroke_width,
         Float32(haskey(plot, :strokewidth) ? Makie.to_value(plot.strokewidth) : 0f0))
     haskey(attr, :gpu_glow_width) || Makie.ComputePipeline.add_constant!(attr, :gpu_glow_width,

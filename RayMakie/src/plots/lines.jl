@@ -140,7 +140,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             uniforms = Dict{Symbol, Any}(
                 :projectionview => pv,
                 :model => model,
-                :px_per_unit => 1f0,
+                :px_per_unit => screen.px_per_unit,
                 :depth_shift => 0f0,
                 :resolution => res,
                 :scene_origin => Vec2f(0f0, 0f0),
@@ -274,7 +274,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
             uniforms = Dict{Symbol, Any}(
                 :projectionview => pv,
                 :model => model,
-                :px_per_unit => 1f0,
+                :px_per_unit => screen.px_per_unit,
                 :depth_shift => 0f0,
                 :resolution => res,
                 :scene_origin => Vec2f(0f0, 0f0),
