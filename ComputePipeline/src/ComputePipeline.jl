@@ -178,7 +178,38 @@ struct ResolveException{E <: Exception} <: Exception
     error::E
 end
 
+"""
+    struct SkipUpdate
+
+Type of `skip_update` which is used to declare a `ComputeEdge` output as unchanged.
+"""
 struct SkipUpdate end
+
+"""
+    skip_update = ComputePipeline.SkipUpdate()
+
+A special return type for `ComputeEdge` callbacks which marks one output or all
+outputs as unchanged. Any unchanged output will not be updated and will not
+propagate updates. I.e. if all inputs of a dependent edge are either marked as
+unchanged by `skip_update` or weren't changed to begin with, the edge will not
+update.
+
+## Examples
+
+```
+map!(..., :output) do ...
+    return skip_update # skip output
+end
+
+map!(..., [:output1, :output2]) do ...
+    return skip_update, 1 # skip output1, set output 2
+end
+
+map!(..., [:output1, :output2]) do ...
+    return skip_update # skip both
+end
+```
+"""
 const skip_update = SkipUpdate()
 export skip_update
 
@@ -348,8 +379,8 @@ an up-to-date value from an output use `graph[:output_name][]`.
 graph = ComputeGraph()
 
 add_input!(graph, :first_node, 1)
-register_computation!(graph, [:first_node], [:derived_node]) do inputs, changed, cached
-    return (2 * inputs[1][], )
+map!(graph, :first_node, :derived_node) do input
+    return 2 * input
 end
 
 update!(graph, first_node = 2)
@@ -1401,7 +1432,7 @@ get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callbac
 
 Registers a new computation which transforms the given inputs to a new set of
 outputs. Both the inputs and outputs are referred to by name. The inputs must
-exist when the function is called. The outputs should usually created by this
+exist when the function is called. The outputs are usually created by this
 function.
 
 The callback function must accept 3 arguments:
@@ -1409,8 +1440,8 @@ The callback function must accept 3 arguments:
 - `changed::NamedTuple` which a `Bool` per input name signifying whether the input has been updated since the last execution of `callback`
 - `cached::Tuple` which contain the last outputs returned by function. If no previous outputs exist `cached = nothing`.
 
-Note that `inputs` and `cached` always wrap input and outputs values in `Ref`,
-so you need to always dereference them.
+Note that specific outputs or all outputs can be marked as "unchanged" with
+`return ..., skip_update, ...` or `return skip_update` respectively.
 
 ## Example:
 
@@ -1669,7 +1700,7 @@ Inputs can be:
 - a `Computed`, i.e. a node of any compute graph
 - a `Vector` containing any of the above
 
-Outputs can be a `Symbol`, `Tuple{Vararg{Symbol}}` or `Vector` of the former.
+Outputs can be a `Symbol`, `Tuple{Vararg{Symbol}}` or a `Vector` of either.
 They can not be compute nodes.
 
 If a `ComputeGraphView` is passed as the `compute_graph` any `Symbol` and `Tuple`
@@ -1679,7 +1710,9 @@ interpreted as `graph.a.b` if `graph.a` is passed as the `compute_graph`.
 The callback function `f` will be called with the values of the inputs as arguments.
 If `outputs` is a single `Symbol` or `Tuple`, the function is expected to return
 one output. Otherwise it is expected to return a tuple of outputs, one for each
-target specified in `outputs`.
+target specified in `outputs`. It is also possible to mark a specific output or
+all outputs as "unchanged" with `return ..., skip_update, ...` or
+`return skip_update` respectively.
 
 Optionally `init` can be specified to immediately initialize the outputs without
 calling `f`. For a single output the value can be provided directly. For multiple
