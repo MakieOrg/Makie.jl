@@ -185,7 +185,11 @@ function register_contourf_computations!(graph, argname)
             mi, ma = extrema_nan(vec(zs))
             if isapprox(mi, ma)
                 delta = max(one(mi), abs(mi))
-                return Float32.(range(mi - delta, ma + delta; length = levels + 1))
+                # An odd number of bands puts the constant value in the middle of a band.
+                # With an even number it coincides with a band edge, where floating point noise
+                # in `zs` splits the field over two neighbouring bands.
+                nbands = isodd(levels) ? levels : levels + 1
+                return Float32.(range(mi - delta, ma + delta; length = nbands + 1))
             end
             return _get_isoband_levels(Val(mode), levels, vec(zs))
         else
