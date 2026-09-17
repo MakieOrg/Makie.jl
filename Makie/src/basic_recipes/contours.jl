@@ -99,8 +99,8 @@ function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d
 
     for (lvl, c) in enumerate(Contours.levels(contours))
         for elem in Contours.lines(c)
-            # Contours.jl traces cells in `Dict` order, so a closed line starts anywhere
-            vertices = canonical_cycle_start(elem.vertices)
+            # Contours.jl traces cells in `Dict` order, so a line starts anywhere and runs either way
+            vertices = canonical_line_order(elem.vertices)
             for p in vertices
                 push!(points, to_ndim(PT, p, c.level))
             end
