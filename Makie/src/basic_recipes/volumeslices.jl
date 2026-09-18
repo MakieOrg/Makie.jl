@@ -24,6 +24,13 @@ function expand_volumeslices_arg(xs::Union{Vector, AbstractRange}, N, name)
     return xs
 end
 
+# TODO: VolumeSlices is mostly cell based but the data_limits and frame are
+# act like it is edge based. Which do we want? If we switch to edge based we
+# can also use VolumeLike() with its expand_dimensions() instead of this:
+function convert_arguments(::Type{<:VolumeSlices}, data)
+    return (axes(data, 1), axes(data, 2), axes(data, 3), data)
+end
+
 function convert_arguments(::Type{<:VolumeSlices}, xs, ys, zs, data)
     return (
         expand_volumeslices_arg(xs, size(data, 1), "x"),
