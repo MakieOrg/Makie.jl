@@ -88,6 +88,40 @@ In practice, Makie users build most data visualizations out of more convenient, 
 
 The `Figure` consists mainly of two elements, a `Scene` and a `GridLayout`. The `Scene` is the root of the figure's scene graph and the `GridLayout` computes the positions of the figure's `Block`s.
 
+An `Axis` added to a `Figure` has a few components of its own, a `Scene` (the `blockscene`) and a `GridContent`, and these connect to the matching components of the `Figure`. For example, when you write `Axis(f[1, 1])`, the axis's `blockscene` attaches to the figure's root `Scene` so the axis is drawn, and its `GridContent` is added to the layout's `content[]` so the axis is positioned in cell `[1, 1]`.
+
+```@graphviz
+digraph {
+    rankdir=TB;
+    compound=true;
+    nodesep=0.4;
+    ranksep=0.6;
+
+    subgraph cluster_figure {
+        label="Figure";
+        style=filled;
+        fillcolor="#fcfcfcff";
+        RS [label="Scene\n(root scene)"];
+        LO [label="Layout"];
+        CO [label="content[]\nwhat the layout holds"];
+    }
+
+    subgraph cluster_axis {
+        label="Axis   —   made with  Axis(f[1, 1])";
+        style=filled;
+        fillcolor="#fcfcfcff";
+        BS [label="Scene\n(blockscene)"];
+        CS [label="Scene\n(axis canvas + your plots)"];
+        GC [label="GridContent\nthe axis's spot in the grid"];
+        BS -> CS [label="  child scenes", dir=none];
+    }
+
+    RS -> BS [label="  draws it  (scene graph)"];
+    LO -> GC [label="  positions it"];
+    GC -> CO [label="  added to", style=dashed];
+}
+```
+
 Every `Block` object consists of a `Scene` called the `blockscene` and an arbitrary number of child plots and child scenes connected to it. When we want to create an `Axis` object in Makie we often do something like:
 
 ```julia
