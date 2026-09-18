@@ -231,7 +231,7 @@ function Makie.plot!(plot::BoxPlot)
         midlinewidth = plot.medianlinewidth, midlinecap = plot.medianlinecap,
         midlinestyle = plot.medianlinestyle,
         # These should not be passed/defaulted
-        n_dodge = automatic, dodge = automatic
+        n_dodge = automatic, dodge = automatic, dodge_gap = 0.0
     )
     return plot
 end
