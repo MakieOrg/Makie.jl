@@ -22,6 +22,7 @@ function plot!(plot::VolumeSlices)
     @extract plot (x, y, z, volume)
 
     map!(plot.attributes, [:colorrange, :volume], :computed_colorrange) do colorrange, volume
+        eltype(volume) <: Colorant && return automatic
         return colorrange === automatic ? extrema(volume) : colorrange
     end
 
