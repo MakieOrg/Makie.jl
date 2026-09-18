@@ -29,6 +29,7 @@ function convert_arguments(::Type{<:Poly}, vertices::AbstractArray, indices::Abs
 end
 
 convert_arguments(::Type{<:Poly}, m::GeometryBasics.Mesh) = (m,)
+convert_arguments(::Type{<:Poly}, m::GeometryBasics.MetaMesh) = (GeometryBasics.Mesh(m),)
 convert_arguments(::Type{<:Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
 function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
