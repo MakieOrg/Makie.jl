@@ -48,6 +48,7 @@ end
         include("plots/contourf.jl")
         include("plots/tricontour.jl")
         include("plots/voronoiplot.jl")
+        include("plots/datashader.jl")
         include("plots/deterministic_order.jl")
     end
 
