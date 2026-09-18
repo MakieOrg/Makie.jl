@@ -2113,7 +2113,7 @@ end
     fig
 end
 
-@reference_test "series" begin let
+@reference_test "series" begin
     fig = Figure(size = (500, 750))
     data = cumsum(RNG.randn(4, 21), dims = 2)
 
