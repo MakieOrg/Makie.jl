@@ -104,14 +104,15 @@ function plot!(pl::Bracket)
     map!(pairs -> first.(pairs), pl, :positions, :startpoints)
     map!(pairs -> last.(pairs), pl, :positions, :endpoints)
 
-    # TODO: Don't throw away z, that pins z to 0
-    register_projected_positions!(pl, Point2f, input_name = :startpoints, output_space = :pixel)
-    register_projected_positions!(pl, Point2f, input_name = :endpoints, output_space = :pixel)
+    register_projected_positions!(pl, input_name = :startpoints, output_space = :pixel)
+    register_projected_positions!(pl, input_name = :endpoints, output_space = :pixel)
 
-    map!(pl, [:pixel_startpoints, :pixel_endpoints, :orientation], :pixel_directions) do startpoints, endpoints, orientation
+    map!(
+        pl, [:pixel_startpoints, :pixel_endpoints, :orientation], :pixel_directions
+    ) do startpoints, endpoints, orientation
         return broadcast(startpoints, endpoints, orientation) do p1, p2, orientation
             orientation in (:up, :down) || error("Orientation must be :up or :down but is $(repr(orientation)).")
-            v = p2 - p1
+            v = Point2f(p2) - Point2f(p1)
             d1 = normalize(v)
             d2 = Vec2f(-d1[2], d1[1])
             if (orientation === :up) != (d2[2] >= 0)
@@ -126,21 +127,31 @@ function plot!(pl::Bracket)
     map!(
         pl,
         [:pixel_startpoints, :pixel_endpoints, :pixel_directions, :offset, :width, :style, :text],
-        [:bp, :text_tuples]
+        [:bezierpaths, :text_tuples]
     ) do startpoints, endpoints, directions, offset, width, style, text
 
         # TODO: add a broadcast/map version of broadcast_foreach doing this:
         bps = BezierPath[]
-        text_pos = Tuple{Union{String, LaTeXStrings.LaTeXString, RichText}, Point2f}[]
+        text_pos = Tuple{Union{String, LaTeXStrings.LaTeXString, RichText}, Point3f}[]
 
-        broadcast_foreach(startpoints, endpoints, directions, offset, width, style, text) do p1, p2, dir, offset, width, style, str
+        broadcast_foreach(
+            startpoints, endpoints, directions, offset, width, style, text
+        ) do p1, p2, dir, offset, width, style, str
             off = offset * dir
-            b, textpoint = bracket_bezierpath(style, p1 + off, p2 + off, dir, width)
-            push!(text_pos, (str, textpoint))
+            b, textpoint = bracket_bezierpath(style, Point2f(p1) + off, Point2f(p2) + off, dir, width)
+            push!(text_pos, (str, Point3f(textpoint..., 0.5 * (p1[3] + p2[3]))))
             push!(bps, b)
             return
         end
         return bps, text_pos
+    end
+
+    map!(
+        pl, [:pixel_startpoints, :pixel_endpoints, :bezierpaths], :bezierpath_points
+    ) do startpoints, endpoints, bezierpaths
+        return map(startpoints, endpoints, bezierpaths) do p1, p2, bp
+            return to_vertices!(Point3f[], bp, 0.5 * (p1[3] + p2[3]))
+        end
     end
 
     map!(pl, [:rotation, :pixel_directions], :autorotations) do rots, dirs
@@ -153,11 +164,12 @@ function plot!(pl::Bracket)
         end
     end
 
-    # Avoid scale!() / translate!() / rotate!() to affect these
+    # Avoid scale!() / translate!() / rotate!() affecting these a second time
     series!(
-        pl, pl.bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth,
-        linestyle = pl.linestyle, linecap = pl.linecap, joinstyle = pl.joinstyle,
-        miter_limit = pl.miter_limit, transformation = :nothing
+        pl, pl.bezierpath_points; space = :pixel, solid_color = pl.color,
+        linewidth = pl.linewidth, linestyle = pl.linestyle, linecap = pl.linecap,
+        joinstyle = pl.joinstyle, miter_limit = pl.miter_limit,
+        transformation = :nothing
     )
     text!(
         pl, pl.text_tuples, space = :pixel, align = pl.align, offset = pl.finaltextoffset,

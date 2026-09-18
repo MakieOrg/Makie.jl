@@ -1,7 +1,7 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+version = "0.24.14"
 authors = ["Simon Danisch", "Julius Krumbiegel"]
-version = "0.24.13"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -67,6 +67,9 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [weakdeps]
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 
+[sources]
+ComputePipeline = {path = "../ComputePipeline"}
+
 [extensions]
 MakieDynamicQuantitiesExt = "DynamicQuantities"
 
@@ -85,7 +88,7 @@ Distributions = "0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25"
 DocStringExtensions = "0.8, 0.9"
 Downloads = "1, 1.6"
 DynamicQuantities = "1, 1.8"
-FFMPEG_jll = "4, 6, 7, 8"
+FFMPEG_jll = "4, 6, 7, 8, 9"
 FileIO = "1.6"
 FilePaths = "0.8, 0.9"
 FixedPointNumbers = "0.6, 0.7, 0.8"
@@ -120,7 +123,7 @@ REPL = "1.0, 1.6"
 Random = "1.0, 1.6"
 RelocatableFolders = "0.1, 0.2, 0.3, 1.0"
 Scratch = "1"
-ShaderAbstractions = "0.5"
+ShaderAbstractions = "0.5.1"
 SignedDistanceFields = "0.4"
 SparseArrays = "1.0, 1.6"
 Statistics = "1, 1.6"
@@ -131,6 +134,3 @@ TriplotBase = "=0.1.0"
 UnicodeFun = "0.4"
 Unitful = "1"
 julia = "1.10"
-
-[sources.ComputePipeline]
-path = "../ComputePipeline"
