@@ -630,7 +630,10 @@ end
         img[end, ib] = 255 - v
     end
 
-    kw(p, interpolate) = (axis = (title = "$(p)(interpolate=$(interpolate))", aspect = DataAspect()), interpolate = interpolate, colormap = [:white, :black])
+    kw(p, interpolate) = merge(
+        (axis = (title = "$(p)(interpolate=$(interpolate))", aspect = DataAspect(), yreversed = false), interpolate = interpolate, colormap = [:white, :black]),
+        p === image ? (; orientation = (:right, :down)) : (;),
+    )
 
     for (i, p) in enumerate([heatmap, image])
         for (j, interpolate) in enumerate([true, false])

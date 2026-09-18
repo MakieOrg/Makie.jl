@@ -5,11 +5,12 @@ using Makie.Colors
 @testset "uv_transform" begin
     key = Makie.key"uv_transform"()
 
-    # defaults matching previous Makie versions
+    # defaults matching previous Makie versions, except image which composes
+    # its baseline with `orientation` in the backends and defaults to identity
     @test convert_attribute(automatic, key, Makie.key"meshscatter"()) == Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
     @test convert_attribute(automatic, key, Makie.key"mesh"()) == Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
     @test convert_attribute(automatic, key, Makie.key"surface"()) == Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
-    @test convert_attribute(automatic, key, Makie.key"image"()) == Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
+    @test convert_attribute(automatic, key, Makie.key"image"()) == Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0)
 
     # General Pipeline
     # Each should work as a value or as a vector element

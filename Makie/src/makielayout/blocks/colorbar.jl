@@ -339,6 +339,7 @@ function initialize_block!(cb::Colorbar)
     image!(
         blockscene,
         cb.xlims, cb.ylims, cb.continuous_pixels;
+        orientation = (:right, :down),
         colormap = cb.alpha_colormap,
         colorrange = cb.colorrange,
         visible = cb.show_continuous,

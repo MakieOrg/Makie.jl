@@ -2,10 +2,10 @@
 #                               Type Conversions                               #
 ################################################################################
 
-function convert_arguments(CT::ConversionTrait, args...)
+function convert_arguments(CT::ConversionTrait, args...; kw...)
     expanded = expand_dimensions(CT, args...)
     if !isnothing(expanded)
-        return convert_arguments(CT, expanded...)
+        return convert_arguments(CT, expanded...; kw...)
     end
     return args
 end
@@ -454,13 +454,193 @@ function convert_arguments(
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
-# Note: used by dim_converts to normalize xs, ys, so no eltype on RangeLike
+# The recipe default. `orientation` reaches backends as `nothing` when the user
+# didn't set it explicitly (it rides as a convert kwarg via `used_attributes`,
+# which doesn't carry the recipe default), so all helpers normalize `nothing`
+# to this.
+const DEFAULT_IMAGE_ORIENTATION = (:down, :right)
+_image_orientation(::Nothing) = DEFAULT_IMAGE_ORIENTATION
+_image_orientation(o) = o
+
+"""
+    Makie.image_orientation_swap(orientation) -> Bool
+
+`true` if `orientation`'s first array dim runs along y (so the second array
+dim runs along x, a logical transpose from the legacy `(:right, :down)`
+layout). `nothing` is treated as the default `(:down, :right)`. Errors on
+invalid input.
+"""
+function image_orientation_swap(orientation)
+    o = _image_orientation(orientation)
+    vertical = (:up, :down)
+    horizontal = (:left, :right)
+    if !(o isa Tuple{Symbol, Symbol}) || !(
+            (o[1] in vertical && o[2] in horizontal) ||
+                (o[1] in horizontal && o[2] in vertical)
+        )
+        error("`orientation` must be a tuple of one vertical (`:up`/`:down`) and one horizontal (`:left`/`:right`) direction, got `$(repr(o))`.")
+    end
+    return o[1] in vertical
+end
+
+"""
+    Makie.image_orientation_flips(orientation) -> (flip_x::Bool, flip_y::Bool)
+
+The flips a backend must apply (after any axis swap) so the user matrix's
+`(1, 1)` cell lands at the corner `orientation` names. `nothing` is treated as
+the default `(:down, :right)`. Errors on invalid input.
+"""
+function image_orientation_flips(orientation)
+    swap = image_orientation_swap(orientation)
+    d1, d2 = _image_orientation(orientation)
+    flip_x = (swap ? d2 : d1) === :left
+    flip_y = (swap ? d1 : d2) === :up
+    return (flip_x, flip_y)
+end
+
+"""
+    Makie.image_rect_cells(orientation, nrows, ncols) -> (nx_cells, ny_cells)
+
+Number of cells along the rect's x and y axes for a `(nrows, ncols)` matrix
+under `orientation`.
+"""
+function image_rect_cells(orientation, nrows::Integer, ncols::Integer)
+    return image_orientation_swap(orientation) ? (ncols, nrows) : (nrows, ncols)
+end
+
+"""
+    Makie.image_cell_to_matrix_index(orientation, nrows, ncols)
+
+Returns `f(cx, cy) -> CartesianIndex(i, j)` mapping a 1-based cell index in
+the rect's x/y cell grid (`cx ∈ 1:nx_cells`, `cy ∈ 1:ny_cells`) to the
+user-matrix index of that cell.
+"""
+function image_cell_to_matrix_index(orientation, nrows::Integer, ncols::Integer)
+    swap = image_orientation_swap(orientation)
+    flip_x, flip_y = image_orientation_flips(orientation)
+    nx, ny = image_rect_cells(orientation, nrows, ncols)
+    return function (cx::Integer, cy::Integer)
+        ax1 = flip_x ? (nx - cx + 1) : cx
+        ax2 = flip_y ? (ny - cy + 1) : cy
+        return swap ? CartesianIndex(ax2, ax1) : CartesianIndex(ax1, ax2)
+    end
+end
+
+"""
+    Makie.image_matrix_to_cell_index(orientation, nrows, ncols)
+
+Returns `f(i, j) -> (cx, cy)` mapping a user-matrix `CartesianIndex(i, j)`
+(or pair `(i, j)`) to its rect-cell coordinates. Inverse of
+[`image_cell_to_matrix_index`](@ref).
+"""
+function image_matrix_to_cell_index(orientation, nrows::Integer, ncols::Integer)
+    swap = image_orientation_swap(orientation)
+    flip_x, flip_y = image_orientation_flips(orientation)
+    nx, ny = image_rect_cells(orientation, nrows, ncols)
+    return function (i::Integer, j::Integer)
+        ax1 = swap ? j : i
+        ax2 = swap ? i : j
+        cx = flip_x ? (nx - ax1 + 1) : ax1
+        cy = flip_y ? (ny - ax2 + 1) : ax2
+        return (cx, cy)
+    end
+end
+
+"""
+    Makie.image_rect_uv_to_matrix_coords(orientation, nrows, ncols)
+
+Returns `f(u, v) -> Vec2d(m1, m2)` mapping a point in the rect's unit square to
+continuous matrix coordinates in cell units (`0 .. nrows` along dim 1,
+`0 .. ncols` along dim 2). Continuous counterpart of
+[`image_cell_to_matrix_index`](@ref): the center of the integer cell `(cx, cy)`
+maps to `index .- 0.5` of the matrix index that cell shows.
+"""
+function image_rect_uv_to_matrix_coords(orientation, nrows::Integer, ncols::Integer)
+    swap = image_orientation_swap(orientation)
+    flip_x, flip_y = image_orientation_flips(orientation)
+    nx, ny = image_rect_cells(orientation, nrows, ncols)
+    return function (u::Real, v::Real)
+        m_x = (flip_x ? 1 - u : u) * nx
+        m_y = (flip_y ? 1 - v : v) * ny
+        return swap ? Vec2d(m_y, m_x) : Vec2d(m_x, m_y)
+    end
+end
+
+"""
+    Makie.image_matrix_coords_to_rect_uv(orientation, nrows, ncols)
+
+Returns `f(m1, m2) -> Vec2d(u, v)` mapping continuous matrix coordinates in
+cell units back to the rect's unit square. Inverse of
+[`image_rect_uv_to_matrix_coords`](@ref).
+"""
+function image_matrix_coords_to_rect_uv(orientation, nrows::Integer, ncols::Integer)
+    swap = image_orientation_swap(orientation)
+    flip_x, flip_y = image_orientation_flips(orientation)
+    nx, ny = image_rect_cells(orientation, nrows, ncols)
+    return function (m1::Real, m2::Real)
+        a1, a2 = swap ? (m2, m1) : (m1, m2)
+        u = flip_x ? (nx - a1) / nx : a1 / nx
+        v = flip_y ? (ny - a2) / ny : a2 / ny
+        return Vec2d(u, v)
+    end
+end
+
+"""
+    Makie.image_orientation_uv_transform(orientation) -> Mat3f
+
+A 3×3 UV transform in `[0, 1]²` UV space that, composed with a plot's user
+`uv_transform`, makes a shader-based backend sample the texture correctly
+for `orientation`. Identity for the legacy `(:right, :down)` layout.
+
+Intended for GLMakie/WGLMakie. CairoMakie typically pre-orients its source
+surface via [`image_oriented_view`](@ref) instead of using this.
+"""
+function image_orientation_uv_transform(orientation)
+    swap = image_orientation_swap(orientation)
+    flip_x, flip_y = image_orientation_flips(orientation)
+    # Apply swap first (so flips operate in source UV space, not rect UV space).
+    T = Mat3f(I)
+    if swap
+        T = T * Mat3f(0, 1, 0, 1, 0, 0, 0, 0, 1)
+    end
+    if flip_x
+        T = T * Mat3f(-1, 0, 0, 0, 1, 0, 1, 0, 1)
+    end
+    if flip_y
+        T = T * Mat3f(1, 0, 0, 0, -1, 0, 0, 1, 1)
+    end
+    return T
+end
+
+function convert_arguments(
+        ::ImageLike, data::AbstractMatrix{<:Union{Real, Colorant}};
+        orientation = nothing, kw...
+    )
+    nx_cells, ny_cells = image_rect_cells(orientation, size(data)...)
+    x = (0.0f0, Float32(nx_cells))
+    y = (0.0f0, Float32(ny_cells))
+    return convert_arguments(ImageLike(), x, y, data; orientation = orientation, kw...)
+end
+
 function convert_arguments(
         ::ImageLike, xs::RangeLike, ys::RangeLike,
-        data::AbstractMatrix{<:Union{Real, Colorant}}
+        data::AbstractMatrix{<:Union{Real, Colorant}};
+        orientation = nothing, kw...
     )
+    image_orientation_swap(orientation)  # validate
     x = to_endpoints(xs, "x", ImageLike)
     y = to_endpoints(ys, "y", ImageLike)
+    return (x, y, el32convert(data))
+end
+
+# Fixed point on (::EndPoints, ::EndPoints, ::AbstractMatrix); el32convert is
+# identity-preserving on Float32-typed inputs, so the convert trampoline sees
+# `trait_converted === args` and stops recursing.
+function convert_arguments(
+        ::ImageLike, x::EndPoints, y::EndPoints,
+        data::AbstractMatrix{<:Union{Real, Colorant}};
+        kw...
+    )
     return (x, y, el32convert(data))
 end
 
@@ -1044,7 +1224,7 @@ to_3d_offset(x::AbstractVector) = to_3d_offset.(x)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"meshscatter") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
-convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0)
 
 # Careful: Mat <: AbstractArray, which should be handled by other methods
 convert_attribute(x::Array, k::key"uv_transform") = convert_attribute.(x, Ref(k))

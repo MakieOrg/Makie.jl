@@ -320,7 +320,7 @@ end
 
     GLMakie.activate!(render_pipeline = pipeline)
     cow = load(Makie.assetpath("cow.png"))
-    f, a, p = image(rotr90(cow))
+    f, a, p = image(cow)
 end
 
 # activate!() changes the default, so we need a reset here
@@ -339,7 +339,7 @@ GLMakie.activate!(render_pipeline = Makie.automatic)
     @test id == screen.renderlist[1][3].id
 
     scene = Scene(size = (600, 300), camera = campixel!)
-    image!(scene, 0 .. 300, 0 .. 300, img1)
-    image!(scene, 300 .. 600, 0 .. 300, img2)
+    image!(scene, 0 .. 300, 0 .. 300, img1, orientation = (:right, :down))
+    image!(scene, 300 .. 600, 0 .. 300, img2, orientation = (:right, :down))
     scene
 end

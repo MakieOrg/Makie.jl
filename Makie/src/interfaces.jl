@@ -18,7 +18,7 @@ expand_dimensions(::PointBased, y::RealVector) = (keys(y), y)
 expand_dimensions(::PointBased, y::OffsetVector{<:Real}) =
     (collect(OffsetArrays.no_offset_view(keys(y))), collect(OffsetArrays.no_offset_view(y)))
 
-function expand_dimensions(::Union{ImageLike, GridBased}, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
+function expand_dimensions(::GridBased, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
     # Float32, because all ploteable sizes should fit into float32
     x, y = map(x -> (0.0f0, Float32(x)), size(data))
     return (x, y, data)

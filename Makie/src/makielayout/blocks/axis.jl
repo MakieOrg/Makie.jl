@@ -1492,12 +1492,12 @@ function attribute_examples(::Type{Axis})
 
                 f = Figure()
 
-                ax1 = Axis(f[1, 1], aspect = nothing, title = "nothing")
-                ax2 = Axis(f[1, 2], aspect = DataAspect(), title = "DataAspect()")
-                ax3 = Axis(f[2, 1], aspect = AxisAspect(1), title = "AxisAspect(1)")
-                ax4 = Axis(f[2, 2], aspect = AxisAspect(2), title = "AxisAspect(2)")
+                ax1 = Axis(f[1, 1], aspect = nothing, title = "nothing", yreversed = true)
+                ax2 = Axis(f[1, 2], aspect = DataAspect(), title = "DataAspect()", yreversed = true)
+                ax3 = Axis(f[2, 1], aspect = AxisAspect(1), title = "AxisAspect(1)", yreversed = true)
+                ax4 = Axis(f[2, 2], aspect = AxisAspect(2), title = "AxisAspect(2)", yreversed = true)
 
-                img = rotr90(load(assetpath("cow.png")))
+                img = load(assetpath("cow.png"))
                 for ax in [ax1, ax2, ax3, ax4]
                     image!(ax, img)
                 end

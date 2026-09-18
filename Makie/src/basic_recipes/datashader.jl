@@ -17,7 +17,8 @@ module Aggregation
     aggregate!(canvas, points; point_transform=reverse, method=AggThreads())
     aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identity)
     # Recipes are defined for canvas as well and incorporate the `get_aggregation`, but `aggregate!` must be called manually.
-    image!(canvas; operation=equalize_histogram, local_operation=identity, colormap=:viridis, colorrange=(0, 20))
+    # The aggregation matrix stores x along dim 1 and y along dim 2, so `image!` needs `orientation = (:right, :down)`.
+    image!(canvas; operation=equalize_histogram, local_operation=identity, orientation=(:right, :down), colormap=:viridis, colorrange=(0, 20))
     surface!(canvas; operation=equalize_histogram, local_operation=identity)
     ```
     """
@@ -418,6 +419,7 @@ function Makie.plot!(p::DataShader{<:Tuple{<:AbstractVector{<:Point}}})
     end
     image!(
         p, p.canvas_with_aggregation, p.operation, p.local_operation;
+        orientation = (:right, :down),
         interpolate = p.interpolate,
         generic_plot_attributes(p)...,
         colormap_attributes(p)...
@@ -480,7 +482,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     for (k, canv) in canvases
         color = colors[k]
         cmap = [(color, 0.0), (color, 1.0)]
-        image!(p, canv, identity, op; colorrange = Vec2f(0, 1), colormap = cmap)
+        image!(p, canv, identity, op; orientation = (:right, :down), colorrange = Vec2f(0, 1), colormap = cmap)
     end
     return p
 end
@@ -490,10 +492,10 @@ function boundingbox(p::DataShader, space::Symbol = :data)::Rect3d
     return apply_transform_and_model(p, p.data_limits[])
 end
 
-function convert_arguments(P::Type{<:Union{MeshScatter, Image, Surface, Contour, Contour3d}}, canvas::Canvas, operation = automatic, local_operation = identity)
+function convert_arguments(P::Type{<:Union{MeshScatter, Image, Surface, Contour, Contour3d}}, canvas::Canvas, operation = automatic, local_operation = identity; kw...)
     pixel = Aggregation.get_aggregation(canvas; operation = operation, local_operation = local_operation)
     (xmin, ymin), (xmax, ymax) = extrema(canvas.bounds)
-    return convert_arguments(P, xmin .. xmax, ymin .. ymax, pixel)
+    return convert_arguments(P, xmin .. xmax, ymin .. ymax, pixel; kw...)
 end
 
 # TODO improve color legend API, to not need a fake plot like this
@@ -756,11 +758,16 @@ function Makie.plot!(p::HeatmapShader)
 
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer
-    lp = image!(p, p.x, p.y, p.overview_image; gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange)
+    lp = image!(
+        p, p.x, p.y, p.overview_image;
+        orientation = (:right, :down),
+        gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange
+    )
     translate!(lp, 0, 0, -1)
 
     image!(
         p, p.lx_endpoints, p.ly_endpoints, p.limit_image;
+        orientation = (:right, :down),
         gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange, visible = p.l_visible,
     )
 

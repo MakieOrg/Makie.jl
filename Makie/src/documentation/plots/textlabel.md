@@ -7,7 +7,7 @@
 ```@figure
 using FileIO
 
-f, a, p = image(rotr90(load(assetpath("cow.png"))))
+f, a, p = image(load(assetpath("cow.png")))
 textlabel!(a, Point2f(200, 150), text = "Cow", fontsize = 20)
 f
 ```
