@@ -196,7 +196,10 @@ mutable struct LineAxis
     minortickvalues::Observable{Vector{Float32}}
 end
 
-struct LimitReset end
+struct LimitReset
+    prev_pressed::Vector{Bool}
+end
+LimitReset() = LimitReset(fill(false, 3))
 
 mutable struct RectangleZoom
     callback::Function
@@ -614,6 +617,11 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         yzoomkey::IsPressedInputType = Makie.Keyboard.y
         "Button that needs to be pressed to allow scroll zooming."
         zoombutton::IsPressedInputType = true
+        "The key (and button) combination for triggering a limit reset (equivalent to `reset_limits!(ax)`)"
+        resetlimitskey::IsPressedInputType = Exclusively((Keyboard.left_control | Keyboard.right_control) & Mouse.left)
+        "The key (and button) combination for triggering a limit recalculation (equivalent to `autolimits!(ax)`)"
+        recomputelimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
@@ -781,10 +789,19 @@ function RectangleZoom(f::Function, ax::Axis; kw...)
     return r
 end
 
+function _axis_limits_are_valid(ax::Axis, lims::Rect)
+    mi, ma = extrema(lims)
+    return all(isfinite, mi) && all(isfinite, ma) && all(>(0), widths(lims)) &&
+        validate_limits_for_scale((mi[1], ma[1]), ax.xscale[]) &&
+        validate_limits_for_scale((mi[2], ma[2]), ax.yscale[])
+end
+
 function RectangleZoom(ax::Axis; kw...)
     return RectangleZoom(ax; kw...) do newlims
-        if !(0 in widths(newlims))
+        if _axis_limits_are_valid(ax, newlims)
             ax.targetlimits[] = newlims
+        else
+            @warn "Rectangle zoom ignored: selected limits are invalid for this axis scale" selected_limits = newlims visible_limits = ax.finallimits[] xscale = ax.xscale[] yscale = ax.yscale[] maxlog = 1
         end
         return
     end
@@ -2130,6 +2147,13 @@ end
         for zooming centered approximately where the cursor is. This is disabled with `viewmode = :free`.
         """
         zoommode::Symbol = :center
+        "The key (and button) combination for triggering a limit reset (equivalent to `reset_limits!(ax)`)"
+        resetlimitskey::IsPressedInputType = Exclusively((Keyboard.left_control | Keyboard.right_control) & Mouse.left)
+        "The key (and button) combination for triggering a rotation reset (sets `elevation` and `azimuth` to its default values)"
+        resetrotationkey::IsPressedInputType = (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+        "The key (and button) combination for triggering a limit recalculation (equivalent to `autolimits!(ax)`)"
+        recomputelimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+
 
         "Locks interactive translation in the x direction."
         xtranslationlock::Bool = false

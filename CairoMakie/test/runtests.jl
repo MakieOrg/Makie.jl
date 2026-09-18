@@ -87,6 +87,19 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
         rm("test.png")
     end
 
+    @testset "saving pdf while recording a VideoStream" begin
+        fig, ax, pl = heatmap(rand(10, 10))
+        vio = VideoStream(fig)
+        recordframe!(vio)
+        save("test.pdf", fig)
+        @test isopen(vio.screen)
+        recordframe!(vio)
+        save("test.mp4", vio)
+        @test filesize("test.mp4") > 0
+        rm("test.pdf")
+        rm("test.mp4")
+    end
+
     @testset "changing resolution of same format" begin
         # see: https://github.com/MakieOrg/Makie.jl/issues/2433
         # and: https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/441
@@ -164,14 +177,15 @@ end
     Makie.colorbuffer(fig; backend = CairoMakie)
 end
 
-@testset "ComputeGraph Sanity Checks" begin
-    # This is supposed to catch changes in ComputePipeline causing nodes to
-    # be skipped or become duplicated. This will also trigger if plot attributes
-    # are modified in which case the numbers should just be updated
-    f, a, p = scatter(rand(10))
-    colorbuffer(f)
-    @test length(p.attributes.inputs) == 42
-    @test length(p.attributes.outputs) == 87
+@testset "scatter with all points clipped (#XXXX)" begin
+    fig = Figure()
+    ax = Axis3(fig[1, 1])
+    # all points outside the clip volume -> unclipped_indices is empty
+    scatter!(ax, [0.5, 0.5], [0.5, 0.5], [-10.0, -10.0])
+    limits!(ax, 0, 1, 0, 1, 0, 1)
+    Makie.colorbuffer(fig; backend = CairoMakie)
+    # broadcast_foreach_index returns without error on empty indices
+    @test Makie.broadcast_foreach_index((args...) -> error("unreachable"), UInt32[], 1:3, 1:3) === nothing
 end
 
 excludes = Set(

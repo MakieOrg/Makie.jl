@@ -303,7 +303,7 @@ function draw_mesh3D(
         uv_transform, color, clip_planes, model = plot.model_f32c[]::Mat4f
     )
 
-    local shading::Bool = plot.shading[] && (scene.compute.shading[] != NoShading)
+    local shading = plot.use_shading[]::Bool
 
     if meshuvs isa Vector{Vec2f} && uv_transform !== nothing
         uvt = uv_transform::Mat{2, 3, Float32, 6}
@@ -322,9 +322,10 @@ function draw_mesh3D(
         return draw_mesh2D(screen.context, pattern, screen_points, meshfaces)
     end
 
+    Makie.register_view_normalmatrix!(plot)
     per_face_col = per_face_colors(
         color::Union{RGBAf, Vector{RGBAf}, Matrix{RGBAf}},
-        matcap, meshfaces, meshnormals, meshuvs
+        matcap, meshfaces, meshnormals, meshuvs, plot.view_normalmatrix
     )
 
     local faceculling::Int = to_value(get(plot, :faceculling, -10))
