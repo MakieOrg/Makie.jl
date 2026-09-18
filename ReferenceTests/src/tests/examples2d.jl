@@ -2142,7 +2142,7 @@ end
 
     # colormapped
     series!(
-        a, [range(i, i+4, 10) for i in 1:8], linewidth = 5, color = 1:8,
+        a, [range(i, i + 4, 10) for i in 1:8], linewidth = 5, color = 1:8,
         colorrange = (2, 7), lowclip = :black, highclip = :gray, colormap = [:red, :purple, :blue]
     )
 
