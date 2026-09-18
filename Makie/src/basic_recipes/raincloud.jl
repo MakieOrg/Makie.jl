@@ -215,7 +215,6 @@ function ungroup_labels(category_labels, data_array)
 end
 
 function convert_arguments(::Type{<:RainClouds}, category_labels, data_array)
-    cloud_plot_check_args(category_labels, data_array)
     return (category_labels, data_array)
 end
 
@@ -223,6 +222,7 @@ function plot!(plot::RainClouds)
     map!(
         plot, [:category_labels, :data_array], [:final_category_labels, :final_data_array]
     ) do category_labels, data_array
+        cloud_plot_check_args(category_labels, data_array)
         category_labels, data_array = ungroup_labels(category_labels, data_array)
         if any(ismissing, data_array)
             error("missing values in data not supported. Please filter out any missing values before plotting")
