@@ -34,7 +34,7 @@ function convert_arguments(::Type{<:VolumeSlices}, xs, ys, zs, data)
 end
 
 function plot!(plot::VolumeSlices)
-    @extract plot (x, y, z, volume)
+    @extract plot (x, y, z)
 
     map!(plot.attributes, [:colorrange, :volume], :computed_colorrange) do colorrange, volume
         eltype(volume) <: Colorant && return automatic
@@ -56,13 +56,13 @@ function plot!(plot::VolumeSlices)
     for (ax, plane_sym, offsets, (X, Y)) in zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
         map!(
             plot,
-            [Symbol(plane_sym, :_index), offsets],
+            [Symbol(plane_sym, :_index), offsets, :volume],
             [Symbol(plane_sym, :_transform), Symbol(plane_sym, :_slice)]
-        ) do idx, offsets
+        ) do idx, offsets, volume
             indices = ntuple(Val(3)) do j
                 axes[j] == ax ? idx : (:)
             end
-            return (plane_sym, offsets[idx]), view(volume[], indices...)
+            return (plane_sym, offsets[idx]), view(volume, indices...)
         end
 
         hmap = heatmap!(
