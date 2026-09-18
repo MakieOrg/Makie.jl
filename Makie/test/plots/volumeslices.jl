@@ -1,7 +1,7 @@
 @testset "Volumeslices" begin
     @testset "color data, defaulted xy, ys, zs" begin
-        cols = [RGBf(i/4, j/4, k/4) for i in 1:4, j in 1:4, k in 1:4]
-        f,a,p = volumeslices(cols)
+        cols = [RGBf(i / 4, j / 4, k / 4) for i in 1:4, j in 1:4, k in 1:4]
+        f, a, p = volumeslices(cols)
 
         @test p.x[] == 1:4
         @test p.y[] == 1:4
@@ -18,7 +18,7 @@
 
     @testset "arg types" begin
         # ranges are already covered by refimages
-        f,a,p = volumeslices(Makie.EndPoints(8, 20), [1, 2, 3, 4], 7..10, rand(4, 4, 4))
+        f, a, p = volumeslices(Makie.EndPoints(8, 20), [1, 2, 3, 4], 7 .. 10, rand(4, 4, 4))
         @test p.x[] == range(8.0, 20.0, 4)
         @test p.y[] == [1, 2, 3, 4]
         @test p.z[] == 7.0:10.0

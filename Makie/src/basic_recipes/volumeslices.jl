@@ -36,7 +36,7 @@ function convert_arguments(::Type{<:VolumeSlices}, xs, ys, zs, data)
         expand_volumeslices_arg(xs, size(data, 1), "x"),
         expand_volumeslices_arg(ys, size(data, 2), "y"),
         expand_volumeslices_arg(zs, size(data, 3), "z"),
-        data
+        data,
     )
 end
 

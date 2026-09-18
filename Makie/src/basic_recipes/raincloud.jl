@@ -320,7 +320,7 @@ function plot!(plot::RainClouds)
             :final_data_array,
             :oriented_side, :cloud_width, :width_ratio,
             :hist_edges, :orientation, :color,
-            :show_median, :cycle, :violin_limits
+            :show_median, :cycle, :violin_limits,
         ],
         :cloud_specs
     ) do clouds, group_labels, x, recenter, data, side, cloud_width,
@@ -400,19 +400,21 @@ function plot!(plot::RainClouds)
         [
             :plot_boxplots, :final_boxplot_x_positions, :final_data_array,
             :orientation, :strokewidth, :boxplot_whiskerwidth, :final_boxplot_width,
-            :markersize, :show_boxplot_outliers, :color, :cycle
+            :markersize, :show_boxplot_outliers, :color, :cycle,
         ],
         :boxplot_spec
     ) do plot_boxplots, x, data, orientation, strokewidth, whiskerwidth, width, markersize, show_outliers, color, cycle
         if plot_boxplots
-            return [PlotSpec(
-                :BoxPlot,
-                x, data;
-                orientation = orientation, strokewidth = strokewidth,
-                whiskerwidth = whiskerwidth,
-                width = width, markersize = markersize,
-                show_outliers = show_outliers, color = color, cycle = cycle
-            )]
+            return [
+                PlotSpec(
+                    :BoxPlot,
+                    x, data;
+                    orientation = orientation, strokewidth = strokewidth,
+                    whiskerwidth = whiskerwidth,
+                    width = width, markersize = markersize,
+                    show_outliers = show_outliers, color = color, cycle = cycle
+                ),
+            ]
         else
             return PlotSpec[]
         end

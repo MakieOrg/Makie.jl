@@ -1602,7 +1602,7 @@ end
 
 function categorical_colors(cs::Union{String, Symbol}, categories::Integer, cycle = false)
     cs_string = string(cs)
-    if cs_string in all_gradient_names
+    return if cs_string in all_gradient_names
         if haskey(ColorBrewer.colorSchemes, cs_string)
             return to_colormap(ColorBrewer.palette(cs_string, categories))
         else
