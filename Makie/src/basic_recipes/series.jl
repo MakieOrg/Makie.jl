@@ -18,6 +18,11 @@ If any of `marker`, `markersize`, `markercolor`, `strokecolor` or `strokewidth` 
     # TODO: This should probably get updated to rely on colormap + integer colors?
     "Sets a categorical colormap to sample colors per curve."
     color = :lighttest
+    """
+    Sets whether the categorical colormap given in `color` is allowed to cycle.
+    If true the colormap is effectively accessed with `color[mod1(series_idx, end)]`.
+    """
+    cycle_color = automatic
     "Sets a constant color for all curves. This acts as an overwrite for `color`"
     solid_color = nothing
 
@@ -107,9 +112,18 @@ function plot!(plot::Series)
 
     map!(length, plot, :curves, :nseries)
 
-    map!(plot, [:color, :solid_color, :nseries], :series_color) do color, scolor, N
+    map!(plot, [:color, :solid_color, :nseries, :cycle_color], :series_color) do color, scolor, N, cycle
         if isnothing(scolor)
-            return categorical_colors(color, N)
+            if cycle === automatic
+                try
+                    return categorical_colors(color, N)
+                catch e
+                    @warn "Colors will be repeated since `series.color` includes less than $N colors."
+                    return categorical_colors(color, N, true)
+                end
+            else
+                return categorical_colors(color, N, cycle)
+            end
         else
             return scolor
         end
