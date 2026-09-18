@@ -442,6 +442,21 @@ App() do session
 end
 ```
 
+By default the popup only appears on click, using an exact 1×1 pixel hit test. Pass
+`trigger = :hover` to show it on mouse-over instead, following the cursor as it moves.
+Hovering needs some tolerance around the cursor rather than an exact hit, so pair it with
+`range` (in pixels) to pick the closest plot element within that distance — the same
+`range` option also works with `trigger = :click` if your markers are small or sparse:
+
+```@example wglmakie
+App() do session
+    f, ax, pl = scatter(1:4, markersize=20, color=Float32[0.3, 0.4, 0.5, 0.6])
+    cb = js"""(plot, index) => "point " + index"""
+    tooltip = WGLMakie.ToolTip(f, cb; plots=pl, trigger=:hover, range=10)
+    return DOM.div(f, tooltip)
+end
+```
+
 ## Styling
 
 Bonito allows loading arbitrary CSS, and `DOM.xxx` wraps all existing HTML tags.

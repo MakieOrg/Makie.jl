@@ -25248,7 +25248,14 @@ function pick_closest(scene, xy, range) {
     const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
+    const picked = pick_native(scene, x0, y0, dx, dy, false);
+    if (!picked) {
+        return [
+            null,
+            0
+        ];
+    }
+    const [plot_data, _] = picked;
     const plot_matrix = plot_data.data;
     let min_dist = px_per_unit * px_per_unit * range * range;
     let selection = [
@@ -25346,37 +25353,81 @@ function pick_native_matrix(scene, x1, y1, w, h) {
     }
     return picked[0];
 }
-function register_popup(popup, scene, plots_to_pick, callback) {
+function register_popup(popup, scene, plots_to_pick, callback, options = {}) {
     if (!scene || !scene.screen) {
         return;
     }
+    const { trigger ="click" , range =0  } = options;
     const { canvas  } = scene.screen;
-    canvas.addEventListener("mousedown", (event)=>{
-        const [x1, y1] = events2unitless(scene.screen, event);
-        const picked = pick_native(scene, x1, y1, 1, 1);
-        if (!picked) {
-            return;
+    function place(event, result) {
+        if (!popup.classList.contains("show")) {
+            popup.classList.add("show");
         }
-        const [_, picks] = picked;
-        if (picks.length == 1) {
-            const [plot, index] = picks[0];
-            if (plots_to_pick.has(plot.plot_uuid)) {
-                const result = callback(plot, index);
-                if (!popup.classList.contains("show")) {
-                    popup.classList.add("show");
-                }
-                popup.style.left = event.pageX + "px";
-                popup.style.top = event.pageY + "px";
-                if (typeof result === "string" || result instanceof String) {
-                    popup.innerText = result;
-                } else {
-                    popup.innerHTML = result;
-                }
+        popup.style.left = event.pageX + "px";
+        popup.style.top = event.pageY + "px";
+        if (typeof result === "string" || result instanceof String) {
+            popup.innerText = result;
+        } else {
+            popup.innerHTML = result;
+        }
+    }
+    function process(event) {
+        const [x1, y1] = events2unitless(scene.screen, event);
+        if (range > 0) {
+            const [uuid, index] = pick_closest(scene, [
+                x1,
+                y1
+            ], range);
+            if (uuid && plots_to_pick.has(uuid)) {
+                place(event, callback(plot_cache[uuid], index));
+            } else {
+                popup.classList.remove("show");
             }
         } else {
-            popup.classList.remove("show");
+            const picked = pick_native(scene, x1, y1, 1, 1);
+            if (!picked) {
+                return;
+            }
+            const [_, picks] = picked;
+            if (picks.length == 1) {
+                const [plot, index] = picks[0];
+                if (plots_to_pick.has(plot.plot_uuid)) {
+                    place(event, callback(plot, index));
+                }
+            } else {
+                popup.classList.remove("show");
+            }
         }
-    });
+    }
+    if (trigger === "hover") {
+        let pending = null, pressed = false, scheduled = false;
+        canvas.addEventListener("mousedown", ()=>{
+            pressed = true;
+            popup.classList.remove("show");
+        });
+        window.addEventListener("mouseup", ()=>{
+            pressed = false;
+        });
+        canvas.addEventListener("mouseleave", ()=>{
+            pending = null;
+            popup.classList.remove("show");
+        });
+        canvas.addEventListener("mousemove", (e)=>{
+            pending = e;
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(()=>{
+                scheduled = false;
+                if (pending && !pressed) {
+                    const ev = pending;
+                    pending = null;
+                    process(ev);
+                }
+            });
+        });
+    } else {
+        canvas.addEventListener("mousedown", process);
+    }
     canvas.addEventListener("keyup", (event)=>{
         if (event.key === "Escape") {
             popup.classList.remove("show");
