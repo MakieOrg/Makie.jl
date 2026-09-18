@@ -223,20 +223,24 @@ function positivize(r::Rect2)
     return Rect2(Point2(newori), Vec2(newwidths))
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
+function limit_reset_waspressed(lr::LimitReset, ax, idx, keys)
+    state = ispressed(ax.scene, keys)
+    processed = lr.prev_pressed[idx] && !state
+    lr.prev_pressed[idx] = state
+    return processed
+end
 
-    if event.type === MouseEventTypes.leftclick
-        if ispressed(ax.scene, Keyboard.left_control)
-            if ispressed(ax.scene, Keyboard.left_shift)
-                autolimits!(ax)
-            else
-                reset_limits!(ax)
-            end
-            return Consume(true)
-        end
+function process_interaction(lr::LimitReset, event, ax::Axis)
+    processed = false
+    if limit_reset_waspressed(lr, ax, 1, ax.recomputelimitskey[])
+        autolimits!(ax)
+        processed = true
     end
-
-    return Consume(false)
+    if limit_reset_waspressed(lr, ax, 2, ax.resetlimitskey[])
+        reset_limits!(ax)
+        processed = true
+    end
+    return Consume(processed)
 end
 
 
@@ -522,27 +526,25 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
     return Consume(true)
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
-    consumed = false
-    if event.type === MouseEventTypes.leftclick
-        if ispressed(ax.scene, Keyboard.left_control)
-            ax.zoom_mult[] = 1.0
-            if ispressed(ax.scene, Keyboard.left_shift)
-                autolimits!(ax)
-            else
-                reset_limits!(ax)
-            end
-            consumed = true
-        end
-        if ispressed(ax.scene, Keyboard.left_shift)
-            ax.axis_offset[] = Vec2d(0)
-            ax.elevation[] = pi / 8
-            ax.azimuth[] = 1.275 * pi
-            consumed = true
-        end
+function process_interaction(lr::LimitReset, event::MouseEvent, ax::Axis3)
+    processed = false
+    if limit_reset_waspressed(lr, ax, 1, ax.recomputelimitskey[])
+        ax.zoom_mult[] = 1.0
+        autolimits!(ax)
+        processed = true
     end
-
-    return Consume(consumed)
+    if limit_reset_waspressed(lr, ax, 2, ax.resetlimitskey[])
+        ax.zoom_mult[] = 1.0
+        reset_limits!(ax)
+        processed = true
+    end
+    if limit_reset_waspressed(lr, ax, 3, ax.resetrotationkey[])
+        ax.axis_offset[] = Vec2d(0)
+        ax.elevation[] = pi / 8
+        ax.azimuth[] = 1.275 * pi
+        processed = true
+    end
+    return Consume(processed)
 end
 
 function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}, ax::Axis3)
