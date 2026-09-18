@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed WGLMakie relocatability: shader assets are again loaded via RelocatableFolders instead of being read from the package directory at runtime, which does not exist for relocated PackageCompiler/juliac apps [#5747](https://github.com/MakieOrg/Makie.jl/pull/5747).
 - Fixed `contourf` and `tricontourf` drawing a constant field in two colors, by placing the constant value in the middle of a band instead of on a band edge [#5787](https://github.com/MakieOrg/Makie.jl/pull/5787).
 - Allowed FFMPEG_jll 9 [#5789](https://github.com/MakieOrg/Makie.jl/pull/5789).
 - Contour labels, `voronoiplot` colors, `triplot` convex hulls, `hexbin` draw order and `datashader` category colors no longer depend on `Dict` iteration order, so they stay the same across Julia versions [#5792](https://github.com/MakieOrg/Makie.jl/pull/5792).

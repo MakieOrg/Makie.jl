@@ -148,10 +148,11 @@ function flatten_buffer(array::AbstractArray{T}) where {T}
     return flatten_buffer(collect(reinterpret(eltype(T), array)))
 end
 
+const ASSETS_DIR = @path joinpath(@__DIR__, "..", "assets")
 const ALL_SHADERS = Dict{String, String}()
 function lasset(paths...)
     return get!(ALL_SHADERS, joinpath(paths...)) do
-        read(joinpath(@__DIR__, "..", "assets", paths...), String)
+        read(joinpath(ASSETS_DIR, paths...), String)
     end
 end
 
