@@ -112,8 +112,24 @@ function plot!(plot::Series)
 
     map!(length, plot, :curves, :nseries)
 
-    map!(plot, [:color, :solid_color, :nseries, :cycle_color], :series_color) do color, scolor, N, cycle
+    map!(
+        plot,
+        [:color, :solid_color, :nseries, :cycle_color, :colormap, :colorrange, :colorscale, :lowclip, :highclip, :nan_color],
+        :series_color
+    ) do color, scolor, N, cycle, colormap, colorrange, colorscale, lowclip, highclip, nan_color
         if isnothing(scolor)
+            if color isa RealVector
+                # TODO: Is it reasonable to just run the categorical_colors()
+                # code after this to resolve cycling/dropping of extra samples?
+                cr = combined_colorrange(colorscale, colorrange, extrema_nan(color))
+                cm = to_colormap(colormap)
+                lc = default_automatic(lowclip, first(cm))
+                hc = default_automatic(highclip, last(cm))
+                nc = to_color(nan_color)
+                color = map(color) do value
+                    sample_color(cm, value, cr, lc, hc, nc)
+                end
+            end
             if cycle === automatic
                 try
                     return categorical_colors(color, N)
