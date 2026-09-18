@@ -123,8 +123,8 @@ function plot!(plot::Series)
                 # code after this to resolve cycling/dropping of extra samples?
                 cr = combined_colorrange(colorscale, colorrange, extrema_nan(color))
                 cm = to_colormap(colormap)
-                lc = default_automatic(lowclip, first(cm))
-                hc = default_automatic(highclip, last(cm))
+                lc = default_automatic(to_color(lowclip), first(cm))
+                hc = default_automatic(to_color(highclip), last(cm))
                 nc = to_color(nan_color)
                 color = map(color) do value
                     sample_color(cm, value, cr, lc, hc, nc)
