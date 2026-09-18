@@ -97,6 +97,10 @@ function convert_arguments(::Type{<:Series}, arg::AbstractVector{<:AbstractVecto
     )
 end
 
+function convert_arguments(::Type{<:Series}, arg::AbstractVector{<:RealVector})
+    return (map(ys -> Point.(eachindex(ys), ys), arg),)
+end
+
 function plot!(plot::Series)
     # TODO: Maybe consider doing all of this with a single NaN separated
     # lines or scatterlines plot?
