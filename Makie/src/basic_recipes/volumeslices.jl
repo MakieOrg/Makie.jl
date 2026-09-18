@@ -18,6 +18,21 @@ Draws heatmap slices of the volume `v`.
     yz_index = 1
 end
 
+expand_volumeslices_arg(xs, N, name) = to_linspace(xs, N)
+function expand_volumeslices_arg(xs::Union{Vector, AbstractRange}, N, name)
+    length(xs) == N || throw(ArgumentError("$name value should have $N entries but have $(length(xs))."))
+    return xs
+end
+
+function convert_arguments(::Type{<:VolumeSlices}, xs, ys, zs, data)
+    return (
+        expand_volumeslices_arg(xs, size(data, 1), "x"),
+        expand_volumeslices_arg(ys, size(data, 2), "y"),
+        expand_volumeslices_arg(zs, size(data, 3), "z"),
+        data
+    )
+end
+
 function plot!(plot::VolumeSlices)
     @extract plot (x, y, z, volume)
 
