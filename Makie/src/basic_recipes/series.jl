@@ -98,44 +98,76 @@ function convert_arguments(::Type{<:Series}, arg::AbstractVector{<:AbstractVecto
 end
 
 function plot!(plot::Series)
-    @extract plot (curves, labels, linewidth, linecap, joinstyle, miter_limit, color, solid_color, space, linestyle)
-    sargs = [:marker, :markersize, :strokecolor, :strokewidth]
-    scatter = Dict((f => plot[f] for f in sargs if !isnothing(plot[f][])))
-    nseries = length(curves[])
-    colors = lift(plot, color, solid_color) do color, scolor
+    # TODO: Maybe consider doing all of this with a single NaN separated
+    # lines or scatterlines plot?
+
+    map!(length, plot, :curves, :nseries)
+
+    map!(plot, [:color, :solid_color, :nseries], :series_color) do color, scolor, N
         if isnothing(scolor)
-            return categorical_colors(color, nseries)
+            return categorical_colors(color, N)
         else
             return scolor
         end
     end
-    # TODO if nseries = 0, we get a nasty Backend error that there is no overload for Series{...}
-    # since series.plots will be empty, which is currently the distinguishing factor for atomic vs not atomic
-    for i in 1:nseries
-        label = lift(l -> isnothing(l) ? "series $(i)" : l[i], plot, labels)
-        positions = lift(c -> c[i], plot, curves)
-        series_color = lift(c -> c isa AbstractVector ? c[i] : c, plot, colors)
-        series_linestyle = lift(ls -> ls isa AbstractVector ? ls[i] : ls, plot, linestyle)
-        if !isempty(scatter)
-            mcolor = plot.markercolor
-            markercolor = lift((mc, sc) -> mc == automatic ? sc : mc, plot, mcolor, series_color)
-            scatterlines!(
-                plot, positions;
-                linewidth = linewidth, linecap = plot.linecap, joinstyle = joinstyle,
-                miter_limit = miter_limit, color = series_color, markercolor = markercolor,
-                label = label[], scatter..., space = space, linestyle = series_linestyle
-            )
-        else
-            lines!(
-                plot, positions; linewidth = linewidth, linecap = plot.linecap,
-                joinstyle = joinstyle, miter_limit = miter_limit, color = series_color,
-                label = label, space = space, linestyle = series_linestyle
+
+    map!(plot, [:nseries, :labels], :series_labels) do N, labels
+        return isnothing(labels) ? ["series $i" for i in 1:N] : labels
+    end
+
+    map!(plot, [:marker, :markersize, :strokewidth, :strokecolor], :plottype) do args...
+        return all(isnothing, args) ? :Lines : :ScatterLines
+    end
+
+    map!(default_automatic, plot, [:markercolor, :series_color], :series_markercolor)
+
+    map!(
+        plot,
+        [
+            :curves, :nseries, :plottype,
+            :labels, :series_color, :space, :visible,
+            :series_markercolor, :marker, :markersize, :strokecolor, :strokewidth,
+            :linewidth, :linecap, :joinstyle, :miter_limit, :linestyle,
+        ],
+        :specs
+    ) do curves, N, plottype, labels, series_color, space, visible,
+            series_markercolor, marker, markersize, strokecolor, strokewidth,
+            linewidth, linecap, joinstyle, miter_limit, linestyles
+
+        specs = Vector{PlotSpec}(undef, N)
+        visible || return specs
+
+        uses_scatter = plottype === :ScatterLines
+        scatter_kwargs = Dict{Symbol, Any}()
+        if uses_scatter
+            for (k, v) in pairs((; marker, markersize, strokewidth, strokecolor))
+                if !isnothing(v)
+                    scatter_kwargs[k] = v
+                end
+            end
+        end
+
+        broadcast_foreach(
+            1:N, curves, labels, series_color, series_markercolor, linestyles
+        ) do i, positions, label, color, markercolor, linestyle
+
+            if uses_scatter
+                scatter_kwargs[:markercolor] = markercolor
+            end
+
+            specs[i] = PlotSpec(
+                plottype, positions;
+                linewidth, linecap, joinstyle, miter_limit, linestyle,
+                color, label, space, scatter_kwargs...
             )
         end
+
+        return specs
     end
+
+    plotlist!(plot, plot.specs)
+
     return
 end
 
-function Makie.get_plots(plot::Series)
-    return plot.plots
-end
+get_plots(plot::Series) = plot.plots[1].plots
