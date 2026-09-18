@@ -832,9 +832,9 @@ end
         fig[1, 2], r, r, r, data, bbox_visible = false, colormap = :RdBu,
         colorrange = (0.2, 0.8), lowclip = :black, highclip = :green
     )
-    p.update_xz[](3)
-    p.update_yz[](4)
-    p.update_xy[](10)
+    p.update_xz[](3) # test deprecated syntax
+    p.yz_index = 4
+    p.xy_index = 10
     fig
 end
 

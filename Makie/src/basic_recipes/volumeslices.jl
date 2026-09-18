@@ -9,6 +9,13 @@ Draws heatmap slices of the volume `v`.
     bbox_visible = true
     "Sets the color of the bounding box outline"
     bbox_color = RGBAf(0.5, 0.5, 0.5, 0.5)
+
+    "Sets the index of the shown xy slice `volume[:, :, idx]`."
+    xy_index = 1
+    "Sets the index of the shown xz slice `volume[:, idx, :]`."
+    xz_index = 1
+    "Sets the index of the shown yz slice `volume[idx, :, :]`."
+    yz_index = 1
 end
 
 function plot!(plot::VolumeSlices)
@@ -30,21 +37,33 @@ function plot!(plot::VolumeSlices)
     parent_vis = ComputePipeline.get_observable!(plot.visible)
     axes = :x, :y, :z
 
-    for (ax, p, r, (X, Y)) in zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
-        hmap = heatmap!(
-            plot, Attributes(plot), X, Y, zeros(length(X[]), length(Y[])),
-            colorrange = plot.computed_colorrange, visible = parent_vis
-        )
-        update = i -> begin
-            transform!(hmap, (p, r[][i]))
+    for (ax, plane_sym, offsets, (X, Y)) in zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
+        map!(
+            plot,
+            [Symbol(plane_sym, :_index), offsets],
+            [Symbol(plane_sym, :_transform), Symbol(plane_sym, :_slice)]
+        ) do idx, offsets
             indices = ntuple(Val(3)) do j
-                axes[j] == ax ? i : (:)
+                axes[j] == ax ? idx : (:)
             end
-            update!(hmap, arg3 = view(volume[], indices...))
+            return (plane_sym, offsets[idx]), view(volume[], indices...)
         end
-        update(1) # trigger once to place heatmaps correctly
-        add_input!(plot.attributes, Symbol(:update_, p), update)
-        add_input!(plot.attributes, Symbol(:heatmap_, p), hmap)
+
+        hmap = heatmap!(
+            plot, Attributes(plot), X, Y, plot[Symbol(plane_sym, :_slice)],
+            colorrange = plot.computed_colorrange, visible = parent_vis,
+        )
+
+        on(plot[Symbol(plane_sym, :_transform)], update = true) do plane_transform
+            transform!(hmap, plane_transform)
+        end
+
+        update = i -> begin
+            @warn "Updating volumeslices with `plot.update_$plane_sym(index) is deprecated in favor of setting `plot.$(plane_sym)_index = index`." maxlog = 1
+            plot[Symbol(plane_sym, :_index)] = i
+        end
+        add_input!(plot.attributes, Symbol(:update_, plane_sym), update)
+        add_constant!(plot.attributes, Symbol(:heatmap_, plane_sym), hmap)
     end
 
     linesegments!(
