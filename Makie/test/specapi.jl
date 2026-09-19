@@ -122,6 +122,13 @@ function Makie.convert_arguments(P::Type{<:Plot}, ::TestPlot)
     return PlotSpec(P, Point2f.(1:5, 1:5); color = 1:5, cycle = [])
 end
 
+@testset "PlotSpec without plot type" begin
+    spec = @test_nowarn PlotSpec(1:4; color = :red)
+    @test spec.type === :plot
+    @test spec.args == Any[1:4]
+    @test spec.kwargs[:color] == Makie.to_color(:red)
+end
+
 @testset "PlotSpec with attributes in convert_arguments" begin
     f, ax, pl = scatter(TestPlot())
     @test pl.color[] == 1:5
