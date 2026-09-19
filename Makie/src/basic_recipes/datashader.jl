@@ -463,11 +463,15 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
         total_value = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
         return (canvases, total_value)
     end
-    colors = Dict(k => Makie.wong_colors()[i] for (i, (k, v)) in enumerate(categories))
-    p._categories = colors
+    # sorted, so that colors, draw order and legend entries don't depend on the
+    # hash order of the category dict
+    category_names = sort!(collect(keys(categories)))
+    colors = Dict(k => Makie.wong_colors()[i] for (i, k) in enumerate(category_names))
+    p._categories = [k => colors[k] for k in category_names]
     op = lift(total -> (x -> log10(x + 1) / log10(total + 1)), p, p.total_value)
 
-    for (k, canv) in canvases
+    for k in category_names
+        canv = canvases[k]
         color = colors[k]
         cmap = [(color, 0.0), (color, 1.0)]
         image!(p, canv, identity, op; colorrange = Vec2f(0, 1), colormap = cmap)
@@ -491,7 +495,7 @@ end
 Base.getindex(x::FakePlot, key::Symbol) = getindex(getfield(x, :attributes), key)
 
 function get_plots(plot::DataShader)
-    return map(collect(plot._categories[])) do (name, color)
+    return map(plot._categories[]) do (name, color)
         return FakePlot(Attributes(; plot = plot, label = name, color = color))
     end
 end

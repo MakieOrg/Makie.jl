@@ -1,4 +1,33 @@
-function record_comparison(base_folder::String, backend::String; record_folder_name = "recorded", tag = last_major_version())
+"""
+    recording_title(relative_path)
+
+Recover the reference test title from a path relative to a `recorded`/`reference` folder,
+i.e. `"<Backend>/<title>.png"` or `"<Backend>/<title>/step-1.png"` for stepper tests.
+"""
+function recording_title(relative_path::String)
+    parts = splitpath(relative_path)
+    return length(parts) > 2 ? parts[2] : first(splitext(parts[end]))
+end
+
+"""
+    split_missing_recordings(attempted_tests, recorded_paths, reference_paths, skipped_paths)
+
+Split the reference images that have no recording into the ones whose test ran but errored
+before saving anything (`failed`, reported by title) and the ones no test produced at all
+(`missing_recordings`, i.e. the test was deleted or renamed).
+"""
+function split_missing_recordings(attempted_tests, recorded_paths, reference_paths, skipped_paths)
+    recorded_titles = Set(recording_title.(recorded_paths))
+    failed = Set(title for title in attempted_tests if !(title in recorded_titles))
+    missing_recordings = setdiff(Set(reference_paths), Set(recorded_paths), Set(skipped_paths))
+    filter!(path -> !(recording_title(path) in failed), missing_recordings)
+    return (; failed = sort!(collect(failed)), missing_recordings = sort!(collect(missing_recordings)))
+end
+
+function record_comparison(
+        base_folder::String, backend::String;
+        attempted_tests = String[], record_folder_name = "recorded", tag = last_major_version()
+    )
     record_folder = joinpath(base_folder, record_folder_name)
     @info "Downloading reference images"
     reference_folder = download_refimages(tag)
@@ -11,20 +40,41 @@ function record_comparison(base_folder::String, backend::String; record_folder_n
     testimage_paths = get_all_relative_filepaths_recursively(record_folder)
     missing_refimages, scores = compare(testimage_paths, reference_folder, record_folder)
 
+    manifest = filter(e -> startswith(e.path, backend * "/"), read_manifest())
+    classified = classify_entries(manifest, reference_folder)
+
+    if !isempty(classified.inert)
+        @warn(
+            "Inert reference image update manifest entries for $backend (the stored reference " *
+                "changed since these were pinned). Harmless leftovers from already-promoted " *
+                "updates are pruned by the next manifest generation; if one of these images " *
+                "fails its comparison below, its update conflicts with a promoted one and the " *
+                "manifest must be regenerated with ReferenceUpdater:\n" *
+                join(("  " * e.path for e in classified.inert), '\n')
+        )
+    end
+
+    backend_ref_dir = joinpath(reference_folder, backend)
+    reference_paths = mapreduce(vcat, walkdir(backend_ref_dir)) do (root, dirs, files)
+        relpath.(joinpath.(root, files), reference_folder)
+    end
+    skipped = [joinpath(backend, "$name.png") for name in SKIPPED_NAMES]
+    failed, missing_recordings = split_missing_recordings(attempted_tests, testimage_paths, reference_paths, skipped)
+
     open(joinpath(base_folder, "new_files.txt"), "w") do file
         for path in missing_refimages
+            path in classified.exempt_new && continue
             println(file, path)
         end
     end
 
-    open(joinpath(base_folder, "missing_files.txt"), "w") do file
-        backend_ref_dir = joinpath(reference_folder, backend)
-        recorded_paths = mapreduce(vcat, walkdir(backend_ref_dir)) do (root, dirs, files)
-            relpath.(joinpath.(root, files), reference_folder)
+    open(joinpath(base_folder, "failed_recordings.txt"), "w") do file
+        for title in failed
+            println(file, backend, '/', title)
         end
-        skipped = Set([joinpath(backend, "$name.png") for name in SKIPPED_NAMES])
-        missing_recordings = setdiff(Set(recorded_paths), Set(testimage_paths), skipped)
+    end
 
+    open(joinpath(base_folder, "missing_files.txt"), "w") do file
         for path in missing_recordings
             println(file, path)
         end
@@ -37,14 +87,18 @@ function record_comparison(base_folder::String, backend::String; record_folder_n
         end
     end
 
-    return missing_refimages, scores
+    return missing_refimages, scores, classified.exempt_changed
 end
 
-function test_comparison(scores; threshold)
+function test_comparison(scores; threshold, exempt = Set{String}())
     return @testset "Comparison scores" begin
         for (image, score) in pairs(scores)
             @testset "$image" begin
-                @test score <= threshold
+                if image in exempt
+                    @test_skip score <= threshold
+                else
+                    @test score <= threshold
+                end
             end
         end
     end

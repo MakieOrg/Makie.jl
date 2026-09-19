@@ -10,6 +10,20 @@ ReferenceUpdater.serve_update_page(commit = "a1b2c3")
 ReferenceUpdater.serve_update_page(pr = 1234)
 ```
 
+## Updating reference images via the manifest (recommended)
+
+A PR that changes rendering should not upload to the release tarball directly (that turns master and every other open PR red until it lands). Instead it records the images it intends to update in `ReferenceTests/refimage_updates/`, a directory holding one small fragment file per image: `<Backend>/<name>.png.pin`, whose content is the pin (the sha256 of the reference it replaces, or `new`/`delete`). One file per image means concurrent PRs touching different images never edit the same file, so they don't conflict on merge (a shared single-file manifest would). A CairoMakie-only change writes only `CairoMakie/...` fragments. CI exempts a listed image from the score/missing checks while the pinned hash still matches, so the PR goes green for exactly its declared changes. When the PR merges, the push CI run on the target branch promotes the recorded images into the `refimages-vX.Y` release; the entries then go inert, and generating a new manifest prunes them (deletes the stale fragment files). Promotion only runs off a green reference-test run, skips entries whose pin no longer matches, and push runs are serialized per branch via the workflow concurrency group, so concurrent merges cannot corrupt the release. If two open PRs pin the same image, the second pin goes stale once the first is promoted; that PR's CI turns red again and its manifest must be regenerated.
+
+Add entries in one of three ways (none require running the backend tests locally):
+
+- Viewer button: run `ReferenceUpdater.serve_update_page(pr = 1234)`, select the images, and click "Add pin files for selection".
+- Headless (agents): `ReferenceUpdater.add_pr_updates_to_manifest(1234)` picks every image whose score exceeds the threshold plus every new image; pass `select = ["CairoMakie/foo.png", ...]` to choose explicitly. Pins come from the current release tarball, the changed/new classification from the PR's CI artifact.
+- CLI: `reference_updater manifest pr 1234` (or `manifest commit <sha>`).
+
+To promote into a different release tag (e.g. `refimages-v0.26` for a breaking-release branch), add the branch's ref to the `promote-refimages` allowlist in `.github/workflows/ci.yml` (and to `on.push.branches` if not already covered); the tag follows `Makie/Project.toml`, and the branch should have its `refimages-vX.Y` release seeded (e.g. copied from the previous minor).
+
+The direct-upload button below remains for maintainers who need to overwrite a release tarball immediately.
+
 You can also install ReferenceUpdater as an app in Julia 1.12 and up using `]app dev path/to/ReferenceUpdater`. Then you can access the functionality directly from the command line (given that the Julia app binary folder is on your path) via:
 
 ```
