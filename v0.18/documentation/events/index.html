@@ -1,0 +1,1993 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../libs/highlight/github.min.css" rel="stylesheet"/>
+    <link href="../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../css/makie.css" rel="stylesheet"/>
+    <link href="../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/>
+    <title>
+      Events
+    </title>
+    <script src="../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../..">
+                <img src="../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../examples/">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="..">
+                    Documentation
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../api/">
+                    API
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../news/">
+                    News
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <div class="stork-wrapper">
+              <input class="stork-input" data-stork="makiesearch" placeholder="Search documentation"/>
+              <div class="stork-output" data-stork="makiesearch-output"></div>
+            </div>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../examples">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/blocks">
+                        Blocks &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/slidergrid">
+                            SliderGrid
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/plotting_functions">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/ablines">
+                            ablines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contour3d">
+                            contour3d
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/ecdf">
+                            ecdfplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hexbin">
+                            hexbin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvlines">
+                            hlines and vlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvspan">
+                            hspan and vspan
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/pie">
+                            pie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/qqplot">
+                            qqplot and qqnorm
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/rainclouds">
+                            rainclouds
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/spy">
+                            spy
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/tooltip">
+                            tooltip
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/tricontourf">
+                            tricontourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/waterfall">
+                            waterfall
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/aspect-tutorial">
+                        Aspect ratio and size control tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/scenes">
+                        Scene tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="..">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../backends">
+                        Backends
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/cairomakie">
+                            CairoMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/glmakie">
+                            GLMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/rprmakie">
+                            RPRMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/wglmakie">
+                            WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../blocks">
+                        Blocks
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a class="active" href="">
+                        Events
+                      </a>
+                    </div>
+                    <ul class="page-content">
+                      <li>
+                        <a href="#events">
+                          Events
+                        </a>
+                      </li>
+                      <li>
+                        <ul>
+                          <li>
+                            <a href="#observables_with_priority">
+                              Observables with priority
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#the_events_struct">
+                              The Events struct
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#mouse_interaction">
+                              Mouse Interaction
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#keyboard_interaction">
+                              Keyboard Interaction
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#point_picking">
+                              Point Picking
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#the_ispressed_function">
+                              The
+                              <code>
+                                ispressed
+                              </code>
+                              function
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#interactive_widgets">
+                              Interactive Widgets
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#recording_animations_with_interactions">
+                              Recording Animations with Interactions
+                            </a>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../figure_size">
+                        Exporting a Figure with physical dimensions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../headless">
+                        Headless
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-19" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-19">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../transparency">
+                        Basic transparency
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../api">
+                    API
+                  </a>
+                </div>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../news">
+                    News
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="events">
+            <a class="header-anchor" href="#events">
+              Events
+            </a>
+          </h1>
+          <p>
+            Interactive backends such as
+            <code>
+              GLMakie
+            </code>
+            and
+            <code>
+              WGLMakie
+            </code>
+            pass events to Observables collected in an
+            <code>
+              Events
+            </code>
+            struct. By reacting to these one can build up custom interactions.
+          </p>
+          <div class="admonition note">
+            <p class="admonition-title">
+              Note
+            </p>
+            <p>
+              If you are new to Observables you should first read
+              <a href="../nodes/index.html#observables_interaction">
+                Observables &amp; Interaction
+              </a>
+            </p>
+          </div>
+          <h2 id="observables_with_priority">
+            <a class="header-anchor" href="#observables_with_priority">
+              Observables with priority
+            </a>
+          </h2>
+          <p>
+            With Observables, one can add callbacks also with a priority. Furthermore it allows for each listener to stop execution of lower priority listeners by returning
+            <code>
+              Consume(true)
+            </code>
+            or simply
+            <code>
+              Consume()
+            </code>
+            . Every other return value will be handled as
+            <code>
+              Consume(false)
+            </code>
+            meaning that the listener will not block other listeners.
+          </p>
+          <p>
+            To understand how a
+            <code>
+              PriorityObserable
+            </code>
+            works you may try this example:
+          </p>
+          <pre><code class="language-julia">using Makie
+
+po = Observable(0)
+
+println("With low priority listener:")
+on(po, priority = -1) do x
+    println("Low priority: $x")
+end
+po[] = 1
+
+println("\nWith medium priority listener:")
+on(po, priority = 0) do x
+    println("Medium blocking priority: $x")
+    return Consume()
+end
+po[] = 2
+
+println("\nWith high priority listener:")
+on(po, priority = 1) do x
+    println("High Priority: $x")
+    return Consume(false)
+end
+po[] = 3</code>          </pre>
+          <pre><code class="plaintext code-output">With low priority listener:
+Low priority: 1
+
+With medium priority listener:
+Medium blocking priority: 2
+
+With high priority listener:
+High Priority: 3
+Medium blocking priority: 3
+</code>          </pre>
+          <p>
+            With only the first listener connected
+            <code>
+              Low priority: 1
+            </code>
+            gets printed. In this case the behavior is the same as normal Observables. The second listener we add is a blocking one because it returns
+            <code>
+              Consume(true)
+            </code>
+            . Since it has a higher priority than the first one only the second listener will trigger. Thus we get
+            <code>
+              Medium blocking priority: 2
+            </code>
+            . The third listener is non-blocking and at yet again higher priority. As such we get a result from both the third and second listener.
+          </p>
+          <h2 id="the_events_struct">
+            <a class="header-anchor" href="#the_events_struct">
+              The Events struct
+            </a>
+          </h2>
+          <p>
+            Events from the backend are stored in Observables within the
+            <code>
+              Events
+            </code>
+            struct. You can access it with
+            <code>
+              events(x)
+            </code>
+            where
+            <code>
+              x
+            </code>
+            is a
+            <code>
+              Figure
+            </code>
+            ,
+            <code>
+              Axis
+            </code>
+            ,
+            <code>
+              Axis3
+            </code>
+            ,
+            <code>
+              LScene
+            </code>
+            ,
+            <code>
+              FigureAxisPlot
+            </code>
+            or
+            <code>
+              Scene
+            </code>
+            . Regardless of which source you use here you will always get the same struct. This is also true for accessing it directly via
+            <code>
+              scene.events
+            </code>
+            . It contains the following fields:
+          </p>
+          <ul>
+            <li>
+              <p>
+                <code>
+                  window_area::Observable{Rect2i}
+                </code>
+                : Contains the current size of the window in pixels.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  window_dpi::Observable{Float64}
+                </code>
+                : Contains the DPI of the window.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  window_open::Observable{Bool}
+                </code>
+                : Contains
+                <code>
+                  true
+                </code>
+                as long as the window is open.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  hasfocus::Observable{Bool}
+                </code>
+                : Contains
+                <code>
+                  true
+                </code>
+                if the window is focused (in the foreground).
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  entered_window::Observable{Bool}
+                </code>
+                : Contains true if the mouse is within the window (regardless of whether it is focused), i.e. when it is hovered.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  mousebutton::Observable{MouseButtonEvent}
+                </code>
+                : Contains the most recent
+                <code>
+                  MouseButtonEvent
+                </code>
+                which holds the relevant
+                <code>
+                  button::Mouse.Button
+                </code>
+                and
+                <code>
+                  action::Mouse.Action
+                </code>
+                .
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  mousebuttonstate::Set{Mouse.Button}
+                </code>
+                : Contains all currently pressed mouse buttons.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  mouseposition::Observable{NTuple{2, Float64}}
+                </code>
+                : Contains the most recent cursor position in pixel units relative to the root scene/window.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  scroll::Observable{NTuple{2, Float64}}
+                </code>
+                : Contains the most recent scroll offset.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  keyboardbutton::Observable{KeyEvent}
+                </code>
+                : Contains the most recent
+                <code>
+                  KeyEvent
+                </code>
+                which holds the relevant
+                <code>
+                  key::Keyboard.Button
+                </code>
+                and
+                <code>
+                  action::Keyboard.Action
+                </code>
+                .
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  keyboardstate::Observable{Keyboard.Button}
+                </code>
+                : Contains all currently pressed keys.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  unicode_input::Observable{Char}
+                </code>
+                : Contains the most recently typed character.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  dropped_files::Observable{Vector{String}}
+                </code>
+                : Contains a list of filepaths to a collection files dragged into the window.
+              </p>
+            </li>
+          </ul>
+          <h2 id="mouse_interaction">
+            <a class="header-anchor" href="#mouse_interaction">
+              Mouse Interaction
+            </a>
+          </h2>
+          <p>
+            There are three mouse events one can react to:
+          </p>
+          <ul>
+            <li>
+              <p>
+                <code>
+                  events.mousebutton
+                </code>
+                which holds a
+                <code>
+                  MouseButtonEvent
+                </code>
+                with relevant
+                <code>
+                  button
+                </code>
+                and
+                <code>
+                  action
+                </code>
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  events.mouseposition
+                </code>
+                which holds the current cursor position relative to the window as
+                <code>
+                  NTuple{2, Float64}
+                </code>
+                in pixel
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  events.scroll
+                </code>
+                which holds an
+                <code>
+                  NTuple{2, Float64}
+                </code>
+                of the last scroll change
+              </p>
+            </li>
+          </ul>
+          <p>
+            There is also
+            <code>
+              events.mousebuttonstate
+            </code>
+            which holds all currently held buttons. This is not an Observable, so you can't react to changes here, but you can check it if you are looking for a specific combination of buttons.
+          </p>
+          <p>
+            As an example, let us set up a scene where we can draw lines between two points interactively. The first point is selected when the left mouse button gets pressed and the second when it gets released. To simplify things we start with a pixel space scene.
+          </p>
+          <pre><code class="language-julia">using GLMakie
+
+points = Observable(Point2f[])
+
+scene = Scene(camera = campixel!)
+linesegments!(scene, points, color = :black)
+scatter!(scene, points, color = :gray)
+
+on(events(scene).mousebutton) do event
+    if event.button == Mouse.left
+        if event.action == Mouse.press || event.action == Mouse.release
+            mp = events(scene).mouseposition[]
+            push!(points[], mp)
+            notify(points)
+        end
+    end
+end
+
+scene</code>          </pre>
+          <p>
+            In simple cases like this we don't need a to use a priority for registering our callback to
+            <code>
+              mousebutton
+            </code>
+            . Priority and
+            <code>
+              Consume()
+            </code>
+            only become important when multiple interactions react to the same source and need to happen in a specific order or interfere with each other.
+          </p>
+          <p>
+            To make this example nicer, let us update the second point (the end of the line) whenever the mouse moves. For this we should set both the start and end point on
+            <code>
+              Mouse.press
+            </code>
+            and update the end point when
+            <code>
+              events(scene).mouseposition
+            </code>
+            changes as long as the mouse button is still pressed.
+          </p>
+          <pre><code class="language-julia">using GLMakie
+
+points = Observable(Point2f[])
+
+scene = Scene(camera = campixel!)
+linesegments!(scene, points, color = :black)
+scatter!(scene, points, color = :gray)
+
+on(events(scene).mousebutton) do event
+    if event.button == Mouse.left &amp;&amp; event.action == Mouse.press
+        mp = events(scene).mouseposition[]
+        push!(points[], mp, mp)
+        notify(points)
+    end
+end
+
+on(events(scene).mouseposition) do mp
+    mb = events(scene).mousebutton[]
+    if mb.button == Mouse.left &amp;&amp; (mb.action == Mouse.press || mb.action == Mouse.repeat)
+        points[][end] = mp
+        notify(points)
+    end
+end
+
+scene</code>          </pre>
+          <p>
+            To give an example on how to use
+            <code>
+              scroll
+            </code>
+            let's cycle through colors with the scroll wheel.
+            <code>
+              scroll
+            </code>
+            holds two floats describing the last change in x and y direction, typically
+            <code>
+              +1
+            </code>
+            or
+            <code>
+              -1
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using GLMakie
+
+colors = to_colormap(:cyclic_mrybm_35_75_c68_n256)
+idx = Observable(1)
+color = map(i -&gt; colors[mod1(i, length(colors))], idx)
+points = Observable(Point2f[])
+
+scene = Scene(camera = campixel!)
+linesegments!(scene, points, color = color)
+scatter!(scene, points, color = :gray, strokecolor = color, strokewidth = 1)
+
+on(events(scene).mousebutton) do event
+    if event.button == Mouse.left &amp;&amp; event.action == Mouse.press
+        mp = events(scene).mouseposition[]
+        push!(points[], mp, mp)
+        notify(points)
+    end
+end
+
+on(events(scene).mouseposition) do mp
+    mb = events(scene).mousebutton[]
+    if mb.button == Mouse.left &amp;&amp; (mb.action == Mouse.press || mb.action == Mouse.repeat)
+        points[][end] = mp
+        notify(points)
+    end
+end
+
+on(events(scene).scroll) do (dx, dy)
+    idx[] = idx[] + sign(dy)
+end
+
+scene</code>          </pre>
+          <h2 id="keyboard_interaction">
+            <a class="header-anchor" href="#keyboard_interaction">
+              Keyboard Interaction
+            </a>
+          </h2>
+          <p>
+            You can use
+            <code>
+              events.keyboardbutton
+            </code>
+            to react to a
+            <code>
+              KeyEvent
+            </code>
+            and
+            <code>
+              events.unicode_input
+            </code>
+            to react to specific characters being typed. Just like for mouse interactions there is also a set
+            <code>
+              events.keyboardstate
+            </code>
+            holding all keys that are currently pressed.
+          </p>
+          <p>
+            Let's continue our example. Currently we can add points with mouse clicks and change colors by scrolling. A feature we are missing is the deletion of points. Let's implement this with keyboard events. Here we chose
+            <code>
+              backspace
+            </code>
+            to delete from the end and
+            <code>
+              delete
+            </code>
+            to delete from the start.
+          </p>
+          <pre><code class="language-julia">using GLMakie
+
+colors = to_colormap(:cyclic_mrybm_35_75_c68_n256)
+idx = Observable(1)
+color = map(i -&gt; colors[mod1(i, length(colors))], idx)
+points = Observable(Point2f[])
+
+scene = Scene(camera = campixel!)
+linesegments!(scene, points, color = color)
+scatter!(scene, points, color = :gray, strokecolor = color, strokewidth = 1)
+
+on(events(scene).mousebutton) do event
+    if event.button == Mouse.left &amp;&amp; event.action == Mouse.press
+        mp = events(scene).mouseposition[]
+        push!(points[], mp, mp)
+        notify(points)
+    end
+end
+
+on(events(scene).mouseposition) do mp
+    mb = events(scene).mousebutton[]
+    if mb.button == Mouse.left &amp;&amp; (mb.action == Mouse.press || mb.action == Mouse.repeat)
+        points[][end] = mp
+        notify(points)
+    end
+end
+
+on(events(scene).scroll) do (dx, dy)
+    idx[] = idx[] + sign(dy)
+end
+
+on(events(scene).keyboardbutton) do event
+    if event.action == Keyboard.press || event.action == Keyboard.repeat
+        length(points[]) &gt; 1 || return nothing
+        if event.key == Keyboard.backspace
+            pop!(points[])
+            pop!(points[])
+            notify(points)
+        elseif event.key == Keyboard.delete
+            popfirst!(points[])
+            popfirst!(points[])
+            notify(points)
+        end
+    end
+end
+
+scene</code>          </pre>
+          <h2 id="point_picking">
+            <a class="header-anchor" href="#point_picking">
+              Point Picking
+            </a>
+          </h2>
+          <p>
+            Makie provides a function
+            <code>
+              pick(x[, position = events(x).mouseposition[]])
+            </code>
+            to get the plot displayed at a certain position with
+            <code>
+              x
+            </code>
+            being a
+            <code>
+              Figure
+            </code>
+            ,
+            <code>
+              Axis
+            </code>
+            ,
+            <code>
+              FigureAxisPlot
+            </code>
+            or
+            <code>
+              Scene
+            </code>
+            . This is currently a
+            <strong>
+              GLMakie
+            </strong>
+            only feature. The function returns a primitive plot and an index. The primitive plots are the base plots drawable in backends:
+          </p>
+          <ul>
+            <li>
+              <p>
+                scatter
+              </p>
+            </li>
+            <li>
+              <p>
+                text
+              </p>
+            </li>
+            <li>
+              <p>
+                lines
+              </p>
+            </li>
+            <li>
+              <p>
+                linesegments
+              </p>
+            </li>
+            <li>
+              <p>
+                mesh
+              </p>
+            </li>
+            <li>
+              <p>
+                meshscatter
+              </p>
+            </li>
+            <li>
+              <p>
+                surface
+              </p>
+            </li>
+            <li>
+              <p>
+                volume
+              </p>
+            </li>
+            <li>
+              <p>
+                image
+              </p>
+            </li>
+            <li>
+              <p>
+                heatmap
+              </p>
+            </li>
+          </ul>
+          <p>
+            Every other plot is build from these somewhere down the line. For example
+            <code>
+              fig, ax, p = scatterlines(rand(10))
+            </code>
+            has
+            <code>
+              Lines
+            </code>
+            and
+            <code>
+              Scatter
+            </code>
+            as it's primitive plots in
+            <code>
+              p.plots
+            </code>
+            .
+          </p>
+          <p>
+            The index returned by
+            <code>
+              pick
+            </code>
+            relates to the main input of the respective primitive plot. For
+            <code>
+              scatter
+            </code>
+            ,
+            <code>
+              test
+            </code>
+            and
+            <code>
+              meshscatter
+            </code>
+            it is the index into the position (character) array that matches the clicked marker (symbol). For
+            <code>
+              lines
+            </code>
+            and
+            <code>
+              linesegments
+            </code>
+            it's end position of the clicked line segment. For other plots it tends less useful.
+            <code>
+              mesh
+            </code>
+            ,
+            <code>
+              image
+            </code>
+            and
+            <code>
+              surface
+            </code>
+            return index of the largest vertex in the clicked (triangle) face.
+            <code>
+              heatmap
+            </code>
+            and
+            <code>
+              volume
+            </code>
+            always return 0.
+          </p>
+          <p>
+            Let's implement adding, moving and deleting of scatter markers as an example. We could implement adding and deleting with left and right clicks, however that would overwrite existing axis interactions. To avoid this we implement adding as
+            <code>
+              a + left click
+            </code>
+            and removing as
+            <code>
+              d + left click
+            </code>
+            . Since these settings are more restrictive we want Makie to check if either of them applies first and default back to normal axis interactions otherwise. This means our interactions should have a higher priority than the defaults and block conditionally.
+          </p>
+          <p>
+            To gauge the priority of the existing axis interaction we can check
+            <code>
+              Observables.listeners(events(fig).mousebutton)
+            </code>
+            after creating an
+            <code>
+              Axis
+            </code>
+            . This will show the registered callbacks with their priority. The one with the big number (typemax(Int)) is an interaction at maximum priority which we can ignore. (This keeps
+            <code>
+              events(fig).mousebuttonstate
+            </code>
+            up to date.) This leaves
+            <code>
+              priority = 1
+            </code>
+            as the priority to beat.
+          </p>
+          <p>
+            To correctly place a new marker we will also need to get the mouseposition in axis units. Makie provides a function that does just that:
+            <code>
+              mouseposition([scene = hovered_scene()])
+            </code>
+            . There is also a convenience function for the pixel space mouseposition relative to a specific scene
+            <code>
+              mouseposition_px([scene = hovered_scene()])
+            </code>
+            . Both of these will usually be different from
+            <code>
+              events.mouseposition
+            </code>
+            which is always in pixel units and always based on the full window.
+          </p>
+          <p>
+            Finally for deleting we need to figure out if and which scattered marker the cursor is over. We can do this with the
+            <code>
+              pick()
+            </code>
+            function. As mentioned before,
+            <code>
+              pick(ax)
+            </code>
+            will return the plot and (for scatter) an index into the position array, matching our marker. With this we can now set up adding and deleting markers.
+          </p>
+          <pre><code class="language-julia">using GLMakie
+
+positions = Observable(rand(Point2f, 10))
+
+fig, ax, p = scatter(positions)
+
+on(events(fig).mousebutton, priority = 2) do event
+    if event.button == Mouse.left &amp;&amp; event.action == Mouse.press
+        if Keyboard.d in events(fig).keyboardstate
+            # Delete marker
+            plt, i = pick(fig)
+            if plt == p
+                deleteat!(positions[], i)
+                notify(positions)
+                return Consume(true)
+            end
+        elseif Keyboard.a in events(fig).keyboardstate
+            # Add marker
+            push!(positions[], mouseposition(ax))
+            notify(positions)
+            return Consume(true)
+        end
+    end
+    return Consume(false)
+end
+
+fig</code>          </pre>
+          <p>
+            To implement dragging we need to keep track of some state. When we click on a marker we initiate a drag state. While in this state the hovered marker needs follow the cursor position (in axis coordinates). Once the mouse button is released we need to exit the drag state. All of this needs to again take higher priority than the default axis interactions and block them from happening.
+          </p>
+          <pre><code class="language-julia">using GLMakie
+
+positions = Observable(rand(Point2f, 10))
+dragging = false
+idx = 1
+
+fig, ax, p = scatter(positions)
+
+on(events(fig).mousebutton, priority = 2) do event
+    global dragging, idx
+    if event.button == Mouse.left
+        if event.action == Mouse.press
+            plt, i = pick(fig)
+            if Keyboard.d in events(fig).keyboardstate &amp;&amp; plt == p
+                # Delete marker
+                deleteat!(positions[], i)
+                notify(positions)
+                return Consume(true)
+            elseif Keyboard.a in events(fig).keyboardstate
+                # Add marker
+                push!(positions[], mouseposition(ax))
+                notify(positions)
+                return Consume(true)
+            else
+                # Initiate drag
+                dragging = plt == p
+                idx = i
+                return Consume(dragging)
+            end
+        elseif event.action == Mouse.release
+            # Exit drag
+            dragging = false
+            return Consume(false)
+        end
+    end
+    return Consume(false)
+end
+
+on(events(fig).mouseposition, priority = 2) do mp
+    if dragging
+        positions[][idx] = mouseposition(ax)
+        notify(positions)
+        return Consume(true)
+    end
+    return Consume(false)
+end
+
+fig</code>          </pre>
+          <p>
+            There are a couple of different methods of and functions related to
+            <code>
+              pick
+            </code>
+            . The base method
+            <code>
+              pick(scene, pos)
+            </code>
+            picks points exactly. For small markers or thin lines you may instead want to pick the closest plot element within a given range. This can be done with
+            <code>
+              pick(scene, position, range)
+            </code>
+            . You can also get all plots and indices within a range sorted by distance with
+            <code>
+              pick_sorted(scene, position, range)
+            </code>
+            . This can be useful if you want to filter certain plots out, for example the background of an
+            <code>
+              Axis
+            </code>
+            .
+          </p>
+          <p>
+            If you just want to know whether the cursor is on a certain plot or set of plots you can use
+            <code>
+              mouseover(scene, plots...)
+            </code>
+            . This will call
+            <code>
+              Makie.flatten_plots(plots)
+            </code>
+            to break down all plots into primitive plots and check against pick. If you want continue using the output from pick you can use
+            <code>
+              onpick(f, scene, plots...; range=1)
+            </code>
+            which performs this check and calls
+            <code>
+              f(plot, index)
+            </code>
+            if it succeeds.
+          </p>
+          <h2 id="the_ispressed_function">
+            <a class="header-anchor" href="#the_ispressed_function">
+              The
+              <code>
+                ispressed
+              </code>
+              function
+            </a>
+          </h2>
+          <p>
+            If you are implementing interactions based on key events you may want these keys to be adjustable without changing your code directly. A simple way to do this would be to have the hotkey saved in a variable outside the observer function:
+          </p>
+          <pre><code class="language-julia">hotkey = Keyboard.a
+on(events(fig).keyboardbutton) do event
+    if event.key == hotkey
+        ...
+    end
+end</code>          </pre>
+          <p>
+            This way you can change
+            <code>
+              hotkey
+            </code>
+            to any other key without changing the callback function. The problem with this is that you are restricted to just one key. If you want to switch to a combination like ctrl + a you would still have to replace the callback.
+            <code>
+              ispressed()
+            </code>
+            is supposed to handle this for you. All you need to do is replace the comparison:
+          </p>
+          <pre><code class="language-julia">hotkey = Keyboard.a
+on(events(fig).keyboardbutton) do event
+    if ispressed(fig, hotkey)
+        ...
+    end
+end</code>          </pre>
+          <p>
+            With this
+            <code>
+              hotkey
+            </code>
+            can now be
+          </p>
+          <ul>
+            <li>
+              <p>
+                A
+                <code>
+                  Bool
+                </code>
+                which will be returned directly.
+              </p>
+            </li>
+            <li>
+              <p>
+                A single key or mouse button.
+              </p>
+            </li>
+            <li>
+              <p>
+                A
+                <code>
+                  Tuple
+                </code>
+                ,
+                <code>
+                  Vector
+                </code>
+                or
+                <code>
+                  Set
+                </code>
+                of keys and mouse buttons which all must be pressed.
+              </p>
+            </li>
+            <li>
+              <p>
+                A logical expression of keys and mouse buttons with
+                <code>
+                  !
+                </code>
+                ,
+                <code>
+                  &amp;
+                </code>
+                and
+                <code>
+                  |
+                </code>
+                . Each key will be checked individually and the result will be combined as the expression dictates.
+              </p>
+            </li>
+          </ul>
+          <p>
+            Furthermore you can wrap any of the above in
+            <code>
+              Exclusively
+            </code>
+            to discard matches where additional buttons are pressed. All of these options are order independent. Here are some examples:
+          </p>
+          <ul>
+            <li>
+              <p>
+                <code>
+                  hotkey = Mouse.left
+                </code>
+                matches any state with the left mouse button pressed.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  hotkey = (Keyboard.left_control, Keyboard.a)
+                </code>
+                matches any state with both left control and a pressed.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  hotkey = Exclusively((Keyboard.left_control, Keyboard.a))
+                </code>
+                matches if only left control and a are pressed.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  hotkey = Keyboard.left_control &amp; Keyboard.a
+                </code>
+                is equivalent to
+                <code>
+                  (Keyboard.left_control, Keyboard.a)
+                </code>
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  hotkey = (Keyboard.left_control | Keyboard.right_control) &amp; Keyboard.a
+                </code>
+                allows either left or right control with a.
+              </p>
+            </li>
+          </ul>
+          <h2 id="interactive_widgets">
+            <a class="header-anchor" href="#interactive_widgets">
+              Interactive Widgets
+            </a>
+          </h2>
+          <p>
+            Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can read about in the
+            <a href="../blocks/index.html#blocks">
+              Blocks
+            </a>
+            section.
+          </p>
+          <h2 id="recording_animations_with_interactions">
+            <a class="header-anchor" href="#recording_animations_with_interactions">
+              Recording Animations with Interactions
+            </a>
+          </h2>
+          <p>
+            You can record a
+            <code>
+              Scene
+            </code>
+            while you're interacting with it. Just use the
+            <a href="../../api/#record">
+              <code>
+                record
+              </code>
+            </a>
+            function (also see the
+            <a href="../animation/index.html#animations">
+              Animations
+            </a>
+            page) and allow interaction by
+            <code>
+              sleep
+            </code>
+            ing in the loop.
+          </p>
+          <p>
+            In this example, we sample from the Scene
+            <code>
+              scene
+            </code>
+            for 10 seconds, at a rate of 10 frames per second.
+          </p>
+          <pre><code class="language-julia">fps = 10
+record(scene, "test.mp4"; framerate = fps) do io
+    for i = 1:100
+        sleep(1/fps)
+        recordframe!(io)
+    end
+end</code>          </pre>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: December 02, 2022. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.18.4, GLMakie: v0.7.4, CairoMakie: v0.9.4, WGLMakie: v0.7.4
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../libs/navbar.js"></script>
+    <script src="https://files.stork-search.net/releases/v1.4.2/stork.js"></script>
+    <img id="stork-library-path-placeholder" src="../../libs/stork" style="display:none"/>
+    <script>
+      storkfolder = document.querySelector("#stork-library-path-placeholder").src;
+      stork.register("makiesearch", `${storkfolder}/index.st`);
+        </script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script src="../../libs/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});    </script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>

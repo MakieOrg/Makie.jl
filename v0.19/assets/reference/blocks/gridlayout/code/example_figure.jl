@@ -1,0 +1,10 @@
+# This file was generated, do not modify it. # hide
+using Makie.LaTeXStrings: @L_str # hide
+__result = begin # hide
+    rowgap!(fig.layout, 50)
+
+fig
+end # hide
+save(joinpath(@OUTPUT, "example_8430063235735896023.png"), __result; ) # hide
+save(joinpath(@OUTPUT, "example_8430063235735896023.svg"), __result; ) # hide
+nothing # hide

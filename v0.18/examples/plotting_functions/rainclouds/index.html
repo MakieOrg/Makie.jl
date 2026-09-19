@@ -1,0 +1,1423 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../../libs/highlight/github.min.css" rel="stylesheet"/>
+    <link href="../../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../../css/makie.css" rel="stylesheet"/>
+    <link href="../../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/>
+    <title>
+      rainclouds
+    </title>
+    <script src="../../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../../..">
+                <img src="../../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../..">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../documentation/">
+                    Documentation
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../api/">
+                    API
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../news/">
+                    News
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <div class="stork-wrapper">
+              <input class="stork-input" data-stork="makiesearch" placeholder="Search documentation"/>
+              <div class="stork-output" data-stork="makiesearch-output"></div>
+            </div>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../..">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../blocks">
+                        Blocks &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/slidergrid">
+                            SliderGrid
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input checked="" class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="..">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../ablines">
+                            ablines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../contour3d">
+                            contour3d
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../ecdf">
+                            ecdfplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../hexbin">
+                            hexbin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../hvlines">
+                            hlines and vlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../hvspan">
+                            hspan and vspan
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../pie">
+                            pie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../qqplot">
+                            qqplot and qqnorm
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a class="active" href="">
+                            rainclouds
+                          </a>
+                        </div>
+                        <ul class="page-content">
+                          <li>
+                            <a href="#rainclouds">
+                              rainclouds
+                            </a>
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../spy">
+                            spy
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../tooltip">
+                            tooltip
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../tricontourf">
+                            tricontourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../waterfall">
+                            waterfall
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/aspect-tutorial">
+                        Aspect ratio and size control tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/scenes">
+                        Scene tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../documentation">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../documentation/backends">
+                        Backends
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/cairomakie">
+                            CairoMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/glmakie">
+                            GLMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/rprmakie">
+                            RPRMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/wglmakie">
+                            WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/blocks">
+                        Blocks
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/figure_size">
+                        Exporting a Figure with physical dimensions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/headless">
+                        Headless
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-19" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-19">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../documentation/theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/transparency">
+                        Basic transparency
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../../api">
+                    API
+                  </a>
+                </div>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../../news">
+                    News
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="rainclouds">
+            <a class="header-anchor" href="#rainclouds">
+              rainclouds
+            </a>
+          </h1>
+          <p>
+            "Raincloud" plots are a combination of a (half) violin plot, box plot and scatter plots. The three together can make an appealing and informative visual, particularly for large N datasets.
+          </p>
+          <div class="docstring">
+            <div class="doc-header" id="rainclouds">
+              <a href="#rainclouds">
+                rainclouds
+              </a>
+            </div>
+            <div class="doc-content">
+              <pre><code>rainclouds!(ax, category_labels, data_array; plot_boxplots=true, plot_clouds=true, kwargs...)</code>              </pre>
+              <p>
+                Plot a violin (/histogram), boxplot and individual data points with appropriate spacing between each.
+              </p>
+              <h1>
+                Arguments
+              </h1>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      ax
+                    </code>
+                    : Axis used to place all these plots onto.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      category_labels
+                    </code>
+                    : Typically
+                    <code>
+                      Vector{String}
+                    </code>
+                    with a label for each element in
+                    <code>
+                      data_array
+                    </code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      data_array
+                    </code>
+                    : Typically
+                    <code>
+                      Vector{Float64}
+                    </code>
+                    used for to represent the datapoints to plot.
+                  </p>
+                </li>
+              </ul>
+              <h1>
+                Keywords
+              </h1>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      gap=0.2
+                    </code>
+                    : Distance between elements of x-axis.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      side=:left
+                    </code>
+                    : Can take values of
+                    <code>
+                      :left
+                    </code>
+                    ,
+                    <code>
+                      :right
+                    </code>
+                    , determines where the violin plot will be, relative to the scatter points
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      dodge
+                    </code>
+                    : vector of
+                    <code>
+                      Integer
+                    </code>
+                    ` (length of data) of grouping variable to create multiple side-by-side boxes at the same x position
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      dodge_gap = 0.03
+                    </code>
+                    : spacing between dodged boxes
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      n_dodge
+                    </code>
+                    : the number of categories to dodge (defaults to maximum(dodge))
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      color
+                    </code>
+                    : a single color, or a vector of colors, one for each point
+                  </p>
+                </li>
+              </ul>
+              <h2>
+                Violin/Histogram Plot Specific Keywords
+              </h2>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      clouds=violin
+                    </code>
+                    : [violin, hist, nothing] to show cloud plots either as violin or histogram plot, or no cloud plot.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      hist_bins=30
+                    </code>
+                    : if
+                    <code>
+                      clouds=hist
+                    </code>
+                    , this passes down the number of bins to the histogram call.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      cloud_width=1.0
+                    </code>
+                    : Determines size of violin plot. Corresponds to
+                    <code>
+                      width
+                    </code>
+                    keyword arg in
+                  </p>
+                </li>
+              </ul>
+              <p>
+                <code>
+                  violin
+                </code>
+                .
+              </p>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      orientation=:vertical
+                    </code>
+                    orientation of raindclouds (
+                    <code>
+                      :vertical
+                    </code>
+                    or
+                    <code>
+                      :horizontal
+                    </code>
+                    )
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      violin_limits=(-Inf, Inf)
+                    </code>
+                    : specify values to trim the
+                    <code>
+                      violin
+                    </code>
+                    . Can be a
+                    <code>
+                      Tuple
+                    </code>
+                    or a
+                    <code>
+                      Function
+                    </code>
+                    (e.g.
+                    <code>
+                      datalimits=extrema
+                    </code>
+                    )
+                  </p>
+                </li>
+              </ul>
+              <h2>
+                Box Plot Specific Keywords
+              </h2>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      plot_boxplots=true
+                    </code>
+                    : Boolean to show boxplots to summarize distribution of data.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      boxplot_width=0.1
+                    </code>
+                    : Width of the boxplot in category x-axis absolute terms.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      center_boxplot=true
+                    </code>
+                    : Determines whether or not to have the boxplot be centered in the category.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      whiskerwidth=0.5
+                    </code>
+                    : The width of the Q1, Q3 whisker in the boxplot. Value as a portion of the
+                    <code>
+                      boxplot_width
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      strokewidth=1.0
+                    </code>
+                    : Determines the stroke width for the outline of the boxplot.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      show_median=true
+                    </code>
+                    : Determines whether or not to have a line should the median value in the boxplot.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      boxplot_nudge=0.075
+                    </code>
+                    : Determines the distance away the boxplot should be placed from the   center line when
+                    <code>
+                      center_boxplot
+                    </code>
+                    is
+                    <code>
+                      false
+                    </code>
+                    . This is the value used to recentering the   boxplot.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      show_boxplot_outliers
+                    </code>
+                    : show outliers in the boxplot as points (usually confusing when
+                  </p>
+                </li>
+              </ul>
+              <p>
+                paired with the scatter plot so the default is to not show them)
+              </p>
+              <h2>
+                Scatter Plot Specific Keywords
+              </h2>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      side_nudge
+                    </code>
+                    : Default value is 0.02 if
+                    <code>
+                      plot_boxplots
+                    </code>
+                    is true, otherwise
+                    <code>
+                      0.075
+                    </code>
+                    default.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      jitter_width=0.05
+                    </code>
+                    : Determines the width of the scatter-plot bar in category x-axis absolute terms.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      markersize=2
+                    </code>
+                    : Size of marker used for the scatter plot.
+                  </p>
+                </li>
+              </ul>
+              <h2>
+                Axis General Keywords
+              </h2>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      title
+                    </code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      xlabel
+                    </code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      ylabel
+                    </code>
+                  </p>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <pre><code class="language-julia">using CairoMakie
+
+using Random
+using Makie: rand_localized
+
+####
+#### Below is used for testing the plotting functionality.
+####
+
+function mockup_distribution(N)
+    all_possible_labels = ["Single Mode", "Double Mode", "Random Exp", "Uniform"]
+    category_type = rand(all_possible_labels)
+
+    if category_type == "Single Mode"
+        random_mean = rand_localized(0, 8)
+        random_spread_coef = rand_localized(0.3, 1)
+        data_points = random_spread_coef*randn(N) .+ random_mean
+
+    elseif category_type == "Double Mode"
+        random_mean = rand_localized(0, 8)
+        random_spread_coef = rand_localized(0.3, 1)
+        data_points = random_spread_coef*randn(Int(round(N/2.0))) .+ random_mean
+
+        random_mean = rand_localized(0, 8)
+        random_spread_coef = rand_localized(0.3, 1)
+        data_points = vcat(data_points, random_spread_coef*randn(Int(round(N/2.0))) .+ random_mean)
+
+    elseif category_type == "Random Exp"
+        data_points = randexp(N)
+
+    elseif category_type == "Uniform"
+        min = rand_localized(0, 4)
+        max = min + rand_localized(0.5, 4)
+        data_points = [rand_localized(min, max) for _ in 1:N]
+
+    else
+        error("Unidentified category.")
+    end
+
+    return data_points
+end
+
+function mockup_categories_and_data_array(num_categories; N = 500)
+    category_labels = String[]
+    data_array = Float64[]
+
+    for category_label in string.(('A':'Z')[1:min(num_categories, end)])
+        data_points = mockup_distribution(N)
+
+        append!(category_labels, fill(category_label, N))
+        append!(data_array, data_points)
+    end
+    return category_labels, data_array
+end
+
+category_labels, data_array = mockup_categories_and_data_array(3)
+
+colors = Makie.wong_colors()
+rainclouds(category_labels, data_array;
+    xlabel = "Categories of Distributions", ylabel = "Samples", title = "My Title",
+    plot_boxplots = false, cloud_width=0.5, clouds=hist, hist_bins=50,
+    color = colors[indexin(category_labels, unique(category_labels))])</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_13222721075935979891">
+              <img alt="" src="../../../assets/examples/plotting_functions/rainclouds/code/output/example_13222721075935979891.png"/>
+            </a>
+          </p>
+          <pre><code class="language-julia">rainclouds(category_labels, data_array;
+    ylabel = "Categories of Distributions",
+    xlabel = "Samples", title = "My Title",
+    orientation = :horizontal,
+    plot_boxplots = true, cloud_width=0.5, clouds=hist,
+    color = colors[indexin(category_labels, unique(category_labels))])</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_14694726257844088493">
+              <img alt="" src="../../../assets/examples/plotting_functions/rainclouds/code/output/example_14694726257844088493.png"/>
+            </a>
+          </p>
+          <pre><code class="language-julia">rainclouds(category_labels, data_array;
+    xlabel = "Categories of Distributions",
+    ylabel = "Samples", title = "My Title",
+    plot_boxplots = true, cloud_width=0.5, clouds=hist,
+    color = colors[indexin(category_labels, unique(category_labels))])</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_13151825656733319566">
+              <img alt="" src="../../../assets/examples/plotting_functions/rainclouds/code/output/example_13151825656733319566.png"/>
+            </a>
+          </p>
+          <pre><code class="language-julia">rainclouds(category_labels, data_array;
+    xlabel = "Categories of Distributions", ylabel = "Samples", title = "My Title",
+    plot_boxplots = true, cloud_width=0.5, side = :right,
+    violin_limits = extrema, color = colors[indexin(category_labels, unique(category_labels))])</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_13630873212271715322">
+              <img alt="" src="../../../assets/examples/plotting_functions/rainclouds/code/output/example_13630873212271715322.png"/>
+            </a>
+          </p>
+          <pre><code class="language-julia">rainclouds(category_labels, data_array;
+    xlabel = "Categories of Distributions", ylabel = "Samples", title = "My Title",
+    plot_boxplots = true, cloud_width=0.5, side = :right,
+    color = colors[indexin(category_labels, unique(category_labels))])</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_12120781167121877391">
+              <img alt="" src="../../../assets/examples/plotting_functions/rainclouds/code/output/example_12120781167121877391.png"/>
+            </a>
+          </p>
+          <pre><code class="language-julia">more_category_labels, more_data_array = mockup_categories_and_data_array(6)
+
+rainclouds(more_category_labels, more_data_array;
+    xlabel = "Categories of Distributions", ylabel = "Samples", title = "My Title",
+    plot_boxplots = true, cloud_width=0.5,
+    color = colors[indexin(more_category_labels, unique(more_category_labels))])</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_5086022738554779352">
+              <img alt="" src="../../../assets/examples/plotting_functions/rainclouds/code/output/example_5086022738554779352.png"/>
+            </a>
+          </p>
+          <pre><code class="language-julia">category_labels, data_array = mockup_categories_and_data_array(6)
+rainclouds(category_labels, data_array;
+    xlabel = "Categories of Distributions",
+    ylabel = "Samples", title = "My Title",
+    plot_boxplots = true, cloud_width=0.5,
+    color = colors[indexin(category_labels, unique(category_labels))])</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_4858774243463866941">
+              <img alt="" src="../../../assets/examples/plotting_functions/rainclouds/code/output/example_4858774243463866941.png"/>
+            </a>
+          </p>
+          <p>
+            4 of these, between 3 distributions Left and Right example With and Without Box Plot
+          </p>
+          <pre><code class="language-julia">fig = Figure(resolution = (800*2, 600*5))
+colors = [Makie.wong_colors(); Makie.wong_colors()]
+
+category_labels, data_array = mockup_categories_and_data_array(3)
+rainclouds!(Axis(fig[1, 1]), category_labels, data_array;
+    title = "Left Side, with Box Plot",
+    side = :left,
+    plot_boxplots = true,
+    color = colors[indexin(category_labels, unique(category_labels))])
+
+rainclouds!(Axis(fig[2, 1]), category_labels, data_array;
+    title = "Left Side, without Box Plot",
+    side = :left,
+    plot_boxplots = false,
+    color = colors[indexin(category_labels, unique(category_labels))])
+
+rainclouds!(Axis(fig[1, 2]), category_labels, data_array;
+    title = "Right Side, with Box Plot",
+    side = :right,
+    plot_boxplots = true,
+    color = colors[indexin(category_labels, unique(category_labels))])
+
+rainclouds!(Axis(fig[2, 2]), category_labels, data_array;
+    title = "Right Side, without Box Plot",
+    side = :right,
+    plot_boxplots = false,
+    color = colors[indexin(category_labels, unique(category_labels))])
+
+# Plots wiht more categories
+# dist_between_categories (0.6, 1.0)
+# with and without clouds
+
+category_labels, data_array = mockup_categories_and_data_array(12)
+rainclouds!(Axis(fig[3, 1:2]), category_labels, data_array;
+    title = "More categories. Default spacing.",
+    plot_boxplots = true,
+    dist_between_categories = 1.0,
+    color = colors[indexin(category_labels, unique(category_labels))])
+
+rainclouds!(Axis(fig[4, 1:2]), category_labels, data_array;
+    title = "More categories. Adjust space. (smaller cloud widths and smaller category distances)",
+    plot_boxplots = true,
+    cloud_width = 0.3,
+    dist_between_categories = 0.5,
+    color = colors[indexin(category_labels, unique(category_labels))])
+
+
+rainclouds!(Axis(fig[5, 1:2]), category_labels, data_array;
+    title = "More categories. Adjust space. No clouds.",
+    plot_boxplots = true,
+    clouds = nothing,
+    dist_between_categories = 0.5,
+    color = colors[indexin(category_labels, unique(category_labels))])
+
+supertitle = Label(fig[0, :], "Cloud Plot Testing (Scatter, Violin, Boxplot)", textsize=30)
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_8783989339827969684">
+              <img alt="" src="../../../assets/examples/plotting_functions/rainclouds/code/output/example_8783989339827969684.png"/>
+            </a>
+          </p>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: December 02, 2022. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.18.4, GLMakie: v0.7.4, CairoMakie: v0.9.4, WGLMakie: v0.7.4
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../../libs/navbar.js"></script>
+    <script src="https://files.stork-search.net/releases/v1.4.2/stork.js"></script>
+    <img id="stork-library-path-placeholder" src="../../../libs/stork" style="display:none"/>
+    <script>
+      storkfolder = document.querySelector("#stork-library-path-placeholder").src;
+      stork.register("makiesearch", `${storkfolder}/index.st`);
+        </script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script src="../../../libs/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});    </script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>

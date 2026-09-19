@@ -1,0 +1,1538 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../libs/highlight/github.min.css" rel="stylesheet"/>
+    <link href="../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../css/makie.css" rel="stylesheet"/>
+    <link href="../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <title>
+      Basic Tutorial
+    </title>
+    <script src="../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../..">
+                <img src="../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../examples/">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="..">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../documentation/">
+                    Documentation
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <form action="../../search/index.html" id="lunrSearchForm" name="lunrSearchForm">
+              <input class="search-input" name="q" placeholder="Search docs" type="text"/>
+            </form>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../examples">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/layoutables">
+                        Layoutables &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/layoutables/toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/plotting_functions">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/abline">
+                            abline!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvlines">
+                            hlines! and vlines!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvspan">
+                            hspan! and vspan!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="..">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a class="active" href="">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                    <ul class="page-content">
+                      <li>
+                        <a href="#basic_tutorial">
+                          Basic Tutorial
+                        </a>
+                      </li>
+                      <li>
+                        <ul>
+                          <li>
+                            <a href="#preface">
+                              Preface
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#first_plot">
+                              First plot
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#multiple_plots">
+                              Multiple plots
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#attributes">
+                              Attributes
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#array_attributes">
+                              Array attributes
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#simple_legend">
+                              Simple legend
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#subplots">
+                              Subplots
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#constructing_axes_manually">
+                              Constructing axes manually
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#legend_and_colorbar">
+                              Legend and Colorbar
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#passing_attributes_to_figure_and_axis">
+                              Passing attributes to Figure and Axis
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#next_steps">
+                              Next steps
+                            </a>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../documentation">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/api_reference">
+                        API reference
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-3" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-3">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../documentation/backends_and_output">
+                        Backends &amp; Output
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../documentation/backends_and_output/figure_size">
+                            Exporting a Figure with physical dimensions
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../documentation/backends_and_output/wglmakie">
+                            JSServe and WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/layoutables">
+                        Layoutables
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/news">
+                        News
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/remote">
+                        Remote servers
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../documentation/scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-20" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-20">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../documentation/theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../documentation/theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="basic_tutorial">
+            <a class="header-anchor" href="#basic_tutorial">
+              Basic Tutorial
+            </a>
+          </h1>
+          <h2 id="preface">
+            <a class="header-anchor" href="#preface">
+              Preface
+            </a>
+          </h2>
+          <p>
+            Here is a quick tutorial to get you started with Makie!
+          </p>
+          <p>
+            We assume you have
+            <a href="https://julialang.org/">
+              Julia
+            </a>
+            and
+            <code>
+              CairoMakie.jl
+            </code>
+            (or one of the other backends, i.e.
+            <code>
+              GLMakie.jl
+            </code>
+            or
+            <code>
+              WGLMakie.jl
+            </code>
+            ) installed already.
+          </p>
+          <p>
+            This tutorial uses CairoMakie, but the code can be executed with any backend. CairoMakie can output beautiful static vector graphics, but it doesn't have the native ability to open interactive windows.
+          </p>
+          <p>
+            To see the output of plotting commands when using CairoMakie, we recommend you either use an IDE which supports png or svg output, such as VSCode, Atom/Juno, Jupyter, Pluto, etc., or try using a viewer package such as
+            <a href="https://github.com/queryverse/ElectronDisplay.jl">
+              ElectronDisplay.jl
+            </a>
+            , or alternatively save your plots to files directly. The Julia REPL by itself does not have the ability to show plots.
+          </p>
+          <p>
+            GLMakie can open interactive windows, or alternatively display bitmaps inline if
+            <code>
+              Makie.inline!(true)
+            </code>
+            is called.
+          </p>
+          <p>
+            WGLMakie shows interactive plots in environments that support interactive html displays, such as VSCode, Atom/Juno, Jupyter, Pluto, etc.
+          </p>
+          <p>
+            For more information, have a look at
+            <a href="../../documentation/backends_and_output/index.html#backends_output">
+              Backends &amp; Output
+            </a>
+            .
+          </p>
+          <p>
+            Ok, now that this is out of the way, let's get started!
+          </p>
+          <h2 id="first_plot">
+            <a class="header-anchor" href="#first_plot">
+              First plot
+            </a>
+          </h2>
+          <p>
+            First, we import CairoMakie.
+          </p>
+          <pre><code class="language-julia">using CairoMakie</code>          </pre>
+          <p>
+            Makie has many different plotting functions, one of the most common ones is
+            <a href="../../examples/plotting_functions/lines/index.html#lines">
+              lines
+            </a>
+            . You can just call such a function and your plot will appear if your coding environment can show png or svg files.
+          </p>
+          <div class="admonition note">
+            <p class="admonition-title">
+              Note
+            </p>
+            <p>
+              Objects such as
+              <a href="../../documentation/figure/index.html#figures">
+                Figure
+              </a>
+              ,
+              <code>
+                FigureAxisPlot
+              </code>
+              or
+              <code>
+                Scene
+              </code>
+              are usually displayed whenever they are returned in global scope (e.g. in the REPL). To display such objects from within a local scope, like from within a function, you can directly call
+              <code>
+                display(figure)
+              </code>
+              , for example.
+            </p>
+          </div>
+          <pre><code class="language-julia">x = range(0, 10, length=100)
+y = sin.(x)
+lines(x, y)</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_7476458710482869362">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_7476458710482869362.svg"/>
+            </a>
+          </p>
+          <p>
+            Another common function is
+            <a href="../../examples/plotting_functions/scatter/index.html#scatter">
+              scatter
+            </a>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+x = range(0, 10, length=100)
+y = sin.(x)
+scatter(x, y)</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_8304609491846763097">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_8304609491846763097.svg"/>
+            </a>
+          </p>
+          <h2 id="multiple_plots">
+            <a class="header-anchor" href="#multiple_plots">
+              Multiple plots
+            </a>
+          </h2>
+          <p>
+            Every plotting function has a version with and one without
+            <code>
+              !
+            </code>
+            . For example, there's
+            <code>
+              scatter
+            </code>
+            and
+            <code>
+              scatter!
+            </code>
+            ,
+            <code>
+              lines
+            </code>
+            and
+            <code>
+              lines!
+            </code>
+            , etc. The functions without a
+            <code>
+              !
+            </code>
+            always create a new axis with a plot inside, while the functions with
+            <code>
+              !
+            </code>
+            plot into an already existing axis.
+          </p>
+          <p>
+            Here's how you could plot two lines on top of each other.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+x = range(0, 10, length=100)
+y1 = sin.(x)
+y2 = cos.(x)
+
+lines(x, y1)
+lines!(x, y2)
+current_figure()</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_14401808332526033325">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_14401808332526033325.svg"/>
+            </a>
+          </p>
+          <p>
+            The second
+            <code>
+              lines!
+            </code>
+            call plots into the axis created by the first
+            <code>
+              lines
+            </code>
+            call. If you don't specify an axis to plot into, it's as if you had called
+            <code>
+              lines!(current_axis(), ...)
+            </code>
+            .
+          </p>
+          <p>
+            The call to
+            <code>
+              current_figure
+            </code>
+            is necessary here, because functions with
+            <code>
+              !
+            </code>
+            return only the newly created plot object, but this alone does not cause the figure to display when returned.
+          </p>
+          <h2 id="attributes">
+            <a class="header-anchor" href="#attributes">
+              Attributes
+            </a>
+          </h2>
+          <p>
+            Every plotting function has attributes which you can set through keyword arguments. The lines in the previous example both have the same default color, which we can change easily.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+x = range(0, 10, length=100)
+y1 = sin.(x)
+y2 = cos.(x)
+
+lines(x, y1, color = :red)
+lines!(x, y2, color = :blue)
+current_figure()</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_16104267023422442261">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_16104267023422442261.svg"/>
+            </a>
+          </p>
+          <p>
+            Other plotting functions have different attributes. The function
+            <code>
+              scatter
+            </code>
+            , for example, does not only have the
+            <code>
+              color
+            </code>
+            attribute, but also a
+            <code>
+              markersize
+            </code>
+            attribute.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+x = range(0, 10, length=100)
+y1 = sin.(x)
+y2 = cos.(x)
+
+scatter(x, y1, color = :red, markersize = 5)
+scatter!(x, y2, color = :blue, markersize = 10)
+current_figure()</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_14348472925365601418">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_14348472925365601418.svg"/>
+            </a>
+          </p>
+          <p>
+            If you save the plot object returned from a call like
+            <code>
+              scatter!
+            </code>
+            , you can also manipulate its attributes later with the syntax
+            <code>
+              plot.attribute = new_value
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+x = range(0, 10, length=100)
+y1 = sin.(x)
+y2 = cos.(x)
+
+scatter(x, y1, color = :red, markersize = 5)
+sc = scatter!(x, y2, color = :blue, markersize = 10)
+sc.color = :green
+sc.markersize = 20
+current_figure()</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_17613010744264748378">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_17613010744264748378.svg"/>
+            </a>
+          </p>
+          <h2 id="array_attributes">
+            <a class="header-anchor" href="#array_attributes">
+              Array attributes
+            </a>
+          </h2>
+          <p>
+            A lot of attributes can be set to either a single value or an array with as many elements as there are data points. For example, it is usually much more performant to draw many points with one scatter object, than to create many scatter objects with one point each.
+          </p>
+          <p>
+            Here are the two scatter plots again, but one has varying markersize, and the other varying color.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+x = range(0, 10, length=100)
+y1 = sin.(x)
+y2 = cos.(x)
+
+scatter(x, y1, color = :red, markersize = range(5, 15, length=100))
+sc = scatter!(x, y2, color = range(0, 1, length=100), colormap = :thermal)
+
+current_figure()</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_10357445111122165713">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_10357445111122165713.svg"/>
+            </a>
+          </p>
+          <p>
+            Note that the color array does not actually contain colors, rather the numerical values are mapped to the plot's
+            <code>
+              colormap
+            </code>
+            . There are many different colormaps to choose from, take a look on the
+            <a href="../../documentation/colors/index.html#colors">
+              Colors
+            </a>
+            page.
+          </p>
+          <p>
+            The values are mapped to colors via the
+            <code>
+              colorrange
+            </code>
+            attribute, which by default goes from the minimum to the maximum color value, but we can also limit or expand the range manually. For example, we can constrain the previous scatter plot's color range to (0.25, 0.75), which will clip the colors at the bottom and the top quarters.
+          </p>
+          <pre><code class="language-julia">sc.colorrange = (0.25, 0.75)
+
+current_figure()</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_8125838355419472826">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_8125838355419472826.svg"/>
+            </a>
+          </p>
+          <p>
+            Of course you can also use an array of colors directly, in which case the
+            <code>
+              colorrange
+            </code>
+            is ignored:
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+x = range(0, 10, length=100)
+y = sin.(x)
+
+colors = repeat([:crimson, :dodgerblue, :slateblue1, :sienna1, :orchid1], 20)
+
+scatter(x, y, color = colors, markersize = 20)</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_2033433841566096269">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_2033433841566096269.svg"/>
+            </a>
+          </p>
+          <h2 id="simple_legend">
+            <a class="header-anchor" href="#simple_legend">
+              Simple legend
+            </a>
+          </h2>
+          <p>
+            If you add label attributes to your plots, you can call the
+            <code>
+              axislegend
+            </code>
+            function to add a legend with all labeled plots to the current axis.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+x = range(0, 10, length=100)
+y1 = sin.(x)
+y2 = cos.(x)
+
+lines(x, y1, color = :red, label = "sin")
+lines!(x, y2, color = :blue, label = "cos")
+axislegend()
+current_figure()</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_2618343872335953557">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_2618343872335953557.svg"/>
+            </a>
+          </p>
+          <h2 id="subplots">
+            <a class="header-anchor" href="#subplots">
+              Subplots
+            </a>
+          </h2>
+          <p>
+            Makie uses a powerful layout system under the hood, which allows you to create very complex figures with many subplots. For the easiest way to do this, we need a
+            <a href="../../documentation/figure/index.html#figures">
+              Figure
+            </a>
+            object. So far, we haven't seen this explicitly, it was created in the background in the first plotting function call.
+          </p>
+          <p>
+            We can also create a
+            <a href="../../documentation/figure/index.html#figures">
+              Figure
+            </a>
+            directly and then continue working with it. We can make subplots by giving the location of the subplot in our layout grid as the first argument to our plotting function. The basic syntax for specifying the location in a figure is
+            <code>
+              fig[row, col]
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+x = LinRange(0, 10, 100)
+y = sin.(x)
+
+fig = Figure()
+lines(fig[1, 1], x, y, color = :red)
+lines(fig[1, 2], x, y, color = :blue)
+lines(fig[2, 1:2], x, y, color = :green)
+
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_14555578102859101249">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_14555578102859101249.svg"/>
+            </a>
+          </p>
+          <p>
+            Each
+            <code>
+              lines
+            </code>
+            call creates a new axis in the position given as the first argument, that's why we use
+            <code>
+              lines
+            </code>
+            and not
+            <code>
+              lines!
+            </code>
+            here.
+          </p>
+          <h2 id="constructing_axes_manually">
+            <a class="header-anchor" href="#constructing_axes_manually">
+              Constructing axes manually
+            </a>
+          </h2>
+          <p>
+            Like
+            <a href="../../documentation/figure/index.html#figures">
+              Figure
+            </a>
+            s, we can also create axes manually. This is useful if we want to prepare an empty axis to then plot into it later.
+          </p>
+          <p>
+            The default 2D axis that we have created implicitly so far is called
+            <a href="../../examples/layoutables/axis/index.html#axis">
+              Axis
+            </a>
+            and can also be created in a specific position in the figure by passing that position as the first argument.
+          </p>
+          <p>
+            For example, we can create a figure with three axes.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+fig = Figure()
+ax1 = Axis(fig[1, 1])
+ax2 = Axis(fig[1, 2])
+ax3 = Axis(fig[2, 1:2])
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_17115619397357073819">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_17115619397357073819.svg"/>
+            </a>
+          </p>
+          <p>
+            And then we can continue to plot into these empty axes.
+          </p>
+          <pre><code class="language-julia">lines!(ax1, 0..10, sin)
+lines!(ax2, 0..10, cos)
+lines!(ax3, 0..10, sqrt)
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_17749365253106285125">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_17749365253106285125.svg"/>
+            </a>
+          </p>
+          <p>
+            Note, the notation
+            <code>
+              0..10
+            </code>
+            above creates a closed interval from
+            <code>
+              0
+            </code>
+            to
+            <code>
+              10
+            </code>
+            (see
+            <a href="https://github.com/JuliaMath/IntervalSets.jl">
+              <code>
+                IntervalSets.jl
+              </code>
+            </a>
+            for further details).
+          </p>
+          <p>
+            Axes also have many attributes that you can set, for example to give them a title, or labels.
+          </p>
+          <pre><code class="language-julia">ax1.title = "sin"
+ax2.title = "cos"
+ax3.title = "sqrt"
+
+ax1.ylabel = "amplitude"
+ax3.ylabel = "amplitude"
+ax3.xlabel = "time"
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_13557654570063234937">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_13557654570063234937.svg"/>
+            </a>
+          </p>
+          <h2 id="legend_and_colorbar">
+            <a class="header-anchor" href="#legend_and_colorbar">
+              Legend and Colorbar
+            </a>
+          </h2>
+          <p>
+            We have seen two
+            <code>
+              Layoutables
+            </code>
+            so far, the
+            <a href="../../examples/layoutables/axis/index.html#axis">
+              Axis
+            </a>
+            and the
+            <a href="../layout-tutorial/index.html#legend">
+              Legend
+            </a>
+            which was created by the function
+            <code>
+              axislegend
+            </code>
+            . All
+            <code>
+              Layoutable
+            </code>
+            s can be placed into the layout of a figure at arbitrary positions, which makes it easy to assemble complex figures.
+          </p>
+          <p>
+            In the same way as with the
+            <a href="../../examples/layoutables/axis/index.html#axis">
+              Axis
+            </a>
+            before, you can also create a
+            <a href="../layout-tutorial/index.html#legend">
+              Legend
+            </a>
+            manually and then place it freely, wherever you want, in the figure. There are multiple ways to create
+            <a href="../layout-tutorial/index.html#legend">
+              Legend
+            </a>
+            s, for one of them you pass one vector of plot objects and one vector of label strings.
+          </p>
+          <p>
+            You can see here that we can deconstruct the return value from the two
+            <code>
+              lines
+            </code>
+            calls into one newly created axis and one plot object each. We can then feed the plot objects to the legend constructor. We place the legend in the second column and across both rows, which centers it nicely next to the two axes.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+fig = Figure()
+ax1, l1 = lines(fig[1, 1], 0..10, sin, color = :red)
+ax2, l2 = lines(fig[2, 1], 0..10, cos, color = :blue)
+Legend(fig[1:2, 2], [l1, l2], ["sin", "cos"])
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_16508636194737698766">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_16508636194737698766.svg"/>
+            </a>
+          </p>
+          <p>
+            The
+            <a href="../../examples/layoutables/colorbar/index.html#colorbar">
+              Colorbar
+            </a>
+            works in a very similar way. We just need to pass a position in the figure to it, and one plot object. In this example, we use a
+            <code>
+              heatmap
+            </code>
+            .
+          </p>
+          <p>
+            You can see here that we split the return value of
+            <code>
+              heatmap
+            </code>
+            into three parts: the newly created figure, the axis and the heatmap plot object. This is useful as we can then continue with the figure
+            <code>
+              fig
+            </code>
+            and the heatmap
+            <code>
+              hm
+            </code>
+            which we need for the colorbar.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+fig, ax, hm = heatmap(randn(20, 20))
+Colorbar(fig[1, 2], hm)
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_8050001396277137576">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_8050001396277137576.svg"/>
+            </a>
+          </p>
+          <p>
+            The previous short syntax is basically equivalent to this longer, manual version. You can switch between those workflows however you please.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+fig = Figure()
+ax = Axis(fig[1, 1])
+hm = heatmap!(ax, randn(20, 20))
+Colorbar(fig[1, 2], hm)
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_6225888241151240853">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_6225888241151240853.svg"/>
+            </a>
+          </p>
+          <h2 id="passing_attributes_to_figure_and_axis">
+            <a class="header-anchor" href="#passing_attributes_to_figure_and_axis">
+              Passing attributes to Figure and Axis
+            </a>
+          </h2>
+          <p>
+            For one-off plots, it can be convenient to set axis or figure settings directly with the plotting command. You can do this using the plotting functions without the
+            <code>
+              !
+            </code>
+            suffix, like
+            <code>
+              lines
+            </code>
+            or
+            <code>
+              scatter
+            </code>
+            , because these always create a new axis and also create a new figure if they are not plotting onto an existing one. This is explained further under
+            <a href="../../documentation/plot_method_signatures/index.html#plot_method_signatures">
+              Plot Method Signatures
+            </a>
+            .
+          </p>
+          <p>
+            You can pass axis attributes under the keyword
+            <code>
+              axis
+            </code>
+            and figure attributes under the keyword
+            <code>
+              figure
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+heatmap(randn(20, 20),
+    figure = (backgroundcolor = :pink,),
+    axis = (aspect = 1, xlabel = "x axis", ylabel = "y axis")
+)</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_15035588595016389094">
+              <img alt="" src="../../assets/tutorials/basic-tutorial/code/output/example_15035588595016389094.svg"/>
+            </a>
+          </p>
+          <p>
+            If you set only one attribute, be careful to do
+            <code>
+              axis = (key = value,)
+            </code>
+            (note the trailing comma), otherwise you're not creating a
+            <code>
+              NamedTuple
+            </code>
+            but a local variable
+            <code>
+              key
+            </code>
+            .
+          </p>
+          <h2 id="next_steps">
+            <a class="header-anchor" href="#next_steps">
+              Next steps
+            </a>
+          </h2>
+          <p>
+            We've only looked at a small subset of Makie's functionality here.
+          </p>
+          <p>
+            You can read about the different available plotting functions with examples in the Plotting Functions section.
+          </p>
+          <p>
+            If you want to learn about making complex figures with nested sublayouts, have a look at the
+            <a href="../layout-tutorial/index.html#layout_tutorial">
+              Layout Tutorial
+            </a>
+            section.
+          </p>
+          <p>
+            If you're interested in creating interactive visualizations that use Makie's special
+            <code>
+              Observables
+            </code>
+            workflow, this is explained in more detail in the
+            <a href="../../documentation/nodes/index.html#observables_interaction">
+              Observables &amp; Interaction
+            </a>
+            section.
+          </p>
+          <p>
+            If you want to create animated movies, you can find more information in the
+            <a href="../../documentation/animation/index.html#animations">
+              Animations
+            </a>
+            section.
+          </p>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: October 16, 2021. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.15.3, GLMakie: v0.4.7, CairoMakie: v0.6.6, WGLMakie: v0.4.7
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../libs/navbar.js"></script>
+    <script src="../../libs/lunr/lunr.min.js"></script>
+    <script src="../../libs/lunr/lunr_index.js"></script>
+    <script src="../../libs/lunr/lunrclient.min.js"></script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script src="../../libs/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});    </script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>
