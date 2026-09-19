@@ -194,6 +194,12 @@ import Makie: _attribute_docs
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
 end
 
+@testset "validated attributes for figures" begin
+    @test_throws InvalidAttributeError Figure(does_not_exist = 123)
+    @test Figure(size = (400, 300), backgroundcolor = :transparent) isa Figure
+    @test Figure(Axis = (; xticklabelsize = 35)) isa Figure
+end
+
 import Makie: find_nearby_attributes, attribute_names, textdiff
 
 @testset "attribute suggestions" begin
@@ -248,6 +254,8 @@ end
     @test_throws InvalidAttributeError Toggle(fig[1, 1], does_not_exist = 123)
     @test_throws InvalidAttributeError Menu(fig[1, 1], does_not_exist = 123)
     @test_throws InvalidAttributeError Legend(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Legend(fig[1, 1], [LineElement()], ["x"], does_not_exist = 123)
+    @test_throws InvalidAttributeError Legend(fig[1, 1], [[LineElement()]], [["x"]], ["title"], does_not_exist = 123)
     @test_throws InvalidAttributeError LScene(fig[1, 1], does_not_exist = 123)
     @test_throws InvalidAttributeError Textbox(fig[1, 1], does_not_exist = 123)
     @test_throws InvalidAttributeError PolarAxis(fig[1, 1], does_not_exist = 123)
