@@ -14,6 +14,8 @@
 
 ## Unreleased
 
+## [0.24.15] - 2026-09-18
+
 - Fixed `contourf` and `tricontourf` drawing a constant field in two colors, by placing the constant value in the middle of a band instead of on a band edge [#5787](https://github.com/MakieOrg/Makie.jl/pull/5787).
 - Allowed FFMPEG_jll 9 [#5789](https://github.com/MakieOrg/Makie.jl/pull/5789).
 - Contour labels, `voronoiplot` colors, `triplot` convex hulls, `hexbin` draw order and `datashader` category colors no longer depend on `Dict` iteration order, so they stay the same across Julia versions [#5792](https://github.com/MakieOrg/Makie.jl/pull/5792).
@@ -1109,7 +1111,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.14...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.15...HEAD
+[0.24.15]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.14...v0.24.15
 [0.24.14]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...v0.24.14
 [0.24.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.12...v0.24.13
 [0.24.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.11...v0.24.12
