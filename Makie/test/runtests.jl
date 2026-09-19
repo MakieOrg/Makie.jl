@@ -49,6 +49,7 @@ end
         include("plots/tricontour.jl")
         include("plots/voronoiplot.jl")
         include("plots/deterministic_order.jl")
+        include("plots/volumeslices.jl")
     end
 
     @testset "Scenes, Blocks & Figures" begin
