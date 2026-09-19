@@ -438,11 +438,40 @@ function init_lights!(hikari_scene, rscene, integrator)
 
 end
 
+"""
+    scene_viewport_px(scene, ppu) -> Rect2f
+
+A scene's rectangle in DRAWABLE PIXELS.
+
+`Makie.viewport` is in scene UNITS, and a drawable is `px_per_unit` times bigger
+than the window is in units. Anything that SIZES a render target or INDEXES the
+output buffer needs the pixel rectangle; reading `Makie.viewport` straight gives
+the right answer only at `px_per_unit == 1`, which is every offscreen render and
+no Retina window.
+
+That is what `surface(rand(20, 20))` came out of: the ray-traced film of an
+`Axis3` sub-scene was sized from the viewport in units — 568x418 — and blitted
+1:1 into a 1200x900 drawable, so the traced image sat at a quarter of the area in
+the bottom-left corner while the axis decorations, which DID go through this
+conversion in `overlay_rendering.jl`, were drawn at full size around it.
+"""
+function scene_viewport_px(scene::Makie.Scene, ppu::Real)
+    vp = Makie.viewport(scene)[]
+    ppu == 1 && return Rect2f(vp)
+    s = Float32(ppu)
+    return Rect2f(Point2f(vp.origin) .* s, Point2f(vp.widths) .* s)
+end
+
 # Compute Film resolution and NDC screen_window for a sub-scene viewport
 # clipped to the root figure bounds. Axis3 may request oversized viewports
 # that extend beyond the figure — we only render the visible sub-region.
-function compute_scene_resolution(rscene::Makie.Scene, root_w::Int, root_h::Int)
-    vp = Makie.viewport(rscene)[]
+#
+# Everything here is in PIXELS: `root_w`/`root_h` are the drawable's, and the
+# viewport is converted. They used to be mixed — a viewport in units clipped
+# against a root in pixels — which is only harmless while the two are the same.
+# The NDC window below is built from RATIOS, so it is unchanged by the scale.
+function compute_scene_resolution(rscene::Makie.Scene, root_w::Int, root_h::Int, ppu::Real)
+    vp = scene_viewport_px(rscene, ppu)
     vp_w, vp_h = Makie.widths(vp)
     vx, vy = vp.origin
 
@@ -472,14 +501,16 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
     ka_backend = screen.config.device
     integrator = screen.config.integrator
 
-    root_w, root_h = size(root_scene)
+    # In PIXELS, like the film it sizes and the buffer it is composited into.
+    ppu = screen.px_per_unit
+    root_w, root_h = round(Int, size(root_scene)[1] * ppu), round(Int, size(root_scene)[2] * ppu)
     if rscene === root_scene
         # Scene IS the root — use full size, no viewport clipping.
         # The viewport origin may be a Figure-level offset that doesn't apply here.
         resolution = Point2f(Float32(root_w), Float32(root_h))
         screen_window = nothing
     else
-        resolution, screen_window = compute_scene_resolution(rscene, root_w, root_h)
+        resolution, screen_window = compute_scene_resolution(rscene, root_w, root_h, ppu)
     end
 
     film = Hikari.Film(
@@ -848,27 +879,38 @@ end
 # first precompile compiles this scene's kernels and freezes them to disk, later
 # precompiles load them back instead of recompiling SPIR-V.
 #
-# Rendering needs a working Vulkan device, so the try/catch skips the workload
-# cleanly on device-less machines (CI) rather than breaking precompilation. It is
-# on by default; toggle it the standard PrecompileTools way, via Preferences:
+# Rendering needs a working device, and precompilation does not always get one.
+# It is on by default; toggle it the standard PrecompileTools way, via Preferences:
 #     using RayMakie, Preferences
 #     set_preferences!(RayMakie, "precompile_workload" => false; force = true)  # disable
+#
+# "No backend here" is ASKED, not caught. It is the ordinary answer on Apple and
+# says nothing is wrong: a GPU package must not touch the device while
+# `jl_generating_output` is set, so `Metal.__init__` returns early, `functional()`
+# is false, and nothing registers. `defaultbackend()` throws for that, and the
+# throw was reported with a twenty-line backtrace on EVERY build of RayMakie and
+# of anything depending on it — which reads as a broken install. The remaining
+# `try` is for the other case, a device that registers and then fails to render.
 const PRECOMPILE_KERNELS_VERSION = "raymakie_pc"
 Mantle.@setup_workload begin
-    try
+    if isempty(Mantle.availablebackends())
+        @debug "RayMakie: precompilation has no GPU backend; skipping the GPU workload"
+    else
         dev = Mantle.defaultbackend()
-        Mantle.@compile_workload PRECOMPILE_KERNELS_VERSION begin
-            scene = Scene(size = (96, 72),
-                          lights = [PointLight(RGBf(30, 30, 30), Vec3f(4, 5, 6))])
-            cam3d!(scene)
-            mesh!(scene, Sphere(Point3f(0, 0, 0), 0.9f0);
-                  material = Hikari.Diffuse(Kd = (0.6, 0.6, 0.6)))
-            activate!(; device = dev)
-            colorbuffer(scene; backend = RayMakie,
-                        integrator = Hikari.VolPath(; samples = 1, max_depth = 4, hw_accel = true))
+        try
+            Mantle.@compile_workload PRECOMPILE_KERNELS_VERSION begin
+                scene = Scene(size = (96, 72),
+                              lights = [PointLight(RGBf(30, 30, 30), Vec3f(4, 5, 6))])
+                cam3d!(scene)
+                mesh!(scene, Sphere(Point3f(0, 0, 0), 0.9f0);
+                      material = Hikari.Diffuse(Kd = (0.6, 0.6, 0.6)))
+                activate!(; device = dev)
+                colorbuffer(scene; backend = RayMakie,
+                            integrator = Hikari.VolPath(; samples = 1, max_depth = 4, hw_accel = true))
+            end
+        catch e
+            @warn "RayMakie GPU precompile workload skipped" exception = (e, catch_backtrace())
         end
-    catch e
-        @warn "RayMakie GPU precompile workload skipped" exception = (e, catch_backtrace())
     end
 end
 

@@ -126,16 +126,23 @@ mutable struct Screen <: Makie.MakieScreen
     window::Any                 # Nothing or a Mantle.Window
     rendertask::Union{Nothing, Task}
     stop_renderloop::Threads.Atomic{Bool}
-    # A frame `colorbuffer` asked the render loop for, raw. Filled only when
-    # asked: the loop used to snapshot every frame to serve a call that usually
-    # never comes, and what it snapshotted was `output_buffer` — the image
-    # BEFORE the overlays — so a live window made `colorbuffer` and therefore
-    # `save` produce a figure with no plots in it.
-    last_colorbuffer::Union{Nothing, Matrix{RGBA{Float32}}}
+    # The answer slot of a `requestframe`, raw: the frame the render loop drew
+    # because someone asked, and `nothing` at every other moment. NOT a running
+    # cache of the last frame shown — it was one, and the loop paid 1.3 ms a
+    # frame converting an image to serve a call that usually never comes. What
+    # it cached was `output_buffer`, the image BEFORE the overlays, so a live
+    # window made `colorbuffer` and therefore `save` produce a figure with no
+    # plots in it.
+    requested_frame::Union{Nothing, Matrix{RGBA{Float32}}}
     # Set by `colorbuffer`, cleared by the loop once it has left a frame above.
     # A flag and not a lock because the loop is an `@async` task on this thread:
     # the two never run at once, so there is nothing to race.
     frame_wanted::Threads.Atomic{Bool}
+    # Frames the render loop has presented. `requestframe` waits on this rather
+    # than on a clock: a loop that is slow is not a loop that is stuck, and the
+    # first frame is the slow one because that is where the overlay pipelines
+    # are compiled.
+    frames_presented::Threads.Atomic{Int}
     # Cached state for uncovered overlay rendering
     uncovered_state::Union{Nothing, RayMakieState}
     # Per-screen overlay caches
@@ -173,8 +180,9 @@ mutable struct Screen <: Makie.MakieScreen
 
     function Screen(scene, state, config)
         s = new(scene, state, RayMakieState[], nothing, nothing, config,   # …, output_buffer, memory, …
-                nothing, nothing, Threads.Atomic{Bool}(false), nothing,  # window, rendertask, stop, last_colorbuffer
+                nothing, nothing, Threads.Atomic{Bool}(false), nothing,  # window, rendertask, stop, requested_frame
                 Threads.Atomic{Bool}(false),                             # frame_wanted
+                Threads.Atomic{Int}(0),                                  # frames_presented
                 nothing,           # uncovered_state
                 nothing, 0,        # cached_atlas
                 nothing, (0, 0),   # overlay_fb
@@ -236,7 +244,10 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
             resolution = Point2f(Float32(w), Float32(h))
             screen_window = nothing
         else
-            resolution, screen_window = compute_scene_resolution(state.makie_scene, w, h)
+            # `w, h` are PIXELS — this is called with the drawable's size — so the
+            # viewport is converted to match.
+            resolution, screen_window = compute_scene_resolution(state.makie_scene, w, h,
+                                                                 screen.px_per_unit)
         end
 
         film = Hikari.Film(resolution;
@@ -598,7 +609,7 @@ function postprocess_and_composite!(screen::Screen)
     for scene_state in screen.scene_states
         scene_state.overlay_only && continue
         postprocess_scene_state!(screen, scene_state)
-        composite_scene!(screen.output_buffer, scene_state, screen.scene)
+        composite_scene!(screen.output_buffer, scene_state, screen.scene, screen.px_per_unit)
     end
 
     return Array(screen.output_buffer)
@@ -614,7 +625,7 @@ function postprocess_and_composite_gpu!(screen::Screen)
         # Overlay-only scenes render directly to the window via render_overlays!.
         scene_state.overlay_only && continue
         postprocess_scene_state!(screen, scene_state)
-        composite_scene!(screen.output_buffer, scene_state, screen.scene)
+        composite_scene!(screen.output_buffer, scene_state, screen.scene, screen.px_per_unit)
     end
     KernelAbstractions.synchronize(screen.config.device)
 
@@ -633,7 +644,12 @@ end
     @inbounds output[dr, dc] = sub_image[sr, sc]
 end
 
-function composite_scene!(output::AbstractMatrix{RGBA{Float32}}, scene_state::RayMakieState, root_scene::Makie.Scene)
+# `ppu` because `output` is indexed in PIXELS and `Makie.viewport` is in scene
+# units. Reading the viewport straight put an `Axis3`'s traced image at
+# 1/ppu scale in the corner of the drawable — see `scene_viewport_px`, which is
+# also what sized the film, so the two agree by construction now.
+function composite_scene!(output::AbstractMatrix{RGBA{Float32}}, scene_state::RayMakieState,
+                          root_scene::Makie.Scene, ppu::Real)
     sub_image = scene_state.film.postprocess
     out_h, out_w = size(output)
     vh, vw = size(sub_image)
@@ -643,7 +659,7 @@ function composite_scene!(output::AbstractMatrix{RGBA{Float32}}, scene_state::Ra
         col_start = 1
         row_start = 1
     else
-        vp = Makie.viewport(scene_state.makie_scene)[]
+        vp = scene_viewport_px(scene_state.makie_scene, ppu)
         vx, vy = vp.origin
         fig_x = max(0f0, Float32(vx))
         fig_y = max(0f0, Float32(vy))
@@ -722,8 +738,25 @@ function unswizzle(pixels::AbstractMatrix, w::Integer, h::Integer)
     return result
 end
 
-"""How long `colorbuffer` waits for the render loop to hand it a frame."""
-const FRAME_REQUEST_TIMEOUT = 5.0
+"""
+How long `colorbuffer` waits for the render loop to PRESENT ANOTHER FRAME before
+calling it stuck.
+
+A WATCHDOG, not a latency budget, and sized accordingly. A loop that is
+presenting is working however slowly, and the first frame is legitimately the
+slow one — the ray-tracing kernels and the overlay pipelines are compiled inside
+it, which on a cold shader cache is tens of seconds. A budget of five seconds
+expired there on the first `colorbuffer` after every `display` and sent it into
+the fall-through path below: the one that renders from the calling task and
+contends with the loop for the device, which is the deadlock this whole
+handshake exists to avoid.
+
+A loop that has ENDED needs no timeout at all — `renderloop_running` sees
+`istaskdone` immediately and `requestframe` returns at once. So the only case
+this covers is a loop that is alive and not advancing, which is a bug elsewhere;
+the number just has to be longer than any frame that is merely slow.
+"""
+const FRAME_STALL_TIMEOUT = 60.0
 
 """
     requestframe(screen) -> Matrix{RGBA{Float32}} or nothing
@@ -735,19 +768,31 @@ deadlock and was one: `colorbuffer` fell through to rendering a frame itself
 while the loop was mid-frame. So the loop draws it, between two of its own
 frames, and this waits.
 
-`nothing` if the loop does not answer within [`FRAME_REQUEST_TIMEOUT`](@ref) —
-it may be blocked in a compile, or stopping.
+Waits as long as the loop keeps presenting. `nothing` if the loop stops — it
+ended, or it went [`FRAME_STALL_TIMEOUT`](@ref) without a frame.
 """
 function requestframe(screen::Screen)
-    screen.last_colorbuffer = nothing
+    screen.requested_frame = nothing
     screen.frame_wanted[] = true
-    t0 = time()
-    while screen.frame_wanted[] && time() - t0 < FRAME_REQUEST_TIMEOUT
+    seen = screen.frames_presented[]
+    t_progress = time()
+    while screen.frame_wanted[]
         renderloop_running(screen) || break
+        now = screen.frames_presented[]
+        if now != seen
+            seen = now
+            t_progress = time()
+        elseif time() - t_progress > FRAME_STALL_TIMEOUT
+            break
+        end
         sleep(0.001)
     end
     screen.frame_wanted[] = false
-    return screen.last_colorbuffer
+    # Taken, not left behind: the slot holds a full frame, and the field's whole
+    # contract is that it is empty except while a request is in flight.
+    frame = screen.requested_frame
+    screen.requested_frame = nothing
+    return frame
 end
 
 """
@@ -758,7 +803,7 @@ Draw a frame for a waiting [`requestframe`](@ref), if one is waiting.
 function answerframe!(screen::Screen)
     screen.frame_wanted[] || return nothing
     try
-        screen.last_colorbuffer = composited_frame(screen)
+        screen.requested_frame = composited_frame(screen)  # `requestframe` takes it
     catch e
         @warn "RayMakie: rendering the frame `colorbuffer` asked for failed" exception = (e, catch_backtrace())
     finally
@@ -824,11 +869,11 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
             rgb = tosrgb8(buf)
             return format == Makie.GLNative ? Makie.jl_to_gl_format(rgb) : rgb
         end
-        # The loop did not answer in time. Falling through renders a frame from
+        # The loop stopped presenting. Falling through renders a frame from
         # here, which is what this branch exists to avoid — it contends with the
         # loop for the device — so say so rather than hang quietly.
-        @warn "RayMakie: the render loop did not produce a frame in $(FRAME_REQUEST_TIMEOUT)s; \
-               rendering one from this task instead" maxlog = 1
+        @warn "RayMakie: the render loop stalled (no frame presented in \
+               $(FRAME_STALL_TIMEOUT)s); rendering one from this task instead" maxlog = 1
         # No frame yet -- fall through to render one
     end
 
@@ -873,7 +918,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # on it meant a RAYTRACED scene's overlays — every `lines!`, `scatter!` and
     # `text!` in it, which is every decoration an `Axis3` is made of — were built
     # and then never composited.
-    has_overlays = any(ss -> !isempty(collect_overlay_robjs(ss)), screen.scene_states)
+    has_overlays = any(ss -> !isempty(collect_overlay_robjs(ss, screen.scene)), screen.scene_states)
 
     # Postprocess + composite into output_buffer (on GPU)
     bg = screen.scene.backgroundcolor[]
@@ -881,7 +926,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     for scene_state in screen.scene_states
         scene_state.overlay_only && continue
         postprocess_scene_state!(screen, scene_state)
-        composite_scene!(screen.output_buffer, scene_state, screen.scene)
+        composite_scene!(screen.output_buffer, scene_state, screen.scene, screen.px_per_unit)
     end
     KernelAbstractions.synchronize(screen.config.device)
 
@@ -981,6 +1026,30 @@ function present_composited!(screen::Screen, win)
 end
 
 """
+    primary_monitor_scale() -> Float32
+
+The primary display's horizontal content scale, or `1` if GLFW will not say.
+
+Needs `GLFW.Init()` to have succeeded. `GetPrimaryMonitor` returns NULL when it
+has not, or when the machine reports no monitor at all, and GLFW's own
+`assert(monitor != NULL)` is compiled out of the shipped library — so
+`GetMonitorContentScale(NULL)` reads through a null `NSScreen *` and takes the
+process down with SIGSEGV inside `_glfwGetMonitorContentScaleCocoa` rather than
+raising anything Julia can catch. A segfault while merely asking how big a pixel
+is, is not an acceptable failure mode for opening a window, so the handle is
+checked.
+"""
+function primary_monitor_scale()
+    mon = GLFW.GetPrimaryMonitor()
+    if mon.handle == C_NULL
+        @warn "RayMakie: GLFW reports no primary monitor; assuming 1 pixel per unit"
+        return 1.0f0
+    end
+    sx, _sy = GLFW.GetMonitorContentScale(mon)
+    return Float32(sx <= 0 ? 1 : sx)
+end
+
+"""
     start_renderloop!(screen::Screen, root_scene::Scene)
 
 Open a GLFW window and start an async render loop. Called automatically by
@@ -990,18 +1059,18 @@ frame), presents to the window, and handles input events.
 function start_renderloop!(screen::Screen, root_scene::Scene)
     w, h = size(root_scene)
 
-    # BEFORE the precompile render below, because that is what builds the render
-    # objects and they bake `px_per_unit` into their arguments.
-    #
     # The scale the display actually uses, the way GLMakie takes it: a figure
     # `size = (600, 450)` is 600x450 UNITS, so the window is 600x450 points and
     # the drawable is that times the scale. Asking Mantle for `w, h` gave a
     # drawable of exactly that many PIXELS — which on a 2x panel is a 300x225
     # point window, half the size GLMakie shows.
-    GLFW.Init()
-    sx, _sy = GLFW.GetMonitorContentScale(GLFW.GetPrimaryMonitor())
-    screen.px_per_unit = Float32(sx <= 0 ? 1 : sx)
-    ppu = screen.px_per_unit
+    #
+    # A GUESS, and only used to pick the initial window size. The window itself
+    # is the authority and corrects it below, before anything reads it.
+    GLFW.Init() || error("RayMakie: GLFW could not initialise, so no window can be \
+                          opened. Use `visible = false` for an offscreen screen.")
+    ppu = primary_monitor_scale()
+    screen.px_per_unit = ppu
     pw, ph = round(Int, w * ppu), round(Int, h * ppu)
 
     # Compile the ray-tracing pipeline + kernels BEFORE opening the window.
@@ -1025,6 +1094,25 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
     win = Mantle.Window(screen.config.device, pw, ph; title=screen.config.title, vsync=screen.config.vsync,
                             color_format=COMPOSITE_FORMAT)
     screen.window = win
+
+    # The window is the authority on its own scale — it knows which display it
+    # landed on, and the guess above was the PRIMARY monitor's. On a second
+    # display with a different scale every glyph, linewidth and viewport would
+    # otherwise be sized for the wrong panel.
+    #
+    # Correcting it here is free and correcting it later is not: `px_per_unit`
+    # is read through `Makie.px_per_unit` when a plot resolves, so it is baked
+    # into every overlay render object. None exists yet — the precompile render
+    # above draws the traced film, and the overlays are built by the first
+    # `poll_all_plots`, which happens in the loop below. `beginframe!` picks the
+    # new framebuffer size up on its own, so the resize needs no other handling.
+    let (sx, _sy) = GLFW.GetWindowContentScale(win.handle)
+        if sx > 0 && !(Float32(sx) ≈ ppu)
+            screen.px_per_unit = ppu = Float32(sx)
+            pw, ph = round(Int, w * ppu), round(Int, h * ppu)
+            GLFW.SetWindowSize(win.handle, w, h)   # w, h POINTS -> pw, ph pixels
+        end
+    end
     # The film and `output_buffer` are sized in PIXELS, like the drawable they
     # are blitted into. The loop below re-checks this on every frame, but the
     # FIRST present happens before it — and a 600x450 source into a 1200x900
@@ -1069,6 +1157,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
 
             present_composited!(screen, win)
             Mantle.waitidle(screen.config.device)
+            Threads.atomic_add!(screen.frames_presented, 1)
 
             while !screen.stop_renderloop[]
                 GLFW.PollEvents()
@@ -1099,6 +1188,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
 
                 present_composited!(screen, win)
                 Mantle.waitidle(screen.config.device)
+                Threads.atomic_add!(screen.frames_presented, 1)
 
                 # Only when asked. `composited_frame` redraws the frame offscreen
                 # with its overlays, which costs about as much again as

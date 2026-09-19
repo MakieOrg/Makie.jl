@@ -62,7 +62,7 @@ end
 # =============================================================================
 
 """
-    collect_overlay_robjs(state; scenes = nothing)
+    collect_overlay_robjs(state, root_scene; scenes = nothing)
 
 Every raster render object the overlay pass would draw for `state`, each paired
 with the viewport rect it belongs in.
@@ -76,7 +76,7 @@ scene's CAMERA. So a 3D scene holding `lines!`, `scatter!` or `text!` built thei
 render objects and then nobody drew them, which is also why an `Axis3` came out
 with no spines, ticks or labels.
 """
-function collect_overlay_robjs(state::RayMakieState; scenes = nothing)
+function collect_overlay_robjs(state::RayMakieState, root_scene::Makie.Scene; scenes = nothing)
     robjs = Tuple{RenderObject, NTuple{4, Float32}}[]
 
     overlay_scenes = if scenes !== nothing
@@ -87,7 +87,19 @@ function collect_overlay_robjs(state::RayMakieState; scenes = nothing)
         [state.makie_scene]
     end
 
-    root_w, root_h = size(state.makie_scene)
+    # The ROOT's height, because that is the space `vp.origin` is measured in —
+    # a scene's viewport is placed in the figure, not in itself — and the flip
+    # below turns a y-up origin into a y-down one.
+    #
+    # This read `size(state.makie_scene)`, which is the same scene as the root
+    # for an overlay-only state and therefore right for every 2D figure. For a
+    # TRACED state it is the sub-scene: an `LScene` 368 units tall in a 400-unit
+    # figure flipped against 368 and drew every decoration 32 units too high, so
+    # the axis box, its ticks and its labels sat above the surface they belong
+    # to while the traced image itself was in the right place. Mixing a
+    # sub-scene's height with a root-space origin, which is the same mistake as
+    # sizing a film in units and blitting it into pixels.
+    root_h = size(root_scene)[2]
     for rscene in overlay_scenes
         vp = Makie.viewport(rscene)[]
         vp_y = Float32(root_h - vp.origin[2])
@@ -319,7 +331,7 @@ function overlay_robjs(screen; scenes = nothing)
     robjs = Tuple{RenderObject, NTuple{4, Float32}}[]
     for ss in overlay_root_states(screen)
         screen.state = ss
-        append!(robjs, collect_overlay_robjs(ss; scenes))
+        append!(robjs, collect_overlay_robjs(ss, screen.scene; scenes))
     end
     # Every pipeline checked BEFORE the graph is built, so one this backend
     # cannot run is a named error rather than a half-composited frame.

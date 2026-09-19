@@ -1,5 +1,18 @@
 # draw_atomic for text — uses same scatter pipeline with text-specific conversions
 
+"""
+Is `r` the one rotation that means "not rotated"?
+
+A VECTOR of rotations is never it, even if every entry is the identity: a plot
+that gives a rotation per character is asking for oriented glyphs, which is the
+case `billboard` has to yield to.
+"""
+function identity_rotation(r)
+    r isa AbstractVector && return false
+    q = Makie.to_rotation(r)
+    return q[1] == 0 && q[2] == 0 && q[3] == 0 && q[4] == 1
+end
+
 function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
     attr = plot.attributes
     haskey(attr, :sdf_uv) || return nothing
@@ -54,7 +67,22 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
 
     # Constants
     haskey(attr, :sdf_marker_shape) || Makie.ComputePipeline.add_constant!(attr, :sdf_marker_shape, Cint(3))
-    haskey(attr, :billboard) || Makie.ComputePipeline.add_constant!(attr, :billboard, true)
+    # `billboard` FOLLOWS THE ROTATION, the way GLMakie's default does
+    # (`billboard = rotation == Vec4f(0, 0, 0, 1)`, with the comment "rotation and
+    # billboard don't go along"). The sprite shader picks `projection` over
+    # `projection * view` for a billboard, because a camera-facing quad's offsets
+    # are in VIEW space — so a quad that carries a real rotation must take the
+    # other branch or it is built in the wrong basis.
+    #
+    # Hardcoded `true` was right for exactly one case and wrong for the other: a
+    # 2D axis's tick labels have `markerspace = :pixel` and an identity rotation,
+    # and pixel space has an identity `view`, so both branches agree and every
+    # test passed. `Axis3D`'s labels are per-character rotations onto the axis
+    # planes in DATA markerspace, where `view` is the real 3D one — dropping it
+    # smeared every glyph quad into a band across the whole figure, which is what
+    # `surface(rand(20, 20))` looked like.
+    haskey(attr, :billboard) || Makie.ComputePipeline.map!(
+        identity_rotation, attr, :text_rotation, :billboard)
     haskey(attr, :transform_marker) || Makie.ComputePipeline.add_constant!(attr, :transform_marker, false)
 
     # Scalar conversions to gpu_* (Int32)

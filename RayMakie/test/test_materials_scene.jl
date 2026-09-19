@@ -88,15 +88,18 @@ end
     test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
 
 Test rendering the materials scene with the given backend.
+
+The tone mapping and exposure go to `colorbuffer`, NOT to `activate!`.
+`activate!` writes the global default theme and nothing here puts it back, so
+this file used to leave `tonemap = nothing, exposure = 0.5, gamma = 2.2` set for
+every test that ran after it — the whole rest of the suite, rendering HDR
+radiance with no tone map, which saturates to white. runtests.jl already
+re-activated the DEVICE afterwards to undo half of this; the other half stayed,
+and it is what made the sphere in test_window_frame.jl come out white and
+invisible when that file ran in the suite and orange when it ran alone.
+Per-call config leaks nothing and needs no restoring.
 """
 function test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
-    RayMakie.activate!(
-        device=backend,
-        exposure=0.5f0,
-        tonemap=nothing,
-        gamma=2.2f0,
-    )
-
     scene = create_test_materials_scene()
     # The sensor belongs to the integrator, not the screen config. This file had
     # drifted across three separate API moves at once, which is why it errored on
@@ -109,15 +112,32 @@ function test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
                                 sensor=Hikari.PixelSensor(iso=50, exposure_time=1.0,
                                                           whitebalance=0))
 
-    img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
+    img = colorbuffer(scene; backend=RayMakie, integrator=integrator,
+                      device=backend, exposure=0.5f0, tonemap=nothing, gamma=2.2f0)
     return img
 end
 
 @testset "Materials Scene Rendering" begin
+    # Read BEFORE, so the leak is pinned rather than described. `activate!`
+    # writes the global default theme and this file has no business changing it
+    # for whatever runs next: with `tonemap = nothing` left set, every later
+    # render maps HDR radiance straight to the display and saturates to white,
+    # which took test_window_frame.jl's sphere out of its own picture.
+    theme_before = let t = Makie.current_default_theme()[:RayMakie]
+        Dict(k => t[k][] for k in (:device, :exposure, :tonemap, :gamma))
+    end
+
     @testset "CPU Array backend" begin
         img = test_render_materials(backend=Raycore.KA.CPU(), samples=1)
         @test size(img) == (300, 400)
         @test eltype(img) <: Colorant
+    end
+
+    @testset "renders on its own config and leaves the defaults alone" begin
+        t = Makie.current_default_theme()[:RayMakie]
+        for (k, v) in theme_before
+            @test t[k][] === v
+        end
     end
 end
 

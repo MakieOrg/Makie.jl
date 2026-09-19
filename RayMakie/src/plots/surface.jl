@@ -46,6 +46,19 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
         color_tex = args.trace_color_tex
         transform = Mat4f(args.model_f32c)
 
+        # RASTER first, for a scene that is not ray-traced. `mesh!` has had this
+        # fork since the beginning and `surface!` had only the traced half, so it
+        # pushed into a `hikari_scene` that is `nothing` — `MethodError:
+        # push!(::Nothing, …)`, which the compute graph reports as "this plot
+        # will not be drawn", i.e. a blank axis and no stack trace. Two ordinary
+        # calls land here: `surface!` into a 2D `Axis`, and any surface whose
+        # scene has no 3D camera — `surface(fill(3f0, 20, 20))` gets an
+        # `EmptyCamera`, because a flat one gives `LScene` nothing to fit.
+        if !should_raytrace(scene, plot) || isnothing(hikari_scene)
+            last_robj = isnothing(last) ? nothing : last.trace_renderobject
+            return (surface_overlay_dispatch!(screen, scene, plot, args, last_robj),)
+        end
+
         if isnothing(last) || isnothing(last.trace_renderobject)
             mat = extract_material(plot, color_tex)
             handle = push!(hikari_scene, gb_mesh, mat; transform=transform)
@@ -78,4 +91,56 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
 
         return (robj,)
     end
+end
+
+
+# =============================================================================
+# The raster path
+# =============================================================================
+#
+# A surface IS a mesh, so this hands the same flat vertex arrays to the same
+# pipeline `mesh!` uses rather than growing a second one. The mesh's vertices
+# are `vec(positions)` over the z grid, so a colour array of the grid's shape
+# indexes them one for one.
+
+"""Per-vertex RGBA for the raster path, expanded over `faces`."""
+function surface_overlay_colors(plot, faces, nverts)
+    out = Vector{Vec4f}(undef, 3 * length(faces))
+    computed = Makie.compute_colors(plot.attributes)
+    if computed isa AbstractArray{<:Colorant} && length(computed) == nverts
+        flat = vec(computed)
+        @inbounds for (fi, f) in enumerate(faces), j in 1:3
+            c = RGBA{Float32}(flat[f[j]])
+            out[3 * (fi - 1) + j] = Vec4f(c.r, c.g, c.b, c.alpha)
+        end
+        return out
+    end
+    # One colour for the whole surface: either the user set a scalar, or the
+    # colormapping produced something this path cannot index per vertex.
+    raw = to_value(plot.color)
+    c = raw isa Colorant ? RGBA{Float32}(raw) :
+        computed isa Colorant ? RGBA{Float32}(computed) : RGBA{Float32}(0.5, 0.5, 0.5, 1)
+    fill!(out, Vec4f(c.r, c.g, c.b, c.alpha))
+    return out
+end
+
+"""Draw a surface with the graphics pipeline, for a scene that is not traced."""
+function surface_overlay_dispatch!(screen, scene, plot, args, last_robj)
+    gb_mesh = args.trace_surface_mesh
+    positions = GeometryBasics.coordinates(gb_mesh)
+    faces = GeometryBasics.faces(gb_mesh)
+
+    flat_positions = Vector{Vec3f}(undef, 3 * length(faces))
+    @inbounds for (fi, f) in enumerate(faces), j in 1:3
+        p = positions[f[j]]
+        flat_positions[3 * (fi - 1) + j] = Vec3f(p[1], p[2], p[3])
+    end
+    flat_colors = surface_overlay_colors(plot, faces, length(positions))
+
+    pv = plot_clip_matrix(scene, plot)
+    model_mat = Mat4f(args.model_f32c)
+    if last_robj isa RenderObject
+        return mesh_overlay_update!(last_robj, flat_positions, flat_colors, pv, model_mat)
+    end
+    return mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat)
 end

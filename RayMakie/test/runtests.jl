@@ -184,20 +184,20 @@ using RayMakie
 RayMakie.activate!(; device = BACKEND)
 
 # Rasterised overlays — lines, scatter, text drawn OVER the raytraced image.
-# They need a graphics pipeline and a framebuffer, which is a backend capability
-# rather than a given: Metal.jl compiles Julia to compute kernels only, there is
-# no `MTLRenderPipelineState` wrapper and no vertex/fragment stage, so
-# `supports_graphics` is false there and stays false. RayMakie's `colorbuffer`
-# already has a direct-readback path for scenes with no overlays, and that is
-# the one such a backend takes.
-#
-# Asked as a capability, never as a vendor name. Ungated, these errored with
-# `MethodError: no constructors have been defined for Framebuffer` — ten of
-# them, which reads as "RayMakie is broken" rather than "this device cannot
-# rasterise".
+# They need a graphics pipeline, which is a backend capability rather than a
+# given. Asked as a capability, never as a vendor name: ungated on a device that
+# cannot rasterise these errored with `MethodError: no constructors have been
+# defined for Framebuffer` — ten of them, which reads as "RayMakie is broken"
+# rather than "this device cannot rasterise". RayMakie's `colorbuffer` already
+# has a direct-readback path for scenes with no overlays, and that is the one
+# such a backend takes.
 const GRAPHICS_TEST_FILES = [
     "test_overlay_compositing.jl",
     "test_figure_scene_routing.jl",
+    "test_interaction_overlays.jl",
+    "test_reference_frames.jl",
+    "test_text_3d.jl",
+    "test_surface_paths.jl",
     "test_window_frame.jl",
 ]
 
@@ -208,18 +208,23 @@ const GRAPHICS_TEST_FILES = [
         end
     end
 
-    # `supports_batch_queue`, not `supports_graphics`: these files composite
-    # rasterised overlays by RECORDING INTO a batch queue, and the two questions
-    # came apart when Metal learned to rasterise. Metal compiles vertex and
-    # fragment programs and draws with them, but has no command pool or fence to
-    # build a `BatchQueue` out of, so `allocate_batch_queue!` throws there by
-    # design. Asking the wrong question sends this straight into that throw.
-    if Mantle.supports_batch_queue(BACKEND)
-        # `test_materials_scene.jl` activates the CPU backend for its own
-        # renders and leaves it active, so every screen the graphics files make
-        # without naming a device — `make_screen(sc)` in the overlay file — was
-        # a CPU screen: no overlays drawn, and `HWTLAS(::CPU)` had no method
-        # (2026-09-08). Put the GPU back before them.
+    # `supports_graphics` — the question these files actually ask.
+    #
+    # This was `supports_batch_queue` while overlays composited by RECORDING INTO
+    # a batch queue, which Metal has no command pool or fence to build. RayMakie
+    # is on the render graph now and names no queue at all, so the old gate was
+    # skipping the three files that exercise the overlay path on every backend
+    # that rasterises without a batch queue — i.e. all of them on Metal, silently
+    # and with a green suite.
+    if Mantle.supports_graphics(BACKEND)
+        # `test_materials_scene.jl` used to `activate!` its whole config — CPU
+        # device, and `tonemap = nothing, exposure = 0.5` with it — into the
+        # global default theme and never put it back. Re-activating the DEVICE
+        # here fixed the half that had been noticed (a CPU screen has no
+        # overlays, and `HWTLAS(::CPU)` has no method); the tone map stayed off
+        # for every later file, which renders HDR radiance straight to white.
+        # That file passes its config per call now and leaks nothing, so this is
+        # a belt-and-braces line rather than the load-bearing one it was.
         RayMakie.activate!(; device = BACKEND)
         for fname in GRAPHICS_TEST_FILES
             @testset "$fname" begin
@@ -227,8 +232,8 @@ const GRAPHICS_TEST_FILES = [
             end
         end
     else
-        @info "RayMakie tests: no batch queue to record overlays into; skipping the rasterised-overlay files" backend =
-              nameof(typeof(BACKEND)) files = GRAPHICS_TEST_FILES rasterises = Mantle.supports_graphics(BACKEND)
+        @info "RayMakie tests: this backend does not rasterise; skipping the overlay files" backend =
+              nameof(typeof(BACKEND)) files = GRAPHICS_TEST_FILES
     end
 
     if isdefined(Mantle, :vk_context)
