@@ -188,6 +188,22 @@ end
     @test Makie.broadcast_foreach_index((args...) -> error("unreachable"), UInt32[], 1:3, 1:3) === nothing
 end
 
+@testset "self-overlapping mesh" begin
+    # two opposite-wound triangles overlapping in the middle: the nonzero fill rule has to
+    # take their union, or the overlap cancels out into a hole
+    fig = Figure(size = (40, 40), figure_padding = 0)
+    ax = Axis(fig[1, 1])
+    hidedecorations!(ax)
+    hidespines!(ax)
+    mesh!(
+        ax, Point2f[(0, 0), (2, 0), (1, 2), (0, 2), (2, 2), (1, 0)],
+        GLTriangleFace[(1, 2, 3), (4, 5, 6)], color = :black
+    )
+    limits!(ax, -0.5, 2.5, -0.5, 2.5)
+    img = Makie.colorbuffer(fig; backend = CairoMakie)
+    @test img[size(img, 1) ÷ 2, size(img, 2) ÷ 2] != img[1, 1]
+end
+
 excludes = Set(
     [
         "Line GIF",

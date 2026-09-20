@@ -30,6 +30,18 @@ end
     @test svg_isnt_rasterized(scatter(1:3))
     @test svg_isnt_rasterized(lines(1:3))
     @test svg_isnt_rasterized(arrows2d(Point(0, 0), Point(1, 1), taillength = 8))
+    # a single-color mesh fills a path; only a gradient needs a mesh pattern, which SVG
+    # cannot draw.
+    function quad_mesh(color)
+        f = Figure()
+        mesh!(
+            Axis(f[1, 1]), Point2f[(0, 0), (1, 0), (1, 1), (0, 1)],
+            GLTriangleFace[(1, 2, 3), (1, 3, 4)]; color
+        )
+        return f
+    end
+    @test svg_isnt_rasterized(quad_mesh(:red))
+    @test !svg_isnt_rasterized(quad_mesh([:red, :green, :blue, :yellow]))
     @test svg_isnt_rasterized(heatmap(rand(5, 5)))
     @test !svg_isnt_rasterized(image(rand(5, 5)))
     # issue 2510

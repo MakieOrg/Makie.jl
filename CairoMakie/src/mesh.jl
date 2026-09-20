@@ -73,26 +73,16 @@ function flush_pattern(ctx, pattern)
 end
 
 """
-    add_triangle_path!(ctx, t1, t2, t3)
+    mesh_union_path!(ctx, vs, fs)
 
-Add one triangle to the current path as a closed subpath, wound counterclockwise in screen
-space. Filling a whole mesh as one path is what anti-aliases its edge, and the consistent
-winding is what makes the nonzero fill rule take the union of the triangles: left as they
-come, opposite windings cancel and punch holes wherever the mesh overlaps itself.
+Replace the current path with the union of the mesh's triangles, skipping NaN faces.
+
+Filling a whole mesh as one path anti-aliases its edge. Every triangle has the same
+orientation so that the nonzero fill rule takes their union (avoiding holes).
 """
-function add_triangle_path!(ctx, t1, t2, t3)
-    turn = (t2[1] - t1[1]) * (t3[2] - t1[2]) - (t2[2] - t1[2]) * (t3[1] - t1[1])
-    p1, p2, p3 = turn >= 0 ? (t1, t2, t3) : (t1, t3, t2)
-    Cairo.move_to(ctx, p1[1], p1[2])
-    Cairo.line_to(ctx, p2[1], p2[2])
-    Cairo.line_to(ctx, p3[1], p3[2])
-    Cairo.close_path(ctx)
-    return
-end
-
-"Replace the current path with the union of the mesh's triangles, skipping NaN faces."
 function mesh_union_path!(ctx, vs, fs)
     Cairo.new_path(ctx)
+    Cairo.set_fill_type(ctx, Cairo.CAIRO_FILL_RULE_WINDING) # `polypath` leaves it even-odd
     for i in eachindex(fs)
         t1, t2, t3 = vs[fs[i]] # triangle points
 
@@ -101,14 +91,17 @@ function mesh_union_path!(ctx, vs, fs)
             continue
         end
 
-        add_triangle_path!(ctx, t1, t2, t3)
+        turn = (t2[1] - t1[1]) * (t3[2] - t1[2]) - (t2[2] - t1[2]) * (t3[1] - t1[1])
+        p1, p2, p3 = turn >= 0 ? (t1, t2, t3) : (t1, t3, t2)
+        Cairo.move_to(ctx, p1[1], p1[2])
+        Cairo.line_to(ctx, p2[1], p2[2])
+        Cairo.line_to(ctx, p3[1], p3[2])
+        Cairo.close_path(ctx)
     end
     return
 end
 
-# A mesh of one colour needs no mesh pattern, and using one would make Cairo rasterise the
-# mesh on vector surfaces, since SVG has no mesh gradient to fall back on. A plain source
-# keeps the fill a real path there, and is cheaper everywhere else.
+# A mesh of one solid color needs no pattern; switching to a plain source keeps it vectorized in SVG.
 function draw_mesh2D(
         ctx::Cairo.CairoContext, per_face_cols::FaceIterator{:Const},
         vs::Vector, fs::Vector{GLTriangleFace}
@@ -124,7 +117,6 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
     pattern = Cairo.CairoPatternMesh()
-    Cairo.new_path(ctx)
 
     for i in eachindex(fs)
         c1, c2, c3 = per_face_cols[i]
@@ -146,14 +138,10 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
-
-        add_triangle_path!(ctx, t1, t2, t3)
     end
 
-    # Fill the union of the triangles rather than painting the pattern over the whole clip
-    # region: `Cairo.paint` samples the pattern without anti-aliasing its patch boundaries, so a
-    # mesh edge comes out stepped, while a path fill is anti-aliased. An empty mesh leaves an
-    # empty path, which `Cairo.fill` skips.
+    # Fill the union of the triangles rather than painting the pattern over the whole clip region.
+    mesh_union_path!(ctx, vs, fs)
     Cairo.set_source(ctx, pattern)
     Cairo.fill(ctx)
 
@@ -169,8 +157,7 @@ function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::V
     mesh_union_path!(ctx, vs, fs)
 
     # One fill for the whole mesh, as above. Filling each triangle on its own anti-aliased
-    # every interior edge too, so a shared edge came out at about 75% coverage instead of 100%
-    # and the mesh looked lighter than it should, with every edge visible.
+    # every interior edge, giving light interior line artifacts.
     Cairo.fill(ctx)
 
     pattern_set_matrix(pattern, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
