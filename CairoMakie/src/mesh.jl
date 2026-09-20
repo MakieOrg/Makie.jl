@@ -90,6 +90,22 @@ function add_triangle_path!(ctx, t1, t2, t3)
     return
 end
 
+"Replace the current path with the union of the mesh's triangles, skipping NaN faces."
+function mesh_union_path!(ctx, vs, fs)
+    Cairo.new_path(ctx)
+    for i in eachindex(fs)
+        t1, t2, t3 = vs[fs[i]] # triangle points
+
+        # don't draw any mesh faces with NaN components.
+        if isnan(t1) || isnan(t2) || isnan(t3)
+            continue
+        end
+
+        add_triangle_path!(ctx, t1, t2, t3)
+    end
+    return
+end
+
 function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace})
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
@@ -137,24 +153,13 @@ function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::V
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
     Cairo.set_source(ctx, pattern)
+    mesh_union_path!(ctx, vs, fs)
 
-    for i in eachindex(fs)
-        t1, t2, t3 = vs[fs[i]] # triangle points
+    # One fill for the whole mesh, as above. Filling each triangle on its own anti-aliased
+    # every interior edge too, so a shared edge came out at about 75% coverage instead of 100%
+    # and the mesh looked lighter than it should, with every edge visible.
+    Cairo.fill(ctx)
 
-        # don't draw any mesh faces with NaN components.
-        if isnan(t1) || isnan(t2) || isnan(t3)
-            continue
-        end
-
-        # TODO:
-        # - this may create gaps like heatmap?
-        # - for some reason this is liqhter than it should be?
-        Cairo.move_to(ctx, t1[1], t1[2])
-        Cairo.line_to(ctx, t2[1], t2[2])
-        Cairo.line_to(ctx, t3[1], t3[2])
-        Cairo.close_path(ctx)
-        Cairo.fill(ctx)
-    end
     pattern_set_matrix(pattern, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     return nothing
 end
