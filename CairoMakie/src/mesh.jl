@@ -63,27 +63,39 @@ function draw_mesh2D(screen, color, vs::Vector, fs::Vector{GLTriangleFace})
     return draw_mesh2D(screen.context, color, vs, fs)
 end
 
-function flush_pattern(ctx, pattern, reopen = true)
+function flush_pattern(ctx, pattern)
     Cairo.set_source(ctx, pattern)
-    Cairo.close_path(ctx)
     Cairo.paint(ctx)
     Cairo.destroy(pattern)
     # Reset any lingering pattern state
     Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
+    return nothing
+end
 
-    if reopen
-        pattern = Cairo.CairoPatternMesh()
-    end
+"""
+    add_triangle_path!(ctx, t1, t2, t3)
 
-    return pattern
+Add one triangle to the current path as a closed subpath, wound counterclockwise in screen
+space. Filling a whole mesh as one path is what anti-aliases its edge, and the consistent
+winding is what makes the nonzero fill rule take the union of the triangles: left as they
+come, opposite windings cancel and punch holes wherever the mesh overlaps itself.
+"""
+function add_triangle_path!(ctx, t1, t2, t3)
+    turn = (t2[1] - t1[1]) * (t3[2] - t1[2]) - (t2[2] - t1[2]) * (t3[1] - t1[1])
+    p1, p2, p3 = turn >= 0 ? (t1, t2, t3) : (t1, t3, t2)
+    Cairo.move_to(ctx, p1[1], p1[2])
+    Cairo.line_to(ctx, p2[1], p2[2])
+    Cairo.line_to(ctx, p3[1], p3[2])
+    Cairo.close_path(ctx)
+    return
 end
 
 function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace})
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
-    drawn = false
     pattern = Cairo.CairoPatternMesh()
+    Cairo.new_path(ctx)
 
     for i in eachindex(fs)
         c1, c2, c3 = per_face_cols[i]
@@ -94,7 +106,6 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
             continue
         end
 
-        drawn = true
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
@@ -106,13 +117,19 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
+
+        add_triangle_path!(ctx, t1, t2, t3)
     end
 
-    if drawn
-        flush_pattern(ctx, pattern, false)
-    else
-        Cairo.destroy(pattern)
-    end
+    # Fill the union of the triangles rather than painting the pattern over the whole clip
+    # region: `Cairo.paint` samples the pattern without anti-aliasing its patch boundaries, so a
+    # mesh edge comes out stepped, while a path fill is anti-aliased. An empty mesh leaves an
+    # empty path, which `Cairo.fill` skips.
+    Cairo.set_source(ctx, pattern)
+    Cairo.fill(ctx)
+
+    Cairo.destroy(pattern)
+    Cairo.set_source_rgba(ctx, 0, 0, 0, 1) # reset any lingering pattern state
     return nothing
 end
 
@@ -238,7 +255,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
 
         Cairo.mesh_pattern_end_patch(pattern)
 
-        flush_pattern(ctx, pattern, false)
+        flush_pattern(ctx, pattern)
     end
 
     return

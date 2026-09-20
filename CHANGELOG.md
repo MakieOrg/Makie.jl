@@ -1,5 +1,6 @@
 # Changelog
 
+- Anti-aliased 2D mesh edges in CairoMakie by filling the mesh as a path instead of painting its pattern, which Cairo rasterises without anti-aliasing. A per-vertex-coloured mesh edge went from two shades to eight in a slice across it, and the whole mesh composites once, so a transparent mesh no longer darkens where it overlaps itself.
 - Removed the periodic flushing of 2D mesh patterns in CairoMakie, so that every 2D mesh is drawn from a single pattern regardless of size. [#5446](https://github.com/MakieOrg/Makie.jl/pull/5446) had capped it at 16384 patches as a precaution, which made a mesh above that size blend with itself at each batch boundary while a smaller one did not.
 - Updated `series`, `volumeslices` and `rainclouds` to use the compute pipeline infrastructure. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
   - `rainclouds` should be much more dynamic now, as most attributes and arguments were previously not reactive.
