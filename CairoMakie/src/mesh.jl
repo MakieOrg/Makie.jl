@@ -280,7 +280,7 @@ function draw_mesh3D(scene, screen, plot::ComputeGraph)
     )
     screen_points = cairo_project_to_screen(plot, output_type = Point3f)::Vector{Point3f}
     meshfaces = plot.faces[]::Vector{GLTriangleFace}
-    meshnormals = plot.normals[]::Union{Nothing, Vector{Vec3f}}
+    meshnormals = plot.normals[]::Union{Nothing, Vector{<:Vec3}}
     _meshuvs = plot.texturecoordinates[]
 
     if (_meshuvs isa AbstractVector{<:Vec3})
@@ -340,7 +340,7 @@ end
 
 to_vec(c::Colorant) = Vec3f(red(c), green(c), blue(c))
 prepare_normals(normalmatrix::Mat3f, normals::Nothing) = nothing
-function prepare_normals(normalmatrix::Mat3f, normals::Vector{Vec3f})
+function prepare_normals(normalmatrix::Mat3f, normals::Vector{<:Vec3})
     return [zero_normalize(normalmatrix * normal) for normal in normals]
 end
 
