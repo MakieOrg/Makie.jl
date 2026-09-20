@@ -106,6 +106,19 @@ function mesh_union_path!(ctx, vs, fs)
     return
 end
 
+# A mesh of one colour needs no mesh pattern, and using one would make Cairo rasterise the
+# mesh on vector surfaces, since SVG has no mesh gradient to fall back on. A plain source
+# keeps the fill a real path there, and is cheaper everywhere else.
+function draw_mesh2D(
+        ctx::Cairo.CairoContext, per_face_cols::FaceIterator{:Const},
+        vs::Vector, fs::Vector{GLTriangleFace}
+    )
+    mesh_union_path!(ctx, vs, fs)
+    set_source(ctx, per_face_cols.data)
+    Cairo.fill(ctx)
+    return nothing
+end
+
 function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace})
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
