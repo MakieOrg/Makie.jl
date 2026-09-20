@@ -78,14 +78,11 @@ function flush_pattern(ctx, pattern, reopen = true)
     return pattern
 end
 
-const MAX_PATCHES_PER_PATTERN = Ref{Int64}(16384)  # TODO: tune
-
 function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace})
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
-    cnt = 0
-    flusheach = MAX_PATCHES_PER_PATTERN[]
+    drawn = false
     pattern = Cairo.CairoPatternMesh()
 
     for i in eachindex(fs)
@@ -97,7 +94,7 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
             continue
         end
 
-        cnt += 1
+        drawn = true
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
@@ -109,14 +106,12 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
-
-        if cnt % flusheach == 0
-            pattern = flush_pattern(ctx, pattern)
-        end
     end
 
-    if cnt % flusheach != 0
+    if drawn
         flush_pattern(ctx, pattern, false)
+    else
+        Cairo.destroy(pattern)
     end
     return nothing
 end

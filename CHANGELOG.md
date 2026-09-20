@@ -1,5 +1,6 @@
 # Changelog
 
+- Removed the periodic flushing of 2D mesh patterns in CairoMakie, so that every 2D mesh is drawn from a single pattern regardless of size. [#5446](https://github.com/MakieOrg/Makie.jl/pull/5446) had capped it at 16384 patches as a precaution, which made a mesh above that size blend with itself at each batch boundary while a smaller one did not.
 - Updated `series`, `volumeslices` and `rainclouds` to use the compute pipeline infrastructure. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
   - `rainclouds` should be much more dynamic now, as most attributes and arguments were previously not reactive.
 - Adjusted `volumeslices` to work with color data. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
