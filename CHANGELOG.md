@@ -1,5 +1,6 @@
 # Changelog
 
+- Allow `Float64` normals in CairoMakie. [#5797](https://github.com/MakieOrg/Makie.jl/pull/5797)
 - Updated `series`, `volumeslices` and `rainclouds` to use the compute pipeline infrastructure. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
   - `rainclouds` should be much more dynamic now, as most attributes and arguments were previously not reactive.
 - Adjusted `volumeslices` to work with color data. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
