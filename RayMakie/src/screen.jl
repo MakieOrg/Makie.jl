@@ -500,9 +500,14 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     # is not optional.
     tlas = scene_state.hikari_scene.accel
     has_inf = false
+    # …and separately, whether one of them is actually VISIBLE along an escaped
+    # ray. Not the same question: a `DirectionalLight` is at infinity but is a
+    # delta light, so it paints nothing where a ray hits nothing.
+    paints_sky = false
     if Raycore.n_instances(tlas) > 0
         lights = scene_state.hikari_scene.lights
         has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
+        paints_sky = any(T -> Hikari.paints_escaped_rays(T), lights.data_order)
         # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
         # Must re-adapt per render so mesh mutations are visible.
         adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
@@ -521,17 +526,22 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
 
     # Postprocess (tonemap, gamma, exposure)
     #
-    # `sky`: whether an infinite light — an environment map, a sun, an ambient —
-    # already painted the rays that escaped. Then their colour stays; without it
-    # the background paints over the sky and an environment map comes back as a
-    # flat rectangle. The ALPHA still comes from the background either way, so a
-    # caller asking for transparency gets coverage and not a sky.
+    # `sky`: whether a light actually painted the rays that escaped. Then their
+    # colour stays; without it the background is composited there, and an
+    # environment map would otherwise come back as a flat rectangle of background.
+    # The ALPHA comes from the background either way, so a caller asking for
+    # transparency gets coverage and not a sky.
+    #
+    # `paints_escaped_rays`, NOT `is_infinite_light`: a `DirectionalLight` is at
+    # infinity and contributes nothing along a ray that misses. Asking the broader
+    # question made every directional-lit scene skip its background and render a
+    # BLACK sky, whatever `backgroundcolor` said.
     Hikari.postprocess!(film;
         exposure = config.exposure,
         tonemap = config.tonemap,
         gamma = config.gamma,
         background = scenebackground(screen.scene),
-        sky = has_inf,
+        sky = paints_sky,
     )
 
     # NOTE: Overlay rendering for 3D renderable scenes is intentionally skipped.
