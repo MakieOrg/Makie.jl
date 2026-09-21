@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+
+- Added `FastInterpolations` as the default `Resampler` interpolation backend for ~2-9x faster resampling; passing an `Interpolations` degree keeps the old behavior [#5706](https://github.com/MakieOrg/Makie.jl/pull/5706).
 - Fixed 2D CairoMakie meshes not anti-aliasing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
 - Fixed uniformly colored 2D CairoMakie meshes always rasterizing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
 - Allow `Float64` normals in CairoMakie. [#5797](https://github.com/MakieOrg/Makie.jl/pull/5797)
@@ -14,10 +17,6 @@
 - Fixed error on empty `series`. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
 - Adjusted `series` to cycle colors sampled from `color` if more are needed. This can be controlled by the new `cycle_color` attribute. By default cycling is enabled with a warning. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
 - Added colormapping to `series`, allowing `color` to be set to values. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
-
-## Unreleased
-
-- Added `FastInterpolations` as the default `Resampler` interpolation backend for ~2-9x faster resampling; passing an `Interpolations` degree keeps the old behavior [#5706](https://github.com/MakieOrg/Makie.jl/pull/5706).
 
 ## [0.24.15] - 2026-09-18
 
