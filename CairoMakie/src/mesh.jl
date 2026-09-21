@@ -341,7 +341,7 @@ end
 to_vec(c::Colorant) = Vec3f(red(c), green(c), blue(c))
 prepare_normals(normalmatrix::Mat3f, normals::Nothing) = nothing
 function prepare_normals(normalmatrix::Mat3f, normals::Vector{<:Vec3})
-    return [zero_normalize(normalmatrix * normal) for normal in normals]
+    return [zero_normalize(normalmatrix * Vec3f(normal)) for normal in normals]
 end
 
 function draw_mesh3D(
