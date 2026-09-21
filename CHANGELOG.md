@@ -2,6 +2,7 @@
 
 - Anti-aliased 2D mesh edges in CairoMakie by filling the whole mesh as one path, instead of painting a Cairo mesh pattern (which Cairo rasterizes without anti-aliasing). Also drops the 16384-patch cap added by [#5446](https://github.com/MakieOrg/Makie.jl/pull/5446), which made a mesh above that size blend with itself at each batch boundary. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
 - Stopped CairoMakie drawing a uniformly colored 2D mesh through a mesh pattern, which SVG cannot draw (leading to rasterization). These meshes are now filled with a plain source and stay vectorized. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
+- Allow `Float64` normals in CairoMakie. [#5797](https://github.com/MakieOrg/Makie.jl/pull/5797)
 - Updated `series`, `volumeslices` and `rainclouds` to use the compute pipeline infrastructure. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
   - `rainclouds` should be much more dynamic now, as most attributes and arguments were previously not reactive.
 - Adjusted `volumeslices` to work with color data. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
