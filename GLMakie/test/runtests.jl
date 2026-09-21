@@ -1,7 +1,7 @@
 ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 
 run(
-    `julia -e "using Makie.ComputePipeline; ComputePipeline.enable_debugging!(); ComputePipeline.log_nothing_skip(true); ComputePipeline.log_nothing_splat(true)"`
+    `julia -e "using Makie.ComputePipeline; ComputePipeline.enable_debugging!(); ComputePipeline.log_nothing_splat(true)"`
 )
 
 using Makie
@@ -265,5 +265,4 @@ end
 
 using Makie.ComputePipeline
 ComputePipeline.disable_debugging!()
-ComputePipeline.log_nothing_skip(false)
 ComputePipeline.log_nothing_splat(false)
