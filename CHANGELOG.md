@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `horizontal` to `SliderGrid` so grids can lay out vertical labeled sliders in columns (`horizontal = false`)
+
 ## [0.24.13] - 2026-07-02
 
 - WGLMakie: fixed a `Cannot destructure property 'geometry' of 'mesh'` JS error and allow `Bonito@v5` [#5683](https://github.com/MakieOrg/Makie.jl/pull/5683)

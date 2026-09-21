@@ -1041,15 +1041,22 @@ end
 end
 
 """
-A grid of one or more horizontal `Slider`s, where each slider has a
-name label on the left and a value label on the right.
+A grid of one or more labeled `Slider`s.
+
+By default (`horizontal = true`), each slider is laid out in a row with a name
+label on the left and a value label on the right. With `horizontal = false`,
+each slider becomes a column with the name label on top, a vertical `Slider`,
+and the value label below. Child sliders always match the grid orientation;
+a per-slider `horizontal` kwarg is ignored.
 
 Each `NamedTuple` you pass specifies one `Slider`. You always have to pass `range`
-and `label`, and optionally a `format` for the value label. Beyond that, you can set
-any keyword that `Slider` takes, such as `startvalue`.
+and optionally `label` and `format` for the value label. Beyond that, you can set
+any keyword that `Slider` takes (except `horizontal`), such as `startvalue`.
 
 The `format` keyword can be a `String` with Format.jl style, such as "{:.2f}Hz", or
 a function.
+
+Orientation is fixed at construction time.
 
 ## Constructors
 
@@ -1066,6 +1073,12 @@ sg = SliderGrid(fig[1, 1],
     (label = "Phase", range = 0:0.01:2pi,
         format = x -> string(round(x/pi, digits = 2), "π"))
 )
+
+# vertical: one column per slider
+sg_v = SliderGrid(fig[1, 2],
+    (label = "X", range = 0:0.1:10, startvalue = 3),
+    (label = "Y", range = 0:0.1:10, startvalue = 6);
+    horizontal = false, height = 250)
 ```
 
 Working with slider values:
@@ -1096,7 +1109,9 @@ end
         tellheight::Bool = true
         "The align mode of the block in its parent GridLayout."
         alignmode = Inside()
-        "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
+        "Controls if the slider grid has a horizontal orientation or not. If `false`, each slider is a vertical column with label, slider, and value stacked."
+        horizontal::Bool = true
+        "For `horizontal = true`, the width of the value label column. For `horizontal = false`, the height of the value label row. If `automatic`, the size is determined by sampling a few values from the slider ranges and picking the largest label size found."
         value_column_width = automatic
     end
 end
