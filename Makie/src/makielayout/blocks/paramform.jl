@@ -84,7 +84,8 @@ function widget_for(gridpos, ::Type, c::FilePath, default, width)
     sub = GridLayout(gridpos)
     default_str = string(default)
     tb = Textbox(sub[1, 1]; stored_string = isempty(default_str) ? nothing : default_str,
-                 placeholder = default_str, width = width - 30)
+                 placeholder = default_str,
+                 width = width === nothing ? nothing : width - 30)
     # Textbox editing is disabled; the browse button is the only write path.
     on(tb.focused) do focused
         focused && defocus!(tb)
@@ -243,7 +244,16 @@ pf = ParamForm(fig[1, 1], (gain = (1.0, Between(0.0, 4.0)),),
         titlecolor = @inherit((:colors, :text))
         "Fixed pixel width of the right-aligned field-name column."
         labelwidth = 88
-        "Fixed pixel width of the widget column."
+        """
+        Fixed pixel width of the widget column, or `nothing` to let it take
+        whatever the label and accessory columns leave.
+
+        Three fixed columns cannot fit a container narrower than their sum: the
+        row keeps its width, hangs over the edge and the enclosing scene cuts it
+        off mid-widget — silently, since nothing in the layout reports an
+        overflow. `nothing` (with the form's own `width = nothing`, so it fills
+        its cell) is what makes a panel's rows follow the panel.
+        """
         widgetwidth = 175
         "Fixed pixel width of the optional per-field accessory column (see the `accessory` constructor keyword). Only used when an accessory is built for at least one field."
         accessorywidth = 28
@@ -314,7 +324,9 @@ function initialize_block!(pf::ParamForm, spec, accessory = nothing)
         colsize!(pf.layout, 1, Fixed(0))
     else
         colsize!(pf.layout, 1, Fixed(pf.labelwidth[]))
-        colsize!(pf.layout, 2, Fixed(pf.widgetwidth[]))
+        # `nothing` leaves the widget column flexible, so it absorbs what the
+        # container has left instead of pushing the row past its edge
+        pf.widgetwidth[] === nothing || colsize!(pf.layout, 2, Fixed(pf.widgetwidth[]))
         # only size the accessory column if a field actually got one
         isempty(pf.accessories) || colsize!(pf.layout, 3, Fixed(pf.accessorywidth[]))
         rowgap!(pf.layout, pf.rowgap[])
@@ -335,16 +347,26 @@ ignored. Replaces ad-hoc `hasmethod` reflection with plain dispatch.
 clear!(block::Block) = (delete!(block); nothing)
 
 function clear!(gl::GridLayout)
-    for gc in reverse(copy(gl.content))
-        obj = gc.content
-        if obj isa GridLayout
-            clear!(obj)
-            GridLayoutBase.remove_from_gridlayout!(gc)
-        else
-            clear!(obj)
+    # ONE relayout for the teardown, not one per removed column. `trim!` calls
+    # `deletecol!` once per empty column and every one of those runs `update!`,
+    # which walks up to the root layout and back down through the bbox
+    # observables of every block still standing — so emptying a layout costs
+    # O(columns × blocks). On the effects panel (229 parameter rows) that was
+    # 38 s and 22 GB of garbage for a single card rebuild, and it is what
+    # "the editor freezes when I pick a clip" actually was: the GC pressure
+    # stops every Julia thread, so the renderloop stops drawing too.
+    GridLayoutBase.with_updates_suspended(gl) do
+        for gc in reverse(copy(gl.content))
+            obj = gc.content
+            if obj isa GridLayout
+                clear!(obj)
+                GridLayoutBase.remove_from_gridlayout!(gc)
+            else
+                clear!(obj)
+            end
         end
+        GridLayoutBase.trim!(gl)
     end
-    GridLayoutBase.trim!(gl)
     return nothing
 end
 

@@ -45,6 +45,7 @@ function initialize_block!(sl::Slider)
     end
 
     dragging = Observable(false)
+    setfield!(sl, :dragging, dragging)
 
     # what the slider actually displays currently (also during dragging when
     # the slider position is in an "invalid" position given the slider's range)

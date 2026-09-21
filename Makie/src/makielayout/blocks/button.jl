@@ -45,12 +45,18 @@ function initialize_block!(b::Button)
     # move text in front of background to be sure it's not occluded
     translate!(labeltext, 0, 0, 1)
 
+    autosize = Ref((0.0f0, 0.0f0))
     onany(scene, b.label, b.fontsize, b.font, b.padding) do label, fontsize, font, padding
         textbb = Rect2f(boundingbox(labeltext, :data))
         autowidth = width(textbb) + padding[1] + padding[2]
         autoheight = height(textbb) + padding[3] + padding[4]
-        b.layoutobservables.autosize[] = (autowidth, autoheight)
+        autosize[] = (autowidth, autoheight)
+        # a pinned width and height ignore this, and writing it anyway relayouts
+        # the grid on every label change — see [`setautosize!`](@ref)
+        setautosize!(b, autosize[])
     end
+    # …and the size a pinned button did not report, once it is asked for again
+    onany((_, _) -> setautosize!(b, autosize[]), scene, b.width, b.height)
 
     mouseevents = addmouseevents!(scene, b.layoutobservables.computedbbox)
 

@@ -99,13 +99,13 @@ chance), which is what a list selects on.
         "Background color of the header bar."
         headercolor = RGBf(0.22, 0.22, 0.25)
         "Background color of the header bar while selected."
-        headercolor_selected = RGBf(0.26, 0.30, 0.40)
+        headercolor_selected = RGBf(0.26, 0.3, 0.4)
         "Color of the card's border."
-        strokecolor = RGBf(0.30, 0.30, 0.34)
+        strokecolor = RGBf(0.3, 0.3, 0.34)
         "Width of the card's border."
         strokewidth = 1
         "Color of the outline drawn when `selected`."
-        selectioncolor = RGBf(0.40, 0.62, 1.00)
+        selectioncolor = RGBf(0.4, 0.62, 1.0)
         "Width of the selection outline."
         selectionwidth = 2
         "Corner radius of the card and its header."
@@ -167,6 +167,25 @@ function filter_cards!(predicate, stack::GridLayout, cards)
 end
 
 """
+    over_content(gl::GridLayout, pos) -> Bool
+
+Whether `pos` lands on a block inside `gl`, as opposed to merely inside the cell
+`gl` occupies. Nested layouts are searched too, so a row of buttons built into a
+sub-layout answers the same as one built directly.
+"""
+function over_content(gl::GridLayout, pos)
+    for c in gl.content
+        o = c.content
+        if o isa GridLayout
+            over_content(o, pos) && return true
+        elseif o isa Block
+            pos in o.layoutobservables.computedbbox[] && return true
+        end
+    end
+    return false
+end
+
+"""
     card_accessory(card) -> GridPosition
 
 Where a header widget goes: `Button(card_accessory(card); label = "×")`. The
@@ -182,6 +201,14 @@ function initialize_block!(c::Card)
     # the block's, so what the card reports upward is what its content measures.
     layout = c.layout
     c.body = GridLayout(layout[2, 1])
+    # The body FILLS the card. A GridLayout reports its content's width and is
+    # centred in its cell, so a body whose children do not report one — a list of
+    # rows, a status label, anything `tellwidth = false` — collapsed to the widest
+    # child that did: a whole tool panel drawn in a 20 px column inside a 356 px
+    # card, every label clipped to a few characters. A card's body is the card's
+    # width by definition; what a caller puts in it aligns inside that.
+    c.body.width[] = Relative(1.0)
+    c.body.halign[] = :left
     c.headerclicks = Observable(0)
     c.userheight = Base.RefValue{Any}(c.height[])
 
@@ -214,11 +241,17 @@ function initialize_block!(c::Card)
     #  the filter had left.)
     contentarea = lift(blockscene, c.layoutobservables.computedbbox, c.spacing) do bb, sp
         s = min(Float32(sp), bb.widths[2])
-        return round_to_IRect2D(Rect2f(Point2f(bb.origin[1], bb.origin[2] + s),
-                                       Vec2f(bb.widths[1], bb.widths[2] - s)))
+        return round_to_IRect2D(
+            Rect2f(
+                Point2f(bb.origin[1], bb.origin[2] + s),
+                Vec2f(bb.widths[1], bb.widths[2] - s)
+            )
+        )
     end
-    c.scene = Scene(blockscene; camera = campixel!, viewport = contentarea,
-                    visible = is_visible, clear = false)
+    c.scene = Scene(
+        blockscene; camera = campixel!, viewport = contentarea,
+        visible = is_visible, clear = false
+    )
     # A SECOND scene for the body, nested in the first: hiding the card hides
     # both, and FOLDING hides only this one. Without the nesting, folding had the
     # same defect hiding did — the body's widgets kept drawing over the card
@@ -227,8 +260,10 @@ function initialize_block!(c::Card)
         h = max(Float32(ca.widths[2]) - Float32(hh), 0.0f0)
         return round_to_IRect2D(Rect2f(Point2f(ca.origin), Vec2f(ca.widths[1], h)))
     end
-    c.bodyscene = Scene(c.scene; camera = campixel!, viewport = bodyarea,
-                        visible = lift(identity, blockscene, c.open), clear = false)
+    c.bodyscene = Scene(
+        c.scene; camera = campixel!, viewport = bodyarea,
+        visible = lift(identity, blockscene, c.open), clear = false
+    )
     c.body.parent = c.bodyscene
 
     # The header's own grid: [ arrow | title | accessory ]. The arrow and title
@@ -238,8 +273,10 @@ function initialize_block!(c::Card)
     headergl = GridLayout(layout[1, 1])
     Box(headergl[1, 1]; color = (:transparent, 0.0), strokewidth = 0, width = Auto(), height = 1, tellheight = false)
     # inset from the rounded corner, so an accessory button is not flush with it
-    c.header = GridLayout(headergl[1, 2]; halign = :right, valign = :center,
-                          alignmode = Outside(0.0f0, 6.0f0, 0.0f0, 0.0f0))
+    c.header = GridLayout(
+        headergl[1, 2]; halign = :right, valign = :center,
+        alignmode = Outside(0.0f0, 6.0f0, 0.0f0, 0.0f0)
+    )
     c.header.parent = c.scene
     colsize!(headergl, 1, Auto(true, 1.0f0))
     colgap!(headergl, 0)
@@ -279,31 +316,41 @@ function initialize_block!(c::Card)
         return pts
     end
 
-    poly!(blockscene, cardpoly; color = c.backgroundcolor, strokecolor = c.strokecolor,
-          strokewidth = c.strokewidth, visible = is_visible, inspectable = false)
+    poly!(
+        blockscene, cardpoly; color = c.backgroundcolor, strokecolor = c.strokecolor,
+        strokewidth = c.strokewidth, visible = is_visible, inspectable = false
+    )
     headerfill = lift(blockscene, c.selected, c.headercolor, c.headercolor_selected) do sel, plain, chosen
         return to_color(sel ? chosen : plain)
     end
-    poly!(blockscene, headerpoly; color = headerfill, strokewidth = 0,
-          visible = is_visible, inspectable = false)
+    poly!(
+        blockscene, headerpoly; color = headerfill, strokewidth = 0,
+        visible = is_visible, inspectable = false
+    )
     # The selection outline is drawn last so it sits over both fills.
-    poly!(blockscene, cardpoly; color = (:transparent, 0.0), strokecolor = c.selectioncolor,
-          strokewidth = lift((s, w) -> s ? Float32(w) : 0.0f0, blockscene, c.selected, c.selectionwidth),
-          visible = is_visible, inspectable = false)
+    poly!(
+        blockscene, cardpoly; color = (:transparent, 0.0), strokecolor = c.selectioncolor,
+        strokewidth = lift((s, w) -> s ? Float32(w) : 0.0f0, blockscene, c.selected, c.selectionwidth),
+        visible = is_visible, inspectable = false
+    )
 
     arrowpos = lift(blockscene, headerrect, c.titleoffset) do r, off
         return Point2f(r.origin[1] + off, r.origin[2] + r.widths[2] / 2)
     end
     arrowtext = lift(o -> o ? "▾" : "▸", blockscene, c.open)
     arrowvis = lift(&, blockscene, is_visible, c.foldable)
-    text!(blockscene, arrowpos; text = arrowtext, align = (:left, :center),
-          color = c.arrowcolor, fontsize = c.titlesize, visible = arrowvis, inspectable = false)
+    text!(
+        blockscene, arrowpos; text = arrowtext, align = (:left, :center),
+        color = c.arrowcolor, fontsize = c.titlesize, visible = arrowvis, inspectable = false
+    )
 
     titlepos = lift(blockscene, headerrect, c.titleoffset, c.foldable) do r, off, fold
         return Point2f(r.origin[1] + off + (fold ? 15 : 0), r.origin[2] + r.widths[2] / 2)
     end
-    text!(blockscene, titlepos; text = c.title, align = (:left, :center), color = c.titlecolor,
-          font = c.titlefont, fontsize = c.titlesize, visible = is_visible, inspectable = false)
+    text!(
+        blockscene, titlepos; text = c.title, align = (:left, :center), color = c.titlecolor,
+        font = c.titlefont, fontsize = c.titlesize, visible = is_visible, inspectable = false
+    )
 
     # ---------------------------------------------------------------- folding
     on(blockscene, c.bodypadding; update = true) do pad
@@ -349,15 +396,21 @@ function initialize_block!(c::Card)
     on(blockscene, blockscene.events.mousebutton; priority = 55) do ev
         (ev.button === Mouse.left && ev.action === Mouse.press) || return Consume(false)
         c.visible[] || return Consume(false)
-        receives_events(blockscene) || return Consume(false)
+        # `is_mouseinside`, not `receives_events`: it asks the same question plus
+        # "is the cursor in this scene's viewport", which is what keeps a card
+        # scrolled out of a `Subfigure` from taking a press aimed at whatever is
+        # drawn where it happens to sit.
+        is_mouseinside(blockscene) || return Consume(false)
         pos = Point2f(blockscene.events.mouseposition[])
         pos in headerrect[] || return Consume(false)
-        # The accessory cell belongs to whatever the user put there — a press
-        # over it is that widget's, not the card's. An EMPTY layout reports the
-        # default 0..100 box, which would swallow presses on the whole header.
-        if !isempty(c.header.content)
-            pos in c.header.layoutobservables.computedbbox[] && return Consume(false)
-        end
+        # A press over an accessory WIDGET is that widget's, not the card's. Over
+        # the cell but not over a widget it is the card's: the cell is as wide as
+        # the widest row of accessories and includes the gaps between them, so
+        # treating all of it as "not the header" left a quarter of a card's title
+        # bar dead to the fold gesture — which reads as the fold being unreliable.
+        # (An EMPTY layout reports the default 0..100 box, which is why this asks
+        # about the widgets rather than the cell in the first place.)
+        over_content(c.header, pos) && return Consume(false)
         c.headerclicks[] = c.headerclicks[] + 1
         c.foldable[] && (c.open = !c.open[])
         return Consume(true)
@@ -370,8 +423,10 @@ end
 
 # `card[i, j]` is the BODY — the header has its own accessory cell, reached
 # through `card_accessory`.
-function Base.getindex(c::Card, i::Union{Integer, Colon, AbstractRange},
-                       j::Union{Integer, Colon, AbstractRange}, side = GridLayoutBase.Inner())
+function Base.getindex(
+        c::Card, i::Union{Integer, Colon, AbstractRange},
+        j::Union{Integer, Colon, AbstractRange}, side = GridLayoutBase.Inner()
+    )
     return c.body[i, j, side]
 end
 Base.firstindex(c::Card, dim) = firstindex(c.body, dim)

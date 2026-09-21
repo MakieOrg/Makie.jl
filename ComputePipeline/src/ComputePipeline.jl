@@ -594,6 +594,7 @@ function _setindex!(input::Input, value, force_update = false)
     return value
 end
 
+
 function _setproperty!(attr::ComputeGraph, key::Symbol, value)
     input = attr.inputs[key]
     # Skip if the value is the same as before

@@ -30,6 +30,30 @@ using Test
     @test receives_events(s2) == true
 end
 
+@testset "a hidden Tabs header does not take the click" begin
+    # Isolation by visibility only works if the handlers ASK. The header's did
+    # not: `tab_at` answers from the tab rects alone, so a `Tabs` whose scene is
+    # hidden — a dismissed dialog still sitting in the figure — kept taking
+    # clicks. Two modals holding a `Tabs` at the same place: the click switched
+    # the invisible one's tab and the visible one stayed on tab 1.
+    f = Figure(size = (700, 500))
+    a = Modal(f; title = "A"); ta = Tabs(a[1, 1], ["Preview", "Bake"]; closable = false)
+    open!(a); close!(a)                         # dismissed, hidden, still there
+    b = Modal(f; title = "B"); tb = Tabs(b[1, 1], ["Preview", "Bake"]; closable = false)
+    open!(b)
+    Makie.update_state_before_display!(f)
+
+    r = tb.tabs[2].rect[]
+    @test ta.tabs[2].rect[] == r                # they do sit on top of each other
+    e = f.scene.events
+    e.mouseposition[] = Tuple(Point2f(r.origin .+ r.widths ./ 2))
+    e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+
+    @test tb.active[] == 2                      # the dialog on screen switched…
+    @test ta.active[] == 1                      # …and the hidden one did not move
+end
+
 labels_of(t) = [td.label[] for td in t.tabs]
 closable_of(t) = [td.closable[] for td in t.tabs]
 

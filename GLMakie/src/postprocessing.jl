@@ -300,6 +300,16 @@ function run_stage(screen, glscene, stage::RenderPlots)
     try
         require_context(screen.glscreen)
         GLAbstraction.bind(stage.framebuffer)
+        if screen.rendertrace
+            fb = stage.framebuffer
+            print(
+                Core.stdout, "== stage target=", stage.target, " fb=", fb.id,
+                " fbsize=", fb.size, " mgrsize=", size(screen.framebuffer_manager),
+                " tex=", join([string(t.id, ":", size(t)) for t in fb.buffers], ","),
+                " status=", glCheckFramebufferStatus(GL_FRAMEBUFFER),
+                " (complete=", GL_FRAMEBUFFER_COMPLETE, ")\n"
+            )
+        end
 
         for (idx, color) in stage.clear
             idx <= stage.framebuffer.counter || continue
@@ -332,6 +342,15 @@ function run_stage(screen, glscene, stage::RenderPlots)
 
             stage.prerender(elem[:overdraw]::UInt8)
 
+            if screen.rendertrace
+                va = elem.variants[stage.target]
+                print(
+                    Core.stdout, "  draw id=", screenid, "/", length(screen.screens),
+                    " vp=", a, " ppu=", ppu, " vao=", va.vertexarray.id,
+                    " prog=", va.program.id, " idx=", elem.indices isa Integer ? elem.indices : "buf",
+                    "\n"
+                )
+            end
             render(elem, elem.variants[stage.target])
         end
         glDisable(GL_SCISSOR_TEST)

@@ -71,6 +71,12 @@ function mixin_generic_plot_attributes()
         e.g. `(:nothing, (:xz, 1.0))`.
         """
         transformation = :automatic
+        """
+        A unique name for this plot, to find it again with `Makie.findplot(scene, :name)`.
+        Unlike `label` it is an identity, not legend text, and must not repeat.
+        `:automatic` derives one on insertion; an explicit collision is an error.
+        """
+        name = :automatic
         "Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`."
         model = automatic
         "Controls whether the plot gets rendered or not."

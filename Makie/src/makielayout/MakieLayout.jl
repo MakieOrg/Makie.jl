@@ -37,6 +37,7 @@ include("blocks/card.jl")
 include("blocks/tabs.jl")
 include("blocks/modal.jl")
 include("blocks/paramform.jl")
+include("rebuild.jl")          # replace_content! that reuses the blocks it finds
 # HoverMenu type is defined in types.jl; its implementation is in GUI/hovermenu.jl
 
 export @Block, Block

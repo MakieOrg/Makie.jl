@@ -84,6 +84,53 @@ struct BlockSpec
     end
 end
 
+"""
+    S.Scene(; plots = PlotSpec[], kw...)
+
+A whole RAW scene as a spec: its plots, and the keywords its `Scene` is built
+with — `camera`, `lights`, `backgroundcolor`, `size`.
+
+The counterpart of [`BlockSpec`](@ref) for the case that has no figure and no
+layout. `S.LScene()` and `S.Axis3()` describe a scene wrapped in a block, with the
+block's decorations and its place in a layout; this describes the scene itself,
+which is what you want when the layout is not part of the picture — a rendered 3-D
+object composited into a video frame, for instance, where a figure's margins and
+title would be something to fight rather than something to use.
+
+There is no position and no layout here on purpose: a raw scene is not a child of
+a `GridLayout` (`GridLayoutSpec` holds blocks and layouts), it is the root. Nesting
+one is what blocks are for.
+
+```julia
+S.Scene(; camera = cam3d!, plots = [S.Mesh(m; color = :red)])
+```
+"""
+struct SceneSpec
+    kwargs::Dict{Symbol, Any}
+    plots::Vector{PlotSpec}
+    function SceneSpec(; plots::Vector{PlotSpec} = PlotSpec[], kw...)
+        return new(Dict{Symbol, Any}(kw), plots)
+    end
+end
+
+Base.show(io::IO, ::SceneSpec) = print(io, "S.Scene()")
+
+"""
+    Scene(spec::SceneSpec; kw...) -> Scene
+
+Realize a [`SceneSpec`](@ref): build the scene it describes and plot into it.
+
+The keywords are the SCENE's, applied at construction — `camera = cam3d!` is a
+`Scene` keyword that the scene calls on itself, which is also all an `LScene` does
+with its `scenekw`. `kw` here wins over the spec's, so a caller that must fix the
+size or the background can.
+"""
+function Scene(spec::SceneSpec; kw...)
+    scene = Scene(; spec.kwargs..., kw...)
+    plotlist!(scene, spec.plots)
+    return scene
+end
+
 const GridLayoutPosition = Tuple{UnitRange{Int}, UnitRange{Int}, Side}
 
 struct GridLayoutSpec
@@ -446,6 +493,9 @@ const SpecApi = _SpecApi()
 
 function Base.getproperty(::_SpecApi, field::Symbol)
     field === :GridLayout && return GridLayoutSpec
+    # A raw scene: not a block, so `symbol_to_specable` will not find it, and it
+    # is the one spec that can only ever be a root.
+    field === :Scene && return (; kw...) -> SceneSpec(; kw...)
     # TODO, we wanted to track all recipe names in a set
     # in MakieCore via the recipe macro, but due to precompilation & caching
     # It seems impossible to merge the recipes from all modules

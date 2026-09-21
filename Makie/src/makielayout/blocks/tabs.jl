@@ -44,13 +44,25 @@ function initialize_block!(t::Tabs, labels::AbstractVector = ["Tab 1", "Tab 2"];
 
     on(_ -> refresh_visibility!(t), blockscene, t.active)
 
+    # `receives_events`, as every other interactive block asks it: a `Tabs` whose
+    # scene is hidden or covered still has its header rects, and `tab_at` answers
+    # from those alone. A dismissed dialog left in the figure then swallowed the
+    # click meant for the dialog on top of it — measured: two modals each holding
+    # a `Tabs` at the same place, the click switched the HIDDEN one's tab and the
+    # visible one stayed on tab 1.
     on(blockscene, blockscene.events.mouseposition) do pos
+        if !Makie.receives_events(blockscene)
+            t.hovered[] = 0
+            t.close_hovered[] = 0
+            return Consume(false)
+        end
         t.hovered[] = tab_at(t, pos)
         t.close_hovered[] = close_at(t, pos)
         return Consume(false)
     end
 
     on(blockscene, blockscene.events.mousebutton; priority = 60) do ev
+        Makie.receives_events(blockscene) || return Consume(false)
         if ev.button == Mouse.left && ev.action == Mouse.press
             pos = blockscene.events.mouseposition[]
             # Close button takes precedence over the tab body click: clicking
@@ -148,16 +160,16 @@ function add_tab!(
     if !t.font_metrics_captured
         t.font_metrics_captured = true
         on(blockscene, labelplot.selected_font; update = true) do f
-            try
-                asc = Float32(Makie.FreeTypeAbstraction.ascender(f))
-                des = Float32(Makie.FreeTypeAbstraction.descender(f))
-                ext = Makie.FreeTypeAbstraction.get_extent(f, 'x')
-                bb = Makie.FreeTypeAbstraction.inkboundingbox(ext)
-                xh = Float32(widths(bb)[2])
-                t.font_metrics[] = TabFontMetrics(asc, des, xh)
-            catch
-                # keep defaults
-            end
+            # `to_font` resolves to a single `NativeFont` or a vector of them
+            # (per-glyph fonts); only the single one has metrics to read. A question
+            # about the value, not an error to catch: catching everything left a
+            # real FreeType fault as default metrics and the × off the baseline.
+            f isa NativeFont || return
+            asc = Float32(Makie.FreeTypeAbstraction.ascender(f))
+            des = Float32(Makie.FreeTypeAbstraction.descender(f))
+            ext = Makie.FreeTypeAbstraction.get_extent(f, 'x')
+            bb = Makie.FreeTypeAbstraction.inkboundingbox(ext)
+            t.font_metrics[] = TabFontMetrics(asc, des, Float32(widths(bb)[2]))
             return
         end
     end
