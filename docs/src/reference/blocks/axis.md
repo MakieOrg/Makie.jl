@@ -208,6 +208,8 @@ You can reset the limits with `ctrl + leftclick`. This is the same as doing `res
 You can alternatively press `ctrl + shift + leftclick`, which is the same as calling `autolimits!(ax)`.
 This function ignores previously set limits and computes them all anew given the axis content.
 
+These key combination can be adjusted with `resetlimitskey` and `recomputelimitskey`.
+
 ### Rectangle selection zoom
 
 Left-click and drag zooms into the selected rectangular area.

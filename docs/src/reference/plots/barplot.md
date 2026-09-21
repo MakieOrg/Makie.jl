@@ -26,6 +26,11 @@ ys = 0.5 .* sin.(xs)
 barplot(xs, ys, gap = 0, color = :gray85, strokecolor = :black, strokewidth = 1)
 ```
 
+### Grouping
+
+The first argument of `barplot` can double as a category or group identifier.
+All height values passed through the second that have the same category value will be combined into one bar.
+
 ```@figure barplot
 tbl = (cat = [1, 1, 1, 2, 2, 2, 3, 3, 3],
        height = 0.1:0.1:0.9,
@@ -34,6 +39,18 @@ tbl = (cat = [1, 1, 1, 2, 2, 2, 3, 3, 3],
        grp2 = [1, 1, 2, 1, 2, 1, 1, 2, 1]
        )
 
+barplot(tbl.cat, tbl.height, color = tbl.grp,
+        axis = (xticks = (1:3, ["left", "middle", "right"]),
+                title = "Stacked bars"),
+        )
+```
+
+Within a category, values can be further separated into sub groups using `stack` and/or `dodge`.
+In the `tbl` above, `grp` marks the values in each category as the first, second and third value of the respective category.
+Passing this to `stack` will separate the category bars into 3 smaller stacking bars.
+Each of them represents one height value, with group 1 at the bottom and 3 at the top.
+
+```@figure barplot
 barplot(tbl.cat, tbl.height,
         stack = tbl.grp,
         color = tbl.grp,
@@ -41,6 +58,10 @@ barplot(tbl.cat, tbl.height,
                 title = "Stacked bars"),
         )
 ```
+
+Passing `grp` to `dodge` will instead draw the individual height values as separate bars side by side.
+Here 1 is the left most and 3 the right most bar.
+The gap between dodged bars can be adjusted with `dodge_gap`.
 
 ```@figure barplot
 barplot(tbl.cat, tbl.height,
@@ -50,6 +71,21 @@ barplot(tbl.cat, tbl.height,
                 title = "Dodged bars"),
         )
 ```
+
+Note that `dodge` will create slots based on the maximum group value.
+If we replaced 3 with 4 in `grp` a gap would be drawn between bars of group 2 and group 4.
+
+```@figure barplot
+barplot(tbl.cat, tbl.height,
+        dodge = [1, 2, 4, 1, 2, 4, 1, 2, 4],
+        color = [1, 2, 4, 1, 2, 4, 1, 2, 4],
+        axis = (xticks = (1:3, ["left", "middle", "right"]),
+                title = "Dodged bars"),
+        )
+```
+
+Dodging and stacking can also be combined.
+Multiple values that belong to the same dodge group can be further separated using a different stack group:
 
 ```@figure barplot
 barplot(tbl.cat, tbl.height,

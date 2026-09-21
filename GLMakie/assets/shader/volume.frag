@@ -354,9 +354,17 @@ vec4 contours(vec3 front, vec3 dir)
                 depth = min(depth, frag_coord.z / frag_coord.w);
 #endif
 
-            vec3 N = gennormal(pos, step_size, edge_gap);
-            vec4 world_pos = model * vec4(pos, 1);
-            vec3 opaque = illuminate(world_pos.xyz / world_pos.w, camdir, N, density.rgb);
+            vec3 opaque = density.rgb;
+            // Edges between finite and NaN values become black if we branch
+            // based on intensity (because we still get NaN normals) or a max
+            // intensity/unshaded density.rgb if decide based on N (because we
+            // skip shading). Neither is great so we pick the faster version
+            if (intensity < 1.0 || intensity > 0.0) // i.e. finite
+            {
+                vec3 N = gennormal(pos, step_size, edge_gap);
+                vec4 world_pos = model * vec4(pos, 1);
+                opaque = illuminate(world_pos.xyz / world_pos.w, camdir, N, density.rgb);
+            }
             color_sum += (transmittance * opacity) * opaque;
             transmittance *= 1.0 - opacity;
             if (transmittance <= 0.01)
@@ -424,9 +432,11 @@ vec4 mip(vec3 front, vec3 dir)
     int i = 0;
     float maximum = -10000000000000000.0;
     bool highclip_visible = highclip.a > 0.0;
+    bool has_finite_sample = false;
 
     for (i; i < samples; ++i, pos += dir){
         float density = texture(volumedata, pos).x;
+        has_finite_sample = has_finite_sample || (density < 1.0) || (density > 0.0);
         // If highclip is transparent we exclude any values beyond the color
         // range so that the largest (probably) visible value is preserved.
         // We don't need this for lowclip because it will naturally get overwritten
@@ -435,6 +445,11 @@ vec4 mip(vec3 front, vec3 dir)
         if (consider_sample && (maximum < density))
             maximum = density;
     }
+    // If none of the samples set has_finite_sample, then we must have only sampled
+    // nan values
+    if (!has_finite_sample)
+        return nan_color;
+
     // If we still have the initial value then no value < color range maximum
     // was found. In this case we should use highclip.
     if (maximum == -10000000000000000.0)
@@ -477,30 +492,7 @@ bool process_clip_planes(inout vec3 p1, inout vec3 p2)
 
 
 bool no_solution(float x){
-    return x <= 0.0001 || isinf(x) || isnan(x);
-}
-
-float min_bigger_0(float a, float b){
-    bool a_no = no_solution(a);
-    bool b_no = no_solution(b);
-    if(a_no && b_no){
-        // no solution
-        return typemax;
-    }
-    if(a_no){
-        return b;
-    }
-    if(b_no){
-        return a;
-    }
-    return min(a, b);
-}
-
-float min_bigger_0(vec3 v1, vec3 v2){
-    float x = min_bigger_0(v1.x, v2.x);
-    float y = min_bigger_0(v1.y, v2.y);
-    float z = min_bigger_0(v1.z, v2.z);
-    return min(x, min(y, z));
+    return abs(x) <= 0.0001 || isinf(x) || isnan(x);
 }
 
 void main()
@@ -509,10 +501,11 @@ void main()
     gl_FragDepth = gl_FragCoord.z;
 #endif
 
+
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
     vec3 back_position = vec3(modelinv * vec4(frag_vert, 1));
-    vec3 dir = normalize(eye_unit - back_position);
+    vec3 dir = normalize(back_position - eye_unit);
 
     // In model space (pre model application) the volume is defined in a const
     // 0..1 box. If the camera is inside the box we start our rays from the
@@ -522,22 +515,40 @@ void main()
     bool is_outside_box = (eye_unit.x < 0.0 || eye_unit.y < 0.0 || eye_unit.z < 0.0
             || eye_unit.x > 1.0 || eye_unit.y > 1.0 || eye_unit.z > 1.0);
 
-    vec3 start = eye_unit;
-    vec3 stop = back_position;
+    // Find the true ray interval through the unit box. The rasterized cube
+    // face only provides screen coverage; the exit point must not depend on
+    // front/back face classification.
+    if ((dir.x == 0.0 && dir.y == 0.0 && dir.z == 0.0) || isnan(dir.x) || isnan(dir.y) || isnan(dir.z))
+        discard;
 
-    // Otherwise we find the box - ray intersection so we can skip the empty
-    // space between the camera and the volume
+    // Find box - ray intersection so we can skip tracing rays outside the box
+    // Solve
+    //  cube_max = 1 = eye_unit + solution_1 * dir
+    //  cube_min = 0 = eye_unit + solution_0 * dir
+    vec3 solution_1 = (1.0 - eye_unit) / dir;
+    vec3 solution_0 = (0.0 - eye_unit) / dir;
 
-    if (is_outside_box) {
-        // only trace inside the box:
-        // solve back_position + distance * dir == 1
-        // solve back_position + distance * dir == 0
-        // to see where it first hits unit cube!
-        vec3 solution_1 = (1.0 - back_position) / dir;
-        vec3 solution_0 = (0.0 - back_position) / dir;
-        float solution = min_bigger_0(solution_1, solution_0);
-        start = back_position + solution * dir;
-    }
+    vec3 solutions_min = min(solution_0, solution_1);
+    vec3 solutions_max = max(solution_0, solution_1);
+
+    // exclude inf/nan solutions from dir[i] = 0
+    solutions_min.x = no_solution(solutions_min.x) ? -typemax : solutions_min.x;
+    solutions_min.y = no_solution(solutions_min.y) ? -typemax : solutions_min.y;
+    solutions_min.z = no_solution(solutions_min.z) ? -typemax : solutions_min.z;
+    solutions_max.x = no_solution(solutions_max.x) ? typemax : solutions_max.x;
+    solutions_max.y = no_solution(solutions_max.y) ? typemax : solutions_max.y;
+    solutions_max.z = no_solution(solutions_max.z) ? typemax : solutions_max.z;
+
+    // We're inside the cube when every dimension has entered it (max of min solution)
+    // and none has left it (min of max solution)
+    float start_solution = max(max(solutions_min.x, solutions_min.y), solutions_min.z);
+    float stop_solution = min(min(solutions_max.x, solutions_max.y), solutions_max.z);
+
+    if (stop_solution < max(start_solution, 0.0))
+        discard;
+
+    vec3 start = eye_unit + (is_outside_box ? start_solution : 0.0) * dir;
+    vec3 stop = eye_unit + stop_solution * dir;
 
 #ifdef ENABLE_DEPTH
     vec4 frag_coord = projectionview * model * vec4(start, 1);

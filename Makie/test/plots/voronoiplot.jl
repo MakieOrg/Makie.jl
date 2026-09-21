@@ -20,3 +20,11 @@ using Makie, Test
     @test sc.plots[1].color[] == 1:54
     @test sc2.plots[1].color[] == setdiff(1:54, 17)
 end
+
+@testset "Generator order independent of hashing" begin
+    points = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.5, 0.5), (0.25, 0.75)]
+    vorn = Makie.DelTri.voronoi(Makie.DelTri.triangulate(points))
+    fig, ax, sc = voronoiplot(vorn)
+    @test sc.generators[] == Point2f.(points)
+    @test sc.plots[1].color[] == 1:6
+end

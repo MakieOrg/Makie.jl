@@ -115,6 +115,7 @@ pages = [
                 "text.md",
                 "textlabel.md",
                 "tooltip.md",
+                "tricontour.md",
                 "tricontourf.md",
                 "triplot.md",
                 "violin.md",

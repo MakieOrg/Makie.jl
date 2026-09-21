@@ -66,7 +66,7 @@ end
     scene = Scene(camera = campixel!, size = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
-    scatter!(scene, points, marker = :circle, markersize = 10px)
+    scatter!(scene, points, marker = :circle, markersize = 10)
 
     i = 1
     for halign in (:right, :center, :left), valign in (:top, :center, :bottom)
@@ -109,7 +109,7 @@ end
             for rotation in angles
     ]
 
-    scatter!(scene, points, marker = :circle, markersize = 10px, color = :black)
+    scatter!(scene, points, marker = :circle, markersize = 10, color = :black)
 
     text!(
         scene, points, text = strings, align = aligns, rotation = rotations,
@@ -123,7 +123,7 @@ end
     scene = Scene(camera = campixel!, size = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
-    scatter!(scene, points, marker = :circle, markersize = 10px, color = :black)
+    scatter!(scene, points, marker = :circle, markersize = 10, color = :black)
 
     symbols = (:left, :center, :right)
 
