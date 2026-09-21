@@ -36,7 +36,7 @@ end
         f = Figure()
         mesh!(
             Axis(f[1, 1]), Point2f[(0, 0), (1, 0), (1, 1), (0, 1)],
-            GLTriangleFace[(1, 2, 3), (1, 3, 4)]; color
+            Makie.GeometryBasics.GLTriangleFace[(1, 2, 3), (1, 3, 4)]; color
         )
         return f
     end
