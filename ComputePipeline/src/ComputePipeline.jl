@@ -81,6 +81,8 @@ using Preferences
 const ENABLE_COMPUTE_CHECKS = @load_preference("ENABLE_COMPUTE_CHECKS", false)
 const LOG_NOTHING_SKIP = @load_preference("LOG_NOTHING_SKIP", false)
 const LOG_NOTHING_SPLAT = @load_preference("LOG_NOTHING_SPLAT", false)
+const LOG_REPEATEDLY = Ref(false)
+const LOGGING_IDS = Set{UInt64}()
 
 enable_debugging!() = set_debug!(true)
 disable_debugging!() = set_debug!(false)
@@ -96,6 +98,10 @@ end
     log_nothing_skip(value::Bool)
 
 Enables or disables extended logging for `nothing -> skip_update` deprecations.
+
+To prevent this from logging the same edge repeatedly, only edges with a unique
+combination of callback, input names and output names are logged. This can be
+changed by setting `ComputePipeline.LOG_REPEATEDLY[] = false` at any time.
 """
 function log_nothing_skip(value::Bool)
     if value != LOG_NOTHING_SKIP
@@ -110,6 +116,10 @@ end
 
 Enables or disables extended logging for `return nothing` being used to initialize
 multiple outputs.
+
+To prevent this from logging the same edge repeatedly, only edges with a unique
+combination of callback, input names and output names are logged. This can be
+changed by setting `ComputePipeline.LOG_REPEATEDLY[] = false` at any time.
 """
 function log_nothing_splat(value::Bool)
     if value != LOG_NOTHING_SPLAT
@@ -117,6 +127,25 @@ function log_nothing_splat(value::Bool)
         @info "Changing the logging mode requires restarting Julia to take effect!"
     end
     return
+end
+
+function logging_id(callback, inputs, outputs)
+    inputhash = mapreduce(n -> n.name, (a, b) -> hash(b, a), inputs, init = UInt64(0))
+    outputhash = mapreduce(n -> n.name, (a, b) -> hash(b, a), outputs, init = UInt64(0))
+    return hash(callback, hash(inputhash, outputhash))
+end
+
+function should_log(id::UInt64)
+    if LOG_REPEATEDLY[]
+        return true
+    else
+        if id in LOGGING_IDS
+            return false
+        else
+            push!(LOGGING_IDS, id)
+            return true
+        end
+    end
 end
 
 using Observables
@@ -250,6 +279,9 @@ function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
     )
 end
 
+logging_id(e::TypedEdge) = logging_id(e.output_nodes[1].parent)
+logging_id(e::ComputeEdge) = logging_id(e.callback, e.inputs, e.outputs)
+
 function _get_named_change(::NamedTuple{Names}, dirty) where {Names}
     values = ntuple(i -> dirty[i], length(Names))
     return NamedTuple{Names, NTuple{length(Names), Bool}}(values)
@@ -299,11 +331,13 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
     elseif isnothing(result)
 
         if LOG_NOTHING_SPLAT
-            @warn(
-                "Initializing multiple outputs with `return nothing` is deprecated. " *
-                    "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
-                    source_info_str(edge)
-            )
+            if should_log(logging_id(edge))
+                @warn(
+                    "Initializing multiple outputs with `return nothing` is deprecated. " *
+                        "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
+                        source_info_str(edge)
+                )
+            end
         else
             # This only triggers once, so it's not very useful for actually fixing
             # upstream map!/register_computation! methods
@@ -973,7 +1007,7 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
 end
 
 function set_result!(edge::TypedEdge, result, i, value)
-    if LOG_NOTHING_SKIP && isnothing(value)
+    if LOG_NOTHING_SKIP && isnothing(value) && should_log(logging_id(edge))
         @warn(
             "Found `map!` or `register_computation!` callback which returns " *
                 "nothing for one of its outputs. This might be incorrect since " *
@@ -1041,12 +1075,14 @@ function locked_resolve!(edge::TypedEdge)
             set_result!(edge, result)
         elseif isnothing(result)
             if LOG_NOTHING_SPLAT || LOG_NOTHING_SKIP
-                @warn(
-                    "Returning `nothing` in `map!` and `register_computation!` callbacks " *
-                        "has been deprecated in favor of returning `skip_update` to allow " *
-                        "outputs to update to `nothing`. Setting all outputs to `nothing` " *
-                        "should be done with a tuple. " * source_info_str(edge)
-                )
+                if should_log(logging_id(edge))
+                    @warn(
+                        "Returning `nothing` in `map!` and `register_computation!` callbacks " *
+                            "has been deprecated in favor of returning `skip_update` to allow " *
+                            "outputs to update to `nothing`. Setting all outputs to `nothing` " *
+                            "should be done with a tuple. " * source_info_str(edge)
+                    )
+                end
             else
                 Base.depwarn(
                     "Returning `nothing` in `map!` and `register_computation!` callbacks " *
