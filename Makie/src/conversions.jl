@@ -1580,29 +1580,33 @@ end
 to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continuous resampling.")
 
 """
-    categorical_colors(colormaplike, categories::Integer)
+    categorical_colors(colormaplike, categories::Integer, cycle = false)
 
 Creates categorical colors and tries to match `categories`.
 Will error if color scheme doesn't contain enough categories. Will drop the n last colors, if request less colors than contained in scheme.
 """
-function categorical_colors(cols::AbstractVector{<:Colorant}, categories::Integer)
-    if length(cols) < categories
-        error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+function categorical_colors(cols::AbstractVector{<:Colorant}, categories::Integer, cycle = false)
+    if cycle
+        return [cols[mod1(i, end)] for i in 1:categories]
+    else
+        if length(cols) < categories
+            error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+        end
+        return cols[1:categories]
     end
-    return cols[1:categories]
 end
 
-function categorical_colors(cols::AbstractVector, categories::Integer)
-    return categorical_colors(to_color.(cols), categories)
+function categorical_colors(cols::AbstractVector, categories::Integer, cycle = false)
+    return categorical_colors(to_color.(cols), categories, cycle)
 end
 
-function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
+function categorical_colors(cs::Union{String, Symbol}, categories::Integer, cycle = false)
     cs_string = string(cs)
     return if cs_string in all_gradient_names
         if haskey(ColorBrewer.colorSchemes, cs_string)
             return to_colormap(ColorBrewer.palette(cs_string, categories))
         else
-            return categorical_colors(to_colormap(cs_string), categories)
+            return categorical_colors(to_colormap(cs_string), categories, cycle)
         end
     else
         error(

@@ -1,5 +1,18 @@
 # Changelog
 
+- Allow `Float64` normals in CairoMakie. [#5797](https://github.com/MakieOrg/Makie.jl/pull/5797)
+- Updated `series`, `volumeslices` and `rainclouds` to use the compute pipeline infrastructure. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
+  - `rainclouds` should be much more dynamic now, as most attributes and arguments were previously not reactive.
+- Adjusted `volumeslices` to work with color data. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
+- Adjusted `volumeslices` to generate x, y and z values like e.g. volume. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
+- Fixed `volumeslices` limits. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
+- Added `xy/yz/xz_index` attributes to `volumeslices` as an alternative to calling `plot.update_xy[](index)`. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
+- Adjusted `series` to allow the number of subplots to change dynamically. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
+- Fixed `series` not accepting `Vector{Vector{<:Real}}`. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
+- Fixed error on empty `series`. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
+- Adjusted `series` to cycle colors sampled from `color` if more are needed. This can be controlled by the new `cycle_color` attribute. By default cycling is enabled with a warning. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
+- Added colormapping to `series`, allowing `color` to be set to values. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
+
 ## Unreleased
 
 - Added `FastInterpolations` as the default `Resampler` interpolation backend for ~2-9x faster resampling; passing an `Interpolations` degree keeps the old behavior [#5706](https://github.com/MakieOrg/Makie.jl/pull/5706).
