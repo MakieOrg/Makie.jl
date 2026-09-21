@@ -24,7 +24,7 @@ This can also be called with four arguments `xs, ys, zs` and `data`. In this cas
     - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
     """
     levels = 5
-    "Sets the width of contour lines."
+    "Sets the width of contour lines. Can be set per level."
     linewidth = 1.0
     "Sets the dash pattern of contour lines. See `?lines`."
     linestyle = nothing
@@ -82,43 +82,44 @@ a level value. The z-height of the line will be given by the level value.
     documented_attributes(Contour)...
 end
 
-function label_info(lev, vertices, col)
+function label_info(lev, vertices)
     mid = ceil(Int, 0.5f0 * length(vertices))
     # take 3 pts around half segment
     pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
-    return to_ndim.(Point3f, pts, lev)..., col
+    return tuple(to_ndim.(Point3f, pts, lev)...)
 end
 
-function contourlines(::Type{<:T}, contours, cols, labels) where {T <: Union{Contour3d, Contour}}
+function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d, Contour}}
     PT = T <: Contour3d ? Point3f : Point2f
 
     points = PT[]
-    colors = RGBA{Float32}[]
+    # index relates to the drawn line segments, outputs is (level, count)
+    elements_per_segment = Pair{UInt32, UInt32}[]
     levels = Float32[]
     lbl_pos_low = PT[]
     lbl_pos_center = PT[]
     lbl_pos_high = PT[]
-    lbl_color = RGBAf[]
 
-    for (color, c) in zip(cols, Contours.levels(contours))
+    for (lvl, c) in enumerate(Contours.levels(contours))
         for elem in Contours.lines(c)
-            for p in elem.vertices
+            # Contours.jl traces cells in `Dict` order, so a line starts anywhere and runs either way
+            vertices = canonical_line_order(elem.vertices)
+            for p in vertices
                 push!(points, to_ndim(PT, p, c.level))
             end
             push!(points, PT(NaN32))
-            append!(colors, fill(color, length(elem.vertices) + 1))
+            push!(elements_per_segment, lvl => length(vertices) + 1)
 
             if labels
-                p1, p2, p3, col = label_info(c.level, elem.vertices, color)
+                p1, p2, p3 = label_info(c.level, vertices)
                 push!(levels, c.level)
                 push!(lbl_pos_low, p1)
                 push!(lbl_pos_center, p2)
                 push!(lbl_pos_high, p3)
-                push!(lbl_color, col)
             end
         end
     end
-    return points, colors, levels, lbl_pos_low, lbl_pos_center, lbl_pos_high, lbl_color
+    return points, elements_per_segment, levels, lbl_pos_low, lbl_pos_center, lbl_pos_high
 end
 
 to_levels(x::AbstractVector{<:Number}, cnorm) = x
@@ -200,7 +201,7 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     end
 
     volume!(
-        plot, Attributes(plot),
+        plot, plot.attributes,
         plot.converted_1, plot.converted_2, plot.converted_3, plot.converted_4,
         alpha = 1.0, # don't apply alpha 2 times
         algorithm = 7, # contour algorithm
@@ -235,16 +236,18 @@ function color_per_level(::Nothing, colormap, colorscale, colorrange, a, levels)
     end
 end
 
-function to_contour(x, y, z::AbstractMatrix{ET}, levels) where {ET}
+function contourlines(x, y, z::AbstractMatrix{ET}, levels, labels, T) where {ET}
     # Compute contours
     xv, yv = to_vector(x, size(z, 1), ET), to_vector(y, size(z, 2), ET)
-    return Contours.contours(xv, yv, z, convert(Vector{ET}, levels))
+    contours = Contours.contours(xv, yv, z, convert(Vector{ET}, levels))
+    return contourlines(T, contours, labels)
 end
 
 # Overload for matrix-like x and y lookups for contours
 # Just removes the `to_vector` invocation
-function to_contour(x::AbstractMatrix{<:Real}, y::AbstractMatrix{<:Real}, z::AbstractMatrix{ET}, levels) where {ET}
-    return Contours.contours(x, y, z, convert(Vector{ET}, levels))
+function contourlines(x::AbstractMatrix{<:Real}, y::AbstractMatrix{<:Real}, z::AbstractMatrix{ET}, levels, labels, T) where {ET}
+    contours = Contours.contours(x, y, z, convert(Vector{ET}, levels))
+    return contourlines(T, contours, labels)
 end
 
 function has_changed(old_args, new_args)
@@ -253,6 +256,15 @@ function has_changed(old_args, new_args)
         old != new && return true
     end
     return false
+end
+
+repeat_level_data_per_vertex(counts, x) = x
+function repeat_level_data_per_vertex(counts, x::AbstractVector{T}) where {T}
+    output = T[]
+    for (lvl, count) in counts
+        append!(output, fill(x[lvl], count))
+    end
+    return output
 end
 
 function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
@@ -285,11 +297,18 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
 
     map!(
         plot,
-        [:contour, :level_colors, :labels],
-        [:contour_points, :contour_colors, :computed_levels, :lbl_pos1, :lbl_pos2, :lbl_pos3, :computed_lbl_colors]
+        [:converted_1, :converted_2, :converted_3, :zlevels, :labels],
+        [:contour_points, :elements_per_segment, :computed_levels, :lbl_pos1, :lbl_pos2, :lbl_pos3]
     ) do args...
         return contourlines(T, args...)
     end
+
+    map!(plot, [:elements_per_segment, :level_colors, :labels], :computed_lbl_colors) do counts, colors, labels
+        return labels ? [colors[i] for (i, _) in counts] : RGBAf[]
+    end
+
+    map!(repeat_level_data_per_vertex, plot, [:elements_per_segment, :level_colors], :contour_colors)
+    map!(repeat_level_data_per_vertex, plot, [:elements_per_segment, :linewidth], :contour_linewidth)
 
     # TODO:
     # Should we make yes/no labels a constructor-time decisions so we can avoid
@@ -306,7 +325,8 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     end
 
     map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
-        return formatter.(levels)
+        # Allow inconsistent output types (String, LaTexString, RichText) from formatter
+        return Ref{Any}(formatter.(levels))
     end
 
     map!(plot, [:labelcolor, :computed_lbl_colors], :text_color) do user_color, computed_color
@@ -380,7 +400,7 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     lines!(
         plot, plot.masked_lines;
         color = plot.contour_colors,
-        linewidth = plot.linewidth,
+        linewidth = plot.contour_linewidth,
         linestyle = plot.linestyle,
         linecap = plot.linecap,
         joinstyle = plot.joinstyle,

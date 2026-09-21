@@ -4,6 +4,7 @@ using Test
 using CairoMakie
 using Makie.FileIO
 using ReferenceTests
+using GeometryBasics
 
 # Before changing Pkg environment, try the test in #864
 @testset "Runs without error" begin
@@ -87,6 +88,19 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
         rm("test.png")
     end
 
+    @testset "saving pdf while recording a VideoStream" begin
+        fig, ax, pl = heatmap(rand(10, 10))
+        vio = VideoStream(fig)
+        recordframe!(vio)
+        save("test.pdf", fig)
+        @test isopen(vio.screen)
+        recordframe!(vio)
+        save("test.mp4", vio)
+        @test filesize("test.mp4") > 0
+        rm("test.pdf")
+        rm("test.mp4")
+    end
+
     @testset "changing resolution of same format" begin
         # see: https://github.com/MakieOrg/Makie.jl/issues/2433
         # and: https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/441
@@ -152,27 +166,7 @@ end
     @test !isfile(tmp_path)
 end
 
-# @testset "plotlist no ambiguity (#4038)" begin
-#     f = plotlist([Makie.SpecApi.Scatter(1:10)])
-#     Makie.colorbuffer(f; backend=CairoMakie)
-#     plotlist!([Makie.SpecApi.Scatter(1:10)])
-# end
-
-@testset "multicolor line clipping (#4313)" begin
-    fig, ax, p = contour(rand(20, 20))
-    xlims!(ax, 0, 10)
-    Makie.colorbuffer(fig; backend = CairoMakie)
-end
-
-@testset "ComputeGraph Sanity Checks" begin
-    # This is supposed to catch changes in ComputePipeline causing nodes to
-    # be skipped or become duplicated. This will also trigger if plot attributes
-    # are modified in which case the numbers should just be updated
-    f, a, p = scatter(rand(10))
-    colorbuffer(f)
-    @test length(p.attributes.inputs) == 37
-    @test length(p.attributes.outputs) == 83
-end
+include("issues.jl")
 
 excludes = Set(
     [

@@ -289,41 +289,8 @@ function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon{N, T}}, Mul
     return (arr,)
 end
 
-function convert_arguments(::PointBased, b::BezierPath)
-    b2 = replace_nonfreetype_commands(b)
-    points = Point2d[]
-    last_point = Point2d(NaN)
-    last_moveto = false
-
-    function poly3(t, p0, p1, p2, p3)
-        return Point2d((1 - t)^3 .* p0 .+ t * p1 * (3 * (1 - t)^2) + p2 * (3 * (1 - t) * t^2) .+ p3 * t^3)
-    end
-
-    for command in b2.commands
-        if command isa MoveTo
-            last_point = command.p
-            last_moveto = true
-        elseif command isa LineTo
-            if last_moveto
-                isempty(points) || push!(points, Point2d(NaN, NaN))
-                push!(points, last_point)
-            end
-            push!(points, command.p)
-            last_point = command.p
-            last_moveto = false
-        elseif command isa CurveTo
-            if last_moveto
-                isempty(points) || push!(points, Point2d(NaN, NaN))
-                push!(points, last_point)
-            end
-            last_moveto = false
-            for t in range(0, 1, length = 30)[2:end]
-                push!(points, poly3(t, last_point, command.c1, command.c2, command.p))
-            end
-            last_point = command.p
-        end
-    end
-    return (points,)
+function convert_arguments(::PointBased, bp::BezierPath)
+    return (to_vertices(bp),)
 end
 
 
@@ -876,9 +843,11 @@ Converts a representation of vertices `v` to its canonical representation as a
 - An `AbstractVector` of `Tuple`s or `StaticVector`s, in which case extra dimensions will
   be either truncated or padded with zeros as required,
 
-- An `AbstractMatrix`"
+- An `AbstractMatrix`
   - if `v` has 2 or 3 rows, it will treat each column as a vertex,
   - otherwise if `v` has 2 or 3 columns, it will treat each row as a vertex.
+
+- A `BezierPath` with an additional function `to_vertices!(buffer, bp[, z = 0])`
 """
 function to_vertices(verts::AbstractVector{<:VecTypes{3, T}}) where {T}
     T_out = float_type(T)
@@ -911,6 +880,45 @@ end
 
 function to_vertices(verts::AbstractMatrix{T}, ::Type{Tout}, ::Val{2}, ::Val{N}) where {T <: Real, Tout, N}
     return Point{N, Tout}[ntuple(j -> Tout(verts[i, j]), N) for i in 1:size(verts, 1)]
+end
+
+to_vertices(bp::BezierPath) = to_vertices!(Point2d[], bp)
+function to_vertices!(output::AbstractVector{PT}, bp::BezierPath, z = 0) where {PT <: VecTypes}
+    b2 = replace_nonfreetype_commands(bp)
+    last_point = PT(NaN)
+    last_moveto = false
+
+    function poly3(t, p0, p1, p2, p3)
+        return Point2d((1 - t)^3 .* p0 .+ t * p1 * (3 * (1 - t)^2) + p2 * (3 * (1 - t) * t^2) .+ p3 * t^3)
+    end
+
+    for command in b2.commands
+        if command isa MoveTo
+            last_point = command.p
+            last_moveto = true
+        elseif command isa LineTo
+            if last_moveto
+                isempty(output) || push!(output, PT(NaN))
+                push!(output, to_ndim(PT, last_point, z))
+            end
+            push!(output, to_ndim(PT, command.p, z))
+            last_point = command.p
+            last_moveto = false
+        elseif command isa CurveTo
+            if last_moveto
+                isempty(output) || push!(output, PT(NaN))
+                push!(output, to_ndim(PT, last_point, z))
+            end
+            last_moveto = false
+            for t in range(0, 1, length = 30)[2:end]
+                p = poly3(t, last_point, command.c1, command.c2, command.p)
+                push!(output, to_ndim(PT, p, z))
+            end
+            last_point = command.p
+        end
+    end
+
+    return output
 end
 
 
@@ -1237,7 +1245,7 @@ end
 
 function line_diff_pattern(ls::Symbol, gaps::GapType = :normal)
     if ls === :solid
-        return nothing
+        return Float32[]
     elseif ls === :dash
         return line_diff_pattern("-", gaps)
     elseif ls === :dot
@@ -1521,12 +1529,14 @@ to_rotation(s::Quaternionf) = s
 to_rotation(s::Quaternion) = Quaternionf(s.data...)
 
 function to_rotation(s::VecTypes{N}) where {N}
-    return if N == 4
-        Quaternionf(s...)
+    if N == 4
+        return Quaternionf(s...)
     elseif N == 3
-        rotation_between(Vec3f(0, 0, 1), to_ndim(Vec3f, s, 0.0))
+        q64 = rotation_between(Vec3d(0, 0, 1), to_ndim(Vec3d, s, 0.0))
+        return Quaternionf(q64.data)
     elseif N == 2
-        rotation_between(Vec3f(0, 1, 0), to_ndim(Vec3f, s, 0.0))
+        q64 = rotation_between(Vec3d(0, 1, 0), to_ndim(Vec3d, s, 0.0))
+        return Quaternionf(q64.data)
     else
         error("The $N dimensional vector $s can't be converted to a rotation.")
     end
@@ -1584,29 +1594,33 @@ end
 to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continuous resampling.")
 
 """
-    categorical_colors(colormaplike, categories::Integer)
+    categorical_colors(colormaplike, categories::Integer, cycle = false)
 
 Creates categorical colors and tries to match `categories`.
 Will error if color scheme doesn't contain enough categories. Will drop the n last colors, if request less colors than contained in scheme.
 """
-function categorical_colors(cols::AbstractVector{<:Colorant}, categories::Integer)
-    if length(cols) < categories
-        error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+function categorical_colors(cols::AbstractVector{<:Colorant}, categories::Integer, cycle = false)
+    if cycle
+        return [cols[mod1(i, end)] for i in 1:categories]
+    else
+        if length(cols) < categories
+            error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+        end
+        return cols[1:categories]
     end
-    return cols[1:categories]
 end
 
-function categorical_colors(cols::AbstractVector, categories::Integer)
-    return categorical_colors(to_color.(cols), categories)
+function categorical_colors(cols::AbstractVector, categories::Integer, cycle = false)
+    return categorical_colors(to_color.(cols), categories, cycle)
 end
 
-function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
+function categorical_colors(cs::Union{String, Symbol}, categories::Integer, cycle = false)
     cs_string = string(cs)
     return if cs_string in all_gradient_names
         if haskey(ColorBrewer.colorSchemes, cs_string)
             return to_colormap(ColorBrewer.palette(cs_string, categories))
         else
-            return categorical_colors(to_colormap(cs_string), categories)
+            return categorical_colors(to_colormap(cs_string), categories, cycle)
         end
     else
         error(
@@ -2435,3 +2449,4 @@ convert_attribute(x::Plane, ::key"clip_planes") = Plane3f[x]
 convert_attribute(x::Vector{<:Plane}, ::key"clip_planes") = Plane3f.(x)
 
 convert_attribute(x, ::key"inspector_label") = Ref{Any}(x)
+convert_attribute(x::Integer, ::key"rasterize") = Int(x)
