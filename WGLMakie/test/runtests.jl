@@ -2,6 +2,14 @@ ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 ENV["ELECTRON_LOG_FILE"] = joinpath(@__DIR__, "electron.log")
 ENV["ELECTRON_ENABLE_LOGGING"] = "true"
 
+run(
+    `julia -e "using Makie.ComputePipeline; ComputePipeline.enable_debugging!(); ComputePipeline.log_nothing_skip(true); ComputePipeline.log_nothing_splat(true)"`
+)
+
+@info Makie.ComputePipeline.ENABLE_COMPUTE_CHECKS
+@info Makie.ComputePipeline.LOG_NOTHING_SKIP
+@info Makie.ComputePipeline.LOG_NOTHING_SPLAT
+
 using FileIO
 using WGLMakie, Makie, Test
 using WGLMakie.Bonito
@@ -349,3 +357,8 @@ println("###########################")
 println("WGLMakie tests DONE")
 println("Open Tasks: ", length(Makie.TRACKED_TASKS))
 println("###########################")
+
+using Makie.ComputePipeline
+ComputePipeline.disable_debugging!()
+ComputePipeline.log_nothing_skip(false)
+ComputePipeline.log_nothing_splat(false)

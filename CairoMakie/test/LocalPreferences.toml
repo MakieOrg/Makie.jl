@@ -1,4 +1,0 @@
-[ComputePipeline]
-ENABLE_COMPUTE_CHECKS = true
-LOG_NOTHING_SKIP = true
-LOG_NOTHING_SPLAT = true
