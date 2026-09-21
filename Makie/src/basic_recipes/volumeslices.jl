@@ -7,9 +7,9 @@ Draws heatmap slices visualizing an xy, yz and xz plane of the volume data v.
     and the volume data `v` (an `AbstractArray{3, Real}`).
 """
 @recipe VolumeSlices (
-    x::Union{RangeLike{<:Real}, EndPoints{<:Real}},
-    y::Union{RangeLike{<:Real}, EndPoints{<:Real}},
-    z::Union{RangeLike{<:Real}, EndPoints{<:Real}},
+    x::RangeLike{<:Real},
+    y::RangeLike{<:Real},
+    z::RangeLike{<:Real},
     volume::AbstractArray{<:Union{Real, Colorant}, 3},
 ) begin
     documented_attributes(Heatmap)...
@@ -37,7 +37,7 @@ end
 # TODO: VolumeSlices is mostly cell based but the data_limits and frame are
 # act like it is edge based. Which do we want? If we switch to edge based we
 # can also use VolumeLike() with its expand_dimensions() instead of this:
-function convert_arguments(::Type{<:VolumeSlices}, data)
+function convert_arguments(::Type{<:VolumeSlices}, data::AbstractArray{T, 3}) where {T}
     return (axes(data, 1), axes(data, 2), axes(data, 3), data)
 end
 

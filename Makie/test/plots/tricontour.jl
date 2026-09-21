@@ -105,10 +105,10 @@ end
     _, _, tr = tricontour(xs, ys, zs; levels = 6)
     cmap = Makie.extract_colormap(tr)
     @test cmap isa Dict
-    @test cmap[:colorrange] === tr.computed_colorrange
-    @test cmap[:color] === tr.computed_levels
-    @test cmap[:lowclip] == Makie.automatic
-    @test cmap[:highclip] == Makie.automatic
+    @test cmap[:colorrange][] == tr.computed_colorrange[]
+    @test cmap[:color][] == tr.computed_levels[]
+    @test cmap[:lowclip] === tr.lowclip
+    @test cmap[:highclip] === tr.highclip
 end
 
 @testset "Colorbar extract_colormap for 2D contour" begin

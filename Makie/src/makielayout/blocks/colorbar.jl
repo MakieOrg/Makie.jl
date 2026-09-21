@@ -127,7 +127,7 @@ function extract_colormap(plot::Tricontour)
     map!(apply_scale, plot, [:colorscale, :computed_colorrange], :cb_colorrange)
     return Dict{Symbol, Any}(
         :color => plot.cb_levels,
-        :colormap => plot.ccolormap,
+        :colormap => plot.colormap,
         :colorrange => plot.cb_colorrange,
         :lowclip => plot.lowclip,
         :highclip => plot.highclip,
@@ -151,15 +151,6 @@ function _extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z,
         :color => plot.value_levels,
         :colormap => plot.opaque_colormap,
         :colorrange => plot.padded_colorrange,
-    )
-end
-
-function extract_colormap(plot::Tricontour)
-    return Dict{Symbol, Any}(
-        :color => plot.computed_levels,
-        :colorrange => plot.computed_colorrange,
-        :lowclip => automatic,
-        :highclip => automatic,
     )
 end
 

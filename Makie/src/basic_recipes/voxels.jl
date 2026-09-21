@@ -278,7 +278,7 @@ function voxel_size(p::Voxels)
 end
 
 function voxel_positions(p::Voxels)
-    voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
+    voxel_id = p.chunk_u8[]::Array{UInt8, 3}
     _size = size(voxel_id)
     return [
         voxel_position(p, i, j, k)
@@ -289,7 +289,7 @@ end
 
 function voxel_position(p::Voxels, i, j, k)
     mini, maxi = extrema(data_limits(p))
-    _size = size(p.chunk_u8[].data::Array{UInt8, 3})
+    _size = size(p.chunk_u8[]::Array{UInt8, 3})
     step = (maxi .- mini) ./ _size
     return Point3f(mini .+ step .* (i - 0.5, j - 0.5, k - 0.5))
 end

@@ -266,13 +266,6 @@ function add_light_computation!(graph, scene, lights)
     return
 end
 
-function get_shading_mode(plot::Plot)
-    if !haskey(plot, :shading) || !plot.shading[]::Bool
-        return NoShading
-    end
-    return get_shading_mode(parent_scene(plot))
-end
-
 # These return the number of parameter slots they used
 push_parameters!(parameters, light::AbstractLight, iview) = push_parameters!(parameters, light)
 
@@ -339,7 +332,6 @@ end
 ################################################################################
 # Plot Interface
 
-
 add_resolved_shading!(@nospecialize(plot), scene) = nothing
 
 function add_resolved_shading!(plot::Union{Mesh, MeshScatter}, scene)
@@ -384,6 +376,10 @@ function add_resolved_shading!(plot::Union{Surface, Volume, Voxels}, scene)
         end
     end
     return
+end
+
+function get_shading_mode(plot::Plot)
+    return to_value(get(plot, :shading_mode, NoShading))::ShadingAlgorithm
 end
 
 ################################################################################
