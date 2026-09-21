@@ -180,6 +180,8 @@ simulation state) and only render new ones.
 - `framerate=24`: target framerate for the output video.
 - `frame_format=:png`: image format for saved frames.
 - `overwrite=false`: if `true`, re-renders all frames even if they already exist.
+- `filter_ticks=true`: suppress interactive render-loop ticks while recording and
+  emit one deterministic `OneTimeRenderTick` per video frame.
 - `compression`, `profile`, `pixel_format`, `preset`, `loop`: video encoding options, see [`VideoStreamOptions`](@ref).
 - `backend`, `screen_config...`: forwarded to the backend for rendering.
 
@@ -192,6 +194,7 @@ end
 """
 function record_longrunning(func, figlike::FigureLike, path::AbstractString, iter;
         framerate=24, frame_format=:png, overwrite=false, update=true,
+        filter_ticks=true,
         compression=nothing, profile=nothing, pixel_format=nothing, preset=nothing, loop=nothing,
         backend=current_backend(), visible=false, screen_config...)
     p, _ = splitext(path)
@@ -225,27 +228,42 @@ function record_longrunning(func, figlike::FigureLike, path::AbstractString, ite
     scene = get_scene(figlike)
     update && update_state_before_display!(figlike)
     screen = getscreen(backend, scene, config, JuliaNative)
+    tick_controller = TickController(figlike, 1.0 / framerate, filter_ticks)
     progress = ProgressMeter.Progress(n; desc="Recording frames: ", showspeed=true)
-    for (idx, i) in enumerate(iter)
-        func(i)
-        if idx in existing
-            ProgressMeter.next!(progress; showvalues=[(:status, "skipped (cached)")])
-        else
-            frame = colorbuffer(screen)
-            FileIO.save(frame_path(idx), frame)
-            ProgressMeter.next!(progress; showvalues=[(:status, "rendered")])
+    try
+        for (idx, i) in enumerate(iter)
+            func(i)
+            if idx in existing
+                ProgressMeter.next!(progress; showvalues=[(:status, "skipped (cached)")])
+            else
+                frame = colorbuffer(screen)
+                FileIO.save(frame_path(idx), frame)
+                ProgressMeter.next!(progress; showvalues=[(:status, "rendered")])
+            end
+            # Match `record`: frame 1 observes t=0, then each captured or cached
+            # frame advances the deterministic recording clock by 1/framerate.
+            next_tick!(tick_controller)
+            yield()
         end
-        yield()
+        ProgressMeter.finish!(progress)
+    finally
+        stop!(tick_controller)
+        close(screen)
     end
-    ProgressMeter.finish!(progress)
-    close(screen)
 
     # Assemble frames into video using VideoStreamOptions for proper encoding
     @info "record_longrunning: assembling $n frames into video at $path"
     input_pattern = joinpath(frame_folder, "frame_%0$(nd)d.$(frame_format)")
     vso = VideoStreamOptions(video_format, framerate, compression, profile, pixel_format, preset, loop, "quiet", input_pattern, false)
     cmd = to_ffmpeg_cmd(vso)
-    run(`$(FFMPEG_jll.ffmpeg()) $cmd $path`)
+    # `get_ffmpeg_path()`, not `FFMPEG_jll` directly. FFMPEG_jll stopped being a
+    # hard dependency of Makie and now arrives through the MakieFFMPEGExt
+    # extension, which exposes it as `_ffmpeg_jll_path`; `get_ffmpeg_path`
+    # resolves a user-configured path, then the extension, loading it on demand.
+    # This line was not updated with the rest, so `record_longrunning` threw
+    # `UndefVarError: FFMPEG_jll not defined in Makie` — after rendering every
+    # frame, which is the worst possible moment for it.
+    run(`$(get_ffmpeg_path()) $cmd $path`)
     return path
 end
 

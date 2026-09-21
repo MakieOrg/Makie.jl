@@ -100,6 +100,27 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
             rm(filename)
         end
 
+        f, a, p = scatter(rand(10))
+        filename = "$(tempname()).mp4"
+        frame_folder = splitext(filename)[1] * "_frames"
+        try
+            tick_record = Makie.Tick[]
+            on(tick -> push!(tick_record, tick), events(f).tick)
+            record_longrunning(_ -> nothing, f, filename, 1:4;
+                               framerate = 30, overwrite = true)
+
+            ticks = filter(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
+            @test length(ticks) == 5 # initial state plus one advance per frame
+            for (i, tick) in enumerate(ticks)
+                @test tick.count == i - 1
+                @test tick.time ≈ (i - 1) / 30
+                @test tick.delta_time ≈ 1 / 30
+            end
+        finally
+            rm(filename; force = true)
+            rm(frame_folder; recursive = true, force = true)
+        end
+
         # test destruction of tick overwrite
         f, a, p = scatter(rand(10))
         let
