@@ -1,5 +1,7 @@
 # Changelog
 
+- Fixed 2D CairoMakie meshes not anti-aliasing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
+- Fixed uniformly colored 2D CairoMakie meshes always rasterizing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
 - Allow `Float64` normals in CairoMakie. [#5797](https://github.com/MakieOrg/Makie.jl/pull/5797)
 - Updated `series`, `volumeslices` and `rainclouds` to use the compute pipeline infrastructure. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
   - `rainclouds` should be much more dynamic now, as most attributes and arguments were previously not reactive.
