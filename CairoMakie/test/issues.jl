@@ -1,6 +1,6 @@
 @testset "plotlist no ambiguity (#4038)" begin
     f = plotlist([Makie.SpecApi.Scatter(1:10)])
-    Makie.colorbuffer(f; backend=CairoMakie)
+    Makie.colorbuffer(f; backend = CairoMakie)
     plotlist!([Makie.SpecApi.Scatter(1:10)])
 end
 
@@ -22,7 +22,7 @@ end
 end
 
 @testset "Float64 normals #5797" begin
-    m = normal_mesh(Sphere(Point3f(0), 1f0), normaltype = Vec3d)
+    m = normal_mesh(Sphere(Point3f(0), 1.0f0), normaltype = Vec3d)
     f, a, p = mesh(m)
     @assert eltype(p.normals[]) === Vec3d
     colorbuffer(f) # should not error
