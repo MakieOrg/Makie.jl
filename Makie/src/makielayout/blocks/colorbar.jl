@@ -123,12 +123,13 @@ function extract_colormap(plot::Tricontour)
     if isnothing(plot.inverse_colorscale[])
         @warn "Colorbar for $(plotsym(typeof(plot))) with `colorscale = $(plot.colorscale[])` can not compute pre-colorscale color values because `Makie.inverse_transform($(plot.colorscale[]))` is missing. Showing transformed values in ticks instead."
     end
-    map!(apply_scale, plot, [:colorscale, :computed_levels], :cb_levels)
-    map!(apply_scale, plot, [:colorscale, :computed_colorrange], :cb_colorrange)
+    map!(apply_scale, plot, [:inverse_colorscale, :computed_levels], :cb_levels)
+    map!(apply_scale, plot, [:inverse_colorscale, :computed_colorrange], :cb_colorrange)
     return Dict{Symbol, Any}(
         :color => plot.cb_levels,
         :colormap => plot.colormap,
         :colorrange => plot.cb_colorrange,
+        :colorscale => plot.colorscale,
         :lowclip => plot.lowclip,
         :highclip => plot.highclip,
     )
