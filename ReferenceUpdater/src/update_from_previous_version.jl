@@ -68,6 +68,8 @@ function update_from_previous_version(;
         @info "Reminder: Backup in $backupdir will not be cleaned up by ReferenceUpdater. The OS may or may not clean it up."
     end
 
+    isdir(refimg_path) && rm(refimg_path, force = true, recursive = true)
+
     return
 end
 
