@@ -78,4 +78,12 @@ end
         @test theme[B].color[] === :black
         @test collect(keys(theme)) == [Symbol("Main.RecipeNamespaceB.SamePlot")]
     end
+
+    @testset "cycle counters are per plot type" begin
+        scene = Scene()
+        a1 = RecipeNamespaceA.sameplot!(scene, 1:3)
+        a2 = RecipeNamespaceA.sameplot!(scene, 1:3)
+        b1 = RecipeNamespaceB.sameplot!(scene, 1:3)
+        @test (a1.cycle_index[], a2.cycle_index[], b1.cycle_index[]) == (1, 2, 1)
+    end
 end

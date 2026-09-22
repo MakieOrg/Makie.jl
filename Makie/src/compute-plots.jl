@@ -728,10 +728,10 @@ function (cc::CycleConvert)(value)
     end
 end
 
-function get_next_cycle_index(scene, name)
-    lookup = scene.compute[:cycle_counters][]::Dict{Symbol, Int}
-    cycle_index = get(lookup, name, 0) + 1
-    lookup[name] = cycle_index
+function get_next_cycle_index(scene, plotfunc::Function)
+    lookup = scene.compute[:cycle_counters][]::Dict{Function, Int}
+    cycle_index = get(lookup, plotfunc, 0) + 1
+    lookup[plotfunc] = cycle_index
     return cycle_index
 end
 
@@ -741,14 +741,13 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
     # apply the theme overwrites for `T` if there are any (see `theme_overwrites`).
 
     attr = documented_attributes(T)
-    name = plotsym(T)
 
     # Handle cycling
     if has_flat_key(attr, :cycle)
-        # This will increment the scenes cycle counter for this plot type (plotsym)
+        # This will increment the scenes cycle counter for this plot type
         # when the first CycleConvert uses it. After that it will just grab the
         # cached cycle index.
-        map!(() -> get_next_cycle_index(scene, name), graph, Symbol[], :cycle_index)
+        map!(() -> get_next_cycle_index(scene, plotfunc(T)), graph, Symbol[], :cycle_index)
 
         if !haskey(user_kw, :cycle)
             _cycle = to_value(lookup_default(attr, scene, T, NamedTuple(), :cycle))

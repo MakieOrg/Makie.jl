@@ -705,11 +705,11 @@ function diff_plotlist!(
         # cycle counters of each unused plot in the parent scene.
         # Only do this when the spec plots are the latest plots affecting cycling
         # so that we don't reuse indices that other (newer) plots are using.
-        lookup = scene.compute[:cycle_counters][]::Dict{Symbol, Int}
+        lookup = scene.compute[:cycle_counters][]::Dict{Function, Int}
         for (spec, plot) in reusable_plots_sorted
-            name = recipe_name(spec.type)
-            if haskey(lookup, name) && lookup[name] == plot.cycle_index[]
-                lookup[name] -= 1
+            func = plotfunc(spec.type)
+            if haskey(lookup, func) && lookup[func] == plot.cycle_index[]
+                lookup[func] -= 1
             end
         end
     end
