@@ -154,7 +154,9 @@ end
 
 function register_light_attributes!(screen, scene, attr, uniforms)
     # plot does not support shading
-    haskey(attr, :shading) || return
+    if !haskey(attr, :shading) || attr[:use_shading][]::Bool == false
+        return
+    end
 
     # On re-display these are already registered. To allow compiling shaders
     # with different light settings we need to clear old computations
@@ -171,10 +173,7 @@ function register_light_attributes!(screen, scene, attr, uniforms)
     end
 
     # Nothing to generate if we don't shade
-    shading = Makie.get_shading_mode(scene)
-    if !attr[:shading][] || (shading == NoShading)
-        return
-    end
+    shading = attr[:shading_mode][]::Makie.ShadingAlgorithm
 
     add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
 
@@ -216,7 +215,7 @@ function construct_robj(constructor!, screen, scene, attr, args, uniforms, input
     )
 
     if haskey(attr, :shading)
-        data[:shading] = attr[:shading][] ? Makie.get_shading_mode(scene) : NoShading
+        data[:shading] = haskey(attr, :shading_mode) ? attr[:shading_mode][]::Makie.ShadingAlgorithm : NoShading
     end
 
     for name in uniforms
@@ -554,7 +553,6 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     attr = generic_robj_setup(screen, scene, plot)
 
-    Makie.add_computation!(attr, Val(:disassemble_mesh), :marker)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
@@ -1130,7 +1128,7 @@ end
 
 
 function assemble_voxel_robj!(data, screen::Screen, attr, args, input2glname)
-    voxel_id = Texture(screen.glscreen, args.chunk_u8)
+    voxel_id = Texture(screen.glscreen, args.chunk_sampler)
     uvt = args.packed_uv_transform
     data[:voxel_id] = voxel_id
     data[:uv_transform] = isnothing(uvt) ? nothing : Texture(screen.glscreen, uvt, minfilter = :nearest)
@@ -1163,7 +1161,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         # Special
         :space,
         # Needs explicit handling
-        :chunk_u8, :packed_uv_transform,
+        :chunk_sampler, :packed_uv_transform,
     ]
     uniforms = [
         :instances, :voxel_model, :gap, :depthsorting,
@@ -1174,7 +1172,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     haskey(attr, :voxel_colormap) && push!(uniforms, :voxel_colormap)
 
     input2glname = Dict{Symbol, Symbol}(
-        :chunk_u8 => :voxel_id, :voxel_model => :model, :packed_uv_transform => :uv_transform,
+        :chunk_sampler => :voxel_id, :voxel_model => :model, :packed_uv_transform => :uv_transform,
         :voxel_colormap => :color_map, :voxel_color => :color,
         :uniform_num_clip_planes => :_num_clip_planes
     )

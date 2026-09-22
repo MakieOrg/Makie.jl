@@ -705,6 +705,12 @@ function convert_old_attributes_expr_inner(entry_value_expr, attr_sources)
                 $(entry_value_expr)...
             end
         )
+    elseif MacroTools.@capture(entry_value_expr, (key_ = val_, rest__))
+        # matches NamedTuple (key = val, rest...) which is converted to
+        # Attributes when inside Attributes. So we need to recursively process
+        # this as if it was Attributes
+        content = attribute_args_to_block_expr(entry_value_expr.args, attr_sources)
+        return :(@attributes $content)
     end
     return entry_value_expr
 end

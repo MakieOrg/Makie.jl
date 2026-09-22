@@ -75,6 +75,7 @@ function download_artifacts(; commit = nothing, pr = nothing)
                     headers = Dict("Authorization" => "token $(github_token())"),
                     progress = download_progress_callback,
                 )
+                println()
                 @info "Download successful"
                 tmpdir = mktempdir()
                 unzip(filepath, tmpdir)

@@ -847,6 +847,30 @@ end
     voxels(RNG.rand(3, 3, 3), gap = 0.3)
 end
 
+@reference_test "Voxel resize" begin
+    function make_data(N)
+        r = range(-2pi, 2pi, N)
+        return [sin(x) * sin(y) + sin(z) for x in r, y in r, z in r]
+    end
+    f, a1, p1 = voxels(make_data(10), figure = (size = (300, 500),))
+    a2, p2 = voxels(f[2, 1], -1 .. 1, -1 .. 1, -1 .. 1, trunc.(UInt8, max.(0, 100 .* make_data(10))))
+    f
+
+    st = Stepper(f)
+    Makie.step!(st)
+
+    update!(p1, arg1 = collect(reshape(1:1000, (10, 10, 10))))
+    update!(p2, arg4 = reshape(UInt8.(mod.(1:1000, 255)), (10, 10, 10)))
+    Makie.step!(st)
+
+    update!(p1, arg1 = make_data(20))
+    center!(a1.scene)
+    update!(p2, arg4 = trunc.(UInt8, max.(0, 100 .* make_data(20))))
+    Makie.step!(st)
+
+    st
+end
+
 @reference_test "Plot transform overwrite" begin
     # Tests that (primitive) plots can have different transform function
     # (identity) from their parent scene (log10, log10)

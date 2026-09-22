@@ -492,10 +492,10 @@ function register_sdf_computations!(attr, atlas)
     return register_computation!(
         attr, [:uv_offset_width, :marker, :font],
         [:sdf_marker_shape, :sdf_uv]
-    ) do (uv_off, m, f), changed, last
+    ) do (uv_off, m, f), changed, @nospecialize(last)
         new_mf = changed[2] || changed[3]
-        uv = new_mf ? primitive_uv_offset_width(atlas, m[], f[]) : nothing
-        marker = changed[1] ? marker_to_sdf_shape(m[]) : nothing
+        uv = new_mf ? primitive_uv_offset_width(atlas, m[], f[]) : skip_update
+        marker = changed[1] ? marker_to_sdf_shape(m[]) : skip_update
         return (marker, uv)
     end
 end
@@ -574,7 +574,7 @@ function compute_marker_attributes((atlas, marker, font, scale, ppu), changed, l
             return (Cint(RECTANGLE), uvs, images)
         else
             # if marker is up to date don't update
-            return (nothing, nothing, nothing)
+            return skip_update
         end
     else # Char, BezierPath, Vectors thereof or Shapes (Rect, Circle)
         if changed[2] || changed.markersize
@@ -591,7 +591,7 @@ function compute_marker_attributes((atlas, marker, font, scale, ppu), changed, l
         elseif isnothing(last)
             uv = Vec4f(0, 0, 1, 1)
         else
-            uv = nothing # Is this even worth it?
+            uv = skip_update # Is this even worth it?
         end
         return (shape, uv, nothing)
     end
@@ -602,9 +602,7 @@ function all_marker_computations!(attr, markername = :marker)
     haskey(attr, :px_per_unit) || map!(() -> 1.0f0, attr, Symbol[], :px_per_unit)
     inputs = [:atlas, markername, :font, :markersize, :px_per_unit]
     outputs = [:sdf_marker_shape, :sdf_uv, :image]
-    return register_computation!(
-        compute_marker_attributes, attr, inputs, outputs
-    )
+    return register_computation!(compute_marker_attributes, attr, inputs, outputs)
 end
 
 _bcast(x::Vec) = Ref(x)

@@ -65,7 +65,7 @@ function backend_colors!(attr, color_name = :scaled_color)
         isnothing(crange) && return (false, false)
         cmap_minfilter = ctype === Makie.continuous ? :linear : :nearest
         cmap_changed = changed.alpha_colormap || changed.color_mapping_type
-        cmap_s = cmap_changed ? Sampler(cmap, minfilter = cmap_minfilter) : nothing
+        cmap_s = cmap_changed ? Sampler(cmap, minfilter = cmap_minfilter) : skip_update
         return (cmap_s, Vec2f(crange))
     end
 
@@ -103,7 +103,9 @@ function plot_updates(args, changed)
     for (name, value) in pairs(args)
         if changed[name] && !isnothing(value) && !(name in disallowed)
             _val = if value isa Sampler
-                [Int32[size(value.data)...], serialize_three(value.data)]
+                # Without the `Any` the serialized array may get promoted, e.g.
+                # [Int32[], UInt8[]] promotes the second array to Int32
+                Any[Int32[size(value.data)...], serialize_three(value.data)]
             else
                 # Check if value is an array with all identical elements
                 if Makie.is_vector_attribute(value) && length(value) > 1 && all(x -> x == value[1], value)
@@ -133,19 +135,10 @@ function create_wgl_renderobject(callback, attr, inputs)
             updates = plot_updates(args, changed)
             last.wgl_renderobject[:visible] = args.visible
             update_values!(last.wgl_update_obs, Bonito.LargeUpdate(updates))
-            return nothing
+            return skip_update
         end
     end
     return attr[:wgl_renderobject][]
-end
-
-function add_primitive_shading!(scene::Scene, attr)
-    scene_shading = Makie.get_shading_mode(scene)
-    return map!(attr, :shading, :primitive_shading) do shading
-        s = (shading ? scene_shading : shading)
-        shading = s isa Bool ? s : (s !== NoShading)
-        return shading
-    end
 end
 
 function handle_color_getter!(uniform_dict)
@@ -411,7 +404,7 @@ function meshscatter_program(args)
         :uniform_color => false,
         :wgl_uv_transform => args.wgl_uv_transform,
         :PICKING_INDEX_FROM_UV => false,
-        :shading => args.primitive_shading,
+        :shading => args.use_shading,
         :backlight => args.backlight,
         :interpolate_in_fragment_shader => false,
         :markersize => args.markersize,
@@ -431,14 +424,12 @@ end
 function create_shader(scene::Scene, plot::MeshScatter)
     attr = plot.attributes
 
-    Makie.add_computation!(attr, Val(:disassemble_mesh), :marker)
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
     map!(to_3x3, attr, :packed_uv_transform, :wgl_uv_transform)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     Makie.register_world_normalmatrix!(attr)
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     backend_colors!(attr)
-    add_primitive_shading!(scene, attr)
     ComputePipeline.alias!(attr, :rotation, :converted_rotation)
 
     inputs = [
@@ -450,7 +441,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         :fetch_pixel, :model_f32c,
         :space,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :transform_marker, :primitive_shading, :depth_shift,
+        :transform_marker, :use_shading, :depth_shift,
         :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
     return create_wgl_renderobject(meshscatter_program, attr, inputs)
@@ -475,8 +466,8 @@ function add_uv_mesh!(attr)
 
             if x isa EndPoints && y isa EndPoints && Makie.is_identity_transform(t)
                 init = isnothing(last) # these are constant after init
-                faces = init ? decompose(GLTriangleFace, Rect2f(rect)) : nothing
-                uv = init ? decompose_uv(Rect2f(rect)) : nothing
+                faces = init ? decompose(GLTriangleFace, Rect2f(rect)) : skip_update
+                uv = init ? decompose_uv(Rect2f(rect)) : skip_update
                 return (faces, uv, decompose(Point2d, Rect2d(rect)))
             else
                 px = WGLMakie.xy_convert(x, size(z, 1))
@@ -497,7 +488,7 @@ function add_uv_mesh!(attr)
 
     if !haskey(attr, :normals)
         Makie.add_constants!(
-            attr, normals = nothing, primitive_shading = false,
+            attr, normals = nothing, use_shading = false,
             diffuse = Vec3f(0), specular = Vec3f(0), shininess = 0.0f0, backlight = 0.0f0
         )
     end
@@ -509,7 +500,7 @@ end
 function mesh_program(attr)
 
     data = Dict(
-        :shading => attr.primitive_shading,
+        :shading => attr.use_shading,
         :diffuse => attr.diffuse,
         :specular => attr.specular,
         :shininess => attr.shininess,
@@ -564,7 +555,7 @@ function create_shader(::Scene, plot::Union{Heatmap, Image})
         :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :color_mapping_type, :pattern, :interpolate,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :wgl_uv_transform, :fetch_pixel, :primitive_shading,
+        :wgl_uv_transform, :fetch_pixel, :use_shading,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
         :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
@@ -576,7 +567,6 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     Makie.register_world_normalmatrix!(attr)
     map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
     backend_colors!(attr)
-    add_primitive_shading!(scene, attr)
     inputs = [
         # Special
         :space,
@@ -584,7 +574,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :wgl_uv_transform, :fetch_pixel, :primitive_shading, :color_mapping_type,
+        :wgl_uv_transform, :fetch_pixel, :use_shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
         :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
@@ -629,7 +619,6 @@ function create_shader(scene::Scene, plot::Surface)
         return to_3x3(uvt) * Makie.uv_transform(trans, scale)
     end
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
-    add_primitive_shading!(scene, attr)
     inputs = [
         # Special
         :space,
@@ -637,7 +626,7 @@ function create_shader(scene::Scene, plot::Surface)
         :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :wgl_uv_transform, :fetch_pixel, :primitive_shading, :color_mapping_type,
+        :wgl_uv_transform, :fetch_pixel, :use_shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
         :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]

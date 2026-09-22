@@ -9,9 +9,9 @@ old recipe docstring
     return Attributes(
         a = a,
         b = theme(scene, :x),
-        c = Attributes(
+        c = (
             a = 1,
-            b = Attributes(c = 3)
+            b = Attributes(c = 3),
         ),
         d = map(sin, theme(scene, :y))
     )
