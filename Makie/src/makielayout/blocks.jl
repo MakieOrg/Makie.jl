@@ -4,8 +4,6 @@
 
 function has_forwarded_layout end
 
-symbol_to_block(symbol::Symbol) = symbol_to_block(Val(symbol))
-symbol_to_block(::Val) = nothing
 
 """
     @Block BlockName begin ... end
@@ -274,7 +272,6 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
         $(esc(structdef))
 
         export $BlockType
-        $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $BlockType
 
         const $attr_placeholder = $attrs
         $(Makie).documented_attributes(::Type{<:$(BlockType)}) = $attr_placeholder
@@ -553,9 +550,8 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     graph = ComputeGraph()
 
     topscene = get_topscene(fig_or_scene)
-    blockname = nameof(T)
     attr = documented_attributes(T)
-    flattened_defaults = resolve_defaults(attr, topscene, blockname, kwdict, tuple(), true)
+    flattened_defaults = resolve_defaults(attr, topscene, T, kwdict, tuple(), true)
 
     # User overwrites
     add_attributes!(T, graph, flattened_defaults)

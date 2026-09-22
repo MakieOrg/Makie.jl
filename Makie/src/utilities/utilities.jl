@@ -533,14 +533,8 @@ sv_getindex(x::ShaderAbstractions.Sampler, ::Integer) = x
 Returns an array of all available plotting functions.
 """
 function available_plotting_methods()
-    meths = []
-    for m1 in methods(plotsym)
-        params = m1.sig.parameters
-        if length(params) == 3 && params[3] isa UnionAll
-            push!(meths, Makie.plotfunc(params[3].var.ub))
-        end
-    end
-    return meths
+    plot_types = Iterators.flatten(values(recipes_by_name()))
+    return [plotfunc(T) for T in plot_types if T <: AbstractPlot]
 end
 
 function extract_method_arguments(m::Method)

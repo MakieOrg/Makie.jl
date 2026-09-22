@@ -106,6 +106,14 @@ lines_theme = Theme(
 with_theme(example_plot, lines_theme)
 ```
 
+The bare type name only works while a single recipe of that name is loaded. If two packages define recipes with the same name, Makie throws an error when it finds the bare name in a theme, because it cannot tell which recipe the entry is meant for. Use the type itself as the key to disambiguate, which is stored under the module-qualified name:
+
+```julia
+theme = Theme()
+theme[MyPackage.SamePlot] = (color = :red,)
+theme[OtherPackage.SamePlot] = (color = :blue,)
+```
+
 ## Theming block objects
 
 Every Block such as `Axis`, `Legend`, `Colorbar`, etc. can be themed by using its type name as a key in your theme.

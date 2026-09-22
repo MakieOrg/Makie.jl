@@ -11,7 +11,7 @@ old recipe docstring
         b = theme(scene, :x),
         c = (
             a = 1,
-            b = Attributes(c = 3)
+            b = Attributes(c = 3),
         ),
         d = map(sin, theme(scene, :y))
     )

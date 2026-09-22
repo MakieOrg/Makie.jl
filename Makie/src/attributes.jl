@@ -27,7 +27,10 @@ function node_any(@nospecialize(obj))
     return Observable{Any}(obj)
 end
 
-node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_convert(pair[2])))
+attribute_key(key::Symbol) = key
+attribute_key(::Type{T}) where {T <: Union{AbstractPlot, Block}} = qualified_name(T)
+
+node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (attribute_key(pair[1]) => node_any(value_convert(pair[2])))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 
 Attributes(; kw_args...) = Attributes(Dict{Symbol, Any}(node_pairs(kw_args)))
@@ -147,6 +150,10 @@ function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, valu
         setindex!(x, value, key)
     end
 end
+
+Base.getindex(x::Attributes, T::Type) = x[attribute_key(T)]
+Base.setindex!(x::Attributes, value, T::Type) = x[attribute_key(T)] = value
+Base.haskey(x::Attributes, T::Type) = haskey(x, attribute_key(T))
 
 function Base.getindex(x::Attributes, key::Symbol)
     x = attributes(x)[key]
