@@ -2,6 +2,7 @@
 
 ## Breaking
 
+- Recipes and Blocks with the same name can now be defined in multiple packages. `PlotSpec` and `BlockSpec` store the plot or block type instead of its name, `S.Name` and theme entries keyed by the bare name error if the name is ambiguous, and `theme[MyPackage.MyPlot]` can be used to theme a specific recipe [#5802](https://github.com/MakieOrg/Makie.jl/pull/5802)
 - **breaking** Moved `FFMPEG_jll` from a hard dependency to a package extension to avoid pulling in GPL-licensed libraries (e.g. libx264). `record`, `VideoStream`, `convert_video`, and `extract_frames` now require `FFMPEG_jll` to be available in the active environment; Makie will load it automatically on first use. A custom ffmpeg binary can be configured via `Makie.ffmpeg_path!(path)` (or persistently via Preferences.jl). [#5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
 - Expanded scope of dim converts [#5323](https://github.com/MakieOrg/Makie.jl/pull/5323)
   - **breaking** most plot recipes now set the target types for their conversions. This means `plot!(::PlotType{<:Tuple{<:MyArgType}})` requires introducing a conversion trait and extending `Makie.types_for_plot_arguments()`. See docs.
