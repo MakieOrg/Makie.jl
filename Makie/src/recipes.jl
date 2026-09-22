@@ -51,11 +51,15 @@ function recipes_by_name()
     return lookup
 end
 
+recipe_kind(::Type{<:AbstractPlot}) = AbstractPlot
+recipe_kind(::Type{<:Block}) = Block
+
 function qualified_name(::Type{T}) where {T}
     return Symbol(join(fullname(defining_module(T)), "."), ".", recipe_name(T))
 end
 
 recipes_named(name::Symbol, ::Type{Kind}) where {Kind} = filter(T -> T <: Kind, get(recipes_by_name(), name, Type[]))
+is_ambiguous_name(::Type{T}) where {T} = length(recipes_named(recipe_name(T), recipe_kind(T))) > 1
 qualified_names_list(candidates) = join(("`$(qualified_name(T))`" for T in candidates), ", ")
 
 function unique_recipe(name::Symbol, ::Type{Kind}) where {Kind}
@@ -67,6 +71,26 @@ end
 
 symbol_to_plot(name::Symbol) = unique_recipe(name, AbstractPlot)
 symbol_to_block(name::Symbol) = unique_recipe(name, Block)
+
+"""
+    theme_overwrites(theme, T)
+
+Returns the theme entry that overwrites the defaults of plot or block type `T`,
+or `nothing` if there is none. `theme[qualified_name(T)]` takes precedence over
+`theme[recipe_name(T)]`. The bare name is only valid while a single recipe of
+that name is loaded, otherwise the qualified name must be used.
+"""
+function theme_overwrites(theme, ::Type{T}) where {T}
+    qualified = qualified_name(T)
+    haskey(theme, qualified) && return theme[qualified]
+    name = recipe_name(T)
+    haskey(theme, name) || return nothing
+    if is_ambiguous_name(T)
+        candidates = qualified_names_list(recipes_named(name, recipe_kind(T)))
+        error("Theme entry `$name` is ambiguous because recipes with that name are defined in multiple modules: $candidates. Use one of these qualified names as the theme key instead, e.g. `theme[$(defining_module(T)).$name] = ...`.")
+    end
+    return theme[name]
+end
 
 
 function plotfunc!(x)

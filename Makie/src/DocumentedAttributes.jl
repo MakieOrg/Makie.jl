@@ -862,22 +862,23 @@ function lookup_default(::Type{T}, scene, keys::Symbol...) where {T}
 end
 
 function lookup_default(::Type{T}, scene, kwargs, keys::Symbol...) where {T}
-    return lookup_default(documented_attributes(T), scene, plotsym(T), kwargs, keys...)
+    return lookup_default(documented_attributes(T), scene, T, kwargs, keys...)
 end
 
 """
-    lookup_default(attr::DocumentedAttributes, scene, name, kwargs, keys...)
+    lookup_default(attr::DocumentedAttributes, scene, T, kwargs, keys...)
 
 Looks up the default value of a single attribute identified by `keys` in `attr`
-using the themes defined in `scene`. `name` identifies the overwrite theme, e.g.
-`theme[:Scatter]` or `theme[:Axis]`.
+using the themes defined in `scene`. The plot or block type `T` identifies the
+overwrite theme, e.g. `theme[:Scatter]` or `theme[:Axis]` (see `theme_overwrites`).
 """
-function lookup_default(attr::DocumentedAttributes, scene, name, kwargs, keys::Symbol...)
+function lookup_default(attr::DocumentedAttributes, scene, ::Type{T}, kwargs, keys::Symbol...) where {T}
     got, result1 = get_nested_value(kwargs, keys...)
     got && return result1
     default_theme = theme(scene)
-    if haskey(default_theme, name)
-        got, result2 = get_nested_value(default_theme[name], keys...)
+    overwrites = theme_overwrites(default_theme, T)
+    if !isnothing(overwrites)
+        got, result2 = get_nested_value(overwrites, keys...)
         got && return result2
     end
 
@@ -1133,8 +1134,7 @@ For looking up a specific value, see `Makie.lookup_default(type, scene, keys...)
 """
 function default_theme(scene, T::Type)
     attr = documented_attributes(T)
-    name = T isa Plot ? plotsym(T) : nameof(T)
-    flattened = resolve_defaults(attr, scene, name, NamedTuple())
+    flattened = resolve_defaults(attr, scene, T, NamedTuple())
     # I guess this should still be nested Attributes()?
     output = Attributes()
     fill_theme!(output, attr, flattened)
@@ -1432,7 +1432,7 @@ function add_theme!(graph, attr, T, scene, exclude, kwargs, cycle)
     collect_merged_keys!(exclude, attr, kwargs)
     # fill out an array with resolved defaults from theme + plot
     defaults = resolve_defaults(
-        attr, scene, plotsym(T), NamedTuple(), exclude, false, cycle
+        attr, scene, T, NamedTuple(), exclude, false, cycle
     )
     # update anything that's an input and not excluded
     for (i, key) in enumerate(attr.merged_keys)
@@ -1466,7 +1466,7 @@ end
 
 """
     resolve_defaults(
-        attr::DocumentedAttributes, scene, name::Symbol, user_kw,
+        attr::DocumentedAttributes, scene, T::Type, user_kw,
         skip = tuple(), remove_kw = false, cycle = nothing
     )
 
@@ -1475,7 +1475,7 @@ Creates a `Vector` of default attribute values in the same order as
 standard priorities of attribute inheritance:
 
 1. `user_kw`
-2. `theme(scene)[name]` overwrites
+2. `theme_overwrites(theme(scene), T)`, i.e. `theme(scene)[:Scatter]` etc.
 3. `attr.defaults` (if it is a value)
 4. `theme(scene)` if `attr.defaults` inherits
 5. inherit fallback
@@ -1488,14 +1488,15 @@ standard priorities of attribute inheritance:
     remaining defaults that are cycled to `nothing`.
 """
 function resolve_defaults(
-        attr, scene, name::Symbol, kwargs,
+        attr, scene, ::Type{T}, kwargs,
         skip = tuple(), remove_kw = false, cycle = nothing
-    )
+    ) where {T}
     flattened = Vector{Any}(undef, length(attr.defaults))
     resolve_overwrites!(flattened, attr, kwargs, skip, remove_kw)
     default_theme = theme(scene)
-    if haskey(default_theme, name)
-        resolve_overwrites!(flattened, attr, default_theme[name], skip)
+    overwrites = theme_overwrites(default_theme, T)
+    if !isnothing(overwrites)
+        resolve_overwrites!(flattened, attr, overwrites, skip)
     end
     if !isnothing(cycle)
         resolve_cycled!(flattened, attr, cycle, skip)

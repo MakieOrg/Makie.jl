@@ -485,18 +485,17 @@ end
 # TODO: This could probably be improved by keeping flattened kwargs lists/dicts.
 function batch_update_attributes!(updates, target::T, old_kwargs, new_kwargs) where {T}
     scene = parent_scene(target)
-    name = recipe_name(T)
     attr = documented_attributes(T)
 
     collect_updates_rec!(
         updates, target.attributes, tuple(), old_kwargs, new_kwargs,
-        attr, scene, name
+        attr, scene, T
     )
 
     return updates
 end
 
-function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr, scene, name)
+function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr, scene, T)
     # updates old/default -> new
     for (k, new_value) in new_kwargs
         current_path = (path..., k)
@@ -507,7 +506,7 @@ function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr
                 updates, current_value, current_path,
                 get(old_kwargs, k, NamedTuple()),
                 get(new_kwargs, k, NamedTuple()),
-                attr, scene, name
+                attr, scene, T
             )
         else
             if is_different(current_value[], new_value)
@@ -530,10 +529,10 @@ function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr
                 updates, current_value, current_path,
                 get(old_kwargs, k, NamedTuple()),
                 get(new_kwargs, k, NamedTuple()),
-                attr, scene, name
+                attr, scene, T
             )
         else
-            default = lookup_default(attr, scene, name, NamedTuple(), current_path...)
+            default = lookup_default(attr, scene, T, NamedTuple(), current_path...)
             if is_different(current_value[], default)
                 push!(updates, get_merged_key(attr, current_path) => default)
             end

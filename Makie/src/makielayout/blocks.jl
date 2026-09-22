@@ -550,9 +550,8 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     graph = ComputeGraph()
 
     topscene = get_topscene(fig_or_scene)
-    blockname = nameof(T)
     attr = documented_attributes(T)
-    flattened_defaults = resolve_defaults(attr, topscene, blockname, kwdict, tuple(), true)
+    flattened_defaults = resolve_defaults(attr, topscene, T, kwdict, tuple(), true)
 
     # User overwrites
     add_attributes!(T, graph, flattened_defaults)

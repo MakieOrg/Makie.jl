@@ -738,7 +738,7 @@ end
 function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where {T <: Plot}
     # So far we have set attributes based on the plot defaults and keyword
     # arguments. In this function we now resolve `@inherit`ed attributes and
-    # apply `theme[plotsym(T)]` if it exists.
+    # apply the theme overwrites for `T` if there are any (see `theme_overwrites`).
 
     attr = documented_attributes(T)
     name = plotsym(T)
@@ -751,7 +751,7 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
         map!(() -> get_next_cycle_index(scene, name), graph, Symbol[], :cycle_index)
 
         if !haskey(user_kw, :cycle)
-            _cycle = to_value(lookup_default(attr, scene, name, NamedTuple(), :cycle))
+            _cycle = to_value(lookup_default(attr, scene, T, NamedTuple(), :cycle))
             graph.cycle = _cycle
         end
     else

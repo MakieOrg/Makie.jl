@@ -51,4 +51,31 @@ end
         @test typeof(plots.plots[1]) <: A
         @test typeof(plots.plots[2]) <: B
     end
+
+    @testset "theming" begin
+        @test Makie.qualified_name(A) === Symbol("Main.RecipeNamespaceA.SamePlot")
+        @test Makie.qualified_name(Scatter) === Symbol("Makie.Scatter")
+        @test Makie.qualified_name(Axis) === Symbol("Makie.Axis")
+
+        unique_name = Scene(theme = Theme(Scatter = (markersize = 33,)))
+        @test to_value(Makie.lookup_default(Scatter, unique_name, :markersize)) == 33
+
+        bare = Scene(theme = Theme(SamePlot = (color = :green,)))
+        @test_throws "Theme entry `SamePlot` is ambiguous" RecipeNamespaceA.sameplot!(bare, 1:3)
+        @test_throws "Main.RecipeNamespaceA.SamePlot" RecipeNamespaceA.sameplot!(bare, 1:3)
+
+        qualified = Scene(theme = Theme(A => (color = :green,)))
+        @test RecipeNamespaceA.sameplot!(qualified, 1:3; cycle = []).color[] === :green
+        @test RecipeNamespaceB.sameplot!(qualified, 1:3; cycle = []).color[] === :blue
+        @test Makie.default_theme(qualified, A).color[] === :green
+        @test Makie.default_theme(qualified, B).color[] === :blue
+        @test to_value(Makie.lookup_default(A, qualified, :color)) === :green
+
+        theme = Theme()
+        theme[B] = (color = :black,)
+        @test haskey(theme, B)
+        @test !haskey(theme, A)
+        @test theme[B].color[] === :black
+        @test collect(keys(theme)) == [Symbol("Main.RecipeNamespaceB.SamePlot")]
+    end
 end
