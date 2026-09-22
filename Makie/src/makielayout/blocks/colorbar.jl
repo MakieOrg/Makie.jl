@@ -106,8 +106,8 @@ function _extract_colormap(plot::Union{Contourf, Tricontourf})
         vals .= (vals .- minimum(vals)) ./ (maximum(vals) - minimum(vals))
         return PlotUtils.CategoricalColorGradient(cm.colors, vals)
     end
-    map!(_normalize_clipcolor, plot, :extendlow, :cb_lowclip)
-    map!(_normalize_clipcolor, plot, :extendhigh, :cb_highclip)
+    map!(c -> alpha(c) == 0 ? automatic : c, plot, :computed_lowcolor, :cb_lowclip)
+    map!(c -> alpha(c) == 0 ? automatic : c, plot, :computed_highcolor, :cb_highclip)
 
     return Dict{Symbol, Any}(
         :color => plot.cb_levels,
