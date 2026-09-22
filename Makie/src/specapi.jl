@@ -2,12 +2,6 @@ using GridLayoutBase: GridLayoutBase
 
 import GridLayoutBase: GridPosition, Side, ContentSize, GapSize, AlignMode, Inner, GridLayout, GridSubposition
 
-function symbol_to_specable(sym::Symbol)
-    block = symbol_to_block(sym)
-    isnothing(block) || return block
-    return symbol_to_plot(sym)
-end
-
 deref(x) = x
 deref(x::Base.RefValue) = x[]
 
@@ -15,24 +9,16 @@ deref(x::Base.RefValue) = x[]
     PlotSpec(plottype, args...; kwargs...)
 
 Object encoding positional arguments (`args`), a `NamedTuple` of attributes (`kwargs`)
-as well as plot type `P` of a basic plot.
+as well as plot type `P` of a basic plot. `plottype` can be the plot type itself
+(e.g. `Scatter`) or its name as a `Symbol` (e.g. `:Scatter`), as long as that
+name is not shared by recipes from multiple modules.
 """
 struct PlotSpec
-    type::Symbol
+    type::Type{<:Plot}
     args::Vector{Any}
     kwargs::Dict{Symbol, Any}
-    function PlotSpec(type::Symbol, args...; kwargs...)
-        type_str = string(type)
-        if type_str[end] == '!'
-            error("PlotSpec objects are supposed to be used without !, unless when using `S.$(type)(axis::P.Axis, args...; kwargs...)`")
-        end
-        if !isuppercase(type_str[1])
-            func = hasproperty(Makie, type) ? getproperty(Makie, type) : nothing
-            func === nothing && error("PlotSpec need to be existing recipes or Makie plot objects. Found: $(type_str)")
-            plot_type = Plot{func}
-            type = plotsym(plot_type)
-            @warn("PlotSpec objects are supposed to be title case. Found: $(type_str). Please use $(type) instead.")
-        end
+    function PlotSpec(::Type{P}, args...; kwargs...) where {P <: Plot}
+        type = plotsym(P)
         kw = Dict{Symbol, Any}()
         for (k, v) in kwargs
             # convert eagerly, so that we have stable types for matching later
@@ -56,23 +42,28 @@ struct PlotSpec
                 end
             end
         end
-        return new(type, Any[args...], kw)
+        return new(P, Any[args...], kw)
     end
-    PlotSpec(args...; kwargs...) = new(:plot, args...; kwargs...)
+end
+
+function PlotSpec(name::Symbol, args...; kwargs...)
+    P = symbol_to_plot(name)
+    isnothing(P) && error("PlotSpec need to be existing recipes or Makie plot objects. Found: $(name)")
+    return PlotSpec(P, args...; kwargs...)
 end
 
 
 struct BlockSpec
-    type::Symbol
+    type::Type{<:Block}
     args::Vector{Any}
     kwargs::Dict{Symbol, Any}
     plots::Vector{PlotSpec}
     then_funcs::Set{Function}
     then_observers::Set{ObserverFunction}
 
-    function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec} = PlotSpec[], kw...)
+    function BlockSpec(::Type{B}, args...; plots::Vector{PlotSpec} = PlotSpec[], kw...) where {B <: Block}
         attr = Dict{Symbol, Any}(kw)
-        if typ == :Colorbar && !isempty(args)
+        if B <: Colorbar && !isempty(args)
             if length(args) == 1 && args[1] isa PlotSpec
                 attr[:plotspec] = args[1]
                 args = ()
@@ -80,8 +71,14 @@ struct BlockSpec
                 error("Only one argument `arg::PlotSpec` is supported for S.Colorbar. Found: $(args)")
             end
         end
-        return new(typ, Any[args...], attr, plots, Set{Function}(), Set{ObserverFunction}())
+        return new(B, Any[args...], attr, plots, Set{Function}(), Set{ObserverFunction}())
     end
+end
+
+function BlockSpec(name::Symbol, args...; kwargs...)
+    B = symbol_to_block(name)
+    isnothing(B) && error("BlockSpec need to be an existing Block (like Axis, Legend, etc). Found: $(name)")
+    return BlockSpec(B, args...; kwargs...)
 end
 
 const GridLayoutPosition = Tuple{UnitRange{Int}, UnitRange{Int}, Side}
@@ -177,24 +174,22 @@ const LayoutableKey = Tuple{Int, GridLayoutPosition, LayoutableSpec}
 #####################
 #### PlotSpec
 
-PlotSpec(::Type{P}, args...; kwargs...) where {P <: Plot} = PlotSpec(plotsym(P), args...; kwargs...)
 Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
 Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
 
-to_plotspec(::Type{P}, args; kwargs...) where {P} = PlotSpec(plotsym(P), args...; kwargs...)
+to_plotspec(::Type{P}, args; kwargs...) where {P} = PlotSpec(P, args...; kwargs...)
 function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
-    S = plottype(p)
-    return PlotSpec(plotsym(plottype(P, S)), p.args...; p.kwargs..., kwargs...)
+    return PlotSpec(plottype(P, plottype(p)), p.args...; p.kwargs..., kwargs...)
 end
 
-plottype(p::PlotSpec) = symbol_to_plot(p.type)
+plottype(p::PlotSpec) = p.type
 
 Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec) = show(io, spec)
 
 function Base.show(io::IO, spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    print(io, "S.", spec.type, "($args; $kws)")
+    print(io, "S.", recipe_name(spec.type), "($args; $kws)")
     return
 end
 
@@ -217,12 +212,12 @@ Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
 function Base.show(io::IO, ::MIME"text/plain", spec::BlockSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, "::", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    print(io, "S.", spec.type, "($args; $kws)")
+    print(io, "S.", recipe_name(spec.type), "($args; $kws)")
     return
 end
 
 function Base.show(io::IO, spec::BlockSpec)
-    print(io, "S.", spec.type, "(…)")
+    print(io, "S.", recipe_name(spec.type), "(…)")
     return
 end
 
@@ -446,29 +441,26 @@ const SpecApi = _SpecApi()
 
 function Base.getproperty(::_SpecApi, field::Symbol)
     field === :GridLayout && return GridLayoutSpec
-    # TODO, we wanted to track all recipe names in a set
-    # in MakieCore via the recipe macro, but due to precompilation & caching
-    # It seems impossible to merge the recipes from all modules
-    # Since precompilation will cache only MakieCore's state
-    # And once everything is compiled, and MakieCore is loaded into a package
-    # The names are loaded from cache and dont contain anything after
-    func = symbol_to_specable(field)
-    if isnothing(func)
-        error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
-    elseif func isa Function
-        sym = plotsym(Plot{func})
-        if (sym === :plot) # fallback for plotsym, so not found!
-            error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
-        end
-        @warn("PlotSpec objects are supposed to be title case. Found: $(field). Please use $(sym) instead.")
-        return (args...; kw...) -> PlotSpec(sym, args...; kw...)
-    elseif func <: Plot
-        return (args...; kw...) -> PlotSpec(field, args...; kw...)
-    elseif func <: Block
-        return (args...; kw...) -> BlockSpec(field, args...; kw...)
-    else
-        error("$(field) not a valid Block or Plot function")
+    B = symbol_to_block(field)
+    isnothing(B) || return (args...; kw...) -> BlockSpec(B, args...; kw...)
+    P = symbol_to_plot(field)
+    isnothing(P) || return (args...; kw...) -> PlotSpec(P, args...; kw...)
+    P = lowercase_plot_type(field)
+    isnothing(P) && error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
+    @warn("PlotSpec objects are supposed to be title case. Found: $(field). Please use $(plotsym(P)) instead.")
+    return (args...; kw...) -> PlotSpec(P, args...; kw...)
+end
+
+function lowercase_plot_type(field::Symbol)
+    name = string(field)
+    if endswith(name, '!')
+        error("PlotSpec objects are supposed to be used without !, unless when using `S.$(field)(axis::P.Axis, args...; kwargs...)`")
     end
+    isdefined(Makie, field) || return nothing
+    func = getproperty(Makie, field)
+    func isa Function || return nothing
+    P = Plot{func}
+    return plotsym(P) === :plot ? nothing : P
 end
 
 function batch_update!(target, old_spec, new_spec)
@@ -493,7 +485,7 @@ end
 # TODO: This could probably be improved by keeping flattened kwargs lists/dicts.
 function batch_update_attributes!(updates, target::T, old_kwargs, new_kwargs) where {T}
     scene = parent_scene(target)
-    name = T isa Block ? nameof(T) : plotsym(T)
+    name = recipe_name(T)
     attr = documented_attributes(T)
 
     collect_updates_rec!(
@@ -552,7 +544,7 @@ function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr
 end
 
 function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
-    oldspec.type === spec.type || error("PlotSpec type $(spec.type) does not match plot type $(plot.type).")
+    oldspec.type === spec.type || error("PlotSpec type $(spec.type) does not match plot type $(oldspec.type).")
     return batch_update!(plot, oldspec, spec)
 end
 
@@ -560,8 +552,8 @@ end
 """
     plotlist!(
         [
-            PlotSpec(:Scatter, args...; kwargs...),
-            PlotSpec(:Lines, args...; kwargs...),
+            PlotSpec(Scatter, args...; kwargs...),
+            PlotSpec(Lines, args...; kwargs...),
         ]
     )
 
@@ -716,7 +708,7 @@ function diff_plotlist!(
         # so that we don't reuse indices that other (newer) plots are using.
         lookup = scene.compute[:cycle_counters][]::Dict{Symbol, Int}
         for (spec, plot) in reusable_plots_sorted
-            name = spec.type
+            name = recipe_name(spec.type)
             if haskey(lookup, name) && lookup[name] == plot.cycle_index[]
                 lookup[name] -= 1
             end
@@ -792,7 +784,7 @@ function add_observer!(block::BlockSpec, obs::AbstractVector{<:ObserverFunction}
 end
 
 function get_numeric_colors(plot::PlotSpec)
-    if plot.type in [:Heatmap, :Image, :Surface]
+    if plot.type <: Union{Heatmap, Image, Surface}
         z = plot.args[end]
         if z isa AbstractMatrix{<:Real}
             return z
@@ -837,10 +829,10 @@ function extract_colorbar_kw(legend::BlockSpec, scene::Scene)
 end
 
 function to_layoutable(parent, position::GridLayoutPosition, spec::BlockSpec)
-    BType = symbol_to_block(spec.type)
+    BType = spec.type
     fig = get_top_parent(parent)
 
-    block = if spec.type === :Colorbar
+    block = if BType <: Colorbar
         # We use the root scene to extract any theming
         # This means, we dont support a separate theme per scene
         # Which I think has been bitrotting anyways.
@@ -877,7 +869,7 @@ end
 
 function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where {T <: Block}
     # Without this we could just call batch_update!(block, old_spec, new_spec) directly...
-    if spec.type === :Colorbar
+    if spec.type <: Colorbar
         # To get plot defaults for Colorbar(specapi), we need a theme / scene
         # So we have to look up the kwargs here instead of the BlockSpec constructor.
         old_kw = extract_colorbar_kw(old_spec, root(block.blockscene))
@@ -982,7 +974,7 @@ function update_axis_links!(gridspec, all_layoutables)
     # axes that should be linked
     axes = Dict{BlockSpec, Axis}()
     for ((_, _, ax_spec), (ax_object, _)) in all_layoutables
-        if ax_spec isa BlockSpec && ax_spec.type === :Axis
+        if ax_spec isa BlockSpec && ax_spec.type <: Axis
             axes[ax_spec] = ax_object
         end
     end
@@ -1019,7 +1011,7 @@ function update_axis_links!(gridspec, all_layoutables)
 end
 
 get_type(x::BlockSpec) = x.type
-get_type(::GridLayoutSpec) = :GridLayout
+get_type(::GridLayoutSpec) = GridLayout
 
 function update_gridlayout!(
         gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},

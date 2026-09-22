@@ -37,6 +37,7 @@ end
         include("isolated/datetime_ticks.jl")
         include("isolated/argument_docs.jl")
         include("isolated/recipes.jl") # @recipe, @Block generated code
+        include("isolated/recipe_namespacing.jl")
         include("isolated/showoff.jl")
     end
 

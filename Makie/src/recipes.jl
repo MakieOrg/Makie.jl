@@ -19,10 +19,54 @@ function plotfunc(f::Function)
     end
 end
 
-symbol_to_plot(x::Symbol) = symbol_to_plot(Val(x))
-function symbol_to_plot(::Val{Sym}) where {Sym}
-    return nothing
+recipe_name(::Type{T}) where {T <: AbstractPlot} = plotsym(T)
+recipe_name(::Type{T}) where {T <: Block} = nameof(T)
+
+defining_module(::Type{T}) where {T <: AbstractPlot} = parentmodule(plotfunc(T))
+defining_module(::Type{T}) where {T <: Block} = parentmodule(T)
+
+function documented_type(m::Method)
+    sig = Base.unwrap_unionall(m.sig)
+    length(sig.parameters) == 2 || return nothing
+    P = Base.unwrap_unionall(sig.parameters[2])
+    P isa DataType && P <: Type && length(P.parameters) == 1 || return nothing
+    T = P.parameters[1]
+    T = T isa TypeVar ? T.ub : T
+    return T isa Type && T <: Union{AbstractPlot, Block} ? T : nothing
 end
+
+const RECIPES_BY_NAME = Ref{Tuple{UInt, Dict{Symbol, Vector{Type}}}}((0, Dict{Symbol, Vector{Type}}()))
+
+function recipes_by_name()
+    world = Base.get_world_counter()
+    cached_world, lookup = RECIPES_BY_NAME[]
+    world == cached_world && return lookup
+    lookup = Dict{Symbol, Vector{Type}}()
+    for m in methods(documented_attributes)
+        T = documented_type(m)
+        isnothing(T) && continue
+        push!(get!(Vector{Type}, lookup, recipe_name(T)), T)
+    end
+    RECIPES_BY_NAME[] = (world, lookup)
+    return lookup
+end
+
+function qualified_name(::Type{T}) where {T}
+    return Symbol(join(fullname(defining_module(T)), "."), ".", recipe_name(T))
+end
+
+recipes_named(name::Symbol, ::Type{Kind}) where {Kind} = filter(T -> T <: Kind, get(recipes_by_name(), name, Type[]))
+qualified_names_list(candidates) = join(("`$(qualified_name(T))`" for T in candidates), ", ")
+
+function unique_recipe(name::Symbol, ::Type{Kind}) where {Kind}
+    candidates = recipes_named(name, Kind)
+    isempty(candidates) && return nothing
+    length(candidates) == 1 && return only(candidates)
+    error("$name is ambiguous, it is defined in multiple modules: $(qualified_names_list(candidates)). Use the type itself instead of its name.")
+end
+
+symbol_to_plot(name::Symbol) = unique_recipe(name, AbstractPlot)
+symbol_to_block(name::Symbol) = unique_recipe(name, Block)
 
 
 function plotfunc!(x)
@@ -264,7 +308,6 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         const $attr_placeholder = $attr_expr
         $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
-        $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
     end
     if !isempty(args)
@@ -424,7 +467,6 @@ function create_recipe_expr(Tsym, args, attrblock, export_recipe = true)
         $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
-        $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
 
         function ($funcname)(args...; kw...)
             kwdict = Dict{Symbol, Any}(kw)
