@@ -281,7 +281,6 @@ end
     scene = Scene(camera = campixel!)
 
     p = text!(scene, [Point2f(0, 0), Point2f(100, 0)], text = ["ab", "cd"], color = :red, text_handler = handler)
-    @test p.baked_display_attributes[] === nothing
     @test all(==(to_color(:red)), p.glyph_colors[])
     p.color = :blue
     @test all(==(to_color(:blue)), p.glyph_colors[])
@@ -291,7 +290,6 @@ end
         scene, [Point2f(0, 0), Point2f(100, 0)];
         text = Any["ab", WrappedText("cde")], color = :red, text_handler = handler,
     )
-    @test p2.baked_display_attributes[] !== nothing
     @test all(==(to_color(:red)), p2.glyph_colors[])
     @test handler.calls[] == 1
     p2.color = :blue
