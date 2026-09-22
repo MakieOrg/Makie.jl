@@ -176,21 +176,11 @@ function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::V
 end
 
 function draw_mesh2D(
-        ctx::Cairo.CairoContext, pattern::Makie.LinePattern, vs::Vector, fs::Vector{GLTriangleFace}, offset::VecTypes{2}
+        ctx::Cairo.CairoContext, pattern::Makie.LinePattern, vs::Vector,
+        fs::Vector{GLTriangleFace}, offset::VecTypes{2}
     )
-    for i in eachindex(fs)
-        t1, t2, t3 = vs[fs[i]]
-
-        if isnan(t1) || isnan(t2) || isnan(t3)
-            continue
-        end
-
-        draw_linepattern_fill!(ctx, pattern, offset) do
-            Cairo.move_to(ctx, t1[1], t1[2])
-            Cairo.line_to(ctx, t2[1], t2[2])
-            Cairo.line_to(ctx, t3[1], t3[2])
-            Cairo.close_path(ctx)
-        end
+    draw_linepattern_fill!(ctx, pattern, offset) do
+        mesh_union_path!(ctx, vs, fs)
     end
     return nothing
 end
