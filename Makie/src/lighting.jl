@@ -228,7 +228,7 @@ function add_light_computation!(graph, scene, lights)
     end
 
     add_input!(c -> RGBf(to_color(c)), graph, :ambient_color, ambient_color)
-    add_input!(graph, :lights, convert(Vector{AbstractLight}, filtered_lights))
+    add_input!(l -> convert(Vector{AbstractLight}, l), graph, :lights, filtered_lights)
     add_input!(graph, :shading, get(scene.theme, :shading, automatic))
     graph[:shading].value = RefValue{Any}(nothing) # allow shading to switch between automatic and ShadingAlgorithm
 
@@ -480,7 +480,7 @@ function set_lights!(graph::ComputeGraph, lights)
     if any(l -> l isa AmbientLight, lights)
         error("The ambient light should be unique and controlled by `set_ambient_light!()`")
     end
-    update!(graph, lights = lights)
+    update!(graph, lights = convert(Vector{AbstractLight}, lights))
     return
 end
 
