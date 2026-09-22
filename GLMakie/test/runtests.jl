@@ -1,5 +1,9 @@
 ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 
+run(
+    `julia -e "using Makie.ComputePipeline; ComputePipeline.enable_debugging!(); ComputePipeline.log_nothing_splat(true)"`
+)
+
 using Makie
 using GLMakie, Test
 using FileIO
@@ -248,3 +252,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         @test GLMakie.GLAbstraction.FAILED_FREE_COUNTER[] == 0
     end
 end
+
+using Makie.ComputePipeline
+ComputePipeline.disable_debugging!()
+ComputePipeline.log_nothing_splat(false)

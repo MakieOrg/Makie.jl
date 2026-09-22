@@ -65,7 +65,7 @@ function backend_colors!(attr, color_name = :scaled_color)
         isnothing(crange) && return (false, false)
         cmap_minfilter = ctype === Makie.continuous ? :linear : :nearest
         cmap_changed = changed.alpha_colormap || changed.color_mapping_type
-        cmap_s = cmap_changed ? Sampler(cmap, minfilter = cmap_minfilter) : nothing
+        cmap_s = cmap_changed ? Sampler(cmap, minfilter = cmap_minfilter) : skip_update
         return (cmap_s, Vec2f(crange))
     end
 
@@ -133,7 +133,7 @@ function create_wgl_renderobject(callback, attr, inputs)
             updates = plot_updates(args, changed)
             last.wgl_renderobject[:visible] = args.visible
             update_values!(last.wgl_update_obs, Bonito.LargeUpdate(updates))
-            return nothing
+            return skip_update
         end
     end
     return attr[:wgl_renderobject][]
@@ -461,8 +461,8 @@ function add_uv_mesh!(attr)
 
             if x isa EndPoints && y isa EndPoints && Makie.is_identity_transform(t)
                 init = isnothing(last) # these are constant after init
-                faces = init ? decompose(GLTriangleFace, Rect2f(rect)) : nothing
-                uv = init ? decompose_uv(Rect2f(rect)) : nothing
+                faces = init ? decompose(GLTriangleFace, Rect2f(rect)) : skip_update
+                uv = init ? decompose_uv(Rect2f(rect)) : skip_update
                 return (faces, uv, decompose(Point2d, Rect2d(rect)))
             else
                 px = WGLMakie.xy_convert(x, size(z, 1))

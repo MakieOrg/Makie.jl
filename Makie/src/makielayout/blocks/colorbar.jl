@@ -92,7 +92,6 @@ function _extract_colormap(plot::Voronoiplot)
     end
 end
 
-_normalize_clipcolor(x) = x in (nothing, :auto, automatic) ? automatic : x
 function _extract_colormap(plot::Union{Contourf, Tricontourf})
     map!(inverse_transform, plot, :colorscale, :inverse_colorscale)
     if isnothing(plot.inverse_colorscale[])

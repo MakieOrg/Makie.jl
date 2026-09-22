@@ -389,7 +389,7 @@ function canvas_computation!(p::DataShader)
             canvas.bounds = lims64
         end
         has_changed = has_changed || isnothing(last)
-        return has_changed ? (canvas,) : nothing
+        return has_changed ? (canvas,) : skip_update
     end
 end
 
@@ -670,7 +670,7 @@ function resample_image(x, y, image, max_resolution, limits)
     vmini = minimum(visible_rect)
     vw = widths(visible_rect)
     if !(visible_rect in data_rect) || any(w -> w <= 0, vw)
-        return nothing
+        return skip_nothing
     end
 
     # (xmin, ymin), (xmax, ymax)
@@ -688,7 +688,7 @@ function resample_image(x, y, image, max_resolution, limits)
         return LinRange(max(1, indices[1]), min(indices[2], si), len)
     end
     if isempty(x_index_range) || isempty(y_index_range)
-        return nothing
+        return skip_nothing
     end
     interpolated = image(x_index_range, y_index_range)
     return EndPoints{Float32}(ranges[1]), EndPoints{Float32}(ranges[2]), interpolated
@@ -779,7 +779,7 @@ function Makie.plot!(p::HeatmapShader)
         init = (p.x[], p.x[], fill(zero(T), 2, 2), false)
     ) do image, x, y, max_resolution, limits
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
-        isnothing(xe_ye_oimg) && return nothing
+        xe_ye_oimg === skip_update && return skip_update
         return (xe_ye_oimg..., true)
     end
 
