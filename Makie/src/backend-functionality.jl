@@ -17,7 +17,7 @@ function add_computation!(attr, ::Val{:uniform_pattern}, ::Val{:uniform_pattern_
         register_computation!(
             attr, [:linestyle], [:uniform_pattern, :uniform_pattern_length]
         ) do (linestyle,), changed, cached
-            if isnothing(linestyle)
+            if isnothing(linestyle) || length(linestyle) < 2
                 sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
                 len = 1.0f0 # should be irrelevant, compat for strictly solid lines
             else
@@ -226,18 +226,6 @@ function add_computation!(attr, scene, ::Val{:meshscatter_f32c_scale})
             end
         end
     end
-end
-
-
-function add_computation!(attr, ::Val{:disassemble_mesh}, name = :marker)
-    map!(attr, name, [:vertex_position, :faces, :normal, :uv]) do mesh
-        faces = decompose(GLTriangleFace, mesh)
-        normals = decompose_normals(mesh)
-        texturecoordinates = decompose_uv(mesh)
-        positions = decompose(Point3f, mesh)
-        return (positions, faces, normals, texturecoordinates)
-    end
-    return
 end
 
 function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; kwargs...)

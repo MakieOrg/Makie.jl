@@ -209,7 +209,7 @@ function Makie.mouse_position(scene::Scene, screen::Screen)
     updater = MousePositionUpdater(
         screen, scene.events.mouseposition, scene.events.hasfocus
     )
-    on(updater, scene, screen.render_tick, priority = typemax(Int))
+    on(updater, screen.render_tick, priority = typemax(Int))
     return
 end
 function Makie.disconnect!(screen::Screen, ::typeof(mouse_position))
@@ -301,7 +301,7 @@ function Makie.frame_tick(scene::Scene, screen::Screen)
     # Internal on-tick event updates happen first (mouseposition),
     # consuming in event.tick listeners doesn't affect backend ticks,
     # more control/consistent order
-    return on(Makie.TickCallback(scene), scene, screen.render_tick, priority = typemin(Int))
+    return on(Makie.TickCallback(scene), screen.render_tick, priority = typemin(Int))
 end
 function Makie.disconnect!(screen::Screen, ::typeof(Makie.frame_tick))
     connections = filter(x -> x[2] isa Makie.TickCallback, screen.render_tick.listeners)

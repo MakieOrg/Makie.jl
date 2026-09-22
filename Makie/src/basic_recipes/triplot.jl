@@ -205,7 +205,8 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
 end
 
 function get_triangulation_convex_hull!(convex_hull, tri)
-    idx = DelTri.get_convex_hull_vertices(tri)
+    # DelaunayTriangulation hands out the hull starting at an arbitrary vertex
+    idx = canonical_line_order(DelTri.get_convex_hull_vertices(tri))
     empty!(convex_hull)
     sizehint!(convex_hull, length(idx))
     for i in idx
