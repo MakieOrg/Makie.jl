@@ -222,7 +222,8 @@ function PlotList(user_args::Tuple, user_attributes::Union{Dict, NamedTuple})
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
     length(user_args) == 1 || throw(ArgumentError("plotlist takes exactly one argument, a PlotSpec or Vector{PlotSpec}, but $(length(user_args)) were given."))
 
-    if !isa(to_value(user_args[1]), Union{PlotSpec, AbstractArray{PlotSpec}})
+    _specs = to_value(user_args[1])
+    if !isa(_specs, Union{PlotSpec, AbstractArray{PlotSpec}})
         throw(
             ArgumentError(
                 "Invalid argument type for plotlist: $(typeof(user_args[1])) should be a " *
@@ -244,6 +245,12 @@ function PlotList(user_args::Tuple, user_attributes::Union{Dict, NamedTuple})
     map!(x -> (x,), graph, :arg1, :args) # needed for default axis
     ComputePipeline.alias!(graph, :args, :converted) # needed for default axis
     map!(first, graph, :converted, :plotspecs)
+
+    specs = _specs isa AbstractArray ? vec(_specs) : [_specs]
+    ComputePipeline.unsafe_init!(graph, :arg1, specs)
+    ComputePipeline.unsafe_init!(graph, :args, (specs,))
+    ComputePipeline.unsafe_init!(graph, :converted, (specs,))
+    ComputePipeline.unsafe_init!(graph, :plotspecs, specs)
 
     return build_plotlist(graph, user_attributes)
 end
