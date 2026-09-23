@@ -575,14 +575,14 @@ function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph; 
 
     # lighting
     shading = plot.shading[]::Bool && (scene.compute.shading[] != NoShading)
-    meshnormals = plot.normals[]::Union{Nothing, Vector{Vec3f}}
+    meshnormals = plot.normals[]::Union{Nothing, Vector{Vec3f}, Vector{Vec3d}}
     lighting = nothing
     world_normals = Vec3f[]
     camdirs = Vec3f[]
     if shading && meshnormals !== nothing
         i3 = Vec(1, 2, 3)
         normalmatrix = transpose(inv(Mat3f(model[i3, i3])))
-        world_normals = [zero_normalize(normalmatrix * normal) for normal in meshnormals]
+        world_normals = [zero_normalize(normalmatrix * Vec3f(normal)) for normal in meshnormals]
         camdirs = [world_positions[i] - eyeposition for i in 1:n]
         lighting = RasterLighting(
             to_vec(scene.compute[:ambient_color][]),
@@ -614,7 +614,7 @@ function draw_mesh_rasterized(scene::Scene, screen::Screen, plot::ComputeGraph; 
         view = plot.view[]::Mat4f
         i3 = Vec(1, 2, 3)
         view_normalmatrix = transpose(inv(Mat3f((view * model)[i3, i3])))
-        view_normals = [zero_normalize(view_normalmatrix * normal) for normal in meshnormals]
+        view_normals = [zero_normalize(view_normalmatrix * Vec3f(normal)) for normal in meshnormals]
         MatcapSampler(matcap, view_normals)
     else
         mesh_color_sampler(plot, plot.texturecoordinates[], uv_transform, grid_size)
