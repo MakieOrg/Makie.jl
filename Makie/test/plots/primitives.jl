@@ -94,6 +94,9 @@ end
     f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (Makie.automatic, -10))
     cb = Colorbar(f[1,2], sl)
     @test sl.unscaled_colorrange[] == Vec2f(-10,-10)
+    f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (110, Makie.automatic))
+    cb = Colorbar(f[1,2], sl)
+    @test sl.unscaled_colorrange[] == Vec2f(110f0,110f0)
 end
 
 @recipe MaybeDict (data,) begin
