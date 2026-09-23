@@ -59,7 +59,7 @@ Plots text with backgrounds at set positions.
     alpha = 1.0
 
     # Text
-    "Sets the color of the text. One can set one color per glyph by passing a `Vector{<:Colorant}` or one colorant for the whole text."
+    "Sets the color of the text. One can set one color per string by passing a `Vector{<:Colorant}` or one colorant for all of them."
     text_color = @inherit textcolor
     "Sets the font. Can be a `Symbol` which will be looked up in the `fonts` dictionary or a `String` specifying the (partial) name of a font or the file path of a font file"
     font = @inherit font

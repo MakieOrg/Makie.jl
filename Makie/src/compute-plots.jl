@@ -223,6 +223,27 @@ function register_colormapping_without_color!(attr::ComputeGraph)
     return
 end
 
+function process_color_value(scale, value, auto)
+    if value === automatic
+        return auto
+    elseif value isa Real
+        return apply_scale(scale, value)
+    end
+end
+
+# calculated_colorrange is assumed to already be scaled
+function combined_colorrange(colorscale, user_colorrange, calculated_colorrange)
+    if user_colorrange === automatic
+        return calculated_colorrange
+    else
+        low = process_color_value(colorscale, first(user_colorrange), first(calculated_colorrange))
+        high = process_color_value(colorscale, last(user_colorrange), last(calculated_colorrange))
+        low == high || return Vec2f(low, high)
+        delta = max(0.5f0, abs(Float32(low)))
+        return Vec2f(low - delta, high + delta)
+    end
+end
+
 function register_colormapping!(attr::ComputeGraph, colorname = :color)
     register_colormapping_without_color!(attr)
 
@@ -255,17 +276,8 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     ) do colorrange, colorscale, autorange
         if isnothing(autorange) # colors are actual colors, so no colormapping
             return nothing
-        elseif colorrange === automatic
-            return autorange
-        elseif first(colorrange) == automatic
-            return Vec2f((first(autorange), last(colorrange)))
-        elseif last(colorrange) == automatic
-            return Vec2f((first(colorrange), last(autorange)))
         else
-            lo, hi = apply_scale(colorscale, colorrange)
-            lo == hi || return Vec2f(lo, hi)
-            delta = max(0.5f0, abs(Float32(lo)))
-            return Vec2f(lo - delta, hi + delta)
+            return combined_colorrange(colorscale, colorrange, autorange)
         end
     end
 end
@@ -352,7 +364,7 @@ function register_positions_transformed_f32c!(
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
-            pos = changed[1] ? el32convert(positions) : nothing
+            pos = changed[1] ? el32convert(positions) : skip_update
             return (pos,)
         elseif false # is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
@@ -714,10 +726,18 @@ function register_marker_computations!(attr::ComputeGraph)
 end
 
 const PrimitivePlotTypes = Union{
-    Scatter, Lines, LineSegments, Text, Mesh,
+    Scatter, Lines, LineSegments, Glyphs, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume,
 }
 
+"""
+    uses_convert_attribute(::Type{<:Plot})
+
+Returns true for plot types that opt in to using `convert_attribute`
+infrastructure. This is `false` by default for recipes.
+"""
+uses_convert_attribute(::Type{<:PrimitivePlotTypes}) = true
+uses_convert_attribute(::Type{<:AbstractPlot}) = false
 
 function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, p.attributes, inputs, outputs)
@@ -900,7 +920,6 @@ end
 function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
     attr = documented_attributes(P)
     name = Makie.plotkey(P)
-    is_primitive = P <: PrimitivePlotTypes
 
     # Cycle is added here to allow `plot(..., cycle = Observable(...))`. Updating
     # cycle may only change which attribute maps to which, not which attributes
@@ -910,7 +929,7 @@ function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
         add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
     end
 
-    if is_primitive
+    if uses_convert_attribute(P)
         init_graph!(key -> AttributeConvert(key, name), graph, attr, true, kwargs, parent)
     else
         init_graph!(key -> compute_identity, graph, attr, false, kwargs, parent)
@@ -976,6 +995,13 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         register_camera!(scene, plot)
     end
     calculated_attributes!(Plot{Func}, plot)
+    add_resolved_shading!(plot, scene)
+
+    if !haskey(plot, :rasterize)
+        # just always convert for for simplicity
+        convert = AttributeConvert(:rasterize, plotsym(typeof(plot)))
+        add_input!(convert, plot.attributes, :rasterize, get(plot.kw, :rasterize, false))
+    end
 
     plot!(plot)
 
@@ -1075,7 +1101,7 @@ function register_pattern_uv_transform!(attr; modelname = :model_f32c, colorname
                 return (uvt,)
             end
         else
-            return nothing
+            return skip_update
         end
     end
     return
@@ -1139,14 +1165,22 @@ function calculated_attributes!(::Type{MeshScatter}, plot::Plot)
     register_colormapping!(attr)
     register_position_transforms!(attr)
     register_pattern_uv_transform!(attr)
+    map!(attr, :marker, [:vertex_position, :faces, :normal, :uv]) do mesh
+        faces = decompose(GLTriangleFace, mesh)
+        normals = decompose_normals(mesh)
+        texturecoordinates = decompose_uv(mesh)
+        positions = decompose(Point3f, mesh)
+        return (positions, faces, normals, texturecoordinates)
+    end
     map!(Rect3d, attr, :marker, :marker_bb)
     map!(meshscatter_data_limits, attr, [:positions, :marker_bb, :markersize, :rotation], :data_limits)
-    return map!(
+    map!(
         meshscatter_boundingbox, attr, [
             :positions_transformed, :model,
             :transform_marker, :marker_bb, :markersize, :rotation,
         ], :boundingbox
     )
+    return
 end
 
 

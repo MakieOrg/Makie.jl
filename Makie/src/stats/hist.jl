@@ -178,7 +178,7 @@ argument_dims(::Type{<:Hist}, vals; direction) = (ifelse(direction === :y, 1, 2)
 function pick_hist_edges(vals, bins)
     if bins isa Int
         isempty(vals) && return 1.0:0.0
-        mi, ma = float.(extrema(Iterators.flatten(vals)))
+        mi, ma = float.(extrema_nan(Iterators.flatten(vals)))
         if mi == ma
             return (mi - 0.5):(ma + 0.5)
         end
