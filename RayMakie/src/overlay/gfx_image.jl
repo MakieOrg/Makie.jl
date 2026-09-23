@@ -11,7 +11,7 @@ function get_image_pipeline!(screen)
                            blend = Premultiplied(),
                            topology = TriangleList(),
                            cull = NoCull(),
-                           depth = DepthOff())
+                           depth = DepthLessEq())
     end
 end
 
@@ -41,14 +41,23 @@ function image_overlay_vertex(
         screen_tr                                    # TR
     end
 
+    # `v` FOLLOWS THE DATA, not the screen: the texture is uploaded in Makie's
+    # `img[i, j]` order, so v = 0 is `j = 1`, which is the image's LOW y — the
+    # row the caller placed at `y_min`. The visually bottom corner therefore
+    # takes v = 0.
+    #
+    # This said v = 1 there, which was right only while `project_to_screen`
+    # produced y-UP pixels: that put `y_min` at the top of the quad, and the two
+    # flips cancelled into an image that looked upright in the wrong PLACE.
+    # Fixing the projection alone exposed the second one.
     uv = if vid == Int32(1)
-        Vec2f(0f0, 1f0)   # BL → bottom-left of image
+        Vec2f(0f0, 0f0)   # BL → the image's (x_min, y_min) corner
     elseif vid == Int32(2) || vid == Int32(4)
-        Vec2f(1f0, 1f0)   # BR
+        Vec2f(1f0, 0f0)   # BR
     elseif vid == Int32(3) || vid == Int32(6)
-        Vec2f(0f0, 0f0)   # TL
+        Vec2f(0f0, 1f0)   # TL
     else  # vid == 5
-        Vec2f(1f0, 0f0)   # TR
+        Vec2f(1f0, 1f0)   # TR
     end
 
     ndc = screen_to_ndc(pos, res[1], res[2])
@@ -77,5 +86,10 @@ function image_overlay_fragment(
     a = sample_texture_2d(UInt32(0), u, v, UInt32(3))
 
     # Premultiply alpha for Porter-Duff compositing
+    # A transparent fragment must not claim DEPTH: with writes on, an
+    # alpha-zero corner of a glyph or marker quad occludes whatever should
+    # have shown through it. Discarding is what lets a BLENDED pass use a
+    # depth buffer, which is how a scene's z translation gets honoured.
+    a < 1f-3 && discard()
     return Vec4f(r * a, g * a, b * a, a)
 end

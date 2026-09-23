@@ -49,7 +49,7 @@ function get_scatter_pipeline!(screen)
             blend = Premultiplied(),
             topology = PointList(),
             cull = NoCull(),
-            depth = DepthOff(),
+            depth = DepthLessEq(),
         )
     end
 end
@@ -310,6 +310,11 @@ function scatter_fragment(
         end
     end
 
+    # A transparent fragment must not claim DEPTH: with writes on, an
+    # alpha-zero corner of a glyph or marker quad occludes whatever should
+    # have shown through it. Discarding is what lets a BLENDED pass use a
+    # depth buffer, which is how a scene's z translation gets honoured.
+    color[4] < 1f-3 && discard()
     return Vec4f(color[1]*color[4], color[2]*color[4], color[3]*color[4], color[4])
 end
 
@@ -340,6 +345,12 @@ length(SCATTER_ARG_NAMES) == 23 || error(
 # setup_scatter! — registers conversions + robj
 # =============================================================================
 
+"""One position as the shader wants it: `Vec3f`, padding a 2D point with z = 0.
+
+Its own function so the conversion can be BROADCAST — see `gpu_positions`.
+"""
+@inline to_gpu_position(p) = Vec3f(Makie.to_ndim(Point3f, p, 0f0))
+
 function setup_scatter!(screen, scene, plot, attr, backend)
 
     Makie.all_marker_computations!(attr)
@@ -348,8 +359,14 @@ function setup_scatter!(screen, scene, plot, attr, backend)
     # ── Conversion computations (gpu_* = GPU-ready type) ──
 
     # positions_transformed_f32c (Point2f/3f mixed) → gpu_positions (Vec3f[])
-    Makie.ComputePipeline.map!(
-        ps -> [Vec3f(Makie.to_ndim(Point3f, p, 0f0)) for p in ps],
+    #
+    # BROADCAST, not a comprehension. A comprehension iterates, and iterating a
+    # device array is scalar indexing — which GPUArrays refuses, so a
+    # `scatter!` handed Mantle positions resolved to nothing and silently drew
+    # not one point. Broadcast dispatches per backend instead: a `Vector` runs
+    # the CPU loop and a `LavaArray` runs the GPU broadcast kernel, from the
+    # same source. Same rule `meshscatter!`'s transforms are built on.
+    Makie.ComputePipeline.map!(ps -> to_gpu_position.(ps),
         attr, :positions_transformed_f32c, :gpu_positions)
 
     # scaled_color + colormap → gpu_colors (Vec4f[]) — must match position count!
@@ -415,6 +432,11 @@ function setup_scatter!(screen, scene, plot, attr, backend)
             robj = cached.trace_renderobject
             update_robj!(robj, args, changed)
             robj.vertex_count = n
+            # Re-read: the atlas may have gained a glyph since this object was
+            # built, and a robj that keeps its first bindings draws the new
+            # glyph blank. Cheap — `get_atlas_bindings` returns the cached
+            # object untouched unless the atlas is dirty.
+            robj.bindings = get_atlas_bindings(screen)
             robj.visible = true
             return (robj,)
         end

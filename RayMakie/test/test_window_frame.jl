@@ -55,12 +55,20 @@ orangeish(c) = red(c) > 0.35 && red(c) > 1.6 * green(c) && green(c) > 1.5 * blue
     @test ppu ≈ first(RayMakie.GLFW.GetWindowContentScale(scr.window.handle))
 
     # The handshake: the LOOP draws this, we only wait for it. A figure is
-    # `size` UNITS, so the frame is that many pixels times the scale — the same
-    # thing GLMakie hands back, and not the half-size image this asserted while
-    # `px_per_unit` was pinned to 1.
+    # `size` UNITS, so the frame is the DRAWABLE — that many pixels times the
+    # scale — and not the half-size image this asserted while `px_per_unit` was
+    # pinned to 1.
+    #
+    # Against the drawable rather than against `round(Int, 240 * ppu)`: the
+    # window is asked for that many pixels and the window manager is free to
+    # give one more. It did — `(348, 463)` against an expected `(347, 463)`,
+    # because `240 * 1.4479166` is `347.4999…`. What the frame has to match is
+    # the thing it is blitted into; that the drawable is the figure's size in
+    # units is the second assertion, and it is the one `ppu` belongs in.
     img = Makie.colorbuffer(scr)
     @test img !== nothing
-    @test size(img) == (round(Int, 240 * ppu), round(Int, 320 * ppu))
+    @test size(img) == size(scr.output_buffer)
+    @test (round(Int, size(img)[2] / ppu), round(Int, size(img)[1] / ppu)) == (320, 240)
     @test RayMakie.renderloop_running(scr)      # asking did not kill the loop
 
     # Composited, not `output_buffer`: the sphere is in the picture.
@@ -72,7 +80,7 @@ orangeish(c) = red(c) > 0.35 && red(c) > 1.6 * green(c) && green(c) > 1.5 * blue
     @test scr.requested_frame === nothing
 
     # A second request works, so the flag was cleared and not merely consumed.
-    @test size(Makie.colorbuffer(scr)) == (round(Int, 240 * ppu), round(Int, 320 * ppu))
+    @test size(Makie.colorbuffer(scr)) == size(scr.output_buffer)
 
     # The loop presented frames of its own between the two requests — which is
     # also what `requestframe` waits on, so a loop that is merely slow is never

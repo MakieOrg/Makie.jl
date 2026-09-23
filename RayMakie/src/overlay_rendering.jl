@@ -106,14 +106,20 @@ function collect_overlay_robjs(state::RayMakieState, root_scene::Makie.Scene; sc
         vp_rect = (Float32(vp.origin[1]), vp_y, Float32(vp.widths[1]), -Float32(vp.widths[2]))
         for p in rscene.plots
             Makie.for_each_atomic_plot(p) do ap
-                haskey(ap, :trace_renderobject) || return nothing
+                # `:raster_renderobject` first: a plot that can go both ways
+                # writes the raster one there and leaves `:trace_renderobject`
+                # `nothing`. Plots that are only ever overlays still use the
+                # older name.
+                slot = haskey(ap, :raster_renderobject) ? :raster_renderobject :
+                       haskey(ap, :trace_renderobject)  ? :trace_renderobject  : nothing
+                slot === nothing && return nothing
                 ap.visible[] || return nothing
                 # A render object that exists but will not resolve is a BROKEN
                 # plot, not an absent one. This was `catch; return nothing`, which
                 # made a plot that fails to build indistinguishable from one that
                 # simply draws nothing. `maxlog` because this runs every frame.
                 robj = try
-                    ap[:trace_renderobject][]
+                    ap[slot][]
                 catch e
                     @error("RayMakie: an overlay render object failed to resolve; \
                             this plot will not be drawn",
@@ -164,6 +170,19 @@ function require_drawable(backend, p::Mantle.GraphicsPipeline)
         error("$(nameof(typeof(backend))) has no tessellation, and this overlay " *
               "declares one: $(Mantle.stagefunction(p.vertex)).")
     end
+    return nothing
+end
+
+function require_drawable(backend, p::Mantle.MeshPipeline)
+    Mantle.supports_mesh_pipeline(backend) || error("""
+        $(nameof(typeof(backend))) has no mesh pipeline, and this overlay IS one —
+        its geometry is written by a stage rather than read from a buffer, so
+        there is nothing to fall back to.
+
+          mesh stage  $(Mantle.stagefunction(p.mesh))
+
+        A plot drawn this way has no vertex-stream form to lower onto; the
+        backend has to grow the stage.""")
     return nothing
 end
 
@@ -218,16 +237,43 @@ function frame_signature(robjs, w, h)
          # `isnothing(indices)` and not the buffer's identity: WHETHER a draw is
          # indexed decides which command the backend records and so is compiled
          # in, but WHICH buffer holds the indices is rebound.
-         # No `bindings` here: they are rebound per frame now, so a changed
-         # texture table is not a reason to rebuild a plan — and an `objectid`
-         # never caught a table updated in place anyway.
-         (objectid(robj), objectid(robj.pipeline), vp,
+         # `objectid(robj.bindings)` IS here, and the comment that used to say
+         # it need not be was wrong. A composited frame is a RECORDED plan and
+         # `cmd_bind_descriptor_sets` bakes the set handle, so handing `rebind!`
+         # a DIFFERENT set changes a value nothing reads again — the frame keeps
+         # drawing the old texture. New pixels in the SAME texture are the fast
+         # path and do not come through here at all: `update_texture!` uploads
+         # into the existing image and leaves the set alone.
+         (objectid(robj), objectid(robj.pipeline), objectid(robj.bindings), vp,
           isnothing(get(robj.buffers, :indices, nothing)),
           # The argument TYPES, because those are the pipeline and the layout.
-          # Not the values, not the counts, not the buffers' identities — a
-          # camera move, a tick recount and new data in an existing plot all
-          # leave this untouched, which is the whole point.
-          map(typeof, build_args(robj)))
+          # Not the values and not the counts — a camera move and a tick recount
+          # both leave those to the draw's cell, which is the whole point.
+          map(typeof, build_args(robj)),
+          # But DO carry each device array's identity. `record_draw!` bakes the
+          # address of the packed argument block into a push constant, so a
+          # buffer that `resize!` had to REALLOCATE is one a plan recorded
+          # earlier cannot see. It showed up as text frozen at the glyph count
+          # of whatever it first drew — "RAY TRACED" rendering as "RAY TR",
+          # because the label had once said "RASTER" — and as the axis tick
+          # labels that a zoom never redrew.
+          #
+          # `argidentity` is `nothing` for everything that is not a device
+          # array, so a uniform still costs no rebuild.
+          map(Mantle.argidentity, build_args(robj)),
+          # And the COUNTS, for the same reason: `record_draw!` passes them to
+          # `vkCmdDraw`, which bakes them. Rebinding a smaller count into the
+          # cell changes nothing the recorded command reads — text shrinking
+          # from twelve glyphs to two kept drawing twelve. The address above
+          # does not catch this on its own, because `resize!` DOWNWARD stays
+          # inside its capacity and keeps the buffer it had.
+          #
+          # This does mean a plot whose element count changes rebuilds its
+          # plan. That is the price of the counts being compiled in, and it is
+          # paid on a tick recount or a relaid-out label, not on a camera move.
+          robj.vertex_count, robj.instances,
+          isnothing(get(robj.buffers, :indices, nothing)) ? 0 :
+              length(robj.buffers[:indices]))
      end)
 end
 
@@ -305,7 +351,18 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
     cells = [overlay_binding(robj, dev) for (robj, _) in robjs]
     g = Mantle.Graph(dev)
     target = mktarget(g)
-    Mantle.render!(g, "frame", target => clear) do p
+    # The depth attachment the overlay pipelines test against. `Float32` is what
+    # makes it one: a single-component 32-bit float attachment is `D32_SFLOAT`
+    # and nothing else in Vulkan is.
+    #
+    # The pipelines compare with `DepthLessEq`, not `DepthLess`. Plots WITHIN a
+    # scene share its z — a menu's option backgrounds and their labels are both
+    # at 200 — so a strict test rejects whichever is drawn second and the labels
+    # vanish into their own background. Equal depth passing means draw order
+    # still decides inside a scene, and z only decides between scenes, which is
+    # exactly the split Makie's convention asks for.
+    depth = Mantle.Transient.Image(g, Float32, (w, h))
+    Mantle.render!(g, "frame", target => clear, depth => Mantle.Clear(1f0)) do p
         frame_draws!(p, screen, source, cells, robjs, w, h)
     end
     extra = finish(g, target)

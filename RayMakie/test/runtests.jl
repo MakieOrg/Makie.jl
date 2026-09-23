@@ -146,6 +146,7 @@ const TEST_FILES = [
     "test_render_allocates_nothing.jl",
     # Leak / GC regressions.
     "test_materials_scene.jl",
+    "test_lines_topology.jl",
 ]
 
 # The Vulkan runtime's DEFERRED-FREE LEDGER, and nothing else.
@@ -200,6 +201,9 @@ const GRAPHICS_TEST_FILES = [
     "test_text_3d.jl",
     "test_surface_paths.jl",
     "test_window_frame.jl",
+    "test_empty_plot_fills_later.jl",
+    "test_device_arrays.jl",
+    "test_image_updates.jl",
 ]
 
 @testset "RayMakie" begin

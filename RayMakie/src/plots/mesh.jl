@@ -26,18 +26,46 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
         return (color_to_texture(args.color, plot),)
     end
 
+    # TWO slots, one per renderer, and each concretely typed.
+    #
+    # There used to be one — `trace_renderobject` — holding either a Hikari
+    # handle or a raster `RenderObject`, and consumers sniffed which by asking
+    # `isa RenderObject`. That works only as long as a plot never changes path,
+    # which was true while the path came from the camera type: cameras do not
+    # change type. The moment a switch exists it breaks, because a compute
+    # node's output slot takes its type from the first value it holds and the
+    # second kind cannot be stored in it.
+    #
+    # Separate slots also mean flipping back and forth costs nothing: neither
+    # renderer's object is torn down when the other is showing.
+    haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
+
     register_computation!(attr,
         [:mesh, :positions_transformed_f32c, :faces, :normals,
-         :texturecoordinates, :trace_color_tex, :model_f32c, :material],
+         :texturecoordinates, :trace_color_tex, :model_f32c, :material, :rasterize],
         [:trace_renderobject]) do args, changed, last
-
+        # `nothing` when this plot is not being traced — the slot still exists,
+        # so its type never changes, and the collectors skip a `nothing`.
+        (args.rasterize || !should_raytrace(scene, plot) || isnothing(hikari_scene)) &&
+            return (nothing,)
         last_robj = isnothing(last) ? nothing : last.trace_renderobject
-
-        if !should_raytrace(scene, plot) || isnothing(hikari_scene)
-            return (mesh_overlay_dispatch!(screen, scene, plot, args, last_robj),)
-        end
-
         return (mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, last_robj),)
+    end
+
+    # `:projectionview` is in the RASTER list and not the trace one: a raster
+    # object bakes the camera into its arguments, so a camera move has to re-run
+    # the node, while the tracer reads the camera per sample from the scene
+    # state. The matrix itself still comes from `plot_clip_matrix`, which asks
+    # what SPACE the plot declares; the attribute is here to say when to ask.
+    register_computation!(attr,
+        [:mesh, :positions_transformed_f32c, :faces, :normals,
+         :texturecoordinates, :trace_color_tex, :model_f32c, :material, :rasterize,
+         :projectionview],
+        [:raster_renderobject]) do args, changed, last
+        israster = args.rasterize || !should_raytrace(scene, plot) || isnothing(hikari_scene)
+        israster || return (nothing,)
+        last_robj = isnothing(last) ? nothing : last.raster_renderobject
+        return (mesh_overlay_dispatch!(screen, scene, plot, args, last_robj),)
     end
 end
 
@@ -165,10 +193,18 @@ end
 # -----------------------------------------------------------------------------
 
 """
-    plot_clip_matrix(scene, plot) -> Mat4f
+    plot_clip_matrix(plot) -> Mat4f
 
-The projection that takes `plot`'s vertices to clip space, chosen by the SPACE
-the plot declares.
+The projection that takes `plot`'s vertices to clip space: its OWN scene's
+camera, for the SPACE the plot declares.
+
+Its own scene, and that is not the one `draw_atomic` is handed. A block's
+contents live in sub-scenes — a `Menu`'s dropdown is a `Scene` of its own,
+translated in z and given an absolute pixel camera over its own viewport — and
+projecting its vertices through the enclosing scene's camera puts them somewhere
+else entirely. What that looked like: an open dropdown drew its LABELS (which
+read the plot's own matrix) in the right place and its option BACKGROUNDS
+nowhere at all, so the panel underneath showed through the menu.
 
 `scene.camera.projectionview` is the data-space one and was used for every plot
 regardless. A plot with `space = :pixel` — Makie's rectangle-zoom rubber band is
@@ -182,12 +218,33 @@ zoom rectangle does nothing" looked like.
 in this backend; the four coordinate spaces are not a special case to branch on,
 they are what the attribute means.
 """
-plot_clip_matrix(scene, plot) =
-    Mat4f(Makie.space_to_clip(scene.camera, Makie.to_value(get(plot, :space, :data))))
+plot_clip_matrix(plot) =
+    Mat4f(Makie.space_to_clip(Makie.parent_scene(plot).camera,
+                              Makie.to_value(get(plot, :space, :data))))
 
-function mesh_overlay_dispatch!(screen, scene, plot, args, last_robj)
+"""
+    mesh_overlay_dispatch!(screen, scene, plot, args, last_robj)
+
+The RASTER path for a mesh, dispatched ON THE MATERIAL.
+
+This is the raster counterpart of what the trace path does with `get_bxdf`: the
+material decides how the thing is drawn. A `Hikari.FEMMaterial` carries curved
+elements, so on this side it selects a MESH SHADER that subdivides them, the
+same way it selects procedural geometry on the other — one type, one decision,
+two paths. Everything else draws the triangles it was given.
+"""
+mesh_overlay_dispatch!(screen, scene, plot, args, last_robj) =
+    mesh_overlay_dispatch!(overlay_material(plot), screen, scene, plot, args, last_robj)
+
+"""The material a plot draws with on the raster path, or `nothing`."""
+function overlay_material(plot)
+    haskey(plot, :material) || return nothing
+    return to_value(plot.material)
+end
+
+function mesh_overlay_dispatch!(::Any, screen, scene, plot, args, last_robj)
     flat_positions, flat_colors = mesh_overlay_flat_arrays(plot, args)
-    pv = plot_clip_matrix(scene, plot)
+    pv = plot_clip_matrix(plot)
     model_mat = Mat4f(args.model_f32c)
 
     if last_robj isa RenderObject
@@ -200,9 +257,36 @@ end
 # Faces are expanded into 3 vertices each so the pipeline can use a
 # non-indexed draw.  Colors track the user's `plot.color` semantics:
 # per-vertex, per-face/per-group, scalar Colorant, or a fallback.
+"""
+    rastergeometry(material, plot, args) -> (positions, faces, color)
+
+What the overlay rasterises, colour included.
+
+The plot's own triangles and `plot.color`, unless the material carries geometry
+— see `Hikari.GeneratedGeometry`. Geometry and colour come back together
+because they have to agree: triangles from one source and a colour array sized
+for another is a silent mismatch, and there is no third place that knows both.
+"""
+rastergeometry(::Any, plot, args) =
+    (map(p -> Makie.to_ndim(Point3f, p, 0f0), args.positions_transformed_f32c),
+     args.faces, to_value(plot.color))
+
+function rastergeometry(material::Hikari.GeneratedGeometry, plot, args)
+    mesh = Hikari.tessellate(material)
+    # `color` is an optional vertex attribute, and whether a mesh has one is in
+    # its TYPE — so this folds away. A material that colours its own triangles
+    # says so by attaching them; one that does not falls back to the plot's.
+    colour = hasproperty(mesh, :color) ? mesh.color : to_value(plot.color)
+    return (map(p -> Makie.to_ndim(Point3f, p, 0f0), GeometryBasics.coordinates(mesh)),
+            GeometryBasics.faces(mesh), colour)
+end
+
 function mesh_overlay_flat_arrays(plot, args)
-    positions_3f = map(p -> Makie.to_ndim(Point3f, p, 0f0), args.positions_transformed_f32c)
-    faces_val = args.faces
+    positions_3f, faces_val, raw_color = rastergeometry(overlay_material(plot), plot, args)
+    return mesh_overlay_flat_from(plot, args, positions_3f, faces_val, raw_color)
+end
+
+function mesh_overlay_flat_from(plot, args, positions_3f, faces_val, raw_color)
     n_verts = length(positions_3f)
     n_faces = length(faces_val)
 
@@ -211,7 +295,6 @@ function mesh_overlay_flat_arrays(plot, args)
         flat_positions[3 * (fi - 1) + j] = positions_3f[f[j]]
     end
 
-    raw_color = to_value(plot.color)
     flat_colors = if raw_color isa AbstractVector{<:Colorant} && length(raw_color) == n_verts
         # Per-vertex
         out = Vector{Vec4f}(undef, 3 * n_faces)

@@ -224,7 +224,15 @@ const MAKIE_DEFAULT_THEME = Attributes(
         denoise_config = nothing,  # DenoiseConfig(iterations=5, sigma_color=4.0, ...)
         visible = true,      # Open a window with interactive render loop on display()
         title = "RayMakie",  # Window title
-        vsync = true         # V-sync for window rendering
+        vsync = true,        # V-sync for window rendering
+        # Let samples build up across reads instead of restarting each one —
+        # what a path-traced viewport does. `colorbuffer`'s `clear` defaults to
+        # the negation of this, so a backend-generic caller like
+        # `recordframe!` converges while the camera stands still.
+        accumulate = false,
+        # Draw raytraceable plots through the raster path instead. Same scene,
+        # same camera, same lights — only the path changes.
+        rasterize = false
     )
 )
 

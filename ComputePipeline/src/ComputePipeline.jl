@@ -235,7 +235,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         end
 
         outputs = ntuple(length(result)) do i
-            v = result[i] isa RefValue ? result[i] : RefValue(result[i])
+            v = result[i] isa RefValue ? result[i] : slotfor(result[i])
             if isdefined(edge.outputs[i], :value)
                 edge.outputs[i].value[] = v[] # set value of existing node
             else
@@ -251,7 +251,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
             if isdefined(edge.outputs[i], :value)
                 edge.outputs[i].value[] = nothing
             else
-                edge.outputs[i].value = RefValue(nothing)
+                edge.outputs[i].value = slotfor(nothing)
             end
             return edge.outputs[i].value
         end
@@ -893,6 +893,31 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
     end
     return
 end
+
+"""
+    slotfor(value) -> RefValue
+
+The storage an output node is created with on its FIRST resolve.
+
+`RefValue(value)` for a real value — the point of the first resolve is to type
+the slot concretely, and everything downstream reads it through that type.
+
+`Ref{Any}` for `nothing`, because `nothing` is not a value here: [`set_result!`]
+(@ref) below reads it as "this output did not CHANGE", so a callback that
+answers it on the first resolve has said nothing about the type at all.
+`RefValue(nothing)` took it literally and made a `RefValue{Nothing}`, which can
+never hold anything else — so the next resolve, the one with real data, died on
+`convert(Nothing, x)` and kept dying, for the life of the graph.
+
+What that cost: a plot created EMPTY and filled later could never draw. RayMakie's
+`draw_atomic` for `lines` and `text` answers `(nothing,)` while a plot has fewer
+than two points, which is the ordinary state of a GUI's plots before the first
+interaction — the video editor's crop rectangle gets its points on the first
+drag, and after this it got them and was never drawn again.
+
+"""
+slotfor(@nospecialize(value)) = RefValue(value)
+slotfor(::Nothing) = Ref{Any}(nothing)
 
 function set_result!(edge::TypedEdge, result, i, value)
     if isnothing(value) || is_same(edge.outputs[i][], value)

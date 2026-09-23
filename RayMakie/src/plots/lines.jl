@@ -16,14 +16,15 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         attr, [:positions_transformed_f32c], [:trace_gl_indices, :trace_gl_valid_vertex]
     ) do (positions,), changed, cached
         if isnothing(cached)
-            indices = UInt32[]
-            valid = Float32[]
+            # `similar`, so the topology lands wherever the positions already
+            # are and nothing has to be uploaded afterwards.
+            indices = similar(positions, UInt32, 0)
+            valid = similar(positions, Float32, 0)
         else
-            indices = empty!(cached.trace_gl_indices)
+            indices = cached.trace_gl_indices
             valid = cached.trace_gl_valid_vertex
         end
-        ps = positions
-        lines_generate_indices(ps, indices, valid)
+        lines_generate_indices(positions, indices, valid)
         return (indices, valid)
     end
 
@@ -72,7 +73,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
                            changed.trace_gl_indices || changed.trace_gl_valid_vertex ||
                            changed.trace_gl_lastlen || changed.color || changed.linewidth
             if data_changed
-                vertex_data = Vec3f[Makie.to_ndim(Point3f, p, 0f0) for p in args.positions_transformed_f32c]
+                vertex_data = to_gpu_position.(args.positions_transformed_f32c)
                 color_data = lines_resolve_colors(plot, n)
                 thickness_data = lines_resolve_thickness(plot, n)
                 valid_data = Float32.(args.trace_gl_valid_vertex)
@@ -115,7 +116,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         positions = args.positions_transformed_f32c
         valid = args.trace_gl_valid_vertex
         lastlen = args.trace_gl_lastlen
-        vertex_data = Vec3f[Makie.to_ndim(Point3f, p, 0f0) for p in positions]
+        # Broadcast, so device positions become a device vertex buffer with no
+        # host round trip — see `to_gpu_position`.
+        vertex_data = to_gpu_position.(positions)
         color_data = lines_resolve_colors(plot, n)
         thickness_data = lines_resolve_thickness(plot, n)
         valid_data = Float32.(valid)
@@ -222,7 +225,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
         indices = args.trace_gl_indices
         isempty(indices) && return (nothing,)
 
-        vertex_data = Vec3f[Makie.to_ndim(Point3f, p, 0f0) for p in positions]
+        # Broadcast, so device positions become a device vertex buffer with no
+        # host round trip — see `to_gpu_position`.
+        vertex_data = to_gpu_position.(positions)
         color_data = lines_resolve_colors(plot, n)
         thickness_data = lines_resolve_thickness(plot, n)
         valid_data = Float32.(args.trace_gl_valid_vertex)

@@ -138,8 +138,20 @@ end
 
             state = screen.state
             @test !isnothing(state)
-            # Makie scene size=(w,h) but framebuffer is stored as (h,w)
-            @test size(state.film.framebuffer) == (32, 48)
+            # Makie scene size=(w,h) but framebuffer is stored as (h,w) — and in
+            # PIXELS, which is `px_per_unit` times the units the scene is laid
+            # out in. This asserted `(32, 48)` and read `(46, 70)` on any display
+            # whose scale is not 1; the film has always been in pixels, since it
+            # is what the drawable is blitted from.
+            # Against the DRAWABLE, not against `round(Int, 48 * ppu)`, for the
+            # same reason `test_window_frame.jl` is: the window may be given a
+            # pixel more than it asked for, and `48 * 1.4479166` is `69.4999…`.
+            # The film is the drawable; that the drawable is the scene's size in
+            # units is the second assertion.
+            ppu = Makie.px_per_unit(screen)
+            @test size(state.film.framebuffer) == size(screen.output_buffer)
+            fh, fw = size(state.film.framebuffer)
+            @test (round(Int, fw / ppu), round(Int, fh / ppu)) == (48, 32)
 
             close(screen)
         end

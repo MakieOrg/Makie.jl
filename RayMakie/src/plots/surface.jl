@@ -54,7 +54,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
         # calls land here: `surface!` into a 2D `Axis`, and any surface whose
         # scene has no 3D camera — `surface(fill(3f0, 20, 20))` gets an
         # `EmptyCamera`, because a flat one gives `LScene` nothing to fit.
-        if !should_raytrace(scene, plot) || isnothing(hikari_scene)
+        if !should_raytrace(screen, scene, plot) || isnothing(hikari_scene)
             last_robj = isnothing(last) ? nothing : last.trace_renderobject
             return (surface_overlay_dispatch!(screen, scene, plot, args, last_robj),)
         end
@@ -137,7 +137,7 @@ function surface_overlay_dispatch!(screen, scene, plot, args, last_robj)
     end
     flat_colors = surface_overlay_colors(plot, faces, length(positions))
 
-    pv = plot_clip_matrix(scene, plot)
+    pv = plot_clip_matrix(plot)
     model_mat = Mat4f(args.model_f32c)
     if last_robj isa RenderObject
         return mesh_overlay_update!(last_robj, flat_positions, flat_colors, pv, model_mat)

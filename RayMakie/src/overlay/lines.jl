@@ -486,6 +486,11 @@ function lines_fragment(
     alpha = col[4] * f_alpha_weight * aastep(0f0, -sdf)
 
     # Premultiply
+    # A transparent fragment must not claim DEPTH: with writes on, an
+    # alpha-zero corner of a glyph or marker quad occludes whatever should
+    # have shown through it. Discarding is what lets a BLENDED pass use a
+    # depth buffer, which is how a scene's z translation gets honoured.
+    alpha < 1f-3 && discard()
     return Vec4f(col[1] * alpha, col[2] * alpha, col[3] * alpha, alpha)
 end
 
@@ -511,7 +516,7 @@ function get_lines_pipeline!(screen)
             # rendered as one edge, a sine curve as dashes.
             topology = LineStripAdjacency(),
             cull = NoCull(),
-            depth = DepthOff(),
+            depth = DepthLessEq(),
         )
     end
 end
@@ -542,7 +547,7 @@ function get_line_segments_pipeline!(screen)
             blend = Premultiplied(),
             topology = LineListAdjacency(),
             cull = NoCull(),
-            depth = DepthOff(),
+            depth = DepthLessEq(),
         )
     end
 end
@@ -558,80 +563,218 @@ end
 Generate adjacency indices and valid_vertex flags for GL_LINE_STRIP_ADJACENCY.
 Direct port of GLMakie's `generate_indices`. Returns 0-based indices for Vulkan index buffer.
 """
-function lines_generate_indices(ps, indices=UInt32[], valid=Float32[])
-    empty!(indices)
-    resize!(valid, length(ps))
+# ── Line topology, computed where the positions already live ─────────────────
+#
+# Both passes below were sequential host loops, and a device position array was
+# copied back for them — which defeats the point of the positions being on the
+# device at all. Each is now a scan plus a scatter, and that is ONE
+# implementation for both cases: on a `Vector` the scans are Base's and the
+# kernels run on KernelAbstractions' CPU backend; on a device array the scans
+# are Mantle's (`array/accumulate.jl`) and the kernels run on the GPU. Nothing
+# branches on the array type — `similar` decides where every intermediate
+# lands, the same bargain `meshscatter.jl` makes with broadcast.
+#
+# The sequential version is not gone: it is the reference the tests check
+# against, in `test_lines_topology.jl`, which is where a second implementation
+# belongs.
+#
+# Flags are `Int32` rather than `Bool` because these arrays are device storage
+# and a one-byte element type is a question about the backend nobody needs to
+# ask here.
 
-    if length(ps) < 2
-        valid .= 0f0
-        return (indices, valid)
+"""Per-point validity and run-start flags, in one pass over the positions."""
+@kernel function lines_flags_kernel!(valid, startflag, @Const(ps))
+    i = @index(Global, Linear)
+    @inbounds begin
+        v = isfinite(ps[i])
+        valid[i] = v ? Int32(1) : Int32(0)
+        prev = i > 1 ? isfinite(ps[i - 1]) : false
+        startflag[i] = (v && !prev) ? Int32(1) : Int32(0)
     end
+end
 
-    sizehint!(indices, length(ps) + 2)
-    last_start_pos = eltype(ps)(NaN)
-    last_start_idx = -1
-
-    for (i, p) in enumerate(ps)
-        not_nan = isfinite(p)
-        valid[i] = Float32(not_nan)
-
-        if not_nan
-            if last_start_idx == -1
-                push!(indices, UInt32(max(1, i - 1)))
-                last_start_idx = length(indices) + 1
-                last_start_pos = p
-            end
-            push!(indices, UInt32(i))
-        elseif (last_start_idx != -1) &&
-               (length(indices) - last_start_idx > 2) &&
-               (ps[max(1, i - 1)] ≈ last_start_pos)
-            indices[last_start_idx - 1] = UInt32(max(1, i - 2))
-            push!(indices, UInt32(indices[last_start_idx + 1]), UInt32(i))
-            valid[i - 2] = 2f0
-            valid[indices[last_start_idx + 1]] = 2f0
-            last_start_idx = -1
-        elseif last_start_idx != -1
-            push!(indices, UInt32(i))
-            last_start_idx = -1
-        end
+"""First and last index of every run, scattered by the run's ordinal."""
+@kernel function lines_runbounds_kernel!(starts, ends, @Const(ordinal), @Const(valid))
+    i = @index(Global, Linear)
+    n = length(valid)
+    @inbounds if valid[i] != Int32(0)
+        r = ordinal[i]
+        (i == 1 || valid[i - 1] == Int32(0)) && (starts[r] = Int32(i))
+        (i == n || valid[i + 1] == Int32(0)) && (ends[r] = Int32(i))
     end
-
-    if (last_start_idx != -1) && (length(indices) - last_start_idx > 2) && (ps[end] ≈ last_start_pos)
-        indices[last_start_idx - 1] = UInt32(length(ps) - 1)
-        push!(indices, UInt32(indices[last_start_idx + 1]))
-        valid[end - 1] = 2f0
-        valid[indices[last_start_idx + 1]] = 2f0
-    elseif last_start_idx != -1
-        push!(indices, UInt32(length(ps)))
-    end
-
-    # Convert to 0-based for Vulkan index buffer
-    indices .-= UInt32(1)
-
-    return (indices, valid)
 end
 
 """
-Compute cumulative screen-space lengths for pattern UV (port of GLMakie sumlengths).
-"""
-function lines_sumlengths(points, resolution)
-    f(p::VecTypes{4}) = p[Vec(1, 2)] / p[4]
-    f(p::VecTypes) = p[Vec(1, 2)]
-    invalid(p::VecTypes{4}) = p[4] <= 1.0f-6
-    invalid(p::VecTypes) = false
+Whether each run closes on itself, and how many index entries it emits.
 
-    T = Float32
-    result = zeros(T, length(points))
-    for (i, idx) in enumerate(eachindex(points))
-        idx0 = max(idx - 1, 1)
-        p1, p2 = points[idx0], points[idx]
-        if any(map(isnan, p1)) || any(map(isnan, p2)) || invalid(p1) || invalid(p2)
-            result[i] = 0f0
+A run of `L` points costs `L + 2` — the strip, plus an adjacency vertex at each
+end for the joins. A CLOSED run (more than three points, last ≈ first) costs one
+more in the middle of the array, because it re-emits its second vertex so the
+join at the seam has the neighbour it needs; a closed run ending at the last
+position has no trailing adjacency to emit and stays at `L + 2`.
+"""
+@kernel function lines_runlengths_kernel!(outlen, isloop, @Const(starts), @Const(ends),
+                                          @Const(ps), n::Int32)
+    r = @index(Global, Linear)
+    @inbounds begin
+        s = starts[r]; e = ends[r]
+        L = e - s + Int32(1)
+        loop = (L > Int32(3)) && (ps[e] ≈ ps[s])
+        isloop[r] = loop ? Int32(1) : Int32(0)
+        outlen[r] = L + Int32(2) + ((loop && e < n) ? Int32(1) : Int32(0))
+    end
+end
+
+"""The body of every run: one thread per position, writing its own slot."""
+@kernel function lines_body_kernel!(indices, @Const(ordinal), @Const(valid), @Const(starts),
+                                    @Const(offsets), @Const(outlen))
+    i = @index(Global, Linear)
+    @inbounds if valid[i] != Int32(0)
+        r = ordinal[i]
+        off = offsets[r] - outlen[r]
+        indices[off + Int32(2) + (Int32(i) - starts[r])] = UInt32(i)
+    end
+end
+
+"""
+The adjacency vertices at both ends of every run, and the seam markers.
+
+`valid_vertex == 2` is how the geometry shader is told a vertex sits at a closed
+seam rather than at a free end; it goes on the run's second and second-to-last
+vertex, which are the two the seam's join is built from.
+"""
+@kernel function lines_bounds_kernel!(indices, validf, @Const(starts), @Const(ends),
+                                      @Const(offsets), @Const(outlen), @Const(isloop), n::Int32)
+    r = @index(Global, Linear)
+    @inbounds begin
+        s = starts[r]; e = ends[r]
+        L = e - s + Int32(1)
+        off = offsets[r] - outlen[r]
+        if isloop[r] != Int32(0)
+            indices[off + Int32(1)] = UInt32(e - Int32(1))
+            indices[off + Int32(2) + L] = UInt32(s + Int32(1))
+            e < n && (indices[off + Int32(3) + L] = UInt32(e + Int32(1)))
+            validf[e - Int32(1)] = 2.0f0
+            validf[s + Int32(1)] = 2.0f0
         else
-            result[i] = result[max(i - 1, 1)] + 0.5f0 * norm(resolution .* (f(p1) - f(p2)))
+            indices[off + Int32(1)] = UInt32(max(Int32(1), s - Int32(1)))
+            indices[off + Int32(2) + L] = UInt32(e < n ? e + Int32(1) : e)
         end
     end
-    return result
+end
+
+"""
+    lines_generate_indices(ps, indices, valid) -> (indices, valid)
+
+Adjacency index buffer and per-vertex validity for a line strip, built on
+whichever device `ps` lives on.
+
+`indices` and `valid` are resized in place and returned, so a plot whose point
+count is unchanged reuses its buffers. Both have to be arrays of the same kind
+as `ps`; the caller allocates them with `similar`.
+
+Two scalars cross back to the host — the run count and the total index count —
+because the output arrays have to be SIZED, and a data-dependent size is not
+something `similar` can be told. Everything else stays put. The alternative is
+an indirect draw with a device-side count, which is a change to the render
+object rather than to this pass.
+"""
+function lines_generate_indices(ps, indices, valid)
+    n = length(ps)
+    resize!(valid, n)
+
+    if n < 2
+        fill!(valid, 0.0f0)
+        resize!(indices, 0)
+        return (indices, valid)
+    end
+
+    backend = KernelAbstractions.get_backend(ps)
+    validb = similar(ps, Int32, n)
+    startflag = similar(ps, Int32, n)
+    lines_flags_kernel!(backend)(validb, startflag, ps; ndrange = n)
+
+    ordinal = accumulate(+, startflag)
+    nruns = Int(scalarat(ordinal, n))
+    if nruns == 0
+        fill!(valid, 0.0f0)
+        resize!(indices, 0)
+        return (indices, valid)
+    end
+
+    starts = similar(ps, Int32, nruns)
+    ends = similar(ps, Int32, nruns)
+    lines_runbounds_kernel!(backend)(starts, ends, ordinal, validb; ndrange = n)
+
+    outlen = similar(ps, Int32, nruns)
+    isloop = similar(ps, Int32, nruns)
+    lines_runlengths_kernel!(backend)(outlen, isloop, starts, ends, ps, Int32(n); ndrange = nruns)
+
+    offsets = accumulate(+, outlen)
+    total = Int(scalarat(offsets, nruns))
+
+    resize!(indices, total)
+    valid .= Float32.(validb)
+    lines_body_kernel!(backend)(indices, ordinal, validb, starts, offsets, outlen; ndrange = n)
+    lines_bounds_kernel!(backend)(indices, valid, starts, ends, offsets, outlen, isloop,
+                                  Int32(n); ndrange = nruns)
+
+    # Vulkan index buffers are 0-based.
+    indices .-= UInt32(1)
+    return (indices, valid)
+end
+
+@inline lines_screenpos(p::VecTypes{4}) = p[Vec(1, 2)] / p[4]
+@inline lines_screenpos(p::VecTypes) = p[Vec(1, 2)]
+@inline lines_behind(p::VecTypes{4}) = p[4] <= 1.0f-6
+@inline lines_behind(p::VecTypes) = false
+@inline lines_isbreak(p1, p2) =
+    any(map(isnan, p1)) || any(map(isnan, p2)) || lines_behind(p1) || lines_behind(p2)
+@inline lines_seglen(p1, p2, res) =
+    lines_isbreak(p1, p2) ? 0.0f0 :
+    0.5f0 * norm(res .* (lines_screenpos(p1) - lines_screenpos(p2)))
+
+"""
+    lines_sumlengths(points, resolution) -> Float32 array
+
+Cumulative screen-space distance along the strip, restarting at every break, for
+the dash pattern's UV coordinate. Port of GLMakie's `sumlengths`, and it stays
+on whichever device `points` lives on.
+
+Two scans rather than the obvious running total, because the obvious one is
+sequential. A running total that RESETS is a segmented scan, and the textbook
+segmented scan carries `(value, flag)` pairs — which do not compile here, since
+a scan over a tuple element type fails SPIR-V validation. The way around it uses
+a property of this particular scan: a segment length cannot be negative, so the
+plain cumulative sum is non-decreasing, and "the sum since the last break" is
+just the total minus its value AT that break. A `max` scan finds that value,
+because with a non-decreasing total the largest sum-at-a-break seen so far is
+also the most recent one. Two scalar scans, no pairs.
+"""
+function lines_sumlengths(points, resolution)
+    n = length(points)
+    n == 0 && return similar(points, Float32, 0)
+
+    res = Vec2f(Float32.(resolution)...)
+    lens = similar(points, Float32, n)
+    breaks = similar(points, Float32, n)
+
+    # Point 1 has no predecessor, so it compares against itself: zero length,
+    # and a break only if it is itself invalid.
+    first1 = view(points, 1:1)
+    view(lens, 1:1) .= lines_seglen.(first1, first1, (res,))
+    view(breaks, 1:1) .= Float32.(lines_isbreak.(first1, first1))
+    if n > 1
+        prev = view(points, 1:(n - 1))
+        cur = view(points, 2:n)
+        view(lens, 2:n) .= lines_seglen.(prev, cur, (res,))
+        view(breaks, 2:n) .= Float32.(lines_isbreak.(prev, cur))
+    end
+
+    total = accumulate(+, lens)
+    # `breaks` is 0 or 1, so this is the total at a break and zero elsewhere.
+    atbreak = accumulate(max, breaks .* total)
+    return total .- atbreak
 end
 
 function sample_colormap(cmap, v::Float32, cmin::Float32, cmax::Float32, n_cmap::Int)

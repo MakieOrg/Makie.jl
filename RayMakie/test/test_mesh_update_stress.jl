@@ -12,7 +12,15 @@ gpuarray(data) = Mantle.devicearray(BE, data)
 using GeometryBasics: Point3f, Vec3f, Rect3f, Sphere
 using Makie: Mat4f
 
-robj_of(plt) = to_value(plt.attributes[:trace_renderobject])
+# The slot the object actually lives in. A mesh has TWO — it is traced through
+# `:trace_renderobject` and rasterised through `:raster_renderobject`, and the
+# one it is not using holds `nothing` — so a helper that names only the trace
+# slot reads `nothing` for every overlay. `collect_overlay_robjs` picks the same
+# way round.
+robj_of(plt) = something(
+    haskey(plt, :raster_renderobject) ? to_value(plt.attributes[:raster_renderobject]) : nothing,
+    haskey(plt, :trace_renderobject) ? to_value(plt.attributes[:trace_renderobject]) : nothing,
+)
 
 function make_screen(scene)
     return RayMakie.Screen(scene; integrator=Hikari.VolPath(samples=1, max_depth=1))

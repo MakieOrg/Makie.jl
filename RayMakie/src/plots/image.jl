@@ -4,6 +4,43 @@
 # Creates a RenderObject with a textured quad pipeline.
 # Pipeline and texture are created once, updated in-place on data changes.
 
+"""
+    texeldata(image) -> Matrix{NTuple{4,UInt8}} or Matrix{NTuple{4,Float32}}
+
+`image` as the texel tuples a texture is uploaded from, **in the precision the
+image already has**.
+
+An 8-bit source becomes `R8G8B8A8_UNORM` and a floating-point one
+`R32G32B32A32_SFLOAT`. Both sample to a float in the shader — a UNORM texture is
+normalised by the sampler, in hardware — so nothing downstream can tell the
+difference, and neither can the picture: the 8-bit path is exact for an 8-bit
+source rather than approximate.
+
+Everything used to go to `RGBA{Float32}`. MEASURED on one 1920x1080 video frame:
+`RGBA{Float32}.(img)` 30.0 ms and 31.6 MB, then
+`collect(reinterpret(NTuple{4,Float32}, …))` another 16.0 ms and 31.6 MB — 46 ms
+and 63 MB of host work per frame, to turn 5.9 MB of `RGB{N0f8}` into 31.6 MB to
+upload. 46 ms a frame is a 21.7 fps ceiling, and the video editor's preview
+measured 18.8.
+
+The `reinterpret` copy was pure waste in both cases: an `RGBA{T}` matrix is
+already four `T`s per texel, laid out exactly as the tuple. Broadcasting the
+conversion straight to the tuple does it once.
+"""
+texeldata(img::AbstractMatrix{<:Colorant{N0f8}}) = rgba8texel.(img)
+texeldata(img::AbstractMatrix{<:Colorant}) = rgba32texel.(img)
+
+@inline function rgba8texel(c)
+    x = RGBA{N0f8}(c)
+    return (reinterpret(UInt8, red(x)), reinterpret(UInt8, green(x)),
+            reinterpret(UInt8, blue(x)), reinterpret(UInt8, alpha(x)))
+end
+
+@inline function rgba32texel(c)
+    x = RGBA{Float32}(c)
+    return (red(x), green(x), blue(x), alpha(x))
+end
+
 function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Makie.Heatmap})
     attr = plot.attributes
 
@@ -20,8 +57,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
         y_min, y_max = Float32(minimum(y)), Float32(maximum(y))
 
         # Project corners through camera to screen pixel coords
-        pv = plot_clip_matrix(scene, plot)
-        viewport = scene.viewport[]
+        # Both from the plot's OWN scene — see `plot_clip_matrix`. The matrix and
+        # the viewport describe one mapping and have to come from one place.
+        pv = plot_clip_matrix(plot)
+        viewport = Makie.parent_scene(plot).viewport[]
         vw, vh = viewport.widths
 
         # The scene's OWN pixels, with no viewport origin added: the draw is
@@ -35,26 +74,34 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
         function project_to_screen(dx, dy)
             p4 = pv * model * Vec4f(dx, dy, 0f0, 1f0)
             ndc = Vec2f(p4[1] / p4[4], p4[2] / p4[4])
-            Point2f((ndc[1] + 1f0) * 0.5f0 * vw, (ndc[2] + 1f0) * 0.5f0 * vh)
+            # Y-DOWN, which is the space the overlay draws in — `screen_to_ndc`
+            # in the shader and `collect_overlay_robjs`' `root_h - vp.origin[2]`
+            # both assume it. NDC y is +1 at the TOP, so `(ndc+1)/2` is y-UP and
+            # placed the quad mirrored about the viewport's centre: an image at
+            # data y 0..16 of a 0..50 axis drew at 34..50. Every other plot
+            # projects in the shader, where the viewport transform does this, so
+            # this is the only place that has to say it.
+            Point2f((ndc[1] + 1f0) * 0.5f0 * vw, (1f0 - ndc[2]) * 0.5f0 * vh)
         end
 
         p_bl = project_to_screen(x_min, y_min)
         p_tr = project_to_screen(x_max, y_max)
 
-        # Convert image data to RGBA Float32
-        rgba_data = if img_data isa AbstractMatrix{<:Colorant}
-            RGBA{Float32}.(img_data)
+        # The texel tuple the texture is uploaded from, in the SOURCE's precision
+        # — see `texeldata`. Straight to the tuple: this used to build an
+        # `RGBA{Float32}` matrix and then `collect(reinterpret(...))` it, which is
+        # a second full copy of a buffer that is already bit-for-bit what the
+        # upload wants.
+        img_ntuple = if img_data isa AbstractMatrix{<:Colorant}
+            texeldata(img_data)
         elseif img_data isa AbstractMatrix{<:Real}
-            # Heatmap: apply colormap
+            # Heatmap: apply colormap. Computed in float, so it stays float.
             cmap_colors = to_value(plot.colormap)
             crange = to_value(plot.colorrange)
-            _apply_colormap(img_data, cmap_colors, crange)
+            texeldata(_apply_colormap(img_data, cmap_colors, crange))
         else
-            fill(RGBA{Float32}(1, 0, 1, 1), size(img_data))
+            fill((1f0, 0f0, 1f0, 1f0), size(img_data))
         end
-
-        # Reinterpret RGBA{Float32} → NTuple{4,Float32} for texture upload
-        img_ntuple = collect(reinterpret(NTuple{4, Float32}, rgba_data))
 
         # The scene's own size, to match the pixels `project_to_screen` produced.
         root_w, root_h = round(Int, vw), round(Int, vh)

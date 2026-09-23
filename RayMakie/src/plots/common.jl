@@ -37,76 +37,12 @@ function build_vertex_color_texture(vertex_colors::AbstractVector{<:Colorant}, m
     return Hikari.VertexColorTexture(face_colors, Int32(n_faces))
 end
 
-# =============================================================================
-# Material merging — combine color texture with existing material
-# =============================================================================
-
-# Every one of these passes the material's fields positionally, so a field ADDED
-# to a Hikari material silently turns the call into a `MethodError` — and one
-# raised here surfaces as "failed to resolve trace_renderobject" from the compute
-# graph, several layers from the cause. `displacement` was added to all six and
-# none of them were updated, so every plot carrying a colour texture failed.
-function merge_color_with_material(color_tex, material::Hikari.Diffuse)
-    Hikari.Diffuse(color_tex, material.σ, material.displacement)
-end
-
-function merge_color_with_material(color_tex, material::Hikari.Mirror)
-    Hikari.Mirror(color_tex, material.displacement)
-end
-
-function merge_color_with_material(color_tex, material::Hikari.Dielectric)
-    Hikari.Dielectric(
-        material.Kr, color_tex,
-        material.u_roughness, material.v_roughness,
-        material.index, material.remap_roughness, material.displacement
-    )
-end
-
-function merge_color_with_material(color_tex, material::Hikari.Conductor)
-    Hikari.Conductor(material.eta, material.k, material.roughness, color_tex,
-                     material.remap_roughness, material.displacement)
-end
-
-function merge_color_with_material(color_tex, material::Hikari.CoatedDiffuse)
-    Hikari.CoatedDiffuse(
-        color_tex, material.u_roughness, material.v_roughness, material.thickness,
-        material.eta, material.albedo, material.g, material.max_depth, material.n_samples,
-        material.remap_roughness, material.displacement
-    )
-end
-
-function merge_color_with_material(color_tex, material::Hikari.ThinDielectric)
-    material
-end
-
-function merge_color_with_material(color_tex, material::Hikari.DiffuseTransmission)
-    Hikari.DiffuseTransmission(
-        color_tex, material.transmittance, material.scale, material.displacement
-    )
-end
-
-function merge_color_with_material(color_tex, material::Hikari.CoatedDiffuseTransmission)
-    Hikari.CoatedDiffuseTransmission(
-        color_tex, material.transmittance, material.u_roughness, material.v_roughness, material.thickness,
-        material.eta, material.albedo, material.g, material.max_depth, material.n_samples,
-        material.remap_roughness, material.displacement
-    )
-end
-
-function merge_color_with_material(color_tex, material::Hikari.CoatedConductor)
-    material
-end
-
-function merge_color_with_material(color_tex, material::Hikari.MediumInterface)
-    merged_inner = merge_color_with_material(color_tex, material.material)
-    Hikari.MediumInterface(merged_inner; inside=material.inside, outside=material.outside, emission=material.emission)
-end
-
-# Fallback for unknown material types
-function merge_color_with_material(color_tex, material::Hikari.Material)
-    @warn "Unknown material type $(typeof(material)), ignoring color"
-    material
-end
+# Material merging moved to `Hikari/src/materials/merge-color.jl`: which field
+# of a material is its colour is Hikari's business, and keeping a second copy
+# here went stale the moment a material gained a field — `displacement` was
+# added to six of them and none were updated, which turned every coloured plot
+# into a `MethodError` reported as "failed to resolve trace_renderobject".
+const merge_color_with_material = Hikari.merge_color_with_material
 
 # =============================================================================
 # Material extraction

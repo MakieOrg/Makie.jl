@@ -12,7 +12,7 @@ function get_mesh_pipeline!(screen)
                            blend = Premultiplied(),
                            topology = TriangleList(),
                            cull = NoCull(),
-                           depth = DepthOff())
+                           depth = DepthLessEq())
     end
 end
 
@@ -38,5 +38,10 @@ function mesh_overlay_fragment(
 )
     c = inputs.colour
     a = c[4]
+    # A transparent fragment must not claim DEPTH: with writes on, an
+    # alpha-zero corner of a glyph or marker quad occludes whatever should
+    # have shown through it. Discarding is what lets a BLENDED pass use a
+    # depth buffer, which is how a scene's z translation gets honoured.
+    a < 1f-3 && discard()
     return Vec4f(c[1] * a, c[2] * a, c[3] * a, a)
 end

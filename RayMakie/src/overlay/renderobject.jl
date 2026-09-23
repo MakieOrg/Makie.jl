@@ -18,13 +18,18 @@ Created once, updated in-place via `update!` on its device arrays.
 - `buffers`: `Dict{Symbol, AbstractGPUArray}` — persistent GPU buffers, updated via `update!`
 - `uniforms`: `Dict{Symbol, Any}` — scalar uniforms (Vec2f, Float32, Int32, Mat4f, etc.)
 - `bindings`: `Nothing` or `VulkanTextureBindings` — descriptor set for texture sampling
-- `vertex_count`: Number of vertices per draw call
+- `vertex_count`: what the draw counts — vertices for a `GraphicsPipeline`,
+  and WORKGROUPS for a `MeshPipeline`, which has no vertex stream to count
 - `instances`: Number of instances (1 for most, N for instanced draws)
 - `visible`: Whether to draw this object
 - `viewport`: `Nothing` or `(x, y, w, h)` for per-scene Vulkan dynamic viewport
 """
 mutable struct RenderObject
-    pipeline::GraphicsPipeline
+    # Either front end. A mesh pipeline is what a plot whose geometry is
+    # generated rather than stored draws through — `Hikari.FEMMaterial` is one —
+    # and everything below this field is the same for both, which is why they
+    # share the type rather than being two of it.
+    pipeline::Union{GraphicsPipeline, Mantle.MeshPipeline}
     # The backend this object's buffers and textures live on. Carried rather
     # than looked up: `update_texture!` and `update_buffer!` are handed only the
     # render object, and they used to name `VulkanTexture2D`/`LavaArray`
@@ -35,6 +40,10 @@ mutable struct RenderObject
     uniforms::Dict{Symbol, Any}
     arg_names::Tuple   # ordered names for building args tuple, e.g. (:vertex, :color, ..., :resolution, ...)
     bindings::Any      # Nothing or VulkanTextureBindings
+    # The texture the bindings point at, kept so `update_texture!` can upload
+    # INTO it rather than making a new one. A recorded plan bakes the descriptor
+    # set, so a new set is a texture the frame will not see — see there.
+    texture::Any       # Nothing or the backend's Texture2D
     vertex_count::Int
     instances::Int
     visible::Bool
@@ -46,7 +55,7 @@ mutable struct RenderObject
     push_data::Vector{UInt8}  # 8-byte push constant (BDA pointer), reused
 end
 
-function RenderObject(pipeline::GraphicsPipeline;
+function RenderObject(pipeline::Union{GraphicsPipeline, Mantle.MeshPipeline};
                           backend,
                           buffers=Dict{Symbol, AbstractGPUArray}(),
                           uniforms=Dict{Symbol, Any}(),
@@ -57,6 +66,7 @@ function RenderObject(pipeline::GraphicsPipeline;
                           visible=true,
                           viewport=nothing)
     RenderObject(pipeline, backend, buffers, uniforms, arg_names, bindings,
+                     nothing,   # texture: `update_texture!` fills it
                      vertex_count, instances, visible, viewport,
                      nothing, Vector{UInt8}(undef, 8))
 end
@@ -100,16 +110,39 @@ function update_buffer!(robj::RenderObject, name::Symbol, data::AbstractArray)
 end
 
 """
-    update_texture!(robj::RenderObject, image_data; filter=:linear, wrap=:clamp)
+    update_texture!(robj, image_data; filter, wrap) -> bindings
 
-Update or create the texture bindings on a render object.
+New pixels for this render object's texture.
+
+**Uploads into the EXISTING texture whenever it fits.** This used to build a new
+`Texture2D`, a new `Sampler` and a new descriptor set every time, and the frame
+never showed them: a composited frame is a RECORDED Mantle plan, and
+`cmd_bind_descriptor_sets` bakes the set handle into the command buffer. Handing
+`rebind!` a different set changes a value nothing reads again. The symptom is
+an `image!` whose observable updates, whose `trace_renderobject` recomputes,
+whose bindings really do change — and whose picture never moves. Measured: a
+32x32 image driven red -> blue -> green rendered red three times.
+
+Keeping the same `VkImage` and writing new texels into it leaves the baked
+descriptor set pointing at the right thing, so the recorded plan is correct
+without being rebuilt. A size or format change still needs a new texture, and
+`frame_signature` carries the texture's identity so that case rebuilds the plan.
 """
 function update_texture!(robj::RenderObject, image_data; filter=:linear, wrap=:clamp)
+    tex = robj.texture
+    if tex !== nothing && texturefits(tex, image_data)
+        upload_texture_data!(tex, image_data)
+        return robj.bindings
+    end
     tex = Texture2D(robj.backend, image_data)
     sampler = Sampler(robj.backend; filter, wrap)
+    robj.texture = tex
     robj.bindings = bind_textures([SampledTexture(tex, sampler)])
     return robj.bindings
 end
+
+"""Whether `data` can be written into `tex` without making a new one."""
+texturefits(tex, data) = size(tex) == size(data) && eltype(tex) == eltype(data)
 
 """
     build_draw_args(robj::RenderObject, arg_names::Tuple)

@@ -5,8 +5,14 @@
 
 function get_overlay_framebuffer(screen, w::Int, h::Int)
     if screen.overlay_fb === nothing || screen.overlay_fb_size != (w, h)
+        # WITH depth. "This draws on top" is said in Makie by translating a
+        # scene in z — `Menu` uses `translate!(menuscene, 0, 0, 200)` — and
+        # GLMakie honours that through the depth buffer. Without one the
+        # translation is discarded and overlays composite in scene-CREATION
+        # order; a figure has one scene per block, so an open dropdown
+        # interleaved with the sliders underneath it.
         screen.overlay_fb = Framebuffer(screen.config.device, w, h;
-            depth=false,
+            depth=true,
             color_format=RGBA{Float32})
         screen.overlay_fb_size = (w, h)
     end
@@ -42,8 +48,21 @@ function get_atlas_bindings(screen)
         return screen.gfx_atlas_bindings
     end
 
-    atlas_data = atlas.data
-    atlas_f32 = Float32.(atlas_data)
+    atlas_f32 = Float32.(atlas.data)
+
+    # Into the EXISTING texture when it fits, which is every time after the
+    # first: the atlas array is a fixed size and gains glyphs in place. A new
+    # `Texture2D` means a new descriptor set, and a composited frame is a
+    # RECORDED plan that baked the old one — so replacing it is how a glyph
+    # gets rasterised, uploaded, and still drawn blank. Same reason
+    # `update_texture!` reuses a render object's texture.
+    tex = screen.gfx_atlas_tex
+    if tex !== nothing && size(tex) == size(atlas_f32) && eltype(tex) == eltype(atlas_f32)
+        upload_texture_data!(tex, atlas_f32)
+        screen.gfx_atlas_dirty[] = false
+        return screen.gfx_atlas_bindings
+    end
+
     tex = Texture2D(screen.config.device, atlas_f32)
     sampler = Sampler(screen.config.device; filter=:linear, wrap=:clamp)
     bindings = bind_textures([SampledTexture(tex, sampler)])

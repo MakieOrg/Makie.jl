@@ -8,7 +8,40 @@ import GLFW
 # Connect GLFW events to Makie's event system.
 # Mirrors GLMakie's event.jl — mouse Y is flipped (GLFW top-down → Makie bottom-up),
 # window_open is tracked, entered_window/unicode_input/dropped_files are forwarded.
-function connect_glfw_events!(scene::Makie.Scene, window::GLFW.Window, stop_ref::Threads.Atomic{Bool})
+"""
+    unitsize(window, ppu) -> (w, h)
+
+The window in Makie UNITS: its DRAWABLE in pixels, divided by `px_per_unit`.
+
+One unit is one drawable pixel over `px_per_unit` — that is the definition every
+viewport in `collect_overlay_robjs` is sized by, so it is the one the event
+system has to report in. A GLFW POINT is not a unit and the two only coincide by
+accident: on a Retina panel the drawable is the content scale times the window in
+points, and on X11 with a scaled desktop `GetFramebufferSize == GetWindowSize`
+while the content scale is still 1.45. Taking the window in points for units was
+right on the first and wrong on the second, where it laid a 800x600 figure out at
+1158x869 units and then the renderer multiplied every viewport by 1.45 again —
+the whole GUI drawn 1.45x too large, anchored at a scaled origin.
+"""
+function unitsize(window::GLFW.Window, ppu::Real)
+    fbw, fbh = GLFW.GetFramebufferSize(window)
+    return (round(Int, fbw / ppu), round(Int, fbh / ppu))
+end
+
+"""
+    unitscale(window, ppu) -> Float64
+
+Makie units per GLFW point, for the one thing GLFW reports in points and Makie
+wants in units: the cursor. Drawable pixels per point, over `px_per_unit`.
+"""
+function unitscale(window::GLFW.Window, ppu::Real)
+    fbw, _ = GLFW.GetFramebufferSize(window)
+    winw, _ = GLFW.GetWindowSize(window)
+    return winw > 0 ? (Float64(fbw) / winw) / ppu : 1.0 / ppu
+end
+
+function connect_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window,
+                              stop_ref::Threads.Atomic{Bool})
     events = scene.events
 
     # Mouse buttons
@@ -57,33 +90,38 @@ function connect_glfw_events!(scene::Makie.Scene, window::GLFW.Window, stop_ref:
         events.dropped_files[] = String.(files)
     end)
 
-    # Window resize. POINTS, like the poll — see `poll_glfw_events!`.
-    GLFW.SetWindowSizeCallback(window, (_, w, h) -> begin
-        area = Makie.Recti(0, 0, Int(w), Int(h))
+    # Window resize. UNITS, like the poll — see `unitsize`. The callback's own
+    # `w, h` are points and are deliberately not used.
+    GLFW.SetWindowSizeCallback(window, (_, _w, _h) -> begin
+        uw, uh = unitsize(window, screen.px_per_unit)
+        area = Makie.Recti(0, 0, uw, uh)
         area != events.window_area[] && (events.window_area[] = area)
     end)
 end
 
-function poll_glfw_events!(scene::Makie.Scene, window::GLFW.Window, frame_count::Int, last_time::Float64)
+function poll_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window,
+                          frame_count::Int, last_time::Float64)
     events = scene.events
 
-    # Both in UNITS, which is what Makie lays a figure out in and what GLFW
-    # reports a cursor in. The drawable is `px_per_unit` times bigger — that is
-    # the renderer's business and none of the event system's.
+    # Both in UNITS, which is what Makie lays a figure out in. GLFW reports the
+    # window in points and the cursor in points; [`unitsize`](@ref) and
+    # [`unitscale`](@ref) are the two conversions, and they go through the
+    # DRAWABLE rather than assuming a point is a unit.
     #
-    # This used to mix the two: `window_area` came from `GetFramebufferSize`
+    # This used to mix three spaces: `window_area` came from `GetFramebufferSize`
     # (PIXELS) while the cursor was flipped with `GetWindowSize` (POINTS), so on
-    # a Retina panel every position Makie saw was half of where the pointer was.
-    # `is_mouseinside` answered for a spot up and left of the real one, and a
-    # drag that should have been a zoom rectangle over the top-right of an axis
-    # landed near its middle or outside it entirely.
-    winw, winh = GLFW.GetWindowSize(window)
-    area = Makie.Recti(0, 0, Int(winw), Int(winh))
+    # a Retina panel every position Makie saw was half of where the pointer was;
+    # then both were made points, which is right only where the drawable is the
+    # content scale times the window.
+    ppu = screen.px_per_unit
+    uw, uh = unitsize(window, ppu)
+    area = Makie.Recti(0, 0, uw, uh)
     area != events.window_area[] && (events.window_area[] = area)
 
-    # Y flips from GLFW (top-down) to Makie (bottom-up).
+    # Y flips from GLFW (top-down) to Makie (bottom-up), in units.
+    s = unitscale(window, ppu)
     x, y = GLFW.GetCursorPos(window)
-    mp = (Float64(x), Float64(winh - y))
+    mp = (Float64(x) * s, uh - Float64(y) * s)
     mp != events.mouseposition[] && (events.mouseposition[] = mp)
 
     # Frame tick
@@ -127,7 +165,7 @@ function wait_viewer(screen::Screen)
             break
         end
         frame_count += 1
-        last_time = poll_glfw_events!(root_scene, win.handle, frame_count, last_time)
+        last_time = poll_glfw_events!(screen, root_scene, win.handle, frame_count, last_time)
         sleep(1/120)
     end
 end

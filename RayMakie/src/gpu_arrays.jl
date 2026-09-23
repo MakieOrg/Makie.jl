@@ -186,3 +186,130 @@ function Makie.limits_with_marker_transforms(positions::AbstractGPUArray{<:Point
     bb_max = Makie.to_ndim(Makie.Point3d, pos_hi, 0) + marker_max
     return Makie.Rect3d(bb_min, bb_max - bb_min)
 end
+
+"""
+    scalarat(a, i) -> eltype(a)
+
+Element `i` of `a`, as a host value.
+
+For the handful of places where a SIZE depends on the data — a stream
+compaction has to know how many elements it produced before it can allocate the
+array to put them in. That count lives on the device and the allocation happens
+on the host, so exactly one scalar has to cross; this reads that one scalar
+instead of the array around it.
+
+Not a way to iterate a device array. `a[i]` in a loop is scalar indexing, which
+GPUArrays refuses on purpose. If more than a couple of these appear in a pass,
+the pass is still sequential and wants rewriting, not this function.
+"""
+scalarat(a::AbstractArray, i::Integer) = a[i]
+scalarat(a::AbstractGPUArray, i::Integer) = only(Array(view(a, i:i)))
+
+"""
+Face normals accumulated into the vertices each face touches.
+
+The accumulation is a scatter with contention — several faces add into the same
+vertex — so it goes through atomics. `normals` is a flat `Float32` array of
+`3 * nvertices` rather than a `Vec3f` array because an atomic add applies to a
+scalar memory location, and three of them per corner is the whole trick.
+"""
+# Two things about these helpers that the compiler only tells you obliquely.
+#
+# `ntuple(…, Val(N))` rather than `for k in 1:N`, because a face index has to be
+# a COMPILE-TIME constant: `face[k]` reads a field of a tuple, and a GPU has
+# nowhere to put a dynamically indexed one. `Val` unrolls it.
+#
+# `Base.to_index` rather than `Int`, because a face element is an
+# `OffsetInteger` (`GLTriangleFace` stores its indices 0-based) and
+# `Int(::OffsetInteger)` HAS NO METHOD — on the host or anywhere else. Indexing
+# an `Array` with one works through `to_index`, which is the conversion that
+# exists; `Int` only looked plausible. It also keeps the kernel working for a
+# face type that holds plain integers.
+#
+# Both mistakes surface as the same `method lookup failure` pointing at the
+# array access, naming neither the tuple nor the conversion.
+
+"""Newell's method — what GeometryBasics uses; for a triangle it is the cross product."""
+@inline function facenormal(vertices, face::GeometryBasics.NgonFace{N}) where {N}
+    return sum(ntuple(Val(N)) do k
+        a = vertices[Base.to_index(face[k])]
+        b = vertices[Base.to_index(face[k == N ? 1 : k + 1])]
+        Vec3f((a[2] - b[2]) * (a[3] + b[3]),
+              (a[3] - b[3]) * (a[1] + b[1]),
+              (a[1] - b[1]) * (a[2] + b[2]))
+    end)
+end
+
+"""Add one face's normal into each vertex it touches."""
+@inline function scatternormal!(normals, face::GeometryBasics.NgonFace{N}, n) where {N}
+    ntuple(Val(N)) do k
+        base = 3 * (Base.to_index(face[k]) - 1)
+        Atomix.@atomic normals[base + 1] += n[1]
+        Atomix.@atomic normals[base + 2] += n[2]
+        Atomix.@atomic normals[base + 3] += n[3]
+        nothing
+    end
+    return nothing
+end
+
+"""
+Face normals accumulated into the vertices each face touches.
+
+The accumulation is a scatter with contention — several faces add into the same
+vertex — so it goes through atomics. `normals` is a flat `Float32` array of
+`3 * nvertices` rather than a `Vec3f` array because an atomic add applies to one
+scalar memory location, and three of them per corner is the whole trick.
+"""
+@kernel function face_normals_kernel!(normals, @Const(vertices), @Const(faces))
+    f = @index(Global, Linear)
+    @inbounds begin
+        face = faces[f]
+        scatternormal!(normals, face, facenormal(vertices, face))
+    end
+end
+
+"""
+    GeometryBasics.normals(vertices::AbstractGPUArray, faces, NormalType)
+
+Vertex normals for a mesh whose VERTICES are on a device, computed there.
+
+`GeometryBasics.normals` gathers `vertices[face]` per face and accumulates into
+the vertices it touches, as a host loop. Indexing a device array with an
+`NgonFace` is not something GPUArrays answers
+(`MethodError: vectorized_getindex!(::MVector{3,Point3f}, ::LavaArray{Point3f,1},
+::NgonFace{3,…})`), and that `MethodError` comes out of Makie's
+`convert_arguments(Mesh, vertices, indices)` — so `mesh!` with device vertices
+used to fail before any backend saw the plot.
+
+Here rather than in GeometryBasics because GeometryBasics has no GPU dependency
+and should not grow one for this.
+
+`faces` is copied to the device if it is not already there; it is the topology,
+typically far smaller than the vertices, and it is read once per call. The
+vertices themselves never move.
+
+Not bit-identical to the host version: atomics fix no summation order, so a
+vertex shared by several faces can differ in the last few ulps before
+normalisation. The tests compare with `≈` for that reason.
+"""
+function GeometryBasics.normals(vertices::AbstractGPUArray,
+                                faces::AbstractVector{<:GeometryBasics.NgonFace},
+                                ::Type{NormalType}) where {NormalType}
+    nv = length(vertices)
+    flat = similar(vertices, Float32, 3 * nv)
+    fill!(flat, 0.0f0)
+
+    devfaces = faces isa AbstractGPUArray ? faces :
+               copyto!(similar(vertices, eltype(faces), length(faces)), faces)
+
+    backend = KernelAbstractions.get_backend(vertices)
+    face_normals_kernel!(backend)(flat, vertices, devfaces; ndrange = length(devfaces))
+
+    out = similar(vertices, NormalType, nv)
+    out .= normalize.(tovec3.(view(flat, 1:3:(3nv - 2)),
+                              view(flat, 2:3:(3nv - 1)),
+                              view(flat, 3:3:(3nv))))
+    return out
+end
+
+@inline tovec3(x, y, z) = Vec3f(x, y, z)

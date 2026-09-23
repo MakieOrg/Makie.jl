@@ -111,6 +111,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
             robj = cached.trace_renderobject
             update_robj!(robj, args, changed)
             robj.vertex_count = n
+            # Re-read: the atlas may have gained a glyph since this object was
+            # built, and a robj that keeps its first bindings draws the new
+            # glyph blank. Cheap — `get_atlas_bindings` returns the cached
+            # object untouched unless the atlas is dirty.
+            robj.bindings = get_atlas_bindings(screen)
             robj.visible = true
             return (robj,)
         end

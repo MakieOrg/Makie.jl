@@ -45,10 +45,11 @@ import Mantle
 # and `run!` owns the submission, so this package names no queue at all.
 import Mantle: DeviceArray, GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
                Texture2D, Sampler, SampledTexture, bind_textures,
+               upload_texture_data!,
                transition_image!,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
-import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
+import Mantle: Premultiplied, TriangleList, NoCull, DepthOff, DepthLess, DepthLessEq
 # The stages a pipeline is made of, and the device-side names a shader body calls.
 # Phase 2.8 ported the shaders instead of the names: each stage declares its own
 # `outputs`, a field that belongs to the primitive is `Flat{T}` there, and a
@@ -57,7 +58,7 @@ import Mantle: Premultiplied, TriangleList, NoCull, DepthOff
 import Mantle: VertexShader, FragmentShader, GeometryShader, Flat,
                emit!, endprimitive!,
                vertex_index, VertexIndex, instance_index, frag_coord_x, frag_coord_y,
-               clip_y, dFdx, dFdy, sample_texture_2d,
+               clip_y, dFdx, dFdy, sample_texture_2d, discard,
                LineStripAdjacency, LineListAdjacency, TriangleStrip, PointList, LineList
 
 """
@@ -95,7 +96,8 @@ parse time — so the two call sites in `screen.jl` name `Mantle` directly.
 # `Mantle.supports_graphics`.
 using Adapt
 using GPUArraysCore: AbstractGPUArray
-using Makie.ComputePipeline: register_computation!
+using Atomix
+using Makie.ComputePipeline: register_computation!, add_input!
 
 # GPU-array overloads for Makie's conversion + bounds path
 include("gpu_arrays.jl")
@@ -110,7 +112,14 @@ include("overlay/Overlay.jl")
 
 mutable struct RayMakieState
     makie_scene::Makie.Scene
-    film::Hikari.Film
+    # `nothing` for an overlay-only scene, which has no film at all. It used to
+    # get one the size of the whole drawable — and then every path that reads a
+    # film skipped it, because a 2D scene's plots are drawn by the overlay pass
+    # and its background is painted by `postprocess_and_composite!`'s opening
+    # `fill!`. Allocated, never written, never read: ~197 MB each, and the video
+    # editor's UI is 105 scenes, so opening it reserved 20.7 GB and the next
+    # arena got `0 B available`.
+    film::Union{Hikari.Film,Nothing}
     camera::Union{Observable, Nothing}
     hikari_scene::Union{Hikari.AbstractScene, Nothing}
     needs_film_clear::Bool
@@ -197,6 +206,17 @@ plot type is a raytraceable primitive.
 """
 should_raytrace(scene::Makie.Scene, plot::Makie.Plot) =
     should_raytrace(scene.camera_controls) && should_raytrace(plot)
+
+"""
+    should_raytrace(screen, scene, plot) -> Bool
+
+As above, and `false` outright when the screen is set to `rasterize`.
+
+The screen is asked LAST so the flag can only ever turn tracing off: a plot the
+tracer cannot draw does not become traceable because someone set a flag.
+"""
+should_raytrace(screen, scene::Makie.Scene, plot::Makie.Plot) =
+    !screen.config.rasterize && should_raytrace(scene, plot)
 
 # =============================================================================
 # Scene initialization and polling
@@ -546,24 +566,12 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
     return state
 end
 
-# Create a lightweight overlay-only state (no ray-tracing scene, no camera).
-# Uses the ROOT scene's full viewport as the buffer — all overlay scenes render
-# into the same buffer using viewport-remapped projection matrices.
+# Create a lightweight overlay-only state: no ray-tracing scene, no camera, and
+# NO FILM. All overlay scenes draw into the one framebuffer the overlay pass
+# owns, with viewport-remapped projection matrices — so a per-scene film is not
+# "the same buffer" in a second copy, it is a buffer nothing ever reads.
 function create_overlay_only_state(scene::Makie.Scene, screen)
-    ka_backend = screen.config.device
-
-    root_w, root_h = size(scene)
-    resolution = Point2f(Float32(root_w), Float32(root_h))
-
-    film = Hikari.Film(
-        resolution;
-        filter=PIXEL_FILTER(),
-        crop_bounds=Hikari.Bounds2(Point2f(0.0f0), Point2f(1.0f0)),
-        diagonal=1.0f0, scale=1.0f0,
-    )
-    film = Hikari.Film(ka_backend, film)
-
-    state = RayMakieState(scene, film, nothing, nothing, false, nothing, true, false, 0, 0)
+    state = RayMakieState(scene, nothing, nothing, nothing, false, nothing, true, false, 0, 0)
     return state
 end
 
@@ -682,7 +690,8 @@ function init_scene!(screen, mscene::Makie.Scene)
         # `collect_overlay_robjs` already walks scenes this way.
         for plot in rscene.plots
             Makie.for_each_atomic_plot(plot) do p
-                haskey(p, :trace_renderobject) || draw_atomic(screen, rscene, p)
+                (haskey(p, :trace_renderobject) || haskey(p, :raster_renderobject)) ||
+                    draw_atomic(screen, rscene, p)
             end
         end
 
@@ -756,22 +765,25 @@ function poll_all_plots(screen, mscene)
     Makie.for_each_atomic_plot(mscene) do p
         pp = Makie.parent_scene(p)
         pp.visible[] || return nothing
-        if haskey(p, :trace_renderobject)
+        # BOTH slots: a plot that can go either way has one per renderer, and
+        # the one that is not in use resolves to `nothing` cheaply.
+        for slot in (:trace_renderobject, :raster_renderobject)
+            haskey(p, slot) || continue
             # Resolve only what is dirty. Reading the node resolves it AND hands
             # back its value, and the value is a render object whose material
             # is a large isbits struct: through a `Computed` that read boxed
             # it, one box per plot per sample, for a scene where nothing had
             # changed — 7 KB a sample on the materials scene. `isdirty` is the
             # same question without the value.
-            c = p[:trace_renderobject]
-            Makie.ComputePipeline.isdirty(c) || return nothing
+            c = p[slot]
+            Makie.ComputePipeline.isdirty(c) || continue
             try
                 c[]  # triggers resolution
             catch e
                 oid = objectid(p)
                 if oid ∉ POLL_ERROR_LOGGED
                     push!(POLL_ERROR_LOGGED, oid)
-                    @error "RayMakie: failed to resolve trace_renderobject for $(typeof(p))" exception=(e, catch_backtrace())
+                    @error "RayMakie: failed to resolve $slot for $(typeof(p))" exception=(e, catch_backtrace())
                 end
             end
         end
@@ -781,6 +793,51 @@ end
 # =============================================================================
 # delete_trace_robj! — remove a plot's render object from the HWTLAS
 # =============================================================================
+
+"""
+    setrasterize!(screen, on::Bool)
+
+Switch the screen between tracing and rasterising, and make every plot notice.
+
+The flag alone is not enough: `draw_atomic` decides the path ONCE and caches the
+answer in the plot's `trace_renderobject`, a compute node. So the mode is declared as one of
+that node's INPUTS (`:rasterize`), and setting it here is what invalidates the
+cached object — the pipeline then rebuilds it down the other path. Reading the
+screen inside the node instead would change the answer it WOULD give while
+every plot kept the object it had already built.
+"""
+function setrasterize!(screen, on::Bool)
+    screen.rasterize == on && return screen
+    screen.rasterize = on
+    # DROP both slots and let `draw_atomic` build them again.
+    #
+    # Marking the mode input dirty is not enough on its own: a compute node's
+    # output slot takes its type from the first value it holds, so the slot that
+    # held a Hikari handle cannot then hold `nothing`, and the node's new answer
+    # has nowhere to go. Deleting the attributes means the next `draw_atomic`
+    # creates fresh slots, which is also what `delete!`/`insert!` do for a plot
+    # that is genuinely replaced.
+    for ss in screen.scene_states
+        screen.state = ss
+        Makie.for_each_atomic_plot(ss.makie_scene) do p
+            haskey(p.attributes, :rasterize) || return nothing
+            delete_trace_robj!(screen, p)
+            delete!(p.attributes, :raster_renderobject, force = true, recursive = true)
+            delete!(p.attributes, :rasterize, force = true, recursive = true)
+            return nothing
+        end
+        ss.needs_film_clear = true
+    end
+    for ss in screen.scene_states
+        screen.state = ss
+        Makie.for_each_atomic_plot(ss.makie_scene) do p
+            (haskey(p, :trace_renderobject) || haskey(p, :raster_renderobject)) ||
+                draw_atomic(screen, ss.makie_scene, p)
+            return nothing
+        end
+    end
+    return screen
+end
 
 function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
     haskey(plot.attributes, :trace_renderobject) || return
@@ -846,6 +903,7 @@ include("vulkan_viewer.jl")
 
 # Export RayMakie-specific types
 export Screen, ScreenConfig, activate!, colorbuffer, vulkan_viewer, wait_viewer
+export setrasterize!
 export pbrt_to_makie, PBRTMakieResult
 
 # Re-export DenoiseConfig from Hikari for convenience

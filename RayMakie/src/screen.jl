@@ -66,6 +66,16 @@ Configuration for RayMakie rendering.
   - Significantly reduces noise at low sample counts
 * `denoise_config`: Configuration for the denoiser (default: sensible defaults)
   - `Hikari.DenoiseConfig(iterations=5, sigma_color=4.0, sigma_normal=128.0, sigma_depth=1.0)`
+* `rasterize`: Draw raytraceable plots through the RASTER path instead
+  (default: false)
+  - The same scene, the same camera, the same lights — only the path changes.
+* `accumulate`: Let samples build up across reads instead of restarting each one
+  (default: false)
+  - What a path-traced viewport does: hold still and the image converges, move
+    the camera and it starts over. `colorbuffer`'s `clear` defaults to the
+    negation of this, and `samples` to 1, so a caller that names neither — like
+    `Makie.recordframe!`, which is backend-generic and cannot name them — gets
+    the converging behaviour.
 """
 struct ScreenConfig
     integrator::Hikari.Integrator
@@ -87,10 +97,30 @@ struct ScreenConfig
     visible::Bool
     title::String
     vsync::Bool
+    # ACCUMULATE across reads instead of restarting each one.
+    #
+    # This is what a path-traced viewport does: hold still and the image
+    # converges, move the camera and it starts over. The machinery is already
+    # here — `colorbuffer`'s `clear` keyword, and the camera watcher that sets
+    # `needs_film_clear` — but a caller that does not name it gets `clear=true`
+    # and therefore a fresh fixed-budget render every read. `Makie.recordframe!`
+    # is such a caller, and cannot be otherwise: it is backend-generic. So the
+    # choice belongs to the screen.
+    accumulate::Bool
+    # RASTERISE instead of tracing, for every plot that can go either way.
+    #
+    # `should_raytrace` decides per plot and infers from the camera: a 3D
+    # camera traces, a 2D one does not. That is the right default and the wrong
+    # SWITCH — a demo that wants to compare the two paths on one scene has no
+    # way to say so, and the alternative is a second renderer bolted alongside
+    # with its own camera and its own lights, which then has to be kept in step
+    # with the first and never quite is.
+    rasterize::Bool
 
     function ScreenConfig(integrator, samples, exposure, tonemap, gamma, device=Raycore.KA.CPU(),
                           denoise=false, denoise_config=nothing,
-                          visible=true, title="RayMakie", vsync=true)
+                          visible=true, title="RayMakie", vsync=true,
+                          accumulate=false, rasterize=false)
         actual_integrator = integrator isa Makie.Automatic ? VolPath(; hw_accel=true) : integrator
         actual_exposure = Float32(exposure)
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
@@ -104,7 +134,8 @@ struct ScreenConfig
         actual_samples = (samples === nothing || samples isa Makie.Automatic) ? nothing :
                          max(1, round(Int, samples))
         return new(actual_integrator, actual_samples, actual_exposure, tonemap, actual_gamma,
-                   actual_device, denoise, denoise_config, actual_visible, string(title), vsync)
+                   actual_device, denoise, denoise_config, actual_visible, string(title), vsync,
+                   accumulate, rasterize)
     end
 end
 
@@ -166,6 +197,18 @@ mutable struct Screen <: Makie.MakieScreen
     cached_atlas_size::Int
     overlay_fb::Any
     overlay_fb_size::Tuple{Int,Int}
+    # The size the films were last built for, so a resize TO THE SAME SIZE can
+    # be the no-op it ought to be. `Makie.save` resizes the screen to the
+    # figure's size on every call, and `resize!` rebuilds every film — so
+    # capturing a frame threw away whatever had accumulated into it, and an
+    # accumulating screen could never show more than one sample.
+    film_size::Tuple{Int,Int}
+    # Which renderer is showing. MODE, not configuration — which is why it
+    # lives here and not on `ScreenConfig`: a config is re-derived from the
+    # theme on every `Makie.save`, so a flag kept there is silently reset to its
+    # default by the act of capturing a frame, while the plots keep the value
+    # they were last told. `ScreenConfig.rasterize` seeds this and nothing else.
+    rasterize::Bool
     gfx_atlas_tex::Any
     gfx_atlas_sampler::Any
     gfx_atlas_bindings::Any
@@ -181,7 +224,9 @@ mutable struct Screen <: Makie.MakieScreen
     gfx_atlas_hook::Any
     fb_readback_buf::Any
     # Per-screen graphics pipeline cache (no globals!)
-    gfx_pipelines::Dict{Symbol, GraphicsPipeline}
+    # Either front end — see `RenderObject.pipeline`. A plot whose geometry is
+    # generated rather than stored keeps a `MeshPipeline` in the same table.
+    gfx_pipelines::Dict{Symbol, Union{GraphicsPipeline, Mantle.MeshPipeline}}
     # One compiled frame plan per target kind — `:window` and `:readback` — each
     # with the signature it was built for. See `frame_plan!`: a plan bakes every
     # pipeline, argument, count and viewport rectangle, so it is rebuilt when one
@@ -202,10 +247,12 @@ mutable struct Screen <: Makie.MakieScreen
                 nothing,           # uncovered_state
                 nothing, 0,        # cached_atlas
                 nothing, (0, 0),   # overlay_fb
+            (0, 0),            # film_size
+            config.rasterize,  # rasterize
                 nothing, nothing, nothing,     # gfx_atlas tex/sampler/bindings
                 Threads.Atomic{Bool}(true), nothing,  # gfx_atlas dirty/hook
                 nothing,           # fb_readback_buf
-                Dict{Symbol, GraphicsPipeline}(), # gfx_pipelines
+                Dict{Symbol, Union{GraphicsPipeline, Mantle.MeshPipeline}}(), # gfx_pipelines
                 Dict{Symbol, Tuple{Any, Any, Any, Any}}(), # frame_plans
                 1.0f0)                                      # px_per_unit
         # Only set the stop flag from the finalizer — never wait on tasks or
@@ -249,14 +296,25 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     (w > 0 && h > 0) || return nothing
     isnothing(screen.scene) && return nothing
     isempty(screen.scene_states) && return nothing
+    # Already this size: nothing to rebuild, and rebuilding would discard the
+    # accumulated film. See `film_size`.
+    screen.film_size == (w, h) && return nothing
 
     ka_backend = screen.config.device
+    screen.film_size = (w, h)
 
     for state in screen.scene_states
         cleanup!(state)
 
-        if state.overlay_only || state.makie_scene === screen.scene
-            # Overlay or scene IS the root — use full size, no viewport clipping
+        # An overlay-only state has no film to resize — see `create_overlay_only_state`.
+        if state.overlay_only
+            state.integrator_state = nothing
+            state.needs_film_clear = true
+            continue
+        end
+
+        if state.makie_scene === screen.scene
+            # Scene IS the root — use full size, no viewport clipping
             resolution = Point2f(Float32(w), Float32(h))
             screen_window = nothing
         else
@@ -274,9 +332,8 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
 
         state.film = film
 
-        if !state.overlay_only && !isnothing(state.camera)
-            state.camera = to_trace_camera(state.makie_scene, film; screen_window)
-        end
+        isnothing(state.camera) ||
+            (state.camera = to_trace_camera(state.makie_scene, film; screen_window))
 
         state.integrator_state = nothing
         state.needs_film_clear = true
@@ -296,7 +353,7 @@ function Base.isopen(screen::Screen)
 end
 
 function cleanup!(state::RayMakieState)
-    Hikari.free!(state.film)
+    state.film === nothing || Hikari.free!(state.film)
 
     # Free integrator state (work queues, pixel buffers — bulk of GPU memory)
     if state.integrator_state !== nothing
@@ -416,6 +473,27 @@ end
 Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
 Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
 
+"""
+Two integrators that would render identically.
+
+Compared FIELD BY FIELD rather than by `===`, and only over the settings — the
+caches (`state`, `adapted`, `perrun`) are what one accumulates INTO, so
+including them would make every integrator differ from itself after one frame.
+"""
+function equivalent_integrator(a, b)
+    typeof(a) === typeof(b) || return false
+    for f in fieldnames(typeof(a))
+        # Caches and DERIVED data. `filter_sampler_data` is built from `filter`,
+        # which is compared — but it is built fresh each time, so comparing the
+        # arrays by identity reports a difference that does not exist.
+        f in (:state, :adapted, :perrun, :listening_to, :filter_sampler_gpu,
+              :filter_sampler_data, :sampler_data,
+              :initial_medium_camera_pos, :initial_medium_key) && continue
+        isequal(getfield(a, f), getfield(b, f)) || return false
+    end
+    return true
+end
+
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
     if screen.config.device !== config.device
         return Screen(scene, config)
@@ -423,6 +501,23 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
 
     old_int = screen.config.integrator
     new_int = config.integrator
+
+    # An integrator that only DIFFERS BY IDENTITY is the same integrator.
+    #
+    # `integrator = automatic` resolves to a freshly-built `VolPath` every time
+    # a `ScreenConfig` is made, and `Makie.save` makes one on every call. Tested
+    # with `!==`, that reads as "the integrator changed" and the branches below
+    # close the old one and clear every film — so capturing a frame from an
+    # accumulating screen threw away everything that had accumulated, and the
+    # capture could never show more than one sample however long it had been
+    # converging.
+    if old_int !== new_int && equivalent_integrator(old_int, new_int)
+        new_int = old_int
+        config = ScreenConfig(old_int, config.samples, config.exposure, config.tonemap,
+                              config.gamma, config.device, config.denoise,
+                              config.denoise_config, config.visible, config.title,
+                              config.vsync, config.accumulate, config.rasterize)
+    end
 
     # A new integrator that wants a DIFFERENT acceleration structure needs a
     # different scene, not just a fresh integrator state. `hw_accel` picks the
@@ -486,18 +581,39 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
     state = screen.state
     isnothing(state) && error("Screen not set up - call display first")
 
-    # Skip ray tracing for overlay-only states
-    state.overlay_only && return state.film
+    # Skip ray tracing for overlay-only states — they have no film to trace into.
+    state.overlay_only && return nothing
 
     integrator = screen.config.integrator
 
     # Poll compute graph for updates on this scene's plots
     poll_all_plots(screen, state.makie_scene)
+    # `Hikari.sync!(scene)`, NOT `Raycore.sync!(tlas)`.
+    #
+    # The two are not the same commit. The TLAS one rebuilds the acceleration
+    # structure and FREES the previous one; the scene one does that and then
+    # tells every integrator listening that its recorded plans are stale. A
+    # plan bakes the acceleration structure it was recorded against, so syncing
+    # the TLAS alone left the next trace reading an AS that had just been freed
+    # — and the driver lost the device the moment that memory was handed out
+    # again, which deleting a plot does immediately (its BLAS is freed too).
+    #
+    # This is the sync for a topology change resolved by `poll_all_plots` just
+    # above, which is every plot added, removed, or moved between the two
+    # renderers by `setrasterize!`.
+    Hikari.sync!(state.hikari_scene)
     tlas = get_tlas(state)
-    Raycore.sync!(tlas)
 
-    # Skip ray tracing if HWTLAS has no geometry (e.g. scene with only overlay plots)
-    if Raycore.n_instances(tlas) == 0
+    # An EMPTY acceleration structure is not an empty picture: every ray escapes,
+    # and an escaped ray is what paints the environment. Returning early here
+    # left the film at its clear colour, so a scene whose geometry is being
+    # drawn by the other renderer lost its sky — the subject kept its lighting
+    # and stood on nothing.
+    #
+    # Still skipped when there is nothing to escape INTO, because then the trace
+    # really does produce the clear colour and costs a dispatch to say so.
+    if Raycore.n_instances(tlas) == 0 &&
+            !any(T -> Hikari.paints_escaped_rays(T), state.hikari_scene.lights.data_order)
         return state.film
     end
     # (sync!(tlas) above already runs refit_tlas! when transforms are dirty.)
@@ -571,12 +687,10 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     config = screen.config
 
     if scene_state.overlay_only
-        # Overlay-only: the scene's own background is all this contributes, and
-        # the plots are drawn later by the overlay pass. Nothing reads this
-        # state's depth buffer — the overlay framebuffer has no depth attachment.
-        fill!(film.postprocess, scenebackground(scene_state.makie_scene))
-
-        # Poll compute graph for overlay data
+        # Overlay-only: nothing to postprocess. Its plots are drawn later by the
+        # overlay pass and its background is already in `output_buffer` from
+        # `postprocess_and_composite!`'s opening `fill!`, so there is nothing
+        # here but the poll — which is why the state needs no film.
         poll_all_plots(screen, scene_state.makie_scene)
         return
     end
@@ -592,15 +706,18 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     # `lines!`. The denoiser is the only consumer of normal and albedo, but depth
     # is not optional.
     tlas = scene_state.hikari_scene.accel
-    has_inf = false
+    lights = scene_state.hikari_scene.lights
+    has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
     # …and separately, whether one of them is actually VISIBLE along an escaped
     # ray. Not the same question: a `DirectionalLight` is at infinity but is a
     # delta light, so it paints nothing where a ray hits nothing.
-    paints_sky = false
+    #
+    # Asked of the LIGHTS and not of the geometry. Gating this on
+    # `n_instances > 0` said "no sky" for exactly the scene that is nothing BUT
+    # sky, so the render the tracer had just produced was overwritten with the
+    # background colour.
+    paints_sky = any(T -> Hikari.paints_escaped_rays(T), lights.data_order)
     if Raycore.n_instances(tlas) > 0
-        lights = scene_state.hikari_scene.lights
-        has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
-        paints_sky = any(T -> Hikari.paints_escaped_rays(T), lights.data_order)
         # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
         # Must re-adapt per render so mesh mutations are visible.
         adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
@@ -670,8 +787,12 @@ function postprocess_and_composite_gpu!(screen::Screen)
         postprocess_scene_state!(screen, scene_state)
         composite_scene!(screen.output_buffer, scene_state, screen.scene, screen.px_per_unit)
     end
-    KernelAbstractions.synchronize(screen.config.device)
-
+    # NO host sync here. Everything this frame touches is Mantle work on one
+    # device, and submission order IS the ordering — the graph declares what it
+    # reads and `run!` submits it after whatever wrote it. Draining the queue
+    # from the host to "make sure" is reaching around Mantle to the KA backend,
+    # which is the wrong layer whatever it costs; a readback waits on its own
+    # queue timeline (`download` -> `waitfor!`) and needs no help either.
     return screen.output_buffer
 end
 
@@ -729,7 +850,8 @@ function composite_scene!(output::AbstractMatrix{RGBA{Float32}}, scene_state::Ra
         Int32(dst_r0), Int32(dst_c0), Int32(src_r0), Int32(src_c0);
         ndrange=ndrange
     )
-    KernelAbstractions.synchronize(backend)
+    # No sync: whatever reads `output` next is submitted after this on the same
+    # queue. See `postprocess_and_composite_gpu!`.
 end
 
 """
@@ -893,7 +1015,9 @@ function composited_frame(screen::Screen)
                                 buf
                             end)
     Mantle.run!(plan)
-    KernelAbstractions.synchronize(screen.config.device)
+    # `Array` of device storage is a `download`, which submits its copy on the
+    # queue that last wrote the buffer and `waitfor!`s that token. It is ordered
+    # and it waits; a device-wide drain in front of it adds nothing.
     return unswizzle(reshape(Array(Mantle.storage(out)), w, h), w, h)
 end
 
@@ -907,7 +1031,7 @@ makes a live preview converge at one sample per read while the playhead stands
 still.
 """
 function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative;
-                           figure = nothing, clear=true, samples=nothing)
+                           figure = nothing, clear = !screen.config.accumulate, samples = nothing)
     if isempty(screen.scene_states)
         # Only init the scene -- don't open a window or start the render loop.
         # colorbuffer renders all samples synchronously and returns the result;
@@ -933,7 +1057,19 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # Render each scene for the configured number of samples
     # VolPath uses an outer loop (each render! = 1 sample).
     integrator = screen.config.integrator
-    samples = something(samples, screen.config.samples, integrator.samples_per_pixel)
+    # Accumulating: ONE sample per read, so a still camera converges over the
+    # reads instead of re-rendering the same budget each time. The camera
+    # watcher clears the film when it moves, which is what starts it over.
+    # `samples` and `accumulate` answer DIFFERENT questions, and the config's
+    # samples comes first for that reason: `accumulate` says whether the film is
+    # cleared between reads, `samples` how many go into one read. Asking for both
+    # is what a recording of a MOVING camera needs — the move clears the film
+    # every frame, so what that frame shows is however many samples this read
+    # put in it, and one of them is a snowstorm. `nothing` is the config's
+    # default, so a caller who does not ask still gets one sample per read.
+    samples = something(samples, screen.config.samples,
+                        screen.config.accumulate ? 1 : nothing,
+                        integrator.samples_per_pixel)
     for scene_state in screen.scene_states
         screen.state = scene_state
         # Always clear film at the start of colorbuffer — ensures correct accumulation
@@ -980,7 +1116,6 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         postprocess_scene_state!(screen, scene_state)
         composite_scene!(screen.output_buffer, scene_state, screen.scene, screen.px_per_unit)
     end
-    KernelAbstractions.synchronize(screen.config.device)
 
     if has_overlays
         result = composited_frame(screen)
@@ -1008,6 +1143,13 @@ function postprocess!(screen::Screen;
 )
     if isnothing(screen.state)
         error("Screen has not been rendered yet. Call Makie.colorbuffer(screen) first.")
+    end
+    # `screen.state` is whichever state was last walked, and a 2D one has no film
+    # to postprocess. Named rather than a `nothing.postprocess` from inside Hikari.
+    if screen.state.overlay_only
+        error("postprocess! needs a ray-traced scene; `screen.state` is an " *
+              "overlay-only (2D) one, which has no film. Tone mapping applies to " *
+              "the traced image, and a 2D scene contributes none.")
     end
 
     exp_val = isnothing(exposure) ? screen.config.exposure : Float32(exposure)
@@ -1137,7 +1279,10 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             screen.state = ss
             render!(screen)
         end
-        KernelAbstractions.synchronize(screen.config.device)
+        # Deliberate, and once: the point is to finish compiling BEFORE the
+        # window opens. `Mantle.waitidle` because the device is what we are
+        # waiting on, and this package speaks Mantle.
+        Mantle.waitidle(screen.config.device)
         @info "RayMakie: pipeline ready ($(round(time() - t0, digits=1))s) — opening window"
     end
 
@@ -1147,31 +1292,38 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                             color_format=COMPOSITE_FORMAT)
     screen.window = win
 
-    # The window is the authority on its own scale — it knows which display it
-    # landed on, and the guess above was the PRIMARY monitor's. On a second
-    # display with a different scale every glyph, linewidth and viewport would
-    # otherwise be sized for the wrong panel.
+    # THE WINDOW IS THE AUTHORITY ON ITS OWN SIZE. `pw, ph` above is a guess — it
+    # is the primary monitor's scale applied to the figure, made before any
+    # window exists so that one can be asked for. What the drawable actually
+    # came out as is `size(win)`, and only that can size the buffers blitted
+    # into it.
     #
-    # Correcting it here is free and correcting it later is not: `px_per_unit`
-    # is read through `Makie.px_per_unit` when a plot resolves, so it is baked
-    # into every overlay render object. None exists yet — the precompile render
-    # above draws the traced film, and the overlays are built by the first
-    # `poll_all_plots`, which happens in the loop below. `beginframe!` picks the
-    # new framebuffer size up on its own, so the resize needs no other handling.
+    # Predicting it instead cost a `DimensionMismatch: blit source holds 2988672
+    # pixels and a 3144x1992 target needs 6262848` that killed the render loop on
+    # frame one: `3144 = 2172 * 1.4475`, the content scale applied a second time
+    # because the platform had already applied it once. Whether it does is a
+    # platform question with three answers (macOS scales the drawable, X11 with a
+    # scaled desktop does not, and Mantle may divide by the scale when it creates
+    # the window), and none of them has to be answered if the size is READ.
+    w, h = size(win)
+    resize!(screen, w, h)
+
+    # `px_per_unit` is a SCALE, and it comes from the window's content scale —
+    # not from `w / uw`. The drawable is that scale applied and then rounded to
+    # whole pixels, so `w/uw` and `h/uh` are not equal (2172/1500 is 1.4480,
+    # 1375/950 is 1.4474) and no single scalar is both. Measuring it back out
+    # picked one of them, and `round(size(img) / ppu)` then missed the figure's
+    # own height by a pixel.
+    #
+    # The WINDOW's scale and not the primary monitor's, though: it knows which
+    # display it landed on, and on a second display with a different scale every
+    # glyph, linewidth and viewport would be sized for the wrong panel. Set
+    # before any overlay exists, because `Makie.px_per_unit` is baked into every
+    # render object when a plot first resolves, which happens in the loop below.
     let (sx, _sy) = GLFW.GetWindowContentScale(win.handle)
-        if sx > 0 && !(Float32(sx) ≈ ppu)
-            screen.px_per_unit = ppu = Float32(sx)
-            pw, ph = round(Int, w * ppu), round(Int, h * ppu)
-            GLFW.SetWindowSize(win.handle, w, h)   # w, h POINTS -> pw, ph pixels
-        end
+        sx > 0 && (screen.px_per_unit = ppu = Float32(sx))
     end
-    # The film and `output_buffer` are sized in PIXELS, like the drawable they
-    # are blitted into. The loop below re-checks this on every frame, but the
-    # FIRST present happens before it — and a 600x450 source into a 1200x900
-    # target is a `DimensionMismatch` that kills the loop on frame one.
-    resize!(screen, pw, ph)
-    w, h = pw, ph
-    connect_glfw_events!(root_scene, win.handle, screen.stop_renderloop)
+    connect_glfw_events!(screen, root_scene, win.handle, screen.stop_renderloop)
 
     # Track camera changes to clear the film for re-accumulation
     for ss in screen.scene_states
@@ -1205,10 +1357,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             # so the window isn't black during kernel compilation / first sample.
             bg = root_scene.backgroundcolor[]
             fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
-            KernelAbstractions.synchronize(screen.config.device)
-
             present_composited!(screen, win)
-            Mantle.waitidle(screen.config.device)
             Threads.atomic_add!(screen.frames_presented, 1)
 
             while !screen.stop_renderloop[]
@@ -1216,7 +1365,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                 screen.stop_renderloop[] && break
                 !isopen(win) && break
                 frame_count += 1
-                last_time = poll_glfw_events!(root_scene, win.handle, frame_count, last_time)
+                last_time = poll_glfw_events!(screen, root_scene, win.handle, frame_count, last_time)
 
                 cur_w, cur_h = size(win)
                 if (cur_w, cur_h) != (w, h)
@@ -1228,18 +1377,21 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                     screen.state = ss
                     render!(screen)
                 end
-                KernelAbstractions.synchronize(screen.config.device)
 
                 screen.stop_renderloop[] && break
 
                 postprocess_and_composite_gpu!(screen)
 
-                KernelAbstractions.synchronize(screen.config.device)
-
                 screen.stop_renderloop[] && break
 
+                # Three host drains used to stand here — one after the traces,
+                # one after the composite and a `waitidle` after the present.
+                # A frame is a Mantle graph on one device: the composite is
+                # submitted after the traces, the present's plan declares
+                # `output_buffer` as its source and is submitted after the
+                # composite, and the swapchain paces the present. Nothing here
+                # reads device memory on the host, so nothing here has to wait.
                 present_composited!(screen, win)
-                Mantle.waitidle(screen.config.device)
                 Threads.atomic_add!(screen.frames_presented, 1)
 
                 # Only when asked. `composited_frame` redraws the frame offscreen
@@ -1282,7 +1434,7 @@ function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
     isempty(screen.scene_states) && return screen
 
     Makie.for_each_atomic_plot(plot) do p
-        haskey(p, :trace_renderobject) && return
+        (haskey(p, :trace_renderobject) || haskey(p, :raster_renderobject)) && return
         pscene = Makie.parent_scene(p)
         for ss in screen.scene_states
             if scene_contains(ss.makie_scene, pscene)
@@ -1293,8 +1445,12 @@ function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
         end
     end
 
-    # Sync all affected HWTLAS
+    # Sync all affected HWTLAS. An OVERLAY-ONLY state has no Hikari scene —
+    # a 2D `Axis` is rasterised, never traced — and syncing `nothing` is a
+    # `MethodError`. It surfaces from `mesh!`, so a figure holding an `Axis`
+    # beside an `LScene` could not have a plot added to it after setup.
     for ss in screen.scene_states
+        ss.hikari_scene === nothing && continue
         Hikari.sync!(ss.hikari_scene)
     end
     return screen
@@ -1330,7 +1486,7 @@ end
 function free_state_gpu!(state::RayMakieState)
     state.hikari_scene === nothing && return
     Raycore.free!(state.hikari_scene.accel)
-    Hikari.free!(state.film)
+    state.film === nothing || Hikari.free!(state.film)
     for set in (state.hikari_scene.lights, state.hikari_scene.materials, state.hikari_scene.media)
         set isa Raycore.MultiTypeSet || continue
         Raycore.free!(set)
