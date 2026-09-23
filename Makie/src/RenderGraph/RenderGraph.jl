@@ -1,4 +1,4 @@
-# This handles the higher level RenderPipeline representation. It contains
+# This handles the higher level RenderGraph representation. It contains
 # multiple `RenderStage`s which each define the input and output formats they need.
 # The main work here is connecting inputs and outputs of stages such that buffers
 # get shared correctly. I.e. if two outputs connect to one input, they need to
@@ -13,7 +13,7 @@ struct RenderStage
     outputs::Dict{Symbol, Int}
 
     # formats of inputs and outputs
-    # order matters for stageio2idx in RenderPipeline
+    # order matters for stageio2idx in RenderGraph
     # order matters for outputs also matters for OpenGL
     input_formats::Vector{BufferFormat}
     output_formats::Vector{BufferFormat}
@@ -84,7 +84,7 @@ function Base.:(==)(s1::RenderStage, s2::RenderStage)
         (s1.attributes == s2.attributes)
 end
 
-struct RenderPipeline
+struct RenderGraph
     stages::Vector{RenderStage}
 
     # maps a stage input or output to an index into `formats`
@@ -97,17 +97,17 @@ struct RenderPipeline
 end
 
 """
-    RenderPipeline([stages::RenderStage...])
+    RenderGraph([stages::RenderStage...])
 
-Creates a `RenderPipeline` from the given `stages` or an empty pipeline if none are
+Creates a `RenderGraph` from the given `stages` or an empty pipeline if none are
 given. The pipeline represents a series of actions (stages) executed during
 rendering.
 """
-function RenderPipeline()
-    return RenderPipeline(RenderStage[], Dict{Tuple{Int, Int}, Int}(), BufferFormat[])
+function RenderGraph()
+    return RenderGraph(RenderStage[], Dict{Tuple{Int, Int}, Int}(), BufferFormat[])
 end
-function RenderPipeline(stages::RenderStage...)
-    pipeline = RenderPipeline()
+function RenderGraph(stages::RenderStage...)
+    pipeline = RenderGraph()
     foreach(stage -> push!(pipeline, stage), stages)
     return pipeline
 end
@@ -118,17 +118,17 @@ end
 #                     |-> combine
 # render -> effect 2 -'
 # where render is the same (name/task, inputs, outputs)
-function Base.push!(pipeline::RenderPipeline, stage::RenderStage)
+function Base.push!(pipeline::RenderGraph, stage::RenderStage)
     push!(pipeline.stages, stage)
     return stage # for convenience
 end
-function Base.push!(pipeline::RenderPipeline, stages::RenderStage...)
+function Base.push!(pipeline::RenderGraph, stages::RenderStage...)
     for stage in stages
         push!(pipeline, stage)
     end
     return stages
 end
-function Base.push!(pipeline::RenderPipeline, other::RenderPipeline)
+function Base.push!(pipeline::RenderGraph, other::RenderGraph)
     N = length(pipeline.stages); M = length(pipeline.formats)
     append!(pipeline.stages, other.stages)
     for ((stage_idx, io_idx), format_idx) in other.stageio2idx
@@ -138,7 +138,7 @@ function Base.push!(pipeline::RenderPipeline, other::RenderPipeline)
     return other # for convenience
 end
 
-function get_connection_index(pipeline::RenderPipeline; from = nothing, to = nothing)
+function get_connection_index(pipeline::RenderGraph; from = nothing, to = nothing)
     if from !== nothing
         stage_index, name = from
         stage = pipeline.stages[stage_index]
@@ -154,20 +154,20 @@ function get_connection_index(pipeline::RenderPipeline; from = nothing, to = not
     end
 end
 
-function get_connection_buffer(pipeline::RenderPipeline; from = nothing, to = nothing)
+function get_connection_buffer(pipeline::RenderGraph; from = nothing, to = nothing)
     return pipeline.format[get_connection_index(pipeline; from, to)]
 end
 
 
 """
-    connect!(pipeline::RenderPipeline, source::Union{RenderPipeline, RenderStage}, target::Union{RenderPipeline, RenderStage})
+    connect!(pipeline::RenderGraph, source::Union{RenderGraph, RenderStage}, target::Union{RenderGraph, RenderStage})
 
 Connects every output in `source` to every input in `target` that shares the
 same name. For example, if `:a, :b, :c, :d` exist in source and `:b, :d, :e`
 exist in target, `:b, :d` will get connected.
 """
-function Observables.connect!(pipeline::RenderPipeline, src::Union{RenderPipeline, RenderStage}, trg::Union{RenderPipeline, RenderStage})
-    stages(pipeline::RenderPipeline) = pipeline.stages
+function Observables.connect!(pipeline::RenderGraph, src::Union{RenderGraph, RenderStage}, trg::Union{RenderGraph, RenderStage})
+    stages(pipeline::RenderGraph) = pipeline.stages
     stages(stage::RenderStage) = [stage]
 
     outputs = Set(mapreduce(stage -> keys(stage.outputs), union, stages(src)))
@@ -179,17 +179,17 @@ function Observables.connect!(pipeline::RenderPipeline, src::Union{RenderPipelin
 end
 
 """
-    connect!(pipeline::RenderPipeline, [source = pipeline, target = pipeline], name::Symbol)
+    connect!(pipeline::RenderGraph, [source = pipeline, target = pipeline], name::Symbol)
 
 Connects every output in `source` that uses the given `name` to every input in
 `target` with the same `name`. `source` and `target` can be a pipeline, stage
 or integer referring to stage in `pipeline`. If both are omitted inputs and
 outputs from `pipeline` get connected.
 """
-function Observables.connect!(pipeline::RenderPipeline, src::Union{RenderPipeline, RenderStage, Integer}, trg::Union{RenderPipeline, RenderStage, Integer}, key::Symbol)
+function Observables.connect!(pipeline::RenderGraph, src::Union{RenderGraph, RenderStage, Integer}, trg::Union{RenderGraph, RenderStage, Integer}, key::Symbol)
     return connect!(pipeline, src, key, trg, key)
 end
-Observables.connect!(pipeline::RenderPipeline, key::Symbol) = connect!(pipeline, pipeline, key, pipeline, key)
+Observables.connect!(pipeline::RenderGraph, key::Symbol) = connect!(pipeline, pipeline, key, pipeline, key)
 
 
 """
@@ -200,18 +200,18 @@ to an `input` of `target`. If either already has a connection the new connection
 will be merged with the old. The source and target stage as well as the pipeline
 will be updated appropriately.
 
-`source` and `target` can also be `RenderPipeline`s if both output and input are
+`source` and `target` can also be `RenderGraph`s if both output and input are
 `Symbol`s. In this case every stage in source with an appropriately named output
 is connected to every stage in target with an appropriately named input. Use with
 caution.
 """
 function Observables.connect!(
-        pipeline::RenderPipeline,
-        src::Union{RenderPipeline, RenderStage}, output::Symbol,
-        trg::Union{RenderPipeline, RenderStage}, input::Symbol
+        pipeline::RenderGraph,
+        src::Union{RenderGraph, RenderStage}, output::Symbol,
+        trg::Union{RenderGraph, RenderStage}, input::Symbol
     )
 
-    iterable(pipeline::RenderPipeline) = pipeline.stages
+    iterable(pipeline::RenderGraph) = pipeline.stages
     iterable(stage::RenderStage) = Ref(stage)
 
     for source in iterable(src)
@@ -229,16 +229,16 @@ function Observables.connect!(
     return
 end
 
-function Observables.connect!(pipeline::RenderPipeline, src::Integer, output::Symbol, trg::Integer, input::Symbol)
+function Observables.connect!(pipeline::RenderGraph, src::Integer, output::Symbol, trg::Integer, input::Symbol)
     return connect!(pipeline, src, output, trg, input)
 end
-function Observables.connect!(pipeline::RenderPipeline, source::RenderStage, output::Integer, target::RenderStage, input::Integer)
+function Observables.connect!(pipeline::RenderGraph, source::RenderStage, output::Integer, target::RenderStage, input::Integer)
     src = findfirst(x -> x === source, pipeline.stages)
     trg = findfirst(x -> x === target, pipeline.stages)
     return connect!(pipeline, src, output, trg, input)
 end
 
-function Observables.connect!(pipeline::RenderPipeline, source::RenderStage, output::Symbol, target::RenderStage, input::Symbol)
+function Observables.connect!(pipeline::RenderGraph, source::RenderStage, output::Symbol, target::RenderStage, input::Symbol)
     haskey(source.outputs, output) || error("output $output does not exist in source stage")
     haskey(target.inputs, input) || error("input $input does not exist in target stage")
     output_idx = source.outputs[output]
@@ -246,7 +246,7 @@ function Observables.connect!(pipeline::RenderPipeline, source::RenderStage, out
     return connect!(pipeline, source, output_idx, target, input_idx)
 end
 
-function Observables.connect!(pipeline::RenderPipeline, src::Integer, output::Integer, trg::Integer, input::Integer)
+function Observables.connect!(pipeline::RenderGraph, src::Integer, output::Integer, trg::Integer, input::Integer)
     @boundscheck begin
         checkbounds(pipeline.stages, src)
         checkbounds(pipeline.stages, trg)

@@ -51,16 +51,16 @@ function Base.show(io::IO, ::MIME"text/plain", stage::RenderStage)
     return
 end
 
-function Base.show(io::IO, ::MIME"text/plain", pipeline::RenderPipeline)
+function Base.show(io::IO, ::MIME"text/plain", pipeline::RenderGraph)
     return show_resolved(io, pipeline, pipeline.formats, collect(eachindex(pipeline.formats)))
 end
 
-function show_resolved(pipeline::RenderPipeline, buffers, remap)
+function show_resolved(pipeline::RenderGraph, buffers, remap)
     return show_resolved(stdout, pipeline, buffers, remap)
 end
 
-function show_resolved(io::IO, pipeline::RenderPipeline, buffers, remap)
-    println(io, "RenderPipeline():")
+function show_resolved(io::IO, pipeline::RenderGraph, buffers, remap)
+    println(io, "RenderGraph():")
     print(io, "RenderStages:")
     pad = isempty(buffers) ? 0 : 1 + floor(Int, log10(length(buffers)))
     stage_idx_pad = isempty(pipeline.stages) ? 0 : 1 + floor(Int, log10(length(pipeline.stages)))
@@ -114,8 +114,8 @@ function show_resolved(io::IO, pipeline::RenderPipeline, buffers, remap)
     return
 end
 
-function Base.show(io::IO, ::MIME"text/plain", pipeline::LoweredRenderPipeline)
-    println(io, "LoweredRenderPipeline():")
+function Base.show(io::IO, ::MIME"text/plain", pipeline::LoweredRenderGraph)
+    println(io, "LoweredRenderGraph():")
     print(io, "RenderStages:")
     pad = isempty(pipeline.formats) ? 0 : 1 + floor(Int, log10(length(pipeline.formats)))
     stage_idx_pad = isempty(pipeline.stages) ? 0 : 1 + floor(Int, log10(length(pipeline.stages)))

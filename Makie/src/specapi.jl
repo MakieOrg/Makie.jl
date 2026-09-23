@@ -507,6 +507,8 @@ end
 function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr, scene, name)
     # updates old/default -> new
     for (k, new_value) in new_kwargs
+        # consumed at construction (handle_transformation!), not a graph key
+        k === :transformation && continue
         current_path = (path..., k)
         current_value = graph[k]
         if current_value isa ComputeGraphView
@@ -527,7 +529,7 @@ function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr
     # updates old -> default
     for k in setdiff(keys(old_kwargs), keys(new_kwargs))
         # TODO: Should this check that k is a valid attribute or just fail down the line?
-        is_valid = !in(k, (:cycle, :dim_converts))
+        is_valid = !in(k, (:cycle, :dim_converts, :transformation))
         is_valid || continue
 
         current_path = (path..., k)
@@ -627,6 +629,20 @@ function Base.setproperty!(pl::PlotList, property::Symbol, value)
         error("Can't set property $property on PlotList with multiple plots.")
     end
 end
+
+function boundingbox(plot::PlotList, space::Symbol = :data)
+    # Assume primitive plot
+    isempty(plot.plots) && return Rect3d()
+
+    # Assume combined plot
+    bb_ref = Base.RefValue(boundingbox(plot.plots[1], space))
+    for i in 2:length(plot.plots)
+        update_boundingbox!(bb_ref, boundingbox(plot.plots[i], space))
+    end
+
+    return bb_ref[]
+end
+
 
 convert_arguments(::Type{<:AbstractPlot}, args::AbstractArray{<:PlotSpec}) = (args,)
 

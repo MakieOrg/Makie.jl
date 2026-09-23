@@ -12,9 +12,6 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     # poll inside functions to make wait on compile less prominent
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
-    elseif x isa Text
-        draw_atomic(screen, scene, x)
-        insert!(screen, scene, x.plots[1])
     elseif x isa Makie.PlotList
         # ignore unless not yet displayed
         Makie.for_each_atomic_plot(x) do plot
@@ -84,7 +81,7 @@ struct RenderObjectUpdater <: Function
     gl_names::Dict{Symbol, Symbol}
 end
 
-function (updater::RenderObjectUpdater)(args::NamedTuple, changed::NamedTuple, last)
+function (updater::RenderObjectUpdater)(args::NamedTuple, changed::NamedTuple, @nospecialize(last))
     update_robjs!(updater.robj, args, changed, updater.gl_names)
     updater.screen.requires_update = true
     return (updater.robj,)
@@ -157,7 +154,9 @@ end
 
 function register_light_attributes!(screen, scene, attr, uniforms)
     # plot does not support shading
-    haskey(attr, :shading) || return
+    if !haskey(attr, :shading) || attr[:use_shading][]::Bool == false
+        return
+    end
 
     # On re-display these are already registered. To allow compiling shaders
     # with different light settings we need to clear old computations
@@ -174,10 +173,7 @@ function register_light_attributes!(screen, scene, attr, uniforms)
     end
 
     # Nothing to generate if we don't shade
-    shading = Makie.get_shading_mode(scene)
-    if !attr[:shading][] || (shading == NoShading)
-        return
-    end
+    shading = attr[:shading_mode][]::Makie.ShadingAlgorithm
 
     add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
 
@@ -219,7 +215,7 @@ function construct_robj(constructor!, screen, scene, attr, args, uniforms, input
     )
 
     if haskey(attr, :shading)
-        data[:shading] = attr[:shading][] ? Makie.get_shading_mode(scene) : NoShading
+        data[:shading] = haskey(attr, :shading_mode) ? attr[:shading_mode][]::Makie.ShadingAlgorithm : NoShading
     end
 
     for name in uniforms
@@ -376,14 +372,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             return depthsort!(pos, depth_vals, indices, pvm)
         end
     else
-        register_computation!(attr, [:positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
-            return (length(ps),)
-        end
+        map!(length, attr, :positions_transformed_f32c, :gl_indices)
     end
 
-    register_computation!(attr, [:positions_transformed_f32c], [:gl_len]) do (ps,), changed, last
-        return (Int32(length(ps)),)
-    end
+    map!(ps -> Int32(length(ps)), attr, :positions_transformed_f32c, :gl_len)
 
     inputs = [
         # Special
@@ -392,15 +384,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :sdf_marker_shape,
     ]
     if attr[:marker][] isa FastPixel
-        register_computation!(attr, [:markerspace], [:gl_markerspace]) do (space,), changed, last
-            space == :pixel && return (Int32(0),)
-            space == :data  && return (Int32(1),)
+        map!(attr, :markerspace, :gl_markerspace) do space
+            space == :pixel && return Int32(0)
+            space == :data  && return Int32(1)
             return error("Unsupported markerspace for FastPixel marker: $space")
         end
 
-        register_computation!(attr, [:marker], [:sdf_marker_shape]) do (marker,), changed, last
-            return (marker.marker_type,)
-        end
+        map!(marker -> marker.marker_type, attr, :marker, :sdf_marker_shape)
 
         uniforms = [
             :positions_transformed_f32c,
@@ -410,6 +400,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         ]
 
     else
+        # A plot may get attached to different screens (i.e. through closing an
+        # opening a new one) so we need to regenerate the Observable.on even if
+        # plot.px_per_unit exists. (The screen clears px_per_unit listeners
+        # when closed)
+        haskey(attr, :px_per_unit) || map!(() -> 1.0f0, attr, Symbol[], :px_per_unit)
+        attr.px_per_unit[] # init node so it can be overwritten
+        on(ppu -> attr.px_per_unit[] = ppu, screen.px_per_unit, update = true)
         Makie.all_marker_computations!(attr)
 
         # Simple forwards
@@ -455,24 +452,24 @@ end
 ### Text
 ################################################################################
 
-function assemble_text_robj!(data, screen::Screen, attr, args, input2glname)
+function assemble_glyphs_robj!(data, screen::Screen, attr, args, input2glname)
     data[:distancefield] = get_texture!(screen.glscreen, Makie.get_texture_atlas())
     data[:shape] = Cint(DISTANCEFIELD)
     data[:image] = nothing
-    data[:rotation] = args.text_rotation
+    data[:rotation] = args.rotation
 
     # pass nothing to avoid going into image generating functions
     return draw_scatter(screen, (nothing, data[:position]), data)
 end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Text)
+function draw_atomic(screen::Screen, scene::Scene, plot::Glyphs)
     attr = generic_robj_setup(screen, scene, plot)
 
     if haskey(attr, :depthsorting) && attr[:depthsorting][]
         # is projectionview enough to trigger on scene resize in all cases?
         register_computation!(
             attr,
-            [:per_char_positions_transformed_f32c, :projectionview, :model_f32c],
+            [:positions_transformed_f32c, :projectionview, :model_f32c],
             [:gl_depth_cache, :gl_indices]
         ) do (pos, projectionview, space, model), changed, last
             pvm = projectionview * model
@@ -481,14 +478,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
             return depthsort!(pos, depth_vals, indices, pvm)
         end
     else
-        register_computation!(attr, [:per_char_positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
-            return (length(ps),)
-        end
+        map!(length, attr, :positions_transformed_f32c, :gl_indices)
     end
 
-    register_computation!(attr, [:per_char_positions_transformed_f32c], [:gl_len]) do (ps,), changed, last
-        return (Int32(length(ps)),)
-    end
+    map!(ps -> Int32(length(ps)), attr, :positions_transformed_f32c, :gl_len)
 
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
 
@@ -496,11 +489,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
 
     # Simple forwards
     uniforms = [
-        :per_char_positions_transformed_f32c,
-        :text_color, :text_strokecolor, :text_rotation,
+        :positions_transformed_f32c,
+        :color, :strokecolor, :rotation,
         :marker_offset, :quad_offset, :sdf_uv, :quad_scale,
         :lowclip_color, :highclip_color, :nan_color,
-        :strokewidth, :glowcolor, :glowwidth,
+        :uniform_strokewidth, :glowcolor, :glowwidth,
         :model_f32c, :transform_marker,
         :gl_indices, :gl_len, :f32c_scale,
     ]
@@ -508,29 +501,29 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
 
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
-    # TODO: text_strokewidth doesn't work because the shader only accepts a uniform float
-    # this is also true on master
+    # TODO: a per-glyph strokewidth collapses to its first value because the shader
+    # only accepts a uniform float. This is also true on master.
 
     # To take the human error out of the bookkeeping of two lists
     # Could also consider using this in computation since Dict lookups are
     # O(1) and only takes ~4ns
     input2glname = Dict{Symbol, Symbol}(
-        :text_rotation => :rotation,
-        :per_char_positions_transformed_f32c => :position,
-        :text_color => :color,
+        :rotation => :rotation,
+        :positions_transformed_f32c => :position,
+        :color => :color,
         :sdf_uv => :uv_offset_width,
         :gl_markerspace => :markerspace,
         :quad_scale => :scale,
         :quad_offset => :quad_offset,
         :marker_offset => :marker_offset,
-        :text_strokecolor => :stroke_color, :strokewidth => :stroke_width,
+        :strokecolor => :stroke_color, :uniform_strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
         :gl_indices => :indices, :gl_len => :len,
     )
 
-    robj = register_robj!(assemble_text_robj!, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_glyphs_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -560,15 +553,14 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     attr = generic_robj_setup(screen, scene, plot)
 
-    Makie.add_computation!(attr, Val(:disassemble_mesh), :marker)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     Makie.register_world_normalmatrix!(attr)
     Makie.register_view_normalmatrix!(attr)
 
-    register_computation!(attr, [:positions_transformed_f32c], [:instances, :gl_len]) do (pos,), changed, cached
-        return (length(pos), Int32(length(pos)))
+    map!(attr, :positions_transformed_f32c, [:instances, :gl_len]) do pos
+        return length(pos), Int32(length(pos))
     end
 
     inputs = [
@@ -749,17 +741,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         map!(pos -> collect(Float32.(eachindex(pos))), attr, positions, :gl_last_length)
     else
         positions = :gl_projected_positions
-        register_computation!(attr, [positions, :resolution], [:gl_last_length]) do (pos, res), changed, cached
-            return (sumlengths(pos, res),)
-        end
+        map!(sumlengths, attr, [positions, :resolution], :gl_last_length)
     end
 
     # Derived vertex attributes
     register_computation!(generate_indices, attr, [positions], [:gl_indices, :gl_valid_vertex])
-    register_computation!(attr, [:gl_indices], [:gl_total_length]) do (indices,), changed, cached
-        return (Int32(length(indices) - 2),)
-    end
-
+    map!(indices -> Int32(length(indices) - 2), attr, :gl_indices, :gl_total_length)
 
     inputs = [
         # relevant to creation time decisions
@@ -823,9 +810,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     # costs ~1µs per clip plane
     Makie.add_computation!(attr, Val(:uniform_clip_planes), :clip)
 
-    register_computation!(attr, [:positions_transformed_f32c], [:indices]) do (positions,), changed, cached
-        return (length(positions),)
-    end
+    map!(length, attr, :positions_transformed_f32c, :indices)
 
     inputs = [
         :space,
@@ -959,8 +944,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
 
     Makie.add_computation!(attr, scene, Val(:heatmap_transform))
 
-    register_computation!(attr, [:x_transformed_f32c, :y_transformed_f32c], [:instances]) do (x, y), changed, cached
-        return ((length(x) - 1) * (length(y) - 1),)
+    map!(attr, [:x_transformed_f32c, :y_transformed_f32c], :instances) do x, y
+        return (length(x) - 1) * (length(y) - 1)
     end
 
     inputs = [
@@ -1015,9 +1000,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
     Makie.register_surface_stroke_data!(attr)
 
-    register_computation!(attr, [:z], [:instances]) do (z,), changed, cached
-        return ((size(z, 1) - 1) * (size(z, 2) - 1),)
-    end
+    map!(z -> (size(z, 1) - 1) * (size(z, 2) - 1), attr, :z, :instances)
 
     # the surface shader always samples an image texture, so uniform colors become 1x1
     map!(attr, :scaled_color, :surface_color) do color
@@ -1156,7 +1139,7 @@ end
 
 
 function assemble_voxel_robj!(data, screen::Screen, attr, args, input2glname)
-    voxel_id = Texture(screen.glscreen, args.chunk_u8)
+    voxel_id = Texture(screen.glscreen, args.chunk_sampler)
     uvt = args.packed_uv_transform
     data[:voxel_id] = voxel_id
     data[:uv_transform] = isnothing(uvt) ? nothing : Texture(screen.glscreen, uvt, minfilter = :nearest)
@@ -1178,9 +1161,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
 
     Makie.register_world_normalmatrix!(attr, :voxel_model)
 
-    register_computation!(attr, [:chunk_u8, :gap], [:instances]) do (chunk, gap), changed, cached
+    map!(attr, [:chunk_u8, :gap], :instances) do chunk, gap
         N = sum(size(chunk))
-        return (ifelse(gap > 0.01, 2 * N, N + 3),)
+        return ifelse(gap > 0.01, 2 * N, N + 3)
     end
 
     Makie.add_computation!(attr, scene, Val(:voxel_uv_transform))
@@ -1189,7 +1172,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         # Special
         :space,
         # Needs explicit handling
-        :chunk_u8, :packed_uv_transform,
+        :chunk_sampler, :packed_uv_transform,
     ]
     uniforms = [
         :instances, :voxel_model, :gap, :depthsorting,
@@ -1200,7 +1183,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     haskey(attr, :voxel_colormap) && push!(uniforms, :voxel_colormap)
 
     input2glname = Dict{Symbol, Symbol}(
-        :chunk_u8 => :voxel_id, :voxel_model => :model, :packed_uv_transform => :uv_transform,
+        :chunk_sampler => :voxel_id, :voxel_model => :model, :packed_uv_transform => :uv_transform,
         :voxel_colormap => :color_map, :voxel_color => :color,
         :uniform_num_clip_planes => :_num_clip_planes
     )
@@ -1240,9 +1223,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     Makie.add_computation!(attr, Val(:uniform_clip_planes), :model, :uniform_model)
 
     # TODO: reuse in clip planes
-    register_computation!(attr, [:uniform_model], [:modelinv]) do (model,), changed, cached
-        return (Mat4f(inv(model)),)
-    end
+    map!(model -> Mat4f(inv(model)), attr, :uniform_model, :modelinv)
 
     inputs = [
         # Special

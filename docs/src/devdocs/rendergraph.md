@@ -1,8 +1,8 @@
-# Render Pipeline
+# Render Graph
 
-The `RenderPipeline` abstracts the stages GLMakie goes through when rendering.
+The `RenderGraph` abstracts the stages GLMakie goes through when rendering.
 It controls the order in which plots are rendered, which post processors are used and how they connect.
-In this section we will explain how the `RenderPipeline` works and can be modified.
+In this section we will explain how the `RenderGraph` works and can be modified.
 Note that this is both an advanced topic and an early implementation.
 The pipeline and especially the default stages may change in the future as we figure out how to best organize them.
 
@@ -52,9 +52,9 @@ I.e. it makes sure that the types compatible and that settings match.
 While doing so the format may be upgraded.
 For example a `N0f8` may upgrade to `Float16` or an undetermined `magfilter` may be set to a specific option.
 
-## RenderPipeline Object
+## RenderGraph Object
 
-The `RenderPipeline` holds on to multiple stages and tracks the connections between them.
+The `RenderGraph` holds on to multiple stages and tracks the connections between them.
 The stages execute in the order they are added and the connections describe the flow of data between them.
 
 The most basic functional pipeline we can create contains a render and a display stage.
@@ -73,7 +73,7 @@ To add them to a render pipeline we first create it and then `push!()` the stage
 Then we use `connect!()` to connect them.
 
 ```@example base_pipeline
-pipeline = Makie.RenderPipeline()
+pipeline = Makie.RenderGraph()
 push!(pipeline, render_stage)
 push!(pipeline, display_stage)
 Makie.connect!(pipeline, render_stage, display_stage)
@@ -210,7 +210,7 @@ tint_stage = Makie.RenderStage(
     ))
 )
 
-pipeline = Makie.RenderPipeline()
+pipeline = Makie.RenderGraph()
 render_stage = push!(pipeline, Makie.PlotRenderStage())
 push!(pipeline, tint_stage)
 display_stage = push!(pipeline, Makie.DisplayStage())

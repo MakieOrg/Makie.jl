@@ -26,13 +26,14 @@ function initialize_block!(po::PolarAxis; palette = nothing)
     end
 
     po.scene = Scene(
-        po.blockscene, scenearea, backgroundcolor = po.backgroundcolor, clear = true
+        po.blockscene, scenearea, backgroundcolor = po.backgroundcolor,
+        clear = true
     )
     map!(to_color, po.scene, po.scene.backgroundcolor, po.backgroundcolor)
 
     po.overlay = Scene(
         po.scene, scenearea, clear = false, backgroundcolor = :transparent,
-        transformation = Transformation(po.scene, transform_func = identity)
+        transformation = Transformation(po.scene, transform_func = identity),
     )
 
     if !isnothing(palette)
@@ -57,7 +58,7 @@ function initialize_block!(po::PolarAxis; palette = nothing)
     rticklabelplot, thetaticklabelplot = draw_axis!(po)
 
     # Calculate fraction of screen usable after reserving space for theta ticks
-    # OPT: only update on relevant text attributes rather than glyphcollection
+    # OPT: only update on relevant text attributes rather than the whole layout
     onany(
         po.blockscene,
         fast_string_boundingboxes_obs(thetaticklabelplot), thetaticklabelplot.visible,

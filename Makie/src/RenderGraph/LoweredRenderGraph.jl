@@ -1,15 +1,15 @@
-# This validates the RenderPipeline and tries to optimize for memory usage by
+# This validates the RenderGraph and tries to optimize for memory usage by
 # reusing buffers. I.e. if a buffer is only used between stage 1 and 2, this
 # tries to reuse it after stage 2.
 
 """
     struct LoweredStage end
 
-This is the lowered version of a `RenderStage` as used in `LoweredRenderPipeline`.
+This is the lowered version of a `RenderStage` as used in `LoweredRenderGraph`.
 Contains the same `name` and `attributes` as the `RenderStage` it represents. The
 `inputs` and `outputs` hold `name => index` pairs where the names match the
 respective `RenderStage` inputs and outputs and `index` refers to the buffer/format
-in the parent `LoweredRenderPipeline`s `formats`. The order of inputs and
+in the parent `LoweredRenderGraph`s `formats`. The order of inputs and
 outputs is preserved and unused ones are removed.
 """
 struct LoweredStage
@@ -21,17 +21,17 @@ end
 
 # - same stages represented by different types
 # - optimized formats/buffers
-struct LoweredRenderPipeline
+struct LoweredRenderGraph
     stages::Vector{LoweredStage}
     formats::Vector{BufferFormat}
 end
 
-function LoweredRenderPipeline()
-    return LoweredRenderPipeline(LoweredStage[], BufferFormat[])
+function LoweredRenderGraph()
+    return LoweredRenderGraph(LoweredStage[], BufferFormat[])
 end
 
 """
-    LoweredRenderPipeline(pipeline::RenderPipeline)
+    LoweredRenderGraph(pipeline::RenderGraph)
 
 Creates a lower level representation of the given render pipeline for use in backends.
 
@@ -39,7 +39,7 @@ The new representation optimizes the number of buffers used by reusing them when
 they are free to be reused. RenderStages directly refer to these buffers here, and
 they drop information about which buffer formats they originally wanted.
 """
-function LoweredRenderPipeline(pipeline::RenderPipeline)
+function LoweredRenderGraph(pipeline::RenderGraph)
     buffers, mapping = generate_buffers(pipeline)
 
     stages = map(enumerate(pipeline.stages)) do (stage_idx, stage)
@@ -51,11 +51,11 @@ function LoweredRenderPipeline(pipeline::RenderPipeline)
         )
     end
 
-    return LoweredRenderPipeline(stages, buffers)
+    return LoweredRenderGraph(stages, buffers)
 end
 
 function apply_remapping(
-        pipeline::RenderPipeline, mapping::Vector{<:Integer},
+        pipeline::RenderGraph, mapping::Vector{<:Integer},
         stage_idx::Integer, name2idx::Dict{Symbol, <:Integer}, sign
     )
     # get input/output names in order
@@ -84,7 +84,7 @@ format_complexity(dims, type) = dims * BFT.bytesize(type)
 # complexity of merged, not max of either
 format_complexity(f1::BufferFormat, f2::BufferFormat) = max(f1.dims, f2.dims) * max(BFT.bytesize(f1.type), BFT.bytesize(f2.type))
 
-function validate_pipeline(pipeline::RenderPipeline)
+function validate_pipeline(pipeline::RenderGraph)
     for (i, stage) in enumerate(pipeline.stages)
         # Confirm that all outputs have the same number of samples
         if !allequal(format -> format.samples, stage.output_formats)
@@ -155,7 +155,7 @@ returns them together with a connection-to-index map. This will attempt to
 optimize buffers for the lowest memory overhead. I.e. it will reuse buffers for
 multiple connections and upgrade them if it is cheaper than creating a new one.
 """
-function generate_buffers(pipeline::RenderPipeline)
+function generate_buffers(pipeline::RenderGraph)
     validate_pipeline(pipeline)
 
     # Group connections that exist between stages

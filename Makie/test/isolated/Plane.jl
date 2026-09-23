@@ -105,6 +105,14 @@ using Makie: Plane, Plane3f, Point3d, Rect3d, Vec3d
         @test plane2.normal ≈ Vec3f(0, 0, 1)
         @test plane2.distance ≈ 2.0f0
 
+        # a transform that collapses the normal direction (e.g. from an Axis3
+        # with zero-width limits) yields a no-op plane instead of NaNs
+        S = Makie.scalematrix(Vec3f(1, 1, 0))
+        plane2 = Makie.apply_transform(S, plane)
+        @test plane2.normal == Vec3f(0)
+        @test plane2.distance == 0.0f0
+        @test Makie.is_visible(plane2, Point3f(0))
+
         # test to_model_space()
         ps = [2.0f0 .* rand(Point3f) .- 1.0f0 for _ in 1:1000]
         q = Makie.rotation_between(Vec3f(1, 0, 0), Vec3f(0, 0, 1))

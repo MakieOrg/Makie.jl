@@ -92,16 +92,45 @@ function _extract_colormap(plot::Voronoiplot)
     end
 end
 
-_normalize_clipcolor(x) = x in (nothing, :auto, automatic) ? automatic : x
 function _extract_colormap(plot::Union{Contourf, Tricontourf})
-    map!(_normalize_clipcolor, plot, :extendlow, :cb_lowclip)
-    map!(_normalize_clipcolor, plot, :extendhigh, :cb_highclip)
+    map!(inverse_transform, plot, :colorscale, :inverse_colorscale)
+    if isnothing(plot.inverse_colorscale[])
+        @warn "Colorbar for $(plotsym(typeof(plot))) with `colorscale = $(plot.colorscale[])` can not compute pre-colorscale color values because `Makie.inverse_transform($(plot.colorscale[]))` is missing. Showing transformed values in ticks instead."
+    end
+    map!(apply_scale, plot, [:inverse_colorscale, :computed_levels], :cb_levels)
+    map!(apply_scale, plot, [:inverse_colorscale, :computed_colorrange], :cb_limits)
+    map!(plot, [:inverse_colorscale, :computed_colormap, :computed_colorrange], :cb_colormap) do iscale, cm, cr
+        vals = minimum(cr) .+ (maximum(cr) - minimum(cr)) .* cm.values
+        vals = apply_scale(iscale, vals)
+        vals .= (vals .- minimum(vals)) ./ (maximum(vals) - minimum(vals))
+        return PlotUtils.CategoricalColorGradient(cm.colors, vals)
+    end
+    map!(c -> alpha(c) == 0 ? automatic : c, plot, :computed_lowcolor, :cb_lowclip)
+    map!(c -> alpha(c) == 0 ? automatic : c, plot, :computed_highcolor, :cb_highclip)
+
     return Dict{Symbol, Any}(
-        :color => plot.computed_levels,
-        :colormap => plot.computed_colormap,
-        :colorrange => plot.computed_colorrange,
+        :color => plot.cb_levels,
+        :colormap => plot.cb_colormap,
+        :colorrange => plot.cb_limits,
         :lowclip => plot.cb_lowclip,
         :highclip => plot.cb_highclip,
+    )
+end
+
+function extract_colormap(plot::Tricontour)
+    map!(inverse_transform, plot, :colorscale, :inverse_colorscale)
+    if isnothing(plot.inverse_colorscale[])
+        @warn "Colorbar for $(plotsym(typeof(plot))) with `colorscale = $(plot.colorscale[])` can not compute pre-colorscale color values because `Makie.inverse_transform($(plot.colorscale[]))` is missing. Showing transformed values in ticks instead."
+    end
+    map!(apply_scale, plot, [:inverse_colorscale, :computed_levels], :cb_levels)
+    map!(apply_scale, plot, [:inverse_colorscale, :computed_colorrange], :cb_colorrange)
+    return Dict{Symbol, Any}(
+        :color => plot.cb_levels,
+        :colormap => plot.colormap,
+        :colorrange => plot.cb_colorrange,
+        :colorscale => plot.colorscale,
+        :lowclip => plot.lowclip,
+        :highclip => plot.highclip,
     )
 end
 
@@ -122,15 +151,6 @@ function _extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z,
         :color => plot.value_levels,
         :colormap => plot.opaque_colormap,
         :colorrange => plot.padded_colorrange,
-    )
-end
-
-function extract_colormap(plot::Tricontour)
-    return Dict{Symbol, Any}(
-        :color => plot.computed_levels,
-        :colorrange => plot.computed_colorrange,
-        :lowclip => automatic,
-        :highclip => automatic,
     )
 end
 

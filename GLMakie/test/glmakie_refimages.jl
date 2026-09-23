@@ -96,7 +96,7 @@ end
     ]
 
     scene = Scene(size = (400, 400), camera = cam3d!, lights = lights)
-    @test Makie.get_shading_mode(scene) == MultiLightShading
+    @test scene.compute.lighting_mode[] == MultiLightShading
     p = mesh!(
         scene,
         Rect3f(Point3f(-10, -10, -2.99), Vec3f(20, 20, 0.02)),
@@ -117,7 +117,7 @@ end
     ]
 
     scene = Scene(size = (400, 400), camera = cam3d!, center = false, lights = lights, backgroundcolor = :black)
-    @test Makie.get_shading_mode(scene) == MultiLightShading
+    @test scene.compute.lighting_mode[] == MultiLightShading
     mesh!(
         scene, Sphere(Point3f(0), 1.0f0), color = :white,
         specular = Vec3f(1), shininess = 16.0f0
@@ -139,7 +139,7 @@ end
     lights[2] = Makie.scale(lights[2], 3, 1)
 
     scene = Scene(lights = lights, camera = cam3d!, size = (400, 400))
-    @test Makie.get_shading_mode(scene) == MultiLightShading
+    @test scene.compute.lighting_mode[] == MultiLightShading
     p = mesh!(scene, Rect3f(Point3f(-10, -10, 0.01), Vec3f(20, 20, 0.02)), color = :white)
     update_cam!(scene, Vec3f(0, 0, 7), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
 
@@ -279,7 +279,7 @@ end
 
     begin
         # Pipeline matches test_pipeline_2D up to color_tint
-        pipeline = Makie.RenderPipeline()
+        pipeline = Makie.RenderGraph()
 
         render1 = push!(pipeline, Makie.PlotRenderStage(transparency = false, fxaa = true))
         render2 = push!(pipeline, Makie.TransparentPlotRenderStage())
@@ -326,7 +326,7 @@ end
 # activate!() changes the default, so we need a reset here
 GLMakie.activate!(render_pipeline = Makie.automatic)
 
-@reference_test "Dynamic Render Pipeline replacement" begin
+@reference_test "Dynamic Render Graph replacement" begin
     scene = Scene(size = (300, 300))
     meshscatter!(scene, Rect2f(-0.5, -0.5, 1, 1), alpha = 0.5, markersize = Vec3f(0.4, 0.6, 0.5), transparency = true)
     meshscatter!(scene, [0, 0], [-0.5, 0.5], [0.5, -0.5], alpha = 0.5, markersize = 0.2, transparency = true)

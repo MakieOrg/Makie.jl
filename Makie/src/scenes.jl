@@ -97,6 +97,12 @@ mutable struct Scene <: AbstractScene
     "The plots contained in the Scene."
     plots::Vector{Plot}
 
+    """
+    Observable that triggers with `true => plot` after a plot is added to the
+    scene and `false => plot` after one is deleted.
+    """
+    onplot::Observable{Pair{Bool, AbstractPlot}}
+
     theme::Attributes
 
     "Children of the Scene inherit its transformation."
@@ -148,6 +154,7 @@ mutable struct Scene <: AbstractScene
             transformation,
             nothing,
             plots,
+            Observable{Pair{Bool, AbstractPlot}}(),
             theme,
             children,
             current_screens,
@@ -582,6 +589,8 @@ end
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
 
+    scene.onplot[] = false => plot
+
     # Remove references to the plot compute graph from any parent compute graph.
     # (E.g. the scene compute graph)
     # This is meant to make the plot graph GC-able.
@@ -781,8 +790,6 @@ Backends may have a different definition of what is considered an atomic plot,
 but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
 """
 is_atomic_plot(plot::Plot) = isempty(plot.plots)
-# Text is special, since it contains lines for latexstrings, but is still atomic itself
-is_atomic_plot(plot::Text) = true
 
 """
     collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
@@ -799,15 +806,6 @@ function collect_atomic_plots(xplot::Plot, plots = AbstractPlot[]; is_atomic_plo
         for elem in xplot.plots
             collect_atomic_plots(elem, plots; is_atomic_plot = is_atomic_plot)
         end
-    end
-    return plots
-end
-
-# Text is atomic but contains another atomic (lines for latexstrings)
-function collect_atomic_plots(xplot::Text, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
-    push!(plots, xplot)
-    for elem in xplot.plots
-        collect_atomic_plots(elem, plots; is_atomic_plot = is_atomic_plot)
     end
     return plots
 end

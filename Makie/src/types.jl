@@ -390,29 +390,22 @@ function Base.show(io::IO, ::MIME"text/plain", t::Transformation)
     return println(io, "  transform_func = ", t.transform_func[])
 end
 
-struct ScalarOrVector{T}
-    sv::Union{T, Vector{T}}
-end
-
-Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where {T} = ScalarOrVector{T}(collect(v))
-Base.convert(::Type{<:ScalarOrVector}, x::T) where {T} = ScalarOrVector{T}(x)
-Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where {T} = x
-Base.:(==)(a::ScalarOrVector, b::ScalarOrVector) = a.sv == b.sv
-function collect_vector(sv::ScalarOrVector, n::Int)
-    return if sv.sv isa Vector
-        if length(sv.sv) != n
-            error("Requested collected vector with $n elements, contained vector had $(length(sv.sv)) elements.")
-        end
-        sv.sv
-    else
-        fill(sv.sv, n)
-    end
-end
-
 """
     GlyphExtent
 
-Store information about the bounding box of a single glyph.
+The measurement data for one glyph, at unit scale: every field is multiplied by the
+glyph's scale (fontsize) downstream.
+
+`ascender`, `descender` and `hadvance` should be the *font's* line metrics, not the
+glyph's ink bounds. All string measurement (alignment, bounding boxes, tick label
+sizes) treats a glyph as the box `(0, descender)` to `(hadvance, ascender)`, so that
+a block's height does not depend on which characters it happens to contain. A layout
+engine reporting ink-derived values here makes text alignment content-dependent; pad
+with the ink bounds only where a glyph genuinely exceeds the font's line box (an
+oversized radical or integral sign, say).
+
+`ink_bounding_box` is the tight box around what is actually drawn. It is used to
+size render quads, not for measurement.
 """
 struct GlyphExtent
     ink_bounding_box::Rect2f
@@ -441,61 +434,6 @@ function GlyphExtent(texchar::TeXChar)
     hadvance = MathTeXEngine.hadvance(texchar)
 
     return GlyphExtent(Rect2f((l, b), (r - l, t - b)), ascender, descender, hadvance)
-end
-
-"""
-    GlyphCollection
-
-Stores information about the glyphs in a string that had a layout calculated for them.
-"""
-struct GlyphCollection
-    glyphs::Vector{UInt64}
-    fonts::ScalarOrVector{FTFont}
-    origins::Vector{Point3f}
-    extents::Vector{GlyphExtent}
-    scales::ScalarOrVector{Vec2f}
-    rotations::ScalarOrVector{Quaternionf}
-    colors::ScalarOrVector{RGBAf}
-    strokecolors::ScalarOrVector{RGBAf}
-    strokewidths::ScalarOrVector{Float32}
-
-    function GlyphCollection(
-            glyphs, fonts, origins, extents, scales, rotations,
-            colors, strokecolors, strokewidths
-        )
-
-        n = length(glyphs)
-        # @assert length(fonts) == n
-        @assert length(origins) == n
-        @assert length(extents) == n
-        @assert attr_broadcast_length(scales) in (n, 1) "$(typeof(scales)) has length $(length(scales)) but should have $n or 1"
-        @assert attr_broadcast_length(rotations) in (n, 1)
-        @assert attr_broadcast_length(colors) in (n, 1)
-        @assert strokewidths isa Number || strokewidths isa AbstractVector{<:Number}
-        return new(
-            glyphs,
-            to_font(fonts),
-            origins,
-            extents,
-            ScalarOrVector{Vec{2, Float32}}(to_2d_scale(scales)),
-            to_rotation(rotations),
-            to_color(colors),
-            to_color(strokecolors),
-            to_linewidth(strokewidths)
-        )
-    end
-end
-
-function Base.:(==)(a::GlyphCollection, b::GlyphCollection)
-    return a.glyphs == b.glyphs &&
-        a.fonts == b.fonts &&
-        a.origins == b.origins &&
-        a.extents == b.extents &&
-        a.scales == b.scales &&
-        a.rotations == b.rotations &&
-        a.colors == b.colors &&
-        a.strokecolors == b.strokecolors &&
-        a.strokewidths == b.strokewidths
 end
 
 # The color type we ideally use for most color attributes
