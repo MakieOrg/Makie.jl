@@ -249,7 +249,7 @@ function PlotList(user_args::Tuple, user_attributes::Union{Dict, NamedTuple})
     specs = _specs isa AbstractArray ? vec(_specs) : [_specs]
     ComputePipeline.unsafe_init!(graph, :arg1, specs)
     ComputePipeline.unsafe_init!(graph, :args, (specs,))
-    ComputePipeline.unsafe_init!(graph, :converted, (specs,))
+    # converted mustn't be initialized because of the alias!()
     ComputePipeline.unsafe_init!(graph, :plotspecs, specs)
 
     return build_plotlist(graph, user_attributes)
