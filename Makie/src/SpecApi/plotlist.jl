@@ -263,6 +263,12 @@ function build_plotlist(graph::ComputeGraph, user_attributes)
         end
     end
 
+    if !haskey(graph, :rasterize)
+        add_input!(graph, :rasterize, false) do val
+            convert_attribute(val, Key{:rasterize}(), Key{:plotlist}())
+        end
+    end
+
     return Plot{plotlist, Vector{PlotSpec}}(user_attributes, graph)
 end
 
