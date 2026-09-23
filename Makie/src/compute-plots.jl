@@ -602,7 +602,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw,
     rtype = error_check_convert_arguments(P, args, user_kw, args_converted)
     status = got_converted(P, conversion_trait(P, args...), args_converted)
 
-    if status === SpecApi
+    return if status === SpecApi
         # convert_arguments produces SpecApi outputs
 
         # SpecApi outputs can be either Tuples or values

@@ -1,5 +1,3 @@
-
-
 """
     plotlist!(
         [
@@ -225,10 +223,12 @@ function PlotList(user_args::Tuple, user_attributes::Union{Dict, NamedTuple})
     length(user_args) == 1 || throw(ArgumentError("plotlist takes exactly one argument, a PlotSpec or Vector{PlotSpec}, but $(length(user_args)) were given."))
 
     if !isa(to_value(user_args[1]), Union{PlotSpec, AbstractArray{PlotSpec}})
-        throw(ArgumentError(
-            "Invalid argument type for plotlist: $(typeof(user_args[1])) should be a " *
-            "PlotSpec, Vector{PlotSpec}, or Observable or Computed containing either."
-        ))
+        throw(
+            ArgumentError(
+                "Invalid argument type for plotlist: $(typeof(user_args[1])) should be a " *
+                    "PlotSpec, Vector{PlotSpec}, or Observable or Computed containing either."
+            )
+        )
     end
 
     graph = ComputeGraph()
