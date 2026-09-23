@@ -31,8 +31,8 @@ end
 
 function draw_atomic(scene::Scene, screen::Screen, primitive::Makie.Mesh)
     Makie.compute_colors!(primitive.attributes)
-    if use_vector_hatch(scene, primitive.attributes)
-        draw_mesh_hatched(scene, screen, primitive.attributes)
+    if should_draw_vectorized(scene, primitive.attributes)
+        draw_mesh_vectorized(scene, screen, primitive.attributes)
     else
         draw_mesh_rasterized(scene, screen, primitive.attributes)
     end
@@ -41,24 +41,51 @@ end
 
 # LinePattern colors stay vector-drawable in vector backends, unless a stroke or a
 # custom uv_transform requires the rasterizer's per-fragment sampling.
-function use_vector_hatch(scene, attr::ComputeGraph)
+function should_draw_vectorized(scene, attr::ComputeGraph)
     iszero(attr.strokewidth[]) || return false
-    # Check the raw color, since the compute graph rasterizes AbstractPattern
-    # (including LinePattern) to a Sampler, losing the vector-drawable LinePattern struct.
-    attr.color[] isa Makie.LinePattern || return false
-    # FRAGILE: access the raw user-provided uv_transform before the compute graph
-    # converts LinePattern → Sampler. This depends on ComputeGraph internals.
-    raw_uv_transform = haskey(attr.inputs, :uv_transform) ? attr.inputs[:uv_transform].value : Makie.automatic
-    raw_uv_transform === Makie.automatic || return false
+
+    # Check the raw color:
+    # - flat color & LinePattern are vectorized
+    # - generic patterns are partially vectorized (pattern is not, mesh is)
+    # - vertex colors, texture, etc are fully rasterized
+    if !(attr.color[] isa Union{Colorant, Makie.LinePattern, Makie.ImagePattern})
+        return false
+    end
+
+    # If the scene is not 2D (i.e. is 3D or we don't know), rasterize.
+    # TODO: Should this also consider mesh vertices? Or check for self-overlap
+    # after transformations?
     return Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
 end
 
-function draw_mesh_hatched(scene, screen, attr::ComputeGraph)
+function draw_mesh_vectorized(scene, screen, attr::ComputeGraph)
+    # TODO: no clip_planes?
     vs = cairo_project_to_screen(attr)
     fs = attr.faces[]
-    pattern = attr.color[]::Makie.LinePattern
-    offset = linepattern_offset(scene, attr.model[])
-    return draw_mesh2D(screen.context, pattern, vs, fs, offset)
+    uv = attr.texturecoordinates[]
+    uv_transform = attr.pattern_uv_transform[]
+    # FRAGILE: access the raw user-provided uv_transform before the compute graph
+    # converts LinePattern → Sampler. This depends on ComputeGraph internals.
+    raw_uv_transform = haskey(attr.inputs, :uv_transform) ? attr.inputs[:uv_transform].value : Makie.automatic
+    if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
+        uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
+    end
+    # Check raw color before compute_colors, since the compute graph
+    # rasterizes AbstractPattern (including LinePattern) to a Sampler,
+    # losing the vector-drawable LinePattern struct.
+    color_attr = attr.color[]
+    # Only use vector hatch path for default uv_transform. If the user provides
+    # an explicit uv_transform, preserve existing rasterized pattern semantics.
+    if color_attr isa Makie.LinePattern && raw_uv_transform === Makie.automatic
+        offset = linepattern_offset(scene, attr.model[])
+        return draw_mesh2D(screen.context, color_attr, vs, fs, offset)
+    end
+    color = compute_colors(attr)
+    cols = per_face_colors(color, nothing, fs, nothing, uv)
+    if cols isa Cairo.CairoPattern
+        align_pattern(cols, scene, attr.model[])
+    end
+    return draw_mesh2D(screen.context, cols, vs, fs)
 end
 
 function flush_pattern(ctx, pattern)
@@ -110,6 +137,7 @@ function draw_mesh2D(
     return nothing
 end
 
+# Note: Currently not used, but maybe we want to restore/use this in the future?
 function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace})
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
