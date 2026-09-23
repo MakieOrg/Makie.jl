@@ -506,8 +506,7 @@ function register_glyph_layout!(attr::ComputeGraph)
         :lineheight,
         :word_wrap_width,
         :fonts,
-        # :baked_display_attributes,
-        :computed_color, :strokecolor, :strokewidth
+        :computed_color, :strokecolor, :strokewidth,
     ]
     outputs = collect(fieldnames(GlyphBuffer))
 
@@ -523,7 +522,7 @@ function register_glyph_layout!(attr::ComputeGraph)
         # - we use computed_color, strokecolor and/or strokewidth in layouting
         # (and one of them changed, which is guaranteed at this point)
         any_baked = !isempty(input_text) && any(str -> bakes_display_attributes(text_handler, str), input_text)
-        requires_relayout = isnothing(cached) || any_baked || any(values(changed)[1:end-3])
+        requires_relayout = isnothing(cached) || any_baked || any(values(changed)[1:(end - 3)])
 
         buffer = cached === nothing ? GlyphBuffer() : GlyphBuffer(cached)
         N = length(input_text)
@@ -555,7 +554,7 @@ function register_glyph_layout!(attr::ComputeGraph)
             for (name, key, output) in (
                     (:color, :computed_color, buffer.glyph_colors),
                     (:strokecolor, :strokecolor, buffer.glyph_strokecolors),
-                    (:strokewidth, :strokewidth, buffer.glyph_strokewidths)
+                    (:strokewidth, :strokewidth, buffer.glyph_strokewidths),
                 )
                 if changed[key]
                     source = inputs[key]
