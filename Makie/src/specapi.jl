@@ -507,6 +507,8 @@ end
 function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr, scene, name)
     # updates old/default -> new
     for (k, new_value) in new_kwargs
+        # consumed at construction (handle_transformation!), not a graph key
+        k === :transformation && continue
         current_path = (path..., k)
         current_value = graph[k]
         if current_value isa ComputeGraphView
@@ -527,7 +529,7 @@ function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr
     # updates old -> default
     for k in setdiff(keys(old_kwargs), keys(new_kwargs))
         # TODO: Should this check that k is a valid attribute or just fail down the line?
-        is_valid = !in(k, (:cycle, :dim_converts))
+        is_valid = !in(k, (:cycle, :dim_converts, :transformation))
         is_valid || continue
 
         current_path = (path..., k)

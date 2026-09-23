@@ -1007,7 +1007,11 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
 end
 
 function set_result!(edge::TypedEdge, result, i, value)
-    if LOG_NOTHING_SKIP && isnothing(value) && should_log(logging_id(edge))
+    # Dereference once so callbacks returning `Ref{Any}(x)` (the type-narrowing
+    # opt-out) are seen through by `is_same`. Comparing the raw Ref wrapper never
+    # equals the stored (dereferenced) value, so the output would stay perpetually dirty.
+    new_val = deref(value)
+    if LOG_NOTHING_SKIP && isnothing(new_val) && should_log(logging_id(edge))
         @warn(
             "Found `map!` or `register_computation!` callback which returns " *
                 "nothing for one of its outputs. This might be incorrect since " *
@@ -1016,11 +1020,11 @@ function set_result!(edge::TypedEdge, result, i, value)
         )
     end
 
-    if (value === skip_update) || is_same(edge.outputs[i][], value)
+    if (new_val === skip_update) || is_same(edge.outputs[i][], new_val)
         edge.output_nodes[i].dirty = false
     else
         edge.output_nodes[i].dirty = true
-        edge.outputs[i][] = deref(value)
+        edge.outputs[i][] = new_val
     end
     if !isempty(result)
         next_val = first(result)

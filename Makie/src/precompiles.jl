@@ -10,12 +10,7 @@ macro compile(block)
 end
 
 precompile(Makie.initialize_block!, (Axis,))
-precompile(
-    Makie.apply_alignment_and_justification!, (
-        Vector{Vector{Makie.GlyphInfo}}, Automatic,
-        Tuple{Symbol, Symbol},
-    )
-)
+precompile(Makie.apply_justification!, (Vector{Vector{Makie.GlyphInfo}}, Float32))
 
 precompile(convert_arguments, (Type{Scatter}, UnitRange{Int64}))
 precompile(Makie.assemble_colors, (UnitRange{Int64}, Any, Any))
