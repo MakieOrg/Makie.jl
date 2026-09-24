@@ -274,10 +274,26 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         return color, val, color isa AbstractPattern, nothing
     end
 
+    register_colorrange!(attr)
+
+    return
+end
+
+function register_colorrange!(
+        attr;
+        colorrange = :colorrange, colorscale = :colorscale,
+        auto_colorrange = :auto_colorrange, output = :scaled_colorrange,
+        resolved_color_dim_convert = :resolved_cdc,
+    )
+    # This may not exist if this function is called outside of `register_colormapping`
+    if !haskey(attr, resolved_color_dim_convert)
+        add_constant!(attr, resolved_color_dim_convert, NoDimConversion())
+    end
+
     map!(
         attr,
-        [:resolved_cdc, :colorrange, :colorscale, :auto_colorrange],
-        :scaled_colorrange
+        [resolved_color_dim_convert, colorrange, colorscale, auto_colorrange],
+        output
     ) do dc, colorrange, colorscale, _autorange
         # colors are actual colors, so no colormapping
         isnothing(_autorange) && return nothing
@@ -297,8 +313,6 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
             end
         end
     end
-
-    return
 end
 
 """

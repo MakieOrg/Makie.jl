@@ -37,16 +37,18 @@ Plots isolines of a scalar field on an unstructured triangular grid.
     fxaa = false
 end
 
+argument_dims(::Type{<:Tricontour}, x, y, z) = (1, 2, 4)
+argument_dims(::Type{<:Tricontour}, tri, z) = (0, 4)
+
 function used_attributes(::Type{<:Tricontour}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
     return (:triangulation,)
 end
 
 function convert_arguments(
-        ::Type{<:Tricontour}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
+        ::Type{<:Tricontour}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z,
         triangulation = DelaunayTriangulation()
     )
-    T = float_type(x, y, z)
-    z = elconvert(T, z)
+    T = float_type(x, y)
     points = [elconvert(T, x)'; elconvert(T, y)']
     if triangulation isa DelaunayTriangulation
         tri = DelTri.triangulate(points, randomise = false)
@@ -61,6 +63,10 @@ function convert_arguments(
         end
     end
     return (tri, z)
+end
+
+function convert_arguments(::Type{<:Tricontour}, tri::DelTri.Triangulation, z::AbstractVector{<:Real})
+    return (tri, float_convert(z))
 end
 
 function _get_tricontour_levels(zs, scale, levels)
@@ -100,17 +106,18 @@ function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:
     map!(_get_tricontour_levels, c, [:scaled_zs, :colorscale, :levels], :computed_levels)
 
     map!(
-        c, [:colorrange, :colorscale, :computed_levels, :scaled_zs], :computed_colorrange
-    ) do colorrange, scale, levels, zs
-        autorange = if isempty(levels)
+        c, [:computed_levels, :scaled_zs], :auto_colorrange
+    ) do levels, zs
+        if isempty(levels)
             c = Float32(first(zs))
             delta = max(one(c), abs(c))
-            (c - delta, c + delta)
+            return (c - delta, c + delta)
         else
-            extrema_nan(levels)
+            return extrema_nan(levels)
         end
-        return combined_colorrange(scale, colorrange, autorange)
     end
+
+    register_colorrange!(c.attributes, output = :computed_colorrange)
 
     register_computation!(
         c,
