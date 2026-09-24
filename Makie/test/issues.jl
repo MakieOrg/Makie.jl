@@ -115,11 +115,18 @@
         values = collect(1:8)
         menu.options[] = zip(labels, values)
         p = menu.blockscene.children[1].plots[2]
+        glyphs = p.plots[1]
         # should not error
         p.positions_transformed_f32c[]
-        p.quad_offset[]
-        p.sdf_marker_shape[]
-        p.sdf_uv[]
+        glyphs.quad_offset[]
+        glyphs.sdf_marker_shape[]
+        glyphs.sdf_uv[]
         @test true
+    end
+
+    @testset "#5744 to_rotation resolution" begin
+        v = normalize(Vec3f(0.001, 0, -1))
+        @assert v !== Vec3f(0, 0, -1)
+        @test to_rotation(v) !== to_rotation(Vec3f(0, 0, -1))
     end
 end

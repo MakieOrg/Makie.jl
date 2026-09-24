@@ -203,7 +203,7 @@ function initialize_block!(tbox::Textbox)
             return Float32(origins[head + 1][1])
         elseif head == length(origins) && !isempty(origins)
             extents = text_plot.glyph_extents[]
-            scales = text_plot.text_scales[]
+            scales = text_plot.glyph_scales[]
             return Float32(origins[end][1] + extents[end].hadvance * scales[end][1])
         else
             return 0.0f0
@@ -233,7 +233,7 @@ function initialize_block!(tbox::Textbox)
         origins = text_plot.glyph_origins[]
         isempty(origins) && return
         extents = text_plot.glyph_extents[]
-        scales = text_plot.text_scales[]
+        scales = text_plot.glyph_scales[]
         text_right = Float32(l + origins[end][1] + extents[end].hadvance * scales[end][1])
         gap = right - (text_right + Float32(scene.transformation.translation[][1]))
         tx2 = Float32(scene.transformation.translation[][1])

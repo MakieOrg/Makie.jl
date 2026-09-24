@@ -378,12 +378,12 @@ function register_positions_transformed_f32c!(
 
     register_computation!(
         attr, [input_name, :model, :f32c, :space], [output_name]
-    ) do (positions, model, f32c, space), changed, last
+    ) do (positions, model, f32c, space), changed, @nospecialize(last)
 
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
-            pos = changed[1] ? el32convert(positions) : nothing
+            pos = changed[1] ? el32convert(positions) : skip_update
             return (pos,)
         elseif false # is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
@@ -483,7 +483,7 @@ function add_convert_kwargs!(graph, user_kw, P, args)
             push!(conv_attr_input, key)
         end
     end
-    register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, changed, last
+    register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, @nospecialize(changed), @nospecialize(last)
         return (_filter(!isnothing, inputs),)
     end
     ComputePipeline.set_type!(graph[:convert_kwargs], Any)
@@ -709,10 +709,18 @@ function register_marker_computations!(attr::ComputeGraph)
 end
 
 const PrimitivePlotTypes = Union{
-    Scatter, Lines, LineSegments, Text, Mesh,
+    Scatter, Lines, LineSegments, Glyphs, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume,
 }
 
+"""
+    uses_convert_attribute(::Type{<:Plot})
+
+Returns true for plot types that opt in to using `convert_attribute`
+infrastructure. This is `false` by default for recipes.
+"""
+uses_convert_attribute(::Type{<:PrimitivePlotTypes}) = true
+uses_convert_attribute(::Type{<:AbstractPlot}) = false
 
 function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, p.attributes, inputs, outputs)
@@ -895,7 +903,6 @@ end
 function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
     attr = documented_attributes(P)
     name = Makie.plotkey(P)
-    is_primitive = P <: PrimitivePlotTypes
 
     # Cycle is added here to allow `plot(..., cycle = Observable(...))`. Updating
     # cycle may only change which attribute maps to which, not which attributes
@@ -905,7 +912,7 @@ function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
         add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
     end
 
-    if is_primitive
+    if uses_convert_attribute(P)
         init_graph!(key -> AttributeConvert(key, name), graph, attr, true, kwargs, parent)
     else
         init_graph!(key -> compute_identity, graph, attr, false, kwargs, parent)
@@ -968,6 +975,13 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         register_camera!(scene, plot)
     end
     calculated_attributes!(Plot{Func}, plot)
+    add_resolved_shading!(plot, scene)
+
+    if !haskey(plot, :rasterize)
+        # just always convert for for simplicity
+        convert = AttributeConvert(:rasterize, plotsym(typeof(plot)))
+        add_input!(convert, plot.attributes, :rasterize, get(plot.kw, :rasterize, false))
+    end
 
     plot!(plot)
 
@@ -1068,7 +1082,7 @@ function register_pattern_uv_transform!(attr; modelname = :model_f32c, colorname
                 return (uvt,)
             end
         else
-            return nothing
+            return skip_update
         end
     end
     return
@@ -1132,14 +1146,22 @@ function calculated_attributes!(::Type{MeshScatter}, plot::Plot)
     register_colormapping!(attr)
     register_position_transforms!(attr)
     register_pattern_uv_transform!(attr)
+    map!(attr, :marker, [:vertex_position, :faces, :normal, :uv]) do mesh
+        faces = decompose(GLTriangleFace, mesh)
+        normals = decompose_normals(mesh)
+        texturecoordinates = decompose_uv(mesh)
+        positions = decompose(Point3f, mesh)
+        return (positions, faces, normals, texturecoordinates)
+    end
     map!(Rect3d, attr, :marker, :marker_bb)
     map!(meshscatter_data_limits, attr, [:positions, :marker_bb, :markersize, :rotation], :data_limits)
-    return map!(
+    map!(
         meshscatter_boundingbox, attr, [
             :positions_transformed, :model,
             :transform_marker, :marker_bb, :markersize, :rotation,
         ], :boundingbox
     )
+    return
 end
 
 

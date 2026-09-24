@@ -79,6 +79,10 @@ module ComputePipeline
 using Preferences
 
 const ENABLE_COMPUTE_CHECKS = @load_preference("ENABLE_COMPUTE_CHECKS", false)
+const LOG_NOTHING_SKIP = @load_preference("LOG_NOTHING_SKIP", false)
+const LOG_NOTHING_SPLAT = @load_preference("LOG_NOTHING_SPLAT", false)
+const LOG_REPEATEDLY = Ref(false)
+const LOGGING_IDS = Set{UInt64}()
 
 enable_debugging!() = set_debug!(true)
 disable_debugging!() = set_debug!(false)
@@ -88,6 +92,60 @@ function set_debug!(value::Bool)
         @info "Changing the debug mode requires restarting Julia to take effect!"
     end
     return
+end
+
+"""
+    log_nothing_skip(value::Bool)
+
+Enables or disables extended logging for `nothing -> skip_update` deprecations.
+
+To prevent this from logging the same edge repeatedly, only edges with a unique
+combination of callback, input names and output names are logged. This can be
+changed by setting `ComputePipeline.LOG_REPEATEDLY[] = false` at any time.
+"""
+function log_nothing_skip(value::Bool)
+    if value != LOG_NOTHING_SKIP
+        @set_preferences!("LOG_NOTHING_SKIP" => value)
+        @info "Changing the logging mode requires restarting Julia to take effect!"
+    end
+    return
+end
+
+"""
+    log_nothing_splat(value::Bool)
+
+Enables or disables extended logging for `return nothing` being used to initialize
+multiple outputs.
+
+To prevent this from logging the same edge repeatedly, only edges with a unique
+combination of callback, input names and output names are logged. This can be
+changed by setting `ComputePipeline.LOG_REPEATEDLY[] = false` at any time.
+"""
+function log_nothing_splat(value::Bool)
+    if value != LOG_NOTHING_SPLAT
+        @set_preferences!("LOG_NOTHING_SPLAT" => value)
+        @info "Changing the logging mode requires restarting Julia to take effect!"
+    end
+    return
+end
+
+function logging_id(callback, inputs, outputs)
+    inputhash = mapreduce(n -> n.name, (a, b) -> hash(b, a), inputs, init = UInt64(0))
+    outputhash = mapreduce(n -> n.name, (a, b) -> hash(b, a), outputs, init = UInt64(0))
+    return hash(callback, hash(inputhash, outputhash))
+end
+
+function should_log(id::UInt64)
+    if LOG_REPEATEDLY[]
+        return true
+    else
+        if id in LOGGING_IDS
+            return false
+        else
+            push!(LOGGING_IDS, id)
+            return true
+        end
+    end
 end
 
 using Observables
@@ -149,6 +207,41 @@ struct ResolveException{E <: Exception} <: Exception
     error::E
 end
 
+"""
+    struct SkipUpdate
+
+Type of `skip_update` which is used to declare a `ComputeEdge` output as unchanged.
+"""
+struct SkipUpdate end
+
+"""
+    skip_update = ComputePipeline.SkipUpdate()
+
+A special return type for `ComputeEdge` callbacks which marks one output or all
+outputs as unchanged. Any unchanged output will not be updated and will not
+propagate updates. I.e. if all inputs of a dependent edge are either marked as
+unchanged by `skip_update` or weren't changed to begin with, the edge will not
+update.
+
+## Examples
+
+```
+map!(..., :output) do ...
+    return skip_update # skip output
+end
+
+map!(..., [:output1, :output2]) do ...
+    return skip_update, 1 # skip output1, set output 2
+end
+
+map!(..., [:output1, :output2]) do ...
+    return skip_update # skip both
+end
+```
+"""
+const skip_update = SkipUpdate()
+export skip_update
+
 struct TypedEdge{InputTuple, OutputTuple, F}
     callback::F
     inputs::InputTuple
@@ -185,6 +278,9 @@ function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
         ComputeEdge[], RefValue{TypedEdge}()
     )
 end
+
+logging_id(e::TypedEdge) = logging_id(e.output_nodes[1].parent)
+logging_id(e::ComputeEdge) = logging_id(e.callback, e.inputs, e.outputs)
 
 function _get_named_change(::NamedTuple{Names}, dirty) where {Names}
     values = ntuple(i -> dirty[i], length(Names))
@@ -234,6 +330,25 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
 
     elseif isnothing(result)
 
+        if LOG_NOTHING_SPLAT
+            if should_log(logging_id(edge))
+                @warn(
+                    "Initializing multiple outputs with `return nothing` is deprecated. " *
+                        "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
+                        source_info_str(edge)
+                )
+            end
+        else
+            # This only triggers once, so it's not very useful for actually fixing
+            # upstream map!/register_computation! methods
+            Base.depwarn(
+                "Initializing multiple outputs with `return nothing` is deprecated. " *
+                    "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
+                    source_info_str(edge),
+                :TypedEdge
+            )
+        end
+
         outputs = ntuple(length(edge.outputs)) do i
             if isdefined(edge.outputs[i], :value)
                 edge.outputs[i].value[] = nothing
@@ -245,7 +360,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         foreach(node -> node.dirty = false, edge.outputs)
 
     else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+        error("The edge callback $f must return a Tuple with one element per output but returned a $(typeof(result)).")
     end
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
@@ -298,8 +413,8 @@ an up-to-date value from an output use `graph[:output_name][]`.
 graph = ComputeGraph()
 
 add_input!(graph, :first_node, 1)
-register_computation!(graph, [:first_node], [:derived_node]) do inputs, changed, cached
-    return (2 * inputs[1][], )
+map!(graph, :first_node, :derived_node) do input
+    return 2 * input
 end
 
 update!(graph, first_node = 2)
@@ -318,10 +433,13 @@ struct ComputeGraph <: AbstractComputeGraph
     obs_to_update::Vector{Observable}
 end
 
+# This is used for typed edge initialization
 is_node_value_valid(x) = true
-is_node_value_valid(x::RefValue) = isassigned(x) ? is_node_value_valid(x[]) : true
+is_node_value_valid(x::RefValue) = isassigned(x) ? is_node_value_valid(x[]) : false
 # shouldn't have those in input.value or computed.value[]
-function is_node_value_valid(::Union{T, RefValue{T}}) where {T <: Union{Computed, Input, ComputeGraph, ComputeEdge}}
+function is_node_value_valid(::Union{T, RefValue{T}}) where {
+        T <: Union{Computed, Input, ComputeGraph, ComputeEdge, SkipUpdate},
+    }
     return false
 end
 
@@ -897,11 +1015,24 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
 end
 
 function set_result!(edge::TypedEdge, result, i, value)
-    if isnothing(value) || is_same(edge.outputs[i][], value)
+    # Dereference once so callbacks returning `Ref{Any}(x)` (the type-narrowing
+    # opt-out) are seen through by `is_same`. Comparing the raw Ref wrapper never
+    # equals the stored (dereferenced) value, so the output would stay perpetually dirty.
+    new_val = deref(value)
+    if LOG_NOTHING_SKIP && isnothing(new_val) && should_log(logging_id(edge))
+        @warn(
+            "Found `map!` or `register_computation!` callback which returns " *
+                "nothing for one of its outputs. This might be incorrect since " *
+                "nothing has been replaced by `skip_update` for marking outputs " *
+                "as unchanged. " * source_info_str(edge)
+        )
+    end
+
+    if (new_val === skip_update) || is_same(edge.outputs[i][], new_val)
         edge.output_nodes[i].dirty = false
     else
         edge.output_nodes[i].dirty = true
-        edge.outputs[i][] = deref(value)
+        edge.outputs[i][] = new_val
     end
     if !isempty(result)
         next_val = first(result)
@@ -955,9 +1086,31 @@ function locked_resolve!(edge::TypedEdge)
             end
             set_result!(edge, result)
         elseif isnothing(result)
+            if LOG_NOTHING_SPLAT || LOG_NOTHING_SKIP
+                if should_log(logging_id(edge))
+                    @warn(
+                        "Returning `nothing` in `map!` and `register_computation!` callbacks " *
+                            "has been deprecated in favor of returning `skip_update` to allow " *
+                            "outputs to update to `nothing`. Setting all outputs to `nothing` " *
+                            "should be done with a tuple. " * source_info_str(edge)
+                    )
+                end
+            else
+                Base.depwarn(
+                    "Returning `nothing` in `map!` and `register_computation!` callbacks " *
+                        "has been deprecated in favor of returning `skip_update` to allow " *
+                        "outputs to update to `nothing`.  Setting all outputs to `nothing` " *
+                        "should be done with a tuple. Use " *
+                        "`ComputePipeline.log_nothing_skip(true)` to find problematic methods.",
+                    :locked_resolve!
+                )
+            end
+
+            foreach(x -> x.dirty = false, edge.output_nodes)
+        elseif result === skip_update
             foreach(x -> x.dirty = false, edge.output_nodes)
         else
-            error("Needs to return a Tuple with one element per output, or nothing")
+            error("Needs to return a Tuple with one element per output or `skip_update`.")
         end
     end
     return
@@ -1328,7 +1481,7 @@ get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callbac
 
 Registers a new computation which transforms the given inputs to a new set of
 outputs. Both the inputs and outputs are referred to by name. The inputs must
-exist when the function is called. The outputs should usually created by this
+exist when the function is called. The outputs are usually created by this
 function.
 
 The callback function must accept 3 arguments:
@@ -1336,8 +1489,8 @@ The callback function must accept 3 arguments:
 - `changed::NamedTuple` which a `Bool` per input name signifying whether the input has been updated since the last execution of `callback`
 - `cached::Tuple` which contain the last outputs returned by function. If no previous outputs exist `cached = nothing`.
 
-Note that `inputs` and `cached` always wrap input and outputs values in `Ref`,
-so you need to always dereference them.
+Note that specific outputs or all outputs can be marked as "unchanged" with
+`return ..., skip_update, ...` or `return skip_update` respectively.
 
 ## Example:
 
@@ -1596,7 +1749,7 @@ Inputs can be:
 - a `Computed`, i.e. a node of any compute graph
 - a `Vector` containing any of the above
 
-Outputs can be a `Symbol`, `Tuple{Vararg{Symbol}}` or `Vector` of the former.
+Outputs can be a `Symbol`, `Tuple{Vararg{Symbol}}` or a `Vector` of either.
 They can not be compute nodes.
 
 If a `ComputeGraphView` is passed as the `compute_graph` any `Symbol` and `Tuple`
@@ -1606,7 +1759,9 @@ interpreted as `graph.a.b` if `graph.a` is passed as the `compute_graph`.
 The callback function `f` will be called with the values of the inputs as arguments.
 If `outputs` is a single `Symbol` or `Tuple`, the function is expected to return
 one output. Otherwise it is expected to return a tuple of outputs, one for each
-target specified in `outputs`.
+target specified in `outputs`. It is also possible to mark a specific output or
+all outputs as "unchanged" with `return ..., skip_update, ...` or
+`return skip_update` respectively.
 
 Optionally `init` can be specified to immediately initialize the outputs without
 calling `f`. For a single output the value can be provided directly. For multiple
@@ -1678,7 +1833,7 @@ end
 
 function take_last!(channel::Channel; wait = false)
     return lock(channel) do
-        result = wait ? take!(channel) : nothing
+        result = wait ? take!(channel) : skip_update
         while isready(channel)
             result = take!(channel)
         end
@@ -1968,8 +2123,10 @@ returned by the parent edge callback.
 function unsafe_init!(node::Computed, value)
     if isdefined(node, :value)
         error("Node already initialized.")
-    else
+    elseif is_node_value_valid(value)
         node.value = value isa RefValue ? value : RefValue(value)
+    else
+        error("Initializing a node to $(typeof(value)) is not allowed.")
     end
 
     return unsafe_init!(node.parent)

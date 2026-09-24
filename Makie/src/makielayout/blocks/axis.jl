@@ -586,7 +586,7 @@ function initialize_limit_computations!(ax)
         attr,
         [:limits, :_limit_update_rule, :transform_func, :inverse_transform_func, :xautolimitmargin, :yautolimitmargin],
         [:localxlimits, :localylimits],
-    ) do (limits, rule, tf, itf, xmargins, ymargins), changed, cached
+    ) do (limits, rule, tf, itf, xmargins, ymargins), changed, @nospecialize(cached)
         lims = calculate_local_limits(ax, limits, tf, itf, xmargins, ymargins)
         if changed._limit_update_rule
             # The update comes from (x/y)lims!() which explicitly set update rules

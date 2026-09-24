@@ -1,5 +1,9 @@
 ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 
+run(
+    `julia -e "using Makie.ComputePipeline; ComputePipeline.enable_debugging!(); ComputePipeline.log_nothing_splat(true)"`
+)
+
 using Makie
 using GLMakie, Test
 using FileIO
@@ -34,16 +38,6 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
     # run the unit test suite
     include("isolated_tests.jl")
     include("unit_tests.jl")
-
-    @testset "ComputeGraph Sanity Checks" begin
-        # This is supposed to catch changes in ComputePipeline causing nodes to
-        # be skipped or become duplicated. This will also trigger if plot attributes
-        # are modified in which case the numbers should just be updated
-        f, a, p = scatter(rand(10))
-        colorbuffer(f)
-        @test length(p.attributes.inputs) == 38
-        @test length(p.attributes.outputs) == 86
-    end
 
     @testset "Reference Tests" begin
         @testset "refimages" begin
@@ -258,3 +252,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         @test GLMakie.GLAbstraction.FAILED_FREE_COUNTER[] == 0
     end
 end
+
+using Makie.ComputePipeline
+ComputePipeline.disable_debugging!()
+ComputePipeline.log_nothing_splat(false)

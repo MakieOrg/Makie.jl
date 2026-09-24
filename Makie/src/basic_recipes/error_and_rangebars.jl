@@ -254,7 +254,7 @@ function _plot_bars!(plot)
         if widths isa Vec2f
             return widths, isvisible
         end
-        [widths[i] for i in 1:length(widths) for j in 1:2], isvisible
+        return [widths[i] for i in 1:length(widths) for j in 1:2], isvisible
     end
 
     map!(attr, [:color], :whiskercolors) do color

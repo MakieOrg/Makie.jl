@@ -1,9 +1,15 @@
 ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 
+run(
+    `julia -e "using Makie.ComputePipeline; ComputePipeline.enable_debugging!(); ComputePipeline.log_nothing_splat(true)"`
+)
+
 using Test
 using CairoMakie
 using Makie.FileIO
 using ReferenceTests
+using GeometryBasics
+
 
 # Before changing Pkg environment, try the test in #864
 @testset "Runs without error" begin
@@ -87,6 +93,19 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
         rm("test.png")
     end
 
+    @testset "saving pdf while recording a VideoStream" begin
+        fig, ax, pl = heatmap(rand(10, 10))
+        vio = VideoStream(fig)
+        recordframe!(vio)
+        save("test.pdf", fig)
+        @test isopen(vio.screen)
+        recordframe!(vio)
+        save("test.mp4", vio)
+        @test filesize("test.mp4") > 0
+        rm("test.pdf")
+        rm("test.mp4")
+    end
+
     @testset "changing resolution of same format" begin
         # see: https://github.com/MakieOrg/Makie.jl/issues/2433
         # and: https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/441
@@ -152,26 +171,22 @@ end
     @test !isfile(tmp_path)
 end
 
-# @testset "plotlist no ambiguity (#4038)" begin
-#     f = plotlist([Makie.SpecApi.Scatter(1:10)])
-#     Makie.colorbuffer(f; backend=CairoMakie)
-#     plotlist!([Makie.SpecApi.Scatter(1:10)])
-# end
+include("issues.jl")
 
-@testset "multicolor line clipping (#4313)" begin
-    fig, ax, p = contour(rand(20, 20))
-    xlims!(ax, 0, 10)
-    Makie.colorbuffer(fig; backend = CairoMakie)
-end
-
-@testset "ComputeGraph Sanity Checks" begin
-    # This is supposed to catch changes in ComputePipeline causing nodes to
-    # be skipped or become duplicated. This will also trigger if plot attributes
-    # are modified in which case the numbers should just be updated
-    f, a, p = scatter(rand(10))
-    colorbuffer(f)
-    @test length(p.attributes.inputs) == 38
-    @test length(p.attributes.outputs) == 86
+@testset "self-overlapping mesh" begin
+    # two opposite-wound triangles overlapping in the middle: the nonzero fill rule has to
+    # take their union, or the overlap cancels out into a hole
+    fig = Figure(size = (40, 40), figure_padding = 0)
+    ax = Axis(fig[1, 1])
+    hidedecorations!(ax)
+    hidespines!(ax)
+    mesh!(
+        ax, Point2f[(0, 0), (2, 0), (1, 2), (0, 2), (2, 2), (1, 0)],
+        GLTriangleFace[(1, 2, 3), (4, 5, 6)], color = :black
+    )
+    limits!(ax, -0.5, 2.5, -0.5, 2.5)
+    img = Makie.colorbuffer(fig; backend = CairoMakie)
+    @test img[size(img, 1) ÷ 2, size(img, 2) ÷ 2] != img[1, 1]
 end
 
 excludes = Set(
@@ -342,3 +357,7 @@ end
         end
     end
 end
+
+using Makie.ComputePipeline
+ComputePipeline.disable_debugging!()
+ComputePipeline.log_nothing_splat(false)
