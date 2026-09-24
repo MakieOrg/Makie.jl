@@ -718,28 +718,35 @@ next_float(rng::LabelPlacementRNG) = Float64(next_uint(rng) >> 11) / 2.0^53
 
 function anneal_placement!(
         current, problem::PlacementProblem;
-        seed = 1, moves_per_stage = 300, max_moves_per_stage = 3000, max_stages = 50, cooling = 0.9, temperature = 300.0,
+        seed = 1, moves_per_stage = 100, max_moves_per_stage = 3000, max_stages = 50,
+        cooling = 0.9, temperature = 300.0, min_temperature = 20.0,
     )
     n = length(current)
     placed = trues(n)
     rng = LabelPlacementRNG(0x9e3779b97f4a7c15 * UInt64(seed))
-    proposals = map(problem.candidates) do candidates
-        feasible = filter(c -> c.cost < OVERLAP_PENALTY, candidates)
-        isempty(feasible) ? candidates : feasible
+    nproposals = map(problem.candidates) do candidates
+        nfeasible = count(c -> c.cost < OVERLAP_PENALTY, candidates)
+        nfeasible == 0 ? length(candidates) : nfeasible
     end
+    penalties = fill(NaN, n)
+    current_penalty(i) = isnan(penalties[i]) ? (penalties[i] = placement_penalty(current[i], i, problem, current, placed)) : penalties[i]
+    conflicted = Int[]
     for _ in 1:max_stages
-        conflicted = filter(i -> placement_penalty(current[i], i, problem, current, placed) > 0, 1:n)
+        temperature < min_temperature && break
+        filter!(i -> current_penalty(i) > 0, resize!(conflicted, n) .= 1:n)
         isempty(conflicted) && break
         accepted = 0
         for _ in 1:min(moves_per_stage * length(conflicted), max_moves_per_stage)
             i = conflicted[next_int(rng, length(conflicted))]
-            candidate = proposals[i][next_int(rng, length(proposals[i]))]
+            candidate = problem.candidates[i][next_int(rng, nproposals[i])]
             candidate === current[i] && continue
-            old_cost = current[i].cost + placement_penalty(current[i], i, problem, current, placed)
+            old_cost = current[i].cost + current_penalty(i)
             new_cost = candidate.cost + placement_penalty(candidate, i, problem, current, placed)
             delta = new_cost - old_cost
             if delta <= 0 || next_float(rng) < exp(-delta / temperature)
                 current[i] = candidate
+                penalties[i] = NaN
+                penalties[problem.neighbors[i]] .= NaN
                 accepted += delta != 0
             end
         end
@@ -757,10 +764,13 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
     target = targets[i]
     padded_bb = pad_rect(algorithm, text_bb)
     center = Point2d(padded_bb.origin + 0.5 * padded_bb.widths)
-    reach = maximum(algorithm.gaps) + norm(widths(padded_bb)) + algorithm.pointradius + algorithm.ambiguitymargin
-    obstacles = filter(j -> norm(targets[j] - target) < reach, neighbors)
-    candidates = LabelCandidate[]
-    for gap in algorithm.gaps, k in 0:(algorithm.nangles - 1)
+    diagonal = norm(widths(padded_bb))
+    margin = max(algorithm.ambiguitymargin, algorithm.pointradius + minimum(algorithm.padding))
+    obstacles = sort!(filter(j -> norm(targets[j] - target) < 2 * maximum(algorithm.gaps) + diagonal + margin, neighbors); by = j -> norm(targets[j] - target))
+    obstacle_distances = [norm(targets[j] - target) for j in obstacles]
+    candidates = Vector{LabelCandidate}(undef, length(algorithm.gaps) * algorithm.nangles)
+    for (index, (gap, k)) in enumerate(Iterators.product(algorithm.gaps, 0:(algorithm.nangles - 1)))
+        reachable = searchsortedlast(obstacle_distances, 2 * gap + diagonal + margin)
         angle = 2pi * k / algorithm.nangles
         direction = Vec2d(cos(angle), sin(angle))
         new_center = target + direction * (gap + halfextent_along(padded_bb, direction))
@@ -769,10 +779,10 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
         leader_start = new_center - direction * halfextent_along(padded_bb, direction)
         cost = gap + algorithm.diagonalpenalty * sin(2 * angle)^2 +
             algorithm.centroidweight * norm(new_center - target) +
-            static_penalty(algorithm, box, leader_start, target, gap, targets, obstacles, viewport)
-        push!(candidates, label_candidate(offset, box, target, leader_start, cost))
+            static_penalty(algorithm, box, leader_start, target, gap, targets, view(obstacles, 1:reachable), viewport)
+        candidates[index] = label_candidate(offset, box, target, leader_start, cost)
     end
-    return sort!(candidates, by = c -> c.cost)
+    return sort!(candidates; by = c -> c.cost, alg = QuickSort)
 end
 
 function candidate_at_offset(algorithm::CandidatePlacement, text_bb, target, offset)
