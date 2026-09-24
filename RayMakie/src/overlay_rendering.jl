@@ -361,7 +361,16 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
     # vanish into their own background. Equal depth passing means draw order
     # still decides inside a scene, and z only decides between scenes, which is
     # exactly the split Makie's convention asks for.
-    depth = Mantle.Transient.Image(g, Float32, (w, h))
+    #
+    # Sized FROM the target, not to `(w, h)`: a transient given a target follows
+    # it, and `run!` refits it when the window has been resized — which a
+    # backend may notice only inside the frame, after this plan was built.
+    # Fixed at `(w, h)`, a resized window drew one frame against a depth buffer
+    # of the old size, `checkextents` refused it, and the render loop died: on
+    # Metal, every drag of a window corner. The composite below draws through
+    # an explicit viewport, so that one frame lands in the old rectangle and the
+    # next is built at the new size.
+    depth = Mantle.Transient.Image(g, Float32, target)
     Mantle.render!(g, "frame", target => clear, depth => Mantle.Clear(1f0)) do p
         frame_draws!(p, screen, source, cells, robjs, w, h)
     end

@@ -1293,6 +1293,27 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                             color_format=COMPOSITE_FORMAT)
     screen.window = win
 
+    # A WRONG GUESS IS CORRECTED, not only the scale adopted. `pw, ph` was the
+    # figure times the primary monitor's scale, and the window was sized from it
+    # in POINTS by dividing by its own. When the two scales differ the window
+    # comes out the wrong size, and the figure then reflows to fit it — the
+    # layout, not only the resolution, changes. It happened with the display
+    # asleep: no primary monitor, a guess of 1 on a 2x panel, and the isubd demo
+    # opened at half size with its control panel laid over its scene. Asking the
+    # window for the figure's size in points is what `GLMakie` gets by
+    # construction.
+    #
+    # Only the PLATFORM window is asked. The drawable follows on the first frame,
+    # through the same per-frame size check a user's resize goes through, on
+    # every backend; and it is done before `connect_glfw_events!`, so the figure
+    # never hears about the wrong size at all.
+    let (sx, _sy) = GLFW.GetWindowContentScale(win.handle)
+        if sx > 0 && !isapprox(sx, ppu)
+            GLFW.SetWindowSize(win.handle, w, h)       # the figure, in points
+            GLFW.PollEvents()
+        end
+    end
+
     # THE WINDOW IS THE AUTHORITY ON ITS OWN SIZE. `pw, ph` above is a guess — it
     # is the primary monitor's scale applied to the figure, made before any
     # window exists so that one can be asked for. What the drawable actually

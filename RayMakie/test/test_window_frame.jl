@@ -87,6 +87,34 @@ orangeish(c) = red(c) > 0.35 && red(c) > 1.6 * green(c) && green(c) > 1.5 * blue
     # mistaken for one that is stuck.
     @test scr.frames_presented[] > 2
 
+    # A LIVE resize, as dragging the window's corner makes one. The frame's
+    # depth attachment was declared at a fixed `(w, h)`, while a backend may
+    # notice the resize only inside `run!`, after the plan was built: the first
+    # frame at the new size met a depth buffer of the old one, `checkextents`
+    # refused it, and the render loop died — on Metal, on every resize. It
+    # follows its target now, and `run!` refits it.
+    gw = scr.window.handle
+    RayMakie.GLFW.SetWindowSize(gw, 400, 300)
+    f0 = scr.frames_presented[]
+    t0 = time()
+    while scr.frames_presented[] < f0 + 5 && time() - t0 < 30
+        sleep(0.05)
+    end
+    @test RayMakie.renderloop_running(scr)
+    @test scr.frames_presented[] >= f0 + 5
+    fw, fh = RayMakie.GLFW.GetFramebufferSize(gw)
+    @test size(scr.window) == (fw, fh)
+    img2 = Makie.colorbuffer(scr)
+    @test size(img2) == size(scr.output_buffer) == (fh, fw)
+    # Still composited, and framed the same: the sphere covers the same FRACTION
+    # of a frame with the same aspect. `warm` rather than `orangeish` — shaded,
+    # this sphere is an olive brown that `orangeish` only sometimes accepts, and
+    # what matters here is that it is drawn, in the right place, at the new size.
+    warm(c) = red(c) > blue(c) + 0.15f0
+    frac(im) = count(warm, im) / length(im)
+    @test frac(img) > 0.05
+    @test isapprox(frac(img2), frac(img); atol = 0.02)
+
     close(scr)
     sleep(0.5)
     @test !RayMakie.renderloop_running(scr)
