@@ -85,13 +85,24 @@ function add_pr_updates_to_manifest(
     return manifest_dir
 end
 
+function read_path_list(file)
+    paths = Set{String}()
+    isfile(file) || return paths
+    for line in eachline(file)
+        p = strip(line)
+        isempty(p) || push!(paths, String(p))
+    end
+    return paths
+end
+
 """
     approval_coverage(root_path; threshold=0.05, reference_folder=joinpath(root_path, "reference"))
 
-Count the new/changed reference images in a `ReferenceImages` artifact folder and how many
-of them are approved by an active manifest entry. `threshold` is the CI comparison
-threshold (an image scoring above it, or a new image, needs approval). Returns
-`(; n_changed, n_approved)`; `n_approved == n_changed` means every change is approved.
+Count the new, changed and deleted reference images in a `ReferenceImages` artifact folder
+and how many of them are approved by an active manifest entry. `threshold` is the CI
+comparison threshold (an image scoring above it needs approval, as does every new or
+deleted image). Returns `(; new, changed, deleted)`, each a `(; total, approved)` count;
+all categories approved means the PR is ready to merge.
 """
 function approval_coverage(root_path; threshold = 0.05, reference_folder = joinpath(root_path, "reference"))
     changed = Set{String}()
@@ -103,19 +114,30 @@ function approval_coverage(root_path; threshold = 0.05, reference_folder = joinp
             parse(Float64, s) > threshold && push!(changed, String(p))
         end
     end
-    new_unapproved = Set{String}()
-    new_file = joinpath(root_path, "new_files.txt")
-    if isfile(new_file)
-        for line in eachline(new_file)
-            p = strip(line)
-            isempty(p) && continue
-            push!(new_unapproved, String(p))
-        end
-    end
+    new_unapproved = read_path_list(joinpath(root_path, "new_files.txt"))
+    missing_recordings = read_path_list(joinpath(root_path, "missing_files.txt"))
+
     c = classify_entries(read_manifest(joinpath(root_path, "refimage_updates")), reference_folder)
-    total = union(changed, new_unapproved, c.exempt_new)
-    approved = union(intersect(changed, c.exempt_changed), c.exempt_new)
-    return (; n_changed = length(total), n_approved = length(approved))
+    counts(total, approved) = (; total = length(total), approved = length(approved))
+    return (;
+        new = counts(union(new_unapproved, c.exempt_new), c.exempt_new),
+        changed = counts(changed, intersect(changed, c.exempt_changed)),
+        deleted = counts(union(missing_recordings, c.to_delete), c.to_delete),
+    )
+end
+
+total_images(cov) = cov.new.total + cov.changed.total + cov.deleted.total
+approved_images(cov) = cov.new.approved + cov.changed.approved + cov.deleted.approved
+fully_approved(cov) = total_images(cov) == approved_images(cov)
+
+function coverage_summary(cov)
+    parts = [
+        "$(c.approved)/$(c.total) $name"
+            for (name, c) in (("new", cov.new), ("changed", cov.changed), ("deleted", cov.deleted))
+            if c.total > 0
+    ]
+    isempty(parts) && return "No new, changed or deleted images"
+    return "Approved " * join(parts, ", ") * " images"
 end
 
 """

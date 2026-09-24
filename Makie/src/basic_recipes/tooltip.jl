@@ -186,7 +186,7 @@ end
 function plot!(p::Tooltip)
 
     map!(p, [:maybe_text, :text], :extracted_text) do arg, text
-        return isnothing(arg) ? text : arg
+        return something(arg, text)
     end
 
     map!(ToolTipShape, p, [:placement, :align, :triangle_size], :shape)

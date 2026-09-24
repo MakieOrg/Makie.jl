@@ -156,8 +156,10 @@ returned by the parent edge callback.
 function unsafe_init!(node::Computed, value)
     if isdefined(node, :value)
         error("Node already initialized.")
-    else
+    elseif is_node_value_valid(value)
         node.value = value isa RefValue ? value : RefValue(value)
+    else
+        error("Initializing a node to $(typeof(value)) is not allowed.")
     end
 
     return unsafe_init!(node.parent)

@@ -279,7 +279,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         if visible || used
             return (get_minor_tickvalues(ticks, scale, values, limits...),)
         else
-            return isnothing(cached) ? (Float64[],) : nothing
+            return isnothing(cached) ? (Float64[],) : skip_update
         end
     end
 
@@ -582,7 +582,11 @@ function tight_ticklabel_spacing!(la::LineAxis)
 end
 
 
-iswhitespace(str) = match(r"^\s*$", str) !== nothing
+# `String` because regex matching only works on `String`, and a label may be any
+# `AbstractString` (a `text_handler`'s input type, say). Text that isn't string-like
+# at all can't be whitespace.
+iswhitespace(str::AbstractString) = match(r"^\s*$", String(str)) !== nothing
+iswhitespace(@nospecialize(_)) = false
 
 function Base.delete!(la::LineAxis)
     for (_, d) in la.elements

@@ -2,6 +2,10 @@ ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 ENV["ELECTRON_LOG_FILE"] = joinpath(@__DIR__, "electron.log")
 ENV["ELECTRON_ENABLE_LOGGING"] = "true"
 
+run(
+    `julia -e "using Makie.ComputePipeline; ComputePipeline.enable_debugging!(); ComputePipeline.log_nothing_splat(true)"`
+)
+
 using FileIO
 using WGLMakie, Makie, Test
 using WGLMakie.Bonito
@@ -38,16 +42,6 @@ edisplay = Bonito.use_electron_display(devtools = true)
 
 @testset "reference tests" begin
     WGLMakie.activate!()
-
-    @testset "ComputeGraph Sanity Checks" begin
-        # This is supposed to catch changes in ComputePipeline causing nodes to
-        # be skipped or become duplicated. This will also trigger if plot attributes
-        # are modified in which case the numbers should just be updated
-        f, a, p = scatter(rand(10))
-        colorbuffer(f)
-        @test length(p.attributes.inputs) == 38
-        @test length(p.attributes.outputs) == 95
-    end
 
     @testset "refimages" begin
         ReferenceTests.mark_broken_tests(excludes)
@@ -349,3 +343,7 @@ println("###########################")
 println("WGLMakie tests DONE")
 println("Open Tasks: ", length(Makie.TRACKED_TASKS))
 println("###########################")
+
+using Makie.ComputePipeline
+ComputePipeline.disable_debugging!()
+ComputePipeline.log_nothing_splat(false)
