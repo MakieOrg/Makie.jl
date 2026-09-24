@@ -340,6 +340,7 @@ function to_cairo_miter_limit(miter_limit)
 end
 
 to_cairo_linestyle(::Nothing, ::Any) = nothing
+to_cairo_linestyle(ls::Linestyle, lw::Any) = to_cairo_linestyle(ls.value, lw)
 to_cairo_linestyle(::AbstractVector, ::AbstractArray) = nothing
 function to_cairo_linestyle(linestyle::AbstractVector, linewidth::Real)
     # There is a discrepancy between Makie and Cairo when it comes to linestyles.
