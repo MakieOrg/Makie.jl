@@ -534,15 +534,16 @@ function place_labels!(
 end
 
 """
-    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight)
+    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, ambiguitymargin)
 
 The default label placement algorithm of `annotation`. Each label is placed on one of a finite
 set of candidate positions around its target point. Candidates lie on rings with the given `gaps`
 (in pixels) between the point and the label box padded by `padding`, at `nangles` evenly spaced
 angles per ring. A candidate's cost penalizes, in decreasing order of severity, overlap with other
 labels or the axis boundary, covering data points (which are treated as circles of `pointradius`
-pixels), leader lines crossing each other or running over other labels or points, and finally the
-gap to the target. Positions straight above, below, left or right of the point are preferred over
+pixels), leader lines crossing each other or running over other labels or points, ambiguous
+positions close to the point where another point is within `ambiguitymargin` of being as close
+to the label as its own point, and finally the gap to the target. Positions straight above, below, left or right of the point are preferred over
 diagonal ones by `diagonalpenalty`, and `centroidweight` scales an additional cost for the distance
 between the label center and the point, which keeps labels compact around their points.
 
@@ -551,7 +552,8 @@ only act as obstacles, which allows labelling a subset of points while avoiding 
 
 Labels are first assigned greedily, most constrained first, then the assignment is improved by
 simulated annealing and finished with local descent, where every label is repeatedly moved to its
-cheapest candidate given all others. Each of the `maxiter` iterations of `annotation` runs one
+cheapest candidate given all others. This is repeated `restarts` times with different random
+seeds and the layout with the lowest total cost is kept. Each of the `maxiter` iterations of `annotation` runs one
 descent pass over all labels, with the first one also running the greedy and annealing stages.
 """
 Base.@kwdef struct CandidatePlacement
@@ -561,11 +563,15 @@ Base.@kwdef struct CandidatePlacement
     pointradius::Float64 = 5.0
     diagonalpenalty::Float64 = 6.0
     centroidweight::Float64 = 0.15
+    ambiguitymargin::Float64 = 8.0
+    restarts::Int = 3
 end
 
 const OVERLAP_PENALTY = 1000.0
 const CROSSING_PENALTY = 300.0
 const LEADER_POINT_PENALTY = 100.0
+const AMBIGUITY_PENALTY = 100.0
+const AMBIGUITY_FADE_GAP = 20.0
 
 struct LabelCandidate
     offset::Vec2d
@@ -603,13 +609,29 @@ function place_labels!(
 
     if all(iszero, offsets)
         greedy_placement!(current, problem)
-        anneal_placement!(current, problem)
-        maxiter -= 1
+        current = argmin(
+            total_energy(problem), map(1:algorithm.restarts) do seed
+                trial = copy(current)
+                anneal_placement!(trial, problem; seed)
+                descend_placement!(trial, problem, maxiter - 1)
+                return trial
+            end
+        )
+    else
+        descend_placement!(current, problem, maxiter)
     end
-    descend_placement!(current, problem, maxiter)
 
     offsets .= (c -> c.offset).(current)
     return
+end
+
+function total_energy(problem::PlacementProblem)
+    return function (current)
+        placed = trues(length(current))
+        static = sum(c -> c.cost, current)
+        pairwise = sum(i -> placement_penalty(current[i], i, problem, current, placed), eachindex(current))
+        return static + pairwise / 2
+    end
 end
 
 function neighbor_lists(algorithm::CandidatePlacement, targets, text_bbs)
@@ -689,18 +711,22 @@ next_float(rng::LabelPlacementRNG) = Float64(next_uint(rng) >> 11) / 2.0^53
 
 function anneal_placement!(
         current, problem::PlacementProblem;
-        moves_per_stage = 300, max_moves_per_stage = 3000, max_stages = 50, cooling = 0.9, temperature = 300.0,
+        seed = 1, moves_per_stage = 300, max_moves_per_stage = 3000, max_stages = 50, cooling = 0.9, temperature = 300.0,
     )
     n = length(current)
     placed = trues(n)
-    rng = LabelPlacementRNG(0x9e3779b97f4a7c15)
+    rng = LabelPlacementRNG(0x9e3779b97f4a7c15 * UInt64(seed))
+    proposals = map(problem.candidates) do candidates
+        feasible = filter(c -> c.cost < OVERLAP_PENALTY, candidates)
+        isempty(feasible) ? candidates : feasible
+    end
     for _ in 1:max_stages
         conflicted = filter(i -> placement_penalty(current[i], i, problem, current, placed) > 0, 1:n)
         isempty(conflicted) && break
         accepted = 0
         for _ in 1:min(moves_per_stage * length(conflicted), max_moves_per_stage)
             i = conflicted[next_int(rng, length(conflicted))]
-            candidate = problem.candidates[i][next_int(rng, length(problem.candidates[i]))]
+            candidate = proposals[i][next_int(rng, length(proposals[i]))]
             candidate === current[i] && continue
             old_cost = current[i].cost + placement_penalty(current[i], i, problem, current, placed)
             new_cost = candidate.cost + placement_penalty(candidate, i, problem, current, placed)
@@ -734,7 +760,7 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
         leader_start = new_center - direction * halfextent_along(padded_bb, direction)
         cost = gap + algorithm.diagonalpenalty * sin(2 * angle)^2 +
             algorithm.centroidweight * norm(new_center - target) +
-            static_penalty(algorithm, box, leader_start, target, targets, neighbors, viewport)
+            static_penalty(algorithm, box, leader_start, target, gap, targets, neighbors, viewport)
         push!(candidates, LabelCandidate(offset, box, leader_start, cost))
     end
     return candidates
@@ -760,16 +786,23 @@ function leader_start_point(box::Rect2, target::Point2)
     return center + direction * min(halfextent_along(box, direction), nv)
 end
 
-function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, targets, neighbors, viewport)
+function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, gap, targets, neighbors, viewport)
     penalty = 0.0
     r = algorithm.pointradius
+    ambiguous = false
     for j in neighbors
         t = targets[j]
-        if rect_point_distance(box, t) < r
+        box_distance = rect_point_distance(box, t)
+        if box_distance < r
             penalty += OVERLAP_PENALTY
+        elseif box_distance < gap + algorithm.ambiguitymargin
+            ambiguous = true
         elseif segment_point_distance(leader_start, target, t) < r
             penalty += LEADER_POINT_PENALTY
         end
+    end
+    if ambiguous
+        penalty += AMBIGUITY_PENALTY * max(0.0, 1 - gap / AMBIGUITY_FADE_GAP)
     end
     outside = prod(widths(box)) - prod(widths(intersect_rects(box, viewport)))
     if outside > 0
