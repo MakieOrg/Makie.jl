@@ -2535,8 +2535,10 @@ end
 
     ax = Axis(f[1, 1])
 
+    algorithm = Makie.CandidatePlacement(rng = RNG.STABLE_RNG)
+
     scatter!(ax, points)
-    annotation!(ax, points, text = fruit)
+    annotation!(ax, points; text = fruit, algorithm)
 
     hidedecorations!(ax)
 
@@ -2544,7 +2546,7 @@ end
     ax2 = Axis(f[1, 2], yscale = log10, xscale = log10)
 
     scatter!(ax2, points2)
-    annotation!(ax2, points2, text = fruit)
+    annotation!(ax2, points2; text = fruit, algorithm)
 
     hidedecorations!(ax2)
 

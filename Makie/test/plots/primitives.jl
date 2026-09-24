@@ -238,7 +238,7 @@ end
 
     @testset "explicit algorithms" begin
         ps = Point2f.(1:10, 1:10)
-        for algorithm in (Makie.CandidatePlacement(), Makie.LabelRepel())
+        for algorithm in (Makie.CandidatePlacement(), Makie.CandidatePlacement(rng = Makie.Random.MersenneTwister(1)), Makie.LabelRepel())
             f, a, p = annotation(ps, text = string.(1:10); algorithm)
             @test length(p.offsets[]) == 10
             @test !all(iszero, p.offsets[])

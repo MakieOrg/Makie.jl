@@ -540,7 +540,7 @@ function place_labels!(
 end
 
 """
-    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, ambiguitymargin)
+    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, ambiguitymargin, restarts, rng)
 
 The default label placement algorithm of `annotation`. Each label is placed on one of a finite
 set of candidate positions around its target point. Candidates lie on rings with the given `gaps`
@@ -560,8 +560,9 @@ only act as obstacles for the remaining labels.
 
 Labels are first assigned greedily, most constrained first, then the assignment is improved by
 simulated annealing and finished with local descent, where every label is repeatedly moved to its
-cheapest candidate given all others. This is repeated `restarts` times with different random
-seeds and the layout with the lowest total cost is kept. Each of the `maxiter` iterations of `annotation` runs one
+cheapest candidate given all others. This is repeated `restarts` times and the layout with the
+lowest total cost is kept. The annealing draws from a copy of `rng`, so the same input always
+gives the same layout. Each of the `maxiter` iterations of `annotation` runs one
 descent pass over all labels, with the first one also running the greedy and annealing stages.
 """
 Base.@kwdef struct CandidatePlacement
@@ -573,6 +574,7 @@ Base.@kwdef struct CandidatePlacement
     centroidweight::Float64 = 0.15
     ambiguitymargin::Float64 = 8.0
     restarts::Int = 3
+    rng::Random.AbstractRNG = Random.Xoshiro(0)
 end
 
 const OVERLAP_PENALTY = 1000.0
@@ -626,10 +628,11 @@ function place_labels!(
 
     if all(iszero, offsets)
         greedy_placement!(current, problem)
+        rng = copy(algorithm.rng)
         current = argmin(
-            total_energy(problem), map(1:algorithm.restarts) do seed
+            total_energy(problem), map(1:algorithm.restarts) do _
                 trial = copy(current)
-                anneal_placement!(trial, problem; seed)
+                anneal_placement!(trial, problem, rng)
                 descend_placement!(trial, problem, maxiter - 1)
                 return trial
             end
@@ -713,31 +716,13 @@ function descend_placement!(current, problem::PlacementProblem, maxiter)
     return
 end
 
-# Own generator so layouts are reproducible across Julia versions, which Random's generators do not
-# guarantee. Knuth's MMIX linear congruential generator (a = 6364136223846793005,
-# c = 1442695040888963407, m = 2^64), whose low bits have short periods, so the output is scrambled
-# with the first xorshift-multiply step of the MurmurHash3 64-bit finalizer.
-mutable struct LabelPlacementRNG
-    state::UInt64
-end
-
-function next_uint(rng::LabelPlacementRNG)
-    rng.state = rng.state * 0x5851f42d4c957f2d + 0x14057b7ef767814f
-    x = rng.state
-    return (x ⊻ (x >> 33)) * 0xff51afd7ed558ccd
-end
-
-next_int(rng::LabelPlacementRNG, n::Int) = Int(next_uint(rng) % UInt64(n)) + 1
-next_float(rng::LabelPlacementRNG) = Float64(next_uint(rng) >> 11) / 2.0^53
-
 function anneal_placement!(
-        current, problem::PlacementProblem;
-        seed = 1, moves_per_stage = 100, max_moves_per_stage = 3000, max_stages = 50,
+        current, problem::PlacementProblem, rng::Random.AbstractRNG;
+        moves_per_stage = 100, max_moves_per_stage = 3000, max_stages = 50,
         cooling = 0.9, temperature = 300.0, min_temperature = 20.0,
     )
     n = length(current)
     placed = trues(n)
-    rng = LabelPlacementRNG(0x9e3779b97f4a7c15 * UInt64(seed)) # 2^64 / golden ratio spreads small seeds
     nproposals = map(problem.candidates) do candidates
         nfeasible = count(c -> c.cost < OVERLAP_PENALTY, candidates)
         nfeasible == 0 ? length(candidates) : nfeasible
@@ -751,13 +736,13 @@ function anneal_placement!(
         isempty(conflicted) && break
         accepted = 0
         for _ in 1:min(moves_per_stage * length(conflicted), max_moves_per_stage)
-            i = conflicted[next_int(rng, length(conflicted))]
-            candidate = problem.candidates[i][next_int(rng, nproposals[i])]
+            i = conflicted[rand(rng, 1:length(conflicted))]
+            candidate = problem.candidates[i][rand(rng, 1:nproposals[i])]
             candidate === current[i] && continue
             old_cost = current[i].cost + current_penalty(i)
             new_cost = candidate.cost + placement_penalty(candidate, i, problem, current, placed)
             delta = new_cost - old_cost
-            if delta <= 0 || next_float(rng) < exp(-delta / temperature)
+            if delta <= 0 || rand(rng) < exp(-delta / temperature)
                 current[i] = candidate
                 penalties[i] = NaN
                 penalties[problem.neighbors[i]] .= NaN
