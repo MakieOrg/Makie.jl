@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `annotation` now places labels with a candidate-based algorithm that avoids label overlaps, covered data points and crossing leader lines; the previous force-based algorithm is available as `algorithm = Makie.LabelRepel()` [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
 - Added `FastInterpolations` as the default `Resampler` interpolation backend for ~2-9x faster resampling; passing an `Interpolations` degree keeps the old behavior [#5706](https://github.com/MakieOrg/Makie.jl/pull/5706).
 - Fixed 2D CairoMakie meshes not anti-aliasing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
 - Fixed uniformly colored 2D CairoMakie meshes always rasterizing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)

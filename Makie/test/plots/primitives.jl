@@ -168,6 +168,64 @@ end
         @test length(p.plots[2].plots) == 5
     end
 
+    @testset "candidate placement layout" begin
+        targets = [Point2f(mod(137i, 500), mod(89i, 400)) for i in 1:40]
+        text_bbs = [Rect2d(-30, -8, 60, 16) + t for t in targets]
+        viewport = Rect2d(0, 0, 500, 400)
+        offsets = zeros(Vec2f, 40)
+        algorithm = Makie.CandidatePlacement()
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport; maxiter = Makie.automatic)
+
+        boxes = [Makie.pad_rect(algorithm, bb + o) for (bb, o) in zip(text_bbs, offsets)]
+        @test all(box -> box in viewport, boxes)
+        for i in 1:40, j in (i + 1):40
+            @test iszero(prod(widths(Makie.intersect_rects(boxes[i], boxes[j]))))
+        end
+        for i in 1:40, j in 1:40
+            i == j && continue
+            @test Makie.rect_point_distance(boxes[i], targets[j]) >= algorithm.pointradius
+        end
+
+        offsets_again = zeros(Vec2f, 40)
+        Makie.place_labels!(algorithm, offsets_again, targets, text_bbs, viewport; maxiter = Makie.automatic)
+        @test offsets_again == offsets
+
+        fill!(offsets, Vec2f(0))
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport; maxiter = 0)
+        @test all(iszero, offsets)
+    end
+
+    @testset "explicit algorithms" begin
+        ps = Point2f.(1:10, 1:10)
+        for algorithm in (Makie.CandidatePlacement(), Makie.LabelRepel())
+            f, a, p = annotation(ps, text = string.(1:10); algorithm)
+            @test length(p.offsets[]) == 10
+            @test !all(iszero, p.offsets[])
+        end
+    end
+
+    @testset "placement geometry" begin
+        rect = Rect2d(0, 0, 10, 4)
+        @test Makie.halfextent_along(rect, Vec2d(1, 0)) == 5
+        @test Makie.halfextent_along(rect, Vec2d(0, 1)) == 2
+        @test Makie.halfextent_along(rect, normalize(Vec2d(1, 1))) ≈ 2 * sqrt(2)
+        @test Makie.leader_start_point(rect, Point2d(20, 2)) == Point2d(10, 2)
+        @test Makie.leader_start_point(rect, Point2d(5, 2)) == Point2d(5, 2)
+
+        @test Makie.rect_point_distance(rect, Point2d(13, 8)) == 5
+        @test Makie.rect_point_distance(rect, Point2d(5, 2)) == 0
+        @test Makie.segment_point_distance(Point2d(0, 0), Point2d(10, 0), Point2d(5, 3)) == 3
+        @test Makie.segment_point_distance(Point2d(0, 0), Point2d(10, 0), Point2d(14, 3)) == 5
+
+        @test Makie.segments_cross(Point2d(0, 0), Point2d(2, 2), Point2d(0, 2), Point2d(2, 0))
+        @test !Makie.segments_cross(Point2d(0, 0), Point2d(2, 2), Point2d(3, 0), Point2d(3, 5))
+        @test Makie.segment_intersects_rect(Point2d(-5, 2), Point2d(15, 2), rect)
+        @test Makie.segment_intersects_rect(Point2d(5, 2), Point2d(15, 20), rect)
+        @test !Makie.segment_intersects_rect(Point2d(-5, 5), Point2d(15, 5), rect)
+        @test Makie.intersect_rects(rect, Rect2d(5, 2, 10, 10)) == Rect2d(5, 2, 5, 2)
+        @test widths(Makie.intersect_rects(rect, Rect2d(20, 20, 1, 1))) == Vec2d(0, 0)
+    end
+
     @testset "empty string at viewport center (no StackOverflow)" begin
         # Empty strings produce zero-size bounding boxes. When such a label
         # sits at the viewport center, the initial bias in
