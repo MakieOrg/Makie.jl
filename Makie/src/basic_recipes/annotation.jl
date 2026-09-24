@@ -789,6 +789,7 @@ end
 function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, gap, targets, neighbors, viewport)
     penalty = 0.0
     r = algorithm.pointradius
+    leader_clearance = r + minimum(algorithm.padding)
     ambiguous = false
     for j in neighbors
         t = targets[j]
@@ -797,7 +798,8 @@ function static_penalty(algorithm::CandidatePlacement, box, leader_start, target
             penalty += OVERLAP_PENALTY
         elseif box_distance < gap + algorithm.ambiguitymargin
             ambiguous = true
-        elseif segment_point_distance(leader_start, target, t) < r
+        end
+        if segment_point_distance(leader_start, target, t) < leader_clearance
             penalty += LEADER_POINT_PENALTY
         end
     end
