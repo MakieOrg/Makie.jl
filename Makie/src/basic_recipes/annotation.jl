@@ -576,8 +576,15 @@ const AMBIGUITY_FADE_GAP = 20.0
 struct LabelCandidate
     offset::Vec2d
     box::Rect2d
+    extent::Rect2d
     leader_start::Point2d
     cost::Float64
+end
+
+function label_candidate(offset, box, target, leader_start, cost)
+    lower = min.(minimum(box), target)
+    upper = max.(maximum(box), target)
+    return LabelCandidate(Vec2d(offset), box, Rect2d(lower, upper - lower), leader_start, cost)
 end
 
 struct PlacementProblem
@@ -651,7 +658,7 @@ function best_candidate(i, problem::PlacementProblem, current, placed; keep_curr
     best = current[i]
     best_cost = keep_current ? best.cost + placement_penalty(best, i, problem, current, placed) : Inf
     for c in problem.candidates[i]
-        c.cost >= best_cost && continue
+        c.cost >= best_cost && break
         cost = c.cost + placement_penalty(c, i, problem, current, placed; bound = best_cost - c.cost)
         if cost < best_cost
             best, best_cost = c, cost
@@ -733,7 +740,7 @@ function anneal_placement!(
             delta = new_cost - old_cost
             if delta <= 0 || next_float(rng) < exp(-delta / temperature)
                 current[i] = candidate
-                accepted += 1
+                accepted += delta != 0
             end
         end
         accepted == 0 && break
@@ -750,6 +757,8 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
     target = targets[i]
     padded_bb = pad_rect(algorithm, text_bb)
     center = Point2d(padded_bb.origin + 0.5 * padded_bb.widths)
+    reach = maximum(algorithm.gaps) + norm(widths(padded_bb)) + algorithm.pointradius + algorithm.ambiguitymargin
+    obstacles = filter(j -> norm(targets[j] - target) < reach, neighbors)
     candidates = LabelCandidate[]
     for gap in algorithm.gaps, k in 0:(algorithm.nangles - 1)
         angle = 2pi * k / algorithm.nangles
@@ -760,15 +769,15 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
         leader_start = new_center - direction * halfextent_along(padded_bb, direction)
         cost = gap + algorithm.diagonalpenalty * sin(2 * angle)^2 +
             algorithm.centroidweight * norm(new_center - target) +
-            static_penalty(algorithm, box, leader_start, target, gap, targets, neighbors, viewport)
-        push!(candidates, LabelCandidate(offset, box, leader_start, cost))
+            static_penalty(algorithm, box, leader_start, target, gap, targets, obstacles, viewport)
+        push!(candidates, label_candidate(offset, box, target, leader_start, cost))
     end
-    return candidates
+    return sort!(candidates, by = c -> c.cost)
 end
 
 function candidate_at_offset(algorithm::CandidatePlacement, text_bb, target, offset)
     box = pad_rect(algorithm, text_bb) + offset
-    return LabelCandidate(Vec2d(offset), box, leader_start_point(box, target), 0.0)
+    return label_candidate(offset, box, target, leader_start_point(box, target), 0.0)
 end
 
 function halfextent_along(rect::Rect2, direction::VecTypes{2})
@@ -786,12 +795,12 @@ function leader_start_point(box::Rect2, target::Point2)
     return center + direction * min(halfextent_along(box, direction), nv)
 end
 
-function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, gap, targets, neighbors, viewport)
+function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, gap, targets, obstacles, viewport)
     penalty = 0.0
     r = algorithm.pointradius
     leader_clearance = r + minimum(algorithm.padding)
     ambiguous = false
-    for j in neighbors
+    for j in obstacles
         t = targets[j]
         box_distance = rect_point_distance(box, t)
         if box_distance < r
@@ -819,6 +828,7 @@ function placement_penalty(c::LabelCandidate, i, problem::PlacementProblem, curr
     for j in problem.neighbors[i]
         placed[j] || continue
         other = current[j]
+        rects_disjoint(c.extent, other.extent) && continue
         overlap = prod(widths(intersect_rects(c.box, other.box)))
         if overlap > 0
             penalty += OVERLAP_PENALTY * (1 + overlap / 100)
@@ -837,6 +847,12 @@ function leader_label_penalty(leader_start, target, padded_box, padding)
     segment_intersects_rect(leader_start, target, padded_box) || return 0.0
     textbox = Rect2d(padded_box.origin .+ padding, padded_box.widths .- 2 * padding)
     return segment_intersects_rect(leader_start, target, textbox) ? CROSSING_PENALTY : CROSSING_PENALTY / 3
+end
+
+function rects_disjoint(a::Rect2, b::Rect2)
+    (al, ab), (ar, at) = extrema(a)
+    (bl, bb), (br, bt) = extrema(b)
+    return ar < bl || br < al || at < bb || bt < ab
 end
 
 function intersect_rects(a::Rect2, b::Rect2)

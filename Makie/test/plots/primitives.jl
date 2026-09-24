@@ -237,6 +237,9 @@ end
         @test Makie.segment_intersects_rect(Point2d(-5, 2), Point2d(15, 2), rect)
         @test Makie.segment_intersects_rect(Point2d(5, 2), Point2d(15, 20), rect)
         @test !Makie.segment_intersects_rect(Point2d(-5, 5), Point2d(15, 5), rect)
+        @test !Makie.rects_disjoint(rect, Rect2d(5, 2, 10, 10))
+        @test Makie.rects_disjoint(rect, Rect2d(11, 0, 10, 10))
+        @test Makie.label_candidate(Vec2d(0, 0), rect, Point2d(-5, 20), Point2d(0, 2), 0.0).extent == Rect2d(-5, 0, 15, 20)
         @test Makie.intersect_rects(rect, Rect2d(5, 2, 10, 10)) == Rect2d(5, 2, 5, 2)
         @test widths(Makie.intersect_rects(rect, Rect2d(20, 20, 1, 1))) == Vec2d(0, 0)
     end
