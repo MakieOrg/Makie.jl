@@ -336,7 +336,7 @@ function plot!(p::Annotation)
         broadcast_foreach(text_bbs, points, clipstart, offsets) do text_bb, p2, clipstart, offset
             offset_bb = text_bb + offset
 
-            p2 in offset_bb && return
+            rect_point_distance(offset_bb, p2) < sum(shrink) && return
             p1 = startpoint(path, offset_bb, p2)
             _path = connection_path(path, p1, p2)
 
@@ -557,7 +557,7 @@ seeds and the layout with the lowest total cost is kept. Each of the `maxiter` i
 descent pass over all labels, with the first one also running the greedy and annealing stages.
 """
 Base.@kwdef struct CandidatePlacement
-    gaps::Vector{Float64} = [4.0, 10.0, 18.0, 30.0, 48.0, 72.0, 104.0]
+    gaps::Vector{Float64} = [4.0, 10.0, 18.0, 30.0, 48.0, 72.0, 104.0, 150.0, 210.0]
     nangles::Int = 32
     padding::Vec2d = Vec2d(4, 3)
     pointradius::Float64 = 5.0
