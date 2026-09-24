@@ -528,14 +528,15 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
     # right, and any A/B of the two paths measures the first one twice.
     if old_int !== new_int && wants_hw_accel(old_int) != wants_hw_accel(new_int)
         close(old_int)
-        # Drop every plot's render object FIRST, while the old states are still
-        # alive to tear it down. `init_scene!` skips any plot that still has a
-        # `:trace_renderobject`, so emptying the states on their own rebuilds an
-        # EMPTY scene — `n_instances == 0`, and the next render returns a blank
-        # film in a few milliseconds without tracing anything.
+        # Drop every plot's render objects FIRST, while the old states are still
+        # alive to tear them down. `init_scene!` skips any plot that still holds
+        # a render object of EITHER renderer, so emptying the states on their
+        # own rebuilds an EMPTY scene — `n_instances == 0`, and the next render
+        # returns a blank film in a few milliseconds without tracing anything.
+        # Both slots: see `drop_render_objects!`.
         for rscene in collect_all_scenes_with_plots(scene), plot in rscene.plots
             Makie.for_each_atomic_plot(plot) do p
-                delete_trace_robj!(screen, p)
+                drop_render_objects!(screen, p)
             end
         end
         for ss in screen.scene_states

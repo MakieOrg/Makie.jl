@@ -821,9 +821,7 @@ function setrasterize!(screen, on::Bool)
         screen.state = ss
         Makie.for_each_atomic_plot(ss.makie_scene) do p
             haskey(p.attributes, :rasterize) || return nothing
-            delete_trace_robj!(screen, p)
-            delete!(p.attributes, :raster_renderobject, force = true, recursive = true)
-            delete!(p.attributes, :rasterize, force = true, recursive = true)
+            drop_render_objects!(screen, p)
             return nothing
         end
         ss.needs_film_clear = true
@@ -837,6 +835,28 @@ function setrasterize!(screen, on::Bool)
         end
     end
     return screen
+end
+
+"""
+    drop_render_objects!(screen, p)
+
+Tear down EVERY render object `p` holds, so the next `draw_atomic` builds it
+from scratch.
+
+Both slots. A plot that can go either way registers `:trace_renderobject` AND
+`:raster_renderobject`, one of them holding `nothing`, and `init_scene!` and
+`insert!` skip a plot holding EITHER key. Dropping only the trace slot, as the
+`hw_accel` switch did after the raster path was added, left every mesh skipped
+by the rebuild: an empty scene, a blank film, and no error. `:rasterize` goes
+with them because it is the input both nodes read, and `draw_atomic` adds it
+back with the screen's current value.
+"""
+function drop_render_objects!(screen, p::Makie.AbstractPlot)
+    delete_trace_robj!(screen, p)
+    for key in (:raster_renderobject, :rasterize)
+        haskey(p.attributes, key) && delete!(p.attributes, key, force = true, recursive = true)
+    end
+    return nothing
 end
 
 function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
