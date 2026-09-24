@@ -713,6 +713,10 @@ function descend_placement!(current, problem::PlacementProblem, maxiter)
     return
 end
 
+# Own generator so layouts are reproducible across Julia versions, which Random's generators do not
+# guarantee. Knuth's MMIX linear congruential generator (a = 6364136223846793005,
+# c = 1442695040888963407, m = 2^64), whose low bits have short periods, so the output is scrambled
+# with the first xorshift-multiply step of the MurmurHash3 64-bit finalizer.
 mutable struct LabelPlacementRNG
     state::UInt64
 end
@@ -733,7 +737,7 @@ function anneal_placement!(
     )
     n = length(current)
     placed = trues(n)
-    rng = LabelPlacementRNG(0x9e3779b97f4a7c15 * UInt64(seed))
+    rng = LabelPlacementRNG(0x9e3779b97f4a7c15 * UInt64(seed)) # 2^64 / golden ratio spreads small seeds
     nproposals = map(problem.candidates) do candidates
         nfeasible = count(c -> c.cost < OVERLAP_PENALTY, candidates)
         nfeasible == 0 ? length(candidates) : nfeasible
