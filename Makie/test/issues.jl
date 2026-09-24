@@ -114,7 +114,7 @@
     end
 
     @testset "#5024 no Linestyle warning in SpecApi" begin
-        f,a,p = plotlist(S.Lines(rand(10), linestyle = :dash))
+        f, a, p = plotlist(S.Lines(rand(10), linestyle = :dash))
         @test_logs p.plots[1].linestyle[]
     end
 end
