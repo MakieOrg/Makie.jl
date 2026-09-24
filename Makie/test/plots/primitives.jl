@@ -174,7 +174,7 @@ end
         viewport = Rect2d(0, 0, 500, 400)
         offsets = zeros(Vec2f, 40)
         algorithm = Makie.CandidatePlacement()
-        Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport; maxiter = Makie.automatic)
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport, fill(Vec2d(NaN), 40); maxiter = Makie.automatic)
 
         boxes = [Makie.pad_rect(algorithm, bb + o) for (bb, o) in zip(text_bbs, offsets)]
         @test all(box -> box in viewport, boxes)
@@ -187,11 +187,11 @@ end
         end
 
         offsets_again = zeros(Vec2f, 40)
-        Makie.place_labels!(algorithm, offsets_again, targets, text_bbs, viewport; maxiter = Makie.automatic)
+        Makie.place_labels!(algorithm, offsets_again, targets, text_bbs, viewport, fill(Vec2d(NaN), 40); maxiter = Makie.automatic)
         @test offsets_again == offsets
 
         fill!(offsets, Vec2f(0))
-        Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport; maxiter = 0)
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport, fill(Vec2d(NaN), 40); maxiter = 0)
         @test all(iszero, offsets)
     end
 
@@ -200,13 +200,39 @@ end
         text_bbs = [i % 4 == 0 ? Rect2d(-30, -8, 60, 16) + t : Rect2d(t, Vec2d(0, 0)) for (i, t) in enumerate(targets)]
         offsets = zeros(Vec2f, 40)
         algorithm = Makie.CandidatePlacement()
-        Makie.place_labels!(algorithm, offsets, targets, text_bbs, Rect2d(0, 0, 500, 400); maxiter = Makie.automatic)
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, Rect2d(0, 0, 500, 400), fill(Vec2d(NaN), 40); maxiter = Makie.automatic)
 
         @test all(i -> i % 4 == 0 || iszero(offsets[i]), 1:40)
         for i in 4:4:40, j in 1:40
             i == j && continue
             box = Makie.pad_rect(algorithm, text_bbs[i] + offsets[i])
             @test Makie.rect_point_distance(box, targets[j]) >= algorithm.pointradius
+        end
+    end
+
+    @testset "partially fixed labels" begin
+        ps = Point2f.(1:10, 1:10)
+        given = fill(Vec2f(NaN), 10)
+        given[3] = Vec2f(80, -40)
+        for algorithm in (Makie.CandidatePlacement(), Makie.LabelRepel())
+            f, a, p = annotation(given, ps, text = string.(1:10); algorithm)
+            Makie.update_state_before_display!(f)
+            @test p.offsets[][3] == Vec2f(80, -40)
+            @test all(i -> i == 3 || !iszero(p.offsets[][i]), 1:10)
+        end
+
+        targets = [Point2f(mod(137i, 500), mod(89i, 400)) for i in 1:40]
+        text_bbs = [Rect2d(-30, -8, 60, 16) + t for t in targets]
+        fixed = fill(Vec2d(NaN), 40)
+        fixed[1] = Vec2d(120, 90)
+        offsets = zeros(Vec2f, 40)
+        algorithm = Makie.CandidatePlacement()
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, Rect2d(0, 0, 500, 400), fixed; maxiter = Makie.automatic)
+        @test offsets[1] == Vec2f(120, 90)
+        fixed_box = Makie.pad_rect(algorithm, text_bbs[1] + offsets[1])
+        for i in 2:40
+            box = Makie.pad_rect(algorithm, text_bbs[i] + offsets[i])
+            @test iszero(prod(widths(Makie.intersect_rects(box, fixed_box))))
         end
     end
 

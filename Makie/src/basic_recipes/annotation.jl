@@ -443,21 +443,23 @@ function calculate_best_offsets!(
         offsets .= zero.(eltype(offsets))
     end
 
-    if all(!isnan, textpositions_offset)
-        offsets .= textpositions_offset .- textpositions
+    fixed = Vec2d.(textpositions_offset .- textpositions)
+    if all(is_fixed, fixed)
+        offsets .= fixed
         return
     end
-    # TODO: make it so some positions can be fixed and others are not (NaNs)
     # giving one component of the position could be cool, like only x in data space, but this
     # doesn't really work because projection into screen space needs x and y together
 
     algorithm = algorithm === automatic ? CandidatePlacement() : algorithm
-    return place_labels!(algorithm, offsets, textpositions, text_bbs, bbox; maxiter)
+    return place_labels!(algorithm, offsets, textpositions, text_bbs, bbox, fixed; maxiter)
 end
+
+is_fixed(offset::Vec2) = !any(isnan, offset)
 
 function place_labels!(
         algorithm::LabelRepel, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2},
-        text_bbs::Vector{<:Rect2}, bbox::Rect2; maxiter::Union{Automatic, Int},
+        text_bbs::Vector{<:Rect2}, bbox::Rect2, fixed::Vector{Vec2d}; maxiter::Union{Automatic, Int},
     )
 
     maxiter = maxiter === automatic ? 200 : maxiter
@@ -529,6 +531,10 @@ function place_labels!(
                 end
             end
         end
+
+        for i in eachindex(offsets)
+            is_fixed(fixed[i]) && (offsets[i] = fixed[i])
+        end
     end
     return
 end
@@ -549,6 +555,8 @@ between the label center and the point, which keeps labels compact around their 
 
 Labels with an empty bounding box, for example from empty strings, stay at their target and
 only act as obstacles, which allows labelling a subset of points while avoiding all of them.
+Labels with a given offset or position (all others being `NaN`) are fixed there and likewise
+only act as obstacles for the remaining labels.
 
 Labels are first assigned greedily, most constrained first, then the assignment is improved by
 simulated annealing and finished with local descent, where every label is repeatedly moved to its
@@ -596,7 +604,7 @@ end
 
 function place_labels!(
         algorithm::CandidatePlacement, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2},
-        text_bbs::Vector{<:Rect2}, bbox::Rect2; maxiter::Union{Automatic, Int},
+        text_bbs::Vector{<:Rect2}, bbox::Rect2, fixed::Vector{Vec2d}; maxiter::Union{Automatic, Int},
     )
     maxiter = maxiter === automatic ? 20 : maxiter
     n = length(offsets)
@@ -605,7 +613,9 @@ function place_labels!(
     targets = Point2d.(textpositions)
     neighbors = neighbor_lists(algorithm, targets, text_bbs)
     candidates = map(1:n) do i
-        if any(iszero, widths(text_bbs[i]))
+        if is_fixed(fixed[i])
+            [candidate_at_offset(algorithm, text_bbs[i], targets[i], fixed[i])]
+        elseif any(iszero, widths(text_bbs[i]))
             [candidate_at_offset(algorithm, text_bbs[i], targets[i], Vec2d(0))]
         else
             label_candidates(algorithm, targets, neighbors[i], i, text_bbs[i], bbox)
