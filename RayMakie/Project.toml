@@ -25,8 +25,8 @@ Raycore = "afc56b53-c9a9-482a-a956-d1d800e05559"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [sources]
-Mantle = {url = "https://github.com/SimonDanisch/Mantle.jl", rev = "sd/mantle-dev"}
-Hikari = {url = "https://github.com/JuliaGraphics/Hikari.jl", rev = "sd/vk-hw-accel"}
+Mantle = {url = "https://github.com/SimonDanisch/Mantle.jl", rev = "sd/lava-refactor"}
+Hikari = {url = "https://github.com/JuliaGraphics/Hikari.jl", rev = "sd/lava-refactor"}
 Raycore = {url = "https://github.com/JuliaGeometry/Raycore.jl", rev = "sd/with-texture"}
 
 [compat]
