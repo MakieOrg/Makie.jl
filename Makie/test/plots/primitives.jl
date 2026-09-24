@@ -195,6 +195,21 @@ end
         @test all(iszero, offsets)
     end
 
+    @testset "empty labels stay put as obstacles" begin
+        targets = [Point2f(mod(137i, 500), mod(89i, 400)) for i in 1:40]
+        text_bbs = [i % 4 == 0 ? Rect2d(-30, -8, 60, 16) + t : Rect2d(t, Vec2d(0, 0)) for (i, t) in enumerate(targets)]
+        offsets = zeros(Vec2f, 40)
+        algorithm = Makie.CandidatePlacement()
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, Rect2d(0, 0, 500, 400); maxiter = Makie.automatic)
+
+        @test all(i -> i % 4 == 0 || iszero(offsets[i]), 1:40)
+        for i in 4:4:40, j in 1:40
+            i == j && continue
+            box = Makie.pad_rect(algorithm, text_bbs[i] + offsets[i])
+            @test Makie.rect_point_distance(box, targets[j]) >= algorithm.pointradius
+        end
+    end
+
     @testset "explicit algorithms" begin
         ps = Point2f.(1:10, 1:10)
         for algorithm in (Makie.CandidatePlacement(), Makie.LabelRepel())

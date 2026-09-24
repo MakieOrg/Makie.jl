@@ -546,6 +546,9 @@ gap to the target. Positions straight above, below, left or right of the point a
 diagonal ones by `diagonalpenalty`, and `centroidweight` scales an additional cost for the distance
 between the label center and the point, which keeps labels compact around their points.
 
+Labels with an empty bounding box, for example from empty strings, stay at their target and
+only act as obstacles, which allows labelling a subset of points while avoiding all of them.
+
 Labels are first assigned greedily, most constrained first, then the assignment is improved by
 simulated annealing and finished with local descent, where every label is repeatedly moved to its
 cheapest candidate given all others. Each of the `maxiter` iterations of `annotation` runs one
@@ -588,7 +591,13 @@ function place_labels!(
 
     targets = Point2d.(textpositions)
     neighbors = neighbor_lists(algorithm, targets, text_bbs)
-    candidates = [label_candidates(algorithm, targets, neighbors[i], i, text_bbs[i], bbox) for i in 1:n]
+    candidates = map(1:n) do i
+        if any(iszero, widths(text_bbs[i]))
+            [candidate_at_offset(algorithm, text_bbs[i], targets[i], Vec2d(0))]
+        else
+            label_candidates(algorithm, targets, neighbors[i], i, text_bbs[i], bbox)
+        end
+    end
     problem = PlacementProblem(targets, candidates, neighbors, algorithm.padding)
     current = [candidate_at_offset(algorithm, text_bbs[i], targets[i], offsets[i]) for i in 1:n]
 
