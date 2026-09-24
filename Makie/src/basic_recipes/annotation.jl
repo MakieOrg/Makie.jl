@@ -348,6 +348,7 @@ function plot!(p::Annotation)
             clipped_path = clip_path_from_start(_path, clipstart)
 
             shrunk_path = shrink_path(clipped_path, shrink)
+            is_stub(shrunk_path, maximum(shrink)) && return
 
             append!(specs, annotation_style_plotspecs(style, shrunk_path, p1, p2; color, linewidth))
         end
@@ -972,6 +973,12 @@ function connection_path(ca::Ann.Paths.Arc, p1, p2)
     abs(ca.height) < 1.0e-4 && return connection_path(Ann.Paths.Line(), p1, p2)
     radius, center = arc_center_radius(p1, p2, ca.height)
     return BezierPath([MoveTo(p1), EllipticalArc(center, radius, radius, 0.0, atan(reverse(p1 - center)...), atan(reverse(p2 - center)...))])
+end
+
+function is_stub(path::BezierPath, minlength)
+    length(path.commands) < 2 && return true
+    start::MoveTo = path.commands[1]
+    return norm(endpoint(path.commands[end]) - start.p) < minlength
 end
 
 function shrink_path(path, shrink)
