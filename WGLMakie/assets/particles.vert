@@ -69,6 +69,8 @@ vec2 apply_uv_transform(sampler2D transforms, vec2 uv){
 }
 
 flat out uint frag_instance_id;
+// only used by mesh stroking, which meshscatter does not support
+flat out int o_triangle_index;
 
 vec4 to_color(bool c) { return vec4(0.0);}
 vec4 to_color(vec4 c) {
@@ -118,4 +120,5 @@ void main(){
     gl_Position = projection * view * position_world;
     gl_Position.z += gl_Position.w * get_depth_shift();
     frag_instance_id = uint(gl_InstanceID);
+    o_triangle_index = 0;
 }

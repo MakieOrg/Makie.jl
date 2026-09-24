@@ -608,7 +608,10 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) wher
         n = normals(coordinates(mesh), faces(mesh), normaltype = Vec3f)
     end
 
-    mesh = GeometryBasics.mesh(mesh, facetype = GLTriangleFace, pointtype = Point{N, float_type(T)}, normal = n)
+    # The original face type is kept so that stroking can distinguish real mesh edges
+    # from edges introduced by triangulation. Triangulation happens in the backends
+    # via the decomposed :faces attribute.
+    mesh = GeometryBasics.mesh(mesh, facetype = eltype(faces(mesh)), pointtype = Point{N, float_type(T)}, normal = n)
     mesh = GeometryBasics.expand_faceviews(mesh) # TODO: can we do this (more) in-place?
 
     return (mesh,)

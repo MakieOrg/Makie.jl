@@ -49,6 +49,7 @@ end
         include("plots/bracket.jl")
         include("plots/hist.jl")
         include("plots/poly.jl")
+        include("plots/mesh_stroke.jl")
         include("plots/contourf.jl")
         include("plots/voronoiplot.jl")
     end

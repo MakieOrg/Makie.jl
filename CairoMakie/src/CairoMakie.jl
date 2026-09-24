@@ -34,6 +34,7 @@ include("lines.jl")
 include("scatter.jl")
 include("image-hmap.jl")
 include("mesh.jl")
+include("mesh_rasterizer.jl")
 include("overrides.jl")
 
 function __init__()

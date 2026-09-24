@@ -275,6 +275,9 @@ uniform mat3 view_normalmatrix;
 out vec3 o_view_pos;
 out vec3 o_view_normal;
 
+// the fragment's own normalized device coordinates, for stroking
+noperspective out vec3 o_ndc;
+
 
 #if defined(FAST_SHADING) || defined(MULTI_LIGHT_SHADING)
 // transpose(inv(model))
@@ -296,6 +299,8 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
 
     // position in clip space (w/ depth)
     gl_Position = projection * view_pos;
+    // o_ndc before depth_shift so stroke depth comparisons match unshifted positions
+    o_ndc = gl_Position.xyz / gl_Position.w;
     gl_Position.z += gl_Position.w * depth_shift;
 
     // for lighting
@@ -322,6 +327,8 @@ void render(vec4 position_world, Nothing normal, mat4 view, mat4 projection)
 
     // position in clip space (w/ depth)
     gl_Position = projection * view_pos;
+    // o_ndc before depth_shift so stroke depth comparisons match unshifted positions
+    o_ndc = gl_Position.xyz / gl_Position.w;
     gl_Position.z += gl_Position.w * depth_shift;
 
     // lighting is irrelevant without normals
