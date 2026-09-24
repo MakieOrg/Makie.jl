@@ -371,6 +371,7 @@ Release all GPU resources held by the screen, including the integrator state,
 film, and preserved GPU arrays. Call this when done rendering to free GPU memory.
 """
 function Base.close(screen::Screen)
+    @debug "RayMakie: close(Screen) called" bt = stacktrace(backtrace())
     # Stop render loop if running
     screen.stop_renderloop[] = true
     if screen.rendertask !== nothing && !istaskdone(screen.rendertask)
@@ -1374,6 +1375,11 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
         yield()
         frame_count = 0
         last_time = time()
+        # Why the loop ended. A render loop that stops leaves the OS window up,
+        # frozen on its last frame, which is indistinguishable from a hang by
+        # looking at it — so the reason is recorded here and reported by the
+        # `finally` rather than being something to infer from the wreckage.
+        exit_reason = :stop_requested
         try
             # Present initial frame immediately (background + overlays, no raytracing)
             # so the window isn't black during kernel compilation / first sample.
@@ -1385,7 +1391,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             while !screen.stop_renderloop[]
                 GLFW.PollEvents()
                 screen.stop_renderloop[] && break
-                !isopen(win) && break
+                !isopen(win) && (exit_reason = :window_closed; break)
                 frame_count += 1
                 last_time = poll_glfw_events!(screen, root_scene, win.handle, frame_count, last_time)
 
@@ -1429,6 +1435,9 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                 @error "Render loop error" exception=(e, catch_backtrace())
             end
         finally
+            # Said out loud, at `frames` granularity: the window stays up and
+            # frozen after this, so silence here reads as a hang.
+            @info "RayMakie: render loop ended" reason = exit_reason frames = screen.frames_presented[]
             screen.stop_renderloop[] = true
             # Both are caught because this is a `finally`: throwing here would
             # replace whatever actually ended the loop with a teardown error.
