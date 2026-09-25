@@ -18,18 +18,16 @@ export Wait
 export relative_pos
 export textbox_offset_pos
 
-@recipe(Cursor) do scene
-    Theme(
-        color = :black,
-        strokecolor = :white,
-        strokewidth = 1,
-        width = 10,
-        notch = 2,
-        shaftwidth = 2.5,
-        shaftlength = 4,
-        headlength = 12,
-        multiplier = 1,
-    )
+@recipe Cursor begin
+    color = :black
+    strokecolor = :white
+    strokewidth = 1
+    width = 10
+    notch = 2
+    shaftwidth = 2.5
+    shaftlength = 4
+    headlength = 12
+    multiplier = 1
 end
 
 function Makie.plot!(p::Cursor)
@@ -374,7 +372,7 @@ function textbox_offset_pos(tb, offset::Integer)
     local_x = if off < n
         origins[off + 1][1]
     else
-        adv = Float32(text_plot.glyph_extents[][n].hadvance) * text_plot.text_scales[][n][1]
+        adv = Float32(text_plot.glyph_extents[][n].hadvance) * text_plot.glyph_scales[][n][1]
         origins[n][1] + adv
     end
     local_y = origins[glyph_idx][2]

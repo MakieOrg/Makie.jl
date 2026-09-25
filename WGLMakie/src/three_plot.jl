@@ -73,7 +73,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     done_init = Observable{Any}(nothing)
     if is_offline
         # For offline connections, we have to serialize immediately
-        # Since we cant do any round trip communication
+        # Since we can't do any round trip communication
         scene_serialized[] = serialize_scene(scene)
     else
         # Query the real canvas size (resize_to) from JS first, resize the scene to
@@ -101,8 +101,8 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     canvas = DOM.m(
         "canvas";
         tabindex = "0",
-        # Set with/height to have a good inital size - might not match the final size with scaling etc, but this
-        # will be adjusted in JS - this helps with less re-layoting
+        # Set with/height to have a good initial size - might not match the final size with scaling etc,
+        # but this will be adjusted in JS - this helps with less re-layouting
         width = "$(width)px",
         height = "$(height)px",
         style = "display: block",

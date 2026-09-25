@@ -288,7 +288,7 @@ function apply_model(model::Mat4, transformed::Rect{N, T}) where {N, T}
         b = scale .* maximum(transformed) .+ trans
         return Rect{N, T}(min.(a, b), abs.(a .- b))
     else
-        for input in corners(transformed)
+        for input in coordinates(transformed)
             output = apply_model(model, input)
             bb = update_boundingbox(bb, output)
         end

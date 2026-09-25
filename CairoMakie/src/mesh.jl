@@ -19,13 +19,11 @@ function cairo_project_to_screen(
         attr;
         input_name = :positions_transformed_f32c, yflip = true, output_type = Point2f
     )
-    Makie.register_computation!(
+    map!(
         attr,
-        [:projectionview, :resolution, :model_f32c, input_name], [:cairo_screen_pos]
-    ) do inputs, changed, cached
-
-        output = cairo_project_to_screen_impl(values(inputs)..., output_type, yflip)
-        return (output,)
+        [:projectionview, :resolution, :model_f32c, input_name], :cairo_screen_pos
+    ) do inputs...
+        return cairo_project_to_screen_impl(inputs..., output_type, yflip)
     end
 
     return attr[:cairo_screen_pos][]
@@ -47,8 +45,21 @@ function draw_mesh2D(scene, screen, attr::ComputeGraph)
     fs = attr.faces[]
     uv = attr.texturecoordinates[]
     uv_transform = attr.pattern_uv_transform[]
+    # FRAGILE: access the raw user-provided uv_transform before the compute graph
+    # converts LinePattern → Sampler. This depends on ComputeGraph internals.
+    raw_uv_transform = haskey(attr.inputs, :uv_transform) ? attr.inputs[:uv_transform].value : Makie.automatic
     if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
+    end
+    # Check raw color before compute_colors, since the compute graph
+    # rasterizes AbstractPattern (including LinePattern) to a Sampler,
+    # losing the vector-drawable LinePattern struct.
+    color_attr = attr.color[]
+    # Only use vector hatch path for default uv_transform. If the user provides
+    # an explicit uv_transform, preserve existing rasterized pattern semantics.
+    if color_attr isa Makie.LinePattern && raw_uv_transform === Makie.automatic
+        offset = linepattern_offset(scene, attr.model[])
+        return draw_mesh2D(screen.context, color_attr, vs, fs, offset)
     end
     color = compute_colors(attr)
     cols = per_face_colors(color, nothing, fs, nothing, uv)
@@ -161,6 +172,16 @@ function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::V
     Cairo.fill(ctx)
 
     pattern_set_matrix(pattern, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    return nothing
+end
+
+function draw_mesh2D(
+        ctx::Cairo.CairoContext, pattern::Makie.LinePattern, vs::Vector,
+        fs::Vector{GLTriangleFace}, offset::VecTypes{2}
+    )
+    draw_linepattern_fill!(ctx, pattern, offset) do
+        mesh_union_path!(ctx, vs, fs)
+    end
     return nothing
 end
 

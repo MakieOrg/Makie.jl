@@ -275,7 +275,7 @@ function equalize_histogram(matrix; nbins = 256)
 end
 
 """
-    datashader(points::AbstractVector{<: Point})
+Data shader for large point datasets.
 
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized.
@@ -288,9 +288,15 @@ using Makie.StructArrays
 points = StructArray{Point2f}((x, y))
 datashader(points)
 ```
-Do pay attention though, that if x and y don't have a fast iteration/getindex implemented, this might be slower than just copying the data into a new array.
+Do pay attention though, that if x and y don't have a fast iteration/getindex implemented,
+this might be slower than just copying the data into a new array.
 
-For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -tauto` or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
+For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -tauto`
+or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
+
+## Arguments
+
+* `points` An `AbstractVector{<:Point}` containing the point data to visualize via aggregation.
 """
 @recipe DataShader (points,) begin
     """
@@ -383,7 +389,7 @@ function canvas_computation!(p::DataShader)
             canvas.bounds = lims64
         end
         has_changed = has_changed || isnothing(last)
-        return has_changed ? (canvas,) : nothing
+        return has_changed ? (canvas,) : skip_update
     end
 end
 
@@ -393,18 +399,22 @@ function Makie.plot!(p::DataShader{<:Tuple{<:AbstractVector{<:Point}}})
     add_input!(p.attributes, :pixel_area, scene.viewport)
     canvas_computation!(p)
 
-    register_computation!(p, [:points, :point_transform], [:data_limits]) do (points, f), _, _
-        return (fast_bb(points, f),)
+    map!(p, [:points, :point_transform], :data_limits) do points, f
+        return fast_bb(points, f)
     end
 
-    register_computation!(p, [:canvas, :points, :point_transform, :method, :colorrange], [:canvas_with_aggregation, :raw_colorrange]) do (canvas, points, f, method, crange), changed, _
+    map!(
+        p,
+        [:canvas, :points, :point_transform, :method, :colorrange],
+        [:canvas_with_aggregation, :raw_colorrange]
+    ) do canvas, points, f, method, crange
         Aggregation.aggregate!(canvas, points; point_transform = f, method = method)
         if crange isa Automatic
             cr = Vec2f(distinct_extrema_nan(canvas.data_extrema))
         else
             cr = Vec2f(crange)
         end
-        return (canvas, cr)
+        return canvas, cr
     end
     image!(
         p, p.canvas_with_aggregation, p.operation, p.local_operation;
@@ -443,9 +453,9 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     add_axis_limits!(p)
     add_input!(p.attributes, :pixel_area, scene.viewport)
     canvas_computation!(p)
-    register_computation!(p, [:points, :point_transform], [:data_limits]) do (categories, f), _, _
+    map!(p, [:points, :point_transform], :data_limits) do categories, f
         rects = map(points -> fast_bb(points, f), values(categories))
-        return (reduce(union, rects),)
+        return reduce(union, rects)
     end
     categories = p.points[]
     canvas = p.canvas[]
@@ -454,14 +464,14 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
             for (k, v) in categories
     )
 
-    register_computation!(p, [:canvas, :points], [:canvas_with_aggregation, :total_value]) do (canvas, cats), _, _
+    map!(p, [:canvas, :points], [:canvas_with_aggregation, :total_value]) do canvas, cats
         for (k, c) in canvases
             Base.resize!(c, canvas.resolution)
             c.bounds = canvas.bounds
         end
         aggregate_categories!(canvases, cats; method = p.method[])
         total_value = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
-        return (canvases, total_value)
+        return canvases, total_value
     end
     # sorted, so that colors, draw order and legend entries don't depend on the
     # hash order of the category dict
@@ -480,7 +490,9 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
 end
 
 data_limits(p::DataShader)::Rect3d = p.data_limits[]
-boundingbox(p::DataShader, space::Symbol = :data)::Rect3d = apply_transform_and_model(p, p.data_limits[])
+function boundingbox(p::DataShader, space::Symbol = :data)::Rect3d
+    return apply_transform_and_model(p, p.data_limits[])
+end
 
 function convert_arguments(P::Type{<:Union{MeshScatter, Image, Surface, Contour, Contour3d}}, canvas::Canvas, operation = automatic, local_operation = identity)
     pixel = Aggregation.get_aggregation(canvas; operation = operation, local_operation = local_operation)
@@ -494,6 +506,7 @@ struct FakePlot <: AbstractPlot{Poly}
 end
 Base.getindex(x::FakePlot, key::Symbol) = getindex(getfield(x, :attributes), key)
 
+# This allows datashader to create multiple legend entries, one for each category
 function get_plots(plot::DataShader)
     return map(plot._categories[]) do (name, color)
         return FakePlot(Attributes(; plot = plot, label = name, color = color))
@@ -501,7 +514,7 @@ function get_plots(plot::DataShader)
 end
 
 function legendelements(plot::FakePlot, legend)
-    return [PolyElement(; plots = plot.attributes.plot[], color = plot.attributes.color, strokecolor = legend.polystrokecolor, strokewidth = legend.polystrokewidth)]
+    return [PolyElement(; color = plot.attributes.color, strokecolor = legend.polystrokecolor, strokewidth = legend.polystrokewidth)]
 end
 
 # Sadly we must define the colorbar here and can't use the default fallback,
@@ -646,8 +659,7 @@ function calculated_attributes!(::Type{Heatmap}, plot::HeatmapShader)
     return
 end
 
-extract_colormap_recursive(plot::HeatmapShader) = extract_colormap_recursive(plot.plots[1])
-
+extract_colormap(plot::HeatmapShader) = extract_colormap(plot.plots[1])
 
 function resample_image(x, y, image, max_resolution, limits)
     # extent of the image in data coordinates (same as limits)
@@ -658,7 +670,7 @@ function resample_image(x, y, image, max_resolution, limits)
     vmini = minimum(visible_rect)
     vw = widths(visible_rect)
     if !(visible_rect in data_rect) || any(w -> w <= 0, vw)
-        return nothing
+        return skip_nothing
     end
 
     # (xmin, ymin), (xmax, ymax)
@@ -676,7 +688,7 @@ function resample_image(x, y, image, max_resolution, limits)
         return LinRange(max(1, indices[1]), min(indices[2], si), len)
     end
     if isempty(x_index_range) || isempty(y_index_range)
-        return nothing
+        return skip_nothing
     end
     interpolated = image(x_index_range, y_index_range)
     return EndPoints{Float32}(ranges[1]), EndPoints{Float32}(ranges[2]), interpolated
@@ -743,9 +755,12 @@ function Makie.plot!(p::HeatmapShader)
 
     map!(xy_to_rect, p.attributes, [:x, :y], :data_limits)
 
-
     T = eltype(p.image[].data) <: Colors.Colorant ? RGB{Float32} : Float32
-    map!(p.attributes, [:image, :x, :y, :max_resolution, :data_limits, :colorrange], [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]) do image, x, y, max_resolution, image_area, crange
+    map!(
+        p.attributes,
+        [:image, :x, :y, :max_resolution, :data_limits, :colorrange],
+        [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]
+    ) do image, x, y, max_resolution, image_area, crange
         x, y, img = resample_image(x, y, image.data, max_resolution, image_area)
         cr = calculate_colorrange(img, crange)
         if image.lowres_background
@@ -764,7 +779,7 @@ function Makie.plot!(p::HeatmapShader)
         init = (p.x[], p.x[], fill(zero(T), 2, 2), false)
     ) do image, x, y, max_resolution, limits
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
-        isnothing(xe_ye_oimg) && return nothing
+        xe_ye_oimg === skip_update && return skip_update
         return (xe_ye_oimg..., true)
     end
 
@@ -780,6 +795,8 @@ function Makie.plot!(p::HeatmapShader)
         p, p.lx_endpoints, p.ly_endpoints, p.limit_image;
         gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange, visible = p.l_visible,
     )
+
+    notify(ComputePipeline.get_observable!(p.axis_limits))
 
     return p
 end

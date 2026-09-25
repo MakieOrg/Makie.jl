@@ -1,23 +1,9 @@
-################################################################################
-#                              DocStringExtension                              #
-################################################################################
-
-############################################################
-#                        Attributes                        #
-############################################################
-
-struct DocThemer <: DocStringExtensions.Abbreviation end
-
-const ATTRIBUTES = DocThemer()
-
-function DocStringExtensions.format(::DocThemer, buf, doc)
-    binding = doc.data[:binding] |> Docs.resolve
-    return help_attributes(buf, binding; extended = true)
-end
-
 ############################################################
 #                        Instances                         #
 ############################################################
+
+# This allows you to add `$INSTANCES` in a docstring of an enum to splice in
+# a table of the enum names and values
 
 struct DocInstances <: DocStringExtensions.Abbreviation end
 
@@ -43,21 +29,3 @@ function DocStringExtensions.format(::DocInstances, buf, doc)
     # print the Markdown table into the buffer
     return show(buf, Markdown.MD(Markdown.Table(rows, [:l, :l])))
 end
-
-# """
-# A lolly instead of a lol!
-#
-# $(INSTANCES)
-# """
-# @enum Lolly Pop Bang Snap Crackle Jerk
-#
-# @doc Lolly
-# A lolly instead of a lol!
-#
-# Instance Value
-# –––––––– –––––
-# Pop      0
-# Bang     1
-# Snap     2
-# Crackle  3
-# Jerk     4

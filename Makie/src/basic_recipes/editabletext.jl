@@ -181,8 +181,8 @@ end
 function cursor_anchor_positions(
         glyph_origins::AbstractVector{<:VecTypes{3}},
         glyph_extents::AbstractVector{GlyphExtent},
-        text_scales::AbstractVector{Vec2f},
-        font::Makie.NativeFont,
+        glyph_scales::AbstractVector{Vec2f},
+        font::NativeFont,
         fontsize::Float32, lineheight::Float32,
         align::Tuple, trailing_newline::Bool,
     )::CursorAnchors
@@ -190,8 +190,8 @@ function cursor_anchor_positions(
     # A single font is in use, so the font-level ascender / descender apply to
     # every glyph (including the empty-editor case). FreeType gives them in
     # font units; multiply by `fontsize` to get pixels.
-    ascender = Float32(Makie.FreeTypeAbstraction.ascender(font) * fontsize)
-    descender = Float32(Makie.FreeTypeAbstraction.descender(font) * fontsize)
+    ascender = Float32(FreeTypeAbstraction.ascender(font) * fontsize)
+    descender = Float32(FreeTypeAbstraction.descender(font) * fontsize)
 
     n = length(glyph_origins)
     if n == 0
@@ -223,7 +223,7 @@ function cursor_anchor_positions(
         # Trailing newline: extrapolate to the start of the empty next line.
         anchors[n + 1] = Point2f(0, glyph_origins[n][2] - line_h)
     else
-        adv = Float32(glyph_extents[n].hadvance) * text_scales[n][1]
+        adv = Float32(glyph_extents[n].hadvance) * glyph_scales[n][1]
         anchors[n + 1] = Point2f(glyph_origins[n][1] + adv, glyph_origins[n][2])
     end
     return CursorAnchors(anchors, ascender, descender, line_h)
@@ -539,7 +539,7 @@ end
 # Recipe `plot!`
 ################################################################################
 
-function Makie.plot!(plot::EditableText)
+function plot!(plot::EditableText)
     text_plot = text!(
         plot, plot.position; text = plot.text,
         color = plot.color, font = plot.font, fonts = plot.fonts,
@@ -548,7 +548,6 @@ function Makie.plot!(plot::EditableText)
         space = plot.space, markerspace = :pixel,
         visible = plot.visible, inspectable = false,
     )
-    Makie.register_markerspace_positions!(text_plot, Point2f)
 
     # The block's projected pixel position. `text!` always renders one block
     # per position vector, so `only` matches that invariant — it errors if the
@@ -559,7 +558,7 @@ function Makie.plot!(plot::EditableText)
 
     anchors_obs = lift(
         text_plot.glyph_origins, text_plot.glyph_extents,
-        text_plot.text_scales, text_plot.selected_font, plot.fontsize, plot.lineheight, plot.align,
+        text_plot.glyph_scales, text_plot.selected_font, plot.fontsize, plot.lineheight, plot.align,
     ) do origins, extents, scales, font, fontsize, lh, align
         # `plot.text` is the upstream input that drives `glyph_origins`, so by
         # the time this lift fires the text observable is already up to date.
@@ -632,7 +631,7 @@ function Makie.plot!(plot::EditableText)
     last_edit_time = Observable(0.0)
     cursor_visible_obs = Observable(plot.focused[]; ignore_equal_values = true)
 
-    parent = Makie.parent_scene(plot)
+    parent = parent_scene(plot)
     push!(
         plot.deregister_callbacks, on(events(parent).tick) do tick
             cursor_visible_obs[] = if !plot.focused[]
@@ -722,7 +721,7 @@ function attach_editabletext_events!(
             event.button == Mouse.left || return Consume(false)
 
             if event.action == Mouse.press
-                mpos = Makie.mouseposition_px(parent)
+                mpos = mouseposition_px(parent)
                 if plot.manage_focus[]
                     # Auto-focus on clicks within the text bbox; auto-defocus
                     # on clicks outside.
@@ -793,7 +792,7 @@ function attach_editabletext_events!(
             anchor = drag_anchor[]
             anchor === nothing && return Consume(false)
             Mouse.left in events(parent).mousebuttonstate || return Consume(false)
-            mpos = Makie.mouseposition_px(parent)
+            mpos = mouseposition_px(parent)
             head = _mouse_to_offset(Point2f(mpos))
             cursors = plot.cursors[]
             # Only rewrite the last cursor (the one created by the press) so prior
@@ -959,7 +958,7 @@ function is_click_inside_text(text_plot, plot, mpos)
     # Best-effort: use `markerspace_positions` and pad by half the font size
     # so an empty editor still receives clicks at its anchor point.
     bbs = try
-        Makie.fast_string_boundingboxes(text_plot)
+        fast_string_boundingboxes(text_plot)
     catch
         nothing
     end

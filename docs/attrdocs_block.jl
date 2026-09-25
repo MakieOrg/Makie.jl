@@ -16,25 +16,23 @@ function DocumenterVitepress.render(io::IO, mime::MIME"text/plain", node::Markdo
     return DocumenterVitepress.render(io, mime, node, node.children, page, doc; kwargs...)
 end
 
-function attrs_examples_docs_defaults(type::Type{<:Makie.Block})
-    attrkeys = sort(collect(keys(Makie.default_attribute_values(type, nothing))))
+function attrs_examples_docs_defaults(type::Type{<:Union{Makie.Plot, Makie.Block}})
+    attr = Makie.documented_attributes(type)
 
+    attrkeys = sort(copy(attr.merged_keys))
     all_examples = Makie.attribute_examples(type)
-    all_docs = Makie._attribute_docs(type)
-    all_defaults = Makie.attribute_default_expressions(type)
+    all_docs = Dict(Pair.(attr.merged_keys, something.(attr.leaf_docstring, "No docs available")))
+    all_defaults = Dict(Pair.(attr.merged_keys, attr.default_expr))
 
-    return (; attrkeys, all_examples, all_docs, all_defaults)
-end
-
-function attrs_examples_docs_defaults(type::Type{<:Makie.Plot})
-
-    docatt = Makie.documented_attributes(type)
-    metadata = docatt.d
-
-    attrkeys = sort(collect(keys(metadata)))
-    all_examples = Makie.attribute_examples(type)
-    all_docs = Dict([(attr => something(meta.docstring, "No docs available.")) for (attr, meta) in metadata])
-    all_defaults = Dict([(attr => meta.default_expr) for (attr, meta) in metadata])
+    # for reference, if we want to include docstrings from intermediate keys
+    # i.e. the :outer in plot.outer.inner
+    # for keytable in attr.nesting.keytables
+    #     for (key, idx) in keytable
+    #         if idx > 0
+    #             push!(all_docs, key => attr.nested_docstring[idx])
+    #         end
+    #     end
+    # end
 
     return (; attrkeys, all_examples, all_docs, all_defaults)
 end

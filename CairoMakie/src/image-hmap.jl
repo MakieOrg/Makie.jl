@@ -8,20 +8,19 @@ Heatmap:
 
 function image_grid!(::typeof(heatmap), attr)
     Makie.add_computation!(attr, nothing, Val(:heatmap_transform))
-    return register_computation!(attr, [:x_transformed_f32c, :y_transformed_f32c], [:grid_x, :grid_y]) do (x, y), _, _
-        xs = regularly_spaced_array_to_range(x)
-        ys = regularly_spaced_array_to_range(y)
-        return (xs, ys)
+    return map!(attr, [:x_transformed_f32c, :y_transformed_f32c], [:grid_x, :grid_y, :is_regular_grid]) do x, y
+        is_regularly_spaced_grid = is_regularly_spaced(x) && is_regularly_spaced(y)
+        return (collect(x), collect(y), is_regularly_spaced_grid)
     end
 end
 
 function image_grid!(::typeof(image), attr)
     # Rect vertices
-    return register_computation!(attr, [:positions_transformed_f32c, :image], [:grid_x, :grid_y]) do (positions, image), _, _
+    return map!(attr, [:positions_transformed_f32c, :image], [:grid_x, :grid_y, :is_regular_grid]) do positions, image
         (x0, y0), _, (x1, y1), _ = positions
         xs = range(x0, x1, length = size(image, 1) + 1)
         ys = range(y0, y1, length = size(image, 2) + 1)
-        return (xs, ys)
+        return (xs, ys, true)
     end
 end
 
@@ -37,7 +36,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, plot::Union{Heatmap, Imag
     imagelike_uv_transform!(attr)
     Makie.compute_colors!(attr)
     inputs = [
-        :grid_x, :grid_y, :image,
+        :grid_x, :grid_y, :is_regular_grid, :image,
         :interpolate, :space, :projectionview, :model_f32c,
         :clip_planes, :cairo_uv_transform, :resolution, :computed_color,
     ]
@@ -81,7 +80,7 @@ function draw_image(ctx, not_svg, attr)
     is_vector = is_vector_backend(ctx)
     # transform_func is already included in xs, ys, so we can see its effect in is_regular_grid
     is_identity_transform = Makie.is_translation_scale_matrix(model)
-    is_regular_grid = xs isa AbstractRange && ys isa AbstractRange
+    is_regular_grid = attr.is_regular_grid
     is_xy_aligned = Makie.is_translation_scale_matrix(projectionview)
 
     if interpolate
@@ -105,7 +104,7 @@ function draw_image(ctx, not_svg, attr)
         (interpolate || is_xy_aligned) && isempty(clip_planes)
 
 
-    return if can_use_fast_path
+    if can_use_fast_path
         s = to_cairo_image(color_image)
 
         weird_cairo_limit = (2^15) - 23
@@ -161,30 +160,22 @@ function draw_image(ctx, not_svg, attr)
         end
         _draw_rect_heatmap(ctx, xys, ni, nj, color_image)
     end
+    return
 end
 
+is_regularly_spaced(::AbstractRange) = true
 
-"""
-    regularly_spaced_array_to_range(arr)
-If possible, converts `arr` to a range.
-If not, returns array unchanged.
-"""
-function regularly_spaced_array_to_range(arr)
-    diffs = unique!(sort!(diff(arr)))
-    step = sum(diffs) ./ length(diffs)
-    if all(x -> x ≈ step, diffs)
-        m, M = extrema(arr)
-        if step < zero(step)
-            m, M = M, m
-        end
-        # don't use stop=M, since that may not include M
-        return range(m; step = step, length = length(arr))
-    else
-        return arr
+function is_regularly_spaced(arr)
+    length(arr) < 2 && return true
+    mindiff = Inf
+    maxdiff = -Inf
+    for i in 2:length(arr)
+        diff = arr[i] - arr[i - 1]
+        mindiff = min(mindiff, diff)
+        maxdiff = max(maxdiff, diff)
     end
+    return maxdiff ≈ mindiff
 end
-
-regularly_spaced_array_to_range(arr::AbstractRange) = arr
 
 function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
     return @inbounds for i in 1:ni, j in 1:nj

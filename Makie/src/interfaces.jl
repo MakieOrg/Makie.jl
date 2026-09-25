@@ -1,5 +1,5 @@
 const atomic_functions = (
-    text, meshscatter, scatter, mesh, linesegments,
+    glyphs, meshscatter, scatter, mesh, linesegments,
     lines, surface, volume, heatmap, image, voxels,
 )
 const Atomic{Arg} = Union{map(x -> Plot{x, Arg}, atomic_functions)...}
@@ -192,8 +192,18 @@ function handle_transformation!(plot, parent)
     # TODO: Consider removing Transformation() and handling this in compute graph
     # connect updates
     # TODO: These should not be added as inputs. But how do we update them otherwise?
+    # A `model` matrix keyword drives the input directly and permanently: the
+    # transformation then only supplies `transform_func` and the z value CairoMakie
+    # sorts by, so such a plot is placed and re-placed through plain `model` updates,
+    # which is how `text` places its spec children. Non-matrix values (`automatic`
+    # forwarded by recipes) mean the transformation drives the model as usual.
+    user_model = to_value(pop!(plot.kw, :model, nothing))
     if haskey(plot, :model) && haskey(plot.attributes.inputs, :model)
-        on(model -> update!(plot, model = model), plot, transformationmatrix(plot), update = true)
+        if user_model isa AbstractMatrix
+            update!(plot, model = Mat4d(user_model))
+        else
+            on(model -> update!(plot, model = model), plot, transformationmatrix(plot), update = true)
+        end
     else
         add_input!(plot.attributes, :model, transformationmatrix(plot))
     end
@@ -207,25 +217,13 @@ function handle_transformation!(plot, parent)
     return
 end
 
+notify_onplot(scene::Scene, plot::Plot) = scene.onplot[] = true => plot
+notify_onplot(::Plot, ::Plot) = nothing
+notify_onplot(scene, plot::Plot) = @error("Did not notify scene of plot when adding $plot to $scene")
+
 function plot!(scene::SceneLike, plot::Plot)
     connect_plot!(scene, plot)
     push!(scene, plot)
+    notify_onplot(scene, plot)
     return plot
-end
-
-function apply_theme!(scene::Scene, plot::P) where {P <: Plot}
-    raw_attr = attributes(plot.attributes)
-    plot_theme = default_theme(scene, P)
-    plot_sym = plotsym(P)
-    if haskey(theme(scene), plot_sym)
-        merge_without_obs_reverse!(plot_theme, theme(scene, plot_sym))
-    end
-    for (k, v) in plot.kw
-        if v isa NamedTuple
-            raw_attr[k] = Attributes(v)
-        else
-            raw_attr[k] = convert(Observable{Any}, v)
-        end
-    end
-    return merge!(plot.attributes, plot_theme)
 end

@@ -46,12 +46,10 @@ end
 
 expand_dimensions(::PointBased, y::Categorical) = (keys(y.values), y)
 needs_tick_update_observable(conversion::CategoricalConversion) = conversion.category_to_int
-should_dim_convert(::Type{Categorical}) = true
 create_dim_conversion(::Type{Categorical}) = CategoricalConversion(; sortby = identity)
 
 # Support enums as categorical per default
 expand_dimensions(::PointBased, y::AbstractVector{<:Enum}) = (keys(y), y)
-should_dim_convert(::Type{<:Enum}) = true
 create_dim_conversion(::Type{<:Enum}) = CategoricalConversion(; sortby = identity)
 
 function recalculate_categories!(conversion::CategoricalConversion)
@@ -144,8 +142,11 @@ function convert_dim_value(conversion::CategoricalConversion, attr, values, prev
     return convert_categorical.(Ref(conversion), unwrapped_values)
 end
 
+# TODO: Does it make sense to allow discarding all the categorical information
+# and go back to default tick finding?
+show_dim_convert_in_ticklabel(::CategoricalConversion) = true
 
-function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, vmin, vmax)
+function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     scale != identity && error("Scale $(scale) not supported for categorical conversion")
     if ticks isa Automatic
         # TODO, do we want to support leaving out conversion? Right now, every category will become a tick
@@ -156,6 +157,18 @@ function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, v
     end
     # TODO filter out ticks greater vmin vmax?
     numbers = convert_dim_value.(Ref(conversion), categories)
-    labels_str = formatter isa Automatic ? string.(categories) : get_ticklabels(formatter, categories)
-    return numbers, labels_str
+    if show_in_label
+        labels_str = formatter isa Automatic ? string.(categories) : get_ticklabels(formatter, categories)
+        return numbers, labels_str
+    else
+        vmin, vmax = extrema(numbers)
+        return get_ticks(ticks, scale, formatter, vmin, vmax)
+    end
 end
+
+show_dim_convert_in_axis_label(::CategoricalConversion) = false
+
+# TODO:
+# Allow this to succeed so x/ylabel_suffix can be used?
+# Or just error and force people to use x/ylabel instead?
+get_label_suffix(dc::CategoricalConversion) = ""

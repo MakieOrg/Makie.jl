@@ -858,6 +858,7 @@ export function pick_native(scene, _x, _y, _w, _h, apply_ppu=true) {
     const [x, y, w, h] = [_x, _y, _w, _h];
     // render the scene
     renderer.setRenderTarget(picking_target);
+    renderer.clear();
     set_picking_uniforms(scene, 1, true);
     const rendered = render_scene(scene, true);
     if (!rendered) {
@@ -905,6 +906,7 @@ export function get_picking_buffer(scene) {
     const [w, h] = [picking_target.width, picking_target.height];
     // render the scene
     renderer.setRenderTarget(picking_target);
+    renderer.clear();
     set_picking_uniforms(scene, 1, true);
     const rendered = render_scene(scene, true);
     if (!rendered) {

@@ -155,9 +155,9 @@ function get_shader!(cache::ShaderCache, src::ShaderSource, template_replacement
     end::Shader
 end
 
-function get_template!(cache::ShaderCache, src::ShaderSource, view, attributes)
+function get_template!(cache::ShaderCache, src::ShaderSource, view, uniforms, buffers)
     return get!(cache.template_cache, src.name) do
-        templated_source, replacements = template2source(src.source, view, attributes)
+        templated_source, replacements = template2source(src.source, view, uniforms, buffers)
         shader = compile_shader(cache.context, src, templated_source)
         template_keys = collect(keys(replacements))
         template_replacements = collect(values(replacements))
@@ -197,36 +197,36 @@ function compile_program(shaders::Vector{Shader}, fragdatalocation)
 end
 
 function get_view(kw_dict)
-    _view = kw_dict[:view]
+    _view = kw_dict[:view]::Dict{String, String}
     extension = Sys.isapple() ? "" : "#extension GL_ARB_draw_instanced : enable\n"
     _view["GLSL_EXTENSION"] = extension * get(_view, "GLSL_EXTENSIONS", "")
     _view["GLSL_VERSION"] = glsl_version_string()
     return _view
 end
 
-gl_convert(::GLContext, lazyshader::AbstractLazyShader, data) = error("gl_convert shader")
-function gl_convert(ctx::GLContext, lazyshader::LazyShader, data)
-    return gl_convert(ctx, lazyshader.shader_cache, lazyshader, data)
+gl_convert(::GLContext, lazyshader::AbstractLazyShader, uniforms, buffers) = error("gl_convert shader")
+function gl_convert(ctx::GLContext, lazyshader::LazyShader, uniforms, buffers)
+    return gl_convert(ctx, lazyshader.shader_cache, lazyshader, uniforms, buffers)
 end
 
-function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazyShader, data)
+function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazyShader, uniforms, buffers)
     require_context(cache.context, ctx)
     kw_dict = lazyshader.kw_args
     paths = lazyshader.paths
 
     v = get_view(kw_dict)
-    fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int, String}[])
+    fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int, String}[])::Vector{Tuple{Int, String}}
 
     template_keys = Vector{Vector{String}}(undef, length(paths))
     replacements = Vector{Vector{String}}(undef, length(paths))
 
     for (i, shader_source) in enumerate(paths)
-        template = get_template!(cache, shader_source, v, data)
+        template = get_template!(cache, shader_source, v, uniforms, buffers)
         template_keys[i] = template
-        replacements[i] = String[mustache2replacement(t, v, data) for t in template]
+        replacements[i] = String[mustache2replacement(t, v, uniforms, buffers) for t in template]
     end
 
-    return get!(cache.program_cache, (paths, replacements)) do
+    program = get!(cache.program_cache, (paths, replacements)) do
         # when we're here, this means there were uncached shaders, meaning we definitely have
         # to compile a new program
         shaders = Vector{Shader}(undef, length(paths))
@@ -237,6 +237,8 @@ function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazy
         gl_switch_context!(cache.context)
         return compile_program(shaders, fragdatalocation)
     end
+
+    return program
 end
 
 function insert_from_view(io, replace_view::Function, keyword::AbstractString)
@@ -301,33 +303,48 @@ function mustache_replace(replace_view::Union{Dict, Function}, string)
     return String(take!(io))
 end
 
+# 90ns replace("texturecoordinates_type", "_type) vs 24ns with this
+# ~25µs in display(scatter(rand(10)))
+function maybe_remove_postfix(name::AbstractString, postfix::AbstractString)
+    if endswith(name, postfix)
+        return name[1:(end - length(postfix))]
+    end
+    return name
+end
 
-function mustache2replacement(mustache_key, view, attributes)
+function mustache2replacement(mustache_key, view, uniforms, buffers::Dict{Symbol, GLBuffer})
     haskey(view, mustache_key) && return view[mustache_key]
-    for postfix in ("_type", "_calculation")
-        keystring = replace(mustache_key, postfix => "")
-        keysym = Symbol(keystring)
-        if haskey(attributes, keysym)
-            val = attributes[keysym]
-            if !isa(val, AbstractString)
-                if postfix == "_type"
-                    return toglsltype_string(val)::String
-                else
-                    postfix == "_calculation"
-                    return glsl_variable_access(keystring, val)
-                end
-            end
-        end
+    postfix = ""
+    if endswith(mustache_key, "_type")
+        postfix = "_type"
+    elseif endswith(mustache_key, "_calculation")
+        postfix = "_calculation"
+    end
+    keystring = maybe_remove_postfix(mustache_key, postfix)
+    keysym = cached_Symbol(keystring)
+    if haskey(buffers, keysym)
+        return mustache2replacement_inner(keystring, postfix, buffers[keysym])
+    elseif haskey(uniforms, keysym)
+        return mustache2replacement_inner(keystring, postfix, uniforms[keysym])
     end
     return ""
     # error("No match found: $(mustache_key)")
 end
 
+mustache2replacement_inner(keystring, postfix, val::AbstractString) = ""
+function mustache2replacement_inner(keystring, postfix, @nospecialize(val))
+    if postfix == "_type"
+        return toglsltype_string(val)::String
+    else
+        return glsl_variable_access(keystring, val)::String
+    end
+end
+
 # Takes a shader template and renders the template and returns shader source
-function template2source(source::AbstractString, view, attributes::Dict{Symbol, Any})
+function template2source(source::AbstractString, view, uniforms::Dict{Symbol, Any}, buffers)
     replacements = Dict{String, String}()
     source = mustache_replace(source) do mustache_key
-        r = mustache2replacement(mustache_key, view, attributes)
+        r = mustache2replacement(mustache_key, view, uniforms, buffers)
         replacements[mustache_key] = r
         return r
     end

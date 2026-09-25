@@ -108,3 +108,21 @@ end
         @test_throws ErrorException set_directional_light!(a, color = RGBf(0, 0, 1))
     end
 end
+
+@testset "onplot" begin
+    scene = Scene()
+    p = scatter!(scene, rand(10))
+    @test scene.onplot[] == Pair(true, p)
+    p2 = scatterlines!(scene, rand(10))
+    @test scene.onplot[] == Pair(true, p2)
+    delete!(scene, p)
+    @test scene.onplot[] == Pair(false, p)
+    p3 = lines!(scene, rand(10))
+    @test scene.onplot[] == Pair(true, p3)
+    buffer = []
+    on(x -> push!(buffer, x), scene.onplot)
+    Makie.free(scene)
+    @test Pair(false, p2) in buffer
+    @test Pair(false, p3) in buffer
+    @test length(buffer) == 2
+end

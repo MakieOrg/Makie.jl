@@ -165,7 +165,7 @@ function initialize_block!(sl::Slider)
     end
 
     # trigger autosize through linewidth for first layout
-    notify(sl.linewidth)
+    notify(ComputePipeline.get_observable!(sl.linewidth))
     return sl
 end
 

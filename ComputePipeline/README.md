@@ -14,7 +14,7 @@ graph = ComputeGraph()
 
 # add inputs
 add_input!(graph, :input1, 1)
-add_input!((key, value) -> Float32(value), graph, :input2, 2) # directly converts
+add_input!(Float32, graph, :input2, 2) # directly converts
 
 # add computations (edges + output nodes)
 register_computation!(graph, [:input1, :input2], [:output]) do inputs, changed, last_output

@@ -1,9 +1,17 @@
 """
-    volumeslices(x, y, z, v)
+Draws heatmap slices visualizing an xy, yz and xz plane of the volume data v.
 
-Draws heatmap slices of the volume `v`.
+## Arguments
+
+* `x, y, z, v` Defines the extends of the volume with `x, y, z` (any type that implements `extrema`)
+    and the volume data `v` (an `AbstractArray{3, Real}`).
 """
-@recipe VolumeSlices (x, y, z, volume) begin
+@recipe VolumeSlices (
+    x::RangeLike{<:Real},
+    y::RangeLike{<:Real},
+    z::RangeLike{<:Real},
+    volume::AbstractArray{<:Union{Real, Colorant}, 3},
+) begin
     documented_attributes(Heatmap)...
     "Controls whether the bounding box outline is visible"
     bbox_visible = true
@@ -18,6 +26,8 @@ Draws heatmap slices of the volume `v`.
     yz_index = 1
 end
 
+argument_dims(::Type{<:VolumeSlices}, x, y, z, vol) = (1, 2, 3)
+
 expand_volumeslices_arg(xs, N, name) = to_linspace(xs, N)
 function expand_volumeslices_arg(xs::Union{Vector, AbstractRange}, N, name)
     length(xs) == N || throw(ArgumentError("$name value should have $N entries but have $(length(xs))."))
@@ -27,7 +37,7 @@ end
 # TODO: VolumeSlices is mostly cell based but the data_limits and frame are
 # act like it is edge based. Which do we want? If we switch to edge based we
 # can also use VolumeLike() with its expand_dimensions() instead of this:
-function convert_arguments(::Type{<:VolumeSlices}, data)
+function convert_arguments(::Type{<:VolumeSlices}, data::AbstractArray{T, 3}) where {T}
     return (axes(data, 1), axes(data, 2), axes(data, 3), data)
 end
 

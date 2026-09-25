@@ -3,6 +3,7 @@
 Makie can render LaTeX strings from the [LaTeXStrings.jl](https://github.com/stevengj/LaTeXStrings.jl) package using [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
 
 While this engine is responsive enough for use in GLMakie, it only supports a subset of LaTeX's most used commands.
+Other engines can be plugged in through the [`text_handler` attribute](https://docs.makie.org/stable/reference/plots/text/index.html#text_handlers), for example to render `LaTeXString`s with a full TeX installation instead.
 
 ## Using L-strings
 
