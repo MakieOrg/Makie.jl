@@ -2,20 +2,14 @@
 # draw_atomic for Makie.Mesh
 # =============================================================================
 #
-# A Mesh has two render paths chosen per-frame by `should_raytrace(scene, plot)`:
+# A Mesh has two render paths, each with its own node, chosen per frame by
+# `screen.rasterize` and `should_raytrace(scene, plot)`:
 #
-#   - Trace path:   push to Hikari scene, BLAS/HWTLAS-traced.
-#                   Returns NamedTuple (handle, mat_idx, material, instance_idx).
-#   - Overlay path: rasterized on top of the rendered film via Lava graphics
-#                   pipeline. Returns a RenderObject.
-#
-# A single :trace_renderobject node delegates to:
-#
-#   mesh_trace_create!  / mesh_trace_update!     (trace path)
-#   mesh_overlay_create! / mesh_overlay_update!  (overlay path)
-#
-# `last.trace_renderobject` carries enough information (RenderObject vs
-# NamedTuple with :handle) to detect a path switch and force a re-create.
+#   - :trace_renderobject   pushed to the Hikari scene and traced; a NamedTuple
+#                           (handle, mat_idx, material, instance_idx).
+#   - :raster_renderobject  drawn through the port of GLMakie's mesh shader in
+#                           overlay/mesh.jl, dispatched on the material; a
+#                           RenderObject.
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
     attr = plot.attributes
@@ -52,20 +46,15 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
         return (mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, last_robj),)
     end
 
-    # `:projectionview` is in the RASTER list and not the trace one: a raster
-    # object bakes the camera into its arguments, so a camera move has to re-run
-    # the node, while the tracer reads the camera per sample from the scene
-    # state. The matrix itself still comes from `plot_clip_matrix`, which asks
-    # what SPACE the plot declares; the attribute is here to say when to ask.
-    register_computation!(attr,
-        [:mesh, :positions_transformed_f32c, :faces, :normals,
-         :texturecoordinates, :trace_color_tex, :model_f32c, :material, :rasterize,
-         :projectionview],
-        [:raster_renderobject]) do args, changed, last
+    # The camera is in the RASTER list and not the trace one: a raster object
+    # bakes it into its arguments, so a camera move has to re-run the node, while
+    # the tracer reads the camera per sample from the scene state.
+    register_raster_mesh_nodes!(plot)
+    register_computation!(attr, RASTER_MESH_DEPS, [:raster_renderobject]) do args, changed, last
         israster = args.rasterize || !should_raytrace(scene, plot) || isnothing(hikari_scene)
         israster || return (nothing,)
         last_robj = isnothing(last) ? nothing : last.raster_renderobject
-        return (mesh_overlay_dispatch!(screen, scene, plot, args, last_robj),)
+        return (mesh_overlay_dispatch!(screen, scene, plot, args, changed, last_robj),)
     end
 end
 
@@ -223,7 +212,7 @@ plot_clip_matrix(plot) =
                               Makie.to_value(get(plot, :space, :data))))
 
 """
-    mesh_overlay_dispatch!(screen, scene, plot, args, last_robj)
+    mesh_overlay_dispatch!(screen, scene, plot, args, changed, last_robj)
 
 The RASTER path for a mesh, dispatched ON THE MATERIAL.
 
@@ -233,8 +222,8 @@ elements, so on this side it selects a MESH SHADER that subdivides them, the
 same way it selects procedural geometry on the other — one type, one decision,
 two paths. Everything else draws the triangles it was given.
 """
-mesh_overlay_dispatch!(screen, scene, plot, args, last_robj) =
-    mesh_overlay_dispatch!(overlay_material(plot), screen, scene, plot, args, last_robj)
+mesh_overlay_dispatch!(screen, scene, plot, args, changed, last_robj) =
+    mesh_overlay_dispatch!(overlay_material(plot), screen, scene, plot, args, changed, last_robj)
 
 """The material a plot draws with on the raster path, or `nothing`."""
 function overlay_material(plot)
@@ -242,94 +231,339 @@ function overlay_material(plot)
     return to_value(plot.material)
 end
 
-function mesh_overlay_dispatch!(::Any, screen, scene, plot, args, last_robj)
-    flat_positions, flat_colors = mesh_overlay_flat_arrays(plot, args)
-    pv = plot_clip_matrix(plot)
-    model_mat = Mat4f(args.model_f32c)
-
-    if last_robj isa RenderObject
-        return mesh_overlay_update!(last_robj, flat_positions, flat_colors, pv, model_mat)
-    end
-    return mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat)
+function mesh_overlay_dispatch!(::Any, screen, scene, plot, args, changed, last_robj)
+    return mesh_raster!(screen, plot, args, changed, last_robj)
 end
 
-# Build per-vertex (flat) position and color arrays for graphics pipeline.
-# Faces are expanded into 3 vertices each so the pipeline can use a
-# non-indexed draw.  Colors track the user's `plot.color` semantics:
-# per-vertex, per-face/per-group, scalar Colorant, or a fallback.
+# -----------------------------------------------------------------------------
+# Raster path: the ported GLMakie mesh shader (overlay/mesh.jl)
+# -----------------------------------------------------------------------------
+
 """
-    rastergeometry(material, plot, args) -> (positions, faces, color)
-
-What the overlay rasterises, colour included.
-
-The plot's own triangles and `plot.color`, unless the material carries geometry
-— see `Hikari.GeneratedGeometry`. Geometry and colour come back together
-because they have to agree: triangles from one source and a colour array sized
-for another is a silent mismatch, and there is no third place that knows both.
+Everything the raster node reads. The plot's own nodes, the four GLMakie also
+registers per mesh (normal matrices, packed stroke data, clip planes), and the
+scene's lights as plot inputs, so a light change re-runs the node.
 """
-rastergeometry(::Any, plot, args) =
-    (map(p -> Makie.to_ndim(Point3f, p, 0f0), args.positions_transformed_f32c),
-     args.faces, to_value(plot.color))
+const RASTER_MESH_DEPS = [
+    :positions_transformed_f32c, :faces, :normals, :texturecoordinates, :model_f32c,
+    :material, :rasterize,
+    :scaled_color, :alpha_colormap, :scaled_colorrange, :color_mapping_type,
+    :lowclip_color, :highclip_color, :nan_color, :interpolate_in_fragment_shader,
+    :interpolate, :pattern_uv_transform, :fetch_pixel, :matcap,
+    :shading, :diffuse, :specular, :shininess, :backlight, :depth_shift,
+    :world_normalmatrix, :view_normalmatrix,
+    :strokewidth, :strokecolor, :stroke_data_packed,
+    :uniform_clip_planes, :uniform_num_clip_planes,
+    :view, :projection, :eyeposition, :resolution, :viewport,
+    :raster_ambient, :raster_light_color, :raster_light_direction,
+    :raster_N_lights, :raster_light_types, :raster_light_colors, :raster_light_parameters,
+    :raster_env_sh, :raster_has_env,
+]
 
-function rastergeometry(material::Hikari.GeneratedGeometry, plot, args)
+# Plot input => scene node. Prefixed, not GLMakie's `:ambient`, `:light_types`, …:
+# GLMakie force-deletes those on a plot it displays, and with them every node
+# that depends on them, so a figure shown by both backends would lose this one.
+const RASTER_LIGHT_NODES = (
+    :raster_ambient => :ambient_color, :raster_light_color => :dirlight_color,
+    :raster_light_direction => :dirlight_final_direction,
+    :raster_N_lights => :N_lights, :raster_light_types => :light_types,
+    :raster_light_colors => :light_colors, :raster_light_parameters => :light_parameters,
+    :raster_env_sh => :raster_env_sh, :raster_has_env => :raster_has_env,
+)
+
+function register_raster_mesh_nodes!(plot)
+    attr = plot.attributes
+    haskey(attr, :world_normalmatrix) || Makie.register_world_normalmatrix!(attr)
+    haskey(attr, :view_normalmatrix) || Makie.register_view_normalmatrix!(attr)
+    Makie.register_stroke_data!(attr)
+    haskey(attr, :uniform_clip_planes) || Makie.add_computation!(attr, Val(:uniform_clip_planes))
+    scene = Makie.parent_scene(plot)
+    register_raster_lights!(scene)
+    for (plotkey, scenekey) in RASTER_LIGHT_NODES
+        haskey(attr, plotkey) || add_input!(attr, plotkey, scene.compute[scenekey])
+    end
+    return
+end
+
+function register_raster_lights!(scene)
+    graph = scene.compute
+    # GLMakie's defaults for `max_lights` and `max_light_parameters`.
+    haskey(graph, :N_lights) || Makie.register_multi_light_computation(scene, 64, 5 * 64)
+    haskey(graph, :raster_env_sh) ||
+        Makie.ComputePipeline.map!(environment_sh, graph, :lights, [:raster_env_sh, :raster_has_env])
+    return
+end
+
+"""
+    environment_sh(lights) -> (Mat{3,9,Float32}, Int32)
+
+The scene's `EnvironmentLight`s as nine spherical-harmonic coefficients of their
+irradiance over π, which is what `env_irradiance` in overlay/mesh.jl evaluates.
+
+The map is read the way the tracer reads it (`Hikari.EnvironmentMap`: equal-area
+square, a 2:1 image converted), and each texel of that square covers the same
+solid angle, so the projection is a plain sum. The radiance is `intensity *
+image`, Makie's meaning: a white map of intensity 1 lights a white surface to 1.
+"""
+function environment_sh(lights)
+    sh = zeros(Float32, 3, 9)
+    has = false
+    for light in lights
+        light isa Makie.EnvironmentLight || continue
+        has = true
+        project_environment!(sh, light)
+    end
+    # The clamped cosine's band weights, π, 2π/3 and π/4, over π.
+    sh[:, 2:4] .*= 2f0 / 3f0
+    sh[:, 5:9] .*= 0.25f0
+    return (Mat{3, 9, Float32}(sh), Int32(has))
+end
+
+function project_environment!(sh, light::Makie.EnvironmentLight)
+    data = map(c -> Hikari.RGBSpectrum(Float32(red(c)), Float32(green(c)), Float32(blue(c))), light.image)
+    env = Hikari.EnvironmentMap(data, Hikari.rotation_matrix(light.rotation_angle, light.rotation_axis))
+    n = size(env.data, 1)
+    dω = Float32(4π) / Float32(n * n)
+    scale = Float32(light.intensity) * dω
+    for j in 1:n, i in 1:n
+        d = Hikari.uv_to_direction_equal_area(Point2f((i - 0.5f0) / n, (j - 0.5f0) / n), env.rotation)
+        c = env.data[j, i].c
+        x, y, z = d[1], d[2], d[3]
+        basis = (0.282095f0, 0.488603f0 * y, 0.488603f0 * z, 0.488603f0 * x,
+                 1.092548f0 * x * y, 1.092548f0 * y * z, 0.315392f0 * (3f0 * z * z - 1f0),
+                 1.092548f0 * x * z, 0.546274f0 * (x * x - y * y))
+        for k in 1:9, ch in 1:3
+            sh[ch, k] += scale * c[ch] * basis[k]
+        end
+    end
+    return sh
+end
+
+"""
+    raster_geometry(material, args) -> NamedTuple
+
+What the raster path draws: the plot's own triangles, or a `GeneratedGeometry`'s
+tessellation.
+"""
+function raster_geometry(::Any, args)
+    return (positions = map(p -> Vec3f(Makie.to_ndim(Point3f, p, 0f0)), args.positions_transformed_f32c),
+            faces = args.faces, normals = args.normals, uvs = args.texturecoordinates,
+            color = args.scaled_color)
+end
+
+function raster_geometry(material::Hikari.GeneratedGeometry, args)
     mesh = Hikari.tessellate(material)
-    # `color` is an optional vertex attribute, and whether a mesh has one is in
-    # its TYPE — so this folds away. A material that colours its own triangles
-    # says so by attaching them; one that does not falls back to the plot's.
-    colour = hasproperty(mesh, :color) ? mesh.color : to_value(plot.color)
-    return (map(p -> Makie.to_ndim(Point3f, p, 0f0), GeometryBasics.coordinates(mesh)),
-            GeometryBasics.faces(mesh), colour)
+    return (positions = map(p -> Vec3f(p[1], p[2], p[3]), GeometryBasics.coordinates(mesh)),
+            faces = GeometryBasics.faces(mesh),
+            normals = hasproperty(mesh, :normal) ? mesh.normal : nothing,
+            uvs = hasproperty(mesh, :uv) ? mesh.uv : nothing,
+            color = hasproperty(mesh, :color) ? mesh.color : args.scaled_color)
 end
 
-function mesh_overlay_flat_arrays(plot, args)
-    positions_3f, faces_val, raw_color = rastergeometry(overlay_material(plot), plot, args)
-    return mesh_overlay_flat_from(plot, args, positions_3f, faces_val, raw_color)
+# Makie's packed stroke data describes the plot's own triangles, not generated ones.
+raster_strokes(::Any) = true
+raster_strokes(::Hikari.GeneratedGeometry) = false
+
+rgba4(c) = (c = RGBA{Float32}(c); Vec4f(c.r, c.g, c.b, c.alpha))
+
+"""
+Where the colour comes from, as GLMakie's `add_mesh_color_attributes!` decides
+it, and what that needs uploaded.
+"""
+function raster_color(color, args, npositions)
+    none = Vec4f(0, 0, 0, 1)
+    if args.matcap !== nothing
+        return (source = COLOR_MATCAP, uniform = none, texture = texeldata(args.matcap), wrap = :clamp)
+    elseif color isa Colorant
+        return (source = COLOR_UNIFORM, uniform = rgba4(color), texture = nothing, wrap = :clamp)
+    elseif color isa Makie.ShaderAbstractions.Sampler || color isa AbstractMatrix{<:Colorant}
+        img = color isa Makie.ShaderAbstractions.Sampler ? color.data : color
+        pattern = args.fetch_pixel::Bool
+        return (source = pattern ? COLOR_PATTERN : COLOR_IMAGE, uniform = none,
+                texture = texeldata(img), wrap = pattern ? :repeat : :clamp)
+    elseif color isa AbstractVector{<:Colorant}
+        length(color) == npositions || throw(ArgumentError(
+            "mesh: $(length(color)) colours for $npositions vertices; RASTER mode needs one per vertex"))
+        return (source = COLOR_VERTEX, uniform = none, texture = nothing, wrap = :clamp)
+    elseif color isa AbstractMatrix{<:Real}
+        return (source = COLOR_IMAGE_CMAP, uniform = none,
+                texture = map(v -> (Float32(v), 0f0, 0f0, 1f0), color), wrap = :clamp)
+    elseif color isa AbstractArray{<:Real, 3}
+        throw(ArgumentError("mesh: a 3D texture colour is not supported in RASTER mode"))
+    elseif color isa AbstractVector{<:Real}
+        return (source = args.interpolate_in_fragment_shader ? COLOR_VERTEX_CMAP_FRAG : COLOR_VERTEX_CMAP,
+                uniform = none, texture = nothing, wrap = :clamp)
+    elseif color isa Real
+        c = get_color_from_cmap(Float32(color), raster_colormap(args), Vec2f(args.scaled_colorrange),
+                                Int32(args.color_mapping_type === Makie.continuous),
+                                rgba4(args.lowclip_color), rgba4(args.highclip_color), rgba4(args.nan_color))
+        return (source = COLOR_UNIFORM, uniform = c, texture = nothing, wrap = :clamp)
+    end
+    throw(ArgumentError("mesh: RASTER mode cannot draw a colour of type $(typeof(color))"))
 end
 
-function mesh_overlay_flat_from(plot, args, positions_3f, faces_val, raw_color)
-    n_verts = length(positions_3f)
-    n_faces = length(faces_val)
+raster_colormap(args) = args.alpha_colormap === nothing ? Vec4f[Vec4f(0, 0, 0, 1)] : rgba4.(args.alpha_colormap)
 
-    flat_positions = Vector{Vec3f}(undef, 3 * n_faces)
-    @inbounds for (fi, f) in enumerate(faces_val), j in 1:3
-        flat_positions[3 * (fi - 1) + j] = positions_3f[f[j]]
+# A buffer the stage indexes must exist even when nothing reads it.
+nonempty(v::AbstractVector{T}) where {T} = isempty(v) ? T[zero(T)] : v
+
+function raster_faces(faces)
+    out = Vector{UInt32}(undef, 3 * length(faces))
+    @inbounds for (i, f) in enumerate(faces), j in 1:3
+        out[3 * (i - 1) + j] = UInt32(Base.to_index(f[j]))
+    end
+    return out
+end
+
+raster_uv_transform(t::Mat{2, 3}) = Mat{2, 3, Float32}(t)
+raster_uv_transform(::Nothing) = Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0)
+
+function shading_code(mode)
+    mode === Makie.FastShading && return SHADING_FAST
+    mode === Makie.MultiLightShading && return SHADING_MULTI
+    return SHADING_NONE
+end
+
+"""
+    raster_shading(screen, plot, args) -> (uniforms, buffers)
+
+The lighting, film mapping and stroke state every lit raster surface is shaded
+with. A material that draws its own geometry (a mesh stage) passes these to the
+same `illuminate` and `apply_stroke` the mesh shader calls.
+"""
+function raster_shading(screen, plot, args)
+    config = screen.config
+    ambient = RGBf(args.raster_ambient)
+    lc = RGBf(args.raster_light_color)
+    uniforms = (
+        eyeposition = Vec3f(args.eyeposition),
+        shading_mode = shading_code(Makie.get_shading_mode(plot)),
+        ambient = Vec3f(ambient.r, ambient.g, ambient.b),
+        light_color = Vec3f(lc.r, lc.g, lc.b),
+        light_direction = Vec3f(args.raster_light_direction),
+        N_lights = Int32(args.raster_N_lights),
+        has_env = args.raster_has_env,
+        env_sh = args.raster_env_sh,
+        diffuse = Vec3f(args.diffuse), specular = Vec3f(args.specular),
+        shininess = Float32(args.shininess), backlight = Float32(args.backlight),
+        exposure = Float32(config.exposure),
+        tonemap = Int32(Hikari.tonemap_code(config.tonemap)),
+        white_point = 4f0,  # Hikari.postprocess!'s default, which RayMakie does not set
+        inv_gamma = config.gamma === nothing ? 1f0 : 1f0 / Float32(config.gamma),
+        apply_gamma = Int32(config.gamma !== nothing),
+        strokewidth = Float32(args.strokewidth), strokecolor = rgba4(args.strokecolor),
+        resolution = Vec2f(args.resolution), px_per_unit = Float32(screen.px_per_unit),
+    )
+    buffers = (
+        light_types = nonempty(Vector{Int32}(args.raster_light_types)),
+        light_colors = nonempty(Vec3f[Vec3f(c.r, c.g, c.b) for c in args.raster_light_colors]),
+        light_parameters = nonempty(Vector{Float32}(args.raster_light_parameters)),
+    )
+    return uniforms, buffers
+end
+
+"""
+    mesh_raster!(screen, plot, args, changed, last_robj) -> RenderObject
+
+A `mesh` in RASTER mode, through the ported GLMakie mesh shader. Each buffer is
+re-uploaded only when the nodes it is made from changed, so a camera move sets
+uniforms and uploads nothing.
+"""
+function mesh_raster!(screen, plot, args, changed, last_robj)
+    fresh = !(last_robj isa RenderObject)
+    geometry_dirty = fresh || changed.positions_transformed_f32c || changed.faces ||
+                     changed.normals || changed.texturecoordinates || changed.material
+    color_dirty = geometry_dirty || changed.scaled_color || changed.alpha_colormap ||
+                  changed.matcap || changed.fetch_pixel || changed.interpolate ||
+                  changed.interpolate_in_fragment_shader || changed.scaled_colorrange ||
+                  changed.color_mapping_type || changed.lowclip_color ||
+                  changed.highclip_color || changed.nan_color
+
+    shading, lightbuffers = raster_shading(screen, plot, args)
+    uniforms = merge((
+        model = Mat4f(args.model_f32c), view = Mat4f(args.view), projection = Mat4f(args.projection),
+        world_normalmatrix = Mat3f(args.world_normalmatrix),
+        view_normalmatrix = Mat3f(args.view_normalmatrix),
+        depth_shift = Float32(args.depth_shift),
+        uv_transform = raster_uv_transform(args.pattern_uv_transform),
+        colorrange = args.scaled_colorrange === nothing ? Vec2f(0, 1) : Vec2f(args.scaled_colorrange),
+        colormap_linear = Int32(args.color_mapping_type === Makie.continuous),
+        lowclip = rgba4(args.lowclip_color), highclip = rgba4(args.highclip_color),
+        nan_color = rgba4(args.nan_color),
+        viewport_origin = Vec2f(GeometryBasics.origin(args.viewport)),
+        num_clip_planes = Int32(args.uniform_num_clip_planes),
+    ), shading)
+
+    buffers = Dict{Symbol, Any}()
+    local colorinfo
+    if color_dirty
+        geometry = raster_geometry(overlay_material(plot), args)
+        colorinfo = raster_color(geometry.color, args, length(geometry.positions))
+        textured = colorinfo.texture !== nothing
+        fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured)
+        uniforms = merge(uniforms, (
+            has_normals = Int32(geometry.normals !== nothing),
+            has_uvs = Int32(geometry.uvs isa AbstractVector{<:VecTypes{2}}),
+            color_source = colorinfo.source, uniform_color = colorinfo.uniform,
+        ))
+        vertex_count = 3 * length(geometry.faces)
+        if fresh || geometry_dirty
+            buffers[:raster_positions] = nonempty(geometry.positions)
+            buffers[:raster_faces] = nonempty(raster_faces(geometry.faces))
+            buffers[:raster_normals] = geometry.normals === nothing ? Vec3f[Vec3f(0)] :
+                                       nonempty(Vector{Vec3f}(geometry.normals))
+            buffers[:raster_uvs] = uniforms.has_uvs != 0 ? nonempty(Vec2f.(geometry.uvs)) : Vec2f[Vec2f(0)]
+        end
+        buffers[:raster_vertex_color] = colorinfo.source == COLOR_VERTEX ?
+            rgba4.(geometry.color) : Vec4f[Vec4f(0)]
+        buffers[:raster_vertex_value] = colorinfo.source in (COLOR_VERTEX_CMAP, COLOR_VERTEX_CMAP_FRAG) ?
+            nonempty(Vector{Float32}(geometry.color)) : Float32[0f0]
+        buffers[:raster_colormap] = raster_colormap(args)
+    end
+    if fresh || changed.stroke_data_packed || geometry_dirty
+        buffers[:stroke_data] = nonempty(Vector{Vec4f}(args.stroke_data_packed))
+    end
+    if fresh || changed.uniform_clip_planes
+        buffers[:clip_planes] = nonempty(Vector{Vec4f}(args.uniform_clip_planes))
+    end
+    if fresh || changed.raster_light_types || changed.raster_light_colors || changed.raster_light_parameters
+        for (name, value) in pairs(lightbuffers)
+            buffers[name] = value
+        end
     end
 
-    flat_colors = if raw_color isa AbstractVector{<:Colorant} && length(raw_color) == n_verts
-        # Per-vertex
-        out = Vector{Vec4f}(undef, 3 * n_faces)
-        @inbounds for (fi, f) in enumerate(faces_val), j in 1:3
-            c = RGBA{Float32}(raw_color[f[j]])
-            out[3 * (fi - 1) + j] = Vec4f(c.r, c.g, c.b, c.alpha)
-        end
-        out
-    elseif raw_color isa AbstractVector{<:Colorant} && !isempty(raw_color)
-        # Per-face / per-group: distribute uniformly across faces
-        nc = length(raw_color)
-        faces_per_color = max(1, n_faces ÷ nc)
-        out = Vector{Vec4f}(undef, 3 * n_faces)
-        @inbounds for (fi, _) in enumerate(faces_val)
-            ci = min(div(fi - 1, faces_per_color) + 1, nc)
-            c = RGBA{Float32}(raw_color[ci])
-            v = Vec4f(c.r, c.g, c.b, c.alpha)
-            out[3 * (fi - 1) + 1] = v
-            out[3 * (fi - 1) + 2] = v
-            out[3 * (fi - 1) + 3] = v
-        end
-        out
-    elseif raw_color isa Colorant
-        c = RGBA{Float32}(raw_color)
-        fill(Vec4f(c.r, c.g, c.b, c.alpha), 3 * n_faces)
+    robj = if fresh
+        backend = screen.config.device
+        RenderObject(get_mesh_pipeline!(screen, colorinfo.texture !== nothing);
+            backend,
+            arg_names = MESH_ARG_NAMES,
+            buffers = Dict{Symbol, AbstractGPUArray}(name => Mantle.devicearray(backend, value)
+                                                     for (name, value) in buffers),
+            uniforms = Dict{Symbol, Any}(),
+            vertex_count = 0,
+            instances = 1,
+        )
     else
-        c = mesh_overlay_color(plot, args.trace_color_tex)
-        fill(Vec4f(c.r, c.g, c.b, c.alpha), 3 * n_faces)
+        for (name, value) in buffers
+            update_buffer!(last_robj, name, value)
+        end
+        last_robj
     end
-
-    return flat_positions, flat_colors
+    for (name, value) in pairs(uniforms)
+        robj.uniforms[name] = value
+    end
+    raster_strokes(overlay_material(plot)) || (robj.uniforms[:strokewidth] = 0f0)
+    color_dirty && (robj.vertex_count = vertex_count)
+    if color_dirty && colorinfo.texture !== nothing
+        update_texture!(robj, colorinfo.texture;
+                        filter = args.interpolate ? :linear : :nearest, wrap = colorinfo.wrap)
+    end
+    robj.visible = true
+    return robj
 end
 
 function mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat)
-    pipeline = get_mesh_pipeline!(screen)
+    pipeline = get_flat_mesh_pipeline!(screen)
     backend = screen.config.device
     return RenderObject(pipeline;
         backend,
@@ -546,22 +780,4 @@ function update_trace_transform!(hikari_scene, state, robj, transform)
         Raycore.update_transform!(tlas, actual_handle, transform)
     end
     state.needs_film_clear = true
-end
-
-# =============================================================================
-# 2D mesh overlay color extraction (fallback when plot.color is unrecognized)
-# =============================================================================
-
-function mesh_overlay_color(plot, color_tex)
-    c = to_value(plot.color)
-    # White is the documented fallback for a colour Makie cannot convert, and
-    # that is a legitimate outcome — but it is also what a genuinely broken
-    # colour looks like, so it says which one happened rather than rendering
-    # white and leaving the user to guess.
-    try
-        return RGBA{Float32}(Makie.to_color(c))
-    catch e
-        @warn "RayMakie: could not convert $(typeof(c)) to a colour; the 2D overlay will be white" exception = (e, catch_backtrace()) maxlog = 1
-        return RGBA{Float32}(1f0, 1f0, 1f0, 1f0)
-    end
 end

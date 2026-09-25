@@ -205,6 +205,7 @@ const GRAPHICS_TEST_FILES = [
     "test_empty_plot_fills_later.jl",
     "test_device_arrays.jl",
     "test_image_updates.jl",
+    "test_mesh_raster.jl",
 ]
 
 @testset "RayMakie" begin
