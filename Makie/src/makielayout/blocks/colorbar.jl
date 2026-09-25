@@ -336,7 +336,8 @@ function initialize_block!(cb::Colorbar; kwargs...)
             # colorscale is processed later
             low = process_color_value(dc, identity, first(colorrange), first(autorange))
             high = process_color_value(dc, identity, last(colorrange), last(autorange))
-            return (Vec2d(low, high),)
+            low > high && @error("Colorbar failed to generated ordered colorrange. Generated ($low, $high) from $colorrange.")
+            return (Vec2d(low, max(low, high)),)
         end
     end
 
