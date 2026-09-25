@@ -2300,6 +2300,35 @@ end
     f
 end
 
+@reference_test "Mesh Pattern Continuity" begin
+    img = fill(RGBf(1, 1, 1), 16, 16)
+    img[1:8, 1:8] .= RGBf(1, 0, 0)
+    img[12:16, 1:8] .= RGBf(0, 1, 0)
+    img[1:8, 12:16] .= RGBf(0, 0, 1)
+
+    scene = Scene(size = (400, 300))
+    sub = Scene(scene, viewport = Rect2f(0, 0, 100, 150))
+    mesh!(sub, Rect2f(-1, -1, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(0, 0, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(-1, 0, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(0, -1, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(100, 0, 100, 150)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(0, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(100, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+
+    pat = Pattern("x")
+    sub = Scene(scene, viewport = Rect2f(200, 0, 100, 150))
+    mesh!(sub, Rect2f(-1, -1, 1, 1), color = pat)
+    mesh!(sub, Rect2f(0, 0, 1, 1), color = pat)
+    mesh!(sub, Rect2f(-1, 0, 1, 1), color = pat)
+    mesh!(sub, Rect2f(0, -1, 1, 1), color = pat)
+    mesh!(Scene(scene, viewport = Rect2f(300, 0, 100, 150)), Rect2f(-1, -1, 2, 2), color = pat)
+    mesh!(Scene(scene, viewport = Rect2f(200, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = pat)
+    mesh!(Scene(scene, viewport = Rect2f(300, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = pat)
+
+    scene
+end
+
 @reference_test "Color patterns in recipes" begin
     pattern = Makie.Pattern('x', linecolor = :darkgreen, backgroundcolor = RGBf(0.7, 0.8, 0.5))
 
