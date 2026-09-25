@@ -390,7 +390,10 @@ function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
             n_params += n
         end
 
-        usable_lights = view(lights, 1:n_lights)
+        # From the FILTERED list: `n_lights` counts supported lights, and taking
+        # them from `lights` packed an EnvironmentLight listed first as light 1
+        # and dropped the last supported one.
+        usable_lights = view(supported_lights, 1:n_lights)
         types = Int32.(light_type.(usable_lights))
         colors = RGBf.(light_color.(usable_lights))
         parameters = Float32[]

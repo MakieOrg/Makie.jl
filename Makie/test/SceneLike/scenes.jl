@@ -54,6 +54,20 @@ end
         @test Makie.get_shading_mode(scene) == MultiLightShading
     end
 
+    @testset "MultiLightShading packs only the lights it supports" begin
+        # An EnvironmentLight listed first was packed as light 1 and the last
+        # PointLight dropped: the count came from the filtered list, the lights
+        # from the unfiltered one.
+        env = EnvironmentLight(1.0, fill(RGBf(1, 1, 1), 4, 4))
+        p1 = PointLight(RGBf(1, 0, 0), Point3f(1, 0, 0))
+        p2 = PointLight(RGBf(0, 1, 0), Point3f(0, 1, 0))
+        scene = Scene(lights = [env, p1, p2])
+        Makie.register_multi_light_computation(scene, 64, 5 * 64)
+        @test scene.compute[:N_lights][] == 2
+        @test scene.compute[:light_types][] == Int32[Makie.light_type(p1), Makie.light_type(p2)]
+        @test scene.compute[:light_colors][] == [RGBf(1, 0, 0), RGBf(0, 1, 0)]
+    end
+
     @testset "Helper functions" begin
         f, a, p = scatter(rand(Point3f, 10))
         @test length(get_lights(a)) == 1
