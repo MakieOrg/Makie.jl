@@ -185,6 +185,12 @@ end
         Makie.place_labels!(algorithm, offsets_again, targets, text_bbs, viewport, fill(Vec2d(NaN), 40); maxiter = Makie.automatic, reset = true)
         @test offsets_again == offsets
 
+        panned = targets .+ Ref(Point2f(3, -2))
+        panned_bbs = text_bbs .+ Ref(Vec2f(3, -2))
+        warm = copy(offsets)
+        Makie.place_labels!(algorithm, warm, panned, panned_bbs, viewport + Vec2d(3, -2), fill(Vec2d(NaN), 40); maxiter = Makie.automatic, reset = false)
+        @test warm == offsets
+
         fill!(offsets, Vec2f(0))
         Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport, fill(Vec2d(NaN), 40); maxiter = 0, reset = true)
         @test all(iszero, offsets)

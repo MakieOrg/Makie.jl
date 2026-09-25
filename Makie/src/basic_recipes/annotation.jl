@@ -279,8 +279,8 @@ function plot!(p::Annotation)
         # We should only advance if it's the only thing causing an update?
         advance = sum(values(changed)) == 1 && changed.__advance_optimization
 
-        # Probably required when input sizes change?
         offsets = isnothing(cached) ? Vec2f[] : cached[1]
+        fresh = length(offsets) != length(args.screenpoints_target) || changed.algorithm
         resize!(offsets, length(args.screenpoints_target))
 
         calculate_best_offsets!(
@@ -291,10 +291,9 @@ function plot!(p::Annotation)
             args.text_bbs,
             Rect2d((0, 0), widths(args.viewport));
             maxiter = ifelse(advance, args.__advance_optimization, args.maxiter),
-            # start with zero offsets whenever text positions or texts change
-            # basically, so solutions are not influenced by previous ones
-            # If we advance, keep offsets
-            reset = !advance,
+            # keep the previous layout as a warm start unless the labels themselves changed,
+            # so camera changes only move labels that have to move
+            reset = fresh && !advance,
         )
 
         return (offsets,)
@@ -542,7 +541,8 @@ simulated annealing and finished with local descent, where every label is repeat
 cheapest candidate given all others until nothing moves. This is repeated `restarts` times and
 the layout with the lowest total cost is kept. `maxiter` bounds the number of descent passes.
 The annealing uses its own generator started from `seed`, so the same input gives the same
-layout on every Julia version.
+layout on every Julia version. When the view changes, the previous layout is kept as the
+starting point and only labels that are in conflict or find a clearly better position move.
 """
 Base.@kwdef struct CandidatePlacement
     gaps::Vector{Float64} = [4.0, 10.0, 18.0, 30.0, 48.0, 72.0, 104.0, 150.0, 210.0]
@@ -567,6 +567,7 @@ const ANNEAL_STAGES = 50
 const ANNEAL_COOLING = 0.9
 const ANNEAL_TEMPERATURE = 300.0
 const ANNEAL_MIN_TEMPERATURE = 20.0
+const WARM_START_HYSTERESIS = 10.0
 
 is_feasible(c) = c.cost < OVERLAP_PENALTY
 
@@ -629,7 +630,8 @@ function place_labels!(
             current = argmin(trial -> total_energy(trial, problem), trials)
         end
     else
-        descend_placement!(current, problem, maxiter)
+        anneal_placement!(current, problem, LabelPlacementRNG(algorithm.seed))
+        descend_placement!(current, problem, maxiter; hysteresis = WARM_START_HYSTERESIS)
     end
 
     offsets .= (c -> c.offset).(current)
@@ -661,9 +663,9 @@ function rect_corners(rect::Rect2)
     return (Point2d(l, b), Point2d(r, b), Point2d(r, t), Point2d(l, t))
 end
 
-function best_candidate(i, problem::PlacementProblem, current, placed; keep_current::Bool)
+function best_candidate(i, problem::PlacementProblem, current, placed; keep_current::Bool, hysteresis = 0.0)
     best = current[i]
-    best_cost = keep_current ? best.cost + placement_penalty(best, i, problem, current, placed) : Inf
+    best_cost = keep_current ? best.cost + placement_penalty(best, i, problem, current, placed) - hysteresis : Inf
     for c in problem.candidates[i]
         c.cost >= best_cost && break
         cost = c.cost + placement_penalty(c, i, problem, current, placed; bound = best_cost - c.cost)
@@ -685,7 +687,7 @@ function greedy_placement!(current, problem::PlacementProblem)
     return
 end
 
-function descend_placement!(current, problem::PlacementProblem, maxiter)
+function descend_placement!(current, problem::PlacementProblem, maxiter; hysteresis = 0.0)
     n = length(current)
     placed = trues(n)
     dirty = trues(n)
@@ -693,7 +695,7 @@ function descend_placement!(current, problem::PlacementProblem, maxiter)
         moved = falses(n)
         for i in 1:n
             dirty[i] || continue
-            best = best_candidate(i, problem, current, placed; keep_current = true)
+            best = best_candidate(i, problem, current, placed; keep_current = true, hysteresis)
             if best.offset != current[i].offset
                 current[i] = best
                 moved[i] = true
