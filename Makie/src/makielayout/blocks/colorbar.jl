@@ -334,15 +334,18 @@ function initialize_block!(cb::Colorbar; kwargs...)
             return (Vec2d(autorange),)
         else
             # colorscale is processed later
-            mini, maxi = sort_colorrange(colorrange) # could be (automatic, value)
-            low = process_color_value(dc, identity, mini, first(autorange))
-            high = process_color_value(dc, identity, maxi, last(autorange))
+            low = process_color_value(dc, identity, first(colorrange), first(autorange))
+            high = process_color_value(dc, identity, last(colorrange), last(autorange))
             return (Vec2d(low, high),)
         end
     end
 
     map!(cb, [:resolved_cdc, :color_mapping_type], :merged_color_mapping_type) do dc, cmt
         return (cmt === Makie.continuous) && isa(dc, CategoricalConversion) ? Makie.categorical : cmt
+    end
+
+    map!(cb, [:scale, :resolved_colorrange], :is_inverted) do scale, colorrange
+        return scale(colorrange[1]) > scale(colorrange[2])
     end
 
     map!(
@@ -356,8 +359,11 @@ function initialize_block!(cb::Colorbar; kwargs...)
             if isnothing(mapping)
                 error("Banded without a mapping is invalid. Please use colormap=cgrad(...; categorical=true)")
             else # PlotUtils.ColorGradient
-                # Mapping is always 0..1, but color should be scaled
-                return limits[1] .+ (mapping .* (limits[2] - limits[1]))
+                # Mapping is always 0..1, specifying normalized edges. Scale
+                # back to our colorspace (which matches centers)
+                low, high = limits
+                cellsize = (high - low) / (length(mapping) - 1)
+                return limits[1] - 0.5cellsize .+ mapping .* (high - low + cellsize)
             end
         elseif mapping_type === Makie.categorical
             if isnothing(mapping)
@@ -394,6 +400,11 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
+    # Categorical colormap visualization:
+    # Ticks are spaced based on the transformed space, so the tick for category
+    # 1 can occupy more space than the tick for category 2. We need to figure
+    # out what space each tick corresponds to and fill it with the correct color.
+    # The color is the one we would be sampling with colorscale present.
     map!(
         cb,
         [:barbox, :vertical, :cb_colors, :scale, :merged_color_mapping_type],
@@ -402,11 +413,15 @@ function initialize_block!(cb::Colorbar; kwargs...)
         xmin, ymin = minimum(bb)
         xmax, ymax = maximum(bb)
         if mapping_type == Makie.categorical
-            colors = edges(1:length(colors))
+            colors = edges(colors)
         end
+        # colors are sorted. We want to preserve that order even if scale inverts
+        # it. So use first and last values to get the post-transform values of
+        # the pre-transform extrema.
         s_scaled = scale.(colors)
-        mini, maxi = extrema(s_scaled)
-        s_scaled = mini < maxi ? (s_scaled .- mini) ./ (maxi - mini) : fill(0.5f0, length(s_scaled))
+        mini = first(s_scaled)
+        maxi = last(s_scaled)
+        s_scaled = mini ≈ maxi ? fill(0.5f0, length(s_scaled)) : (s_scaled .- mini) ./ (maxi - mini)
         if vertical
             xrange = collect(LinRange(xmin, xmax, 2))
             yrange = s_scaled .* (ymax - ymin) .+ ymin
@@ -417,10 +432,9 @@ function initialize_block!(cb::Colorbar; kwargs...)
         return xrange, yrange
     end
 
-    # for continuous colormaps we sample a 1d image
-    # to avoid white lines when rendering vector graphics
     map!(
-        cb, [:vertical, :cb_colors, :merged_color_mapping_type], :continuous_pixels
+        cb, [:vertical, :cb_colors, :merged_color_mapping_type],
+        :continuous_pixels
     ) do vertical, colors, mapping_type
         if mapping_type !== Makie.categorical
             colors = (colors[1:(end - 1)] .+ colors[2:end]) ./ 2
@@ -440,18 +454,29 @@ function initialize_block!(cb::Colorbar; kwargs...)
         cb.xrange, cb.yrange, cb.continuous_pixels;
         colormap = cb.alpha_colormap,
         colorrange = cb.resolved_colorrange,
+        colorscale = cb.scale,
         visible = cb.show_catigorical,
-        inspectable = false
+        inspectable = false,
     )
 
-    map!(extrema, cb, :xrange, :xlims)
-    map!(extrema, cb, :yrange, :ylims)
+    # Continuous case:
+    # This is much simpler. We don't adjust the spacing of color samples here.
+    map!(cb, :barbox, [:xlims, :ylims]) do bb
+        xmin, ymin = minimum(bb)
+        xmax, ymax = maximum(bb)
+        return (xmin, xmax), (ymin, ymax)
+    end
+
+    map!(cb, [:vertical, :nsteps, :is_inverted], :image_pixels) do vertical, N, rev
+        colors = range(ifelse(rev, 1, 0), ifelse(rev, 0, 1), N)
+        return vertical ? reshape((colors), 1, N) : reshape((colors), N, 1)
+    end
 
     image!(
         blockscene,
-        cb.xlims, cb.ylims, cb.continuous_pixels;
+        cb.xlims, cb.ylims, cb.image_pixels;
         colormap = cb.alpha_colormap,
-        colorrange = cb.resolved_colorrange,
+        colorrange = Vec2f(0, 1),
         visible = cb.show_continuous,
         inspectable = false
     )
@@ -545,8 +570,9 @@ function initialize_block!(cb::Colorbar; kwargs...)
             if ticks !== automatic
                 return ticks, formatter
             else
+                # TODO: consider just letting automatic pass?
                 labels = get_ticklabels(formatter, cs)
-                return (eachindex(cs), labels), automatic
+                return (cs, labels), automatic
             end
         else
             return ticks, formatter
@@ -555,12 +581,19 @@ function initialize_block!(cb::Colorbar; kwargs...)
     ComputePipeline.set_type!(cb.finalticks, Any)
 
     map!(cb, [:cb_colors, :merged_color_mapping_type, :resolved_colorrange], :ticklimits) do cs, type, limits
-        return type === Makie.categorical ? (0.5, length(cs) + 0.5) : limits
+        if type !== Makie.continuous
+            # padding for the center -> edge transformation of cb_colors
+            low, high = limits
+            cellsize = (high - low) / (length(cs) - 1)
+            return (low - 0.5cellsize, high + 0.5cellsize)
+        else
+            return limits
+        end
     end
 
     axis = LineAxis(
         blockscene, ComputePipeline.ComputeGraphView(cb.attributes, :axis),
-        endpoints = cb.axispoints, flipped = cb.flipaxis,
+        endpoints = cb.axispoints, flipped = cb.flipaxis, reversed = cb.is_inverted,
         limits = cb.ticklimits, ticklabelalign = cb.ticklabelalign, label = cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
