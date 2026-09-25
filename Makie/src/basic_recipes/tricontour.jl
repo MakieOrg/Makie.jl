@@ -40,12 +40,12 @@ end
 argument_dims(::Type{<:Tricontour}, x, y, z) = (1, 2, 4)
 argument_dims(::Type{<:Tricontour}, tri, z) = (0, 4)
 
-function used_attributes(::Type{<:Tricontour}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
+function used_attributes(::Type{<:Tricontour}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::Any)
     return (:triangulation,)
 end
 
 function convert_arguments(
-        ::Type{<:Tricontour}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z,
+        ::Type{<:Tricontour}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z;
         triangulation = DelaunayTriangulation()
     )
     T = float_type(x, y)

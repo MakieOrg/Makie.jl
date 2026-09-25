@@ -382,7 +382,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
             error("Unknown mapping type $mapping_type")
         end
         # just for heatmap init
-        return Float64[0, 1]
+        return Float64[]
     end
 
     map!(x -> x !== automatic, cb, :lowclip, :lowclip_tri_visible)
@@ -440,6 +440,12 @@ function initialize_block!(cb::Colorbar; kwargs...)
     =#
 
     map!(cb, [:barbox, :vertical, :scale, :cb_colors], [:xrange, :yrange]) do bb, vertical, scale, colors
+        xmin, ymin = minimum(bb)
+        xmax, ymax = maximum(bb)
+        if isempty(colors)
+            return [xmin, xmax], [ymin, ymax]
+        end
+
         # colors are sorted. We want to preserve that order even if scale inverts
         # it. So use first and last values to get the post-transform values of
         # the pre-transform extrema.
@@ -448,8 +454,6 @@ function initialize_block!(cb::Colorbar; kwargs...)
         maxi = last(scaled)
         scaled = mini ≈ maxi ? fill(0.5f0, length(scaled)) : (scaled .- mini) ./ (maxi - mini)
 
-        xmin, ymin = minimum(bb)
-        xmax, ymax = maximum(bb)
         if vertical
             xrange = collect(LinRange(xmin, xmax, 2))
             yrange = scaled .* (ymax - ymin) .+ ymin
@@ -461,6 +465,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
     end
 
     map!(cb, [:vertical, :cb_colors], :heatmap_cells) do vertical, colors
+        isempty(colors) && return fill(0.5f0, 1, 1)
         n = length(colors)
         return vertical ? reshape((colors), 1, n) : reshape((colors), n, 1)
     end
