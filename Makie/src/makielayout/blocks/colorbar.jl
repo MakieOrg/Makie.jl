@@ -351,12 +351,12 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     map!(
         cb,
-        [:color_mapping, :merged_color_mapping_type, :resolved_cdc, :dc_values, :nsteps, :resolved_colorrange],
+        [:color_mapping, :merged_color_mapping_type, :resolved_cdc, :dc_values, :resolved_colorrange],
         :cb_colors
-    ) do mapping, mapping_type, dc, values, n, limits
+    ) do mapping, mapping_type, dc, values, limits
         if mapping_type === Makie.continuous
             # output not used
-            # return convert(Vector{Float64}, LinRange(limits..., n))
+            # return convert(Vector{Float64}, LinRange(limits..., n)) # previously used Colorbar.nsteps
         elseif mapping_type === Makie.banded
             if isnothing(mapping)
                 error("Banded without a mapping is invalid. Please use colormap=cgrad(...; categorical=true)")

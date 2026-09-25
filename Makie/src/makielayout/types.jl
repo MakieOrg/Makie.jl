@@ -992,11 +992,8 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         """
         label_suffix = "[{}]"
 
-
         "The align mode of the colorbar in its parent GridLayout."
         alignmode = Inside()
-        "The number of steps in the heatmap underlying the colorbar gradient."
-        nsteps = 100
 
         "Controls if minor ticks are visible"
         minorticksvisible = false
