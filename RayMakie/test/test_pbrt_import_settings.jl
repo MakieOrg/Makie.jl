@@ -70,6 +70,18 @@ end
     @test vp.sensor === res.sensor
 end
 
+@testset "screen_config(res) applies them to a screen" begin
+    # The same settings as screen config, since a screen builds its own tracer.
+    cfg = Makie.merge_screen_config(RayMakie.ScreenConfig,
+                                    Dict{Symbol, Any}(pairs(RayMakie.screen_config(res))))
+    vp = RayMakie.new_volpath(cfg)
+    @test vp.max_depth == 11
+    @test vp.regularize == true
+    @test vp.max_component_value ≈ 42
+    @test vp.sensor == res.sensor
+    @test vp.samples_per_pixel == res.integrator_settings.samples
+end
+
 @testset "pbrt defaults win over Hikari's when the file is silent" begin
     # A file that sets NEITHER knob must come out with pbrt's defaults
     # (regularize off, no clamp), which is what crown.pbrt does. Hikari's own

@@ -292,12 +292,12 @@ GC.gc(true)
 scene = create_crown_scene(; resolution=resolution);
 update_cam!(scene, Vec3f(0, 10, 30), Vec3f(0, 8, -25), Vec3f(0, 1, 0))
 GC.gc(true)
-sensor = Hikari.FilmSensor(; iso=10, exposure_time=1.0, white_balance=4000)
+sensor = Hikari.PixelSensor(; iso=10, exposure_time=1.0, whitebalance=4000)
 RayMakie.activate!(; device=Lava.LavaBackend(), sensor=sensor, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
 @time img = colorbuffer(
     scene;
     backend=RayMakie,
-    integrator=Hikari.VolPath(; samples=samples, max_depth=max_depth, hw_accel=hw_accel),
+    samples, max_depth, hw_accel,
 )
 # save(joinpath(@__DIR__, "crown.png"), img)
 img

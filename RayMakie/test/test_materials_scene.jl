@@ -101,18 +101,14 @@ Per-call config leaks nothing and needs no restoring.
 """
 function test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
     scene = create_test_materials_scene()
-    # The sensor belongs to the integrator, not the screen config. This file had
-    # drifted across three separate API moves at once, which is why it errored on
-    # its first line and sat outside runtests.jl: `Hikari.FilmSensor` became
-    # `PixelSensor` (and `white_balance` became `whitebalance`), `Raycore` was
-    # never imported despite `Raycore.KA.CPU()` being the default argument, and
-    # `sensor` was removed from `ScreenConfig`. `pbrt_to_makie.jl` shows the
-    # current shape: the sensor is a `VolPath` keyword.
-    integrator = Hikari.VolPath(samples=samples, max_depth=4,
-                                sensor=Hikari.PixelSensor(iso=50, exposure_time=1.0,
-                                                          whitebalance=0))
-
-    img = colorbuffer(scene; backend=RayMakie, integrator=integrator,
+    # This file once drifted across three API moves at once, which is why it
+    # errored on its first line and sat outside runtests.jl: `Hikari.FilmSensor`
+    # became `PixelSensor` (and `white_balance` became `whitebalance`), `Raycore`
+    # was never imported despite `Raycore.KA.CPU()` being the default argument,
+    # and `sensor` moved. It is a screen setting, next to the tracer's others.
+    # `hw_accel = false` is what this ran with when the tracer was a `VolPath`.
+    sensor = Hikari.PixelSensor(iso=50, exposure_time=1.0, whitebalance=0)
+    img = colorbuffer(scene; backend=RayMakie, samples, max_depth=4, sensor, hw_accel=false,
                       device=backend, exposure=0.5f0, tonemap=nothing, gamma=2.2f0)
     return img
 end

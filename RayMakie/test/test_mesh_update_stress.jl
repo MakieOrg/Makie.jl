@@ -23,7 +23,7 @@ robj_of(plt) = something(
 )
 
 function make_screen(scene)
-    return RayMakie.Screen(scene; integrator=Hikari.VolPath(samples=1, max_depth=1))
+    return RayMakie.Screen(scene; samples=1, max_depth=1, hw_accel = false)
 end
 
 hires_sphere(divisions) = GeometryBasics.normal_mesh(

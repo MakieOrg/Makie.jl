@@ -1,6 +1,6 @@
 # Interactive Volume Rendering Dashboard
 # Demonstrates CloudVolume rendering with real-time parameter controls
-# Uses BOMEX LES cloud data and Hikari's Whitted integrator
+# Uses BOMEX LES cloud data and Hikari's VolPath integrator
 
 using GLMakie
 using Hikari
@@ -105,10 +105,11 @@ function render_cloud(cloud, sun_direction, sun_intensity, turbidity, ground_alb
     scene = create_hikari_scene(cloud, sun_direction, sun_intensity, turbidity, ground_albedo)
     film, camera = create_camera_and_film(cam_pos, look_at_pt, fov; width, height)
 
-    integrator = Hikari.Whitted(; samples=samples, max_depth=max_depth)
+    integrator = Hikari.VolPath(; samples=samples, max_depth=max_depth)
 
     Hikari.clear!(film)
     integrator(scene, film, camera)
+    close(integrator)
 
     # Postprocess
     tonemap_sym = tonemap == "none" ? nothing : Symbol(tonemap)

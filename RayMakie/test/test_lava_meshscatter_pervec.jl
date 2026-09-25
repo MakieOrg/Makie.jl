@@ -56,7 +56,7 @@ end
     scene = Scene(size=(32, 32)); cam3d!(scene)
     plt = meshscatter!(scene, positions; marker=cube, markersize=scales)
 
-    screen = RayMakie.Screen(scene; integrator=Hikari.VolPath(samples=1, max_depth=1))
+    screen = RayMakie.Screen(scene; samples=1, max_depth=1, hw_accel = false)
     Makie.colorbuffer(screen)
 
     pinned_buf = trans_of(plt)

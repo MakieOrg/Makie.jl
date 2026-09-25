@@ -1,11 +1,10 @@
 # Switching `hw_accel` on a live scene must switch the acceleration structure.
 #
-# `create_scene_state` builds the `Hikari.Scene` from the integrator, and
-# `hw_accel` picks the accel type THERE — it is baked in at construction. But a
-# second `colorbuffer` on the same Makie scene goes through
-# `apply_screen_config!`, which used to keep the existing scene states and only
-# free the integrator state. So the second render silently kept the first
-# render's traversal path.
+# `create_scene_state` builds the `Hikari.Scene`, and `hw_accel` picks the accel
+# type THERE — it is baked in at construction. But a second `colorbuffer` on the
+# same Makie scene goes through `apply_screen_config!`, which used to keep the
+# existing scene states and only free the tracer's state. So the second render
+# silently kept the first render's traversal path.
 #
 # Nothing errored and both images were right, which is what made it expensive:
 # any A/B of the two paths measured the first one twice. Measured on an M5 with
@@ -23,8 +22,8 @@ using Test, Makie, RayMakie, Hikari, Raycore, GeometryBasics
 # The accel a fresh render of `scene` actually ends up with, plus how much
 # geometry reached it.
 function accel_after_render(scene, hw)
-    integrator = Hikari.VolPath(; samples = 1, max_depth = 2, hw_accel = hw)
-    Makie.colorbuffer(scene; backend = RayMakie, integrator = integrator, update = false)
+    Makie.colorbuffer(scene; backend = RayMakie, samples = 1, max_depth = 2, hw_accel = hw,
+                      update = false)
     screen = Makie.getscreen(scene)
     @test screen !== nothing
     state = first(screen.scene_states)
@@ -55,9 +54,9 @@ end
 end
 
 @testset "an unchanged hw_accel does not rebuild" begin
-    # The cheap path has to stay cheap: re-rendering with a new integrator that
-    # wants the SAME structure must not drop the scene, because rebuilding
-    # re-uploads every mesh.
+    # The cheap path has to stay cheap: re-rendering with settings that want the
+    # SAME structure must not drop the scene, because rebuilding re-uploads every
+    # mesh.
     scene = Makie.Scene(size = (64, 48))
     Makie.cam3d!(scene)
     mesh!(scene, Sphere(Point3f(0), 1.0f0); color = :blue)

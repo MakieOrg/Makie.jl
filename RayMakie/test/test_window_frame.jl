@@ -41,7 +41,7 @@ orangeish(c) = red(c) > 0.35 && red(c) > 1.6 * green(c) && green(c) > 1.5 * blue
     cam3d!(sc)
     mesh!(sc, Sphere(Point3f(0, 0, 0), 0.8f0); color = :orange)
     lines!(sc, [Point3f(-1, -1, 0), Point3f(1, 1, 0), Point3f(1, -1, 0)]; color = :black, linewidth = 3)
-    scr = RayMakie.Screen(sc; integrator = Hikari.VolPath(samples = 1, max_depth = 3, hw_accel = true),
+    scr = RayMakie.Screen(sc; samples = 1, max_depth = 3, hw_accel = true,
                           visible = true)
     display(scr, sc)
     @test RayMakie.renderloop_running(scr)

@@ -210,6 +210,24 @@ function Hikari.VolPath(res::PBRTMakieResult;
                           max_component_value, sensor, kwargs...)
 end
 
+"""
+    screen_config(res::PBRTMakieResult) -> NamedTuple
+
+The `.pbrt` file's tracer settings as RayMakie screen config, for the same reason
+as `Hikari.VolPath(res)`:
+
+```julia
+res = pbrt_to_makie("crown.pbrt")
+colorbuffer(res.scene; backend = RayMakie, RayMakie.screen_config(res)...)
+```
+"""
+function screen_config(res::PBRTMakieResult)
+    s = res.integrator_settings
+    return (; samples = s.samples, max_depth = s.max_depth, regularize = s.regularize,
+            russian_roulette_depth = s.russian_roulette_depth,
+            max_component_value = s.max_component_value, sensor = res.sensor)
+end
+
 # ============================================================================
 # Light conversion: pbrt light → Makie light
 # ============================================================================

@@ -47,13 +47,11 @@ let
         exposure=1f0,
         tonemap=nothing,
         gamma=2.2f0,
-        sensor=Hikari.FilmSensor(iso=50, exposure_time=1.0, white_balance=0)
+        sensor=Hikari.PixelSensor(iso=50, exposure_time=1.0, whitebalance=0)
     )
 
-    integrator = Hikari.VolPath(samples=30, max_depth=20)
-
     println("Starting render with Smoke volume (Array backend)...")
-    img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
+    img = @time colorbuffer(ax; backend=RayMakie, samples=30, max_depth=20, hw_accel=false)
 end
 
 println("Array backend test passed!")

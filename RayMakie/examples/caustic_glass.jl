@@ -5,7 +5,7 @@ using Makie
 using ImageShow, LinearAlgebra
 
 # ============================================================================
-# Caustic Glass Scene - Demonstrates SPPM rendering for caustics
+# Caustic Glass Scene - caustics through a glass object
 # ============================================================================
 
 begin
@@ -62,7 +62,6 @@ begin
 end
 using AMDGPU
 using Abacus
-# Render with SPPM (good for caustics)
 
 RayMakie.activate!(
     device=AMDGPU.ROCBackend(),
@@ -70,9 +69,8 @@ RayMakie.activate!(
     exposure=0.6f0,
     tonemap=:aces,
     gamma=2.2f0,
-    sensor=Hikari.FilmSensor(iso=100)
+    sensor=Hikari.PixelSensor(iso=100)
 )
-integrator = Hikari.VolPath(samples=10, max_depth=30)
-img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
+img = @time colorbuffer(ax; backend=RayMakie, samples=10, max_depth=30)
 # save(joinpath(@__DIR__, "caustic_glass.png"), img)
 img

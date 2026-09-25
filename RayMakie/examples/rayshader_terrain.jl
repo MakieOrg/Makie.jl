@@ -562,10 +562,9 @@ function render_rayshader(;
     backend_name = nameof(backend)
     println("Rendering with RayMakie on $backend_name ($(samples) spp, max_depth=$(max_depth))...")
 
-    integrator = RayMakie.VolPath(samples_per_pixel=samples, max_depth=max_depth)
-    sensor = Hikari.FilmSensor(iso=100, white_balance=6500)  # D65 daylight white balance
-    config = RayMakie.ScreenConfig(integrator, exposure, tonemap, gamma, sensor, backend)
-    screen = RayMakie.Screen(scene, config)
+    sensor = Hikari.PixelSensor(iso=100, whitebalance=6500)  # D65 daylight white balance
+    screen = RayMakie.Screen(scene; samples, max_depth, exposure, tonemap, gamma, sensor,
+                             device=backend)
 
     @time result = Makie.colorbuffer(screen)
 
@@ -609,8 +608,8 @@ result
 
 Launch an interactive ray-traced rayshader scene with progressive rendering.
 
-Uses `render_interactive` to continuously refine the image. The scene updates
-in real-time as you move the camera or adjust parameters.
+A RayMakie window that accumulates samples while the camera stands still and
+starts over when it moves.
 
 # Arguments
 Same as `render_rayshader`, plus:
@@ -640,33 +639,23 @@ function render_rayshader_interactive(;
     #
     # scene.viewport[] = Makie.Rect2f(0, 0, figsize...)
 
-    # Create integrator for progressive rendering (1 sample per iteration)
-    integrator = RayMakie.VolPath(samples=1, max_depth=max_depth)
-
     # Create sensor with D65 daylight white balance
-    sensor = Hikari.FilmSensor(iso=100, white_balance=6500)
+    sensor = Hikari.PixelSensor(iso=100, whitebalance=6500)
 
-    # Launch interactive render
-    handles = RayMakie.render_interactive(
-        scene;
-        integrator=integrator,
-        exposure=exposure,
-        tonemap=tonemap,
-        gamma=gamma,
-        sensor=sensor,
-        backend=backend
-    )
+    # One sample per frame, accumulating while the camera is still
+    screen = display(scene; backend=RayMakie, samples=1, max_depth, exposure, tonemap,
+                     gamma, sensor, device=backend, accumulate=true)
 
     println("Interactive rendering started!")
     println("Move the camera to explore the scene")
     println("The image will progressively refine when the camera is still")
-    println("To stop: handles.running[] = false")
+    println("To stop: close(screen)")
 
-    return handles, scene
+    return screen, scene
 end
 using AMDGPU
 # Uncomment to test interactive rendering:
-handles, scene = render_rayshader_interactive(
+screen, scene = render_rayshader_interactive(
     lat=47.087441,
     lon=13.377214,
     delta=0.08,
@@ -699,9 +688,8 @@ display(scene; backend=GLMakie)
 #         sun_azimuth=135.0
 #     )
 
-#     integrator = RayMakie.VolPath(samples_per_pixel=10, max_depth=10)
-#     config = RayMakie.ScreenConfig(integrator, 1.0, :aces, 2.2f0, CLArray)
-#     screen = RayMakie.Screen(scene, config)
+#     screen = RayMakie.Screen(scene; samples=10, max_depth=10, exposure=1.0,
+#                              tonemap=:aces, gamma=2.2f0, device=CLArray)
 
 #     @time result = Makie.colorbuffer(screen)
 # end

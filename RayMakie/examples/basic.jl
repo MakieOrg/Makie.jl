@@ -12,7 +12,7 @@ begin
     cam3d!(scene)
     mesh!(scene, catmesh, color=load(Makie.assetpath("diffusemap.png")))
     center!(scene)
-    screen = display(scene; backend=RayMakie, integrator=Hikari.Hikari.Whitted(samples=20))
+    screen = display(scene; backend=RayMakie, samples=20)
 
     # @b RayMakie.render_gpu(scene, ROCArray; samples_per_pixel=1)
     # 1.024328 seconds (16.94 M allocations: 5.108 GiB, 46.19% gc time, 81 lock conflicts)
@@ -27,7 +27,7 @@ begin
     # RayMakie.render_interactive(scene; backend=GLMakie, max_depth=5)
 end
 colorbuffer(screen)
-display(scene; backend=RayMakie, integrator=Hikari.Hikari.FastWavefront())
+display(scene; backend=RayMakie)
 
 using ImageShow, AMDGPU
 
@@ -44,7 +44,7 @@ begin
 
     @btime RayMakie.render_whitted(scene)
 
-    screen = display(scene; backend=RayMakie, integrator=Hikari.Hikari.Whitted(samples=20))
+    screen = display(scene; backend=RayMakie, samples=20)
 
     # @b RayMakie.render_gpu(scene, ROCArray)
     # @time RayMakie.render_gpu(scene, ROCArray)

@@ -214,8 +214,15 @@ const MAKIE_DEFAULT_THEME = Attributes(
     ),
 
     RayMakie = Attributes(
-        integrator = automatic,  # VolPath() by default, or FastWavefront()
-        samples = nothing,   # samples per finished frame; nothing → the integrator's own
+        samples = nothing,   # samples per finished frame; nothing → Hikari.VolPath's default
+        # The path tracer's settings. `automatic` keeps Hikari.VolPath's own default.
+        max_depth = automatic,
+        hw_accel = true,     # hardware ray tracing where the device has it
+        regularize = automatic,
+        russian_roulette_depth = automatic,
+        max_component_value = automatic,
+        sensor = automatic,  # a Hikari.PixelSensor
+        filter = automatic,  # a Hikari pixel filter, e.g. Hikari.MitchellFilter()
         exposure = 1.0f0,
         tonemap = :aces,
         gamma = 2.2f0,

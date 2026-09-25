@@ -42,7 +42,7 @@ const SPHERE_LIGHTS = [PointLight(RGBf(60, 60, 60), Vec3f(4, 4, 6))]
 greenish(c) = green(c) > 0.35 && green(c) > 2 * red(c) && green(c) > 2 * blue(c)
 lit_rows(mask) = [r for r in 1:size(mask, 1) if any(@view mask[r, :])]
 
-make_screen(scene) = RayMakie.Screen(scene; integrator = Hikari.VolPath(samples = 2, max_depth = 2))
+make_screen(scene) = RayMakie.Screen(scene; samples = 2, max_depth = 2, hw_accel = false)
 
 # A raytraced scene viewed from (0, -6, 3): sphere at the origin, overlays above
 # it. Fixed camera because bug 2 is about the near plane's relation to the view

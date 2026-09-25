@@ -1,7 +1,7 @@
 # Stress tests for the RayMakie meshscatter compute graph.
 #
 # Pattern:
-#   screen = RayMakie.Screen(scene; integrator=...)   # built once
+#   screen = RayMakie.Screen(scene; samples=..., ...)   # built once
 #   colorbuffer(screen)                                # in tight loop
 #
 # All updates use the standard Makie Observable API. Internal functions
@@ -45,7 +45,7 @@ hires_sphere(divisions::Int) = GeometryBasics.normal_mesh(
 
 # Make a screen with a 1-sample VolPath for fast offscreen render.
 function make_screen(scene)
-    return RayMakie.Screen(scene; integrator=Hikari.VolPath(samples=1, max_depth=1))
+    return RayMakie.Screen(scene; samples=1, max_depth=1, hw_accel = false)
 end
 
 # ---------------------------------------------------------------------------
@@ -440,7 +440,7 @@ end
     scene = Scene(size=(96, 96)); cam3d!(scene)
     plt = meshscatter!(scene, positions; marker=cube, markersize=1f0, color=:red)
 
-    screen = RayMakie.Screen(scene; integrator=Hikari.VolPath(samples=8, max_depth=2))
+    screen = RayMakie.Screen(scene; samples=8, max_depth=2, hw_accel = false)
 
     # Frame 1: cube at origin → centered in image
     img_origin = Makie.colorbuffer(screen)
@@ -493,7 +493,7 @@ end
     scene = Scene(size=(96, 96)); cam3d!(scene)
     plt = meshscatter!(scene, positions; marker=sphere, markersize=0.5f0, color=:cyan)
 
-    screen = RayMakie.Screen(scene; integrator=Hikari.VolPath(samples=4, max_depth=2))
+    screen = RayMakie.Screen(scene; samples=4, max_depth=2, hw_accel = false)
     Makie.colorbuffer(screen)  # warmup
 
     centroids = Tuple{Float64, Float64}[]
@@ -523,7 +523,7 @@ end
     scene = Scene(size=(96, 96)); cam3d!(scene)
     plt = meshscatter!(scene, positions; marker=sphere, markersize=0.3f0, color=:yellow)
 
-    screen = RayMakie.Screen(scene; integrator=Hikari.VolPath(samples=4, max_depth=2))
+    screen = RayMakie.Screen(scene; samples=4, max_depth=2, hw_accel = false)
 
     img_many = Makie.colorbuffer(screen)
     n_many   = lit_count(img_many)

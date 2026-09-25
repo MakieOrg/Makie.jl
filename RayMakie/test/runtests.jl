@@ -147,6 +147,7 @@ const TEST_FILES = [
     # Leak / GC regressions.
     "test_materials_scene.jl",
     "test_lines_topology.jl",
+    "test_screen_owns_its_tracer.jl",
 ]
 
 # The Vulkan runtime's DEFERRED-FREE LEDGER, and nothing else.

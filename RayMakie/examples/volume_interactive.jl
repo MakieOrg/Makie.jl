@@ -222,9 +222,8 @@ function create_benchmark_scene(vol_data, grid_extent;
     update_cam!(scene, Vec3f(3.0, 3.0, cloud_center_z), Vec3f(0, 0, cloud_center_z), Vec3f(0, 0, 1))
 
     # Create Screen
-    integrator = RayMakie.Whitted(samples=samples, max_depth=max_depth)
-    config = RayMakie.ScreenConfig(integrator, 1.0f0, :aces, 2.2f0, backend)
-    screen = RayMakie.Screen(nothing, nothing, config)
+    screen = RayMakie.Screen(size(scene); samples, max_depth, exposure=1.0f0, tonemap=:aces,
+                             gamma=2.2f0, device=backend)
     display(screen, scene)
 
     return screen, scene

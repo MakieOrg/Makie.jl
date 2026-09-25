@@ -20,7 +20,7 @@ using Test, Makie, RayMakie, Hikari, GeometryBasics, Raycore
 using GeometryBasics: Point3f, Vec2f, Vec3f, Rect3f, Sphere
 
 robj_of(plt) = to_value(plt.attributes[:trace_renderobject])
-make_screen(scene) = RayMakie.Screen(scene; integrator = Hikari.VolPath(samples = 1, max_depth = 1))
+make_screen(scene) = RayMakie.Screen(scene; samples = 1, max_depth = 1, hw_accel = false)
 counters(state) = (state.refit_eligible_rebuilds, state.topology_rebuilds)
 cube_mesh() = GeometryBasics.normal_mesh(Rect3f(Vec3f(-1), Vec3f(2)))
 

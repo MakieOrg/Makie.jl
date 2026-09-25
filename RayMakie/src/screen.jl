@@ -2,9 +2,6 @@
 # ScreenConfig
 # =============================================================================
 
-# Re-export integrators from Hikari for convenience
-const VolPath = Hikari.VolPath
-
 """
 The pixel reconstruction filter every RayMakie film is built with.
 
@@ -43,11 +40,18 @@ const COMPOSITE_FORMAT = BGRA{N0f8}
 
 Configuration for RayMakie rendering.
 
-* `integrator`: The integrator to use for rendering (default: `VolPath()`)
-  - `VolPath(; samples=64, max_depth=8)` - Volumetric path tracing
-* `samples`: What one finished frame costs, in samples (default: `nothing`, the
-  integrator's own `samples_per_pixel`). `colorbuffer(screen; samples)` overrides
-  it per read — see there for why the count belongs to the read.
+* `samples`: What one finished frame costs, in samples (default: `nothing`,
+  `Hikari.VolPath`'s default). `colorbuffer(screen; samples)` overrides it per
+  read — see there for why the count belongs to the read.
+* The path tracer, `Hikari.VolPath`; `automatic` keeps its default:
+  - `max_depth`: bounces per path
+  - `hw_accel`: trace on the device's ray tracing hardware (default: `true`)
+  - `regularize`: roughen near-specular lobes after the first diffuse bounce
+  - `russian_roulette_depth`: bounces before paths may be terminated at random
+  - `max_component_value`: clamp a sample's RGB components (firefly suppression)
+  - `sensor`: a `Hikari.PixelSensor`
+  - `filter`: the pixel reconstruction filter, e.g. `Hikari.MitchellFilter()`
+  A `.pbrt` import's settings are `RayMakie.screen_config(res)`.
 * `exposure`: Exposure multiplier for postprocessing (default: 1.0)
 * `tonemap`: Tonemapping method (default: :aces)
   - `:reinhard` - Simple Reinhard L/(1+L)
@@ -78,16 +82,27 @@ Configuration for RayMakie rendering.
     the converging behaviour.
 """
 struct ScreenConfig
-    integrator::Hikari.Integrator
-    # What ONE finished frame costs, in samples. `nothing` leaves it to the
-    # integrator's own `samples_per_pixel`.
+    # What ONE finished frame costs, in samples. `nothing` leaves it to
+    # `Hikari.VolPath`'s default.
     #
-    # A screen setting rather than an integrator one, because the SAME integrator
-    # serves both timescales: a live preview reads one sample at a time and lets
-    # them accumulate while nothing moves, and a finished frame — a bake, an
-    # export — renders the whole budget in one call. So the number belongs to the
-    # read, and `colorbuffer`'s `samples` keyword overrides even this one.
+    # The same tracer serves both timescales: a live preview reads one sample at
+    # a time and lets them accumulate while nothing moves, and a finished frame —
+    # a bake, an export — renders the whole budget in one call. So the number
+    # belongs to the read, and `colorbuffer`'s `samples` keyword overrides even
+    # this one.
     samples::Union{Nothing, Int}
+    # The tracer's settings, as VALUES; `nothing` keeps `Hikari.VolPath`'s
+    # default. This was one `integrator` object, and a `VolPath` is mutable and
+    # holds its render state, so every screen made from one `activate!` shared
+    # it: closing any of them freed whatever the others were rendering with.
+    # Each scene state now builds its own from these (`new_volpath`).
+    max_depth::Union{Nothing, Int}
+    hw_accel::Bool
+    regularize::Union{Nothing, Bool}
+    russian_roulette_depth::Union{Nothing, Int}
+    max_component_value::Union{Nothing, Float32}
+    sensor::Union{Nothing, Hikari.PixelSensor}
+    filter::Union{Nothing, Hikari.AbstractFilter}
     exposure::Float32
     tonemap::Union{Symbol, Nothing}
     gamma::Union{Float32, Nothing}
@@ -117,11 +132,12 @@ struct ScreenConfig
     # with the first and never quite is.
     rasterize::Bool
 
-    function ScreenConfig(integrator, samples, exposure, tonemap, gamma, device=Raycore.KA.CPU(),
-                          denoise=false, denoise_config=nothing,
+    function ScreenConfig(samples, max_depth, hw_accel, regularize, russian_roulette_depth,
+                          max_component_value, sensor, filter, exposure, tonemap, gamma,
+                          device=Raycore.KA.CPU(), denoise=false, denoise_config=nothing,
                           visible=true, title="RayMakie", vsync=true,
                           accumulate=false, rasterize=false)
-        actual_integrator = integrator isa Makie.Automatic ? VolPath(; hw_accel=true) : integrator
+        unset(x) = x isa Makie.Automatic ? nothing : x
         actual_exposure = Float32(exposure)
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
         # `Mantle.defaultbackend()` asks the registry which backends this session
@@ -133,10 +149,44 @@ struct ScreenConfig
         # through a text box, which has no way to know the field wants an `Int`.
         actual_samples = (samples === nothing || samples isa Makie.Automatic) ? nothing :
                          max(1, round(Int, samples))
-        return new(actual_integrator, actual_samples, actual_exposure, tonemap, actual_gamma,
+        mcv = unset(max_component_value)
+        return new(actual_samples, unset(max_depth), hw_accel, unset(regularize),
+                   unset(russian_roulette_depth), mcv === nothing ? nothing : Float32(mcv),
+                   unset(sensor), unset(filter), actual_exposure, tonemap, actual_gamma,
                    actual_device, denoise, denoise_config, actual_visible, string(title), vsync,
                    accumulate, rasterize)
     end
+end
+
+"""The `Hikari.VolPath` keywords a config sets; the ones it leaves `nothing` keep Hikari's defaults."""
+function volpath_settings(c::ScreenConfig)
+    all = (; samples = c.samples, max_depth = c.max_depth, hw_accel = c.hw_accel,
+           regularize = c.regularize, russian_roulette_depth = c.russian_roulette_depth,
+           max_component_value = c.max_component_value, sensor = c.sensor,
+           filter = c.filter)
+    return NamedTuple(k => v for (k, v) in pairs(all) if v !== nothing)
+end
+
+new_volpath(c::ScreenConfig) = Hikari.VolPath(; volpath_settings(c)...)
+
+# `integrator` was the option the settings above replaced. `set_screen_config!`
+# refuses a key it does not know, but a per-call config (`colorbuffer(scene;
+# integrator = …)`, `Screen(scene; …)`) is merged key by key and an unknown one is
+# dropped without a word, so an old call would render with the defaults.
+function reject_integrator(config)
+    haskey(config, :integrator) && throw(ArgumentError(
+        "RayMakie has no `integrator` option: it always path traces with " *
+        "`Hikari.VolPath`, and each scene builds its own. Pass the settings instead, " *
+        "e.g. `samples = 16, max_depth = 8, hw_accel = true`; the others are " *
+        "`regularize`, `russian_roulette_depth`, `max_component_value`, `sensor` and " *
+        "`filter`. " *
+        "A .pbrt import's settings are `RayMakie.screen_config(res)`."))
+    return nothing
+end
+
+function Makie.merge_screen_config(::Type{ScreenConfig}, config::Dict)
+    reject_integrator(config)
+    return invoke(Makie.merge_screen_config, Tuple{Type, Dict}, ScreenConfig, config)
 end
 
 # =============================================================================
@@ -269,10 +319,9 @@ function renderloop_running(screen::Screen)
 end
 
 function Base.show(io::IO, screen::Screen)
-    scene_str = isnothing(screen.scene) ? "nothing" : "Scene(\$(size(screen.scene)))"
+    scene_str = isnothing(screen.scene) ? "nothing" : "Scene($(size(screen.scene)))"
     device_name = nameof(typeof(screen.config.device))
-    integrator_name = nameof(typeof(screen.config.integrator))
-    print(io, "Screen(\$scene_str, device=\$device_name, integrator=\$integrator_name)")
+    print(io, "Screen($scene_str, device=$device_name)")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", screen::Screen)
@@ -283,7 +332,7 @@ function Base.show(io::IO, ::MIME"text/plain", screen::Screen)
         println(io, "  Scene: not attached")
     end
     println(io, "  Device: ", nameof(typeof(screen.config.device)))
-    println(io, "  Integrator: ", nameof(typeof(screen.config.integrator)))
+    println(io, "  Path tracer: ", volpath_settings(screen.config))
     print(io, "  Exposure: ", screen.config.exposure)
 end
 
@@ -308,7 +357,6 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
 
         # An overlay-only state has no film to resize — see `create_overlay_only_state`.
         if state.overlay_only
-            state.integrator_state = nothing
             state.needs_film_clear = true
             continue
         end
@@ -335,7 +383,6 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
         isnothing(state.camera) ||
             (state.camera = to_trace_camera(state.makie_scene, film; screen_window))
 
-        state.integrator_state = nothing
         state.needs_film_clear = true
     end
 
@@ -354,13 +401,9 @@ end
 
 function cleanup!(state::RayMakieState)
     state.film === nothing || Hikari.free!(state.film)
-
-    # Free integrator state (work queues, pixel buffers — bulk of GPU memory)
-    if state.integrator_state !== nothing
-        Hikari.free!(state.integrator_state)
-        state.integrator_state = nothing
-    end
-
+    # The tracer's work queues and accumulators, the bulk of the GPU memory. The
+    # `VolPath` stays, empty, so a resized state renders with the same settings.
+    state.integrator === nothing || close(state.integrator)
     return nothing
 end
 
@@ -425,8 +468,6 @@ function Base.close(screen::Screen)
     end
     # uncovered_overlay_buf and uncovered_depth_buf were removed from Screen struct
 
-    close(screen.config.integrator)
-
     # No queue to hand back. A screen held a `Mantle.SubmitChannel` for its
     # overlay pass and a second one to present on, and both are gone: a frame is
     # a `Mantle.Plan` and `run!` decides what it is submitted on. Which is the
@@ -474,61 +515,19 @@ end
 Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
 Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
 
-"""
-Two integrators that would render identically.
-
-Compared FIELD BY FIELD rather than by `===`, and only over the settings — the
-caches (`state`, `adapted`, `perrun`) are what one accumulates INTO, so
-including them would make every integrator differ from itself after one frame.
-"""
-function equivalent_integrator(a, b)
-    typeof(a) === typeof(b) || return false
-    for f in fieldnames(typeof(a))
-        # Caches and DERIVED data. `filter_sampler_data` is built from `filter`,
-        # which is compared — but it is built fresh each time, so comparing the
-        # arrays by identity reports a difference that does not exist.
-        f in (:state, :adapted, :perrun, :listening_to, :filter_sampler_gpu,
-              :filter_sampler_data, :sampler_data,
-              :initial_medium_camera_pos, :initial_medium_key) && continue
-        isequal(getfield(a, f), getfield(b, f)) || return false
-    end
-    return true
-end
-
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
     if screen.config.device !== config.device
         return Screen(scene, config)
     end
+    old = screen.config
 
-    old_int = screen.config.integrator
-    new_int = config.integrator
-
-    # An integrator that only DIFFERS BY IDENTITY is the same integrator.
-    #
-    # `integrator = automatic` resolves to a freshly-built `VolPath` every time
-    # a `ScreenConfig` is made, and `Makie.save` makes one on every call. Tested
-    # with `!==`, that reads as "the integrator changed" and the branches below
-    # close the old one and clear every film — so capturing a frame from an
-    # accumulating screen threw away everything that had accumulated, and the
-    # capture could never show more than one sample however long it had been
-    # converging.
-    if old_int !== new_int && equivalent_integrator(old_int, new_int)
-        new_int = old_int
-        config = ScreenConfig(old_int, config.samples, config.exposure, config.tonemap,
-                              config.gamma, config.device, config.denoise,
-                              config.denoise_config, config.visible, config.title,
-                              config.vsync, config.accumulate, config.rasterize)
-    end
-
-    # A new integrator that wants a DIFFERENT acceleration structure needs a
-    # different scene, not just a fresh integrator state. `hw_accel` picks the
-    # accel type in `create_scene_state` and it is baked into `hikari_scene` at
+    # A different `hw_accel` needs a different SCENE, not just a new tracer: it
+    # picks the accel type in `create_scene_state`, baked into `hikari_scene` at
     # construction, so keeping the old scene silently keeps the old traversal
-    # path: two `colorbuffer` calls on one Makie scene, `hw_accel=true` then
+    # path. Two `colorbuffer` calls on one Makie scene, `hw_accel=true` then
     # `false`, both traced the HARDWARE TLAS. Nothing errors, the images are
     # right, and any A/B of the two paths measures the first one twice.
-    if old_int !== new_int && wants_hw_accel(old_int) != wants_hw_accel(new_int)
-        close(old_int)
+    if old.hw_accel != config.hw_accel
         # Drop every plot's render objects FIRST, while the old states are still
         # alive to tear them down. `init_scene!` skips any plot that still holds
         # a render object of EITHER renderer, so emptying the states on their
@@ -549,23 +548,16 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
         return screen
     end
 
-    # If the integrator object changed, close the old one's caches and mark dirty
-    if old_int !== new_int
-        close(old_int)
+    # Compared as VALUES, so an unchanged config is unchanged however it was
+    # made. `Makie.save` builds a new one on every call, and when the tracer was
+    # an object in the config, a fresh-but-equal one read as "changed": the
+    # films were cleared and a capture of an accumulating screen never showed
+    # more than one sample.
+    if volpath_settings(old) != volpath_settings(config)
         for ss in screen.scene_states
-            # Proactively release the old integrator's GPU buffers (work
-            # queues + pixel buffers are the bulk of GPU memory).  Just
-            # nulling the field defers reclamation to Julia's GC, which
-            # the next-render's VolPathState construction races and loses:
-            # peak memory becomes 2× state and OOMs on big scenes like
-            # Crown at 1400×1000. Hikari.free! requires GPU idle — the
-            # screen lock is held and the previous render's render! has
-            # already returned (synchronous download in colorbuffer), so
-            # the GPU is quiesced here.
-            if ss.integrator_state !== nothing
-                Hikari.free!(ss.integrator_state)
-                ss.integrator_state = nothing
-            end
+            ss.overlay_only && continue
+            close(ss.integrator)
+            ss.integrator = new_volpath(config)
             ss.needs_film_clear = true
         end
     end
@@ -585,8 +577,6 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
 
     # Skip ray tracing for overlay-only states — they have no film to trace into.
     state.overlay_only && return nothing
-
-    integrator = screen.config.integrator
 
     # Poll compute graph for updates on this scene's plots
     poll_all_plots(screen, state.makie_scene)
@@ -620,15 +610,10 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
     end
     # (sync!(tlas) above already runs refit_tlas! when transforms are dirty.)
 
-    # Load per-scene integrator state (each scene accumulates independently)
-    if integrator isa Hikari.VolPath
-        integrator.state = state.integrator_state
-    end
-
-    # Clear film and integrator if data changed
+    # Clear film and tracer if data changed
     if state.needs_film_clear
         Hikari.clear!(state.film)
-        Hikari.clear!(integrator)
+        Hikari.clear!(state.integrator)
         state.needs_film_clear = false
     end
 
@@ -638,12 +623,7 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
         Hikari.fill_aux_buffers!(state.film, adapted_scene, state.camera[])
     end
 
-    tracesample!(integrator, state.hikari_scene, state.film, state.camera, finalize_framebuffer)
-    if integrator isa Hikari.VolPath
-        # Save back integrator state (may have been newly created)
-        state.integrator_state = integrator.state
-    end
-
+    tracesample!(state.integrator, state.hikari_scene, state.film, state.camera, finalize_framebuffer)
     return state.film
 end
 
@@ -655,16 +635,10 @@ end
 # forwarded its keyword through a boxed NamedTuple. Here every type is
 # concrete: the observable read is typed, the call is static, and the flag is
 # a plain argument.
-function tracesample!(integrator::Hikari.VolPath, scene::Hikari.AbstractScene,
+function tracesample!(vp::Hikari.VolPath, scene::Hikari.AbstractScene,
                       film::Hikari.Film, camera::Observable, finalize::Bool)
-    # VolPath renders one sample per call.
-    Hikari.render!(integrator, scene, film, camera[]; finalize_framebuffer = finalize)
-    return nothing
-end
-function tracesample!(integrator::Hikari.Integrator, scene::Hikari.AbstractScene,
-                      film::Hikari.Film, camera::Observable, ::Bool)
-    # A SamplerIntegrator renders all its samples in one functor call.
-    integrator(scene, film, camera[])
+    # One sample per call.
+    Hikari.render!(vp, scene, film, camera[]; finalize_framebuffer = finalize)
     return nothing
 end
 
@@ -1027,7 +1001,7 @@ end
     Makie.colorbuffer(screen, format; clear = true, samples = nothing)
 
 `samples` is how many samples THIS read renders, overriding the screen's own
-`samples` and the integrator's `samples_per_pixel` in that order. With
+`samples` and the tracer's default in that order. With
 `clear = false` they accumulate onto what is already in the film, which is what
 makes a live preview converge at one sample per read while the playhead stands
 still.
@@ -1056,9 +1030,8 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         # No frame yet -- fall through to render one
     end
 
-    # Render each scene for the configured number of samples
-    # VolPath uses an outer loop (each render! = 1 sample).
-    integrator = screen.config.integrator
+    # Render each scene for the configured number of samples, one per `render!`.
+    #
     # Accumulating: ONE sample per read, so a still camera converges over the
     # reads instead of re-rendering the same budget each time. The camera
     # watcher clears the film when it moves, which is what starts it over.
@@ -1069,30 +1042,23 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # every frame, so what that frame shows is however many samples this read
     # put in it, and one of them is a snowstorm. `nothing` is the config's
     # default, so a caller who does not ask still gets one sample per read.
-    samples = something(samples, screen.config.samples,
-                        screen.config.accumulate ? 1 : nothing,
-                        integrator.samples_per_pixel)
     for scene_state in screen.scene_states
         screen.state = scene_state
         # Always clear film at the start of colorbuffer — ensures correct accumulation
         if clear
             scene_state.needs_film_clear = true
         end
+        # No film to trace into; its plots are drawn by the overlay pass.
+        scene_state.overlay_only && continue
+        n = something(samples, screen.config.samples,
+                      screen.config.accumulate ? 1 : nothing,
+                      scene_state.integrator.samples_per_pixel)
         # Batched render: skip `vp_finalize_film_kernel!` on intermediate
         # samples — the framebuffer is only observed after the loop ends, so
         # finalizing it 32× when 31 of those will be overwritten is pure
-        # waste (~17 % of captured GPU on killeroo).  We finalize once at
-        # the end via the integrator's `finalize_film!`.  The last sample
-        # still finalizes normally so callers without explicit finalize
-        # support keep working.
-        integ = screen.config.integrator
-        supports_skip = integ isa Hikari.VolPath
-        for i in 1:samples
-            if supports_skip && i < samples
-                render!(screen; finalize_framebuffer=false)
-            else
-                render!(screen)
-            end
+        # waste (~17 % of captured GPU on killeroo). Only the last one does.
+        for i in 1:n
+            render!(screen; finalize_framebuffer = i == n)
             # No wait between samples. Each sample is one closed submission of
             # the integrator's recorded plan, and the queue orders them; a
             # device wait here only idled the GPU between samples (and let it
@@ -1505,13 +1471,11 @@ function Base.delete!(screen::Screen, scene::Scene)
     for ss in screen.scene_states
         ss.closed && continue  # Already freed by close(screen)
         ss.closed = true
-        cleanup!(ss)           # Free integrator state, colorbuffer, overlay, depth
+        cleanup!(ss)           # Free the tracer's state, colorbuffer, overlay, depth
         free_state_gpu!(ss)   # Free hikari scene (HWTLAS, materials, lights, media)
     end
     empty!(screen.scene_states)
     screen.state = nothing
-    # Also close the integrator to free its caches
-    close(screen.config.integrator)
 end
 
 function free_state_gpu!(state::RayMakieState)
@@ -1548,17 +1512,21 @@ Sets RayMakie as the currently active backend and allows setting screen configur
 # Examples
 
 ```julia
-# Use default VolPath integrator
 RayMakie.activate!()
 
-# Use VolPath with custom settings
-RayMakie.activate!(integrator = RayMakie.VolPath(samples=16, max_depth=8))
+# Path tracer settings
+RayMakie.activate!(samples = 16, max_depth = 8)
+
+# A .pbrt scene's own settings
+res = RayMakie.pbrt_to_makie("crown.pbrt")
+RayMakie.activate!(; RayMakie.screen_config(res)...)
 
 # Configure postprocessing
 RayMakie.activate!(exposure = 1.5, tonemap = :reinhard, gamma = 2.2)
 ```
 """
 function activate!(; screen_config...)
+    reject_integrator(screen_config)
     if !isempty(screen_config)
         Makie.set_screen_config!(RayMakie, screen_config)
     end

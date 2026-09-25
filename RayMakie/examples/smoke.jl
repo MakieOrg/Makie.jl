@@ -78,12 +78,11 @@ function render_smoke(;
         exposure=0.8f0,
         tonemap=:aces,
         gamma=2.2f0,
-        sensor=Hikari.FilmSensor(iso=100, white_balance=6500)
+        sensor=Hikari.PixelSensor(iso=100, whitebalance=6500)
     )
 
     scene = create_smoke_scene(; resolution=resolution, cloud_resolution=cloud_resolution)
-    integrator = Hikari.VolPath(samples=samples, max_depth=max_depth)
-    img = @time colorbuffer(scene; backend=RayMakie, integrator=integrator)
+    img = @time colorbuffer(scene; backend=RayMakie, samples, max_depth)
     return img, scene
 end
 

@@ -64,33 +64,6 @@ function plot_lego_figure(s, floor = true)
 end
 
 # =============================================================================
-# Integrator configurations
-# =============================================================================
-integrator_configs = [
-    (
-        backend = AMDGPU.ROCBackend(),
-        exposure = 1.0f0,
-        integrator = RayMakie.Whitted(samples=16, max_depth=5),
-        tonemap = :aces,
-        gamma = 2.2f0,
-    ),
-    (
-        backend = Raycore.KA.CPU(),
-        exposure = 1.0f0,
-        integrator = Hikari.FastWavefront(),
-        tonemap = :aces,
-        gamma = 2.0f0,
-    ),
-    (
-        backend = Raycore.KA.CPU(),
-        exposure = 1.0f0,
-        integrator = Hikari.SPPM(search_radius=0.075f0, max_depth=5, iterations=200),
-        tonemap = :aces,
-        gamma = 2.0f0,
-    ),
-]
-
-# =============================================================================
 # Setup scene with lights
 # =============================================================================
 # Point light uses inverse-square falloff, so radiance needs to account for distance
@@ -110,13 +83,13 @@ function create_scene()
     return s, figure
 end
 
-# Render with VolPath integrator
 volpath_config = (
-    backend = Raycore.KA.CPU(),
+    device = Raycore.KA.CPU(),
     exposure = 0.8f0,
-    integrator = RayMakie.VolPath(samples_per_pixel=20, max_depth=8),
+    samples = 20,
+    max_depth = 8,
     tonemap = :aces,
-    sensor=Hikari.FilmSensor(iso=100, white_balance=6500),
+    sensor=Hikari.PixelSensor(iso=100, whitebalance=6500),
     gamma = 2.0f0,
 )
 RayMakie.activate!(; volpath_config...)
@@ -124,7 +97,7 @@ s, figure = create_scene();
 img = @time colorbuffer(s; backend=RayMakie)
 
 # =============================================================================
-# Animation with each integrator
+# Animation
 # =============================================================================
 let
     config = volpath_config

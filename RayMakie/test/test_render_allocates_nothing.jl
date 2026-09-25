@@ -94,32 +94,36 @@ it there. What is left is the wrapper layer itself, measured per sample with
     Both are `ObjectiveC.Object`, a struct around one pointer, boxed on the way
     out of the `@objc` call. Nothing in Metal.jl or above it can avoid asking
     for a command buffer and an encoder.
-  * ~48 B — `PendingCommand.cmdbuf` is typed with the ABSTRACT
-    `MTL.MTLCommandBufferLike`, so `drain_cleanups!` reading `.status` off it
-    dispatches dynamically and boxes the returned enum. Fixable by narrowing
-    that field to a concrete `Union`, which is a Metal.jl change, not this one.
 
-A CEILING rather than an exact number because the third one scales with how many
-command buffers happen to retire in a given sample. It is tight on purpose: every
-regression this file was written for is three orders of magnitude bigger — 7 KB
-for boxing 21 render objects in the poll, 684 B for boxing the camera once.
+There was a third: `drain_cleanups!` boxed a status enum for every command buffer
+that retired during the sample, so the count depended on GPU timing and one sample
+in twenty went over. Metal.jl reads it through a `Bool` barrier now, and its own
+`test/command_batching.jl` pins that. A CEILING rather than an exact number because
+the wrappers are one backend's; it is tight on purpose: every regression this file
+was written for is orders of magnitude bigger — 7 KB for boxing 21 render objects
+in the poll, 684 B for boxing the camera once.
 """
 const WRAPPER_CEILING = 256
 
 @testset "a sample of a still scene allocates nothing above the ObjC wrappers" begin
     scene, plt = allocfree_scene()
-    screen = RayMakie.Screen(scene; integrator = Hikari.VolPath(samples = 1, max_depth = 4, hw_accel = true),
+    screen = RayMakie.Screen(scene; samples = 1, max_depth = 4, hw_accel = true,
                              visible = false)
     img = colorbuffer(screen)       # compiles, records, renders one sample
     @test size(img) == (48, 64)
     bytes = sample_bytes(screen, 20)
-    @test maximum(bytes) <= WRAPPER_CEILING
+    # The MEDIAN, not the maximum. `@allocated` counts every task that runs while
+    # the sample yields, and it does yield, in the wait for an in-flight slot:
+    # a loop that allocates nothing and yields as often read 112-240 B in 14 of 400
+    # windows, from whatever else the process was running. A regression this file
+    # guards costs every sample, so the median still sees it.
+    @test sort(bytes)[cld(length(bytes), 2)] <= WRAPPER_CEILING
     close(screen)
 end
 
 @testset "a changed plot is still resolved by the poll" begin
     scene, plt = allocfree_scene()
-    screen = RayMakie.Screen(scene; integrator = Hikari.VolPath(samples = 1, max_depth = 4, hw_accel = true),
+    screen = RayMakie.Screen(scene; samples = 1, max_depth = 4, hw_accel = true,
                              visible = false)
     colorbuffer(screen)
     node = plt[:trace_renderobject]

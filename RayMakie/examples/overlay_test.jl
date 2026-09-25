@@ -46,7 +46,7 @@ end
 # Create and save both versions
 using AMDGPU
 # fig, ax, pl = scatter(rand(10))
-RayMakie.activate!(integrator=RayMakie.VolPath(samples=10), backend=AMDGPU.ROCBackend())
+RayMakie.activate!(samples=10, device=AMDGPU.ROCBackend())
 colorbuffer(fig; backend=RayMakie)
 
 

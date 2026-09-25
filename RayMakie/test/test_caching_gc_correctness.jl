@@ -84,8 +84,7 @@ end
             scene = _make_makie_scene(; sz=(32, 32))
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
 
-            integrator = Hikari.VolPath(samples=2, max_depth=4)
-            img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
+            img = colorbuffer(scene; backend=RayMakie, samples=2, max_depth=4, hw_accel=false)
 
             @test size(img) == (32, 32)
 
@@ -100,16 +99,14 @@ end
             if screen !== nothing
                 close(screen)
             end
-            close(integrator)
         end
 
         @testset "repeated colorbuffer calls are stable" begin
             scene = _make_makie_scene(; sz=(16, 16))
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=nothing, gamma=1.0f0)
-            integrator = Hikari.VolPath(samples=2, max_depth=2)
 
-            img1 = colorbuffer(scene; backend=RayMakie, integrator=integrator)
-            img2 = colorbuffer(scene; backend=RayMakie, integrator=integrator)
+            img1 = colorbuffer(scene; backend=RayMakie, samples=2, max_depth=2, hw_accel=false)
+            img2 = colorbuffer(scene; backend=RayMakie, samples=2, max_depth=2, hw_accel=false)
 
             @test size(img1) == size(img2)
 
@@ -123,7 +120,6 @@ end
             if screen !== nothing
                 close(screen)
             end
-            close(integrator)
         end
     end
 
@@ -181,9 +177,8 @@ end
 
             scene = _make_makie_scene(; sz=(16, 16))
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
-            integrator = Hikari.VolPath(samples=1, max_depth=2)
 
-            img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
+            img = colorbuffer(scene; backend=RayMakie, samples=1, max_depth=2, hw_accel=false)
             Mantle.flush!(Mantle.Device())
 
             # After render on GPU, many buffers should be allocated
@@ -198,11 +193,10 @@ end
 
             # Close screen — should free ALL GPU resources and mark closed
             close(screen)
-            close(integrator)
 
             @test state.closed == true
             @test state.hikari_scene === nothing  # _free_state_gpu! nulled it
-            @test state.integrator_state === nothing
+            @test state.integrator.state === nothing
 
             _flush_all!()
             after = Mantle.live_buffer_count()
@@ -215,17 +209,16 @@ end
         @testset "buffer count stable across renders" begin
             scene = _make_makie_scene(; sz=(16, 16))
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
-            integrator = Hikari.VolPath(samples=1, max_depth=2)
 
             # Warmup
-            img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
+            img = colorbuffer(scene; backend=RayMakie, samples=1, max_depth=2, hw_accel=false)
             Mantle.flush!(Mantle.Device())
             _flush_all!()
             baseline = Mantle.live_buffer_count()
 
             # Multiple renders — should not leak
             for _ in 1:5
-                img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
+                img = colorbuffer(scene; backend=RayMakie, samples=1, max_depth=2, hw_accel=false)
                 Mantle.flush!(Mantle.Device())
             end
             _flush_all!()
@@ -236,7 +229,6 @@ end
             if screen !== nothing
                 close(screen)
             end
-            close(integrator)
         end
 
         @testset "sequential scenes — no leak" begin
@@ -246,11 +238,9 @@ end
             # Scene 1: render and fully clean up
             scene1 = _make_makie_scene(; sz=(16, 16))
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
-            int1 = Hikari.VolPath(samples=1, max_depth=2)
-            colorbuffer(scene1; backend=RayMakie, integrator=int1)
+            colorbuffer(scene1; backend=RayMakie, samples=1, max_depth=2, hw_accel=false)
             screen1 = Makie.getscreen(scene1)
             close(screen1)
-            close(int1)
             empty!(scene1)
 
             _flush_all!()
@@ -258,11 +248,9 @@ end
 
             # Scene 2: render and fully clean up
             scene2 = _make_makie_scene(; sz=(16, 16))
-            int2 = Hikari.VolPath(samples=1, max_depth=2)
-            colorbuffer(scene2; backend=RayMakie, integrator=int2)
+            colorbuffer(scene2; backend=RayMakie, samples=1, max_depth=2, hw_accel=false)
             screen2 = Makie.getscreen(scene2)
             close(screen2)
-            close(int2)
             empty!(scene2)
 
             _flush_all!()
@@ -274,27 +262,23 @@ end
         end
     end
 
-    # ── 5. Integrator close lifecycle ──
-    @testset "integrator close lifecycle" begin
-        @testset "close integrator after render" begin
+    # ── 5. Tracer close lifecycle ──
+    @testset "tracer close lifecycle" begin
+        @testset "closing the screen empties each scene's tracer" begin
             scene = _make_makie_scene(; sz=(16, 16))
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
-            integrator = Hikari.VolPath(samples=1, max_depth=2)
 
-            img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
-
-            # Integrator should have state after render
-            @test integrator.state !== nothing
-
-            # Close integrator clears all caches
-            close(integrator)
-            @test integrator.state === nothing
-            @test integrator.filter_sampler_gpu === nothing
-
+            img = colorbuffer(scene; backend=RayMakie, samples=1, max_depth=2, hw_accel=false)
             screen = Makie.getscreen(scene)
-            if screen !== nothing
-                close(screen)
-            end
+            vp = screen.state.integrator
+
+            # The scene's own tracer has state after a render…
+            @test vp.state !== nothing
+
+            # …and closing the screen clears all of its caches.
+            close(screen)
+            @test vp.state === nothing
+            @test vp.filter_sampler_gpu === nothing
         end
     end
 
@@ -326,12 +310,10 @@ end
         @testset "empty!(scene) without close(screen) does not crash" begin
             scene = _make_makie_scene(; sz=(16, 16))
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
-            integrator = Hikari.VolPath(samples=1, max_depth=2)
-            colorbuffer(scene; backend=RayMakie, integrator=integrator)
+            colorbuffer(scene; backend=RayMakie, samples=1, max_depth=2, hw_accel=false)
             @test_nowarn empty!(scene)
             screen = Makie.getscreen(scene)
             screen !== nothing && close(screen)
-            close(integrator)
         end
     end
 
@@ -359,14 +341,10 @@ end
                   material=Hikari.Diffuse(Kd=(0.1, 0.1, 0.9)))
 
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=nothing, gamma=1.0f0)
-            integrator = Hikari.VolPath(samples=4, max_depth=4)
 
-            img1 = colorbuffer(scene1; backend=RayMakie, integrator=integrator)
-            close(integrator)
+            img1 = colorbuffer(scene1; backend=RayMakie, samples=4, max_depth=4, hw_accel=false)
 
-            integrator2 = Hikari.VolPath(samples=4, max_depth=4)
-            img2 = colorbuffer(scene2; backend=RayMakie, integrator=integrator2)
-            close(integrator2)
+            img2 = colorbuffer(scene2; backend=RayMakie, samples=4, max_depth=4, hw_accel=false)
 
             # Red scene should have more red, blue scene more blue
             mean_r1 = sum(px -> Float64(red(px)), img1) / length(img1)
@@ -400,8 +378,7 @@ end
         let
             s = _make_makie_scene(; sz=(16, 16))
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
-            int = Hikari.VolPath(samples=1, max_depth=2)
-            colorbuffer(s; backend=RayMakie, integrator=int)
+            colorbuffer(s; backend=RayMakie, samples=1, max_depth=2, hw_accel=false)
             Mantle.flush!(Mantle.Device())
         end
         # All references out of scope — Scene finalizer should close screen

@@ -127,8 +127,9 @@ mutable struct RayMakieState
     # path that flips the index in the kernel instead. Its own comment said it
     # was unused; it existed to be allocated in two constructors and finalized
     # in `cleanup!`.
-    # Per-scene integrator state (e.g. VolPathState) — each scene accumulates independently
-    integrator_state::Any
+    # This scene's own path tracer, built from the screen's settings; `nothing`
+    # for an overlay-only scene. Its own and nobody else's: see `ScreenConfig`.
+    integrator::Union{Nothing, Hikari.VolPath}
     # True for 2D scenes: only overlay rendering, no ray tracing
     overlay_only::Bool
     # Lifecycle: true after close(screen) — prevents operations on freed GPU resources
@@ -146,16 +147,6 @@ end
 
 # Helper to get HWTLAS from state
 get_tlas(state::RayMakieState) = state.hikari_scene.accel
-
-"""
-Does this integrator want a hardware acceleration structure?
-
-One place, because two call sites have to agree: `create_scene_state` builds the
-`Hikari.Scene` from it, and `apply_screen_config!` has to notice when it CHANGES
-— the accel type is baked in at scene construction, so a new integrator with a
-different answer needs a new scene, not just a new integrator state.
-"""
-wants_hw_accel(integrator) = integrator isa Hikari.VolPath && integrator.hw_accel === true
 
 # =============================================================================
 # Legacy Overlay Render Objects (kept for backward compat during transition)
@@ -268,34 +259,19 @@ end
 # Light conversion
 # =============================================================================
 
-# Whether an integrator uses spectral light transport (needs photometric normalization)
-is_spectral_integrator(::Hikari.VolPath) = true
-is_spectral_integrator(::Hikari.Integrator) = false
-
-function to_trace_light(light::Makie.AmbientLight, integrator)
+# Hikari's transport is spectral, so every colour goes through the RGB
+# constructors, which normalise photometrically the way pbrt-v4 does.
+function to_trace_light(light::Makie.AmbientLight)
     color = light.color isa Observable ? light.color[] : light.color
-    rgb = RGB{Float32}(RGBf(color))
-    if is_spectral_integrator(integrator)
-        return Hikari.AmbientLight(rgb)
-    else
-        return Hikari.AmbientLight(Hikari.RGBSpectrum(rgb.r, rgb.g, rgb.b))
-    end
+    return Hikari.AmbientLight(RGB{Float32}(RGBf(color)))
 end
 
-function to_trace_light(light::Makie.PointLight, integrator)
+function to_trace_light(light::Makie.PointLight)
     c = RGBf(light.color)
-    if is_spectral_integrator(integrator)
-        # Spectral path: PointLight(RGB{Float32}, position) creates RGBIlluminantSpectrum
-        # with photometric normalization (scale = 1/spectrum_to_photometric), matching pbrt-v4
-        return Hikari.PointLight(RGB{Float32}(c.r, c.g, c.b), Vec3f(light.position))
-    else
-        # RGB path: direct RGBSpectrum intensity
-        i = Hikari.RGBSpectrum(c.r, c.g, c.b)
-        return Hikari.PointLight(Raycore.translate(Vec3f(light.position)), i, 1f0)
-    end
+    return Hikari.PointLight(RGB{Float32}(c.r, c.g, c.b), Vec3f(light.position))
 end
 
-function to_trace_light(light::Makie.SunSkyLight, integrator)
+function to_trace_light(light::Makie.SunSkyLight)
     ground_albedo = Hikari.RGBSpectrum(light.ground_albedo.r, light.ground_albedo.g, light.ground_albedo.b)
     # Pre-bake Hosek-Wilkie sky to EnvironmentLight + separate SunLight (pbrt-v4 approach).
     # Returns a tuple — caller handles pushing both lights.
@@ -308,37 +284,23 @@ function to_trace_light(light::Makie.SunSkyLight, integrator)
     )
 end
 
-function to_trace_light(light::Makie.DirectionalLight, integrator)
+function to_trace_light(light::Makie.DirectionalLight)
     c = RGBf(light.color)
-    if is_spectral_integrator(integrator)
-        # Spectral path: use RGB constructor with photometric normalization (matching pbrt-v4)
-        return Hikari.DirectionalLight(RGB{Float32}(c.r, c.g, c.b), Vec3f(light.direction))
-    else
-        i = Hikari.RGBSpectrum(c.r, c.g, c.b)
-        return Hikari.DirectionalLight(Raycore.Transformation(Mat4f(I)), i, Vec3f(light.direction), 1f0)
-    end
+    return Hikari.DirectionalLight(RGB{Float32}(c.r, c.g, c.b), Vec3f(light.direction))
 end
 
-function to_trace_light(light::Makie.SpotLight, integrator)
+function to_trace_light(light::Makie.SpotLight)
     c = RGBf(light.color)
     pos = Point3f(light.position)
-    dir = Vec3f(light.direction)
-    target = pos + normalize(dir)
+    target = pos + normalize(Vec3f(light.direction))
     # Makie SpotLight angles: [inner_angle, outer_angle] in radians
     falloff_start = rad2deg(light.angles[1])
     total_width = rad2deg(light.angles[2])
-    if is_spectral_integrator(integrator)
-        return Hikari.SpotLight(
-            RGB{Float32}(c.r, c.g, c.b), pos, target,
-            Float32(total_width), Float32(falloff_start))
-    else
-        i = Hikari.RGBSpectrum(c.r, c.g, c.b)
-        return Hikari.SpotLight(pos, target, i,
-            Float32(total_width), Float32(falloff_start), 1f0)
-    end
+    return Hikari.SpotLight(RGB{Float32}(c.r, c.g, c.b), pos, target,
+                            Float32(total_width), Float32(falloff_start))
 end
 
-function to_trace_light(light::Makie.EnvironmentLight, integrator)
+function to_trace_light(light::Makie.EnvironmentLight)
     data = map(c -> Hikari.RGBSpectrum(c.r, c.g, c.b), light.image)
     rotation = Hikari.rotation_matrix(light.rotation_angle, light.rotation_axis)
     env_map = Hikari.EnvironmentMap(data, rotation)
@@ -346,9 +308,7 @@ function to_trace_light(light::Makie.EnvironmentLight, integrator)
     return Hikari.EnvironmentLight(env_map, Hikari.RGBSpectrum(photometric_scale))
 end
 
-function to_trace_light(light, integrator)
-    return nothing
-end
+to_trace_light(light) = nothing
 
 # =============================================================================
 # Camera conversion
@@ -425,10 +385,10 @@ include("plots/text_overlay.jl")
 # init_scene! — create Hikari scene from Makie scene, call draw_atomic per plot
 # =============================================================================
 
-function init_lights!(hikari_scene, rscene, integrator)
+function init_lights!(hikari_scene, rscene)
     makie_lights = Makie.get_lights(rscene)
     for light in makie_lights
-        l = to_trace_light(light, integrator)
+        l = to_trace_light(light)
         if l isa Tuple
             for li in l
                 push!(hikari_scene.lights, li)
@@ -443,13 +403,7 @@ function init_lights!(hikari_scene, rscene, integrator)
     if !has_infinite && haskey(rscene.compute, :ambient_color)
         ambient_color = rscene.compute[:ambient_color][]
         if ambient_color != RGBf(0, 0, 0)
-            ambient_rgb = RGB{Float32}(ambient_color)
-            ambient_light = if is_spectral_integrator(integrator)
-                Hikari.AmbientLight(ambient_rgb)
-            else
-                Hikari.AmbientLight(Hikari.RGBSpectrum(ambient_rgb.r, ambient_rgb.g, ambient_rgb.b))
-            end
-            push!(hikari_scene.lights, ambient_light)
+            push!(hikari_scene.lights, Hikari.AmbientLight(RGB{Float32}(ambient_color)))
         end
     end
 
@@ -519,7 +473,6 @@ end
 
 function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene)
     ka_backend = screen.config.device
-    integrator = screen.config.integrator
 
     # In PIXELS, like the film it sizes and the buffer it is composited into.
     ppu = screen.px_per_unit
@@ -540,8 +493,8 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
         diagonal=1.0f0, scale=1.0f0,
     )
 
-    hikari_scene = Hikari.Scene(backend=ka_backend, hw_accel=wants_hw_accel(integrator))
-    init_lights!(hikari_scene, rscene, integrator)
+    hikari_scene = Hikari.Scene(backend=ka_backend, hw_accel=screen.config.hw_accel)
+    init_lights!(hikari_scene, rscene)
 
     # Onto the backend, in memory the film owns
     film = Hikari.Film(ka_backend, film)
@@ -551,7 +504,8 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
 
     # Clear film when Makie camera changes (rotation, zoom, pan)
 
-    state = RayMakieState(rscene, film, camera, hikari_scene, false, nothing, false, false, 0, 0)
+    state = RayMakieState(rscene, film, camera, hikari_scene, false,
+                          new_volpath(screen.config), false, false, 0, 0)
     # Guard: only clear film when the projection matrix actually changes.
     # Makie's Observable fires on every notify(), even when the value is identical.
     # Without this guard, GLMakie re-renders (triggered by overlay image updates)
@@ -983,8 +937,7 @@ Mantle.@setup_workload begin
                 mesh!(scene, Sphere(Point3f(0, 0, 0), 0.9f0);
                       material = Hikari.Diffuse(Kd = (0.6, 0.6, 0.6)))
                 activate!(; device = dev)
-                colorbuffer(scene; backend = RayMakie,
-                            integrator = Hikari.VolPath(; samples = 1, max_depth = 4, hw_accel = true))
+                colorbuffer(scene; backend = RayMakie, samples = 1, max_depth = 4, hw_accel = true)
             end
         catch e
             @warn "RayMakie GPU precompile workload skipped" exception = (e, catch_backtrace())

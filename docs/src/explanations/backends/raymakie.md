@@ -49,9 +49,10 @@ Activate the backend with `RayMakie.activate!()`:
 # Default: GPU rendering with hardware ray tracing
 RayMakie.activate!()
 
-# Custom integrator settings
+# Path tracer and postprocessing settings
 RayMakie.activate!(
-    integrator = Hikari.VolPath(samples=64, max_depth=8),
+    samples = 64,
+    max_depth = 8,
     exposure = 1.5,
     tonemap = :aces,
     gamma = 2.2,
@@ -67,15 +68,30 @@ RayMakie.activate!(denoise = true)
 
 ## Configuration options
 
+RayMakie always path traces with `Hikari.VolPath`, and each scene builds its own
+from these settings. `automatic` keeps `Hikari.VolPath`'s default.
+
 | Option | Default | Description |
 |--------|---------|-------------|
-| `integrator` | `VolPath(hw_accel=true)` | Path tracing integrator |
+| `samples` | `nothing` | Samples per finished frame (`nothing`: `Hikari.VolPath`'s default) |
+| `max_depth` | `automatic` | Bounces per path |
+| `hw_accel` | `true` | Trace on the device's ray tracing hardware |
+| `regularize` | `automatic` | Roughen near-specular lobes after the first diffuse bounce |
+| `russian_roulette_depth` | `automatic` | Bounces before paths may be terminated at random |
+| `max_component_value` | `automatic` | Clamp a sample's RGB components (firefly suppression) |
+| `sensor` | `automatic` | Camera sensor response (`Hikari.PixelSensor(...)`) |
+| `filter` | `automatic` | Pixel reconstruction filter (`Hikari.MitchellFilter()`, `Hikari.BoxFilter()`, ...) |
 | `exposure` | `1.0` | Exposure multiplier for HDR tonemapping |
-| `tonemap` | `nothing` | Tonemapping operator (`:aces`, `:reinhard`, or `nothing`) |
-| `gamma` | `nothing` | Gamma correction value (e.g. `2.2`) |
-| `device` | `LavaBackend()` | Compute backend (GPU via Lava, or `CPU()`) |
+| `tonemap` | `:aces` | Tonemapping operator (`:aces`, `:reinhard`, `:reinhard_extended`, `:uncharted2`, `:filmic`, or `nothing`) |
+| `gamma` | `2.2` | Gamma correction value (`nothing` to skip) |
+| `device` | `automatic` | Compute backend: the best one loaded, or e.g. `KernelAbstractions.CPU()` |
 | `denoise` | `false` | Enable AI denoising |
 | `denoise_config` | `nothing` | Denoiser configuration (`Hikari.DenoiseConfig(...)`) |
+| `accumulate` | `false` | Let samples build up across reads while the camera stands still |
+| `rasterize` | `false` | Draw traceable plots with the raster path instead |
+
+A scene imported with `pbrt_to_makie` carries the file's own tracer settings:
+`RayMakie.activate!(; RayMakie.screen_config(res)...)`.
 
 ## Materials
 
@@ -527,7 +543,7 @@ RayMakie replaces the experimental RPRMakie backend. Key differences:
 | `RPR.EmissiveMaterial(matsys)` | `Hikari.Emissive(Le=...)` |
 | `RPR.Plastic(matsys)` | `Hikari.CoatedDiffuse(...)` |
 | `RPR.UberMaterial(matsys)` | Use specific material type |
-| `RPRMakie.Screen(scene; iterations=N)` | `RayMakie.activate!(integrator=VolPath(samples=N))` |
+| `RPRMakie.Screen(scene; iterations=N)` | `RayMakie.activate!(samples=N)` |
 | `LScene(fig[1,1]; scenekw=(lights=...,))` | `Scene(size=...; lights=...)` |
 | `RPRMakie.replace_scene_rpr!(...)` | Not needed (RayMakie renders directly) |
 
@@ -540,7 +556,7 @@ mat = RPR.Chrome(screen.matsys)
 mesh!(ax, sphere; material=mat)
 
 # RayMakie (new):
-RayMakie.activate!(integrator=Hikari.VolPath(samples=64))
+RayMakie.activate!(samples=64)
 mesh!(scene, sphere; material=Hikari.Silver(roughness=0.02))
 img = colorbuffer(scene)
 ```

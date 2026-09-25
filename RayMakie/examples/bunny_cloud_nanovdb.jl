@@ -91,17 +91,15 @@ function render_nanovdb_bunny(nvdb_path::String;
     backend=Raycore.KA.CPU(),
     kwargs...
 )
-    # Configure VolPath integrator with pbrt-matching sensor settings
+    # pbrt-matching sensor settings
     volpath_config = (
-        backend = backend,
-        integrator = RayMakie.VolPath(
-            samples=samples_per_pixel,
-            max_depth=max_depth,
-        ),
+        device = backend,
+        samples = samples_per_pixel,
+        max_depth = max_depth,
         exposure = exposure,
         tonemap = tonemap,
         gamma = gamma,
-        sensor = Hikari.FilmSensor(iso=iso, white_balance=white_balance),
+        sensor = Hikari.PixelSensor(iso=iso, whitebalance=white_balance),
     )
     RayMakie.activate!(; volpath_config...)
     # Create and render scene

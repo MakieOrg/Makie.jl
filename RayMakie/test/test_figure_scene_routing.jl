@@ -22,7 +22,7 @@ using Test
 using Makie, RayMakie, Hikari, Raycore, GeometryBasics, Colors
 using Makie: Figure, Axis3, mesh!, Point3f, Sphere
 
-make_screen(scene) = RayMakie.Screen(scene; integrator = Hikari.VolPath(samples = 2, max_depth = 2))
+make_screen(scene) = RayMakie.Screen(scene; samples = 2, max_depth = 2, hw_accel = false)
 
 @testset "a plot in a Figure is drawn against its own scene" begin
     fig = Figure(; size = (128, 128))

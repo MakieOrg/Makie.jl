@@ -78,7 +78,7 @@ screen = display(demo_scene(); backend=RayMakie,
 # 3. Pixel reconstruction filter
 #
 #    The filter controls how sub-pixel samples are combined into pixels.
-#    Set via the `filter` kwarg on the integrator (VolPath).
+#    Set via the `filter` screen setting.
 #
 #    BoxFilter()                        -- sharp, aliased (1 sample = 1 pixel)
 #    TriangleFilter()                   -- simple tent, mild AA
@@ -89,30 +89,22 @@ screen = display(demo_scene(); backend=RayMakie,
 
 # Default: Gaussian (radius 1.5, sigma 0.5) -- smooth, minimal aliasing
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(samples=64,
-        filter=Hikari.GaussianFilter(),
-    ),
+    samples=64, filter=Hikari.GaussianFilter(),
 )
 
 # Box filter -- each sample contributes only to its pixel (sharp but aliased)
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(samples=64,
-        filter=Hikari.BoxFilter(),
-    ),
+    samples=64, filter=Hikari.BoxFilter(),
 )
 
 # Mitchell-Netravali -- good sharpness with minimal ringing
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(samples=64,
-        filter=Hikari.MitchellFilter(),
-    ),
+    samples=64, filter=Hikari.MitchellFilter(),
 )
 
 # Lanczos sinc -- sharpest reconstruction, slight ringing at high-contrast edges
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(samples=64,
-        filter=Hikari.LanczosSincFilter(),
-    ),
+    samples=64, filter=Hikari.LanczosSincFilter(),
 )
 
 
@@ -132,13 +124,13 @@ screen = display(demo_scene(); backend=RayMakie,
 
 # Denoising with defaults (good general-purpose settings)
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(samples=64),
+    samples=64,
     denoise=true,
 )
 
 # Aggressive denoising -- very smooth, may lose fine detail
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(samples=64),
+    samples=64,
     denoise=true,
     denoise_config=Hikari.DenoiseConfig(
         iterations=7,
@@ -150,7 +142,7 @@ screen = display(demo_scene(); backend=RayMakie,
 
 # Conservative denoising -- preserves detail, mainly removes fireflies
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(samples=64),
+    samples=64,
     denoise=true,
     denoise_config=Hikari.DenoiseConfig(
         iterations=3,
@@ -169,7 +161,7 @@ screen = display(demo_scene(); backend=RayMakie,
 # =============================================================================
 
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(samples=64),
+    samples=64,
     exposure=1.0f0, tonemap=:aces,
 )
 # Let it accumulate a few samples, then tweak:
@@ -184,19 +176,17 @@ screen = display(demo_scene(); backend=RayMakie,
 #    The PixelSensor simulates a physical camera sensor (pbrt-v4 style).
 #    This affects how spectral light transport maps to pixel values during
 #    path tracing -- different from postprocessing exposure.
-#    Set via the `sensor` kwarg on the integrator.
+#    Set via the `sensor` screen setting.
 # =============================================================================
 
 # High ISO (brighter sensor, like cranking up camera sensitivity)
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(samples=64,
-        sensor=Hikari.PixelSensor(iso=400)),
+    samples=64, sensor=Hikari.PixelSensor(iso=400),
 )
 
 # D65 daylight white balance (6500K)
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(samples=64,
-        sensor=Hikari.PixelSensor(iso=100, whitebalance=6500f0)),
+    samples=64, sensor=Hikari.PixelSensor(iso=100, whitebalance=6500f0),
 )
 
 
@@ -205,7 +195,7 @@ screen = display(demo_scene(); backend=RayMakie,
 # =============================================================================
 
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(samples=64, hw_accel=true),
+    samples=64, hw_accel=true,
 )
 
 
@@ -214,13 +204,11 @@ screen = display(demo_scene(); backend=RayMakie,
 # =============================================================================
 
 screen = display(demo_scene(); backend=RayMakie,
-    integrator=Hikari.VolPath(
-        samples=64,
-        max_depth=8,
-        hw_accel=true,
-        filter=Hikari.MitchellFilter(),
-        sensor=Hikari.PixelSensor(iso=100, whitebalance=6500f0),
-    ),
+    samples=64,
+    max_depth=8,
+    hw_accel=true,
+    filter=Hikari.MitchellFilter(),
+    sensor=Hikari.PixelSensor(iso=100, whitebalance=6500f0),
     exposure=1.2f0,
     tonemap=:aces,
     gamma=2.2f0,

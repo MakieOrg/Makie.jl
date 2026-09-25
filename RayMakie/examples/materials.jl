@@ -192,7 +192,7 @@ function create_scene()
 end
 
 # Render
-sensor = Hikari.FilmSensor(; iso=50, exposure_time=1.0, white_balance=0)
+sensor = Hikari.PixelSensor(; iso=50, exposure_time=1.0, whitebalance=0)
 device = Lava.LavaBackend()
 # device = KernelAbstractions.CPU()
 RayMakie.activate!(
@@ -205,11 +205,11 @@ RayMakie.activate!(
 nsamples = 10
 ax = create_scene();
 
-integrator = Hikari.VolPath(; samples=nsamples, max_depth=5, hw_accel=true)
-img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator, update=false)
+tracer = (; samples=nsamples, max_depth=5, hw_accel=true)
+img = @time colorbuffer(ax; backend=RayMakie, tracer..., update=false)
 
-img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
-img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
+img = @time colorbuffer(ax; backend=RayMakie, tracer...)
+img = @time colorbuffer(ax; backend=RayMakie, tracer...)
 img
 screen = Makie.getscreen(ax)
 colorbuffer(screen; clear=false)

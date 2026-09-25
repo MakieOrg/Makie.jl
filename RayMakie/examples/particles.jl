@@ -213,7 +213,6 @@ function record_particles(filename::String="particles.mp4";
         samples_per_pixel::Int=8,
         preset="ultrafast",
         backend=Raycore.KA.CPU(),
-        integrator=Hikari.FastWavefront(samples=samples_per_pixel)
     )
 
     println("Creating particle scene with $n_particles particles...")
@@ -221,8 +220,8 @@ function record_particles(filename::String="particles.mp4";
 
     # Activate RayMakie backend
     RayMakie.activate!(;
-        integrator=integrator,
-        backend=backend,
+        samples=samples_per_pixel,
+        device=backend,
         tonemap=:aces, exposure=2.0
     )
 

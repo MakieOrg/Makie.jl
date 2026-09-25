@@ -28,10 +28,6 @@ function tyler_renderer_app(;
     Label(controls[1, 1], "Backend:", halign=:right)
     backend_menu = Menu(controls[1, 2], options=["CPU", "GPU (ROCArray)"], default="CPU")
 
-    # Integrator selection
-    Label(controls[1, 3], "Integrator:", halign=:right)
-    integrator_menu = Menu(controls[1, 4], options=["FastWavefront", "Whitted"], default="FastWavefront")
-
     # Samples
     Label(controls[2, 1], "Samples:", halign=:right)
     samples_slider = Slider(controls[2, 2], range=1:64, startvalue=8)
@@ -95,7 +91,6 @@ function tyler_renderer_app(;
             samples = samples_slider.value[]
             max_depth = depth_slider.value[]
             backend_str = backend_menu.selection[]
-            integrator_str = integrator_menu.selection[]
             exposure = Float32(exposure_slider.value[])
             tonemap_sym = Symbol(tonemap_menu.selection[])
             gamma = Float32(gamma_slider.value[])
@@ -115,22 +110,16 @@ function tyler_renderer_app(;
                 Makie.push_light!(tyler_scene, sun_sky)
             end
 
-            # Create integrator based on selection
-            integrator = if integrator_str == "FastWavefront"
-                Hikari.FastWavefront(samples=samples)
-            else
-                Hikari.Whitted(samples=samples, max_depth=max_depth)
-            end
-
             # Select backend
             backend = backend_str == "CPU" ? Raycore.KA.CPU() : AMDGPU.ROCBackend()
 
             # Render using colorbuffer - handles scene conversion, rendering, and postprocessing
-            status_label.text = "Rendering with $integrator_str ($samples samples)..."
+            status_label.text = "Rendering ($samples samples)..."
             result = Makie.colorbuffer(tyler_scene;
                 backend=RayMakie,
-                integrator=integrator,
-                array_type=backend,
+                samples,
+                max_depth,
+                device=backend,
                 exposure=exposure,
                 tonemap=tonemap_sym,
                 gamma=gamma,

@@ -35,10 +35,10 @@ function create_mirror_sphere_scene(; cam_pos, look_at, up=Vec3f(0,0,1), rotatio
     return s
 end
 
-# Configure VolPath
 volpath_config = (
-    backend = Raycore.KA.CPU(),
-    integrator = RayMakie.VolPath(samples=spp, max_depth=5),
+    device = Raycore.KA.CPU(),
+    samples = spp,
+    max_depth = 5,
     exposure = 1.0f0,
     tonemap = :aces,
     gamma = 2.2f0,

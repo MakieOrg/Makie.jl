@@ -44,14 +44,12 @@ let
         exposure=0.5f0,
         tonemap=nothing,
         gamma=2.2f0,
-        sensor=Hikari.FilmSensor(iso=50, exposure_time=1.0, white_balance=0)
+        sensor=Hikari.PixelSensor(iso=50, exposure_time=1.0, whitebalance=0)
     )
-
-    integrator = Hikari.VolPath(samples=1, max_depth=4)
 
     println("Starting render with basic diffuse (ROCArray backend)...")
     flush(stdout)
-    img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
+    img = @time colorbuffer(ax; backend=RayMakie, samples=1, max_depth=4, hw_accel=false)
     println("ROCArray backend render complete! Size: ", size(img))
 end
 

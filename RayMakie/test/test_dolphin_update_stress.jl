@@ -68,8 +68,7 @@ function dolphin_like_loop(; hw_accel::Bool, n_frames::Int=10, samples::Int=1)
     cube = GeometryBasics.normal_mesh(Rect3f(Vec3f(-2), Vec3f(4)))
     medium_plt = mesh!(scene, cube; material=fresh_glass_with_medium(1f0))
 
-    integrator = Hikari.VolPath(samples=samples, max_depth=4, hw_accel=hw_accel)
-    screen = RayMakie.Screen(scene; integrator)
+    screen = RayMakie.Screen(scene; samples, max_depth=4, hw_accel)
 
     bufs_after = Int[]
     bytes_after = Int[]

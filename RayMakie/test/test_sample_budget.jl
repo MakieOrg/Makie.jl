@@ -4,12 +4,11 @@
 # of the READ, not of the renderer: an interactive preview wants one sample per
 # read and lets them accumulate while nothing moves, and a finished frame — a
 # bake, an export — wants the whole budget in one call. Both come off the same
-# screen with the same integrator.
+# screen.
 #
 # So there are three sources, narrowest first: `colorbuffer`'s `samples`, then the
-# screen's own `samples`, then the integrator's `samples_per_pixel`. The middle
-# one is what a settings form can offer — an integrator is a Julia object, and
-# "how expensive is one finished frame" should be a number in a box.
+# screen's own `samples`, then `Hikari.VolPath`'s default. `hw_accel = false` is
+# what these ran with when the tracer was passed in as a `VolPath`.
 
 using Test
 using Makie, RayMakie, Hikari, GeometryBasics, Colors
@@ -31,27 +30,26 @@ end
 
 "How many samples the last read actually rendered."
 rendered(screen) = Int(screen.state.film.iteration_index[])
+tracer(screen) = only(filter(ss -> !ss.overlay_only, screen.scene_states)).integrator
 
 @testset "the sample budget of one read" begin
-    @testset "with nothing said, the integrator's own" begin
-        screen = RayMakie.Screen(budget_scene(); integrator = Hikari.VolPath(samples = 5))
+    @testset "with nothing said, Hikari's default" begin
+        screen = RayMakie.Screen(budget_scene(); hw_accel = false)
         Makie.colorbuffer(screen)
-        @test rendered(screen) == 5
+        @test rendered(screen) == Hikari.VolPath().samples_per_pixel
     end
 
-    @testset "the screen's `samples` overrides the integrator's" begin
-        # What the editor's rendering dialog writes: the integrator keeps its own
-        # count, and the number in the box is what one finished frame costs.
-        screen = RayMakie.Screen(budget_scene();
-                                 integrator = Hikari.VolPath(samples = 8), samples = 3)
+    @testset "the screen's `samples`" begin
+        # What the editor's rendering dialog writes: the number in the box is what
+        # one finished frame costs, and the tracer is built for it.
+        screen = RayMakie.Screen(budget_scene(); samples = 3, hw_accel = false)
         Makie.colorbuffer(screen)
-        @test screen.config.integrator.samples_per_pixel == 8
         @test rendered(screen) == 3
+        @test tracer(screen).samples_per_pixel == 3
     end
 
     @testset "the read's `samples` overrides both" begin
-        screen = RayMakie.Screen(budget_scene();
-                                 integrator = Hikari.VolPath(samples = 8), samples = 3)
+        screen = RayMakie.Screen(budget_scene(); samples = 3, hw_accel = false)
         Makie.colorbuffer(screen; samples = 1)
         @test rendered(screen) == 1
     end
@@ -59,7 +57,7 @@ rendered(screen) = Int(screen.state.film.iteration_index[])
     @testset "`clear = false` keeps adding to the film that is there" begin
         # This is what makes a live preview converge: a playhead move costs one
         # sample, and standing still adds one at a time to the same frame.
-        screen = RayMakie.Screen(budget_scene(); integrator = Hikari.VolPath(samples = 5))
+        screen = RayMakie.Screen(budget_scene(); samples = 5, hw_accel = false)
         Makie.colorbuffer(screen; samples = 1)
         @test rendered(screen) == 1
         Makie.colorbuffer(screen; samples = 1, clear = false)
@@ -73,8 +71,7 @@ rendered(screen) = Int(screen.state.film.iteration_index[])
     @testset "a settings form's number arrives as a float" begin
         # A text box has no way to know the field wants an `Int`, so the value
         # comes through as `8.0`. The constructor rounds it rather than throwing.
-        screen = RayMakie.Screen(budget_scene();
-                                 integrator = Hikari.VolPath(samples = 2), samples = 8.0)
+        screen = RayMakie.Screen(budget_scene(); samples = 8.0, hw_accel = false)
         @test screen.config.samples === 8
     end
 end
