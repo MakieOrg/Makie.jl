@@ -232,10 +232,6 @@ function process_color_value(dim_convert, scale, value, auto)
     end
 end
 
-sort_colorrange(r::VT) where {VT <: VecTypes{2, <:Real}} = VT(minimum(r), maximum(r))
-sort_colorrange(r::Tuple{<:Real, <:Real}) = (minimum(r), maximum(r))
-sort_colorrange(r) = r
-
 function register_colormapping!(attr::ComputeGraph, colorname = :color)
     register_colormapping_without_color!(attr)
 
@@ -302,14 +298,14 @@ function register_colorrange!(
         if colorrange === automatic
             return Vec2f(autorange)
         else
-            mini, maxi = sort_colorrange(colorrange) # could be (automatic, value)
-            low = process_color_value(dc, colorscale, mini, first(autorange))
-            high = process_color_value(dc, colorscale, maxi, last(autorange))
-            if low < high
-                return Vec2f(low, high)
-            else
+            low = process_color_value(dc, colorscale, first(colorrange), first(autorange))
+            high = process_color_value(dc, colorscale, last(colorrange), last(autorange))
+            if low ≈ high
                 delta = max(0.5f0, abs(Float32(low)))
                 return Vec2f(low - delta, high + delta)
+            else
+                # The colorscale could swap the meaning of low and high, e.g. -x, 1/x
+                return Vec2f(min(low, high), max(low, high))
             end
         end
     end
