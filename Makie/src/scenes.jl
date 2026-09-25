@@ -554,15 +554,6 @@ function free(scene::Scene)
     #
     # TELL THE SCREENS FIRST, WHILE THE SUBTREE STILL EXISTS. A backend's
     # `delete!(screen, scene)` walks `scene.children` to deregister the whole
-    # subtree, but `empty!` detaches every child from its parent — so doing it
-    # the other way round handed the screen a scene with no children left and the
-    # descendants stayed registered. GLMakie keeps them in `screen.screens`,
-    # which holds them STRONGLY, so they were never collected: measured on the
-    # editor's effects panel at 334 orphaned scenes per panel rebuild, all with
-    # their plots already emptied, and it also walks the scene id — a `UInt16` —
-    # toward its 65535 ceiling.
-    # TELL THE SCREENS FIRST, WHILE THE SUBTREE STILL EXISTS. A backend's
-    # `delete!(screen, scene)` walks `scene.children` to deregister the whole
     # subtree, and `empty!` detaches every child from its parent — so the other
     # order handed the screen a scene with no children left and every descendant
     # stayed registered. GLMakie keeps those in `screen.screens`, which holds them
