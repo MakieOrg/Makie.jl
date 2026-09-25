@@ -194,11 +194,16 @@ ambient_scene(; background) =
     # A 96×96 view of one sphere is mostly miss. An `isinf` test reported none.
     @test count(p -> alpha(p) < 0.5, lit) > length(lit) ÷ 2
 
-    # …and with an OPAQUE background the ambient wins over it, because it is
-    # radiance the render actually put there — `sky`. Without that, an
-    # environment map comes back as a flat rectangle of background colour. The
-    # alpha still comes from the background, so this frame is fully covered.
+    # …and with an OPAQUE background the background shows where the ray escaped.
+    # A Makie `AmbientLight` is a shading term and not a sky (`paints_background`);
+    # it used to win here, which put every default 3D scene on a grey backdrop.
+    # The alpha comes from the background, so this frame is fully covered.
     opaque = Makie.colorbuffer(make_screen(ambient_scene(background = :white)))
     @test alpha(opaque[end, 1]) > 0.99
-    @test red(opaque[end, 1]) < 0.9
+    @test red(opaque[end, 1]) == green(opaque[end, 1]) == blue(opaque[end, 1]) == 1
+    # An environment map DOES paint where a ray escapes, and must not come back
+    # as a flat rectangle of background colour.
+    env = EnvironmentLight(1f0, fill(RGBf(0.2, 0.4, 0.8), 16, 16))
+    sky = Makie.colorbuffer(make_screen(rt_scene(; background = :white, lights = [SPHERE_LIGHTS..., env])))
+    @test blue(sky[end, 1]) > red(sky[end, 1]) + 0.1
 end

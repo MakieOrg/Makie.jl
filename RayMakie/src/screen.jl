@@ -428,13 +428,13 @@ function Base.close(screen::Screen)
         end
         screen.rendertask = nothing
     end
-    # Close GLFW window if open
+    # Close the window, whether or not it still reports itself open. `isopen` is
+    # false once the user has clicked its close button, and that window still has
+    # to be destroyed; `close` is idempotent on every backend. A failure is
+    # reported rather than dropped.
     if screen.window !== nothing
-        # A window whose GLFW handle is already destroyed throws here, and that
-        # is the expected case when the user closed it. Anything else is not,
-        # so it gets reported rather than dropped.
         try
-            isopen(screen.window) && close(screen.window)
+            close(screen.window)
         catch e
             @warn "RayMakie: closing the window failed" exception = (e, catch_backtrace())
         end
@@ -605,7 +605,7 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
     # Still skipped when there is nothing to escape INTO, because then the trace
     # really does produce the clear colour and costs a dispatch to say so.
     if Raycore.n_instances(tlas) == 0 &&
-            !any(T -> Hikari.paints_escaped_rays(T), state.hikari_scene.lights.data_order)
+            !any(paints_background, state.hikari_scene.lights.data_order)
         return state.film
     end
     # (sync!(tlas) above already runs refit_tlas! when transforms are dirty.)
@@ -657,6 +657,15 @@ back already premultiplied.
 scenebackground(scene) = (c = to_color(scene.backgroundcolor[]);
                           RGBA{Float32}(red(c), green(c), blue(c), alpha(c)))
 
+# Whether a light is SEEN where a camera ray hits nothing, so the picture keeps
+# the traced colour there instead of `backgroundcolor`. Hikari answers yes for its
+# `AmbientLight`, pbrt's uniform infinite light, and that is right for Hikari. A
+# Makie `AmbientLight` is the shading's ambient term and never a background, and
+# every Makie scene has one, 0.45 grey by default: every traced or rasterised 3D
+# scene came out on a flat grey sky instead of its background. It still lights
+# everything a bounce reaches; only what the camera sees directly changes.
+paints_background(T) = Hikari.paints_escaped_rays(T) && !(T <: Hikari.AmbientLight)
+
 function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     screen.state = scene_state
     film = scene_state.film
@@ -684,15 +693,16 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     tlas = scene_state.hikari_scene.accel
     lights = scene_state.hikari_scene.lights
     has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
-    # …and separately, whether one of them is actually VISIBLE along an escaped
-    # ray. Not the same question: a `DirectionalLight` is at infinity but is a
-    # delta light, so it paints nothing where a ray hits nothing.
+    # …and separately, whether one of them is SEEN where a ray hits nothing. Not
+    # the same question: a `DirectionalLight` is at infinity but is a delta
+    # light, and an ambient light is at infinity but is not a background; see
+    # `paints_background`.
     #
     # Asked of the LIGHTS and not of the geometry. Gating this on
     # `n_instances > 0` said "no sky" for exactly the scene that is nothing BUT
     # sky, so the render the tracer had just produced was overwritten with the
     # background colour.
-    paints_sky = any(T -> Hikari.paints_escaped_rays(T), lights.data_order)
+    paints_sky = any(paints_background, lights.data_order)
     if Raycore.n_instances(tlas) > 0
         # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
         # Must re-adapt per render so mesh mutations are visible.
@@ -718,7 +728,7 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     # The ALPHA comes from the background either way, so a caller asking for
     # transparency gets coverage and not a sky.
     #
-    # `paints_escaped_rays`, NOT `is_infinite_light`: a `DirectionalLight` is at
+    # `paints_background`, NOT `is_infinite_light`: a `DirectionalLight` is at
     # infinity and contributes nothing along a ray that misses. Asking the broader
     # question made every directional-lit scene skip its background and render a
     # BLACK sky, whatever `backgroundcolor` said.
@@ -1075,7 +1085,8 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # on it meant a RAYTRACED scene's overlays — every `lines!`, `scatter!` and
     # `text!` in it, which is every decoration an `Axis3` is made of — were built
     # and then never composited.
-    has_overlays = any(ss -> !isempty(collect_overlay_robjs(ss, screen.scene)), screen.scene_states)
+    has_overlays = any(ss -> !isempty(collect_overlay_robjs(ss, screen.scene, screen.rasterize)),
+                       screen.scene_states)
 
     # Postprocess + composite into output_buffer (on GPU)
     fill!(screen.output_buffer, scenebackground(screen.scene))
@@ -1427,19 +1438,32 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
     end
 end
 
+# The state a plot belongs to: its own scene's, as `init_scene!` assigns them.
+# The first state whose scene CONTAINS it was the figure's root state, which comes
+# first and traces nothing, so a mesh added to an `Axis3` after display was
+# rasterised in a traced scene. A scene that got no state at setup goes to the
+# innermost state around it.
+function owning_state(screen::Screen, pscene::Scene)
+    for ss in screen.scene_states
+        ss.makie_scene === pscene && return ss
+    end
+    best = nothing
+    for ss in screen.scene_states
+        scene_contains(ss.makie_scene, pscene) || continue
+        (best === nothing || scene_contains(best.makie_scene, ss.makie_scene)) && (best = ss)
+    end
+    return best
+end
+
 function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
     isempty(screen.scene_states) && return screen
 
     Makie.for_each_atomic_plot(plot) do p
         (haskey(p, :trace_renderobject) || haskey(p, :raster_renderobject)) && return
-        pscene = Makie.parent_scene(p)
-        for ss in screen.scene_states
-            if scene_contains(ss.makie_scene, pscene)
-                screen.state = ss
-                draw_atomic(screen, ss.makie_scene, p)
-                break
-            end
-        end
+        ss = owning_state(screen, Makie.parent_scene(p))
+        ss === nothing && return
+        screen.state = ss
+        draw_atomic(screen, ss.makie_scene, p)
     end
 
     # Sync all affected HWTLAS. An OVERLAY-ONLY state has no Hikari scene —

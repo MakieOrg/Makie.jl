@@ -18,11 +18,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
     hikari_scene = screen.state.hikari_scene
     state = screen.state
 
-    # Register Makie's surface position pipeline (transform_func + model + f32c).
-    # No `scene` argument: `add_computation!(attr, ::Val{:surface_transform})`
-    # takes the attributes alone, and passing a scene picked no method at all —
-    # so every `surface!` in a RayMakie scene died with a MethodError.
-    Makie.add_computation!(attr, Val(:surface_transform))
+    # Makie's surface as a mesh: the transformed grid (transform_func + model +
+    # f32c) and the faces, UVs and normals of its triangulation, as WGLMakie
+    # draws it. The raster path hands exactly these to the mesh shader. No
+    # `scene` argument: this method takes the attributes alone, and passing a
+    # scene picked no method at all.
+    Makie.add_computation!(attr, Val(:surface_as_mesh))
 
     # 1. Pre-transformed positions → surface mesh (GB.Mesh).
     #
@@ -40,24 +41,27 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
         return (color_to_texture(args.color, plot),)
     end
 
+    # Which renderer draws it. The mode is one of the nodes' INPUTS, as for
+    # `mesh!`: `setrasterize!` drops both render objects and this input, and the
+    # nodes rebuild down the other path. Reading the screen's config instead made
+    # the switch invisible to a surface, which stayed traced. Two slots rather
+    # than one holding either kind, because a compute node's slot takes its type
+    # from the first value it holds; see `plots/mesh.jl`.
+    #
+    # RASTER also for a scene that is not traced: `surface!` into a 2D `Axis`, or
+    # any surface whose scene has no 3D camera (`surface(fill(3f0, 20, 20))` gets
+    # an `EmptyCamera`). Tracing those pushed into a `hikari_scene` that is
+    # `nothing`, and the compute graph reported "this plot will not be drawn".
+    haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
+
     # 3. HWTLAS management: combine mesh, color, model_f32c
-    register_computation!(attr, [:trace_surface_mesh, :trace_color_tex, :model_f32c], [:trace_renderobject]) do args, changed, last
+    register_computation!(attr, [:trace_surface_mesh, :trace_color_tex, :model_f32c, :rasterize],
+                          [:trace_renderobject]) do args, changed, last
+        (args.rasterize || !should_raytrace(scene, plot) || isnothing(hikari_scene)) &&
+            return (nothing,)
         gb_mesh = args.trace_surface_mesh
         color_tex = args.trace_color_tex
         transform = Mat4f(args.model_f32c)
-
-        # RASTER first, for a scene that is not ray-traced. `mesh!` has had this
-        # fork since the beginning and `surface!` had only the traced half, so it
-        # pushed into a `hikari_scene` that is `nothing` — `MethodError:
-        # push!(::Nothing, …)`, which the compute graph reports as "this plot
-        # will not be drawn", i.e. a blank axis and no stack trace. Two ordinary
-        # calls land here: `surface!` into a 2D `Axis`, and any surface whose
-        # scene has no 3D camera — `surface(fill(3f0, 20, 20))` gets an
-        # `EmptyCamera`, because a flat one gives `LScene` nothing to fit.
-        if !should_raytrace(screen, scene, plot) || isnothing(hikari_scene)
-            last_robj = isnothing(last) ? nothing : last.trace_renderobject
-            return (surface_overlay_dispatch!(screen, scene, plot, args, last_robj),)
-        end
 
         if isnothing(last) || isnothing(last.trace_renderobject)
             mat = extract_material(plot, color_tex)
@@ -91,56 +95,26 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
 
         return (robj,)
     end
+
+    # RASTER: the mesh shader, as for `mesh!`. What a surface lacks of its
+    # inputs: the stroke's edge data for the `surface_as_mesh` triangles (Makie
+    # packs per triangle from those in `register_stroke_data!`), a uv transform,
+    # and the vertex-colour flag, which a grid colour never reads.
+    Makie.register_surface_stroke!(attr)
+    haskey(attr, :pattern_uv_transform) || Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
+    haskey(attr, :raster_uv_transform) ||
+        map!(surface_uv_transform, attr, [:pattern_uv_transform, :z, :fetch_pixel], :raster_uv_transform)
+    Makie.ComputePipeline.add_constant!(attr, :interpolate_in_fragment_shader, true)
+    register_raster_renderobject!(screen, scene, plot)
 end
 
-
-# =============================================================================
-# The raster path
-# =============================================================================
-#
-# A surface IS a mesh, so this hands the same flat vertex arrays to the same
-# pipeline `mesh!` uses rather than growing a second one. The mesh's vertices
-# are `vec(positions)` over the z grid, so a colour array of the grid's shape
-# indexes them one for one.
-
-"""Per-vertex RGBA for the raster path, expanded over `faces`."""
-function surface_overlay_colors(plot, faces, nverts)
-    out = Vector{Vec4f}(undef, 3 * length(faces))
-    computed = Makie.compute_colors(plot.attributes)
-    if computed isa AbstractArray{<:Colorant} && length(computed) == nverts
-        flat = vec(computed)
-        @inbounds for (fi, f) in enumerate(faces), j in 1:3
-            c = RGBA{Float32}(flat[f[j]])
-            out[3 * (fi - 1) + j] = Vec4f(c.r, c.g, c.b, c.alpha)
-        end
-        return out
-    end
-    # One colour for the whole surface: either the user set a scalar, or the
-    # colormapping produced something this path cannot index per vertex.
-    raw = to_value(plot.color)
-    c = raw isa Colorant ? RGBA{Float32}(raw) :
-        computed isa Colorant ? RGBA{Float32}(computed) : RGBA{Float32}(0.5, 0.5, 0.5, 1)
-    fill!(out, Vec4f(c.r, c.g, c.b, c.alpha))
-    return out
-end
-
-"""Draw a surface with the graphics pipeline, for a scene that is not traced."""
-function surface_overlay_dispatch!(screen, scene, plot, args, last_robj)
-    gb_mesh = args.trace_surface_mesh
-    positions = GeometryBasics.coordinates(gb_mesh)
-    faces = GeometryBasics.faces(gb_mesh)
-
-    flat_positions = Vector{Vec3f}(undef, 3 * length(faces))
-    @inbounds for (fi, f) in enumerate(faces), j in 1:3
-        p = positions[f[j]]
-        flat_positions[3 * (fi - 1) + j] = Vec3f(p[1], p[2], p[3])
-    end
-    flat_colors = surface_overlay_colors(plot, faces, length(positions))
-
-    pv = plot_clip_matrix(plot)
-    model_mat = Mat4f(args.model_f32c)
-    if last_robj isa RenderObject
-        return mesh_overlay_update!(last_robj, flat_positions, flat_colors, pv, model_mat)
-    end
-    return mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat)
+# The surface's uv transform composed with the shift that puts each vertex on the
+# CENTRE of its texel, as WGLMakie does and GLMakie's surface.vert computes: the
+# triangulation's UVs run 0..1 over the grid, so without it a colour matrix of the
+# grid's size is stretched by half a texel at every edge. A pattern is sampled in
+# screen space and keeps its transform as it is.
+function surface_uv_transform(uvt, z, is_pattern)
+    is_pattern && return Makie.uv_transform(uvt)
+    s = Vec2f(size(z))
+    return Makie.uv_transform(uvt) * Makie.uv_transform(0.5f0 ./ s, (s .- 1f0) ./ s)
 end

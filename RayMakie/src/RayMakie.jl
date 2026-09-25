@@ -198,17 +198,6 @@ plot type is a raytraceable primitive.
 should_raytrace(scene::Makie.Scene, plot::Makie.Plot) =
     should_raytrace(scene.camera_controls) && should_raytrace(plot)
 
-"""
-    should_raytrace(screen, scene, plot) -> Bool
-
-As above, and `false` outright when the screen is set to `rasterize`.
-
-The screen is asked LAST so the flag can only ever turn tracing off: a plot the
-tracer cannot draw does not become traceable because someone set a flag.
-"""
-should_raytrace(screen, scene::Makie.Scene, plot::Makie.Plot) =
-    !screen.config.rasterize && should_raytrace(scene, plot)
-
 # =============================================================================
 # Scene initialization and polling
 # =============================================================================
@@ -530,23 +519,24 @@ function create_overlay_only_state(scene::Makie.Scene, screen)
 end
 
 """
-    collect_overlay_scenes(scene) -> Vector{Scene}
+    collect_overlay_scenes(scene, raster) -> Vector{Scene}
 
-Walk the scene tree and return all visible scenes that contain overlay-eligible plots.
+Walk the scene tree and return all visible scenes that contain overlay-eligible
+plots; with `raster`, every plot is one.
 """
-function collect_overlay_scenes(scene::Makie.Scene)
+function collect_overlay_scenes(scene::Makie.Scene, raster::Bool)
     result = Makie.Scene[]
-    collect_overlay_scenes!(result, scene)
+    collect_overlay_scenes!(result, scene, raster)
     return result
 end
 
-function collect_overlay_scenes!(result, scene::Makie.Scene)
+function collect_overlay_scenes!(result, scene::Makie.Scene, raster::Bool)
     scene.visible[] || return
-    if has_overlay_plots(scene)
+    if has_overlay_plots(scene, raster)
         push!(result, scene)
     end
     for child in scene.children
-        collect_overlay_scenes!(result, child)
+        collect_overlay_scenes!(result, child, raster)
     end
 end
 
@@ -573,11 +563,16 @@ function overlay_root_states(screen)
     end
 end
 
-function has_overlay_plots(scene::Makie.Scene)
+# `raster` is the screen's MODE. Deciding from the plot and camera types alone
+# said a 3D scene of traceable plots has nothing to rasterise, which is only true
+# while the screen traces: in RASTER mode an `Axis3`'s surface built its raster
+# object and was never drawn, because its scene was never walked. (An `LScene`
+# got away with it by holding its own axis lines.)
+function has_overlay_plots(scene::Makie.Scene, raster::Bool)
     found = false
     for p in scene.plots
         Makie.for_each_atomic_plot(p) do ap
-            if !should_raytrace(ap) || !should_raytrace(scene.camera_controls)
+            if raster || !should_raytrace(scene, ap)
                 found = true
             end
         end
@@ -780,12 +775,19 @@ function setrasterize!(screen, on::Bool)
         end
         ss.needs_film_clear = true
     end
+    # Each state rebuilds the plots its OWN scene holds, as `init_scene!` builds
+    # them: walking `ss.makie_scene` recursively let the figure's root state, which
+    # comes first and traces nothing, claim an `Axis3`'s plots. Their trace node
+    # then held that state's `nothing` for a Hikari scene, and switching back to
+    # tracing left them rasterised.
     for ss in screen.scene_states
         screen.state = ss
-        Makie.for_each_atomic_plot(ss.makie_scene) do p
-            (haskey(p, :trace_renderobject) || haskey(p, :raster_renderobject)) ||
-                draw_atomic(screen, ss.makie_scene, p)
-            return nothing
+        for plot in ss.makie_scene.plots
+            Makie.for_each_atomic_plot(plot) do p
+                (haskey(p, :trace_renderobject) || haskey(p, :raster_renderobject)) ||
+                    draw_atomic(screen, ss.makie_scene, p)
+                return nothing
+            end
         end
     end
     return screen

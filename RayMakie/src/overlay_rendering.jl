@@ -62,7 +62,7 @@ end
 # =============================================================================
 
 """
-    collect_overlay_robjs(state, root_scene; scenes = nothing)
+    collect_overlay_robjs(state, root_scene, raster; scenes = nothing)
 
 Every raster render object the overlay pass would draw for `state`, each paired
 with the viewport rect it belongs in.
@@ -76,13 +76,14 @@ scene's CAMERA. So a 3D scene holding `lines!`, `scatter!` or `text!` built thei
 render objects and then nobody drew them, which is also why an `Axis3` came out
 with no spines, ticks or labels.
 """
-function collect_overlay_robjs(state::RayMakieState, root_scene::Makie.Scene; scenes = nothing)
+function collect_overlay_robjs(state::RayMakieState, root_scene::Makie.Scene, raster::Bool;
+                               scenes = nothing)
     robjs = Tuple{RenderObject, NTuple{4, Float32}}[]
 
     overlay_scenes = if scenes !== nothing
         scenes
     elseif state.overlay_only
-        collect_overlay_scenes(state.makie_scene)
+        collect_overlay_scenes(state.makie_scene, raster)
     else
         [state.makie_scene]
     end
@@ -397,7 +398,7 @@ function overlay_robjs(screen; scenes = nothing)
     robjs = Tuple{RenderObject, NTuple{4, Float32}}[]
     for ss in overlay_root_states(screen)
         screen.state = ss
-        append!(robjs, collect_overlay_robjs(ss, screen.scene; scenes))
+        append!(robjs, collect_overlay_robjs(ss, screen.scene, screen.rasterize; scenes))
     end
     # Every pipeline checked BEFORE the graph is built, so one this backend
     # cannot run is a named error rather than a half-composited frame.

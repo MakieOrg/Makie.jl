@@ -229,6 +229,10 @@ end
 
     scene = Scene(size=(32, 32)); cam3d!(scene)
     plt = meshscatter!(scene, positions; markersize=0.2f0, color=:orange)
+    # Looking down on the whole path, y from 0 to 5. The default camera saw only
+    # its start, and "visible" held for the rest only because the grey ambient
+    # "sky" was noisy enough to count as lit.
+    update_cam!(scene, Vec3f(0, 2.5f0, 14), Vec3f(0, 2.5f0, 0), Vec3f(0, 1, 0))
 
     screen = make_screen(scene)
     Makie.colorbuffer(screen)
@@ -400,6 +404,8 @@ end
 
     scene = Scene(size=(64, 64)); cam3d!(scene)
     plt = meshscatter!(scene, positions; marker=sphere, markersize=0.5f0, color=:cyan)
+    # Looking down on the whole path, as in the 100-frame test above.
+    update_cam!(scene, Vec3f(0, 2.5f0, 30), Vec3f(0, 2.5f0, 0), Vec3f(0, 1, 0))
 
     screen = make_screen(scene)
     img0 = Makie.colorbuffer(screen)

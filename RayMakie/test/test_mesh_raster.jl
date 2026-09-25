@@ -5,16 +5,15 @@
 #
 # The strongest check is the original: with the film mapping switched off
 # (`tonemap = nothing, gamma = nothing`), GLMakie and RASTER mode must draw the
-# same picture of the same scene. The backdrop behind a raster overlay is the
-# traced frame, where an `AmbientLight` is a visible uniform sky, so a scene
-# compared whole has no ambient light; `plane_scene` fills the frame to test it.
+# same picture of the same scene. `plane_scene` fills the frame, so the ambient
+# term is compared on every pixel.
 
 using Test, Makie, RayMakie, Hikari, GeometryBasics, Colors
 import GLMakie
 # Loading GLMakie activates it, and every later file's `getscreen` would then look
 # for a GLMakie screen. The comparisons below name their backend.
 RayMakie.activate!()
-using Makie: Scene, cam3d!, cam2d!, mesh!, cameracontrols, update_cam!, Point2f, Point3f,
+using Makie: Scene, cam3d!, cam2d!, mesh!, surface!, cameracontrols, update_cam!, Point2f, Point3f,
              Vec3f, Sphere, RGBf, Rect2f, PointLight, AmbientLight, DirectionalLight,
              EnvironmentLight, NoShading
 
@@ -64,6 +63,25 @@ function quads_scene(; strokewidth, size = (120, 80))
     mesh!(sc, GeometryBasics.Mesh(ps, quads); color = :lightblue, shading = NoShading,
           strokewidth, strokecolor = :black, strokeedges = :all, fxaa = false)
     update_cam!(sc, Rect2f(-0.2, -0.2, 2.4, 1.4))
+    return sc
+end
+
+# A surface in RASTER mode is Makie's `surface_as_mesh` through the same shader.
+# It had a flat, unlit pipeline of its own until 2026-09-25. A colour matrix of
+# the grid's size pins the half-texel shift GLMakie's surface.vert applies: without
+# it every colour smears half a cell towards the far edge, which a checkerboard
+# shows on 11% of the pixels and a smooth gradient hides.
+function surface_scene(; lights, size = (96, 96), kw...)
+    sc = Scene(; size, lights, backgroundcolor = RGBf(0, 1, 0))
+    cam3d!(sc)
+    zs = [Float32(0.6 * sin(i * 0.8) * cos(j * 0.6)) for i in 1:8, j in 1:6]
+    surface!(sc, range(-1, 1, length = 8), range(-1, 1, length = 6), zs; fxaa = false, kw...)
+    cam = cameracontrols(sc)
+    cam.eyeposition[] = Vec3f(2.5, -3, 2.5)
+    cam.lookat[] = Vec3f(0, 0, 0)
+    cam.upvector[] = Vec3f(0, 0, 1)
+    cam.fov[] = 45
+    update_cam!(sc, cam)
     return sc
 end
 
@@ -137,6 +155,12 @@ end
             "colormapped" => () -> sphere_scene(; lights = Makie.AbstractLight[], color = :height,
                                                  shading = NoShading),
             "stroked quads" => () -> quads_scene(; strokewidth = 4),
+            "lit surface" => () -> surface_scene(; lights = [AmbientLight(RGBf(0.3, 0.3, 0.3)), sun]),
+            "surface, one colour per vertex" => () -> surface_scene(; lights = Makie.AbstractLight[],
+                color = [isodd(i + j) ? RGBf(1, 0.2, 0) : RGBf(0, 0.2, 1) for i in 1:8, j in 1:6],
+                shading = NoShading),
+            "stroked surface" => () -> surface_scene(; lights = [sun], strokewidth = 2,
+                                                      strokecolor = :black),
         ]
         for (label, make) in scenes
             gl = Makie.colorbuffer(make(); backend = GLMakie, px_per_unit = 1)

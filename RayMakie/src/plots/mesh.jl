@@ -46,16 +46,28 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
         return (mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, last_robj),)
     end
 
-    # The camera is in the RASTER list and not the trace one: a raster object
-    # bakes it into its arguments, so a camera move has to re-run the node, while
-    # the tracer reads the camera per sample from the scene state.
+    haskey(attr, :raster_uv_transform) ||
+        Makie.ComputePipeline.alias!(attr, :pattern_uv_transform, :raster_uv_transform)
+    register_raster_renderobject!(screen, scene, plot)
+end
+
+# The `:raster_renderobject` node of a plot drawn by the mesh shader: `mesh!`, and
+# `surface!` through Makie's `surface_as_mesh`. The plot provides whichever nodes
+# of `RASTER_MESH_DEPS` Makie does not register for it.
+#
+# The camera is in that list and not the trace one: a raster object bakes it into
+# its arguments, so a camera move has to re-run the node, while the tracer reads
+# the camera per sample from the scene state.
+function register_raster_renderobject!(screen, scene, plot)
+    hikari_scene = screen.state.hikari_scene
     register_raster_mesh_nodes!(plot)
-    register_computation!(attr, RASTER_MESH_DEPS, [:raster_renderobject]) do args, changed, last
+    register_computation!(plot.attributes, RASTER_MESH_DEPS, [:raster_renderobject]) do args, changed, last
         israster = args.rasterize || !should_raytrace(scene, plot) || isnothing(hikari_scene)
         israster || return (nothing,)
         last_robj = isnothing(last) ? nothing : last.raster_renderobject
         return (mesh_overlay_dispatch!(screen, scene, plot, args, changed, last_robj),)
     end
+    return
 end
 
 # -----------------------------------------------------------------------------
@@ -243,13 +255,16 @@ end
 Everything the raster node reads. The plot's own nodes, the four GLMakie also
 registers per mesh (normal matrices, packed stroke data, clip planes), and the
 scene's lights as plot inputs, so a light change re-runs the node.
+
+`:raster_uv_transform` is the plot's own: a mesh's `pattern_uv_transform`, and
+for a surface that composed with the shift to texel centres.
 """
 const RASTER_MESH_DEPS = [
     :positions_transformed_f32c, :faces, :normals, :texturecoordinates, :model_f32c,
     :material, :rasterize,
     :scaled_color, :alpha_colormap, :scaled_colorrange, :color_mapping_type,
     :lowclip_color, :highclip_color, :nan_color, :interpolate_in_fragment_shader,
-    :interpolate, :pattern_uv_transform, :fetch_pixel, :matcap,
+    :interpolate, :raster_uv_transform, :fetch_pixel, :matcap,
     :shading, :diffuse, :specular, :shininess, :backlight, :depth_shift,
     :world_normalmatrix, :view_normalmatrix,
     :strokewidth, :strokecolor, :stroke_data_packed,
@@ -416,6 +431,7 @@ function raster_faces(faces)
 end
 
 raster_uv_transform(t::Mat{2, 3}) = Mat{2, 3, Float32}(t)
+raster_uv_transform(t::Mat{3, 3}) = Mat{2, 3, Float32}(t[1], t[2], t[4], t[5], t[7], t[8])
 raster_uv_transform(::Nothing) = Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0)
 
 function shading_code(mode)
@@ -485,7 +501,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
         world_normalmatrix = Mat3f(args.world_normalmatrix),
         view_normalmatrix = Mat3f(args.view_normalmatrix),
         depth_shift = Float32(args.depth_shift),
-        uv_transform = raster_uv_transform(args.pattern_uv_transform),
+        uv_transform = raster_uv_transform(args.raster_uv_transform),
         colorrange = args.scaled_colorrange === nothing ? Vec2f(0, 1) : Vec2f(args.scaled_colorrange),
         colormap_linear = Int32(args.color_mapping_type === Makie.continuous),
         lowclip = rgba4(args.lowclip_color), highclip = rgba4(args.highclip_color),
@@ -558,35 +574,6 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
         update_texture!(robj, colorinfo.texture;
                         filter = args.interpolate ? :linear : :nearest, wrap = colorinfo.wrap)
     end
-    robj.visible = true
-    return robj
-end
-
-function mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat)
-    pipeline = get_flat_mesh_pipeline!(screen)
-    backend = screen.config.device
-    return RenderObject(pipeline;
-        backend,
-        arg_names = (:positions, :colors, :projectionview, :model),
-        buffers = Dict{Symbol, AbstractGPUArray}(
-            :positions => Mantle.devicearray(backend, flat_positions),
-            :colors => Mantle.devicearray(backend, flat_colors),
-        ),
-        uniforms = Dict{Symbol, Any}(
-            :projectionview => pv,
-            :model => model_mat,
-        ),
-        vertex_count = length(flat_positions),
-        instances = 1,
-    )
-end
-
-function mesh_overlay_update!(robj::RenderObject, flat_positions, flat_colors, pv, model_mat)
-    update_buffer!(robj, :positions, flat_positions)
-    update_buffer!(robj, :colors, flat_colors)
-    robj.uniforms[:projectionview] = pv
-    robj.uniforms[:model] = model_mat
-    robj.vertex_count = length(flat_positions)
     robj.visible = true
     return robj
 end

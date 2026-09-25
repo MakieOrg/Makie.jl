@@ -519,34 +519,3 @@ function get_mesh_pipeline!(screen, textured::Bool)
                            depth = DepthLessEq())
     end
 end
-
-# ─── The flat, unlit mesh: what `surface` still draws with ───────────────────
-
-function get_flat_mesh_pipeline!(screen)
-    get!(screen.gfx_pipelines, :flat_mesh) do
-        GraphicsPipeline(; vertex = VertexShader(flat_mesh_vertex; outputs = (colour = Vec4f,)),
-                           fragment = FragmentShader(flat_mesh_fragment),
-                           blend = Premultiplied(),
-                           topology = TriangleList(),
-                           cull = NoCull(),
-                           depth = DepthLessEq())
-    end
-end
-
-function flat_mesh_vertex(positions::AbstractVector{Vec3f}, colors::AbstractVector{Vec4f},
-                          projectionview::Mat4f, model::Mat4f)
-    vid = vertex_index()
-    pos = positions[vid]
-    clip = projectionview * model * Vec4f(pos[1], pos[2], pos[3], 1f0)
-    return (position = gl_to_clip_depth(clip), colour = colors[vid])
-end
-
-function flat_mesh_fragment(inputs, positions::AbstractVector{Vec3f}, colors::AbstractVector{Vec4f},
-                            projectionview::Mat4f, model::Mat4f)
-    c = inputs.colour
-    a = c[4]
-    # A transparent fragment must not claim depth: an alpha-zero corner of a
-    # glyph or marker quad would occlude whatever should show through it.
-    a < 1f-3 && discard()
-    return Vec4f(c[1] * a, c[2] * a, c[3] * a, a)
-end
