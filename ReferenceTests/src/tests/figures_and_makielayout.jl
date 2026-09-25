@@ -945,14 +945,14 @@ end
     # probably not worth testing?
 
     f = Figure(size = (500, 700))
-    a,p = scatter(f[1, 1], 1:10, color = 1:10, colorrange = (1, 10); kwargs...)
+    a, p = scatter(f[1, 1], 1:10, color = 1:10, colorrange = (1, 10); kwargs...)
     Colorbar(f[1, 2], p)
     a, p = scatter(f[1, 3], 1:10, color = 11:20; kwargs...)
     Colorbar(f[1, 4], p)
     a, p = scatter(f[1, 5], 1:10, color = 91:100; kwargs...)
     Colorbar(f[1, 6], p, ticks = (91:3:100, ["A", "B", "C", "D"]))
 
-    a,p = scatter(f[2, 1], 1:10, color = 1:10, colorrange = (1, 10), colormap = Categorical(:magma); kwargs...)
+    a, p = scatter(f[2, 1], 1:10, color = 1:10, colorrange = (1, 10), colormap = Categorical(:magma); kwargs...)
     cb = Colorbar(f[2, 2], p)
     a, p = scatter(f[2, 3], 1:10, color = 11:20, colormap = Categorical(:magma); kwargs...)
     Colorbar(f[2, 4], p)
@@ -960,7 +960,7 @@ end
     Colorbar(f[2, 6], p, ticks = (91:3:100, ["A", "B", "C", "D"]))
 
     cg = cgrad(:terrain, 10, categorical = true)
-    a,p = scatter(f[3, 1], 1:10, color = 1:10, colorrange = (1, 10), colormap = cg; kwargs...)
+    a, p = scatter(f[3, 1], 1:10, color = 1:10, colorrange = (1, 10), colormap = cg; kwargs...)
     cb = Colorbar(f[3, 2], p)
     a, p = scatter(f[3, 3], 1:10, color = 11:20, colormap = cg; kwargs...)
     Colorbar(f[3, 4], p)

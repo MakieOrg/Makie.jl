@@ -309,6 +309,8 @@ function register_colorrange!(
             end
         end
     end
+
+    return
 end
 
 """
