@@ -275,12 +275,14 @@ function plot!(p::Annotation)
         :algorithm, :screenpoints_target, :screenpoints_label, :text_bbs,
         :viewport, :maxiter, :__advance_optimization,
     ]
-    register_computation!(p.attributes, inputs, [:offsets]) do args, changed, cached
+    register_computation!(p.attributes, inputs, [:offsets, :placement_view]) do args, changed, cached
         # We should only advance if it's the only thing causing an update?
         advance = sum(values(changed)) == 1 && changed.__advance_optimization
 
         offsets = isnothing(cached) ? Vec2f[] : cached[1]
-        fresh = length(offsets) != length(args.screenpoints_target) || changed.algorithm
+        view = placement_view(args.screenpoints_target, args.viewport)
+        fresh = isnothing(cached) || length(offsets) != length(args.screenpoints_target) || changed.algorithm ||
+            !similar_view(cached[2], view)
         resize!(offsets, length(args.screenpoints_target))
 
         calculate_best_offsets!(
@@ -291,12 +293,12 @@ function plot!(p::Annotation)
             args.text_bbs,
             Rect2d((0, 0), widths(args.viewport));
             maxiter = ifelse(advance, args.__advance_optimization, args.maxiter),
-            # keep the previous layout as a warm start unless the labels themselves changed,
-            # so camera changes only move labels that have to move
+            # keep the previous layout as a warm start across small view changes,
+            # so zooming and panning only move labels that have to move
             reset = fresh && !advance,
         )
 
-        return (offsets,)
+        return (offsets, view)
     end
 
     # create observable updating offsets in text plot
@@ -431,6 +433,19 @@ function calculate_best_offsets!(
 end
 
 is_fixed(offset::Vec2) = !any(isnan, offset)
+
+function placement_view(targets, viewport)
+    finite = filter(t -> all(isfinite, t), targets)
+    bbox = isempty(finite) ? Rect2d(0, 0, 0, 0) : Rect2d(finite)
+    return (bbox = bbox, size = Vec2d(widths(viewport)))
+end
+
+function similar_view(old, new)
+    old.size == new.size || return false
+    old_widths = max.(widths(old.bbox), 1)
+    ratio = max.(widths(new.bbox), 1) ./ old_widths
+    return all(0.7 .<= ratio .<= 1.4) && norm(center(new.bbox) - center(old.bbox)) <= 0.5 * maximum(old_widths)
+end
 
 pad_rect(rect::Rect2, padding) = Rect2d(rect.origin .- padding, rect.widths .+ 2 * padding)
 
@@ -630,8 +645,11 @@ function place_labels!(
             current = argmin(trial -> total_energy(trial, problem), trials)
         end
     else
-        anneal_placement!(current, problem, LabelPlacementRNG(algorithm.seed))
         descend_placement!(current, problem, maxiter; hysteresis = WARM_START_HYSTERESIS)
+        if any(i -> placement_penalty(current[i], i, problem, current, trues(n)) >= CROSSING_PENALTY, 1:n)
+            anneal_placement!(current, problem, LabelPlacementRNG(algorithm.seed))
+            descend_placement!(current, problem, maxiter; hysteresis = WARM_START_HYSTERESIS)
+        end
     end
 
     offsets .= (c -> c.offset).(current)
