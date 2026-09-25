@@ -55,7 +55,7 @@ function draw_lineplot(ctx, attributes)
             is_lines_plot, ctx,
             positions,
             color, linewidth,
-            isnothing(linestyle) ? nothing : diff(Float64.(linestyle))
+            isnothing(linestyle) ? nothing : diff(Float64.(linestyle.value))
         )
     else
         # stroke the whole line at once if it has only one color

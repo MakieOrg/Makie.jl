@@ -1209,8 +1209,9 @@ pattern:
 struct Linestyle
     value::Vector{Float32}
 end
+Base.:(==)(a::Linestyle, b::Linestyle) = a.value == b.value
 
-to_linestyle(style::Linestyle) = Float32[x - style.value[1] for x in style.value]
+to_linestyle(style::Linestyle) = Linestyle(Float32[x - style.value[1] for x in style.value])
 
 # TODO only use NTuple{2, <: Real} and not any other container
 const GapType = Union{Real, Symbol, Tuple, AbstractVector}
@@ -1224,7 +1225,7 @@ end
 
 function line_pattern(linestyle::Symbol, gaps::GapType)
     pattern = line_diff_pattern(linestyle, gaps)
-    return isnothing(pattern) ? pattern : Float32[0.0; cumsum(pattern)]
+    return isnothing(pattern) ? nothing : Linestyle(Float32[0.0; cumsum(pattern)])
 end
 
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."
