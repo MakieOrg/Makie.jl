@@ -148,13 +148,6 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
     color = to_cairo_color(poly.color[], poly)
 
     linestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
-    if isnothing(linestyle)
-        linestyle_diffed = nothing
-    elseif linestyle isa AbstractVector{<:Real}
-        linestyle_diffed = diff(Float64.(linestyle))
-    else
-        error("Wrong type for linestyle: $(poly.linestyle[]).")
-    end
     strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
 
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])

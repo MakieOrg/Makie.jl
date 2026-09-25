@@ -1209,6 +1209,7 @@ pattern:
 struct Linestyle
     value::Vector{Float32}
 end
+Base.:(==)(a::Linestyle, b::Linestyle) = a.value == b.value
 
 to_linestyle(style::Linestyle) = Linestyle(Float32[x - style.value[1] for x in style.value])
 
