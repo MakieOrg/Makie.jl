@@ -1106,14 +1106,15 @@ get_colormapping(plot::Plot) = get_colormapping(plot, plot.attributes)
 function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     isnothing(attr[:scaled_colorrange][]) && return nothing
     haskey(attr, :cb_colormapping) && return attr[:cb_colormapping][]
-
     map!(attr, [:colorrange, :raw_color], :unscaled_colorrange) do colorrange, color
         if colorrange === automatic
             return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
         elseif first(colorrange) == automatic
-            return Vec2f(first(distinct_extrema_nan(color)), last(colorrange))
+            lastcolor = last(colorrange)
+            return Vec2f(min(first(distinct_extrema_nan(color)), lastcolor), lastcolor)
         elseif last(colorrange) == automatic
-            return Vec2f(first(colorrange), last(distinct_extrema_nan(color)))
+            firstcolor = first(colorrange)
+            return Vec2f(firstcolor, max(firstcolor, last(distinct_extrema_nan(color))))
         else
             lo, hi = Vec2f(colorrange)
             lo == hi || return Vec2f(lo, hi)
