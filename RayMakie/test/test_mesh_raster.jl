@@ -173,3 +173,63 @@ end
         end
     end
 end
+
+# ── FXAA ────────────────────────────────────────────────────────────────────
+#
+# The raster path had no anti-aliasing for meshes at all. GLMakie runs FXAA over
+# the plots with `fxaa = true` (mesh, surface and meshscatter by default), so a
+# rasterised surface came out with every edge a hard stair. Each stage now writes
+# its plot's flag into a second attachment and one fullscreen pass runs the same
+# FXAA 3.11 over the frame (overlay/fxaa.jl). An unlit sphere on a flat backdrop
+# isolates it: the edge is the only thing FXAA can change.
+function flat_sphere(; fxaa)
+    sc = Scene(; size = (96, 96), lights = Makie.AbstractLight[], backgroundcolor = RGBf(0, 1, 0))
+    cam3d!(sc)
+    mesh!(sc, GeometryBasics.normal_mesh(Sphere(Point3f(0), 1f0)); color = :orange,
+          shading = NoShading, fxaa)
+    cam = cameracontrols(sc)
+    cam.eyeposition[] = Vec3f(0, -6, 3)
+    cam.lookat[] = Vec3f(0, 0, 0)
+    cam.upvector[] = Vec3f(0, 0, 1)
+    cam.fov[] = 45
+    update_cam!(sc, cam)
+    return sc
+end
+
+# With `fxaa = true`, lines.frag and distance_shape.frag draw a HARD edge and
+# leave it to FXAA.
+function stroke_scene(kind; fxaa)
+    sc = Scene(; size = (120, 80), backgroundcolor = :white)
+    cam2d!(sc)
+    xs = range(0, 2π, length = 40)
+    if kind === :lines
+        lines!(sc, xs, sin.(xs); color = :black, linewidth = 3, fxaa)
+    else
+        scatter!(sc, xs[1:4:end], sin.(xs[1:4:end]); color = :black, markersize = 12,
+                 strokewidth = 2, strokecolor = :red, fxaa)
+    end
+    update_cam!(sc, Rect2f(-0.2, -1.3, 6.7, 2.6))
+    return sc
+end
+
+orange_px(c) = red(c) > 0.98 && abs(green(c) - 0.647) < 0.02 && blue(c) < 0.02
+blended(img) = count(c -> !backdrop(c) && !orange_px(c), img)
+unmapped(sc; kw...) = Makie.colorbuffer(raster_screen(sc; tonemap = nothing, gamma = nothing, kw...))
+
+@testset "FXAA, as GLMakie applies it" begin
+    gl = Makie.colorbuffer(flat_sphere(fxaa = true); backend = GLMakie, px_per_unit = 1)
+    rm = unmapped(flat_sphere(fxaa = true))
+    @test blended(rm) > 50
+    d = disagreement(gl, rm; tol = 0.02)
+    @test d.fraction < 0.005
+    # A plot that says `fxaa = false` keeps its hard edge, and so does every plot
+    # on a screen that turns FXAA off.
+    @test blended(unmapped(flat_sphere(fxaa = false))) == 0
+    @test blended(unmapped(flat_sphere(fxaa = true); fxaa = false)) == 0
+
+    @testset "$kind with `fxaa = true`" for kind in (:lines, :scatter)
+        gl = Makie.colorbuffer(stroke_scene(kind; fxaa = true); backend = GLMakie, px_per_unit = 1)
+        d = disagreement(gl, unmapped(stroke_scene(kind; fxaa = true)); tol = 0.02)
+        @test d.fraction < 0.005
+    end
+end

@@ -50,9 +50,10 @@ end
     @test coloured > 0.2 * length(img)
 
     # One z means one colour — the surface is a single flat patch, not a
-    # gradient, and not the grey fallback.
+    # gradient, and not the grey fallback. FXAA blends its outline into the
+    # background, so that colour is nearly every coloured pixel, not all of them.
     px = [c for c in img if sat(c) > 0.15]
-    @test length(unique(px)) <= 4
+    @test maximum(count(==(c), px) for c in unique(px)) > 0.95 * length(px)
 end
 
 @testset "surface! still traces where it can" begin

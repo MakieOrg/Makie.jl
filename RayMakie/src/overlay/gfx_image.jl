@@ -17,13 +17,14 @@ end
 
 # ── Vertex Shader ──
 # 6 vertices (2 triangles) covering the screen-space quad.
-# BDA args: screen_bl (Vec2f), screen_tr (Vec2f), res (Vec2f)
+# BDA args: screen_bl (Vec2f), screen_tr (Vec2f), res (Vec2f), fxaa (Int32)
 # Outputs: UV coordinates for fragment texture sampling.
 
 function image_overlay_vertex(
     screen_bl::Vec2f,
     screen_tr::Vec2f,
     res::Vec2f,
+    fxaa::Int32,
 )
     vid = vertex_index()
 
@@ -72,6 +73,7 @@ function image_overlay_fragment(
     screen_bl::Vec2f,
     screen_tr::Vec2f,
     res::Vec2f,
+    fxaa::Int32,
 )
     # `sample_texture_2d` per component, which is the portable verb every backend
     # answers. `GfxTexture2D(0)[uv]` was Lava's spelling and stopped existing when
@@ -91,5 +93,5 @@ function image_overlay_fragment(
     # have shown through it. Discarding is what lets a BLENDED pass use a
     # depth buffer, which is how a scene's z translation gets honoured.
     a < 1f-3 && discard()
-    return Vec4f(r * a, g * a, b * a, a)
+    return raster_output(Vec4f(r * a, g * a, b * a, a), fxaa)
 end

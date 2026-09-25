@@ -75,11 +75,11 @@ const LINES_GEOM_OUT = (quad_sdf = Vec3f, truncation = Vec2f, linestart = Float3
 # buffer — and a zero-argument builtin cannot answer differently on each of those
 # calls. `KernelInterface.VertexIndex`'s docstring has the rest.
 #
-# The fallback's arity is fixed rather than `args...`: at 15 it cannot match its
+# The fallback's arity is fixed rather than `args...`: at 16 it cannot match its
 # own forwarded call, so a signature that drifts out of step with
 # `plots/lines.jl`'s `arg_names` is a `MethodError` naming this function instead of
 # a recursion that overflows inside a shader compile.
-lines_vertex(args::Vararg{Any,15}) = lines_vertex(VertexIndex(vertex_index()), args...)
+lines_vertex(args::Vararg{Any,16}) = lines_vertex(VertexIndex(vertex_index()), args...)
 
 function lines_vertex(
     vertexid::VertexIndex,
@@ -99,6 +99,7 @@ function lines_vertex(
     joinstyle::Int32,
     miter_limit::Float32,
     pattern_length::Float32,
+    fxaa::Int32,
 )
     vid = vertexid.value
     pos = vertex[vid]
@@ -137,6 +138,7 @@ function lines_geometry(
     joinstyle::Int32,
     miter_limit::Float32,
     pattern_length::Float32,
+    fxaa::Int32,
 )
     # Read vertex shader outputs for 4 input vertices (0-based indices)
     # gl_in[i].gl_Position
@@ -396,6 +398,7 @@ function lines_fragment(
     joinstyle::Int32,
     miter_limit::Float32,
     pattern_length::Float32,
+    fxaa::Int32,
 )
     # Read interpolated varyings
     f_quad_sdf = inputs.quad_sdf
@@ -428,10 +431,11 @@ function lines_fragment(
     discard_sdf2 = (frag_x - f_linepoints[3]) * f_miter_vecs[3] +
                    (frag_y - f_linepoints[4]) * f_miter_vecs[4]
 
+    # lines.frag discards here. Returning a transparent colour instead still wrote
+    # depth, and would write this fragment's fxaa flag over what is beneath it.
     if (f_quad_sdf[1] > 0f0 && discard_sdf1 > 0f0) ||
        (f_quad_sdf[2] > 0f0 && discard_sdf2 >= 0f0)
-        return Vec4f(0f0, 0f0, 0f0, 0f0)
-        return nothing
+        discard()
     end
 
     # SDF computation
@@ -483,7 +487,8 @@ function lines_fragment(
     # Color interpolation
     factor = clamp((-f_quad_sdf[1] - f_linestart) / f_linelength, 0f0, 1f0)
     col = f_color1 + factor * (f_color2 - f_color1)
-    alpha = col[4] * f_alpha_weight * aastep(0f0, -sdf)
+    # lines.frag: a hard edge when FXAA will smooth it, `aastep` otherwise.
+    alpha = col[4] * f_alpha_weight * fxaa_or_aastep(fxaa, 0f0, -sdf)
 
     # Premultiply
     # A transparent fragment must not claim DEPTH: with writes on, an
@@ -491,7 +496,7 @@ function lines_fragment(
     # have shown through it. Discarding is what lets a BLENDED pass use a
     # depth buffer, which is how a scene's z translation gets honoured.
     alpha < 1f-3 && discard()
-    return Vec4f(col[1] * alpha, col[2] * alpha, col[3] * alpha, alpha)
+    return raster_output(Vec4f(col[1] * alpha, col[2] * alpha, col[3] * alpha, alpha), fxaa)
 end
 
 # =============================================================================

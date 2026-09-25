@@ -209,7 +209,7 @@ function frame_draws!(p, screen, source, cells, robjs, w, h)
     # and its shader is written for that. Two conventions in one pass is exactly
     # the case a per-draw viewport exists for.
     Mantle.checkblitsize(source, w, h)
-    Mantle.draw!(p, Mantle.BLIT_PIPELINE, (), 3;
+    Mantle.draw!(p, get_composite_blit_pipeline!(screen), (), 3;
                  frag_args = (source, Int32(w), Int32(h)),
                  viewport = (0f0, 0f0, Float32(w), Float32(h)))
     for (i, (robj, vp)) in enumerate(robjs)
@@ -342,7 +342,10 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
     # `todevice`: a screen keeps the BACKEND its user named, and a graph is
     # built on the device.
     dev = Mantle.todevice(screen.config.device)
-    sig = (key, objectid(source), frame_signature(robjs, w, h))
+    # FXAA only when a plot asked for it: with every flag 0 the pass returns each
+    # pixel unchanged (its early exit), so skipping it is exact.
+    fxaa = screen.config.fxaa && any(((robj, _),) -> wants_fxaa(robj), robjs)
+    sig = (key, objectid(source), fxaa, frame_signature(robjs, w, h))
     cached = get(screen.frame_plans, key, nothing)
     if cached !== nothing && cached[1] == sig
         rebind_overlay_args!(cached[4], robjs, dev)
@@ -371,9 +374,39 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
     # Metal, every drag of a window corner. The composite below draws through
     # an explicit viewport, so that one frame lands in the old rectangle and the
     # next is built at the new size.
-    depth = Mantle.Transient.Image(g, Float32, target)
-    Mantle.render!(g, "frame", target => clear, depth => Mantle.Clear(1f0)) do p
-        frame_draws!(p, screen, source, cells, robjs, w, h)
+    #
+    # Every stage writes a second attachment, its plot's `fxaa` flag, cleared to 0
+    # as GLMakie clears its object ids.
+    noflag = Mantle.Clear((0f0, 0f0, 0f0, 0f0))
+    if fxaa
+        # The frame goes to images of its own and FXAA writes the target. FIXED at
+        # `(w, h)`, not following the target: `copy!` moves them into buffers of
+        # `w * h` pixels, and a window resized inside the frame would otherwise
+        # copy a larger image into them. `Discard`, because the blit is the first
+        # draw and covers every pixel.
+        colour = Mantle.Transient.Image(g, COMPOSITE_FORMAT, (w, h))
+        flag = Mantle.Transient.Image(g, RGBA{N0f8}, (w, h))
+        depth = Mantle.Transient.Image(g, Float32, (w, h))
+        Mantle.render!(g, "frame", colour => Mantle.Discard, flag => noflag,
+                       depth => Mantle.Clear(1f0)) do p
+            frame_draws!(p, screen, source, cells, robjs, w, h)
+        end
+        colour_px = Mantle.Transient.Buffer(g, COMPOSITE_FORMAT, w * h)
+        flag_px = Mantle.Transient.Buffer(g, RGBA{N0f8}, w * h)
+        Mantle.copy!(g, "read colour", colour_px, colour)
+        Mantle.copy!(g, "read fxaa", flag_px, flag)
+        Mantle.render!(g, "fxaa", target => Mantle.Discard) do p
+            Mantle.draw!(p, get_fxaa_pipeline!(screen), (), 3;
+                         frag_args = (colour_px, flag_px, Int32(w), Int32(h)),
+                         viewport = (0f0, 0f0, Float32(w), Float32(h)))
+        end
+    else
+        flag = Mantle.Transient.Image(g, RGBA{N0f8}, target)
+        depth = Mantle.Transient.Image(g, Float32, target)
+        Mantle.render!(g, "frame", target => clear, flag => noflag,
+                       depth => Mantle.Clear(1f0)) do p
+            frame_draws!(p, screen, source, cells, robjs, w, h)
+        end
     end
     extra = finish(g, target)
     # NOT `record!`: a windowed plan draws to a different swapchain image every

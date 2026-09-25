@@ -121,7 +121,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
         pipeline = get_image_pipeline!(screen)
         robj = RenderObject(pipeline;
             backend = screen.config.device,
-            arg_names = (:screen_bl, :screen_tr, :res),
+            arg_names = (:screen_bl, :screen_tr, :res, :fxaa),
+            fxaa = plot_fxaa(plot),
             uniforms = Dict{Symbol, Any}(
                 :screen_bl => Vec2f(p_bl),
                 :screen_tr => Vec2f(p_tr),

@@ -101,7 +101,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
     haskey(attr, :gpu_atlas_width) || Makie.ComputePipeline.add_constant!(attr, :gpu_atlas_width, Float32(size(atlas.data, 1)))
 
     # ── Final robj — same pattern as scatter ──
-    deps = collect(SCATTER_ARG_NAMES)
+    deps = collect(SCATTER_GRAPH_ARGS)
 
     register_computation!(attr, deps, [:trace_renderobject]) do args, changed, cached
         n = length(args.gpu_positions)
@@ -121,7 +121,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
         end
 
         robj = construct_robj(get_scatter_pipeline!(screen), args, SCATTER_ARG_NAMES;
-                                      backend=screen.config.device, vertex_count=n)
+                                      backend=screen.config.device, fxaa = plot_fxaa(plot),
+                                      vertex_count=n)
         robj.bindings = get_atlas_bindings(screen)
         return (robj,)
     end

@@ -131,7 +131,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             backend,
             arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
                          :projectionview, :model, :px_per_unit, :depth_shift,
-                         :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length),
+                         :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length,
+                         :fxaa),
+            fxaa = plot_fxaa(plot),
             buffers = Dict{Symbol, AbstractGPUArray}(
                 :vertex => Mantle.devicearray(backend, vertex_data),
                 :color => Mantle.devicearray(backend, color_data),
@@ -267,7 +269,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
             backend,
             arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
                          :projectionview, :model, :px_per_unit, :depth_shift,
-                         :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length),
+                         :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length,
+                         :fxaa),
+            fxaa = plot_fxaa(plot),
             buffers = Dict{Symbol, AbstractGPUArray}(
                 :vertex => Mantle.devicearray(backend, vertex_data),
                 :color => Mantle.devicearray(backend, color_data),

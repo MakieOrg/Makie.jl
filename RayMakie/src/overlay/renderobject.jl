@@ -55,8 +55,13 @@ mutable struct RenderObject
     push_data::Vector{UInt8}  # 8-byte push constant (BDA pointer), reused
 end
 
+# `fxaa` is the plot's attribute, and every stage takes it as its last argument,
+# `:fxaa`, to write into the frame's fxaa attachment (see overlay/fxaa.jl).
+# Required, because an object that forgot it would silently opt out of FXAA. Fixed
+# at creation, as GLMakie's is: it lives in the object id there.
 function RenderObject(pipeline::Union{GraphicsPipeline, Mantle.MeshPipeline};
                           backend,
+                          fxaa::Bool,
                           buffers=Dict{Symbol, AbstractGPUArray}(),
                           uniforms=Dict{Symbol, Any}(),
                           arg_names::Tuple=(),
@@ -65,11 +70,17 @@ function RenderObject(pipeline::Union{GraphicsPipeline, Mantle.MeshPipeline};
                           instances=1,
                           visible=true,
                           viewport=nothing)
+    last(arg_names) === :fxaa || throw(ArgumentError(
+        "RenderObject: the stages' last argument has to be `:fxaa`, got $(arg_names)"))
+    uniforms[:fxaa] = Int32(fxaa)
     RenderObject(pipeline, backend, buffers, uniforms, arg_names, bindings,
                      nothing,   # texture: `update_texture!` fills it
                      vertex_count, instances, visible, viewport,
                      nothing, Vector{UInt8}(undef, 8))
 end
+
+wants_fxaa(robj::RenderObject) = robj.uniforms[:fxaa]::Int32 != Int32(0)
+plot_fxaa(plot) = Bool(Makie.to_value(plot.fxaa))
 
 """
     build_args(robj::RenderObject) -> Tuple
@@ -231,7 +242,7 @@ is_gpu_buffer(x::Vector) = true
 is_gpu_buffer(x) = false
 
 function construct_robj(pipeline::GraphicsPipeline, args::NamedTuple, arg_names::Tuple;
-                        backend, vertex_count=0, instances=1, bindings=nothing)
+                        backend, fxaa::Bool, vertex_count=0, instances=1, bindings=nothing)
     buffers = Dict{Symbol, AbstractGPUArray}()
     uniforms = Dict{Symbol, Any}()
     for name in keys(args)
@@ -251,6 +262,6 @@ function construct_robj(pipeline::GraphicsPipeline, args::NamedTuple, arg_names:
         end
     end
     RenderObject(pipeline;
-        backend, buffers, uniforms, arg_names, bindings,
+        backend, fxaa, buffers, uniforms, arg_names, bindings,
         vertex_count, instances)
 end

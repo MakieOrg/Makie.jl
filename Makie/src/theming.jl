@@ -239,7 +239,9 @@ const MAKIE_DEFAULT_THEME = Attributes(
         accumulate = false,
         # Draw raytraceable plots through the raster path instead. Same scene,
         # same camera, same lights — only the path changes.
-        rasterize = false
+        rasterize = false,
+        # FXAA over the raster path, for plots with `fxaa = true`, as in GLMakie.
+        fxaa = true
     )
 )
 

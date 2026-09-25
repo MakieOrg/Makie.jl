@@ -14,6 +14,7 @@ const HEXAGON = UInt8(7)
 const STAR = UInt8(8)
 
 include("primitives.jl")    # SDF helpers (aastep, smoothstep) — used by fragment shaders
+include("fxaa.jl")          # the fxaa attachment every stage writes, and the FXAA pass
 
 # Graphics pipeline infrastructure
 include("gfx_pipeline.jl")  # framebuffer, atlas, screen_to_ndc

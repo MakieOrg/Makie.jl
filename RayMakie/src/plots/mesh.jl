@@ -552,6 +552,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
         backend = screen.config.device
         RenderObject(get_mesh_pipeline!(screen, colorinfo.texture !== nothing);
             backend,
+            fxaa = plot_fxaa(plot),
             arg_names = MESH_ARG_NAMES,
             buffers = Dict{Symbol, AbstractGPUArray}(name => Mantle.devicearray(backend, value)
                                                      for (name, value) in buffers),

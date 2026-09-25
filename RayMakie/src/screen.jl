@@ -73,6 +73,8 @@ Configuration for RayMakie rendering.
 * `rasterize`: Draw raytraceable plots through the RASTER path instead
   (default: false)
   - The same scene, the same camera, the same lights — only the path changes.
+* `fxaa`: Run FXAA over the raster path for plots with `fxaa = true` (default:
+  true), as GLMakie does. The traced image is never filtered.
 * `accumulate`: Let samples build up across reads instead of restarting each one
   (default: false)
   - What a path-traced viewport does: hold still and the image converges, move
@@ -131,12 +133,16 @@ struct ScreenConfig
     # with its own camera and its own lights, which then has to be kept in step
     # with the first and never quite is.
     rasterize::Bool
+    # Run FXAA over what the raster path draws, for the plots whose `fxaa`
+    # attribute asks for it (mesh, surface, meshscatter by default), as GLMakie's
+    # `fxaa` screen option does. The traced image is never filtered.
+    fxaa::Bool
 
     function ScreenConfig(samples, max_depth, hw_accel, regularize, russian_roulette_depth,
                           max_component_value, sensor, filter, exposure, tonemap, gamma,
                           device=Raycore.KA.CPU(), denoise=false, denoise_config=nothing,
                           visible=true, title="RayMakie", vsync=true,
-                          accumulate=false, rasterize=false)
+                          accumulate=false, rasterize=false, fxaa=true)
         unset(x) = x isa Makie.Automatic ? nothing : x
         actual_exposure = Float32(exposure)
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
@@ -154,7 +160,7 @@ struct ScreenConfig
                    unset(russian_roulette_depth), mcv === nothing ? nothing : Float32(mcv),
                    unset(sensor), unset(filter), actual_exposure, tonemap, actual_gamma,
                    actual_device, denoise, denoise_config, actual_visible, string(title), vsync,
-                   accumulate, rasterize)
+                   accumulate, rasterize, fxaa)
     end
 end
 

@@ -339,12 +339,12 @@ const MESH_ARG_NAMES = (
     :has_env, :env_sh, :diffuse, :specular, :shininess, :backlight,
     :exposure, :tonemap, :white_point, :inv_gamma, :apply_gamma,
     :strokewidth, :strokecolor, :resolution, :px_per_unit, :viewport_origin,
-    :num_clip_planes,
+    :num_clip_planes, :fxaa,
 )
 const MESH_NARGS = length(MESH_ARG_NAMES)
 
 # The arg-less spelling, as in `overlay/lines.jl`. Written out rather than
-# splatted: inference resolves a splat of at most 32 elements, and a 51-element
+# splatted: inference resolves a splat of at most 32 elements, and a 52-element
 # `args...` stays a dynamic `_apply_iterate` that no GPU compiler accepts.
 @generated function mesh_vertex(args::Vararg{Any,MESH_NARGS})
     return :(mesh_vertex(VertexIndex(vertex_index()), $((:(args[$i]) for i in 1:MESH_NARGS)...)))
@@ -363,7 +363,7 @@ function mesh_vertex(vertexid::VertexIndex,
         diffuse::Vec3f, specular::Vec3f, shininess::Float32, backlight::Float32,
         exposure::Float32, tonemap::Int32, white_point::Float32, inv_gamma::Float32, apply_gamma::Int32,
         strokewidth::Float32, strokecolor::Vec4f, resolution::Vec2f, px_per_unit::Float32,
-        viewport_origin::Vec2f, num_clip_planes::Int32)
+        viewport_origin::Vec2f, num_clip_planes::Int32, fxaa::Int32)
     v0 = vertexid.value - Int32(1)
     tri = v0 ÷ Int32(3)
     @inbounds vi = Int32(faces[v0 + Int32(1)])
@@ -452,16 +452,16 @@ function mesh_fragment(inputs,
         diffuse::Vec3f, specular::Vec3f, shininess::Float32, backlight::Float32,
         exposure::Float32, tonemap::Int32, white_point::Float32, inv_gamma::Float32, apply_gamma::Int32,
         strokewidth::Float32, strokecolor::Vec4f, resolution::Vec2f, px_per_unit::Float32,
-        viewport_origin::Vec2f, num_clip_planes::Int32)
+        viewport_origin::Vec2f, num_clip_planes::Int32, fxaa::Int32)
     color = color_source == COLOR_VERTEX_CMAP_FRAG ?
         get_color_from_cmap(inputs.colour[1], cmap, colorrange, colormap_linear,
                             lowclip, highclip, nan_color) :
         inputs.colour
-    return mesh_finish(inputs, color, stroke_data, clip_planes, num_clip_planes,
+    return raster_output(mesh_finish(inputs, color, stroke_data, clip_planes, num_clip_planes,
         light_types, light_colors, light_parameters, model, view, projection, has_normals,
         shading_mode, ambient, light_color, light_direction, N_lights, has_env, env_sh,
         diffuse, specular, shininess, backlight, exposure, tonemap, white_point,
-        inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit)
+        inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit), fxaa)
 end
 
 @inline texel(u::Float32, v::Float32) =
@@ -484,7 +484,7 @@ function mesh_fragment_textured(inputs,
         diffuse::Vec3f, specular::Vec3f, shininess::Float32, backlight::Float32,
         exposure::Float32, tonemap::Int32, white_point::Float32, inv_gamma::Float32, apply_gamma::Int32,
         strokewidth::Float32, strokecolor::Vec4f, resolution::Vec2f, px_per_unit::Float32,
-        viewport_origin::Vec2f, num_clip_planes::Int32)
+        viewport_origin::Vec2f, num_clip_planes::Int32, fxaa::Int32)
     color = if color_source == COLOR_MATCAP
         vn = _unit(inputs.view_normal)
         texel(1f0 - (0.5f0 * vn[2] + 0.5f0), 0.5f0 * vn[1] + 0.5f0)
@@ -501,11 +501,11 @@ function mesh_fragment_textured(inputs,
     else
         texel(inputs.uv[1], inputs.uv[2])
     end
-    return mesh_finish(inputs, color, stroke_data, clip_planes, num_clip_planes,
+    return raster_output(mesh_finish(inputs, color, stroke_data, clip_planes, num_clip_planes,
         light_types, light_colors, light_parameters, model, view, projection, has_normals,
         shading_mode, ambient, light_color, light_direction, N_lights, has_env, env_sh,
         diffuse, specular, shininess, backlight, exposure, tonemap, white_point,
-        inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit)
+        inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit), fxaa)
 end
 
 function get_mesh_pipeline!(screen, textured::Bool)

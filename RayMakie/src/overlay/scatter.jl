@@ -77,7 +77,7 @@ end
 # `overlay/lines.jl` for why, and `KernelInterface.VertexIndex` for the contract.
 # The fallback's arity is `length(SCATTER_ARG_NAMES)`, fixed so it cannot match
 # its own forwarded call.
-scatter_vertex(args::Vararg{Any,23}) = scatter_vertex(VertexIndex(vertex_index()), args...)
+scatter_vertex(args::Vararg{Any,24}) = scatter_vertex(VertexIndex(vertex_index()), args...)
 
 function scatter_vertex(
     vertexid::VertexIndex,
@@ -95,7 +95,7 @@ function scatter_vertex(
     resolution::Vec2f, px_per_unit::Float32,
     gpu_stroke_width::Float32, gpu_glow_width::Float32,
     gpu_billboard::Int32, depth_shift::Float32,
-    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32,
+    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32, fxaa::Int32,
 )
     idx = vertexid.value
     pos = gpu_read(gpu_positions, idx)
@@ -153,7 +153,7 @@ function scatter_geometry(
     resolution::Vec2f, px_per_unit::Float32,
     gpu_stroke_width::Float32, gpu_glow_width::Float32,
     gpu_billboard::Int32, depth_shift::Float32,
-    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32,
+    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32, fxaa::Int32,
 )
     # A `PointList` primitive is one vertex, so every field is its first.
     world_pos = prim.world_pos[1]
@@ -251,7 +251,7 @@ function scatter_fragment(
     resolution::Vec2f, px_per_unit::Float32,
     gpu_stroke_width::Float32, gpu_glow_width::Float32,
     gpu_billboard::Int32, depth_shift::Float32,
-    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32,
+    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32, fxaa::Int32,
 )
     f_uv = inputs.uv
     f_color = inputs.colour
@@ -288,13 +288,15 @@ function scatter_fragment(
 
     sd = sd * f_vp_from_u
     aa = 0.70710677f0
-    inside = aastep(0f0, sd, aa)
+    # With `fxaa` the edge is a hard step and FXAA smooths it afterwards, as in
+    # distance_shape.frag; smoothing both ways left a halo.
+    inside = fxaa_or_aastep(fxaa, 0f0, sd, aa)
     fill_c = Vec4f(f_color[1], f_color[2], f_color[3], max(f_color[4], 0.001f0))
     color = Vec4f(fill_c[1], fill_c[2], fill_c[3], fill_c[4] * inside)
 
     s_sw = px_per_unit * gpu_stroke_width
     if s_sw > 0.001f0
-        ti = aastep(-s_sw, sd, aa); to = aastep(0f0, sd, aa)
+        ti = fxaa_or_aastep(fxaa, -s_sw, sd, aa); to = fxaa_or_aastep(fxaa, 0f0, sd, aa)
         st = ti - to
         st > 0.001f0 && (color = color * (1f0-st) + f_scol * st)
     end
@@ -315,14 +317,16 @@ function scatter_fragment(
     # have shown through it. Discarding is what lets a BLENDED pass use a
     # depth buffer, which is how a scene's z translation gets honoured.
     color[4] < 1f-3 && discard()
-    return Vec4f(color[1]*color[4], color[2]*color[4], color[3]*color[4], color[4])
+    return raster_output(Vec4f(color[1]*color[4], color[2]*color[4], color[3]*color[4], color[4]), fxaa)
 end
 
 # =============================================================================
 # Arg names — order matches shader signature exactly
 # =============================================================================
 
-const SCATTER_ARG_NAMES = (
+# The compute-graph nodes the render object is built from; the stages then take
+# the plot's `:fxaa` flag, which the render object carries (renderobject.jl).
+const SCATTER_GRAPH_ARGS = (
     :gpu_positions, :gpu_colors,
     :quad_offset, :quad_scale, :marker_offset, :gpu_rotation, :sdf_uv,
     :gpu_stroke_color, :gpu_glow_color,
@@ -331,14 +335,15 @@ const SCATTER_ARG_NAMES = (
     :gpu_stroke_width, :gpu_glow_width, :gpu_billboard, :depth_shift,
     :gpu_atlas_width, :gpu_sdf_marker_shape,
 )
+const SCATTER_ARG_NAMES = (SCATTER_GRAPH_ARGS..., :fxaa)
 
 # `scatter_vertex`'s native-path arity is written out as a literal, and this is
 # what stops the two drifting: an argument added here without adding one there
 # would leave the arg-less spelling matching nothing, on the backend that has a
 # geometry stage only.
-length(SCATTER_ARG_NAMES) == 23 || error(
+length(SCATTER_ARG_NAMES) == 24 || error(
     "SCATTER_ARG_NAMES has $(length(SCATTER_ARG_NAMES)) entries and " *
-    "`scatter_vertex(args::Vararg{Any,23})` expects 23. Update the fallback's " *
+    "`scatter_vertex(args::Vararg{Any,24})` expects 24. Update the fallback's " *
     "arity in this file to match.")
 
 # =============================================================================
@@ -422,7 +427,7 @@ function setup_scatter!(screen, scene, plot, attr, backend)
 
     # ── Final robj registration — all inputs already correct type ──
 
-    deps = collect(SCATTER_ARG_NAMES)
+    deps = collect(SCATTER_GRAPH_ARGS)
 
     Makie.ComputePipeline.register_computation!(attr, deps, [:trace_renderobject]) do args, changed, cached
         n = length(args.gpu_positions)
@@ -442,7 +447,7 @@ function setup_scatter!(screen, scene, plot, attr, backend)
         end
 
         robj = construct_robj(get_scatter_pipeline!(screen), args, SCATTER_ARG_NAMES;
-                              backend, vertex_count=n)
+                              backend, fxaa = plot_fxaa(plot), vertex_count=n)
         robj.bindings = get_atlas_bindings(screen)
         return (robj,)
     end
