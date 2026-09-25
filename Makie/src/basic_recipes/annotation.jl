@@ -152,7 +152,7 @@ be very close to their associated data points so connection plots are typically 
     clipstart = automatic
     """
     The maximum number of iterations that the label placement algorithm is allowed to run.
-    With `maxiter = 0`, all labels stay at their target positions.
+    With `maxiter = 0`, labels stay at their target positions or given offsets.
     """
     maxiter = automatic
     """
@@ -172,28 +172,6 @@ be very close to their associated data points so connection plots are typically 
     algorithm = automatic
     "Controls whether the plot gets rendered or not."
     visible = true
-end
-
-function closest_point_on_rectangle(r::Rect2, p)
-    x1, y1 = r.origin
-    x2, y2 = x1 + r.widths[1], y1 + r.widths[2]
-    px, py = p
-
-    clamped_x = clamp(px, x1, x2)
-    clamped_y = clamp(py, y1, y2)
-
-    if px in (x1, x2) || py in (y1, y2)
-        return Point2(clamped_x, clamped_y)
-    end
-
-    candidates = [
-        Point2(clamped_x, y1),
-        Point2(clamped_x, y2),
-        Point2(x1, clamped_y),
-        Point2(x2, clamped_y),
-    ]
-
-    return argmin(c -> norm(c - p), candidates)
 end
 
 function convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
@@ -295,7 +273,7 @@ function plot!(p::Annotation)
     # we create a compute node here and an Observable later
     inputs = [
         :algorithm, :screenpoints_target, :screenpoints_label, :text_bbs,
-        :viewport, :labelspace, :maxiter, :__advance_optimization,
+        :viewport, :maxiter, :__advance_optimization,
     ]
     register_computation!(p.attributes, inputs, [:offsets]) do args, changed, cached
         # We should only advance if it's the only thing causing an update?
@@ -312,7 +290,6 @@ function plot!(p::Annotation)
             args.screenpoints_label,
             args.text_bbs,
             Rect2d((0, 0), widths(args.viewport));
-            labelspace = args.labelspace,
             maxiter = ifelse(advance, args.__advance_optimization, args.maxiter),
             # start with zero offsets whenever text positions or texts change
             # basically, so solutions are not influenced by previous ones
@@ -336,7 +313,7 @@ function plot!(p::Annotation)
         broadcast_foreach(text_bbs, points, clipstart, offsets) do text_bb, p2, clipstart, offset
             offset_bb = text_bb + offset
 
-            rect_point_distance(offset_bb, p2) < sum(shrink) && return
+            (p2 in offset_bb || rect_point_distance(offset_bb, p2) < sum(shrink)) && return
             p1 = startpoint(path, offset_bb, p2)
             _path = connection_path(path, p1, p2)
 
@@ -425,7 +402,6 @@ function calculate_best_offsets!(
         algorithm, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
         maxiter::Union{Automatic, Int},
         reset::Bool,
-        labelspace::Symbol,
     )
     if !(length(offsets) == length(textpositions) == length(textpositions_offset) == length(text_bbs))
         error(
@@ -444,38 +420,40 @@ function calculate_best_offsets!(
     end
 
     fixed = Vec2d.(textpositions_offset .- textpositions)
-    if all(is_fixed, fixed)
-        offsets .= fixed
-        return
+    for i in eachindex(offsets)
+        is_fixed(fixed[i]) && (offsets[i] = fixed[i])
     end
+    all(is_fixed, fixed) && return
     # giving one component of the position could be cool, like only x in data space, but this
     # doesn't really work because projection into screen space needs x and y together
 
     algorithm = algorithm === automatic ? CandidatePlacement() : algorithm
-    return place_labels!(algorithm, offsets, textpositions, text_bbs, bbox, fixed; maxiter)
+    return place_labels!(algorithm, offsets, textpositions, text_bbs, bbox, fixed; maxiter, reset)
 end
 
 is_fixed(offset::Vec2) = !any(isnan, offset)
 
+pad_rect(rect::Rect2, padding) = Rect2d(rect.origin .- padding, rect.widths .+ 2 * padding)
+
 function place_labels!(
         algorithm::LabelRepel, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2},
-        text_bbs::Vector{<:Rect2}, bbox::Rect2, fixed::Vector{Vec2d}; maxiter::Union{Automatic, Int},
+        text_bbs::Vector{<:Rect2}, bbox::Rect2, fixed::Vector{Vec2d};
+        maxiter::Union{Automatic, Int}, reset::Bool,
     )
 
     maxiter = maxiter === automatic ? 200 : maxiter
+    maxiter == 0 && return
 
-    padded_bbs = map(text_bbs) do bb
-        Rect2(bb.origin .- algorithm.padding, bb.widths .+ 2 * algorithm.padding)
-    end
+    padded_bbs = [pad_rect(bb, algorithm.padding) for bb in text_bbs]
     offset_bbs = copy(padded_bbs)
 
     # Bias everything towards the center so self-repelling forces move away from
     # edges
-    if all(iszero, offsets)
-        center = minimum(bbox) .+ 0.5 .* widths(bbox)
+    if reset
+        bbox_center = center(bbox)
         for i in eachindex(offset_bbs)
-            bb_center = minimum(offset_bbs[i]) .+ 0.5 .* widths(offset_bbs[i])
-            v = center - bb_center
+            is_fixed(fixed[i]) && continue
+            v = bbox_center - center(offset_bbs[i])
             n = norm(v)
             offsets[i] = n > 0 ? (0.1 * algorithm.repel / n * v) : zero(eltype(offsets))
         end
@@ -540,30 +518,31 @@ function place_labels!(
 end
 
 """
-    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, ambiguitymargin, restarts, rng)
+    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, ambiguitymargin, restarts, seed)
 
 The default label placement algorithm of `annotation`. Each label is placed on one of a finite
 set of candidate positions around its target point. Candidates lie on rings with the given `gaps`
-(in pixels) between the point and the label box padded by `padding`, at `nangles` evenly spaced
-angles per ring. A candidate's cost penalizes, in decreasing order of severity, overlap with other
-labels or the axis boundary, covering data points (which are treated as circles of `pointradius`
-pixels), leader lines crossing each other or running over other labels or points, ambiguous
-positions close to the point where another point is within `ambiguitymargin` of being as close
-to the label as its own point, and finally the gap to the target. Positions straight above, below, left or right of the point are preferred over
-diagonal ones by `diagonalpenalty`, and `centroidweight` scales an additional cost for the distance
-between the label center and the point, which keeps labels compact around their points.
+(in pixels) between the point and the label box, which is padded by `padding` pixels per side, at
+`nangles` evenly spaced angles per ring. A candidate's cost penalizes, from most to least severe,
+overlap with other labels or the axis boundary and covering data points (which are treated as
+circles of `pointradius` pixels), leader lines crossing each other or running over other labels
+or points, ambiguous positions close to the point where another point is within `ambiguitymargin`
+pixels of being as close to the label as its own point, and finally the gap to the target.
+Positions straight above, below, left or right of the point are preferred over diagonal ones by
+`diagonalpenalty` pixels of gap, and `centroidweight` scales an additional cost per pixel of
+distance between the label center and the point, which keeps labels compact around their points.
 
 Labels with an empty bounding box, for example from empty strings, stay at their target and
 only act as obstacles, which allows labelling a subset of points while avoiding all of them.
-Labels with a given offset or position (all others being `NaN`) are fixed there and likewise
-only act as obstacles for the remaining labels.
+Labels whose offset or position is given rather than `NaN` are fixed there and likewise only act
+as obstacles for the remaining labels.
 
 Labels are first assigned greedily, most constrained first, then the assignment is improved by
 simulated annealing and finished with local descent, where every label is repeatedly moved to its
-cheapest candidate given all others. This is repeated `restarts` times and the layout with the
-lowest total cost is kept. The annealing draws from a copy of `rng`, so the same input always
-gives the same layout. Each of the `maxiter` iterations of `annotation` runs one
-descent pass over all labels, with the first one also running the greedy and annealing stages.
+cheapest candidate given all others until nothing moves. This is repeated `restarts` times and
+the layout with the lowest total cost is kept. `maxiter` bounds the number of descent passes.
+The annealing uses its own generator started from `seed`, so the same input gives the same
+layout on every Julia version.
 """
 Base.@kwdef struct CandidatePlacement
     gaps::Vector{Float64} = [4.0, 10.0, 18.0, 30.0, 48.0, 72.0, 104.0, 150.0, 210.0]
@@ -574,7 +553,7 @@ Base.@kwdef struct CandidatePlacement
     centroidweight::Float64 = 0.15
     ambiguitymargin::Float64 = 8.0
     restarts::Int = 3
-    rng::Random.AbstractRNG = Random.Xoshiro(0)
+    seed::UInt64 = 0
 end
 
 const OVERLAP_PENALTY = 1000.0
@@ -582,6 +561,14 @@ const CROSSING_PENALTY = 300.0
 const LEADER_POINT_PENALTY = 100.0
 const AMBIGUITY_PENALTY = 100.0
 const AMBIGUITY_FADE_GAP = 20.0
+const ANNEAL_MOVES_PER_LABEL = 100
+const ANNEAL_MAX_MOVES_PER_STAGE = 3000
+const ANNEAL_STAGES = 50
+const ANNEAL_COOLING = 0.9
+const ANNEAL_TEMPERATURE = 300.0
+const ANNEAL_MIN_TEMPERATURE = 20.0
+
+is_feasible(c) = c.cost < OVERLAP_PENALTY
 
 struct LabelCandidate
     offset::Vec2d
@@ -606,7 +593,8 @@ end
 
 function place_labels!(
         algorithm::CandidatePlacement, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2},
-        text_bbs::Vector{<:Rect2}, bbox::Rect2, fixed::Vector{Vec2d}; maxiter::Union{Automatic, Int},
+        text_bbs::Vector{<:Rect2}, bbox::Rect2, fixed::Vector{Vec2d};
+        maxiter::Union{Automatic, Int}, reset::Bool,
     )
     maxiter = maxiter === automatic ? 20 : maxiter
     n = length(offsets)
@@ -624,19 +612,22 @@ function place_labels!(
         end
     end
     problem = PlacementProblem(targets, candidates, neighbors, algorithm.padding)
-    current = [candidate_at_offset(algorithm, text_bbs[i], targets[i], offsets[i]) for i in 1:n]
+    current = [current_candidate(algorithm, candidates[i], text_bbs[i], targets[i], offsets[i]) for i in 1:n]
 
-    if all(iszero, offsets)
+    if reset
         greedy_placement!(current, problem)
-        rng = copy(algorithm.rng)
-        current = argmin(
-            total_energy(problem), map(1:algorithm.restarts) do _
-                trial = copy(current)
-                anneal_placement!(trial, problem, rng)
-                descend_placement!(trial, problem, maxiter - 1)
-                return trial
-            end
-        )
+        rng = LabelPlacementRNG(algorithm.seed)
+        trials = map(1:algorithm.restarts) do _
+            trial = copy(current)
+            anneal_placement!(trial, problem, rng)
+            descend_placement!(trial, problem, maxiter - 1)
+            return trial
+        end
+        if isempty(trials)
+            descend_placement!(current, problem, maxiter - 1)
+        else
+            current = argmin(trial -> total_energy(trial, problem), trials)
+        end
     else
         descend_placement!(current, problem, maxiter)
     end
@@ -645,18 +636,21 @@ function place_labels!(
     return
 end
 
-function total_energy(problem::PlacementProblem)
-    return function (current)
-        placed = trues(length(current))
-        static = sum(c -> c.cost, current)
-        pairwise = sum(i -> placement_penalty(current[i], i, problem, current, placed), eachindex(current))
-        return static + pairwise / 2
-    end
+function current_candidate(algorithm::CandidatePlacement, candidates, text_bb, target, offset)
+    i = findfirst(c -> isapprox(c.offset, offset; atol = 1.0e-2), candidates)
+    return i === nothing ? candidate_at_offset(algorithm, text_bb, target, offset) : candidates[i]
+end
+
+function total_energy(current, problem::PlacementProblem)
+    placed = trues(length(current))
+    static = sum(c -> c.cost, current)
+    pairwise = sum(i -> placement_penalty(current[i], i, problem, current, placed), eachindex(current))
+    return static + pairwise / 2
 end
 
 function neighbor_lists(algorithm::CandidatePlacement, targets, text_bbs)
     maxgap = maximum(algorithm.gaps)
-    reach = [maxgap + norm(widths(pad_rect(algorithm, bb))) for bb in text_bbs]
+    reach = [maxgap + norm(widths(pad_rect(bb, algorithm.padding))) for bb in text_bbs]
     return map(eachindex(targets)) do i
         filter(j -> j != i && norm(targets[i] - targets[j]) < reach[i] + reach[j], eachindex(targets))
     end
@@ -683,7 +677,7 @@ end
 function greedy_placement!(current, problem::PlacementProblem)
     n = length(current)
     placed = falses(n)
-    order = sortperm([count(c -> c.cost < OVERLAP_PENALTY, problem.candidates[i]) for i in 1:n])
+    order = sortperm([count(is_feasible, problem.candidates[i]) for i in 1:n])
     for i in order
         current[i] = best_candidate(i, problem, current, placed; keep_current = false)
         placed[i] = true
@@ -716,33 +710,46 @@ function descend_placement!(current, problem::PlacementProblem, maxiter)
     return
 end
 
-function anneal_placement!(
-        current, problem::PlacementProblem, rng::Random.AbstractRNG;
-        moves_per_stage = 100, max_moves_per_stage = 3000, max_stages = 50,
-        cooling = 0.9, temperature = 300.0, min_temperature = 20.0,
-    )
+# Own generator so that layouts are reproducible across Julia versions, which the generators in
+# Random do not guarantee. Knuth's MMIX linear congruential generator (a = 6364136223846793005,
+# c = 1442695040888963407, m = 2^64), whose low bits have short periods, so the output is scrambled
+# with the first xorshift-multiply step of the MurmurHash3 64-bit finalizer.
+mutable struct LabelPlacementRNG
+    state::UInt64
+end
+
+function next_uint(rng::LabelPlacementRNG)
+    rng.state = rng.state * 0x5851f42d4c957f2d + 0x14057b7ef767814f
+    x = rng.state
+    return (x ⊻ (x >> 33)) * 0xff51afd7ed558ccd
+end
+
+next_int(rng::LabelPlacementRNG, n::Int) = Int(next_uint(rng) % UInt64(n)) + 1
+next_float(rng::LabelPlacementRNG) = Float64(next_uint(rng) >> 11) / 2.0^53
+
+function anneal_placement!(current, problem::PlacementProblem, rng::LabelPlacementRNG)
     n = length(current)
     placed = trues(n)
     nproposals = map(problem.candidates) do candidates
-        nfeasible = count(c -> c.cost < OVERLAP_PENALTY, candidates)
+        nfeasible = count(is_feasible, candidates)
         nfeasible == 0 ? length(candidates) : nfeasible
     end
     penalties = fill(NaN, n)
     current_penalty(i) = isnan(penalties[i]) ? (penalties[i] = placement_penalty(current[i], i, problem, current, placed)) : penalties[i]
-    conflicted = Int[]
-    for _ in 1:max_stages
-        temperature < min_temperature && break
-        filter!(i -> current_penalty(i) > 0, resize!(conflicted, n) .= 1:n)
+    temperature = ANNEAL_TEMPERATURE
+    for _ in 1:ANNEAL_STAGES
+        temperature < ANNEAL_MIN_TEMPERATURE && break
+        conflicted = filter(i -> current_penalty(i) > 0, 1:n)
         isempty(conflicted) && break
         accepted = 0
-        for _ in 1:min(moves_per_stage * length(conflicted), max_moves_per_stage)
-            i = conflicted[rand(rng, 1:length(conflicted))]
-            candidate = problem.candidates[i][rand(rng, 1:nproposals[i])]
+        for _ in 1:min(ANNEAL_MOVES_PER_LABEL * length(conflicted), ANNEAL_MAX_MOVES_PER_STAGE)
+            i = conflicted[next_int(rng, length(conflicted))]
+            candidate = problem.candidates[i][next_int(rng, nproposals[i])]
             candidate === current[i] && continue
             old_cost = current[i].cost + current_penalty(i)
             new_cost = candidate.cost + placement_penalty(candidate, i, problem, current, placed)
             delta = new_cost - old_cost
-            if delta <= 0 || rand(rng) < exp(-delta / temperature)
+            if delta <= 0 || next_float(rng) < exp(-delta / temperature)
                 current[i] = candidate
                 penalties[i] = NaN
                 penalties[problem.neighbors[i]] .= NaN
@@ -750,30 +757,26 @@ function anneal_placement!(
             end
         end
         accepted == 0 && break
-        temperature *= cooling
+        temperature *= ANNEAL_COOLING
     end
     return
 end
 
-function pad_rect(algorithm::CandidatePlacement, rect::Rect2)
-    return Rect2d(rect.origin .- algorithm.padding, rect.widths .+ 2 * algorithm.padding)
-end
-
 function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, text_bb, viewport)
     target = targets[i]
-    padded_bb = pad_rect(algorithm, text_bb)
-    center = Point2d(padded_bb.origin + 0.5 * padded_bb.widths)
+    padded_bb = pad_rect(text_bb, algorithm.padding)
     diagonal = norm(widths(padded_bb))
     margin = max(algorithm.ambiguitymargin, algorithm.pointradius + minimum(algorithm.padding))
-    obstacles = sort!(filter(j -> norm(targets[j] - target) < 2 * maximum(algorithm.gaps) + diagonal + margin, neighbors); by = j -> norm(targets[j] - target))
+    reach(gap) = 2 * gap + diagonal + margin
+    obstacles = sort!(filter(j -> norm(targets[j] - target) < reach(maximum(algorithm.gaps)), neighbors); by = j -> norm(targets[j] - target))
     obstacle_distances = [norm(targets[j] - target) for j in obstacles]
     candidates = Vector{LabelCandidate}(undef, length(algorithm.gaps) * algorithm.nangles)
     for (index, (gap, k)) in enumerate(Iterators.product(algorithm.gaps, 0:(algorithm.nangles - 1)))
-        reachable = searchsortedlast(obstacle_distances, 2 * gap + diagonal + margin)
+        reachable = searchsortedlast(obstacle_distances, reach(gap))
         angle = 2pi * k / algorithm.nangles
         direction = Vec2d(cos(angle), sin(angle))
         new_center = target + direction * (gap + halfextent_along(padded_bb, direction))
-        offset = new_center - center
+        offset = new_center - center(padded_bb)
         box = padded_bb + offset
         leader_start = new_center - direction * halfextent_along(padded_bb, direction)
         cost = gap + algorithm.diagonalpenalty * sin(2 * angle)^2 +
@@ -785,7 +788,7 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
 end
 
 function candidate_at_offset(algorithm::CandidatePlacement, text_bb, target, offset)
-    box = pad_rect(algorithm, text_bb) + offset
+    box = pad_rect(text_bb, algorithm.padding) + offset
     return label_candidate(offset, box, target, leader_start_point(box, target), 0.0)
 end
 
@@ -796,12 +799,12 @@ function halfextent_along(rect::Rect2, direction::VecTypes{2})
 end
 
 function leader_start_point(box::Rect2, target::Point2)
-    center = Point2d(box.origin + 0.5 * box.widths)
-    v = target - center
+    c = center(box)
+    v = target - c
     nv = norm(v)
-    nv == 0 && return center
+    nv == 0 && return c
     direction = Vec2d(v / nv)
-    return center + direction * min(halfextent_along(box, direction), nv)
+    return c + direction * min(halfextent_along(box, direction), nv)
 end
 
 function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, gap, targets, obstacles, viewport)
@@ -824,7 +827,7 @@ function static_penalty(algorithm::CandidatePlacement, box, leader_start, target
     if ambiguous
         penalty += AMBIGUITY_PENALTY * max(0.0, 1 - gap / AMBIGUITY_FADE_GAP)
     end
-    outside = prod(widths(box)) - prod(widths(intersect_rects(box, viewport)))
+    outside = prod(widths(box)) - overlap_area(box, viewport)
     if outside > 0
         penalty += OVERLAP_PENALTY * (1 + outside / 100)
     end
@@ -838,7 +841,7 @@ function placement_penalty(c::LabelCandidate, i, problem::PlacementProblem, curr
         placed[j] || continue
         other = current[j]
         rects_disjoint(c.extent, other.extent) && continue
-        overlap = prod(widths(intersect_rects(c.box, other.box)))
+        overlap = overlap_area(c.box, other.box)
         if overlap > 0
             penalty += OVERLAP_PENALTY * (1 + overlap / 100)
         end
@@ -854,7 +857,7 @@ end
 
 function leader_label_penalty(leader_start, target, padded_box, padding)
     segment_intersects_rect(leader_start, target, padded_box) || return 0.0
-    textbox = Rect2d(padded_box.origin .+ padding, padded_box.widths .- 2 * padding)
+    textbox = pad_rect(padded_box, -padding)
     return segment_intersects_rect(leader_start, target, textbox) ? CROSSING_PENALTY : CROSSING_PENALTY / 3
 end
 
@@ -864,21 +867,11 @@ function rects_disjoint(a::Rect2, b::Rect2)
     return ar < bl || br < al || at < bb || bt < ab
 end
 
-function intersect_rects(a::Rect2, b::Rect2)
-    (al, ab), (ar, at) = extrema(a)
-    (bl, bb), (br, bt) = extrema(b)
-    l, r = max(al, bl), min(ar, br)
-    b_, t = max(ab, bb), min(at, bt)
-    (l >= r || b_ >= t) && return Rect2d(0, 0, 0, 0)
-    return Rect2d(l, b_, r - l, t - b_)
+function overlap_area(a::Rect2, b::Rect2)
+    return prod(max.(0, min.(maximum(a), maximum(b)) .- max.(minimum(a), minimum(b))))
 end
 
-function rect_point_distance(rect::Rect2, p::Point2)
-    (l, b), (r, t) = extrema(rect)
-    dx = max(l - p[1], 0, p[1] - r)
-    dy = max(b - p[2], 0, p[2] - t)
-    return hypot(dx, dy)
-end
+rect_point_distance(rect::Rect2, p::Point2) = norm(distance_point_outside_rect(p, rect))
 
 function segment_point_distance(a::Point2, b::Point2, p::Point2)
     ab = b - a
