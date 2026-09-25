@@ -454,6 +454,15 @@ end
     GLMakie.closeall()
 end
 
+@testset "no monitor" begin
+    # GLFW reports no monitor while a Mac's display sleeps, and `GetPrimaryMonitor`
+    # returns a null handle. `window_area` handed it to `MonitorProperties`, and
+    # GLFW dereferenced it: a segfault on the first `colorbuffer`, not an error.
+    nomonitor = GLMakie.GLFW.Monitor(C_NULL)
+    @test GLMakie.monitor_dpi(nomonitor) == 96.0
+    @test_throws ArgumentError GLMakie.MonitorProperties(nomonitor)
+end
+
 @testset "html video size annotation" begin
     width = 600
     height = 800

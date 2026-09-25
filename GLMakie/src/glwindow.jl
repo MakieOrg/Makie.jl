@@ -117,6 +117,9 @@ struct MonitorProperties
 end
 
 function MonitorProperties(monitor::GLFW.Monitor)
+    # GLFW dereferences the handle without checking it.
+    monitor.handle == C_NULL && throw(ArgumentError(
+        "MonitorProperties: no monitor (a null handle); GLFW reports none while the display sleeps"))
     name = GLFW.GetMonitorName(monitor)
     isprimary = GLFW.GetPrimaryMonitor() == monitor
     position = Vec{2, Int}(GLFW.GetMonitorPos(monitor)...)
@@ -139,6 +142,13 @@ function MonitorProperties(monitor::GLFW.Monitor)
 
     return MonitorProperties(name, isprimary, position, physicalsize, videomode, videomode_supported, dpi, monitor)
 end
+
+# The dpi a window reports. NO monitor is a real state: a Mac whose display sleeps
+# has none, `GetPrimaryMonitor` returns a null handle, and handing that to
+# `MonitorProperties` segfaulted inside GLFW on the first `colorbuffer`. Nothing
+# is being shown then, so the conventional 96 dpi is as good as any.
+monitor_dpi(monitor::GLFW.Monitor) =
+    monitor.handle == C_NULL ? 96.0 : minimum(MonitorProperties(monitor).dpi)
 
 was_destroyed(nw::GLFW.Window) = nw.handle == C_NULL
 
