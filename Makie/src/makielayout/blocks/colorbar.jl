@@ -490,9 +490,16 @@ function initialize_block!(cb::Colorbar; kwargs...)
         return (xmin, xmax), (ymin, ymax)
     end
 
-    map!(cb, [:alpha_colormap, :vertical, :is_inverted], :image_pixels) do colors, vertical, rev
+    # Image considers values/colors to represent the center of a cell/pixel.
+    # Colormap sampling considers the first/last color as edge colors.
+    # At low colormap resolutions (e.g. `[:black, :white]`) this results in
+    # noticeable differences, so we resample to a "high enough" resolution.
+    # TODO: Try using edge based interpolation, e.g. mesh/poly?
+    map!(
+        cb, [:alpha_colormap, :nsteps, :vertical, :is_inverted], :image_pixels
+    ) do colors, N, vertical, rev
         colors = rev ? reverse(colors) : colors
-        N = length(colors)
+        colors = resample_cmap(colors, N)
         return vertical ? reshape(colors, 1, N) : reshape(colors, N, 1)
     end
 

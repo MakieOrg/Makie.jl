@@ -995,6 +995,9 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "The align mode of the colorbar in its parent GridLayout."
         alignmode = Inside()
 
+        "The number of samples used for drawing the colormap. (This only affects continuous and banded colormaps.)"
+        nsteps = 100
+
         "Controls if minor ticks are visible"
         minorticksvisible = false
         "The alignment of minor ticks on the axis spine"
