@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+        <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+        <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    </head>
+    <body>
+        <div id="plot"></div>
+
+        <script type="text/javascript">
+            vegaspec = {
+                "data": {"url": "https://raw.githubusercontent.com/JuliaPlots/Makie.jl/metrics/compilation_latencies.csv"},
+                "mark": "tick",
+                "encoding": {
+                    "x": {"field": "metric_target", "sort": "commit_date",},
+                    "y": {"field": "time", "type": "quantitative"},
+                    "column": {
+                        "field": "name",
+                        "align": "none",
+                    },
+                },
+                "resolve": {
+                    "scale": {
+                        "y":"independent",
+                    },
+                },
+            };
+            vegaEmbed('#plot', vegaspec);
+        </script>
+    </body>
+</html>

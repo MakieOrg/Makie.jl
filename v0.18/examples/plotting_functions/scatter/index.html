@@ -1,0 +1,2002 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../../libs/highlight/github.min.css" rel="stylesheet"/>
+    <link href="../../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../../css/makie.css" rel="stylesheet"/>
+    <link href="../../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/>
+    <title>
+      scatter
+    </title>
+    <script src="../../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../../..">
+                <img src="../../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../..">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../documentation/">
+                    Documentation
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../api/">
+                    API
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../news/">
+                    News
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <div class="stork-wrapper">
+              <input class="stork-input" data-stork="makiesearch" placeholder="Search documentation"/>
+              <div class="stork-output" data-stork="makiesearch-output"></div>
+            </div>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../..">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../blocks">
+                        Blocks &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/slidergrid">
+                            SliderGrid
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../blocks/toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input checked="" class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="..">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../ablines">
+                            ablines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../contour3d">
+                            contour3d
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../ecdf">
+                            ecdfplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../hexbin">
+                            hexbin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../hvlines">
+                            hlines and vlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../hvspan">
+                            hspan and vspan
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../pie">
+                            pie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../qqplot">
+                            qqplot and qqnorm
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../rainclouds">
+                            rainclouds
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a class="active" href="">
+                            scatter
+                          </a>
+                        </div>
+                        <ul class="page-content">
+                          <li>
+                            <a href="#scatter">
+                              scatter
+                            </a>
+                          </li>
+                          <li>
+                            <ul>
+                              <li>
+                                <a href="#examples">
+                                  Examples
+                                </a>
+                              </li>
+                              <li>
+                                <ul>
+                                  <li>
+                                    <a href="#using_x_and_y_vectors">
+                                      Using x and y vectors
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#using_points">
+                                      Using points
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#markers">
+                                      Markers
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <ul>
+                                      <li>
+                                        <a href="#default_markers">
+                                          Default markers
+                                        </a>
+                                      </li>
+                                      <li>
+                                        <a href="#markersize">
+                                          Markersize
+                                        </a>
+                                      </li>
+                                    </ul>
+                                  </li>
+                                  <li>
+                                    <a href="#bezier_path_markers">
+                                      Bezier path markers
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <ul>
+                                      <li>
+                                        <a href="#holes">
+                                          Holes
+                                        </a>
+                                      </li>
+                                      <li>
+                                        <a href="#construction_from_svg_path_strings">
+                                          Construction from svg path strings
+                                        </a>
+                                      </li>
+                                    </ul>
+                                  </li>
+                                  <li>
+                                    <a href="#polygon_markers">
+                                      Polygon markers
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#marker_rotation">
+                                      Marker rotation
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#vec_markersize">
+                                      Vec markersize
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#marker_space">
+                                      Marker space
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#airport_locations_example">
+                                      Airport locations example
+                                    </a>
+                                  </li>
+                                </ul>
+                              </li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../spy">
+                            spy
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../tooltip">
+                            tooltip
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../tricontourf">
+                            tricontourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../waterfall">
+                            waterfall
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/aspect-tutorial">
+                        Aspect ratio and size control tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/scenes">
+                        Scene tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../documentation">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../documentation/backends">
+                        Backends
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/cairomakie">
+                            CairoMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/glmakie">
+                            GLMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/rprmakie">
+                            RPRMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/wglmakie">
+                            WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/blocks">
+                        Blocks
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/figure_size">
+                        Exporting a Figure with physical dimensions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/headless">
+                        Headless
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-19" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-19">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../documentation/theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/transparency">
+                        Basic transparency
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../../api">
+                    API
+                  </a>
+                </div>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../../news">
+                    News
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="scatter">
+            <a class="header-anchor" href="#scatter">
+              scatter
+            </a>
+          </h1>
+          <div class="docstring">
+            <div class="doc-header" id="scatter">
+              <a href="#scatter">
+                scatter
+              </a>
+            </div>
+            <div class="doc-content">
+              <pre><code>scatter(positions)
+scatter(x, y)
+scatter(x, y, z)</code>              </pre>
+              <p>
+                Plots a marker for each element in
+                <code>
+                  (x, y, z)
+                </code>
+                ,
+                <code>
+                  (x, y)
+                </code>
+                , or
+                <code>
+                  positions
+                </code>
+                .
+              </p>
+              <h2>
+                Attributes
+              </h2>
+              <h3>
+                Specific to
+                <code>
+                  Scatter
+                </code>
+              </h3>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      cycle::Vector{Symbol} = [:color]
+                    </code>
+                    sets which attributes to cycle when creating multiple plots.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      marker::Union{Symbol, Char, Matrix{&lt;:Colorant}, BezierPath, Polygon}
+                    </code>
+                    sets the scatter marker.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      markersize::Union{&lt;:Real, Vec2f} = 9
+                    </code>
+                    sets the size of the marker.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      markerspace::Symbol = :pixel
+                    </code>
+                    sets the space in which
+                    <code>
+                      markersize
+                    </code>
+                    is given. See
+                    <code>
+                      Makie.spaces()
+                    </code>
+                    for possible inputs.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      strokewidth::Real = 0
+                    </code>
+                    sets the width of the outline around a marker.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      strokecolor::Union{Symbol, &lt;:Colorant} = :black
+                    </code>
+                    sets the color of the outline around a marker.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      glowwidth::Real = 0
+                    </code>
+                    sets the size of a glow effect around the marker.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      glowcolor::Union{Symbol, &lt;:Colorant} = (:black, 0)
+                    </code>
+                    sets the color of the glow effect.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      rotations::Union{Real, Billboard, Quaternion} = Billboard(0f0)
+                    </code>
+                    sets the rotation of the marker. A
+                    <code>
+                      Billboard
+                    </code>
+                    rotation is always around the depth axis.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      transform_marker::Bool = false
+                    </code>
+                    controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true,
+                    <code>
+                      scale!
+                    </code>
+                    and
+                    <code>
+                      rotate!
+                    </code>
+                    will affect the marker.)
+                  </p>
+                </li>
+              </ul>
+              <h3>
+                Generic
+              </h3>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      visible::Bool = true
+                    </code>
+                    sets whether the plot will be rendered or not.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      overdraw::Bool = false
+                    </code>
+                    sets whether the plot will draw over other plots. This specifically means ignoring depth checks in GL backends.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      transparency::Bool = false
+                    </code>
+                    adjusts how the plot deals with transparency. In GLMakie
+                    <code>
+                      transparency = true
+                    </code>
+                    results in using Order Independent Transparency.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      fxaa::Bool = false
+                    </code>
+                    adjusts whether the plot is rendered with fxaa (anti-aliasing). Note that scatter plots already include a different form of anti-aliasing when plotting non-image markers.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      inspectable::Bool = true
+                    </code>
+                    sets whether this plot should be seen by
+                    <code>
+                      DataInspector
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      depth_shift::Float32 = 0f0
+                    </code>
+                    adjusts the depth value of a plot after all other transformations, i.e. in clip space, where
+                    <code>
+                      0 &lt;= depth &lt;= 1
+                    </code>
+                    . This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      model::Makie.Mat4f
+                    </code>
+                    sets a model matrix for the plot. This replaces adjustments made with
+                    <code>
+                      translate!
+                    </code>
+                    ,
+                    <code>
+                      rotate!
+                    </code>
+                    and
+                    <code>
+                      scale!
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      color
+                    </code>
+                    sets the color of the plot. It can be given as a named color
+                    <code>
+                      Symbol
+                    </code>
+                    or a
+                    <code>
+                      Colors.Colorant
+                    </code>
+                    . Transparency can be included either directly as an alpha value in the
+                    <code>
+                      Colorant
+                    </code>
+                    or as an additional float in a tuple
+                    <code>
+                      (color, alpha)
+                    </code>
+                    . The color can also be set for each scattered marker by passing a
+                    <code>
+                      Vector
+                    </code>
+                    of colors or be used to index the
+                    <code>
+                      colormap
+                    </code>
+                    by passing a
+                    <code>
+                      Real
+                    </code>
+                    number or
+                    <code>
+                      Vector{&lt;: Real}
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      colormap::Union{Symbol, Vector{&lt;:Colorant}} = :viridis
+                    </code>
+                    sets the colormap that is sampled for numeric
+                    <code>
+                      color
+                    </code>
+                    s.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      colorrange::Tuple{&lt;:Real, &lt;:Real}
+                    </code>
+                    sets the values representing the start and end points of
+                    <code>
+                      colormap
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      nan_color::Union{Symbol, &lt;:Colorant} = RGBAf(0,0,0,0)
+                    </code>
+                    sets a replacement color for
+                    <code>
+                      color = NaN
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      space::Symbol = :data
+                    </code>
+                    sets the transformation space for positions of markers. See
+                    <code>
+                      Makie.spaces()
+                    </code>
+                    for possible inputs.
+                  </p>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <h2 id="examples">
+            <a class="header-anchor" href="#examples">
+              Examples
+            </a>
+          </h2>
+          <h3 id="using_x_and_y_vectors">
+            <a class="header-anchor" href="#using_x_and_y_vectors">
+              Using x and y vectors
+            </a>
+          </h3>
+          <p>
+            Scatters can be constructed by passing a list of x and y coordinates.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+xs = range(0, 10, length = 30)
+ys = 0.5 .* sin.(xs)
+
+scatter(xs, ys)</code>          </pre>
+          <p></p>
+          <p>
+            <a id="basic_scatter">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/basic_scatter.svg"/>
+            </a>
+          </p>
+          <h3 id="using_points">
+            <a class="header-anchor" href="#using_points">
+              Using points
+            </a>
+          </h3>
+          <p>
+            It is also possible to pass coordinates as a vector of points, which is preferred if the coordinates should be updated later, to avoid different lengths of x and y.
+          </p>
+          <p>
+            Attributes like
+            <code>
+              color
+            </code>
+            and
+            <code>
+              markersize
+            </code>
+            can be set in scalar or vector form. If you pass a vector of numbers for
+            <code>
+              color
+            </code>
+            , the attribute
+            <code>
+              colorrange
+            </code>
+            which is by default automatically equal to the extrema of the color values, decides how colors are looked up in the
+            <code>
+              colormap
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+xs = range(0, 10, length = 30)
+ys = 0.5 .* sin.(xs)
+points = Point2f.(xs, ys)
+
+scatter(points, color = 1:30, markersize = range(5, 30, length = 30),
+    colormap = :thermal)</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_15058795300197317928">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_15058795300197317928.svg"/>
+            </a>
+          </p>
+          <h3 id="markers">
+            <a class="header-anchor" href="#markers">
+              Markers
+            </a>
+          </h3>
+          <p>
+            There are a couple different categories of markers you can use with
+            <code>
+              scatter
+            </code>
+            :
+          </p>
+          <ul>
+            <li>
+              <p>
+                <code>
+                  Char
+                </code>
+                s like
+                <code>
+                  'x'
+                </code>
+                or
+                <code>
+                  'α'
+                </code>
+                . The glyphs are taken from Makie's default font
+                <code>
+                  TeX Gyre Heros Makie
+                </code>
+                .
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  BezierPath
+                </code>
+                objects which can be used to create custom marker shapes. Most default markers which are accessed by symbol such as
+                <code>
+                  :circle
+                </code>
+                or
+                <code>
+                  :rect
+                </code>
+                convert to
+                <code>
+                  BezierPath
+                </code>
+                s internally.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  Polygon
+                </code>
+                s, which are equivalent to constructing
+                <code>
+                  BezierPath
+                </code>
+                s exclusively out of
+                <code>
+                  LineTo
+                </code>
+                commands.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  Matrix{&lt;:Colorant}
+                </code>
+                objects which are plotted as image scatters.
+              </p>
+            </li>
+            <li>
+              <p>
+                Special markers like
+                <code>
+                  Circle
+                </code>
+                and
+                <code>
+                  Rect
+                </code>
+                which have their own backend implementations and can be faster to display.
+              </p>
+            </li>
+          </ul>
+          <h4 id="default_markers">
+            <a class="header-anchor" href="#default_markers">
+              Default markers
+            </a>
+          </h4>
+          <p>
+            Here is an example plot showing different shapes that are accessible by
+            <code>
+              Symbol
+            </code>
+            s, as well as a few characters.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+markers_labels = [
+    (:circle, ":circle"),
+    (:rect, ":rect"),
+    (:diamond, ":diamond"),
+    (:hexagon, ":hexagon"),
+    (:cross, ":cross"),
+    (:xcross, ":xcross"),
+    (:utriangle, ":utriangle"),
+    (:dtriangle, ":dtriangle"),
+    (:ltriangle, ":ltriangle"),
+    (:rtriangle, ":rtriangle"),
+    (:pentagon, ":pentagon"),
+    (:star4, ":star4"),
+    (:star5, ":star5"),
+    (:star6, ":star6"),
+    (:star8, ":star8"),
+    (:vline, ":vline"),
+    (:hline, ":hline"),
+    ('a', "'a'"),
+    ('B', "'B'"),
+    ('↑', "'\\uparrow'"),
+    ('😄', "'\\:smile:'"),
+    ('✈', "'\\:airplane:'"),
+]
+
+f = Figure()
+ax = Axis(f[1, 1], yreversed = true,
+    xautolimitmargin = (0.15, 0.15),
+    yautolimitmargin = (0.15, 0.15)
+)
+hidedecorations!(ax)
+
+for (i, (marker, label)) in enumerate(markers_labels)
+    p = Point2f(fldmod1(i, 6)...)
+
+    scatter!(p, marker = marker, markersize = 20, color = :black)
+    text!(p, text = label, color = :gray70, offset = (0, 20),
+        align = (:center, :bottom))
+end
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_10467212759110287489">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_10467212759110287489.svg"/>
+            </a>
+          </p>
+          <h4 id="markersize">
+            <a class="header-anchor" href="#markersize">
+              Markersize
+            </a>
+          </h4>
+          <p>
+            The
+            <code>
+              markersize
+            </code>
+            attribute scales the scatter size relative to the scatter marker's base size. Therefore,
+            <code>
+              markersize
+            </code>
+            cannot be directly understood in terms of a unit like
+            <code>
+              px
+            </code>
+            , it depends on
+            <em>
+              what
+            </em>
+            is scaled.
+          </p>
+          <p>
+            For
+            <code>
+              Char
+            </code>
+            markers,
+            <code>
+              markersize
+            </code>
+            is equivalent to the font size when displaying the same characters using
+            <code>
+              text
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f, ax, sc = scatter(1, 1, marker = 'A', markersize = 50)
+text!(2, 1, text = "A", textsize = 50, align = (:center, :center))
+xlims!(ax, -1, 4)
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_15943589726930756528">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_15943589726930756528.svg"/>
+            </a>
+          </p>
+          <p>
+            The default
+            <code>
+              BezierPath
+            </code>
+            markers like
+            <code>
+              :circle
+            </code>
+            ,
+            <code>
+              :rect
+            </code>
+            ,
+            <code>
+              :utriangle
+            </code>
+            , etc. have been chosen such that they approximately match
+            <code>
+              Char
+            </code>
+            markers of the same markersize. This makes it easier to switch out markers without the overall look changing too much. However, both
+            <code>
+              Char
+            </code>
+            and
+            <code>
+              BezierPath
+            </code>
+            markers are not exactly
+            <code>
+              markersize
+            </code>
+            high or wide. We can visualize this by plotting some
+            <code>
+              Char
+            </code>
+            s,
+            <code>
+              BezierPath
+            </code>
+            s,
+            <code>
+              Circle
+            </code>
+            and
+            <code>
+              Rect
+            </code>
+            in front of a line of width
+            <code>
+              50
+            </code>
+            . You can see that only the special markers
+            <code>
+              Circle
+            </code>
+            and
+            <code>
+              Rect
+            </code>
+            match the line width because their base size is 1 x 1, however they don't match the
+            <code>
+              Char
+            </code>
+            s or
+            <code>
+              BezierPath
+            </code>
+            s very well.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f, ax, l = lines([0, 1], [1, 1], linewidth = 50, color = :gray80)
+for (marker, x) in zip(['X', 'x', :circle, :rect, :utriangle, Circle, Rect], range(0.1, 0.9, length = 7))
+    scatter!(ax, x, 1, marker = marker, markersize = 50, color = :black)
+end
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_10360417360819006100">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_10360417360819006100.svg"/>
+            </a>
+          </p>
+          <p>
+            If you need a marker that has some exact base size, so that you can match it with lines or other plot objects of known size, or because you want to use the marker in data space, you can construct it yourself using
+            <code>
+              BezierPath
+            </code>
+            or
+            <code>
+              Polygon
+            </code>
+            . A marker with a base size of 1 x 1, e.g., will be scaled like
+            <code>
+              lines
+            </code>
+            when
+            <code>
+              markersize
+            </code>
+            and
+            <code>
+              linewidth
+            </code>
+            are the same, just like
+            <code>
+              Circle
+            </code>
+            and
+            <code>
+              Rect
+            </code>
+            markers.
+          </p>
+          <p>
+            Here, we construct a hexagon polygon with radius
+            <code>
+              1
+            </code>
+            , which we can then use to tile a surface in data coordinates by setting
+            <code>
+              markerspace = :data
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+hexagon = Makie.Polygon([Point2f(cos(a), sin(a)) for a in range(1/6 * pi, 13/6 * pi, length = 7)])
+
+points = Point2f[(0, 0), (sqrt(3), 0), (sqrt(3)/2, 1.5)]
+
+scatter(points,
+    marker = hexagon,
+    markersize = 1,
+    markerspace = :data,
+    color = 1:3,
+    axis = (; aspect = 1, limits = (-2, 4, -2, 4)))</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_17982073732603255127">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_17982073732603255127.svg"/>
+            </a>
+          </p>
+          <h3 id="bezier_path_markers">
+            <a class="header-anchor" href="#bezier_path_markers">
+              Bezier path markers
+            </a>
+          </h3>
+          <p>
+            Bezier paths are the basis for vector graphic formats such as svg and pdf and consist of a couple different operations that can define complex shapes.
+          </p>
+          <p>
+            A
+            <code>
+              BezierPath
+            </code>
+            contains a vector of path commands, these are
+            <code>
+              MoveTo
+            </code>
+            ,
+            <code>
+              LineTo
+            </code>
+            ,
+            <code>
+              CurveTo
+            </code>
+            ,
+            <code>
+              EllipticalArc
+            </code>
+            and
+            <code>
+              ClosePath
+            </code>
+            . A filled shape should start with
+            <code>
+              MoveTo
+            </code>
+            and end with
+            <code>
+              ClosePath
+            </code>
+            .
+          </p>
+          <div class="admonition note">
+            <p class="admonition-title">
+              Note
+            </p>
+            <p>
+              Unfilled markers (like a single line or curve) are possible in CairoMakie but not in GLMakie and WGLMakie, because these backends have to render the marker as a filled shape to a texture first. If no filling can be rendered, the marker will be invisible. CairoMakie, on the other hand can stroke such markers without problem.
+            </p>
+          </div>
+          <p>
+            Here is an example with a simple arrow that is centered on its tip, built from path elements.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+arrow_path = BezierPath([
+    MoveTo(Point(0, 0)),
+    LineTo(Point(0.3, -0.3)),
+    LineTo(Point(0.15, -0.3)),
+    LineTo(Point(0.3, -1)),
+    LineTo(Point(0, -0.9)),
+    LineTo(Point(-0.3, -1)),
+    LineTo(Point(-0.15, -0.3)),
+    LineTo(Point(-0.3, -0.3)),
+    ClosePath()
+])
+
+scatter(1:5,
+    marker = arrow_path,
+    markersize = range(20, 50, length = 5),
+    rotations = range(0, 2pi, length = 6)[1:end-1],
+)</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_2092270845345587403">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_2092270845345587403.svg"/>
+            </a>
+          </p>
+          <h4 id="holes">
+            <a class="header-anchor" href="#holes">
+              Holes
+            </a>
+          </h4>
+          <p>
+            Paths can have holes, just start a new subpath with
+            <code>
+              MoveTo
+            </code>
+            that is inside the main path. The holes have to be in clockwise direction if the outside is in anti-clockwise direction, or vice versa. For example, a circle with a square cut out can be made by one
+            <code>
+              EllipticalArc
+            </code>
+            that goes anticlockwise, and a square inside which goes clockwise:
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+circle_with_hole = BezierPath([
+    MoveTo(Point(1, 0)),
+    EllipticalArc(Point(0, 0), 1, 1, 0, 0, 2pi),
+    MoveTo(Point(0.5, 0.5)),
+    LineTo(Point(0.5, -0.5)),
+    LineTo(Point(-0.5, -0.5)),
+    LineTo(Point(-0.5, 0.5)),
+    ClosePath(),
+])
+
+scatter(1:5,
+    marker = circle_with_hole,
+    markersize = 30,
+)</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_1255246370425287059">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_1255246370425287059.svg"/>
+            </a>
+          </p>
+          <h4 id="construction_from_svg_path_strings">
+            <a class="header-anchor" href="#construction_from_svg_path_strings">
+              Construction from svg path strings
+            </a>
+          </h4>
+          <p>
+            You can also create a bezier path from an
+            <a href="https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d#path_commands">
+              svg path specification string
+            </a>
+            . You can automatically resize the path and flip the y-axis (svgs usually have a coordinate system where y increases downwards) with the keywords
+            <code>
+              fit
+            </code>
+            and
+            <code>
+              yflip
+            </code>
+            . By default, the bounding box for the fitted path is a square of width 1 centered on zero. You can pass a different bounding
+            <code>
+              Rect
+            </code>
+            with the
+            <code>
+              bbox
+            </code>
+            keyword argument. By default, the aspect of the path is left intact, and if it's not matching the new bounding box, the path is centered so it fits inside. Set
+            <code>
+              keep_aspect = false
+            </code>
+            to squeeze the path into the bounding box, disregarding its original aspect ratio.
+          </p>
+          <p>
+            Here's an example with an svg string that contains the bat symbol:
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+batsymbol_string = "M96.84 141.998c-4.947-23.457-20.359-32.211-25.862-13.887-11.822-22.963-37.961-16.135-22.041 6.289-3.005-1.295-5.872-2.682-8.538-4.191-8.646-5.318-15.259-11.314-19.774-17.586-3.237-5.07-4.994-10.541-4.994-16.229 0-19.774 21.115-36.758 50.861-43.694.446-.078.909-.154 1.372-.231-22.657 30.039 9.386 50.985 15.258 24.645l2.528-24.367 5.086 6.52H103.205l5.07-6.52 2.543 24.367c5.842 26.278 37.746 5.502 15.414-24.429 29.777 6.951 50.891 23.936 50.891 43.709 0 15.136-12.406 28.651-31.609 37.267 14.842-21.822-10.867-28.266-22.549-5.549-5.502-18.325-21.147-9.341-26.125 13.886z"
+
+batsymbol = BezierPath(batsymbol_string, fit = true, flipy = true)
+
+scatter(1:10, marker = batsymbol, markersize = 50, color = :black)</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_1987983708282497465">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_1987983708282497465.svg"/>
+            </a>
+          </p>
+          <h3 id="polygon_markers">
+            <a class="header-anchor" href="#polygon_markers">
+              Polygon markers
+            </a>
+          </h3>
+          <p>
+            One can also use
+            <code>
+              GeometryBasics.Polgyon
+            </code>
+            as a marker. A polygon always needs one vector of points which forms the outline. It can also take an optional vector of vectors of points, each of which forms a hole in the outlined shape.
+          </p>
+          <p>
+            In this example, a small circle is cut out of a larger circle:
+          </p>
+          <pre><code class="language-julia">using CairoMakie, GeometryBasics
+
+
+p_big = decompose(Point2f, Circle(Point2f(0), 1))
+p_small = decompose(Point2f, Circle(Point2f(0), 0.5))
+scatter(1:4, fill(0, 4), marker=Polygon(p_big, [p_small]), markersize=100, color=1:4, axis=(limits=(0, 5, -1, 1),))</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_18097959354152403277">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_18097959354152403277.svg"/>
+            </a>
+          </p>
+          <h3 id="marker_rotation">
+            <a class="header-anchor" href="#marker_rotation">
+              Marker rotation
+            </a>
+          </h3>
+          <p>
+            Markers can be rotated using the
+            <code>
+              rotations
+            </code>
+            attribute, which also allows to pass a vector.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+points = [Point2f(x, y) for y in 1:10 for x in 1:10]
+rotations = range(0, 2pi, length = length(points))
+
+scatter(points, rotations = rotations, markersize = 20, marker = '↑')</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_11641811732775141231">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_11641811732775141231.svg"/>
+            </a>
+          </p>
+          <h3 id="vec_markersize">
+            <a class="header-anchor" href="#vec_markersize">
+              Vec markersize
+            </a>
+          </h3>
+          <p>
+            You can scale x and y dimension of markers separately by passing a
+            <code>
+              Vec
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+ax = Axis(f[1, 1])
+
+scales = range(0.5, 1.5, length = 10)
+
+for (i, sx) in enumerate(scales)
+    for (j, sy) in enumerate(scales)
+        scatter!(ax, Point2f(i, j),
+            marker = '✈',
+            markersize = 30 .* Vec2f(sx, sy),
+            color = :black)
+    end
+end
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_15620327277386764272">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_15620327277386764272.svg"/>
+            </a>
+          </p>
+          <h3 id="marker_space">
+            <a class="header-anchor" href="#marker_space">
+              Marker space
+            </a>
+          </h3>
+          <p>
+            By default marker sizes are given in pixel units. You can change this by adjusting
+            <code>
+              markerspace
+            </code>
+            . For example, you can have a marker scaled in data units by setting
+            <code>
+              markerspace = :data
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+ax = Axis(f[1, 1])
+limits!(ax, -10, 10, -10, 10)
+
+scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = :data,
+    marker = '✈', label = "markerspace = :data")
+scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = :pixel,
+    marker = '✈', label = "markerspace = :pixel")
+
+axislegend(ax)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_15366688679476222808">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_15366688679476222808.svg"/>
+            </a>
+          </p>
+          <h3 id="airport_locations_example">
+            <a class="header-anchor" href="#airport_locations_example">
+              Airport locations example
+            </a>
+          </h3>
+          <pre><code class="language-julia">using CairoMakie
+using DelimitedFiles
+
+
+a = readdlm(assetpath("airportlocations.csv"))
+
+scatter(a[1:50:end, :], marker = '✈',
+    markersize = 20, color = :black)</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_12425206804685228712">
+              <img alt="" src="../../../assets/examples/plotting_functions/scatter/code/output/example_12425206804685228712.png"/>
+            </a>
+          </p>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: December 02, 2022. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.18.4, GLMakie: v0.7.4, CairoMakie: v0.9.4, WGLMakie: v0.7.4
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../../libs/navbar.js"></script>
+    <script src="https://files.stork-search.net/releases/v1.4.2/stork.js"></script>
+    <img id="stork-library-path-placeholder" src="../../../libs/stork" style="display:none"/>
+    <script>
+      storkfolder = document.querySelector("#stork-library-path-placeholder").src;
+      stork.register("makiesearch", `${storkfolder}/index.st`);
+        </script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script src="../../../libs/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});    </script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>
