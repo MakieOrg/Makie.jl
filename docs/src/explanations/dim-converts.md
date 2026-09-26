@@ -186,6 +186,77 @@ Makie.DQConversion
 Makie.DateTimeConversion
 ```
 
+### Color dim_converts
+
+As of Makie 0.25 dim converts are also used for color data given either through the `color` attribute or passed as an argument with which maps to `dim = 4`.
+The latter is used for the matrix input in `heatmap` for example.
+
+```@setup color_dim_converts
+using Makie.Unitful
+```
+
+```@figure color_dim_converts
+using Makie.Unitful
+
+f, a, p1 = heatmap(10 .* rand(10, 10) .* u"K", colormap = :blues)
+p2 = scatter!(
+    1:10,
+    color = Categorical(["A", "B", "B", "C", "C", "C", "A", "A", "B", "B"]),
+    colormap = :solar,
+    markersize = 20, strokewidth = 1, strokecolor = :white
+)
+Colorbar(f[1, 0], p1)
+Colorbar(f[1, 2], p2)
+
+f
+```
+
+Unlike other dim converts, color dim converts do not communicate with each other by default.
+This is because it is unclear which other attributes (e.g. `colormap`, `colorscale`, `colorrange`) need to be shared for the colors to be considered "of the same kind", i.e. for users to want them to synchronize.
+Instead of guessing we currently require sharing the dim convert as well as the relevant attributes explicitly.
+
+```@figure color_dim_converts
+f = Figure()
+a = Axis(f[1, 1], title = "nothing shared")
+p = scatter!(a, 1:5, 1:5, color = (1:5) .* u"m")
+scatter!(a, 6:10, 6:10, color = (6:10) .* u"m")
+Colorbar(f[1, 2], p)
+
+a2 = Axis(f[2, 1], title = "dim convert & colorrange shared; colormap & colorscale match")
+p2 = scatter!(a2, 1:5, 1:5, color = (1:5) .* u"m", colorrange = (1, 10))
+scatter!(a2, 6:10, 6:10, color = (6:10) .* u"m"; p2.color_dim_convert, colorrange = (1, 10))
+Colorbar(f[2, 2], p2)
+
+f
+```
+
+Note that categorical conversions can derive a shared `colorrange` automatically because all the categories are embedded in the dim convert.
+Keeping the `colorscale`, `colormap` and potentially other attributes like `lowclip`, `highclip` and `nan_color` synchronized is still required.
+
+```@figure color_dim_converts
+f, a, p = scatter(
+    randn(50), randn(50),
+    color = Categorical(["A" for _ in 1:50]),
+    strokewidth = 1, strokecolor = :black, colormap = :heat
+)
+scatter!(
+    (2 .+ randn(50)), (2.5 .+ randn(50)),
+    color = Categorical(["B" for _ in 1:50]),
+    color_dim_convert = p.color_dim_convert,
+    strokewidth = 1, strokecolor = :black, colormap = :heat
+)
+scatter!(
+    (3 .+ randn(50)), (5 .+ randn(50)),
+    color = Categorical(["C" for _ in 1:50]),
+    color_dim_convert = p.color_dim_convert,
+    strokewidth = 1, strokecolor = :black, colormap = :heat
+)
+
+cb = Colorbar(f[1, 2], p)
+
+f
+```
+
 ## Developer docs
 
 ### Overview
@@ -277,9 +348,13 @@ end
 Makie.argument_dims(::MyPlot, unconvertible) = nothing
 ```
 
-Note that `argument_dims` handle `x, y`, `x, y, z` vectors as well as their point-like representations automatically.
-These cases also treat `direction` and `orientation` automatically if included via `argument_dim_kwargs()`.
-For this `direction == :y` and `orientation = :vertical` are treated as the neutral (no swap) case.
+!!! note
+    `argument_dims` handle `x, y`, `x, y, z` vectors as well as their point-like representations automatically.
+    These cases also treat `direction` and `orientation` automatically if included via `argument_dim_kwargs()`.
+    For this `direction == :y` and `orientation = :vertical` are treated as the neutral (no swap) case.
+
+!!! note
+    Colors are considered as dimension `4` in `argument_dims`.
 
 ### Creating a new dim convert
 

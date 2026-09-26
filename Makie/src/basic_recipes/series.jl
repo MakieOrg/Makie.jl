@@ -125,13 +125,15 @@ function plot!(plot::Series)
             if color isa RealVector
                 # TODO: Is it reasonable to just run the categorical_colors()
                 # code after this to resolve cycling/dropping of extra samples?
-                cr = combined_colorrange(colorscale, colorrange, extrema_nan(color))
+                autorange = extrema_nan(color)
+                low = process_color_value(NoDimConversion(), colorscale, first(colorrange), first(autorange))
+                high = process_color_value(NoDimConversion(), colorscale, last(colorrange), last(autorange))
                 cm = to_colormap(colormap)
                 lc = default_automatic(to_color(lowclip), first(cm))
                 hc = default_automatic(to_color(highclip), last(cm))
                 nc = to_color(nan_color)
                 color = map(color) do value
-                    sample_color(cm, value, cr, lc, hc, nc)
+                    sample_color(cm, value, (low, high), lc, hc, nc)
                 end
             end
             if cycle === automatic

@@ -81,32 +81,75 @@ We can't use `cgrad(...; categorical=true)` for this, since it has an ambiguous 
 
 To create a Colorbar from a plot various colormapping attributes need to be extracted.
 This is done by the `Makie.extract_colormap(plot)` function.
-The default implementation will look up `color`, `colormap`, `colorrange`, `colorscale`, `lowclip` and `highclip` in the given plot.
-If all of them are available, the Colorbar will be constructed using them.
-Otherwise, they will be extracted from the plots child plot if only one child exists.
+The default implementation will error if the plot has multiple child plots and otherwise call `extract_colormap(only(plot.plots))`.
+This continues until a method explicitly extracts `color`, `colormap`, `colorrange`, `colorscale`, `lowclip`, `highclip` and (optionally) `color_dim_convert`.
+These attributes will then be used to construct the Colorbar.
 
-If this process returns incorrect attributes (for example if `color` is not used for color mapping) or fails to generate a complete set of attributes a custom overload for `Makie.extract_colormap` is necessary.
-The method should simply return a `Dict{Symbol, Any}()` containing the relevant attributes.
+A custom method of `Makie.extract_colormap` is necessary if a plot has multiple child plots and may be necessary if it processes colormapping directly.
+The former case just requires identifying the relevant child plot:
+
+```julia
+Makie.extract_colormap(plot::MyPlot) = Makie.extract_colormap(plot.plots[2])
+```
+
+The latter case may require modifying/replacing some attributes extracted from a child plot or directly creating a `Dict{Symbol, Any}` containing the colormapping attributes relevant to a plot.
+
+For example `MyPlot` may resolve color values (i.e. Real values) to colors (e.g. RGBA) within the recipe.
+Those colors are then passed on to one or more child plots without the already used colormapping attributes.
+In this case the attributes need to be extracted for `MyPlot`:
 
 ```julia
 function Makie.extract_colormap(plot::MyPlot)
+    # This should include color, colormap, colorrange, colorscale, lowclip and highclip
     return Dict{Symbol, Any}(
-        :color => plot.my_color,
-        :colormap => plot.my_colormap,
-        :colorrange => plot.my_colorrange,
-        :colorscale => plot.colorscale,
+        :color => plot.values,
+        :colormap => plot.colormap,
+        :colorrange => plot.limits,
+        # If a plot does not consider a colormapping attribute it should be set
+        # to a reasonable value here. E.g. if MyPlot does not consider colorscale
+        # it should be identity
+        :colorscale => identity,
+        # Note that the lowclip/highclip extensions markers are hidden when
+        # lowclip/highclip = automatic and visible if lowclip/highclip is a color.
+        # For some plots it may make sense to set them to `automatic` explicitly
         :lowclip => plot.lowclip,
         :highclip => plot.highclip,
     )
 end
 ```
 
-The attributes that use their default names (here: colorscale, lowclip and highclip) can also be added with `Makie.add_default_colorbar_attributes(dict, plot)`.
-Alternatively, a method for `Makie._extract_colormap(plot)` can be implemented without them.
-This will cause the default method for `extract_colormap` to be called, which automatically adds attributes with default names.
-(Attributes that already have an entry in the dict will not be overwritten.)
+Attributes with the correct name (same as the key) can also be extracted automatically with `Makie.add_default_colorbar_attributes(attr, plot)`, or by implementing `Makie._extratc_colormap` instead:
 
-Plots with multiple may implement something like `Makie.extract_colormap(p::MyPlot) = Makie.extract_colormap(p.plots[1])` to specify which child plot to extract attributes from.
+```julia
+# This keeps the default `extract_colormap` method which adds undefined entries
+# using attributes from MyPlot.
+function Makie._extract_colormap(plot::MyPlot)
+    return Dict{Symbol, Any}(
+        :color => plot.values,
+        :colorrange => plot.limits,
+        :colorscale => identity,
+    )
+end
+```
+
+It is also often useful to extract attributes from a child plot and then replace incorrect entries.
+For example, if `MyPlot` passes down all the colormapping attributes we could extract them from a child plot and just update `color`:
+
+```julia
+function Makie.extract_colormap(plot::MyPlot)
+    attr = extract_colormap(plot.plots[1])
+    attr[:color] = plot.values
+    return attr
+end
+```
+
+!!! note
+    `extract_colormap(plot)` is expected to return a full set of attributes.
+    Not doing so may cause attributes from a parent plot to be mixed in, which could be different from the ones used in the plot.
+    Its default method fills the result of `_extract_colormap(plot)` with attributes from `plot`.
+    Therefore `_extract_colormap(plot)` may return an incomplete set.
+    Its default implementation calls `extract_colormap(only(plot.plots))`.
+    If you are unsure about which method to use, use `Makie._extract_colormap` when you are implementing a method and `extract_colormap` when you are calling one.
 
 !!! note
     Prior to Makie 0.25 `extract_colormap` was expected to return a `Makie.ColorMapping`.

@@ -65,7 +65,7 @@ function convert_dim_value(conversion::AbstractDimConversion, value, deregister)
 end
 
 # Return instance of AbstractDimConversion for a given type
-create_dim_conversion(argument_eltype::DataType) = NoDimConversion()
+create_dim_conversion(argument_eltype) = NoDimConversion()
 should_dim_convert() = nothing
 function convert_dim_observable(::NoDimConversion, value::Observable, deregister)
     return value
@@ -229,7 +229,7 @@ end
 needs_tick_update_observable(x) = nothing
 
 function needs_tick_update_observable(conversion::ComputePipeline.Computed)
-    return needs_tick_update_observable(ComputePipeline.get_observable!(conversion))
+    return needs_tick_update_observable(ComputePipeline.get_observable!(conversion, use_deepcopy = false))
 end
 
 function needs_tick_update_observable(conversion::Observable)
@@ -282,7 +282,7 @@ function update_dim_conversion!(conversions::DimConversions, dim, value::VecType
 end
 
 function update_dim_conversion!(conversions::DimConversions, dim, points::AbstractArray{<:VecTypes}, element_idx)
-    isempty(points) && return Float64[]
+    isempty(points) && return
     return update_dim_conversion!(conversions, dim, first(points)[element_idx])
 end
 
