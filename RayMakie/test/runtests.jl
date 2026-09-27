@@ -1,5 +1,14 @@
 using Test
 
+# The oldest hardware this should run on is an M1 (Apple GPU family 7) with
+# macOS 15. Without one, run the suite on any Apple silicon Mac with
+#
+#     JULIA_METAL_TARGET_GPUFAMILY=7 JULIA_METAL_TARGET_MACOS=15
+#
+# set before Metal compiles anything: every kernel and graphics stage is then
+# compiled as for that target, and one that uses a newer GPU's or system's
+# feature fails to compile. It cannot catch a bug in the M1's own GPU compiler.
+
 # Load a GPU backend, and say which one.
 #
 # This file used to load none. `using RayMakie` alone leaves Mantle with no
