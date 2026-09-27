@@ -124,17 +124,11 @@ function _extract_colormap(plot::Union{Contourf, Tricontourf})
     end
     map!(apply_scale, plot, [:inverse_colorscale, :computed_levels], :cb_levels)
     map!(apply_scale, plot, [:inverse_colorscale, :computed_colorrange], :cb_limits)
-    map!(plot, [:inverse_colorscale, :computed_colormap, :computed_colorrange], :cb_colormap) do iscale, cm, cr
-        vals = minimum(cr) .+ (maximum(cr) - minimum(cr)) .* cm.values
-        vals = apply_scale(iscale, vals)
-        vals .= (vals .- minimum(vals)) ./ (maximum(vals) - minimum(vals))
-        return PlotUtils.CategoricalColorGradient(cm.colors, vals)
-    end
     map!(c -> alpha(c) == 0 ? automatic : c, plot, :computed_lowcolor, :cb_lowclip)
     map!(c -> alpha(c) == 0 ? automatic : c, plot, :computed_highcolor, :cb_highclip)
 
     return Dict{Symbol, Any}(
-        :color => plot.cb_levels,
+        :dim_converted => plot.cb_levels,
         :colormap => plot.computed_colormap,
         :colorrange => plot.cb_limits,
         :lowclip => plot.cb_lowclip,
@@ -150,18 +144,14 @@ function extract_colormap(plot::Tricontour)
     map!(apply_scale, plot, [:inverse_colorscale, :computed_levels], :cb_levels)
     map!(apply_scale, plot, [:inverse_colorscale, :computed_colorrange], :cb_colorrange)
     return Dict{Symbol, Any}(
-        :color => plot.cb_levels,
-        :colormap => plot.colormap,
+        :dim_converted => plot.cb_levels,
         :colorrange => plot.cb_colorrange,
-        :colorscale => plot.colorscale,
-        :lowclip => plot.lowclip,
-        :highclip => plot.highclip,
     )
 end
 
 # TODO: plot missing lowclip, highclip handling?
 function _extract_colormap(plot::Union{Contour, Contour3d})
-    return Dict{Symbol, Any}(:color => plot.zlevels, :colorrange => plot.computed_colorrange)
+    return Dict{Symbol, Any}(:dim_converted => plot.zlevels, :colorrange => plot.computed_colorrange)
 end
 
 function _extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
@@ -292,16 +282,24 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     # Auto dim conversion
     cdc = cb.dim_conversion[]
-    if hasinput(cb.attributes, :dim_conversion) # not managed externally
+    if hasinput(cb.attributes, :dim_conversion)
+        # If :dim_conversion is a node rather than a ComputePipeline.Input it is
+        # passed along from another source (typically a plot) that (most likely)
+        # initialized the conversion.
+        # If it is an Input the setup still needs to happen:
         on(_ -> notify(cb.dim_conversion), cdc.update)
         update_dim_conversion!(cb.dim_conversion[], cb.values[])
     end
+    # We need to pull the actual conversion in the computegraph either way
     map!(cdc -> cdc.dim_convert, cb, :dim_conversion, :resolved_cdc)
 
     if haskey(kwargs, :dim_converted)
+        # If extract_colormap() extracted :dim_converted we use that directly
+        # rather than applying dim converts here
         map!(to_color, cb, kwargs[:dim_converted], :dc_values)
         on(x -> @error("Colorbar values are controlled by a plot via :dc_values"), cb.values)
     else
+        # Otherwise we apply dim converts (if they do something)
         if cdc.dim_convert isa Union{Nothing, NoDimConversion}
             ComputePipeline.map!(to_color, cb, :values, :dc_values)
         else

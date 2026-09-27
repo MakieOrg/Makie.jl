@@ -222,31 +222,45 @@ function register_colormapping_without_color!(attr::ComputeGraph)
     return
 end
 
-function process_color_value(dim_convert, scale, value, auto)
-    if value === automatic
-        return auto
-    elseif value isa Real
-        return apply_scale(scale, value)
-    else
-        return apply_scale(scale, convert_dim_value(dim_convert, value))
-    end
-end
+"""
+    register_dim_converted_color!(plot; kwargs...)
 
-function register_colormapping!(attr::ComputeGraph, colorname = :color)
-    register_colormapping_without_color!(attr)
+Initializes color dim converts if the current color values are dim convertible,
+i.e. if `dim_conversion_from_args` returns a dim convert, and adds a computation
+to convert convert colors. If they are not dim convertible, an
+`ComputePipeline.alias!` mapping is added instead.
 
+## Keyword Arguments
+
+- `colorname = :color` defines the color input node (before dim converts)
+- `outputname = :dc_color` defines the color output node (after color dim converts)
+- `cdc_color = :color_dim_convert` defines the name of the color dim convert node
+- `force = false` forces dim converts to apply to colors if set to `true`. This
+    is only relevant when color dim converts are passed to the plot (i.e.
+    synchronized with another) and causes an error when this plot does not have
+    compatible color data.
+"""
+register_dim_converted_color!(plot::Plot; kwargs...) = register_dim_converted_color!(plot.attributes; kwargs...)
+function register_dim_converted_color!(
+        attr::ComputeGraph;
+        colorname = :color, outputname = :dc_color, cdc_name = :color_dim_convert,
+        force = false
+    )
     color = attr[colorname][]
-    if !isa(dim_conversion_from_args(color), Union{Nothing, NoDimConversion})
-        update_dim_conversion!(attr.color_dim_convert[], color)
+    if force || !isa(dim_conversion_from_args(color), Union{Nothing, NoDimConversion})
+        update_dim_conversion!(attr[cdc_name][], color)
 
-        map!(attr, [:resolved_cdc, colorname], :dc_color) do dc, color
+        map!(attr, [:resolved_cdc, colorname], outputname) do dc, color
             converted = convert_dim_value(dc, attr, color, nothing)
             return to_color(converted)
         end
     else
-        ComputePipeline.alias!(attr, colorname, :dc_color)
+        ComputePipeline.alias!(attr, colorname, outputname)
     end
+    return
+end
 
+function register_scaled_color!(attr::ComputeGraph)
     map!(
         attr,
         [:dc_color, :colorscale, :alpha],
@@ -269,10 +283,17 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         end
         return color, val, color isa AbstractPattern, nothing
     end
-
-    register_colorrange!(attr)
-
     return
+end
+
+function process_color_value(dim_convert, scale, value, auto)
+    if value === automatic
+        return auto
+    elseif value isa Real
+        return apply_scale(scale, value)
+    else
+        return apply_scale(scale, convert_dim_value(dim_convert, value))
+    end
 end
 
 function register_colorrange!(
@@ -310,6 +331,14 @@ function register_colorrange!(
         end
     end
 
+    return
+end
+
+function register_colormapping!(attr::ComputeGraph, colorname = :color)
+    register_colormapping_without_color!(attr)
+    register_dim_converted_color!(attr; colorname)
+    register_scaled_color!(attr)
+    register_colorrange!(attr)
     return
 end
 
