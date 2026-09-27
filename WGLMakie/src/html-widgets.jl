@@ -199,8 +199,7 @@ end
 
 function replace_widget!(menu::Makie.Menu)
     Makie.hide!(menu)
-    initial_selection_idx = menu.i_selected[]
-    prompt_label = menu.prompt[]
+    initial_selection = menu.selection[]
 
     # Extract Makie styling attributes
     cell_color_inactive = menu.cell_color_inactive_even[]
@@ -238,16 +237,10 @@ function replace_widget!(menu::Makie.Menu)
 
     # Initial (server-side rendered) option list.
     dropdown_items = map(enumerate(option_labels[])) do (i, label_text)
-        DOM.div(
-            label_text;
-            dataValue = i,
-            class = i == initial_selection_idx ? "$(option_class) selected" : option_class,
-        )
+        DOM.div(label_text; dataValue = i, class = option_class)
     end
 
-    # Current selection display
-    current_label = (initial_selection_idx == 0 || initial_selection_idx > length(option_labels[])) ?
-        prompt_label : option_labels[][initial_selection_idx]
+    current_label = Makie.optionlabel(initial_selection)
     dropdown_style = Styles(
         CSS(
             "width" => "100%",
@@ -306,8 +299,6 @@ function replace_widget!(menu::Makie.Menu)
     const display = dropdown.querySelector('.dropdown-display');
     const list = dropdown.querySelector('.dropdown-list');
     const option_class = $(option_class);
-    const prompt_label = $(prompt_label);
-    let labels = $(option_labels).value;
 
     // Toggle dropdown
     display.onclick = function() {
@@ -333,10 +324,21 @@ function replace_widget!(menu::Makie.Menu)
         }
     };
 
-    // Rebuild the option entries. Called whenever `menu.options` changes on the
-    // Julia side, so newly added panels (etc.) show up in the dropdown.
+    // Highlight the entry matching the current selection.
+    function update_background() {
+        const selected_index = $(menu.i_selected).value;
+        list.querySelectorAll('[data-value]').forEach((item) => {
+            if (parseInt(item.dataset.value) === selected_index) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    // Rebuild the option entries whenever `menu.options` changes on the Julia
+    // side, so newly added entries (panels, etc.) show up in the dropdown.
     function rebuild(new_labels) {
-        labels = new_labels;
         const frag = document.createDocumentFragment();
         new_labels.forEach((label_text, idx) => {
             const item = document.createElement('div');
@@ -346,36 +348,21 @@ function replace_widget!(menu::Makie.Menu)
             frag.appendChild(item);
         });
         list.replaceChildren(frag);
+        update_background();
     }
 
-    // Sync the selected-entry highlight and the displayed label from i_selected.
-    function update_selection() {
-        const selected_index = $(menu.i_selected).value;
-        list.querySelectorAll('[data-value]').forEach(item => {
-            if (parseInt(item.dataset.value) === selected_index) {
-                item.classList.add('selected');
-            } else {
-                item.classList.remove('selected');
-            }
-        });
-        display.textContent = (selected_index >= 1 && selected_index <= labels.length) ?
-            labels[selected_index - 1] : prompt_label;
-    }
-
-    // Event delegation so dynamically rebuilt options keep working.
+    // Event delegation so dynamically rebuilt entries keep working.
     list.addEventListener('click', function(e) {
         const item = e.target.closest('[data-value]');
         if (!item || !list.contains(item)) return;
         $(menu.i_selected).notify(parseInt(item.dataset.value));
+        display.textContent = item.textContent;
         list.style.display = 'none';
     });
 
-    $(option_labels).on(function(new_labels) {
-        rebuild(new_labels);
-        update_selection();
-    });
-    $(menu.i_selected).on(update_selection);
-    update_selection();
+    $(option_labels).on(rebuild);
+    $(menu.i_selected).on(update_background);
+    update_background();
 
     // Close dropdown when clicking outside
     document.addEventListener('click', function(e) {
