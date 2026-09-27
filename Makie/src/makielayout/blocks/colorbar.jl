@@ -136,7 +136,7 @@ function _extract_colormap(plot::Union{Contourf, Tricontourf})
     )
 end
 
-function extract_colormap(plot::Tricontour)
+function _extract_colormap(plot::Tricontour)
     map!(inverse_transform, plot, :colorscale, :inverse_colorscale)
     if isnothing(plot.inverse_colorscale[])
         @warn "Colorbar for $(plotsym(typeof(plot))) with `colorscale = $(plot.colorscale[])` can not compute pre-colorscale color values because `Makie.inverse_transform($(plot.colorscale[]))` is missing. Showing transformed values in ticks instead."
