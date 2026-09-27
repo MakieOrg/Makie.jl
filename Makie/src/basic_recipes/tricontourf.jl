@@ -9,6 +9,8 @@ vertical positions `ys`. A `Triangulation` from DelaunayTriangulation.jl can als
 for specifying the triangles, otherwise an unconstrained triangulation of `xs` and `ys` is computed.
 """
 @recipe Tricontourf begin
+    # tricontourf stacks layers onto itself, so alpha doesn't (always) work as expected
+    mixin_colormap_attributes(exclude = (:lowclip, :highclip))...
     """
     Can be either an `Int` which results in n bands delimited by n+1 equally spaced
     levels, or it can be an `AbstractVector{<:Real}` that lists n consecutive edges
@@ -23,11 +25,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     """
     mode = :normal
     "Sets the colormap from which the band colors are sampled."
-    colormap = @inherit colormap
-    "Color transform function"
-    colorscale = identity
-    "The alpha value of the colormap or color attribute."
-    alpha = 1.0
+    colormap = @inherit colormap :viridis
     """
     This sets the color of an optional additional band from
     `minimum(zs)` to the lowest value in `levels`.
@@ -46,8 +44,6 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     If it's `nothing`, no band is added.
     """
     extendhigh = nothing
-    "Sets the color used for nan values in the generated contour."
-    nan_color = :transparent
     """
     The mode with which the points in `xs` and `ys` are triangulated.
     Passing `DelaunayTriangulation()` performs a Delaunay triangulation.
@@ -128,10 +124,9 @@ function plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<
     # prepare levels, colormap related nodes
     register_contourf_computations!(graph, :converted_2)
 
-
     register_computation!(
         graph,
-        [:converted_1, :converted_2, :computed_levels, :computed_lowcolor, :computed_highcolor],
+        [:converted_1, :scaled_zs, :computed_levels, :computed_lowcolor, :computed_highcolor],
         [:polys, :computed_colors]
     ) do (tri, zs, levels, low, high), changed, cached
         is_extended_low = !isnothing(low)
@@ -148,19 +143,16 @@ function plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<
 
     return poly!(
         c,
+        c.attributes,
         c.polys,
         colormap = c.computed_colormap,
-        colorscale = c.colorscale,
         colorrange = c.computed_colorrange,
-        alpha = c.alpha,
+        colorscale = identity,
         highclip = c.computed_highcolor,
         lowclip = c.computed_lowcolor,
-        nan_color = c.nan_color,
         color = c.computed_colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        inspectable = c.inspectable,
-        transparency = c.transparency
     )
 end
 

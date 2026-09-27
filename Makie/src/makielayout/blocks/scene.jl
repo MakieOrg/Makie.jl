@@ -19,19 +19,27 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
                 # update limits when scene limits change
                 limits = lift(blockscene, ls.scene.theme.limits) do lims
                     if lims === automatic
-                        dl = boundingbox(ls.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
-                        if any(isinf, widths(dl)) || any(isinf, Makie.origin(dl))
-                            Rect3d((0.0, 0.0, 0.0), (1.0, 1.0, 1.0))
+                        dl = boundingbox(ls.scene, p -> isaxis(p) || not_in_data_space(p))
+                        if any(!isfinite, origin(dl)) || any(!isfinite, widths(dl))
+                            return Rect3d((0.0, 0.0, 0.0), (1.0, 1.0, 1.0))
+                        elseif any(iszero, widths(dl))
+                            _mini = minimum(dl)
+                            _maxi = maximum(dl)
+                            w = 0.2 * sum(widths(dl)) # bit more than mean(widths) / 2
+                            w = ifelse(w == 0, 1.0, w)
+                            mini = @. ifelse(_mini == _maxi, _mini - w, _mini)
+                            maxi = @. ifelse(_mini == _maxi, _maxi + w, _maxi)
+                            return Rect3d(mini, maxi .- mini)
                         else
-                            dl
+                            return dl
                         end
                     else
-                        lims
+                        return lims
                     end
                 end
-                Makie.axis3d!(ls.scene, limits)
+                axis3d!(ls.scene, limits)
                 # Make sure axis is always in pos 1
-                sort!(ls.scene.plots, by = !Makie.isaxis)
+                sort!(ls.scene.plots, by = !isaxis)
             else
                 ax.visible = true
             end
@@ -50,10 +58,10 @@ function Base.delete!(ax::LScene, plot::AbstractPlot)
     return ax
 end
 
-Makie.cam2d!(ax::LScene; kwargs...) = Makie.cam2d!(ax.scene; kwargs...)
-Makie.campixel!(ax::LScene; kwargs...) = Makie.campixel!(ax.scene; kwargs...)
-Makie.cam_relative!(ax::LScene; kwargs...) = Makie.cam_relative!(ax.scene; kwargs...)
-Makie.cam3d!(ax::LScene; kwargs...) = Makie.cam3d!(ax.scene; kwargs...)
-Makie.cam3d_cad!(ax::LScene; kwargs...) = Makie.cam3d_cad!(ax.scene; kwargs...)
-Makie.old_cam3d!(ax::LScene; kwargs...) = Makie.old_cam3d!(ax.scene; kwargs...)
-Makie.old_cam3d_cad!(ax::LScene; kwargs...) = Makie.old_cam3d_cad!(ax.scene; kwargs...)
+cam2d!(ax::LScene; kwargs...) = cam2d!(ax.scene; kwargs...)
+campixel!(ax::LScene; kwargs...) = campixel!(ax.scene; kwargs...)
+cam_relative!(ax::LScene; kwargs...) = cam_relative!(ax.scene; kwargs...)
+cam3d!(ax::LScene; kwargs...) = cam3d!(ax.scene; kwargs...)
+cam3d_cad!(ax::LScene; kwargs...) = cam3d_cad!(ax.scene; kwargs...)
+old_cam3d!(ax::LScene; kwargs...) = old_cam3d!(ax.scene; kwargs...)
+old_cam3d_cad!(ax::LScene; kwargs...) = old_cam3d_cad!(ax.scene; kwargs...)

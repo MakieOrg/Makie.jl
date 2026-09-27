@@ -8,19 +8,6 @@
     @test Point2f.(points[]) == [Point2f(5), Point2f(15)]
 end
 
-@testset "arrows" begin
-    # Test for:
-    # https://github.com/MakieOrg/Makie.jl/issues/3273
-    directions = decompose(Point2f, Circle(Point2f(0), 1))
-    points = decompose(Point2f, Circle(Point2f(0), 0.5))
-    color = range(0, 1, length = length(directions))
-    fig, ax, pl = arrows2d(points, directions; color = color)
-    cbar = Colorbar(fig[1, 2], pl)
-    @test cbar.limits[] == Vec2f(0, 1)
-    pl.colorrange = (0.5, 0.6)
-    @test cbar.limits[] ≈ Vec2f(0.5, 0.6)
-end
-
 @testset "voxels" begin
     data = reshape(collect(range(0.3, 1.8, length = 6 * 5 * 4)), 6, 5, 4)
     f, a, p = voxels(

@@ -569,6 +569,20 @@ function Base.setproperty!(pl::PlotList, property::Symbol, value)
     end
 end
 
+function boundingbox(plot::PlotList, space::Symbol = :data)
+    # Assume primitive plot
+    isempty(plot.plots) && return Rect3d()
+
+    # Assume combined plot
+    bb_ref = Base.RefValue(boundingbox(plot.plots[1], space))
+    for i in 2:length(plot.plots)
+        update_boundingbox!(bb_ref, boundingbox(plot.plots[i], space))
+    end
+
+    return bb_ref[]
+end
+
+
 convert_arguments(::Type{<:AbstractPlot}, args::AbstractArray{<:PlotSpec}) = (args,)
 
 plottype(::Type{<:Plot{F}}, ::Union{PlotSpec, AbstractVector{PlotSpec}}) where {F} = PlotList

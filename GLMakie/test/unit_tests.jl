@@ -527,3 +527,12 @@ end
     # @test eltype(p5.gl_renderobject[][:image]) === RGBA{N0f8}
     # @test eltype(p6.gl_renderobject[].vertexarray.buffers["intensity"]) === N0f8
 end
+
+@testset "events after `empty!(scene)`" begin
+    scene = Scene()
+    screen = display(scene, visible = false)
+    N = length(screen.render_tick.listeners)
+    @assert N > 0 "It doesn't make sense to confirm backend render_tick event don't get deleted when there are none"
+    empty!(scene)
+    @test length(screen.render_tick.listeners) == N
+end

@@ -39,7 +39,15 @@ function initialize_block!(ax::Axis3)
             _planes = planes(lims)
             _planes = apply_transform.(Ref(model), _planes)
             nudge = 1.0f0 + 1.0f-5 # clip slightly outside to avoid float precision issues with 0 margin
-            return map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
+            clip_planes = map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
+            # Creating a plot in Axis3 will read scene.theme.clip_planes to initialize
+            # them in the plot, but update them afterwards. We need to do that manually
+            for plot in scene.plots
+                if !haskey(plot.kw, :clip_planes) # not set by user
+                    plot.clip_planes = clip_planes
+                end
+            end
+            return clip_planes
         else
             return Plane3f[]
         end
@@ -178,8 +186,8 @@ function initialize_block!(ax::Axis3)
     end
 
     titlet = text!(
-        blockscene, ax.title,
-        position = titlepos,
+        blockscene, titlepos,
+        text = ax.title,
         visible = ax.titlevisible,
         fontsize = ax.titlesize,
         align = titlealignnode,
@@ -284,6 +292,9 @@ function calculate_matrices(
     else
         error("Invalid aspect $aspect")
     end
+
+    # Do not allow dimensions to collapse
+    scales = @. ifelse(abs(scales) < floatmin(Float32), ifelse(scales < 0, -1.0, 1.0), scales)
 
     # center and scale axis bbox so that the longest side is -1..1
     # then rotate (and permute axes) according to azimuth and elevation

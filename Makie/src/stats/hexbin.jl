@@ -152,7 +152,8 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             end
         else
             # if we don't plot zero cells, we only have to iterate the sparse entries in the dict
-            for (xy, value) in bin_map
+            # (sorted, as the Dict order depends on hashing and would change the draw order)
+            for (xy, value) in sort!(collect(bin_map), by = first)
                 value ≥ threshold && add_hex_point(xy, spacing, offset, value)
             end
         end
