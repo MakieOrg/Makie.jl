@@ -71,8 +71,11 @@ orangeish(c) = red(c) > 0.35 && red(c) > 1.6 * green(c) && green(c) > 1.5 * blue
     @test (round(Int, size(img)[2] / ppu), round(Int, size(img)[1] / ppu)) == (320, 240)
     @test RayMakie.renderloop_running(scr)      # asking did not kill the loop
 
-    # Composited, not `output_buffer`: the sphere is in the picture.
-    @test count(orangeish, img) > 200
+    # Composited, not `output_buffer`: the sphere is in the picture. Per UNIT²:
+    # the sphere covers a fixed area of the figure, so its pixels scale with
+    # `ppu^2`. A flat 200 was the Retina (ppu 2) count and failed at ppu 1 with
+    # 172, a quarter of the pixels of the same frame.
+    @test count(orangeish, img) > 50 * ppu^2
 
     # …and the loop keeps going, and the slot goes back to empty.
     sleep(1.0)
