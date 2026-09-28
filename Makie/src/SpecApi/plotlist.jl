@@ -215,11 +215,19 @@ function update_plotspecs!(
     return
 end
 
-# Explicitly only handle `plotlist!(parent, PlotSpec[], kwargs...)`
-# i.e. no plotlist!(parent, attributes, ...) or plotlist!(parent, graph, ...)
-# Anything else falls back onto Plot{Func}, maybe should error instead?
+# Handles `plotlist!(parent, specs; kwargs...)`, optionally with a leading
+# `Attributes` or parent graph like other plot constructors.
 function PlotList(user_args::Tuple, user_attributes::Union{Dict, NamedTuple})
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
+    if first(user_args) isa Attributes
+        # Like Plot{Func}: explicit keyword arguments win over the passed Attributes
+        attr = convert(Dict{Symbol, Any}, attributes(first(user_args)))
+        foreach(p -> get!(user_attributes, p[1], p[2]), pairs(attr))
+        return PlotList(Base.tail(user_args), user_attributes)
+    elseif first(user_args) isa AbstractComputeGraph
+        # PlotList has no attributes of its own for a parent graph to connect to
+        return PlotList(Base.tail(user_args), user_attributes)
+    end
     length(user_args) == 1 || throw(ArgumentError("plotlist takes exactly one argument, a PlotSpec or Vector{PlotSpec}, but $(length(user_args)) were given."))
 
     _specs = to_value(user_args[1])
