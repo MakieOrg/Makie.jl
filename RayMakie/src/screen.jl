@@ -31,8 +31,8 @@ PIXEL_FILTER() = Hikari.GaussianFilter(radius = Point2f(1.5f0, 1.5f0), sigma = 0
 # `colorbuffer` route through this framebuffer at all.
 # A Julia element type, not a `VK.Format`: this is a module-level `const`, so
 # spelling it as a driver constant meant RayMakie could not even load without
-# a Vulkan loader. `Mantle.vkformat` lowers it, and the readback below still
-# unswizzles BGRA by hand because that is what the bytes are.
+# a Vulkan loader. `Mantle.vkformat` lowers it, and the readback below hands back
+# this colourant, converted by channel name.
 const COMPOSITE_FORMAT = BGRA{N0f8}
 
 """
