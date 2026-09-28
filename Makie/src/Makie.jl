@@ -286,7 +286,7 @@ include("layouting/boundingbox.jl")
 include("layouting/text_boundingbox.jl")
 
 # Declarative SpecApi
-include("specapi.jl")
+include("SpecApi/specapi.jl")
 
 # more default recipes
 # statistical recipes

@@ -613,7 +613,7 @@ function register_glyph_placement!(attr::ComputeGraph)
         :layout_specs, :layout_spec_bboxes, :text_spec_block_indices,
     ]
     outputs = [:glyph_origins, :glyph_rotations, :text_spec_models, :text_spec_bboxes]
-    return register_computation!(attr, inputs, outputs) do inputs, changed, cached
+    register_computation!(attr, inputs, outputs) do inputs, changed, cached
         (; glyph_layout_origins, text_blocks, block_bboxes, block_baselines) = inputs
         (; rotation, layout_specs, layout_spec_bboxes, text_spec_block_indices) = inputs
         (; align, offset) = inputs
@@ -650,6 +650,8 @@ function register_glyph_placement!(attr::ComputeGraph)
 
         return (origins, rotations, spec_models, spec_bboxes)
     end
+
+    return
 end
 
 function register_text_computations!(attr::ComputeGraph)
