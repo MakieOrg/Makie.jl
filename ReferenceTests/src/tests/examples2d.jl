@@ -2114,7 +2114,7 @@ end
 end
 
 @reference_test "series" begin
-    fig = Figure()
+    fig = Figure(size = (500, 750))
     data = cumsum(RNG.randn(4, 21), dims = 2)
 
     ax, sp = series(
@@ -2127,7 +2127,24 @@ end
         fig[2, 1], data, labels = ["label $i" for i in 1:4], markersize = 10.0,
         marker = Circle, markercolor = :transparent, strokewidth = 2.0, strokecolor = :black
     )
+    series!(Vector{Point2f}[]) # shouldn't error
     axislegend(ax, position = :lt)
+
+    # should cycle with warning
+    a, p = @test_logs (:warn,) series(
+        fig[3, 1], [fill(i, 10) for i in 1:10], color = [:green, :lightgreen, :yellow],
+        linewidth = 5
+    )
+
+    # force render to check that number of series plots can be changed afterwards
+    colorbuffer(fig)
+    update!(p, arg1 = [fill(i, 10) for i in 1:12])
+
+    # colormapped
+    series!(
+        a, [range(i, i + 4, 10) for i in 1:8], linewidth = 5, color = 1:8,
+        colorrange = (2, 7), lowclip = :black, highclip = :gray, colormap = [:red, :purple, :blue]
+    )
 
     fig
 end

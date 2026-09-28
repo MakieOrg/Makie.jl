@@ -215,142 +215,212 @@ function ungroup_labels(category_labels, data_array)
 end
 
 function convert_arguments(::Type{<:RainClouds}, category_labels, data_array)
-    cloud_plot_check_args(category_labels, data_array)
     return (category_labels, data_array)
 end
 
 function plot!(plot::RainClouds)
-    category_labels = plot.category_labels[]
-    data_array = plot.data_array[]
-    category_labels, data_array = ungroup_labels(category_labels, data_array)
-    if any(ismissing, data_array)
-        error("missing values in data not supported. Please filter out any missing values before plotting")
+    map!(
+        plot, [:category_labels, :data_array], [:final_category_labels, :final_data_array]
+    ) do category_labels, data_array
+        cloud_plot_check_args(category_labels, data_array)
+        category_labels, data_array = ungroup_labels(category_labels, data_array)
+        if any(ismissing, data_array)
+            error("missing values in data not supported. Please filter out any missing values before plotting")
+        end
+        return category_labels, data_array
     end
 
     # Checking kwargs, and assigning defaults if they are not in kwargs
     # General Settings
     # Define where categories should lie
-    x_positions = if any(x -> x isa AbstractString, category_labels)
-        labels = unique(category_labels)
-        pos = Dict(label => i for (i, label) in enumerate(labels))
-        [pos[label] for label in category_labels]
-    else
-        category_labels
+    map!(plot, :final_category_labels, :x_positions) do category_labels
+        if any(x -> x isa AbstractString, category_labels)
+            labels = unique(category_labels)
+            pos = Dict(label => i for (i, label) in enumerate(labels))
+            return [pos[label] for label in category_labels]
+        else
+            return category_labels
+        end
     end
-
-    side = plot.side[]
-    center_boxplot_bool = plot.center_boxplot[]
-    # Cloud plot
-    cloud_width = plot.cloud_width[]
-    cloud_width[] < 0 && ArgumentError("`cloud_width` should be positive.")
-
-    # Box Plot Settings
-    boxplot_width = plot.boxplot_width[]
-    whiskerwidth = plot.whiskerwidth[]
-    strokewidth = plot.strokewidth[]
-    show_median = plot.show_median[]
-    boxplot_nudge = plot.boxplot_nudge[]
-
-    plot_boxplots = plot.plot_boxplots[]
-    clouds = plot.clouds[]
-    hist_bins = plot.hist_bins[]
 
     # Scatter Plot defaults dependent on if there is a boxplot
-    side_scatter_nudge_default = plot_boxplots ? 0.2 : 0.075
-
     # Scatter Plot Settings
-    side_scatter_nudge = plot.side_nudge[] isa Makie.Automatic ? side_scatter_nudge_default : plot.side_nudge[]
-    side_scatter_nudge < 0 && ArgumentError("`side_nudge` should be positive. Change `side` to :left, :right if you wish.")
-    jitter_width = plot.jitter_width[]
-    jitter_width < 0 && ArgumentError("`jitter_width` should be positive.")
-    markersize = plot.markersize[]
-
+    map!(plot, [:side_nudge, :plot_boxplots], :side_scatter_nudge) do nudge, plot_boxplots
+        side_scatter_nudge = default_automatic(nudge, plot_boxplots ? 0.2 : 0.075)
+        side_scatter_nudge < 0 && ArgumentError("`side_nudge` should be positive. Change `side` to :left, :right if you wish.")
+        return side_scatter_nudge
+    end
 
     # Set-up
-    if plot.orientation[] === :horizontal
+    map!(plot, [:side, :orientation], :oriented_side) do side, orientation
+        side in (:left, :right) || error("Unknown side = $side. Should be :left or :right.")
         # flip side to when horizontal
-        side = side === :left ? :right : :left
+        if orientation === :horizontal
+            return ifelse(side === :left, :right, :left)
+        else
+            return side
+        end
     end
-    (side === :left) && (side_nudge_direction = 1.0)
-    (side === :right) && (side_nudge_direction = -1.0)
-    side_scatter_nudge_with_direction = side_scatter_nudge * side_nudge_direction
-    side_boxplot_nudge_with_direction = boxplot_nudge * side_nudge_direction
+    map!(side -> ifelse(side === :left, 1.0, -1.0), plot, :oriented_side, :side_nudge_direction)
+    map!(*, plot, [:side_scatter_nudge, :side_nudge_direction], :side_scatter_nudge_with_direction)
+    map!(*, plot, [:boxplot_nudge, :side_nudge_direction], :side_boxplot_nudge_with_direction)
 
-    recenter_to_boxplot_nudge_value = center_boxplot_bool ? side_boxplot_nudge_with_direction : 0.0
-    plot_boxplots || (recenter_to_boxplot_nudge_value = 0.0)
+    map!(
+        plot,
+        [:center_boxplot, :side_boxplot_nudge_with_direction, :plot_boxplots],
+        :recenter_to_boxplot_nudge_value
+    ) do center, nudge, plot_boxplots
+        return ifelse(center && plot_boxplots, nudge, 0.0)
+    end
+
     # Note: these cloud plots are horizontal
-    full_width = jitter_width + side_scatter_nudge +
-        (plot_boxplots ? boxplot_width : 0) +
-        (!isnothing(clouds) ? 1 + abs(recenter_to_boxplot_nudge_value) : 0)
+    map!(
+        plot,
+        [:jitter_width, :side_scatter_nudge, :plot_boxplots, :boxplot_width, :clouds, :recenter_to_boxplot_nudge_value],
+        :full_width
+    ) do jitter, nudge, plot_boxplots, boxplot_width, clouds, recenter
+        jitter < 0 && ArgumentError("`jitter_width` should be positive.")
+        boxplot_pad = ifelse(plot_boxplots, boxplot_width, 0)
+        cloud_pad = ifelse(isnothing(clouds), 0, 1 + abs(recenter))
+        return jitter + nudge + boxplot_pad + cloud_pad
+    end
 
-    final_x_positions, width = compute_x_and_width(
-        x_positions .+ recenter_to_boxplot_nudge_value / 2, full_width,
-        plot.gap[], plot.dodge[],
-        plot.n_dodge[], plot.dodge_gap[]
-    )
-    width_ratio = width / full_width
+    map!(
+        plot,
+        [:x_positions, :recenter_to_boxplot_nudge_value, :full_width, :gap, :dodge, :n_dodge, :dodge_gap],
+        [:final_x_positions, :width]
+    ) do x, recenter, full_width, gap, dodge, n_dodge, dodge_gap
+        return compute_x_and_width(
+            x .+ recenter / 2, full_width, gap, dodge, n_dodge, dodge_gap
+        )
+    end
+    map!(/, plot, [:width, :full_width], :width_ratio)
 
-    jitter = create_jitter_array(
-        length(data_array);
-        jitter_width = jitter_width * width_ratio
-    )
+    map!(length, plot, :final_data_array, :data_length)
+    map!(plot, [:data_length, :jitter_width, :width_ratio], :jitter) do N, jitter, scale
+        return create_jitter_array(N, jitter_width = jitter * scale)
+    end
 
-    if !isnothing(clouds)
-        if clouds === violin
-            violin!(
-                plot, final_x_positions .- recenter_to_boxplot_nudge_value .* width_ratio, data_array;
-                show_median = show_median, side = side, width = width_ratio * cloud_width, plot.cycle,
-                datalimits = plot.violin_limits, plot.color, gap = 0, orientation = plot.orientation[]
+    # violin/hist clouds
+    map!(pick_hist_edges, plot, [:final_data_array, :hist_bins], :hist_edges)
+
+    # dodge belongs below: it ensure that the histogram groups labels by both dodge
+    # and category (so there is a separate histogram for each dodge group)
+    map!(plot, [:dodge, :final_category_labels], :hist_groupings) do dodge, category_labels
+        return dodge === automatic ? category_labels : zip(category_labels, dodge)
+    end
+
+    map!(group_labels, plot, [:hist_groupings, :final_data_array], :group_labels)
+
+    map!(
+        plot,
+        [
+            :clouds,
+            :group_labels, :final_x_positions, :recenter_to_boxplot_nudge_value,
+            :final_data_array,
+            :oriented_side, :cloud_width, :width_ratio,
+            :hist_edges, :orientation, :color,
+            :show_median, :cycle, :violin_limits,
+        ],
+        :cloud_specs
+    ) do clouds, group_labels, x, recenter, data, side, cloud_width,
+            scale, edges, orientation, color, show_median, cycle, violin_limits
+
+        isnothing(clouds) && return PlotSpec[]
+        cloud_width < 0 && ArgumentError("`cloud_width` should be positive.")
+
+        if clouds == violin
+            spec = PlotSpec(
+                :Violin, x .- recenter .* scale, data;
+                show_median = show_median, side = side,
+                width = cloud_width * scale, cycle, datalimits = violin_limits,
+                color, gap = 0, orientation = orientation
             )
-        elseif clouds === hist
-            edges = pick_hist_edges(data_array, hist_bins)
-            # dodge belongs below: it ensure that the histogram groups labels by both dodge
-            # and category (so there is a separate histogram for each dodge group)
-            groupings = if plot.dodge[] isa Automatic
-                category_labels
-            else
-                zip(category_labels, plot.dodge[])
-            end
-            for (_, ixs) in group_labels(groupings, data_array)
-                isempty(ixs) && continue
-                xoffset = final_x_positions[ixs[1]] - recenter_to_boxplot_nudge_value
-                hist!(
-                    plot, view(data_array, ixs); offset = xoffset,
-                    scale_to = (side === :left ? -1 : 1) * cloud_width * width_ratio, bins = edges,
+            return [spec]
+
+        elseif clouds == hist
+            specs = PlotSpec[]
+            for (_, idxs) in group_labels
+                isempty(idxs) && continue
+                spec = PlotSpec(
+                    :Hist, view(data, idxs);
+                    offset = x[idxs[1]] - recenter,
+                    scale_to = (side === :left ? -1 : 1) * cloud_width * scale, # TODO -side_nudge_direction
+                    bins = edges,
                     # yes, we really do want :x when orientation is :vertical
                     # an :x directed histogram has a vertical orientation
-                    direction = plot.orientation[] === :vertical ? :x : :y,
-                    color = getuniquevalue(plot.color[], ixs)
+                    direction = orientation === :vertical ? :x : :y,
+                    color = getuniquevalue(color, idxs)
                 )
+                push!(specs, spec)
             end
+            return specs
         else
             error("cloud attribute accepts (violin, hist, nothing), but not: $(clouds)")
         end
     end
 
-    scatter_x = final_x_positions .+ side_scatter_nudge_with_direction .* width_ratio .+
-        jitter .- recenter_to_boxplot_nudge_value .* width_ratio
-    if plot.orientation[] === :vertical
-        scatter!(plot, scatter_x, data_array; markersize = markersize, plot.color, plot.cycle)
-    else
-        scatter!(plot, data_array, scatter_x; markersize = markersize, plot.color, plot.cycle)
+    plotlist!(plot, plot.cloud_specs)
+
+    map!(
+        plot,
+        [:final_x_positions, :side_scatter_nudge_with_direction, :width_ratio, :jitter, :recenter_to_boxplot_nudge_value],
+        :final_scatter_x_positions
+    ) do x, nudge, scale, jitter, recenter
+        return x .+ nudge .* scale .+ jitter .- recenter .* scale
     end
 
-    if plot_boxplots
-        boxplot!(
-            plot, final_x_positions .+ side_boxplot_nudge_with_direction .* width_ratio .-
-                recenter_to_boxplot_nudge_value .* width_ratio,
-            data_array;
-            plot.orientation,
-            strokewidth = strokewidth,
-            whiskerwidth = whiskerwidth * width_ratio,
-            width = boxplot_width * width_ratio,
-            markersize = markersize,
-            show_outliers = plot.show_boxplot_outliers[],
-            color = plot.color,
-            cycle = plot.cycle
-        )
+    map!(
+        plot,
+        [:final_scatter_x_positions, :final_data_array, :orientation],
+        :final_scatter_positions
+    ) do x, y, orientation
+        if orientation == :vertical
+            return Point2.(x, y)
+        else
+            return Point2.(y, x)
+        end
     end
+
+    scatter!(plot, plot.final_scatter_positions; markersize = plot.markersize, plot.color, plot.cycle)
+
+    map!(
+        plot,
+        [:final_x_positions, :side_boxplot_nudge_with_direction, :width_ratio, :recenter_to_boxplot_nudge_value],
+        :final_boxplot_x_positions
+    ) do x, nudge, scale, recenter
+        return x .+ nudge .* scale .- recenter .* scale
+    end
+
+    map!(*, plot, [:whiskerwidth, :width_ratio], :boxplot_whiskerwidth)
+    map!(*, plot, [:boxplot_width, :width_ratio], :final_boxplot_width)
+
+    map!(
+        plot,
+        [
+            :plot_boxplots, :final_boxplot_x_positions, :final_data_array,
+            :orientation, :strokewidth, :boxplot_whiskerwidth, :final_boxplot_width,
+            :markersize, :show_boxplot_outliers, :color, :cycle,
+        ],
+        :boxplot_spec
+    ) do plot_boxplots, x, data, orientation, strokewidth, whiskerwidth, width, markersize, show_outliers, color, cycle
+        if plot_boxplots
+            return [
+                PlotSpec(
+                    :BoxPlot,
+                    x, data;
+                    orientation = orientation, strokewidth = strokewidth,
+                    whiskerwidth = whiskerwidth,
+                    width = width, markersize = markersize,
+                    show_outliers = show_outliers, color = color, cycle = cycle
+                ),
+            ]
+        else
+            return PlotSpec[]
+        end
+    end
+
+    plotlist!(plot, plot.boxplot_spec)
 
     return plot
 end
