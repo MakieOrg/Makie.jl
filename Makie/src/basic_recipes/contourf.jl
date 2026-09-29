@@ -128,8 +128,10 @@ function calculate_contourf_polys!(
     # This is computing the isobands in rectilinear space.
     isos = Isoband.isobands(axes(zs, 1), axes(zs, 2), zs', lows, highs)
     # Now, we construct a 2-D linear interpolation from the rectilinear grid space
-    # to the curvilinear grid space.
-    point_interp = Makie.Interpolations.linear_interpolation(axes(zs), Point2f.(xs, ys))
+    # to the curvilinear grid space (FastInterpolations; matches Interpolations to ulp).
+    point_interp = Makie.FastInterpolations.interp(
+        axes(zs), Point2f.(xs, ys); method = Makie.FastInterpolations.LinearInterp()
+    )
 
     levelcenters = (highs .+ lows) ./ 2
 
