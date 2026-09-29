@@ -202,11 +202,6 @@ function Base.eltype(computed::Computed)
     return eltype(computed.value)
 end
 
-struct ResolveException{E <: Exception} <: Exception
-    start::Computed
-    error::E
-end
-
 """
     struct SkipUpdate
 
