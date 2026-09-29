@@ -139,12 +139,14 @@ function extract_material(plot::Plot, tex::Union{Hikari.Texture, Hikari.VertexCo
         if material isa Hikari.MediumInterface && material.emission !== nothing
             return merge_color_with_material(tex, material)
         end
-        # If material was set post-construction (not in inputs), it's a deliberate
-        # user override (e.g. recipe_plot.plots[1].material = my_mat) and should
-        # always take priority over any colors, including recipe-assigned ones.
+        # `:material` absent from `inputs` means a recipe forwarded it as a
+        # `Computed` edge, so merge it with the color rather than treat it as
+        # a post-construction override — `plot.material = mat` would throw
+        # here, since `add_input!` refuses a key already held as an edge. The
+        # reachable override is handled by `material_in_inputs` below.
         material_in_inputs = haskey(plot.attributes.inputs, :material) && plot.attributes.inputs[:material].value !== nothing
         if !material_in_inputs
-            return material
+            return merge_color_with_material(tex, material)
         end
         # Both material and color were provided in the constructor - merge them.
         #
@@ -205,16 +207,12 @@ function extract_material(plot::Plot, color_obs::Union{Makie.Computed, Observabl
     has_material = haskey(plot, :material) && !isnothing(to_value(plot.material))
     material = has_material ? to_value(plot.material) : nothing
 
-    # If material was set post-construction (not in inputs), it's a deliberate
-    # user override and should always take priority over any colors.
+    # A material in `inputs` with no color set is the override: keep it and
+    # skip the texture. A material not in `inputs` was recipe-forwarded and
+    # falls through to merge, as in the texture method above.
     if material isa Hikari.Material
         material_in_inputs = haskey(plot.attributes.inputs, :material) && plot.attributes.inputs[:material].value !== nothing
-        if !material_in_inputs
-            return material
-        end
-        # Both were in constructor - only merge if color was also explicitly set
-        color_explicitly_set = haskey(plot.attributes.inputs, :color) && plot.attributes.inputs[:color].value !== nothing
-        if !color_explicitly_set
+        if material_in_inputs && !color_was_set(plot)
             return material
         end
     end
