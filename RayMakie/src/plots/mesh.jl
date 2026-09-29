@@ -616,8 +616,7 @@ function extract_glb_diffuse_texture(mat_dict::Dict{String, Any})
             return Hikari.Texture(to_spectrum(diffuse_map["image"]))
         end
     end
-    diffuse = get(mat_dict, "diffuse", Vec3f(1, 1, 1))
-    return Hikari.ConstTexture(to_spectrum(RGBf(diffuse[1], diffuse[2], diffuse[3])))
+    return Hikari.ConstTexture(linear_spectrum(get(mat_dict, "diffuse", Vec3f(1, 1, 1))))
 end
 
 # Does the prior trace_renderobject carry a `mat_idx` we can recycle?

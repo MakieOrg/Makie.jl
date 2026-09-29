@@ -128,6 +128,7 @@ const TEST_FILES = [
     "test_pbrt_import_settings.jl",
     "test_hw_accel_switch.jl",
     "test_material_precedence.jl",
+    "test_colour_encoding.jl",
     "test_sample_budget.jl",
     "test_lava_meshscatter_pervec.jl",
     "test_meshscatter_update_stress.jl",

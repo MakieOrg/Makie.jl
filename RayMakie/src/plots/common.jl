@@ -6,15 +6,23 @@
 # Color/Spectrum conversion
 # =============================================================================
 
-function to_spectrum(data::TransparentColor)
+# A Makie colour is sRGB-encoded: it is what GLMakie and CairoMakie put on the
+# screen as is, and what RayMakie's overlays and composite do too (see
+# `COMPOSITE_FORMAT`). A reflectance is linear, and the film encodes the traced
+# image for display once more at the end. Handing the encoded value to Hikari as
+# the reflectance brightened every colour: `RGBf(0.3, 0.2, 0.1)` under a unit
+# ambient light came back as (0.65, 0.56, 0.38), and a dark skin tone projected
+# from a photo rendered pale. Alpha is coverage, not light, and is not encoded.
+function to_spectrum(data::Colorant)
     rgb = RGBf(data)
-    Hikari.RGBSpectrum(rgb.r, rgb.g, rgb.b, Float32(Colors.alpha(data)))
-end
-function to_spectrum(data::Color)
-    rgb = RGBf(data)
-    Hikari.RGBSpectrum(rgb.r, rgb.g, rgb.b, 1f0)
+    Hikari.RGBSpectrum(Hikari.srgb_gamma_to_linear(rgb.r), Hikari.srgb_gamma_to_linear(rgb.g),
+                       Hikari.srgb_gamma_to_linear(rgb.b), Float32(Colors.alpha(data)))
 end
 to_spectrum(data::AbstractMatrix{<:Colorant}) = map(to_spectrum, data)
+
+# A colour that is linear already: glTF's `baseColorFactor` is, by the spec,
+# where its `baseColorTexture` is sRGB.
+linear_spectrum(c) = Hikari.RGBSpectrum(Float32(c[1]), Float32(c[2]), Float32(c[3]), 1f0)
 
 # =============================================================================
 # Per-vertex color → VertexColorTexture
@@ -210,9 +218,7 @@ function build_diffuse_material(mat_dict::Dict{String, Any})
     end
 
     # Constant color: use explicit diffuse or GLTF default white (1,1,1)
-    diffuse = get(mat_dict, "diffuse", Vec3f(1, 1, 1))
-    color = RGBf(diffuse[1], diffuse[2], diffuse[3])
-    tex = Hikari.ConstTexture(to_spectrum(color))
+    tex = Hikari.ConstTexture(linear_spectrum(get(mat_dict, "diffuse", Vec3f(1, 1, 1))))
 
     # CoatedDiffuse gives proper GLTF PBR appearance (Fresnel specular + diffuse)
     return Hikari.CoatedDiffuse(reflectance=tex, roughness=roughness)

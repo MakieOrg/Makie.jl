@@ -423,8 +423,18 @@ film mapping, the stroke, and the premultiplied output a blended pass wants.
         dot(world_pos, Vec3f(plane[1], plane[2], plane[3])) - plane[4] < 0f0 && discard()
     end
     if shading_mode != SHADING_NONE && has_normals != Int32(0)
+        # Lit, then film-mapped like the traced image, so the base colour is
+        # decoded to the linear reflectance the traced path's `to_spectrum` makes
+        # of it. Only when the film encodes for display again: with `gamma =
+        # nothing` this is GLMakie's shader on GLMakie's colours, which is what
+        # test_mesh_raster.jl compares. An unlit colour is shown as given.
+        base = Vec3f(color[1], color[2], color[3])
+        if apply_gamma != Int32(0)
+            base = Vec3f(Hikari.srgb_gamma_to_linear(base[1]), Hikari.srgb_gamma_to_linear(base[2]),
+                         Hikari.srgb_gamma_to_linear(base[3]))
+        end
         rgb = illuminate(world_pos, _unit(inputs.camdir), _unit(inputs.world_normal),
-                         Vec3f(color[1], color[2], color[3]), shading_mode, ambient,
+                         base, shading_mode, ambient,
                          light_color, light_direction, N_lights, light_types, light_colors,
                          light_parameters, has_env, env_sh, diffuse, specular, shininess, backlight)
         rgb = film_mapping(rgb, exposure, tonemap, white_point, inv_gamma, apply_gamma)
