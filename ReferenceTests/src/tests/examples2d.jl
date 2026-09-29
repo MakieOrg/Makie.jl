@@ -1073,15 +1073,15 @@ end
     # Test with NaN, #4418, #5811
     f(x, y) = abs(sin(x) + cos(y))
     bad(x, y) = (x - 2) > y
-    x = range(0, 5, length=50);
-    y = range(0, 5, length=50);
-    z = @. f(x', y);
-    isbad = @. bad(x', y);
+    x = range(0, 5, length = 50)
+    y = range(0, 5, length = 50)
+    z = @. f(x', y)
+    isbad = @. bad(x', y)
     zz = copy(z)
     zz[isbad] .= NaN
 
-    contour(fig[2, 1], x, y, zz', color=:black, labels=true, linewidth = 2, labelsize = 16)
-    contour3d!(Axis(fig[2, 3]), x, y, zz', color=:black, labels=true, linewidth = 2, labelsize = 16)
+    contour(fig[2, 1], x, y, zz', color = :black, labels = true, linewidth = 2, labelsize = 16)
+    contour3d!(Axis(fig[2, 3]), x, y, zz', color = :black, labels = true, linewidth = 2, labelsize = 16)
 
     fig
 end
