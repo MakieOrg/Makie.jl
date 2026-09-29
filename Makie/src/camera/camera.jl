@@ -229,7 +229,7 @@ world ------>   eye   -----------> clip
              relative -----------> clip
 =#
 #
-const CAMERA_MATRIX_NAMES = let
+const CAMERA_MATRIX_SPACE_TO_NAME_LUT = let
     # dynamic Symbol(a, b) is fairly expensive...
     spaces = [:world, :eye, :clip, :relative, :pixel, :space, :markerspace]
     Dict{Tuple{Symbol, Symbol}, Symbol}(
@@ -239,7 +239,7 @@ end
 
 _data_to_world(x) = ifelse(x === :data, :world, x)
 function get_camera_matrix_name(input_space::Symbol, output_space::Symbol)
-    return CAMERA_MATRIX_NAMES[(_data_to_world(input_space), _data_to_world(output_space))]
+    return CAMERA_MATRIX_SPACE_TO_NAME_LUT[(_data_to_world(input_space), _data_to_world(output_space))]
 end
 
 function get_projectionview_name(space::Symbol)
@@ -319,35 +319,92 @@ function get_space_to_space_matrix(scene, input_space::Symbol, output_space::Sym
     return get_preprojection(get_scene(scene).compute, input_space, output_space)
 end
 
-struct CameraMatrixCallback <: Function
-    graph::ComputeGraph
+
+const CAMERA_MATRIX_NAME_TO_INDEX_LUT = let
+    spaces = [:world, :eye, :clip, :relative, :pixel]
+    i = 0
+    v = [(a, b) => (i += 1) for a in spaces for b in spaces]
+    Dict{Tuple{Symbol, Symbol}, Int}(v)
 end
-(cb::CameraMatrixCallback)(_, names) = map(name -> Mat4f(cb.graph[name][]::Mat4d), names)
+
+const CAMERA_MATRIX_NAMES = let
+    output = Vector{Symbol}(undef, length(CAMERA_MATRIX_NAME_TO_INDEX_LUT))
+    for (key, idx) in CAMERA_MATRIX_NAME_TO_INDEX_LUT
+        output[idx] = CAMERA_MATRIX_SPACE_TO_NAME_LUT[key]
+    end
+    output
+end
 
 function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
-    output_keys = [:projectionview, :projection, :view]
+    output_names = [:view, :projection, :projectionview]
+    index_names = [:view_idx, :projection_idx, :projectionview_idx]
+    matrix_nodes = getindex.(Ref(scene_graph), CAMERA_MATRIX_NAMES)
 
-    # merging Symbols is somewhat expensive so we shouldn't do it repetitively
+    # Prepare nodes with indices into matrix_nodes for select
     if haskey(plot_graph, :markerspace)
-        map!(plot_graph, [:space, :markerspace], :camera_matrix_names) do space, markerspace
-            return get_projectionview_name(markerspace), get_projection_name(markerspace),
-                get_view_name(markerspace), get_camera_matrix_name(space, markerspace)
+        push!(output_names, :preprojection)
+        push!(index_names, :preprojection_idx)
+        map!(plot_graph, [:space, :markerspace], index_names) do space, markerspace
+            space = ifelse(is_data_space(space), :world, space)
+            markerspace = ifelse(is_data_space(markerspace), :world, markerspace)
+            view_space = ifelse(markerspace === :world, :eye, markerspace)
+            return (
+                CAMERA_MATRIX_NAME_TO_INDEX_LUT[(markerspace, view_space)],
+                CAMERA_MATRIX_NAME_TO_INDEX_LUT[(view_space, :clip)],
+                CAMERA_MATRIX_NAME_TO_INDEX_LUT[(markerspace, :clip)],
+                CAMERA_MATRIX_NAME_TO_INDEX_LUT[(space, markerspace)],
+            )
         end
-        push!(output_keys, :preprojection)
     else
-        map!(plot_graph, :space, :camera_matrix_names) do space
-            return get_projectionview_name(space), get_projection_name(space), get_view_name(space)
+        map!(plot_graph, :space, index_names) do space
+            space = ifelse(is_data_space(space), :world, space)
+            view_space = ifelse(space === :world, :eye, space)
+            return (
+                CAMERA_MATRIX_NAME_TO_INDEX_LUT[(space, view_space)],
+                CAMERA_MATRIX_NAME_TO_INDEX_LUT[(view_space, :clip)],
+                CAMERA_MATRIX_NAME_TO_INDEX_LUT[(space, :clip)],
+            )
         end
     end
 
-    input_keys = Computed[scene_graph.camera_trigger, plot_graph.camera_matrix_names]
-
-    # Update camera matrices in plot if space changed or a relevant camera update happened
-    callback = CameraMatrixCallback(scene_graph)
-    map!(callback, plot_graph, input_keys, output_keys)
+    # select the camera matrices for view, projection, projectionview and
+    # optionally preprojection based on the indices we gathered
+    for (selector, output) in zip(index_names, output_names)
+        select!(plot_graph, selector, matrix_nodes, output)
+    end
 
     return
 end
+
+# struct CameraMatrixCallback <: Function
+#     graph::ComputeGraph
+# end
+# (cb::CameraMatrixCallback)(_, names) = map(name -> Mat4f(cb.graph[name][]::Mat4d), names)
+
+# function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
+#     output_keys = [:projectionview, :projection, :view]
+
+#     # merging Symbols is somewhat expensive so we shouldn't do it repetitively
+#     if haskey(plot_graph, :markerspace)
+#         map!(plot_graph, [:space, :markerspace], :camera_matrix_names) do space, markerspace
+#             return get_projectionview_name(markerspace), get_projection_name(markerspace),
+#                 get_view_name(markerspace), get_camera_matrix_name(space, markerspace)
+#         end
+#         push!(output_keys, :preprojection)
+#     else
+#         map!(plot_graph, :space, :camera_matrix_names) do space
+#             return get_projectionview_name(space), get_projection_name(space), get_view_name(space)
+#         end
+#     end
+
+#     input_keys = Computed[scene_graph.camera_trigger, plot_graph.camera_matrix_names]
+
+#     # Update camera matrices in plot if space changed or a relevant camera update happened
+#     callback = CameraMatrixCallback(scene_graph)
+#     map!(callback, plot_graph, input_keys, output_keys)
+
+#     return
+# end
 
 function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     _register_common_camera_matrices!(plot_graph, scene_graph)
