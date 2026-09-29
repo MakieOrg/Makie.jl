@@ -20,10 +20,10 @@ end
 
 @testset "#5812 canonical_line_order with NaN" begin
     # should not error
-    Makie.canonical_line_order([(1f0,1f0),(2f0,2f0),(0f0,NaN32),(1f0,1f0)])
-    Makie.canonical_line_order([(1f0,1f0),(2f0,2f0),(0f0,Inf32),(1f0,1f0)])
-    Makie.canonical_line_order([(-Inf,1f0),(2f0,2f0),(0f0,Inf32),(-Inf32,1f0)])
-    Makie.canonical_line_order([(NaN32,1f0),(2f0,2f0),(0f0,Inf32),(NaN,1f0)])
+    Makie.canonical_line_order([(1.0f0, 1.0f0), (2.0f0, 2.0f0), (0.0f0, NaN32), (1.0f0, 1.0f0)])
+    Makie.canonical_line_order([(1.0f0, 1.0f0), (2.0f0, 2.0f0), (0.0f0, Inf32), (1.0f0, 1.0f0)])
+    Makie.canonical_line_order([(-Inf, 1.0f0), (2.0f0, 2.0f0), (0.0f0, Inf32), (-Inf32, 1.0f0)])
+    Makie.canonical_line_order([(NaN32, 1.0f0), (2.0f0, 2.0f0), (0.0f0, Inf32), (NaN, 1.0f0)])
 end
 
 @testset "hexbin bin order independent of input order" begin
