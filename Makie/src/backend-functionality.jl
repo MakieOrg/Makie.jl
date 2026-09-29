@@ -17,7 +17,7 @@ function add_computation!(attr, ::Val{:uniform_pattern}, ::Val{:uniform_pattern_
         register_computation!(
             attr, [:linestyle], [:uniform_pattern, :uniform_pattern_length]
         ) do (linestyle,), changed, cached
-            if isnothing(linestyle)
+            if isnothing(linestyle) || length(linestyle) < 2
                 sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
                 len = 1.0f0 # should be irrelevant, compat for strictly solid lines
             else
@@ -77,8 +77,8 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
-            xs = changed.x_transformed || changed.f32c ? el32convert(x) : nothing
-            ys = changed.y_transformed || changed.f32c ? el32convert(y) : nothing
+            xs = changed.x_transformed || changed.f32c ? el32convert(x) : skip_update
+            ys = changed.y_transformed || changed.f32c ? el32convert(y) : skip_update
             return (xs, ys)
         elseif false # is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
@@ -228,18 +228,6 @@ function add_computation!(attr, scene, ::Val{:meshscatter_f32c_scale})
     end
 end
 
-
-function add_computation!(attr, ::Val{:disassemble_mesh}, name = :marker)
-    map!(attr, name, [:vertex_position, :faces, :normal, :uv]) do mesh
-        faces = decompose(GLTriangleFace, mesh)
-        normals = decompose_normals(mesh)
-        texturecoordinates = decompose_uv(mesh)
-        positions = decompose(Point3f, mesh)
-        return (positions, faces, normals, texturecoordinates)
-    end
-    return
-end
-
 function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; kwargs...)
     return register_pattern_uv_transform!(attr; kwargs...)
 end
@@ -293,7 +281,7 @@ function add_computation!(attr, ::Val{:computed_color}, color_name = :scaled_col
             return (output,)
         else # Raw colors
             # Avoid update propagation if nothing changed
-            !isnothing(cached) && !changed[1] && return nothing
+            !isnothing(cached) && !changed[1] && return skip_update
             return (color,)
         end
     end

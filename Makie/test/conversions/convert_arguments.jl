@@ -524,7 +524,6 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
         @testset "Text" begin
             @test apply_conversion(Makie.Text, str) isa Tuple{String}
             @test apply_conversion(Makie.Text, strings) isa Tuple{Vector{String}}
-            # TODO glyphcollection
         end
     end
 end

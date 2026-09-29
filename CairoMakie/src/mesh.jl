@@ -74,29 +74,59 @@ function draw_mesh2D(screen, color, vs::Vector, fs::Vector{GLTriangleFace})
     return draw_mesh2D(screen.context, color, vs, fs)
 end
 
-function flush_pattern(ctx, pattern, reopen = true)
+function flush_pattern(ctx, pattern)
     Cairo.set_source(ctx, pattern)
-    Cairo.close_path(ctx)
     Cairo.paint(ctx)
     Cairo.destroy(pattern)
     # Reset any lingering pattern state
     Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
-
-    if reopen
-        pattern = Cairo.CairoPatternMesh()
-    end
-
-    return pattern
+    return nothing
 end
 
-const MAX_PATCHES_PER_PATTERN = Ref{Int64}(16384)  # TODO: tune
+"""
+    mesh_union_path!(ctx, vs, fs)
+
+Replace the current path with the union of the mesh's triangles, skipping NaN faces.
+
+Filling a whole mesh as one path anti-aliases its edge. Every triangle has the same
+orientation so that the nonzero fill rule takes their union (avoiding holes).
+"""
+function mesh_union_path!(ctx, vs, fs)
+    Cairo.new_path(ctx)
+    Cairo.set_fill_type(ctx, Cairo.CAIRO_FILL_RULE_WINDING) # `polypath` leaves it even-odd
+    for i in eachindex(fs)
+        t1, t2, t3 = vs[fs[i]] # triangle points
+
+        # don't draw any mesh faces with NaN components.
+        if isnan(t1) || isnan(t2) || isnan(t3)
+            continue
+        end
+
+        turn = (t2[1] - t1[1]) * (t3[2] - t1[2]) - (t2[2] - t1[2]) * (t3[1] - t1[1])
+        p1, p2, p3 = turn >= 0 ? (t1, t2, t3) : (t1, t3, t2)
+        Cairo.move_to(ctx, p1[1], p1[2])
+        Cairo.line_to(ctx, p2[1], p2[2])
+        Cairo.line_to(ctx, p3[1], p3[2])
+        Cairo.close_path(ctx)
+    end
+    return
+end
+
+# A mesh of one solid color needs no pattern; switching to a plain source keeps it vectorized in SVG.
+function draw_mesh2D(
+        ctx::Cairo.CairoContext, per_face_cols::FaceIterator{:Const},
+        vs::Vector, fs::Vector{GLTriangleFace}
+    )
+    mesh_union_path!(ctx, vs, fs)
+    set_source(ctx, per_face_cols.data)
+    Cairo.fill(ctx)
+    return nothing
+end
 
 function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace})
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
-    cnt = 0
-    flusheach = MAX_PATCHES_PER_PATTERN[]
     pattern = Cairo.CairoPatternMesh()
 
     for i in eachindex(fs)
@@ -108,7 +138,6 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
             continue
         end
 
-        cnt += 1
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
@@ -120,15 +149,15 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
-
-        if cnt % flusheach == 0
-            pattern = flush_pattern(ctx, pattern)
-        end
     end
 
-    if cnt % flusheach != 0
-        flush_pattern(ctx, pattern, false)
-    end
+    # Fill the union of the triangles rather than painting the pattern over the whole clip region.
+    mesh_union_path!(ctx, vs, fs)
+    Cairo.set_source(ctx, pattern)
+    Cairo.fill(ctx)
+
+    Cairo.destroy(pattern)
+    Cairo.set_source_rgba(ctx, 0, 0, 0, 1) # reset any lingering pattern state
     return nothing
 end
 
@@ -136,44 +165,22 @@ function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::V
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
     Cairo.set_source(ctx, pattern)
+    mesh_union_path!(ctx, vs, fs)
 
-    for i in eachindex(fs)
-        t1, t2, t3 = vs[fs[i]] # triangle points
+    # One fill for the whole mesh, as above. Filling each triangle on its own anti-aliased
+    # every interior edge, giving light interior line artifacts.
+    Cairo.fill(ctx)
 
-        # don't draw any mesh faces with NaN components.
-        if isnan(t1) || isnan(t2) || isnan(t3)
-            continue
-        end
-
-        # TODO:
-        # - this may create gaps like heatmap?
-        # - for some reason this is liqhter than it should be?
-        Cairo.move_to(ctx, t1[1], t1[2])
-        Cairo.line_to(ctx, t2[1], t2[2])
-        Cairo.line_to(ctx, t3[1], t3[2])
-        Cairo.close_path(ctx)
-        Cairo.fill(ctx)
-    end
     pattern_set_matrix(pattern, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     return nothing
 end
 
 function draw_mesh2D(
-        ctx::Cairo.CairoContext, pattern::Makie.LinePattern, vs::Vector, fs::Vector{GLTriangleFace}, offset::VecTypes{2}
+        ctx::Cairo.CairoContext, pattern::Makie.LinePattern, vs::Vector,
+        fs::Vector{GLTriangleFace}, offset::VecTypes{2}
     )
-    for i in eachindex(fs)
-        t1, t2, t3 = vs[fs[i]]
-
-        if isnan(t1) || isnan(t2) || isnan(t3)
-            continue
-        end
-
-        draw_linepattern_fill!(ctx, pattern, offset) do
-            Cairo.move_to(ctx, t1[1], t1[2])
-            Cairo.line_to(ctx, t2[1], t2[2])
-            Cairo.line_to(ctx, t3[1], t3[2])
-            Cairo.close_path(ctx)
-        end
+    draw_linepattern_fill!(ctx, pattern, offset) do
+        mesh_union_path!(ctx, vs, fs)
     end
     return nothing
 end
@@ -274,7 +281,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
 
         Cairo.mesh_pattern_end_patch(pattern)
 
-        flush_pattern(ctx, pattern, false)
+        flush_pattern(ctx, pattern)
     end
 
     return
@@ -311,7 +318,7 @@ function draw_mesh3D(scene, screen, plot::ComputeGraph)
     )
     screen_points = cairo_project_to_screen(plot, output_type = Point3f)::Vector{Point3f}
     meshfaces = plot.faces[]::Vector{GLTriangleFace}
-    meshnormals = plot.normals[]::Union{Nothing, Vector{Vec3f}}
+    meshnormals = plot.normals[]::Union{Nothing, Vector{Vec3f}, Vector{Vec3d}}
     _meshuvs = plot.texturecoordinates[]
 
     if (_meshuvs isa AbstractVector{<:Vec3})
@@ -334,7 +341,7 @@ function draw_mesh3D(
         uv_transform, color, clip_planes, model = plot.model_f32c[]::Mat4f
     )
 
-    local shading::Bool = plot.shading[] && (scene.compute.shading[] != NoShading)
+    local shading = plot.use_shading[]::Bool
 
     if meshuvs isa Vector{Vec2f} && uv_transform !== nothing
         uvt = uv_transform::Mat{2, 3, Float32, 6}
@@ -353,9 +360,10 @@ function draw_mesh3D(
         return draw_mesh2D(screen.context, pattern, screen_points, meshfaces)
     end
 
+    Makie.register_view_normalmatrix!(plot)
     per_face_col = per_face_colors(
         color::Union{RGBAf, Vector{RGBAf}, Matrix{RGBAf}},
-        matcap, meshfaces, meshnormals, meshuvs
+        matcap, meshfaces, meshnormals, meshuvs, plot.view_normalmatrix
     )
 
     local faceculling::Int = to_value(get(plot, :faceculling, -10))
@@ -370,8 +378,8 @@ end
 
 to_vec(c::Colorant) = Vec3f(red(c), green(c), blue(c))
 prepare_normals(normalmatrix::Mat3f, normals::Nothing) = nothing
-function prepare_normals(normalmatrix::Mat3f, normals::Vector{Vec3f})
-    return [zero_normalize(normalmatrix * normal) for normal in normals]
+function prepare_normals(normalmatrix::Mat3f, normals::Vector{<:Vec3})
+    return [zero_normalize(normalmatrix * Vec3f(normal)) for normal in normals]
 end
 
 function draw_mesh3D(
