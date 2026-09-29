@@ -1156,14 +1156,22 @@ function locked_resolve!(edge::ComputeEdge)
 
     # special case to resolve just one of many options
     # Note: dispatching on callback type is much slower than ===
-    if edge.callback === select
+    if edge.callback === select || edge.callback === ifelse
         # resolve selected index
         locked_resolve!(edge.inputs[1])
         edge.inputs_dirty[1] = false
 
         # resolve and forward picked choice
-        idx = 1 + edge.inputs[1].value[]::Int
-        if !(2 <= idx <= length(edge.inputs))
+        if edge.callback === select
+            idx = 1 + edge.inputs[1].value[]::Int
+            N = length(edge.inputs)
+        else
+            # ifelse(input...) means true = 1 = input[2], false = 0 = input[3]
+            idx = 3 - edge.inputs[1].value[]::Bool
+            N = 3
+        end
+
+        if !(2 <= idx <= N)
             throw(
                 SelectException(
                     "Selection index $(idx - 1) is out of bounds for indexing $(length(edge.inputs) - 1) inputs.",
@@ -1171,6 +1179,7 @@ function locked_resolve!(edge::ComputeEdge)
                 )
             )
         end
+
         locked_resolve!(edge.inputs[idx])
         edge.inputs_dirty[idx] = false
         new_value = edge.inputs[idx].value[]
@@ -1769,6 +1778,7 @@ end
 
 MapFunctionWrapper(::typeof(compute_identity), pack = true) = compute_identity
 MapFunctionWrapper(::typeof(select), pack = true) = select
+MapFunctionWrapper(::typeof(ifelse), pack = true) = ifelse
 
 function (x::MapFunctionWrapper{true})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)

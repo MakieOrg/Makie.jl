@@ -62,13 +62,13 @@ This calls `map!(select, graph, [selector, choices...], output)` internally. If
 a callback is given, it will generate a `selector` node beforehand.
 """
 function select!(graph::AbstractComputeGraph, selector::InputNodeTypes, choices::Vector, output::OutputNodeTypes)
-    map!(select, graph, [selector, choices...], output)
     node = get_node(graph, selector)
     if is_initialized(node)
-        node.value[] isa Int || error("Selector node $(node.name) must contain an $Int, but is initialized to $(node.value[])")
+        node.value[] isa Int || error("Selector node $(node.name) must contain an Int, but is initialized to $(node.value[])")
     else
         ComputePipeline.set_type!(node, Int)
     end
+    map!(select, graph, [selector, choices...], output)
     return
 end
 
@@ -76,6 +76,29 @@ function select!(callback, graph::AbstractComputeGraph, selection_inputs, choice
     selector = Symbol(output, :_selector)
     map!(callback, graph, selection_inputs, selector)
     select!(callback, graph, selector, choices, output)
+    return
+end
+
+"""
+    select!(graph, condition, true_choice, false_choice, output)
+
+Selects one of the two choices based on the boolean value of `condition` without
+resolving the other. This is equivalent to
+`map!(ifelse, graph, [condition, true_choice, false_choice], output)`.
+"""
+function select!(
+        graph::AbstractComputeGraph,
+        condition::InputNodeTypes, true_choice::InputNodeTypes, false_choice::InputNodeTypes,
+        output::OutputNodeTypes
+    )
+    node = get_node(graph, condition)
+    if is_initialized(node)
+        node.value[] isa Bool || error("Condition node $(node.name) must contain an Bool, but is initialized to $(node.value[])")
+    else
+        ComputePipeline.set_type!(node, Bool)
+    end
+    map!(ifelse, graph, [node, true_choice, false_choice], output)
+
     return
 end
 

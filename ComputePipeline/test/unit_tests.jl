@@ -1698,7 +1698,7 @@ end
     @test graph.vecf[] == [1, 1, 1, 1]
 end
 
-@testset "select" begin
+@testset "select!" begin
     graph = ComputeGraph()
     add_input!(graph, :user_choice, 1)
     add_input!(graph, :x, 5)
@@ -1736,6 +1736,40 @@ end
     check_state(graph, [1, 1, 1, 1, 1, 1, 1])
     @test graph.output[] == 5 + 2
     check_state(graph, [0, 0, 0, 1, 1, 0, 0])
+end
+
+@testset "boolean select!" begin
+    graph = ComputeGraph()
+    add_input!(graph, :user_choice, true)
+    add_input!(graph, :x, 5)
+    add_input!(graph, :y, -1)
+
+    map!(identity, graph, :x, :input1)
+    map!(identity, graph, :y, :input2)
+
+    select!(graph, :user_choice, :input1, :input2, :output)
+
+    # Verify initial state
+    function check_state(graph, state)
+        for (i, name) in enumerate([:user_choice, :x, :y, :input1, :input2, :output])
+            @test isdirty(graph[name]) == Bool(state[i])
+        end
+    end
+
+    @assert all(isdirty, values(graph.outputs)) "Test expects nodes to not initialize until first resolve"
+
+    @test graph.output[] == 5
+    check_state(graph, [0, 0, 1, 0, 1, 0])
+
+    graph.x = 4
+    check_state(graph, [0, 1, 1, 1, 1, 1])
+    @test graph.output[] == 4
+    check_state(graph, [0, 0, 1, 0, 1, 0])
+
+    graph.user_choice = false
+    check_state(graph, [1, 0, 1, 0, 1, 1])
+    @test graph.output[] == -1
+    check_state(graph, [0, 0, 0, 0, 0, 0])
 end
 
 @testset "skip_update vs nothing" begin
