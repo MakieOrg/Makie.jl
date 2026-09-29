@@ -362,11 +362,6 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     ) do use_labels, bboxes, segments, elements_per_segment
         use_labels || return segments
 
-        # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
-        if mean(last, elements_per_segment) < 10
-            return segments
-        end
-
         # To avoid always projecting, pull these in indirectly.
         # string boundingboxes will already update on everything that could trigger
         # pixel_contour_points, so this should be fine
@@ -376,18 +371,24 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         nan = P(NaN32)
         start = 0
         for (n, (level, N_points)) in enumerate(elements_per_segment)
-            bb = Rect2(bboxes[n])
+            current_range = start .+ (1:N_points)
 
-            for i in start .+ (1:N_points)
-                if pixel_pos[i] in bb
-                    masked[i] = nan
-                    for dir in (-1, +1)
-                        j = i
-                        while true
-                            j += dir
-                            checkbounds(Bool, segments, j) || break
-                            pixel_pos[j] in bb || break
-                            masked[j] = nan
+            # simple heuristic to turn off masking segments when it has few
+            # points, to avoid removing short contour lines entirely.
+            if count(!isnan, view(pixel_pos, current_range)) >= 10
+                bb = Rect2(bboxes[n])
+
+                for i in current_range
+                    if pixel_pos[i] in bb
+                        masked[i] = nan
+                        for dir in (-1, +1)
+                            j = i
+                            while true
+                                j += dir
+                                checkbounds(Bool, segments, j) || break
+                                pixel_pos[j] in bb || break
+                                masked[j] = nan
+                            end
                         end
                     end
                 end
