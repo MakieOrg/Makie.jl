@@ -633,7 +633,7 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
         new_center = target + direction * (gap + halfextent_along(padded_bb, direction))
         offset = new_center - center(padded_bb)
         box = padded_bb + offset
-        leader_start = target + direction * gap
+        leader_start = leader_start_point(box, target)
         cost = gap + algorithm.diagonalpenalty * sin(2 * angle)^2 +
             algorithm.centroidweight * norm(new_center - target) +
             static_penalty(algorithm, box, leader_start, target, gap, reachable, viewport)
@@ -653,13 +653,18 @@ function halfextent_along(rect::Rect2, direction::VecTypes{2})
     return min(dx == 0 ? Inf : w / dx, dy == 0 ? Inf : h / dy)
 end
 
+nearest_point(rect::Rect2, p::Point2) = Point2d(clamp.(p, minimum(rect), maximum(rect)))
+
+# leaders attach perpendicular to the edge the target lies in front of, and point at the label
+# center when the target is off a corner
 function leader_start_point(box::Rect2, target::Point2)
+    nearest = nearest_point(box, target)
+    at_corner = all((nearest .== minimum(box)) .| (nearest .== maximum(box)))
+    at_corner || return nearest
     c = center(box)
     v = target - c
-    nv = norm(v)
-    nv == 0 && return c
-    direction = Vec2d(v / nv)
-    return c + direction * min(halfextent_along(box, direction), nv)
+    direction = Vec2d(v / norm(v))
+    return c + direction * halfextent_along(box, direction)
 end
 
 function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, gap, obstacles, viewport)
@@ -726,7 +731,7 @@ function overlap_area(a::Rect2, b::Rect2)
     return prod(max.(0, min.(maximum(a), maximum(b)) .- max.(minimum(a), minimum(b))))
 end
 
-rect_point_distance(rect::Rect2, p::Point2) = norm(p - clamp.(p, minimum(rect), maximum(rect)))
+rect_point_distance(rect::Rect2, p::Point2) = norm(p - nearest_point(rect, p))
 
 function segment_point_distance(a::Point2, b::Point2, p::Point2)
     ab = b - a
@@ -757,7 +762,7 @@ function segment_intersects_rect(a::Point2, b::Point2, rect::Rect2)
     return false
 end
 
-startpoint(::Ann.Paths.Line, text_bb, p2) = text_bb.origin + 0.5 * text_bb.widths
+startpoint(::Ann.Paths.Line, text_bb, p2) = leader_start_point(text_bb, p2)
 
 function startpoint(::Ann.Paths.Corner, text_bb, p2)
     l = left(text_bb)

@@ -256,6 +256,8 @@ end
         rect = Rect2d(0, 0, 10, 4)
         @test Makie.halfextent_along(rect, normalize(Vec2d(1, 1))) ≈ 2 * sqrt(2)
         @test Makie.leader_start_point(rect, Point2d(20, 2)) == Point2d(10, 2)
+        @test Makie.leader_start_point(rect, Point2d(3, 30)) == Point2d(3, 4)
+        @test Makie.leader_start_point(rect, Point2d(15, 6)) == Point2d(10, 4)
         @test Makie.leader_start_point(rect, Point2d(5, 2)) == Point2d(5, 2)
 
         @test Makie.rect_point_distance(rect, Point2d(13, 8)) == 5
