@@ -387,12 +387,15 @@ end
 pad_rect(rect::Rect2, padding) = Rect2d(rect.origin .- padding, rect.widths .+ 2 * padding)
 
 """
-    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, leaderpenalty, restarts, seed)
+    CandidatePlacement(; gaps, nangles, maxgap, spacing, padding, pointradius, diagonalpenalty, centroidweight, leaderpenalty, restarts, seed)
 
 The default label placement algorithm of `annotation`. Each label is placed on one of a finite
-set of candidate positions around its target point. Candidates lie on rings with the given `gaps`
-(in pixels) between the point and the label box, which is padded by `padding` pixels per side, at
-`nangles` evenly spaced angles per ring. A candidate's cost penalizes, from most to least severe,
+set of candidate positions around its target point, where the gap of a candidate is the distance
+(in pixels) between the point and the label box, which is padded by `padding` pixels per side.
+Close candidates lie on rings with the given `gaps` at `nangles` evenly spaced angles, so that
+labels can sit exactly above, below or beside their point. Beyond those rings, candidates form a
+sunflower spiral out to `maxgap` with a roughly uniform distance of `spacing` between them.
+A candidate's cost penalizes, from most to least severe,
 overlap with other labels or the axis boundary and covering data points (which are treated as
 circles of `pointradius` pixels), leader lines crossing each other or running over other labels
 or points, ambiguous positions close to the point where another point is nearly as close to the
@@ -418,8 +421,10 @@ layout on every Julia version. When the view changes, the previous layout is kep
 starting point and only labels that are in conflict or find a clearly better position move.
 """
 Base.@kwdef struct CandidatePlacement
-    gaps::Vector{Float64} = [4.0, 10.0, 18.0, 30.0, 48.0, 72.0, 104.0, 150.0, 210.0]
+    gaps::Vector{Float64} = [4.0, 10.0]
     nangles::Int = 32
+    maxgap::Float64 = 210.0
+    spacing::Float64 = 18.0
     padding::Vec2d = Vec2d(4, 3)
     pointradius::Float64 = 5.0
     diagonalpenalty::Float64 = 6.0
@@ -530,8 +535,7 @@ function total_energy(layout, problem::PlacementProblem)
 end
 
 function neighbor_lists(algorithm::CandidatePlacement, targets, text_bbs)
-    maxgap = maximum(algorithm.gaps)
-    radius = [maxgap + norm(widths(pad_rect(bb, algorithm.padding))) for bb in text_bbs]
+    radius = [algorithm.maxgap + norm(widths(pad_rect(bb, algorithm.padding))) for bb in text_bbs]
     return map(eachindex(targets)) do i
         filter(j -> j != i && norm(targets[i] - targets[j]) < radius[i] + radius[j], eachindex(targets))
     end
@@ -623,20 +627,19 @@ end
 function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, text_bb, viewport)
     target = targets[i]
     padded_bb = pad_rect(text_bb, algorithm.padding)
-    diagonal = norm(widths(padded_bb))
     margin = algorithm.pointradius + minimum(algorithm.padding)
-    reach(gap) = (1 + AMBIGUITY_DISTANCE_RATIO) * (gap + diagonal) + margin
     obstacles = sort(neighbors; by = j -> norm(targets[j] - target))
     obstacle_distances = [norm(targets[j] - target) for j in obstacles]
-    candidates = Vector{LabelCandidate}(undef, length(algorithm.gaps) * algorithm.nangles)
-    for (index, (gap, k)) in enumerate(Iterators.product(algorithm.gaps, 0:(algorithm.nangles - 1)))
-        reachable = view(targets, view(obstacles, 1:searchsortedlast(obstacle_distances, reach(gap))))
-        angle = 2pi * k / algorithm.nangles
+    positions = candidate_positions(algorithm)
+    candidates = Vector{LabelCandidate}(undef, length(positions))
+    for (index, (gap, angle)) in enumerate(positions)
         direction = Vec2d(cos(angle), sin(angle))
         ring_center = target + direction * (gap + halfextent_along(padded_bb, direction))
         box = slide_inside(padded_bb + (ring_center - center(padded_bb)), viewport)
         offset = center(box) - center(padded_bb)
         leader_start = leader_start_point(box, target)
+        reach = (1 + AMBIGUITY_DISTANCE_RATIO) * norm(center(box) - target) + 0.5 * norm(widths(box)) + margin
+        reachable = view(targets, view(obstacles, 1:searchsortedlast(obstacle_distances, reach)))
         cost = gap + algorithm.diagonalpenalty * sin(2 * angle)^2 +
             algorithm.centroidweight * norm(center(box) - target) +
             algorithm.leaderpenalty * sin(4 * leader_angle(leader_start, target))^2 +
@@ -655,6 +658,16 @@ function slide_inside(box::Rect2, viewport::Rect2)
     any(widths(box) .> widths(viewport)) && return box
     shift = max.(minimum(viewport) - minimum(box), 0) + min.(maximum(viewport) - maximum(box), 0)
     return box + shift
+end
+
+function candidate_positions(algorithm::CandidatePlacement)
+    rings = [(gap, 2pi * k / algorithm.nangles) for gap in algorithm.gaps for k in 0:(algorithm.nangles - 1)]
+    inner = maximum(algorithm.gaps) + 0.5 * algorithm.spacing
+    inner >= algorithm.maxgap && return rings
+    n = round(Int, pi * (algorithm.maxgap^2 - inner^2) / algorithm.spacing^2)
+    golden_angle = pi * (3 - sqrt(5))
+    spiral = [(sqrt(inner^2 + (k - 0.5) / n * (algorithm.maxgap^2 - inner^2)), k * golden_angle) for k in 1:n]
+    return [rings; spiral]
 end
 
 function candidate_at_offset(algorithm::CandidatePlacement, text_bb, target, offset)
