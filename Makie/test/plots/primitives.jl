@@ -275,6 +275,16 @@ end
         @test isempty(p.plotspecs[])
     end
 
+    @testset "ambiguity penalty" begin
+        box = Rect2d(0, 0, 60, 20)
+        target = Point2d(5, -4)
+        @test Makie.ambiguity_penalty(box, Point2d(30, -6), target, 19.0) == Makie.AMBIGUITY_PENALTY
+        @test Makie.ambiguity_penalty(box, Point2d(30, -6), target, 0.0) == 0
+        @test Makie.ambiguity_penalty(box, Point2d(5, -30), target, 19.0) == 0
+        @test Makie.ambiguity_penalty(box, Point2d(90, -40), target, 19.0) == 0
+        @test 0 < Makie.ambiguity_penalty(box, Point2d(60, -8), target, 19.0) < Makie.AMBIGUITY_PENALTY
+    end
+
     @testset "placement geometry" begin
         rect = Rect2d(0, 0, 10, 4)
         @test Makie.ring_distance(rect, Vec2d(1, 0), 3) == 8
