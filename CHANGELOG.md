@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- `annotation` places labels with a new candidate-based algorithm by default, the previous one is available as `algorithm = Makie.LabelRepel()` [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
+- `annotation` places labels with a new candidate-based algorithm that avoids overlaps, covered points and crossing leaders [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
 - `annotation` keeps labels with given offsets or positions fixed while placing the remaining ones around them [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
 - `annotation` no longer draws leaders for labels that sit within the `shrink` distance of their point [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
 - Added `FastInterpolations` as the default `Resampler` interpolation backend for ~2-9x faster resampling; passing an `Interpolations` degree keeps the old behavior [#5706](https://github.com/MakieOrg/Makie.jl/pull/5706).

@@ -166,7 +166,7 @@ be very close to their associated data points so connection plots are typically 
     linewidth = 1.0
     """
     The algorithm used to automatically place labels with reduced overlaps. `automatic` uses
-    `Makie.CandidatePlacement()`, the previous force-based algorithm is available as `Makie.LabelRepel()`.
+    `Makie.CandidatePlacement()`.
     The positioning of the labels with a given input may change between non-breaking versions.
     """
     algorithm = automatic
@@ -335,60 +335,6 @@ function plot!(p::Annotation)
     return p
 end
 
-function distance_point_outside_rect(p::Point2, rect::Rect2)
-    px, py = p
-    ((rl, rb), (rr, rt)) = extrema(rect)
-
-    dx = if px <= rl
-        px - rl
-    elseif px >= rr
-        px - rr
-    else
-        zero(px)
-    end
-
-    dy = if py < rb
-        py - rb
-    elseif py > rt
-        py - rt
-    else
-        zero(py)
-    end
-
-    return Vec2d(dx, dy)
-end
-
-function distance_point_inside_rect(p::Point2, rect::Rect2)
-    px, py = p
-    ((rl, rb), (rr, rt)) = extrema(rect)
-
-    dx = if px <= rl || px >= rr
-        zero(px)
-    else
-        argmin(abs, (px - rl, px - rr))
-    end
-
-    dy = if py <= rb || py >= rt
-        zero(py)
-    else
-        argmin(abs, (py - rb, py - rt))
-    end
-
-    # keep only the smaller one because it's faster
-    # to move the rect away from the point that way
-    return if abs(dx) < abs(dy)
-        Vec2d(dx, zero(dy))
-    else
-        Vec2d(zero(dx), dy)
-    end
-end
-
-Base.@kwdef struct LabelRepel
-    repel::Float64 = 0.1
-    attract::Float64 = 0.1
-    padding::Vec2d = Vec2d(6, 5)
-end
-
 function calculate_best_offsets!(
         algorithm, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
         maxiter::Union{Automatic, Int},
@@ -440,88 +386,6 @@ end
 
 pad_rect(rect::Rect2, padding) = Rect2d(rect.origin .- padding, rect.widths .+ 2 * padding)
 
-function place_labels!(
-        algorithm::LabelRepel, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2},
-        text_bbs::Vector{<:Rect2}, bbox::Rect2, fixed::Vector{Vec2d};
-        maxiter::Union{Automatic, Int}, reset::Bool,
-    )
-
-    maxiter = maxiter === automatic ? 200 : maxiter
-    maxiter == 0 && return
-
-    padded_bbs = [pad_rect(bb, algorithm.padding) for bb in text_bbs]
-    offset_bbs = copy(padded_bbs)
-
-    # Bias everything towards the center so self-repelling forces move away from
-    # edges
-    if reset
-        bbox_center = center(bbox)
-        for i in eachindex(offset_bbs)
-            is_fixed(fixed[i]) && continue
-            v = bbox_center - center(offset_bbs[i])
-            n = norm(v)
-            offsets[i] = n > 0 ? (0.1 * algorithm.repel / n * v) : zero(eltype(offsets))
-        end
-    end
-
-    for _ in 1:maxiter
-        offset_bbs .= padded_bbs .+ offsets
-
-        # Compute repulsive forces between bounding boxes
-        for i in 1:length(offset_bbs)
-            for j in (i + 1):length(offset_bbs)
-                bb1 = offset_bbs[i]
-                bb2 = offset_bbs[j]
-                overlap = algorithm.repel * rect_overlap(bb1, bb2)
-                offsets[i] -= overlap
-                offsets[j] += overlap
-            end
-        end
-
-        # Compute attractive forces towards their own text positions
-        for i in 1:length(text_bbs)
-            bb = offset_bbs[i]
-            target_pos = textpositions[i]
-            diff = distance_point_outside_rect(target_pos, bb)
-            offsets[i] += algorithm.attract * diff
-        end
-
-        # Compute repulsive forces from all text positions
-        for i in 1:length(text_bbs)
-            for j in 1:length(textpositions)
-                bb = offset_bbs[i]
-                target_pos = textpositions[j]
-                diff = distance_point_inside_rect(target_pos, bb)
-                offsets[i] += algorithm.repel * diff
-            end
-        end
-
-        # Keep text boundingboxes inside the axis boundingbox
-        let
-            ((l, b), (r, t)) = extrema(bbox)
-            for i in 1:length(text_bbs)
-                ((pl, pb), (pr, pt)) = extrema(padded_bbs[i])
-                ox, oy = offsets[i]
-                if pl + ox < l
-                    offsets[i] = Vec(l - pl, oy)
-                elseif pr + ox > r
-                    offsets[i] = Vec(r - pr, oy)
-                end
-                if pb + oy < b
-                    offsets[i] = Vec(ox, b - pb)
-                elseif pt + oy > t
-                    offsets[i] = Vec(ox, t - pt)
-                end
-            end
-        end
-
-        for i in eachindex(offsets)
-            is_fixed(fixed[i]) && (offsets[i] = fixed[i])
-        end
-    end
-    return
-end
-
 """
     CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, ambiguitymargin, restarts, seed)
 
@@ -532,7 +396,8 @@ set of candidate positions around its target point. Candidates lie on rings with
 overlap with other labels or the axis boundary and covering data points (which are treated as
 circles of `pointradius` pixels), leader lines crossing each other or running over other labels
 or points, ambiguous positions close to the point where another point is within `ambiguitymargin`
-pixels of being as close to the label as its own point, and finally the gap to the target.
+pixels of being as close to the label and its center as its own point, and finally the gap to the
+target.
 Positions straight above, below, left or right of the point are preferred over diagonal ones by
 `diagonalpenalty` pixels of gap, and `centroidweight` scales an additional cost per pixel of
 distance between the label center and the point, which keeps labels compact around their points.
@@ -800,12 +665,13 @@ function static_penalty(algorithm::CandidatePlacement, box, leader_start, target
     penalty = 0.0
     r = algorithm.pointradius
     leader_clearance = r + minimum(algorithm.padding)
+    own_center_distance = norm(target - center(box))
     ambiguous = false
     for t in obstacles
         box_distance = rect_point_distance(box, t)
         if box_distance < r
             penalty += OVERLAP_PENALTY
-        elseif box_distance < gap + algorithm.ambiguitymargin
+        elseif box_distance < gap + algorithm.ambiguitymargin && norm(t - center(box)) < own_center_distance + algorithm.ambiguitymargin
             ambiguous = true
         end
         if segment_point_distance(leader_start, target, t) < leader_clearance
@@ -850,7 +716,7 @@ function overlap_area(a::Rect2, b::Rect2)
     return prod(max.(0, min.(maximum(a), maximum(b)) .- max.(minimum(a), minimum(b))))
 end
 
-rect_point_distance(rect::Rect2, p::Point2) = norm(distance_point_outside_rect(p, rect))
+rect_point_distance(rect::Rect2, p::Point2) = norm(p - clamp.(p, minimum(rect), maximum(rect)))
 
 function segment_point_distance(a::Point2, b::Point2, p::Point2)
     ab = b - a
@@ -879,40 +745,6 @@ function segment_intersects_rect(a::Point2, b::Point2, rect::Rect2)
         segments_cross(a, b, corners[k], corners[mod1(k + 1, 4)]) && return true
     end
     return false
-end
-
-function interval_overlap(al, ar, bl, br)
-    a_is_left = al < bl
-    (ll, lr, rl, rr) = a_is_left ? (al, ar, bl, br) : (bl, br, al, ar)
-    vl = if lr <= rl # l completely left of r
-        zero(al)
-    elseif lr < rr # l intersects r partially
-        lr - rl
-    else # r contained in l
-        if rl - ll > lr - rr # r is further left
-            rr - rl
-        else
-            -(rr - rl)
-        end
-    end
-    return a_is_left ? vl : -vl
-end
-
-function rect_overlap(r1, r2)
-    (r1l, r1b), (r1r, r1t) = extrema(r1)
-    (r2l, r2b), (r2r, r2t) = extrema(r2)
-
-    x = interval_overlap(r1l, r1r, r2l, r2r)
-    y = interval_overlap(r1b, r1t, r2b, r2t)
-
-    ax = abs(x)
-    ay = abs(y)
-    ax == 0 && ay == 0 && return Vec2d(0, 0)
-    if ax < ay # we only ever want to move in the direction in which it's faster to avoid the overlap
-        return Vec2d(x, y * ax / (ax + ay))
-    else
-        return Vec2d(x * ay / (ax + ay), y)
-    end
 end
 
 startpoint(::Ann.Paths.Line, text_bb, p2) = text_bb.origin + 0.5 * text_bb.widths

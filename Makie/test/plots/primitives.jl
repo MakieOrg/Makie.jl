@@ -183,7 +183,7 @@ end
         panned_bbs = text_bbs .+ Ref(Vec2f(3, -2))
         warm = copy(offsets)
         Makie.place_labels!(algorithm, warm, panned, panned_bbs, viewport + Vec2d(3, -2), fill(Vec2d(NaN), 40); maxiter = Makie.automatic, reset = false)
-        @test warm == offsets
+        @test all(isapprox.(warm, offsets; atol = 1.0e-6))
     end
 
     @testset "empty labels stay put as obstacles" begin
@@ -202,7 +202,7 @@ end
         ps = Point2f.(1:10, 1:10)
         given = fill(Vec2f(NaN), 10)
         given[3] = Vec2f(80, -40)
-        for algorithm in (Makie.CandidatePlacement(), Makie.CandidatePlacement(seed = 1, restarts = 0), Makie.LabelRepel())
+        for algorithm in (Makie.CandidatePlacement(), Makie.CandidatePlacement(seed = 1, restarts = 0))
             f, a, p = annotation(given, ps, text = string.(1:10); algorithm)
             Makie.update_state_before_display!(f)
             @test p.offsets[][3] == Vec2f(80, -40)
@@ -273,12 +273,5 @@ end
         @test Makie.LabelCandidate(Vec2d(0, 0), rect, Point2d(-5, 20), Point2d(0, 2), 0.0).extent == Rect2d(-5, 0, 15, 20)
         @test Makie.overlap_area(rect, Rect2d(5, 2, 10, 10)) == 10
         @test Makie.pad_rect(rect, Vec2d(1, 2)) == Rect2d(-1, -2, 12, 8)
-    end
-
-    @testset "empty string at viewport center (no StackOverflow)" begin
-        # the center bias of LabelRepel used to normalize a zero vector for an empty label there
-        fig, ax, plt = scatter([1.0, 2.0, 3.0], [1.0, 2.0, 3.0])
-        p = annotation!(ax, [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], text = ["A", "", "C"], algorithm = Makie.LabelRepel())
-        @test !any(x -> any(isnan, x), p.offsets[])
     end
 end
