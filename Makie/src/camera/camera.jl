@@ -370,8 +370,8 @@ function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph
     # select the camera matrices for view, projection, projectionview and
     # optionally preprojection based on the indices we gathered
     for (selector, output) in zip(index_names, output_names)
-        select!(plot_graph, selector, matrix_nodes, Symbol(output, :64))
-        map!(Mat4f, plot_graph, Symbol(output, :64), output)
+        select!(plot_graph, selector, matrix_nodes, output)
+        ComputePipeline.set_type!(plot_graph[output], Mat4f)
     end
 
     return

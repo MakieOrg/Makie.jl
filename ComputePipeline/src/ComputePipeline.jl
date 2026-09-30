@@ -1185,8 +1185,8 @@ function locked_resolve!(edge::ComputeEdge)
         new_value = edge.inputs[idx].value[]
 
         output = edge.outputs[1]
-        if isdefined(output, :value) && isassigned(output.value)
-            output.dirty = is_same(output.value[], new_value)
+        if is_initialized(output)
+            output.dirty = !is_same(output.value[], new_value)
             output.value[] = new_value
         else
             output.dirty = true

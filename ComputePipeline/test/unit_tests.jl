@@ -1736,6 +1736,12 @@ end
     check_state(graph, [1, 1, 1, 1, 1, 1, 1])
     @test graph.output[] == 5 + 2
     check_state(graph, [0, 0, 0, 1, 1, 0, 0])
+
+    # test dirty propagation
+    map!(x -> x, graph, :output, :next)
+    first_val = graph.next[]
+    graph.x = 10
+    @test graph.next[] != first_val
 end
 
 @testset "boolean select!" begin
