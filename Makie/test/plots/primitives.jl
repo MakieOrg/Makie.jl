@@ -275,5 +275,7 @@ end
         @test Makie.LabelCandidate(Vec2d(0, 0), rect, Point2d(-5, 20), Point2d(0, 2), 0.0).extent == Rect2d(-5, 0, 15, 20)
         @test Makie.overlap_area(rect, Rect2d(5, 2, 10, 10)) == 10
         @test Makie.pad_rect(rect, Vec2d(1, 2)) == Rect2d(-1, -2, 12, 8)
+        @test Makie.slide_inside(Rect2d(-3, 8, 10, 4), rect) == Rect2d(0, 0, 10, 4)
+        @test Makie.slide_inside(Rect2d(-3, 0, 20, 4), rect) == Rect2d(-3, 0, 20, 4)
     end
 end

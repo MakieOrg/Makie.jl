@@ -387,7 +387,7 @@ end
 pad_rect(rect::Rect2, padding) = Rect2d(rect.origin .- padding, rect.widths .+ 2 * padding)
 
 """
-    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, restarts, seed)
+    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, leaderpenalty, restarts, seed)
 
 The default label placement algorithm of `annotation`. Each label is placed on one of a finite
 set of candidate positions around its target point. Candidates lie on rings with the given `gaps`
@@ -399,8 +399,10 @@ or points, ambiguous positions close to the point where another point is nearly 
 label center as its own point without the own point lying in between, and finally the gap to the
 target.
 Positions straight above, below, left or right of the point are preferred over diagonal ones by
-`diagonalpenalty` pixels of gap, and `centroidweight` scales an additional cost per pixel of
-distance between the label center and the point, which keeps labels compact around their points.
+`diagonalpenalty` pixels of gap, `centroidweight` scales an additional cost per pixel of
+distance between the label center and the point, which keeps labels compact around their points,
+and `leaderpenalty` pixels of gap are added for leaders that deviate from the eight main
+directions.
 
 Labels with an empty bounding box, for example from empty strings, stay at their target and
 only act as obstacles, which allows labelling a subset of points while avoiding all of them.
@@ -422,6 +424,7 @@ Base.@kwdef struct CandidatePlacement
     pointradius::Float64 = 5.0
     diagonalpenalty::Float64 = 6.0
     centroidweight::Float64 = 0.15
+    leaderpenalty::Float64 = 4.0
     restarts::Int = 3
     seed::UInt64 = 0
 end
@@ -630,16 +633,28 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
         reachable = view(targets, view(obstacles, 1:searchsortedlast(obstacle_distances, reach(gap))))
         angle = 2pi * k / algorithm.nangles
         direction = Vec2d(cos(angle), sin(angle))
-        new_center = target + direction * (gap + halfextent_along(padded_bb, direction))
-        offset = new_center - center(padded_bb)
-        box = padded_bb + offset
+        ring_center = target + direction * (gap + halfextent_along(padded_bb, direction))
+        box = slide_inside(padded_bb + (ring_center - center(padded_bb)), viewport)
+        offset = center(box) - center(padded_bb)
         leader_start = leader_start_point(box, target)
         cost = gap + algorithm.diagonalpenalty * sin(2 * angle)^2 +
-            algorithm.centroidweight * norm(new_center - target) +
+            algorithm.centroidweight * norm(center(box) - target) +
+            algorithm.leaderpenalty * sin(4 * leader_angle(leader_start, target))^2 +
             static_penalty(algorithm, box, leader_start, target, gap, reachable, viewport)
         candidates[index] = LabelCandidate(offset, box, target, leader_start, cost)
     end
     return sort!(candidates; by = c -> c.cost, alg = QuickSort)
+end
+
+function leader_angle(leader_start, target)
+    v = target - leader_start
+    return atan(v[2], v[1])
+end
+
+function slide_inside(box::Rect2, viewport::Rect2)
+    any(widths(box) .> widths(viewport)) && return box
+    shift = max.(minimum(viewport) - minimum(box), 0) + min.(maximum(viewport) - maximum(box), 0)
+    return box + shift
 end
 
 function candidate_at_offset(algorithm::CandidatePlacement, text_bb, target, offset)
@@ -666,8 +681,8 @@ function leader_start_point(box::Rect2, target::Point2)
 end
 
 function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, gap, obstacles, viewport)
-    penalty = 0.0
     r = algorithm.pointradius
+    penalty = rect_point_distance(box, target) < r ? OVERLAP_PENALTY : 0.0
     leader_clearance = r + minimum(algorithm.padding)
     ambiguous = false
     for t in obstacles
