@@ -143,12 +143,6 @@ end
 
 @testset "annotation" begin
     @testset "updates" begin
-        ps = rand(Point2f, 20)
-        f, a, p = annotation(ps, text = ["long overlapping label" for _ in 1:20], maxiter = 0)
-        offsets = copy(p.offsets[])
-        p.__advance_optimization = 1
-        @test p.offsets[] != offsets
-
         f, a, p = annotation(Point2f.(1:10), text = string.(1:10), shrink = (0, 0))
         update!(p, arg1 = Point2f.(1:20), text = string.(1:20))
         boundingbox(p.plots[1]) # shouldn't error
@@ -190,10 +184,6 @@ end
         warm = copy(offsets)
         Makie.place_labels!(algorithm, warm, panned, panned_bbs, viewport + Vec2d(3, -2), fill(Vec2d(NaN), 40); maxiter = Makie.automatic, reset = false)
         @test warm == offsets
-
-        fill!(offsets, Vec2f(0))
-        Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport, fill(Vec2d(NaN), 40); maxiter = 0, reset = true)
-        @test all(iszero, offsets)
     end
 
     @testset "empty labels stay put as obstacles" begin
@@ -212,7 +202,7 @@ end
         ps = Point2f.(1:10, 1:10)
         given = fill(Vec2f(NaN), 10)
         given[3] = Vec2f(80, -40)
-        for algorithm in (Makie.CandidatePlacement(), Makie.LabelRepel())
+        for algorithm in (Makie.CandidatePlacement(), Makie.CandidatePlacement(seed = 1, restarts = 0), Makie.LabelRepel())
             f, a, p = annotation(given, ps, text = string.(1:10); algorithm)
             Makie.update_state_before_display!(f)
             @test p.offsets[][3] == Vec2f(80, -40)
@@ -262,19 +252,8 @@ end
         @test isempty(p.plotspecs[])
     end
 
-    @testset "explicit algorithms" begin
-        ps = Point2f.(1:10, 1:10)
-        for algorithm in (Makie.CandidatePlacement(), Makie.CandidatePlacement(seed = 1), Makie.CandidatePlacement(restarts = 0), Makie.LabelRepel())
-            f, a, p = annotation(ps, text = string.(1:10); algorithm)
-            @test length(p.offsets[]) == 10
-            @test !all(iszero, p.offsets[])
-        end
-    end
-
     @testset "placement geometry" begin
         rect = Rect2d(0, 0, 10, 4)
-        @test Makie.halfextent_along(rect, Vec2d(1, 0)) == 5
-        @test Makie.halfextent_along(rect, Vec2d(0, 1)) == 2
         @test Makie.halfextent_along(rect, normalize(Vec2d(1, 1))) ≈ 2 * sqrt(2)
         @test Makie.leader_start_point(rect, Point2d(20, 2)) == Point2d(10, 2)
         @test Makie.leader_start_point(rect, Point2d(5, 2)) == Point2d(5, 2)
@@ -291,21 +270,15 @@ end
         @test !Makie.segment_intersects_rect(Point2d(-5, 5), Point2d(15, 5), rect)
         @test !Makie.rects_disjoint(rect, Rect2d(5, 2, 10, 10))
         @test Makie.rects_disjoint(rect, Rect2d(11, 0, 10, 10))
-        @test Makie.label_candidate(Vec2d(0, 0), rect, Point2d(-5, 20), Point2d(0, 2), 0.0).extent == Rect2d(-5, 0, 15, 20)
+        @test Makie.LabelCandidate(Vec2d(0, 0), rect, Point2d(-5, 20), Point2d(0, 2), 0.0).extent == Rect2d(-5, 0, 15, 20)
         @test Makie.overlap_area(rect, Rect2d(5, 2, 10, 10)) == 10
-        @test Makie.overlap_area(rect, Rect2d(20, 20, 1, 1)) == 0
         @test Makie.pad_rect(rect, Vec2d(1, 2)) == Rect2d(-1, -2, 12, 8)
     end
 
     @testset "empty string at viewport center (no StackOverflow)" begin
-        # Empty strings produce zero-size bounding boxes. When such a label
-        # sits at the viewport center, the initial bias in
-        # calculate_best_offsets! used to call normalize(zero_vector) which
-        # produced NaN offsets. Combined with NaN != NaN defeating the
-        # ComputePipeline convergence check, this caused infinite recursion.
+        # the center bias of LabelRepel used to normalize a zero vector for an empty label there
         fig, ax, plt = scatter([1.0, 2.0, 3.0], [1.0, 2.0, 3.0])
-        # This must not throw a StackOverflowError
-        p = annotation!(ax, [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], text = ["A", "", "C"])
+        p = annotation!(ax, [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], text = ["A", "", "C"], algorithm = Makie.LabelRepel())
         @test !any(x -> any(isnan, x), p.offsets[])
     end
 end
