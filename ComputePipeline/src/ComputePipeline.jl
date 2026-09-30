@@ -1740,9 +1740,7 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
             combined = join(existing, ", ")
             error("Cannot register computation: Some outputs already have parent compute edges: $combined")
         else
-
             assert_same_computation(f, attr, inputs, outputs)
-
             # edge already exists so we can return
             return
         end
@@ -1754,8 +1752,11 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
         @assert hasparent(input) "Computed should be guaranteed to have a parent edge, but does not"
         # Edges can have multiple outputs so multiple inputs of this edge could
         # come from the same edge
-        any(x -> x === new_edge, input.parent.dependents::Vector{ComputeEdge{ComputeGraph}}) && continue
-        push!(input.parent.dependents, new_edge)
+        parent_edge = input.parent::AbstractEdge
+        dependents = parent_edge.dependents::Vector{ComputeEdge{ComputeGraph}}
+        if !in(new_edge, dependents)
+            push!(dependents, new_edge)
+        end
     end
 
     # use order of namedtuple, which should not change!
