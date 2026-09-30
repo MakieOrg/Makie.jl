@@ -682,7 +682,7 @@ end
 
 function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, gap, obstacles, viewport)
     r = algorithm.pointradius
-    penalty = rect_point_distance(box, target) < r ? OVERLAP_PENALTY : 0.0
+    penalty = rect_point_distance(box, target) < minimum(algorithm.gaps) ? OVERLAP_PENALTY : 0.0
     leader_clearance = r + minimum(algorithm.padding)
     ambiguous = false
     for t in obstacles
