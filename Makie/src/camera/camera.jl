@@ -370,41 +370,12 @@ function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph
     # select the camera matrices for view, projection, projectionview and
     # optionally preprojection based on the indices we gathered
     for (selector, output) in zip(index_names, output_names)
-        select!(plot_graph, selector, matrix_nodes, output)
+        select!(plot_graph, selector, matrix_nodes, Symbol(output, :64))
+        map!(Mat4f, plot_graph, Symbol(output, :64), output)
     end
 
     return
 end
-
-# struct CameraMatrixCallback <: Function
-#     graph::ComputeGraph
-# end
-# (cb::CameraMatrixCallback)(_, names) = map(name -> Mat4f(cb.graph[name][]::Mat4d), names)
-
-# function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
-#     output_keys = [:projectionview, :projection, :view]
-
-#     # merging Symbols is somewhat expensive so we shouldn't do it repetitively
-#     if haskey(plot_graph, :markerspace)
-#         map!(plot_graph, [:space, :markerspace], :camera_matrix_names) do space, markerspace
-#             return get_projectionview_name(markerspace), get_projection_name(markerspace),
-#                 get_view_name(markerspace), get_camera_matrix_name(space, markerspace)
-#         end
-#         push!(output_keys, :preprojection)
-#     else
-#         map!(plot_graph, :space, :camera_matrix_names) do space
-#             return get_projectionview_name(space), get_projection_name(space), get_view_name(space)
-#         end
-#     end
-
-#     input_keys = Computed[scene_graph.camera_trigger, plot_graph.camera_matrix_names]
-
-#     # Update camera matrices in plot if space changed or a relevant camera update happened
-#     callback = CameraMatrixCallback(scene_graph)
-#     map!(callback, plot_graph, input_keys, output_keys)
-
-#     return
-# end
 
 function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     _register_common_camera_matrices!(plot_graph, scene_graph)
