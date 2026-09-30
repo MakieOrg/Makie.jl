@@ -699,6 +699,8 @@ end
 function Base.map!(f, p::Plot, inputs::Union{Vector, ComputePipeline.InputNodeTypes}, outputs::Union{Vector, ComputePipeline.OutputNodeTypes})
     return map!(f, p.attributes, inputs, outputs)
 end
+ComputePipeline.select!(f, p::Plot, args...) = select!(f, p.attributes, args...)
+ComputePipeline.select!(p::Plot, args...) = select!(p.attributes, args...)
 
 struct AttributeConvert{Key, Plot} <: Function end
 @inline AttributeConvert(key, plot) = AttributeConvert{key, plot}()

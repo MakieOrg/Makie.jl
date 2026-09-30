@@ -358,16 +358,9 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
 
     pixel_pos_node = register_projected_positions!(plot, Point2f, input_name = :contour_points, output_space = :pixel)
 
-    map!(plot, [:labels, :string_boundingboxes, :contour_points], :masked_lines) do use_labels, bboxes, segments
-        use_labels || return segments
-
+    map!(plot, [:string_boundingboxes, pixel_pos_node, :contour_points], :masked_lines) do bboxes, pixel_pos, segments
         # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
         count(isnan, segments) > length(segments) / 10 && return segments
-
-        # To avoid always projecting, pull these in indirectly.
-        # string boundingboxes will already update on everything that could trigger
-        # pixel_contour_points, so this should be fine
-        pixel_pos = pixel_pos_node[]
 
         n = 1
         bb = Rect2(bboxes[n])
@@ -394,9 +387,10 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         return masked
     end
 
+    select!(plot, :labels, :masked_lines, :contour_points, :final_line_points)
 
     lines!(
-        plot, plot.masked_lines;
+        plot, plot.final_line_points;
         color = plot.contour_colors,
         linewidth = plot.contour_linewidth,
         linestyle = plot.linestyle,

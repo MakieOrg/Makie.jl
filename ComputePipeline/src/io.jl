@@ -247,6 +247,15 @@ function Base.show(io::IO, ::MIME"text/plain", graph::ComputeGraph)
 end
 
 
+function Base.showerror(io::IO, re::ResolveException{SelectException})
+    trace_error(io, re.start, re.error.edge)
+    print(io, "Due to ")
+    printstyled(io, "ERROR: ", color = :light_red, bold = true)
+    Base.showerror(io, re.error)
+end
+
+Base.showerror(io::IO, se::SelectException) = print(io, se.msg)
+
 function Base.showerror(io::IO, re::ResolveException)
     trace_error(io, re.start)
     print(io, "Due to ")
@@ -271,24 +280,27 @@ function collect_dirty(edge::Input, marked = Set{Symbol}())
 end
 
 # Error handling tools
-function trace_error(io::IO, computed::Computed)
+function trace_error(io::IO, computed::Computed, stop_at = nothing)
     print(io, "Failed to resolve ")
     printstyled(io, "$(computed.name):\n", color = :red)
     if hasparent(computed)
         marked = collect_dirty(computed)
         push!(marked, computed.name)
-        trace_error(io, computed.parent, marked)
+        trace_error(io, computed.parent, marked, stop_at)
     end
     return
 end
-trace_error(io::IO, edge::ComputeEdge) = trace_error(io, edge, collect_dirty(edge))
 
-function trace_error(io::IO, computed::Computed, marked)
-    hasparent(computed) && trace_error(io, computed.parent, marked)
+function trace_error(io::IO, edge::ComputeEdge, stop_at = nothing)
+    return trace_error(io, edge, collect_dirty(edge), stop_at)
+end
+
+function trace_error(io::IO, computed::Computed, marked::Set, stop_at = nothing)
+    hasparent(computed) && trace_error(io, computed.parent, marked, stop_at)
     return
 end
 
-function trace_error(io::IO, edge::ComputeEdge, marked)
+function trace_error(io::IO, edge::ComputeEdge, marked::Set, stop_at = nothing)
     if isdirty(edge)
         print(io, "[ComputeEdge] ")
 
@@ -312,18 +324,23 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
         printstyled(io, "  @ $(edge_callback_location(edge))\n", color = :light_black)
 
         idx = findfirst(computed -> computed.name in marked, edge.inputs)
-        if idx === nothing # All resolved
+        if isnothing(idx) || stop_at === edge # All resolved or marked as stopping point
             print(io, "  with edge inputs:")
             ioc = IOContext(io, :limit => true)
             for (input, dirty) in zip(edge.inputs, edge.inputs_dirty)
                 c = ifelse(dirty, :normal, :light_black)
                 printstyled(io, "\n    ", input.name, " = ", color = c)
-                show(ioc, input.value[])
+                if isdirty(input)
+                    val = is_initialized(input) ? input.value[] : "#undef"
+                    printstyled(ioc, val * " (outdated)", color = :light_black)
+                else
+                    show(ioc, input.value[])
+                end
             end
             println(io)
-            print_root_inputs(io, edge)
+            isnothing(idx) && print_root_inputs(io, edge)
         else # idx is first dirty
-            trace_error(io, edge.inputs[idx], marked)
+            trace_error(io, edge.inputs[idx], marked, stop_at)
         end
     end
     return
@@ -349,7 +366,7 @@ function trace_inputs!(input::Input, root_inputs)
     return
 end
 
-function trace_error(io::IO, edge::Input, marked = nothing)
+function trace_error(io::IO, edge::Input, marked = nothing, stop_at = nothing)
     print(io, "[Input] ")
     if edge.dirty
         printstyled(io, edge.name, color = :red)
