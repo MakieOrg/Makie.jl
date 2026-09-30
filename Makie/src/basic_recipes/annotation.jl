@@ -397,9 +397,8 @@ set of candidate positions around its target point. Candidates lie on rings with
 `nangles` evenly spaced angles per ring. A candidate's cost penalizes, from most to least severe,
 overlap with other labels or the axis boundary and covering data points (which are treated as
 circles of `pointradius` pixels), leader lines crossing each other or running over other labels
-or points, ambiguous positions close to the point where another point is nearly as close to the
-label center as its own point without the own point lying in between, and finally the gap to the
-target.
+or points, positions without a leader that are close enough to other points to be read as their
+label as well (unless the own point lies in between), and finally the gap to the target.
 `centroidweight` scales an additional cost per pixel of distance between the label center and
 the point, which keeps labels compact around their points, and `leaderpenalty` pixels of gap are
 added for visible leaders that deviate from the eight main directions.
@@ -432,8 +431,6 @@ const OVERLAP_PENALTY = 1000.0
 const CROSSING_PENALTY = 300.0
 const LEADER_POINT_PENALTY = 100.0
 const AMBIGUITY_PENALTY = 100.0
-const AMBIGUITY_FADE_GAP = 20.0
-const AMBIGUITY_DISTANCE_RATIO = 1.15
 const AMBIGUITY_SHIELD_COS = cosd(25)
 const ANNEAL_MOVES_PER_LABEL = 100
 const ANNEAL_MAX_MOVES_PER_STAGE = 3000
@@ -621,7 +618,7 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
     padded_bb = pad_rect(text_bb, algorithm.padding)
     diagonal = norm(widths(padded_bb))
     margin = algorithm.pointradius + minimum(algorithm.padding)
-    reach(gap) = (1 + AMBIGUITY_DISTANCE_RATIO) * (gap + diagonal) + margin
+    reach(gap) = gap + diagonal + leaderthreshold + margin
     obstacles = sort(neighbors; by = j -> norm(targets[j] - target))
     obstacle_distances = [norm(targets[j] - target) for j in obstacles]
     candidates = Vector{LabelCandidate}(undef, length(algorithm.gaps) * algorithm.nangles)
@@ -638,10 +635,11 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
         offset = center(box) - center(padded_bb)
         leader_start = leader_start_point(box, target)
         leader_visible = rect_point_distance(text_bb + offset, target) >= leaderthreshold
+        claim_distance = leader_visible ? 0.0 : leaderthreshold
         cost = gap + algorithm.centroidweight * norm(center(box) - target) +
             (leader_visible ? algorithm.leaderpenalty * sin(4 * leader_angle(leader_start, target))^2 : 0.0) +
             slide_penalty(box, unslid, target, minimum(algorithm.gaps)) +
-            static_penalty(algorithm, box, leader_start, target, gap, reachable, keep_inside)
+            static_penalty(algorithm, box, leader_start, target, reachable, keep_inside, claim_distance)
         candidates[index] = LabelCandidate(offset, box, target, leader_start, cost)
     end
     return sort!(candidates; by = c -> c.cost, alg = QuickSort)
@@ -692,23 +690,19 @@ function leader_start_point(box::Rect2, target::Point2)
     return distance == 0 ? core : core + radius * v / distance
 end
 
-function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, gap, obstacles, viewport)
+function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, obstacles, viewport, claim_distance)
     r = algorithm.pointradius
     penalty = 0.0
     leader_clearance = r + minimum(algorithm.padding)
-    ambiguous = false
     for t in obstacles
         if rect_point_distance(box, t) < r
             penalty += OVERLAP_PENALTY
-        elseif competes_for_label(t, target, center(box))
-            ambiguous = true
+        else
+            penalty += ambiguity_penalty(box, t, target, claim_distance)
         end
         if segment_point_distance(leader_start, target, t) < leader_clearance
             penalty += LEADER_POINT_PENALTY
         end
-    end
-    if ambiguous
-        penalty += AMBIGUITY_PENALTY * max(0.0, 1 - gap / AMBIGUITY_FADE_GAP)
     end
     penalty += viewport_penalty(box, viewport)
     return penalty
@@ -719,15 +713,16 @@ viewport_penalty(box, viewport::Rect2) = overlap_penalty(prod(widths(box)) - ove
 
 overlap_penalty(area) = area > 0 ? OVERLAP_PENALTY * (1 + area / 100) : 0.0
 
-# another point competes for a label when it is nearly as close to the label center as the
-# label's own point, unless the own point lies between them
-function competes_for_label(point, target, label_center)
-    own = target - label_center
-    other = point - label_center
+# a label without a leader could be read as belonging to any other point that is close enough
+# to the box to be labeled without a leader as well, unless the own point lies between them
+function ambiguity_penalty(box, point, target, claim_distance)
+    distance = rect_point_distance(box, point)
+    distance < claim_distance || return 0.0
+    own = target - center(box)
+    other = point - center(box)
     own_distance, other_distance = norm(own), norm(other)
-    other_distance < AMBIGUITY_DISTANCE_RATIO * own_distance || return false
     shielded = other_distance > own_distance && dot(own, other) > AMBIGUITY_SHIELD_COS * own_distance * other_distance
-    return !shielded
+    return shielded ? 0.0 : AMBIGUITY_PENALTY * (1 - distance / claim_distance)
 end
 
 function pairwise_penalty(c::LabelCandidate, i, problem::PlacementProblem, layout; bound = Inf)
