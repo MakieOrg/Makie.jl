@@ -511,7 +511,7 @@ function place_labels!(
             layout = argmin(trial -> total_energy(trial, problem), trials)
         end
     else
-        layout = [previous_candidate(algorithm, candidates[i], text_bbs[i], targets[i], offsets[i]) for i in 1:n]
+        layout = [previous_candidate(candidates[i], offsets[i]) for i in 1:n]
         descend_placement!(layout, problem, maxiter; hysteresis = WARM_START_HYSTERESIS)
         if any(i -> pairwise_penalty(layout[i], i, problem, layout) >= CROSSING_PENALTY, 1:n)
             anneal_placement!(layout, problem, LabelPlacementRNG(algorithm.seed))
@@ -523,10 +523,7 @@ function place_labels!(
     return
 end
 
-function previous_candidate(algorithm::CandidatePlacement, candidates, text_bb, target, offset)
-    i = findfirst(c -> isapprox(c.offset, offset; atol = 1.0e-2), candidates)
-    return i === nothing ? candidate_at_offset(algorithm, text_bb, target, offset) : candidates[i]
-end
+previous_candidate(candidates, offset) = argmin(c -> norm(c.offset - offset), candidates)
 
 function total_energy(layout, problem::PlacementProblem)
     static = sum(c -> c.cost, layout)
@@ -632,10 +629,13 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
     obstacle_distances = [norm(targets[j] - target) for j in obstacles]
     positions = candidate_positions(algorithm)
     candidates = Vector{LabelCandidate}(undef, length(positions))
+    # labels of points outside the viewport stay with their point, where they are clipped,
+    # instead of piling up along the viewport edge
+    keep_inside = target in viewport ? viewport : nothing
     for (index, (gap, angle)) in enumerate(positions)
         direction = Vec2d(cos(angle), sin(angle))
         ring_center = target + direction * (gap + halfextent_along(padded_bb, direction))
-        box = slide_inside(padded_bb + (ring_center - center(padded_bb)), viewport)
+        box = slide_inside(padded_bb + (ring_center - center(padded_bb)), keep_inside)
         offset = center(box) - center(padded_bb)
         leader_start = leader_start_point(box, target)
         reach = (1 + AMBIGUITY_DISTANCE_RATIO) * norm(center(box) - target) + 0.5 * norm(widths(box)) + margin
@@ -643,7 +643,7 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
         cost = gap + algorithm.diagonalpenalty * sin(2 * angle)^2 +
             algorithm.centroidweight * norm(center(box) - target) +
             algorithm.leaderpenalty * sin(4 * leader_angle(leader_start, target))^2 +
-            static_penalty(algorithm, box, leader_start, target, gap, reachable, viewport)
+            static_penalty(algorithm, box, leader_start, target, gap, reachable, keep_inside)
         candidates[index] = LabelCandidate(offset, box, target, leader_start, cost)
     end
     return sort!(candidates; by = c -> c.cost, alg = QuickSort)
@@ -654,6 +654,7 @@ function leader_angle(leader_start, target)
     return atan(v[2], v[1])
 end
 
+slide_inside(box::Rect2, ::Nothing) = box
 function slide_inside(box::Rect2, viewport::Rect2)
     any(widths(box) .> widths(viewport)) && return box
     shift = max.(minimum(viewport) - minimum(box), 0) + min.(maximum(viewport) - maximum(box), 0)
@@ -711,9 +712,12 @@ function static_penalty(algorithm::CandidatePlacement, box, leader_start, target
     if ambiguous
         penalty += AMBIGUITY_PENALTY * max(0.0, 1 - gap / AMBIGUITY_FADE_GAP)
     end
-    penalty += overlap_penalty(prod(widths(box)) - overlap_area(box, viewport))
+    penalty += viewport_penalty(box, viewport)
     return penalty
 end
+
+viewport_penalty(box, ::Nothing) = 0.0
+viewport_penalty(box, viewport::Rect2) = overlap_penalty(prod(widths(box)) - overlap_area(box, viewport))
 
 overlap_penalty(area) = area > 0 ? OVERLAP_PENALTY * (1 + area / 100) : 0.0
 

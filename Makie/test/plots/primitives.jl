@@ -186,6 +186,29 @@ end
         @test all(isapprox.(warm, offsets; atol = 1.0e-6))
     end
 
+    @testset "warm start evicts a stale label from a point" begin
+        targets = [Point2f(100, 100), Point2f(200, 100)]
+        text_bbs = [Rect2d(-30, -8, 60, 16) + t for t in targets]
+        algorithm = Makie.CandidatePlacement()
+        stale = [Vec2f(100, 0), Vec2f(0, 21)]
+        Makie.place_labels!(algorithm, stale, targets, text_bbs, Rect2d(0, 0, 500, 400), fill(Vec2d(NaN), 2); maxiter = Makie.automatic, reset = false)
+        box = Makie.pad_rect(text_bbs[1] + stale[1], algorithm.padding)
+        @test Makie.rect_point_distance(box, targets[2]) >= algorithm.pointradius
+        @test stale[2] == Vec2f(0, 21)
+    end
+
+    @testset "labels of points outside the viewport stay with their points" begin
+        targets = [Point2f(-300, 100), Point2f(-300, 110), Point2f(-300, 120)]
+        text_bbs = [Rect2d(-30, -8, 60, 16) + t for t in targets]
+        viewport = Rect2d(0, 0, 500, 400)
+        offsets = zeros(Vec2f, 3)
+        algorithm = Makie.CandidatePlacement()
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport, fill(Vec2d(NaN), 3); maxiter = Makie.automatic, reset = true)
+        boxes = [Makie.pad_rect(bb + o, algorithm.padding) for (bb, o) in zip(text_bbs, offsets)]
+        @test all(box -> iszero(Makie.overlap_area(box, viewport)), boxes)
+        @test all(iszero(Makie.overlap_area(boxes[i], boxes[j])) for i in 1:3 for j in (i + 1):3)
+    end
+
     @testset "empty labels stay put as obstacles" begin
         targets = [Point2f(mod(137i, 500), mod(89i, 400)) for i in 1:40]
         text_bbs = [i % 4 == 0 ? Rect2d(-30, -8, 60, 16) + t : Rect2d(t, Vec2d(0, 0)) for (i, t) in enumerate(targets)]
