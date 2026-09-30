@@ -387,7 +387,7 @@ end
 pad_rect(rect::Rect2, padding) = Rect2d(rect.origin .- padding, rect.widths .+ 2 * padding)
 
 """
-    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, ambiguitymargin, restarts, seed)
+    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, restarts, seed)
 
 The default label placement algorithm of `annotation`. Each label is placed on one of a finite
 set of candidate positions around its target point. Candidates lie on rings with the given `gaps`
@@ -395,8 +395,8 @@ set of candidate positions around its target point. Candidates lie on rings with
 `nangles` evenly spaced angles per ring. A candidate's cost penalizes, from most to least severe,
 overlap with other labels or the axis boundary and covering data points (which are treated as
 circles of `pointradius` pixels), leader lines crossing each other or running over other labels
-or points, ambiguous positions close to the point where another point is within `ambiguitymargin`
-pixels of being as close to the label and its center as its own point, and finally the gap to the
+or points, ambiguous positions close to the point where another point is nearly as close to the
+label center as its own point without the own point lying in between, and finally the gap to the
 target.
 Positions straight above, below, left or right of the point are preferred over diagonal ones by
 `diagonalpenalty` pixels of gap, and `centroidweight` scales an additional cost per pixel of
@@ -422,7 +422,6 @@ Base.@kwdef struct CandidatePlacement
     pointradius::Float64 = 5.0
     diagonalpenalty::Float64 = 6.0
     centroidweight::Float64 = 0.15
-    ambiguitymargin::Float64 = 8.0
     restarts::Int = 3
     seed::UInt64 = 0
 end
@@ -432,6 +431,8 @@ const CROSSING_PENALTY = 300.0
 const LEADER_POINT_PENALTY = 100.0
 const AMBIGUITY_PENALTY = 100.0
 const AMBIGUITY_FADE_GAP = 20.0
+const AMBIGUITY_DISTANCE_RATIO = 1.15
+const AMBIGUITY_SHIELD_COS = cosd(25)
 const ANNEAL_MOVES_PER_LABEL = 100
 const ANNEAL_MAX_MOVES_PER_STAGE = 3000
 const ANNEAL_STAGES = 50
@@ -620,8 +621,8 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
     target = targets[i]
     padded_bb = pad_rect(text_bb, algorithm.padding)
     diagonal = norm(widths(padded_bb))
-    margin = max(algorithm.ambiguitymargin, algorithm.pointradius + minimum(algorithm.padding))
-    reach(gap) = 2 * gap + diagonal + margin
+    margin = algorithm.pointradius + minimum(algorithm.padding)
+    reach(gap) = (1 + AMBIGUITY_DISTANCE_RATIO) * (gap + diagonal) + margin
     obstacles = sort(neighbors; by = j -> norm(targets[j] - target))
     obstacle_distances = [norm(targets[j] - target) for j in obstacles]
     candidates = Vector{LabelCandidate}(undef, length(algorithm.gaps) * algorithm.nangles)
@@ -665,13 +666,11 @@ function static_penalty(algorithm::CandidatePlacement, box, leader_start, target
     penalty = 0.0
     r = algorithm.pointradius
     leader_clearance = r + minimum(algorithm.padding)
-    own_center_distance = norm(target - center(box))
     ambiguous = false
     for t in obstacles
-        box_distance = rect_point_distance(box, t)
-        if box_distance < r
+        if rect_point_distance(box, t) < r
             penalty += OVERLAP_PENALTY
-        elseif box_distance < gap + algorithm.ambiguitymargin && norm(t - center(box)) < own_center_distance + algorithm.ambiguitymargin
+        elseif competes_for_label(t, target, center(box))
             ambiguous = true
         end
         if segment_point_distance(leader_start, target, t) < leader_clearance
@@ -686,6 +685,17 @@ function static_penalty(algorithm::CandidatePlacement, box, leader_start, target
 end
 
 overlap_penalty(area) = area > 0 ? OVERLAP_PENALTY * (1 + area / 100) : 0.0
+
+# another point competes for a label when it is nearly as close to the label center as the
+# label's own point, unless the own point lies between them
+function competes_for_label(point, target, label_center)
+    own = target - label_center
+    other = point - label_center
+    own_distance, other_distance = norm(own), norm(other)
+    other_distance < AMBIGUITY_DISTANCE_RATIO * own_distance || return false
+    shielded = other_distance > own_distance && dot(own, other) > AMBIGUITY_SHIELD_COS * own_distance * other_distance
+    return !shielded
+end
 
 function pairwise_penalty(c::LabelCandidate, i, problem::PlacementProblem, layout; bound = Inf)
     targets = problem.targets
