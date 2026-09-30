@@ -431,7 +431,7 @@ const OVERLAP_PENALTY = 1000.0
 const CROSSING_PENALTY = 300.0
 const LEADER_POINT_PENALTY = 100.0
 const AMBIGUITY_PENALTY = 100.0
-const AMBIGUITY_DISTANCE_RATIO = 1.5
+const AMBIGUITY_DISTANCE_RATIO = 2.0
 const AMBIGUITY_SHIELD_WIDTH = 8.0
 const ANNEAL_MOVES_PER_LABEL = 100
 const ANNEAL_MAX_MOVES_PER_STAGE = 3000
@@ -716,19 +716,22 @@ overlap_penalty(area) = area > 0 ? OVERLAP_PENALTY * (1 + area / 100) : 0.0
 
 # a label without a leader could be read as belonging to any other point that is close enough
 # to the box to be labeled without a leader as well, the more so the closer that point is to the
-# label center compared to the own point, unless the own point lies between them
+# pill inscribed in the label compared to the own point, unless the own point lies between them
 function ambiguity_penalty(box, point, target, claim_distance)
     rect_point_distance(box, point) < claim_distance || return 0.0
-    own = target - center(box)
-    other = point - center(box)
-    own_distance, other_distance = norm(own), norm(other)
+    start = leader_start_point(box, target)
+    own = target - start
+    other = point - start
+    own_distance = norm(own)
     along = dot(other, own) / own_distance
     lateral = abs(own[1] * other[2] - own[2] * other[1]) / own_distance
     shielded = along > own_distance && lateral < AMBIGUITY_SHIELD_WIDTH
     shielded && return 0.0
-    ratio = other_distance / own_distance
+    ratio = pill_distance(box, point) / own_distance
     return AMBIGUITY_PENALTY * clamp((AMBIGUITY_DISTANCE_RATIO - ratio) / (AMBIGUITY_DISTANCE_RATIO - 1), 0, 1)
 end
+
+pill_distance(box::Rect2, p::Point2) = norm(p - leader_start_point(box, p))
 
 function pairwise_penalty(c::LabelCandidate, i, problem::PlacementProblem, layout; bound = Inf)
     targets = problem.targets
