@@ -68,7 +68,8 @@ function select!(graph::AbstractComputeGraph, selector::InputNodeTypes, choices:
     else
         ComputePipeline.set_type!(node, Int)
     end
-    map!(select, graph, [selector, choices...], output)
+    inputs = Computed[node, get_node.(Ref(graph), choices)...]
+    map!(select, graph, inputs, output)
     return
 end
 
@@ -97,7 +98,8 @@ function select!(
     else
         ComputePipeline.set_type!(node, Bool)
     end
-    map!(ifelse, graph, [node, true_choice, false_choice], output)
+    inputs = Computed[node, get_node(graph, true_choice), get_node(graph, false_choice)]
+    map!(ifelse, graph, inputs, output)
 
     return
 end
