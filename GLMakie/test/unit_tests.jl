@@ -13,40 +13,48 @@ is_freed(x::GLMakie.GPUArray) = x.id == 0
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
+
     # Postprocessing shaders
     @test length(cache.shader_cache) == 4
     @test length(cache.template_cache) == 4
     @test length(cache.program_cache) == 3
 
+    # Just Axis adds...
+    # f = Figure();
+    # a = Axis(f[1, 1])
+    # display(screen, f)
+    Ns = 18
+    Np = 8
+
     # Shaders for scatter + linesegments + poly etc (axis)
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 18
-    @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 18
-    @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # Same for linesegments
     display(screen, linesegments(1:4))
-    @test length(cache.shader_cache) == 18
-    @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
-    @test length(cache.shader_cache) == 20
-    @test length(cache.template_cache) == 20
-    @test length(cache.program_cache) == 11
+    @test length(cache.shader_cache) == Ns + 2
+    @test length(cache.template_cache) == Ns + 2
+    @test length(cache.program_cache) == Np + 2
 
     # For second time no new shaders should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
-    @test length(cache.shader_cache) == 20
-    @test length(cache.template_cache) == 20
-    @test length(cache.program_cache) == 11
+    @test length(cache.shader_cache) == Ns + 2
+    @test length(cache.template_cache) == Ns + 2
+    @test length(cache.program_cache) == Np + 2
 end
 
 @testset "unit tests" begin
