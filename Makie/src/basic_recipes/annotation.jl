@@ -272,7 +272,7 @@ function plot!(p::Annotation)
     # we create a compute node here and an Observable later
     inputs = [
         :algorithm, :screenpoints_target, :screenpoints_label, :text_bbs,
-        :viewport, :maxiter,
+        :viewport, :maxiter, :shrink,
     ]
     register_computation!(p.attributes, inputs, [:offsets, :placement_view]) do args, changed, cached
         offsets = isnothing(cached) ? Vec2f[] : cached[1]
@@ -292,6 +292,7 @@ function plot!(p::Annotation)
             Rect2d((0, 0), widths(args.viewport));
             maxiter = args.maxiter,
             reset,
+            leaderthreshold = sum(args.shrink) + maximum(args.shrink),
         )
 
         return (offsets, view)
@@ -339,6 +340,7 @@ function calculate_best_offsets!(
         algorithm, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
         maxiter::Union{Automatic, Int},
         reset::Bool,
+        leaderthreshold::Real,
     )
     if !(length(offsets) == length(textpositions) == length(textpositions_offset) == length(text_bbs))
         error(
@@ -365,7 +367,7 @@ function calculate_best_offsets!(
     # doesn't really work because projection into screen space needs x and y together
 
     algorithm = algorithm === automatic ? CandidatePlacement() : algorithm
-    return place_labels!(algorithm, offsets, textpositions, text_bbs, bbox, fixed; maxiter, reset)
+    return place_labels!(algorithm, offsets, textpositions, text_bbs, bbox, fixed; maxiter, reset, leaderthreshold)
 end
 
 is_fixed(offset::Vec2) = !any(isnan, offset)
@@ -387,7 +389,7 @@ end
 pad_rect(rect::Rect2, padding) = Rect2d(rect.origin .- padding, rect.widths .+ 2 * padding)
 
 """
-    CandidatePlacement(; gaps, nangles, padding, pointradius, diagonalpenalty, centroidweight, leaderpenalty, restarts, seed)
+    CandidatePlacement(; gaps, nangles, padding, pointradius, centroidweight, leaderpenalty, restarts, seed)
 
 The default label placement algorithm of `annotation`. Each label is placed on one of a finite
 set of candidate positions around its target point. Candidates lie on rings with the given `gaps`
@@ -398,11 +400,9 @@ circles of `pointradius` pixels), leader lines crossing each other or running ov
 or points, ambiguous positions close to the point where another point is nearly as close to the
 label center as its own point without the own point lying in between, and finally the gap to the
 target.
-Positions straight above, below, left or right of the point are preferred over diagonal ones by
-`diagonalpenalty` pixels of gap, `centroidweight` scales an additional cost per pixel of
-distance between the label center and the point, which keeps labels compact around their points,
-and `leaderpenalty` pixels of gap are added for leaders that deviate from the eight main
-directions.
+`centroidweight` scales an additional cost per pixel of distance between the label center and
+the point, which keeps labels compact around their points, and `leaderpenalty` pixels of gap are
+added for visible leaders that deviate from the eight main directions.
 
 Labels with an empty bounding box, for example from empty strings, stay at their target and
 only act as obstacles, which allows labelling a subset of points while avoiding all of them.
@@ -422,7 +422,6 @@ Base.@kwdef struct CandidatePlacement
     nangles::Int = 32
     padding::Vec2d = Vec2d(4, 3)
     pointradius::Float64 = 5.0
-    diagonalpenalty::Float64 = 6.0
     centroidweight::Float64 = 0.15
     leaderpenalty::Float64 = 4.0
     restarts::Int = 3
@@ -472,7 +471,7 @@ end
 function place_labels!(
         algorithm::CandidatePlacement, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2},
         text_bbs::Vector{<:Rect2}, bbox::Rect2, fixed::Vector{Vec2d};
-        maxiter::Union{Automatic, Int}, reset::Bool,
+        maxiter::Union{Automatic, Int}, reset::Bool, leaderthreshold::Real,
     )
     maxiter = maxiter === automatic ? 20 : maxiter
     n = length(offsets)
@@ -486,7 +485,7 @@ function place_labels!(
         elseif any(iszero, widths(text_bbs[i]))
             [candidate_at_offset(algorithm, text_bbs[i], targets[i], Vec2d(0))]
         else
-            label_candidates(algorithm, targets, neighbors[i], i, text_bbs[i], bbox)
+            label_candidates(algorithm, targets, neighbors[i], i, text_bbs[i], bbox, leaderthreshold)
         end
     end
     problem = PlacementProblem(targets, candidates, neighbors, algorithm.padding)
@@ -617,7 +616,7 @@ function anneal_placement!(layout, problem::PlacementProblem, rng::LabelPlacemen
     return
 end
 
-function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, text_bb, viewport)
+function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, text_bb, viewport, leaderthreshold)
     target = targets[i]
     padded_bb = pad_rect(text_bb, algorithm.padding)
     diagonal = norm(widths(padded_bb))
@@ -633,13 +632,15 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
         reachable = view(targets, view(obstacles, 1:searchsortedlast(obstacle_distances, reach(gap))))
         angle = 2pi * k / algorithm.nangles
         direction = Vec2d(cos(angle), sin(angle))
-        ring_center = target + direction * (gap + halfextent_along(padded_bb, direction))
-        box = slide_inside(padded_bb + (ring_center - center(padded_bb)), keep_inside)
+        ring_center = target + direction * ring_distance(padded_bb, direction, gap)
+        unslid = padded_bb + (ring_center - center(padded_bb))
+        box = slide_inside(unslid, keep_inside)
         offset = center(box) - center(padded_bb)
         leader_start = leader_start_point(box, target)
-        cost = gap + algorithm.diagonalpenalty * sin(2 * angle)^2 +
-            algorithm.centroidweight * norm(center(box) - target) +
-            algorithm.leaderpenalty * sin(4 * leader_angle(leader_start, target))^2 +
+        leader_visible = rect_point_distance(text_bb + offset, target) >= leaderthreshold
+        cost = gap + algorithm.centroidweight * norm(center(box) - target) +
+            (leader_visible ? algorithm.leaderpenalty * sin(4 * leader_angle(leader_start, target))^2 : 0.0) +
+            slide_penalty(box, unslid, target, minimum(algorithm.gaps)) +
             static_penalty(algorithm, box, leader_start, target, gap, reachable, keep_inside)
         candidates[index] = LabelCandidate(offset, box, target, leader_start, cost)
     end
@@ -650,6 +651,8 @@ function leader_angle(leader_start, target)
     v = target - leader_start
     return atan(v[2], v[1])
 end
+
+slide_penalty(box, unslid, target, mingap) = box != unslid && rect_point_distance(box, target) < mingap ? OVERLAP_PENALTY : 0.0
 
 slide_inside(box::Rect2, ::Nothing) = box
 function slide_inside(box::Rect2, viewport::Rect2)
@@ -663,10 +666,18 @@ function candidate_at_offset(algorithm::CandidatePlacement, text_bb, target, off
     return LabelCandidate(offset, box, target, leader_start_point(box, target), 0.0)
 end
 
-function halfextent_along(rect::Rect2, direction::VecTypes{2})
+# distance along `direction` at which a box centered there keeps `gap` between its
+# nearest edge or corner and the origin
+function ring_distance(rect::Rect2, direction::VecTypes{2}, gap)
     w, h = 0.5 .* widths(rect)
     dx, dy = abs.(direction)
-    return min(dx == 0 ? Inf : w / dx, dy == 0 ? Inf : h / dy)
+    if dx > 0 && (w + gap) / dx * dy <= h
+        return (w + gap) / dx
+    elseif dy > 0 && (h + gap) / dy * dx <= w
+        return (h + gap) / dy
+    end
+    s = w * dx + h * dy
+    return s + sqrt(s^2 - (w^2 + h^2 - gap^2))
 end
 
 nearest_point(rect::Rect2, p::Point2) = Point2d(clamp.(p, minimum(rect), maximum(rect)))
@@ -683,7 +694,7 @@ end
 
 function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, gap, obstacles, viewport)
     r = algorithm.pointradius
-    penalty = rect_point_distance(box, target) < minimum(algorithm.gaps) ? OVERLAP_PENALTY : 0.0
+    penalty = 0.0
     leader_clearance = r + minimum(algorithm.padding)
     ambiguous = false
     for t in obstacles
