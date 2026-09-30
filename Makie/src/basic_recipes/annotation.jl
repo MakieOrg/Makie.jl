@@ -442,7 +442,6 @@ const ANNEAL_MIN_TEMPERATURE = 20.0
 const WARM_START_HYSTERESIS = 10.0
 const WARM_START_ZOOM = 1.4
 const WARM_START_PAN = 0.5
-const LEADER_INSET = 10.0
 
 is_feasible(c) = c.cost < OVERLAP_PENALTY
 
@@ -656,17 +655,14 @@ end
 
 nearest_point(rect::Rect2, p::Point2) = Point2d(clamp.(p, minimum(rect), maximum(rect)))
 
-# leaders attach perpendicular to the edge the target lies in front of; off a corner they attach
-# to the edge facing the target, at least LEADER_INSET inside from the corner
+# leaders attach to the pill inscribed in the label box, perpendicular on its straight sides and
+# turning toward the target around its rounded ends
 function leader_start_point(box::Rect2, target::Point2)
-    lo, hi = minimum(box), maximum(box)
-    nearest = nearest_point(box, target)
-    at_corner = all((nearest .== lo) .| (nearest .== hi))
-    at_corner || return nearest
-    inset = min.(LEADER_INSET, 0.5 .* widths(box))
-    inward = Point2d(clamp.(target, lo .+ inset, hi .- inset))
-    beside = abs(target[1] - nearest[1]) > abs(target[2] - nearest[2])
-    return beside ? Point2d(nearest[1], inward[2]) : Point2d(inward[1], nearest[2])
+    radius = 0.5 * minimum(widths(box))
+    core = Point2d(clamp.(target, minimum(box) .+ radius, maximum(box) .- radius))
+    v = target - core
+    distance = norm(v)
+    return distance == 0 ? core : core + radius * v / distance
 end
 
 function static_penalty(algorithm::CandidatePlacement, box, leader_start, target, gap, obstacles, viewport)
