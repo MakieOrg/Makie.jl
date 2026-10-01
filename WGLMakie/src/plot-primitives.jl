@@ -577,7 +577,8 @@ function mesh_program(attr)
     buffers[:positions_transformed_f32c] = positions
     buffers[:faces] = faces
 
-    return create_shader(buffers, uniforms, lasset("mesh.vert"), lasset("mesh.frag"))
+    frag = deindexed ? "#define MESH_STROKE\n" * lasset("mesh.frag") : lasset("mesh.frag")
+    return create_shader(buffers, uniforms, lasset("mesh.vert"), frag)
 end
 
 function register_wgl_mesh_expansion!(attr)
