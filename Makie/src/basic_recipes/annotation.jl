@@ -397,8 +397,8 @@ set of candidate positions around its target point. Candidates lie on rings with
 `nangles` evenly spaced angles per ring. A candidate's cost penalizes, from most to least severe,
 overlap with other labels or the axis boundary and covering data points (which are treated as
 circles of `pointradius` pixels), leader lines crossing each other or running over other labels
-or points, positions without a leader that are close enough to other points to be read as their
-label as well (unless the own point lies in between), and finally the gap to the target.
+or points, positions without a leader that have other points within reach of the label (unless
+the own point lies in between), and finally the gap to the target.
 `centroidweight` scales an additional cost per pixel of distance between the label center and
 the point, which keeps labels compact around their points, and `leaderpenalty` pixels of gap are
 added for visible leaders that deviate from the eight main directions.
@@ -431,7 +431,6 @@ const OVERLAP_PENALTY = 1000.0
 const CROSSING_PENALTY = 300.0
 const LEADER_POINT_PENALTY = 100.0
 const AMBIGUITY_PENALTY = 100.0
-const AMBIGUITY_DISTANCE_RATIO = 2.0
 const AMBIGUITY_SHIELD_WIDTH = 8.0
 const ANNEAL_MOVES_PER_LABEL = 100
 const ANNEAL_MAX_MOVES_PER_STAGE = 3000
@@ -714,11 +713,11 @@ viewport_penalty(box, viewport::Rect2) = overlap_penalty(prod(widths(box)) - ove
 
 overlap_penalty(area) = area > 0 ? OVERLAP_PENALTY * (1 + area / 100) : 0.0
 
-# a label without a leader could be read as belonging to any other point that is close enough
-# to the box to be labeled without a leader as well, the more so the closer that point is to the
-# pill inscribed in the label compared to the own point, unless the own point lies between them
+# a label without a leader could be read as belonging to any other point within reach of the
+# pill inscribed in the label, the more so the closer it is, unless the own point lies between them
 function ambiguity_penalty(box, point, target, claim_distance)
-    rect_point_distance(box, point) < claim_distance || return 0.0
+    distance = pill_distance(box, point)
+    distance < claim_distance || return 0.0
     start = leader_start_point(box, target)
     own = target - start
     other = point - start
@@ -726,9 +725,7 @@ function ambiguity_penalty(box, point, target, claim_distance)
     along = dot(other, own) / own_distance
     lateral = abs(own[1] * other[2] - own[2] * other[1]) / own_distance
     shielded = along > own_distance && lateral < AMBIGUITY_SHIELD_WIDTH
-    shielded && return 0.0
-    ratio = pill_distance(box, point) / own_distance
-    return AMBIGUITY_PENALTY * clamp((AMBIGUITY_DISTANCE_RATIO - ratio) / (AMBIGUITY_DISTANCE_RATIO - 1), 0, 1)
+    return shielded ? 0.0 : AMBIGUITY_PENALTY * (1 - distance / claim_distance)
 end
 
 pill_distance(box::Rect2, p::Point2) = norm(p - leader_start_point(box, p))
