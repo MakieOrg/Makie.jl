@@ -180,6 +180,14 @@ end
         @test offsets_again == offsets
     end
 
+    @testset "direction preference breaks ties" begin
+        targets = [Point2f(100, 100)]
+        text_bbs = [Rect2d(-30, -8, 60, 16) + targets[1]]
+        offsets = zeros(Vec2f, 1)
+        Makie.place_labels!(Makie.CandidatePlacement(), offsets, targets, text_bbs, Rect2d(0, 0, 500, 400), fill(Vec2d(NaN), 1); maxiter = Makie.automatic, shrink = (5.0, 7.0))
+        @test offsets[1] == Vec2f(0, 16)
+    end
+
     @testset "labels of points outside the viewport stay with their points" begin
         targets = [Point2f(-300, 100), Point2f(-300, 110), Point2f(-300, 120)]
         text_bbs = [Rect2d(-30, -8, 60, 16) + t for t in targets]

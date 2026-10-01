@@ -393,7 +393,7 @@ is_fixed(offset::Vec2) = !any(isnan, offset)
 pad_rect(rect::Rect2, padding) = Rect2d(rect.origin .- padding, rect.widths .+ 2 * padding)
 
 """
-    CandidatePlacement(; gaps, nangles, padding, pointradius, centroidweight, leaderpenalty, restarts, seed)
+    CandidatePlacement(; gaps, nangles, padding, pointradius, centroidweight, leaderpenalty, directionpreference, restarts, seed)
 
 The default label placement algorithm of `annotation`. Each label is placed on one of a finite
 set of candidate positions around its target point. Candidates lie on rings with the given `gaps`
@@ -405,7 +405,9 @@ or points, positions without a leader that have other points within reach of the
 the own point lies in between), and finally the gap to the target.
 `centroidweight` scales an additional cost per pixel of distance between the label center and
 the point, which keeps labels compact around their points, and `leaderpenalty` pixels of gap are
-added for visible leaders that deviate from the eight main directions.
+added for visible leaders that deviate from the eight main directions. `directionpreference`
+pixels of gap separate positions below from above and left from right, so that otherwise
+equivalent positions do not flip on small changes of the view.
 
 Labels with an empty bounding box, for example from empty strings, stay at their target and
 only act as obstacles, which allows labelling a subset of points while avoiding all of them.
@@ -426,6 +428,7 @@ Base.@kwdef struct CandidatePlacement
     pointradius::Float64 = 5.0
     centroidweight::Float64 = 0.15
     leaderpenalty::Float64 = 4.0
+    directionpreference::Float64 = 0.5
     restarts::Int = 3
     seed::UInt64 = 0
 end
@@ -494,6 +497,13 @@ function place_labels!(
     end
     problem = PlacementProblem(targets, candidates, neighbors, algorithm.padding)
 
+    layout = solve_placement(algorithm, problem, candidates, maxiter)
+
+    offsets .= (c -> c.offset).(layout)
+    return
+end
+
+function solve_placement(algorithm::CandidatePlacement, problem::PlacementProblem, candidates, maxiter)
     layout = first.(candidates)
     rng = LabelPlacementRNG(algorithm.seed)
     trials = map(1:algorithm.restarts) do _
@@ -502,14 +512,8 @@ function place_labels!(
         descend_placement!(trial, problem, maxiter)
         return trial
     end
-    if isempty(trials)
-        descend_placement!(layout, problem, maxiter)
-    else
-        layout = argmin(trial -> total_energy(trial, problem), trials)
-    end
-
-    offsets .= (c -> c.offset).(layout)
-    return
+    isempty(trials) && return descend_placement!(layout, problem, maxiter)
+    return argmin(trial -> total_energy(trial, problem), trials)
 end
 
 function total_energy(layout, problem::PlacementProblem)
@@ -553,7 +557,7 @@ function descend_placement!(layout, problem::PlacementProblem, maxiter)
         end
         moved || break
     end
-    return
+    return layout
 end
 
 # Own generator so that layouts are reproducible across Julia versions, which the generators in
@@ -636,6 +640,7 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, nei
         stranded = !leader_visible && text_distance >= leaderless_distance(shrink)
         claim_distance = leader_visible ? 0.0 : leaderthreshold
         cost = gap + algorithm.centroidweight * norm(center(box) - target) +
+            algorithm.directionpreference * (0.5 * (1 - sin(angle)) + 0.25 * (1 - cos(angle))) +
             (leader_visible ? algorithm.leaderpenalty * sin(4 * leader_angle(leader_start, target))^2 : 0.0) +
             (stranded ? STRANDED_PENALTY : 0.0) +
             slide_penalty(box, unslid, target, minimum(algorithm.gaps)) +
