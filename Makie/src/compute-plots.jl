@@ -222,27 +222,34 @@ function register_colormapping_without_color!(attr::ComputeGraph)
     return
 end
 
-function process_color_value(dim_convert, scale, value, auto)
-    if value === automatic
-        return auto
-    elseif value isa Real
-        return apply_scale(scale, value)
-    else
-        return apply_scale(scale, convert_dim_value(dim_convert, value))
-    end
-end
+"""
+    register_dim_converted_color!(plot; kwargs...)
 
-sort_colorrange(r::VT) where {VT <: VecTypes{2, <:Real}} = VT(minimum(r), maximum(r))
-sort_colorrange(r::Tuple{<:Real, <:Real}) = (minimum(r), maximum(r))
-sort_colorrange(r) = r
+Initializes color dim converts if the current color values are dim convertible,
+i.e. if `dim_conversion_from_args` returns a dim convert, and adds a computation
+to convert convert colors. If they are not dim convertible, an
+`ComputePipeline.alias!` mapping is added instead.
 
-function register_colormapping!(attr::ComputeGraph, colorname = :color)
-    register_colormapping_without_color!(attr)
+## Keyword Arguments
 
+- `colorname = :color` defines the color input node (before dim converts)
+- `outputname = :dc_color` defines the color output node (after color dim converts)
+- `cdc_color = :color_dim_convert` defines the name of the color dim convert node
+- `force = false` forces dim converts to apply to colors if set to `true`. This
+    is only relevant when color dim converts are passed to the plot (i.e.
+    synchronized with another) and causes an error when this plot does not have
+    compatible color data.
+"""
+register_dim_converted_color!(plot::Plot; kwargs...) = register_dim_converted_color!(plot.attributes; kwargs...)
+function register_dim_converted_color!(
+        attr::ComputeGraph;
+        colorname = :color, outputname = :dc_color, cdc_name = :color_dim_convert,
+        force = false
+    )
     color = attr[colorname][]
-    if !isa(dim_conversion_from_args(color), Union{Nothing, NoDimConversion})
+    if force || !isa(dim_conversion_from_args(color), Union{Nothing, NoDimConversion})
         plot_id = objectid(attr)
-        cdc = attr.color_dim_convert[]::ColorDimConvert
+        cdc = attr[cdc_name][]::ColorDimConvert
         init_dim_conversion!(cdc, color)
         register_cdc_synchronization!(attr, cdc, colorname)
 
@@ -250,9 +257,12 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
             return to_color(convert_dim_value(dc, plot_id, color))
         end
     else
-        ComputePipeline.alias!(attr, colorname, :dc_color)
+        ComputePipeline.alias!(attr, colorname, outputname)
     end
+    return
+end
 
+function register_scaled_color!(attr::ComputeGraph)
     map!(
         attr,
         [:dc_color, :colorscale, :alpha],
@@ -275,11 +285,34 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         end
         return color, val, color isa AbstractPattern, nothing
     end
+    return
+end
+
+function process_color_value(dim_convert, scale, value, auto)
+    if value === automatic
+        return auto
+    elseif value isa Real
+        return apply_scale(scale, value)
+    else
+        return apply_scale(scale, convert_dim_value(dim_convert, value))
+    end
+end
+
+function register_colorrange!(
+        attr;
+        colorrange = :colorrange, colorscale = :colorscale,
+        auto_colorrange = :auto_colorrange, output = :scaled_colorrange,
+        resolved_color_dim_convert = :dim_convert_4,
+    )
+    # This may not exist if this function is called outside of `register_colormapping`
+    if !haskey(attr, resolved_color_dim_convert)
+        add_constant!(attr, resolved_color_dim_convert, NoDimConversion())
+    end
 
     map!(
         attr,
-        [:dim_convert_4, :colorrange, :colorscale, :auto_colorrange],
-        :scaled_colorrange
+        [resolved_color_dim_convert, colorrange, colorscale, auto_colorrange],
+        output
     ) do dc, colorrange, colorscale, _autorange
         # colors are actual colors, so no colormapping
         isnothing(_autorange) && return nothing
@@ -288,18 +321,32 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         if colorrange === automatic
             return Vec2f(autorange)
         else
-            mini, maxi = sort_colorrange(colorrange) # could be (automatic, value)
-            low = process_color_value(dc, colorscale, mini, first(autorange))
-            high = process_color_value(dc, colorscale, maxi, last(autorange))
-            if low < high
-                return Vec2f(low, high)
-            else
+            if colorrange[1] isa Real && colorrange[2] isa Real && colorrange[1] > colorrange[2]
+                error("colorrange = $colorrange must be sorted.")
+            end
+            # Checking that (automatic, value) or (value, automatic) is sorted
+            # is rather annoying since we need a pre-colorscale auto_colorrange
+            # for it. (Especially for reusing this function in recipes.)
+            low = process_color_value(dc, colorscale, first(colorrange), first(autorange))
+            high = process_color_value(dc, colorscale, last(colorrange), last(autorange))
+            if low ≈ high
                 delta = max(0.5f0, abs(Float32(low)))
                 return Vec2f(low - delta, high + delta)
+            else
+                # The colorscale could swap the meaning of low and high, e.g. -x, 1/x
+                return Vec2f(min(low, high), max(low, high))
             end
         end
     end
 
+    return
+end
+
+function register_colormapping!(attr::ComputeGraph, colorname = :color)
+    register_colormapping_without_color!(attr)
+    register_dim_converted_color!(attr; colorname)
+    register_scaled_color!(attr)
+    register_colorrange!(attr)
     return
 end
 

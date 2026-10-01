@@ -94,13 +94,13 @@ Makie.extract_colormap(plot::MyPlot) = Makie.extract_colormap(plot.plots[2])
 
 The latter case may require modifying/replacing some attributes extracted from a child plot or directly creating a `Dict{Symbol, Any}` containing the colormapping attributes relevant to a plot.
 
-For example `MyPlot` may resolve color values (i.e. Real values) to colors (e.g. RGBA) within the recipe.
+For example `MyPlot` may resolve color values (i.e. Real values) to colors (e.g. RGBAf) within the recipe.
 Those colors are then passed on to one or more child plots without the already used colormapping attributes.
 In this case the attributes need to be extracted for `MyPlot`:
 
 ```julia
 function Makie.extract_colormap(plot::MyPlot)
-    # This should include color, colormap, colorrange, colorscale, lowclip and highclip
+    # This should include color, colormap, colorrange, colorscale, lowclip, highclip and nan_color
     return Dict{Symbol, Any}(
         :color => plot.values,
         :colormap => plot.colormap,
@@ -114,11 +114,14 @@ function Makie.extract_colormap(plot::MyPlot)
         # For some plots it may make sense to set them to `automatic` explicitly
         :lowclip => plot.lowclip,
         :highclip => plot.highclip,
+        :nan_color => plot.nan_color,
+        # Optional, if used/processed by the plot
+        :color_dim_convert = plot.color_dim_convert
     )
 end
 ```
 
-Attributes with the correct name (same as the key) can also be extracted automatically with `Makie.add_default_colorbar_attributes(attr, plot)`, or by implementing `Makie._extratc_colormap` instead:
+Attributes with the correct name (same as the key) can also be extracted automatically with `Makie.add_default_colorbar_attributes(attr, plot)`, or by implementing `Makie._extract_colormap` instead:
 
 ```julia
 # This keeps the default `extract_colormap` method which adds undefined entries
@@ -154,6 +157,17 @@ end
 !!! note
     Prior to Makie 0.25 `extract_colormap` was expected to return a `Makie.ColorMapping`.
     This still works but is now deprecated.
+
+!!! note
+    The `color` given in `extract_colormap` (or similar methods) is expected to be pre-colorscale and pre-dim-convert.
+    Alternatively `dim_converted` can be returned for pre-colorscale, post-dim-converts color values.
+
+!!! note
+    A categorical `PlotUtils.cgrad` includes values which define the edges of categories.
+    These should never be transformed when passed as a `colormap` in `extract_colormap`.
+    Plots use these values to generate their internal colormap, which is then sampled by color values after dim converts and colorscaling.
+    This makes these values post-dim-convert and post-colorscale.
+    Colorbar mimmics this behavior
 
 ## Attributes
 

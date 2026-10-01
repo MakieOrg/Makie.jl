@@ -23,10 +23,14 @@
   - Added support for x/y/zlabel suffixes based on dim converts via Axis/Axis3 attributes.
   - Adjusted conversion logic to avoid applying dim converts when `space != :data`, and allow early `convert_arguments()` application when dim converts are forced. (I.e. when the parent scene/Axis/etc. has set dim converts.)
   - Added `force_dimconverts` as a generic plot keyword argument. This can be set to `false` to allow a numeric plot to plot in a scene with fixed dim converts. (E.g. for axis decorations.)
-- Added dim converts for colors and color-like arguments. The latter can be adressed as dim 4 in `argument_dims`. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
+- Added dim converts for colors and color-like arguments. The latter can be addressed as dim 4 in `argument_dims`. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
 - Added `dim_conversion` attribute and processing to `Colorbar`, including extraction of color dim converts from plots [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
 - **mildly breaking** Reworked `Colorbar` to use the ComputeGraph infrastructure and reworked the `extract_colormap` interface. Deprecated `limits` in favor of `colorrange`. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
-- Fixed Colorbar `tickformat` and `ticks` not working with categorical colors, NaN/Inf producing `(color)scale` + color combinations breaking the Colorbar and added safeguards against unsorted `colorrange`s. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
+- Fixed Colorbar `tickformat` and `ticks` not working with categorical colors. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
+- Fixed Colorbar errors/hangs when scaled colors produce Inf or Nan or the colorrange isn't ordered. [#5673](https://github.com/MakieOrg/Makie.jl/pull/5673)
+- Added Colorbar compatibility with functions like `inv` that reverse the order of their inputs. [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
+- Adjusted scaled categorical colors in Colorbar to be sized based on their values rather than 1:N. This makes the sizes representative of the colorscale within the given colorrange rather than at a fixed interval. Also fixed color accuracy of scaled categorical values. [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
+- Adjusted banded colors (`PlotUtils.cgrad`) in Colorbar to be shown without further processing. They now show all bands with their true borders. This also fixes incorrect colors being picked when a colorscale is used. [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
 - Reworked `barplot` to allow infinitely long bars in `Axis`, e.g. for log transforms [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
 - Updated `Legend` to toggle visibility in the root plot associated with a legend entry instead of its child plots. This fixes issues with some recipes erroring when toggling visibility and avoids showing child plots which are hidden by the recipe. [#5209](https://github.com/MakieOrg/Makie.jl/pull/5209)
   - **breaking** Custom implementations of `legendelements(::Plot, legend)` should no longer set `plots` in the `LegendElement`s they create. Custom `LegendElement` structs no longer need to contain `plots`.

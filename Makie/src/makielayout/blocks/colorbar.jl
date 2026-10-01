@@ -124,25 +124,19 @@ function _extract_colormap(plot::Union{Contourf, Tricontourf})
     end
     map!(apply_scale, plot, [:inverse_colorscale, :computed_levels], :cb_levels)
     map!(apply_scale, plot, [:inverse_colorscale, :computed_colorrange], :cb_limits)
-    map!(plot, [:inverse_colorscale, :computed_colormap, :computed_colorrange], :cb_colormap) do iscale, cm, cr
-        vals = minimum(cr) .+ (maximum(cr) - minimum(cr)) .* cm.values
-        vals = apply_scale(iscale, vals)
-        vals .= (vals .- minimum(vals)) ./ (maximum(vals) - minimum(vals))
-        return PlotUtils.CategoricalColorGradient(cm.colors, vals)
-    end
     map!(c -> alpha(c) == 0 ? automatic : c, plot, :computed_lowcolor, :cb_lowclip)
     map!(c -> alpha(c) == 0 ? automatic : c, plot, :computed_highcolor, :cb_highclip)
 
     return Dict{Symbol, Any}(
-        :color => plot.cb_levels,
-        :colormap => plot.cb_colormap,
+        :dim_converted => plot.cb_levels,
+        :colormap => plot.computed_colormap,
         :colorrange => plot.cb_limits,
         :lowclip => plot.cb_lowclip,
         :highclip => plot.cb_highclip,
     )
 end
 
-function extract_colormap(plot::Tricontour)
+function _extract_colormap(plot::Tricontour)
     map!(inverse_transform, plot, :colorscale, :inverse_colorscale)
     if isnothing(plot.inverse_colorscale[])
         @warn "Colorbar for $(plotsym(typeof(plot))) with `colorscale = $(plot.colorscale[])` can not compute pre-colorscale color values because `Makie.inverse_transform($(plot.colorscale[]))` is missing. Showing transformed values in ticks instead."
@@ -150,18 +144,14 @@ function extract_colormap(plot::Tricontour)
     map!(apply_scale, plot, [:inverse_colorscale, :computed_levels], :cb_levels)
     map!(apply_scale, plot, [:inverse_colorscale, :computed_colorrange], :cb_colorrange)
     return Dict{Symbol, Any}(
-        :color => plot.cb_levels,
-        :colormap => plot.colormap,
+        :dim_converted => plot.cb_levels,
         :colorrange => plot.cb_colorrange,
-        :colorscale => plot.colorscale,
-        :lowclip => plot.lowclip,
-        :highclip => plot.highclip,
     )
 end
 
 # TODO: plot missing lowclip, highclip handling?
 function _extract_colormap(plot::Union{Contour, Contour3d})
-    return Dict{Symbol, Any}(:color => plot.zlevels, :colorrange => plot.computed_colorrange)
+    return Dict{Symbol, Any}(:dim_converted => plot.zlevels, :colorrange => plot.computed_colorrange)
 end
 
 function _extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
@@ -298,7 +288,11 @@ function initialize_block!(cb::Colorbar; kwargs...)
     cdc = cb.dim_conversion[]
     map!(cdc -> cdc.dim_convert, cb, :dim_conversion, :dim_convert_4)
 
-    if hasinput(cb.attributes, :dim_conversion) # not managed externally
+    if hasinput(cb.attributes, :dim_conversion)
+        # If :dim_conversion is a node rather than a ComputePipeline.Input it is
+        # passed along from another source (typically a plot) that (most likely)
+        # initialized the conversion.
+        # If it is an Input the setup still needs to happen:
         init_dim_conversion!(cb.dim_conversion[], cb.values[])
         register_cdc_synchronization!(cb.attributes, cdc, cb.values)
     else
@@ -306,9 +300,12 @@ function initialize_block!(cb::Colorbar; kwargs...)
     end
 
     if haskey(kwargs, :dim_converted)
+        # If extract_colormap() extracted :dim_converted we use that directly
+        # rather than applying dim converts here
         map!(to_color, cb, kwargs[:dim_converted], :dc_values)
         on(x -> @error("Colorbar values are controlled by a plot via :dc_values"), cb.values)
     else
+        # Otherwise we apply dim converts (if they do something)
         if cdc.dim_convert isa Union{Nothing, NoDimConversion}
             ComputePipeline.map!(to_color, cb, :values, :dc_values)
         else
@@ -342,10 +339,10 @@ function initialize_block!(cb::Colorbar; kwargs...)
             return (Vec2d(autorange),)
         else
             # colorscale is processed later
-            mini, maxi = sort_colorrange(colorrange) # could be (automatic, value)
-            low = process_color_value(dc, identity, mini, first(autorange))
-            high = process_color_value(dc, identity, maxi, last(autorange))
-            return (Vec2d(low, high),)
+            low = process_color_value(dc, identity, first(colorrange), first(autorange))
+            high = process_color_value(dc, identity, last(colorrange), last(autorange))
+            low > high && @error("Colorbar failed to generated ordered colorrange. Generated ($low, $high) from $colorrange.")
+            return (Vec2d(low, max(low, high)),)
         end
     end
 
@@ -353,19 +350,26 @@ function initialize_block!(cb::Colorbar; kwargs...)
         return (cmt === Makie.continuous) && isa(dc, CategoricalConversion) ? Makie.categorical : cmt
     end
 
+    map!(cb, [:scale, :resolved_colorrange], [:scaled_colorrange, :is_inverted]) do scale, colorrange
+        scaled = apply_scale(scale, colorrange)
+        return scaled, scaled[1] > scaled[2]
+    end
+
     map!(
         cb,
-        [:color_mapping, :merged_color_mapping_type, :dim_convert_4, :dc_values, :nsteps, :resolved_colorrange],
+        [:color_mapping, :merged_color_mapping_type, :dim_convert_4, :dc_values, :resolved_colorrange],
         :cb_colors
-    ) do mapping, mapping_type, dc, values, n, limits
+    ) do mapping, mapping_type, dc, values, limits
         if mapping_type === Makie.continuous
-            return convert(Vector{Float64}, LinRange(limits..., n))
+            # output not used
+            # return convert(Vector{Float64}, LinRange(limits..., n)) # previously used Colorbar.nsteps
         elseif mapping_type === Makie.banded
             if isnothing(mapping)
                 error("Banded without a mapping is invalid. Please use colormap=cgrad(...; categorical=true)")
             else # PlotUtils.ColorGradient
-                # Mapping is always 0..1, but color should be scaled
-                return limits[1] .+ (mapping .* (limits[2] - limits[1]))
+                # output not used
+                # low, high = scaled_limits
+                # return limits[1] .+ mapping .* (high - low)
             end
         elseif mapping_type === Makie.categorical
             if isnothing(mapping)
@@ -383,6 +387,8 @@ function initialize_block!(cb::Colorbar; kwargs...)
             # unreachable
             error("Unknown mapping type $mapping_type")
         end
+        # just for heatmap init
+        return Float64[]
     end
 
     map!(x -> x !== automatic, cb, :lowclip, :lowclip_tri_visible)
@@ -402,65 +408,111 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
-    map!(
-        cb,
-        [:barbox, :vertical, :cb_colors, :scale, :merged_color_mapping_type],
-        [:xrange, :yrange]
-    ) do bb, vertical, colors, scale, mapping_type
+    #=
+    # Colormap visualization:
+
+    Notes on plots:
+    Regardless what color mapping type we have, plots always just sample the
+    final colormap (cb.alpha_colormap) with scaled color values where the
+    scaled colorrange defines the endpoints of sampling.
+
+    Notes on the generated colormap:
+    - continuous unfiormly samples the colormap, regardless of colorscale
+    - categorical generates the same alpha_colormap as continuous
+    - banded generates a banded colormap, i.e. specific colors repeat according
+        to the edges defined in cgrad.mapping
+
+    Ticks:
+    Tick labels show pre-colorscale values but are aligned to post-colorscale
+    coordinates.
+
+    Continuous Colorbar visualization:
+    Shows the colormap as is. Since ticks are placed based on post-colorscale
+    positions, they will correctly point to where the color value would sample
+    the colormap.
+
+    Categorical Colorbar visualization:
+    `Categorical` is really just a way to tell the Colorbar how to visualize the
+    colormap. It should show one cell per color value, filled with the color
+    the colormap returns for that sample. For this we generate edge based cell
+    limits (x/yrange) and the corresponding scaled values (heatmap_cells) to
+    sample the colormap.
+
+    Banded Colorbar visualization:
+    Banded is also a categorical-like colormap, so we also want to visualize
+    cells. However the categories are directly encoded into the colormap, so we
+    don't need to generate them here. Instead we can just treat the colormap
+    like a continuous one.
+    =#
+
+    map!(cb, [:barbox, :vertical, :scale, :cb_colors], [:xrange, :yrange]) do bb, vertical, scale, colors
         xmin, ymin = minimum(bb)
         xmax, ymax = maximum(bb)
-        if mapping_type == Makie.categorical
-            colors = edges(1:length(colors))
+        if isempty(colors)
+            return [xmin, xmax], [ymin, ymax]
         end
-        s_scaled = scale.(colors)
-        mini, maxi = extrema(s_scaled)
-        s_scaled = mini < maxi ? (s_scaled .- mini) ./ (maxi - mini) : fill(0.5f0, length(s_scaled))
+
+        # colors are sorted. We want to preserve that order even if scale inverts
+        # it. So use first and last values to get the post-transform values of
+        # the pre-transform extrema.
+        scaled = scale.(edges(colors))
+        mini = first(scaled)
+        maxi = last(scaled)
+        scaled = mini ≈ maxi ? fill(0.5f0, length(scaled)) : (scaled .- mini) ./ (maxi - mini)
+
         if vertical
             xrange = collect(LinRange(xmin, xmax, 2))
-            yrange = s_scaled .* (ymax - ymin) .+ ymin
+            yrange = scaled .* (ymax - ymin) .+ ymin
         else
-            xrange = s_scaled .* (xmax - xmin) .+ xmin
+            xrange = scaled .* (xmax - xmin) .+ xmin
             yrange = collect(LinRange(ymin, ymax, 2))
         end
         return xrange, yrange
     end
 
-    # for continuous colormaps we sample a 1d image
-    # to avoid white lines when rendering vector graphics
-    map!(
-        cb, [:vertical, :cb_colors, :merged_color_mapping_type], :continuous_pixels
-    ) do vertical, colors, mapping_type
-        if mapping_type !== Makie.categorical
-            colors = (colors[1:(end - 1)] .+ colors[2:end]) ./ 2
-        end
+    map!(cb, [:vertical, :cb_colors], :heatmap_cells) do vertical, colors
+        isempty(colors) && return fill(0.5f0, 1, 1)
         n = length(colors)
         return vertical ? reshape((colors), 1, n) : reshape((colors), n, 1)
     end
 
-    # TODO, implement interpolate = true for irregular grids in CairoMakie
-    # Then, we can just use heatmap! and don't need the image plot!
-    map!(cb, :merged_color_mapping_type, [:show_catigorical, :show_continuous]) do type
-        return (type !== continuous, type === continuous)
+    map!(cb, :merged_color_mapping_type, [:show_heatmap, :show_image]) do type
+        return (type === categorical, type !== categorical)
     end
 
     heatmap!(
         blockscene,
-        cb.xrange, cb.yrange, cb.continuous_pixels;
+        cb.xrange, cb.yrange, cb.heatmap_cells;
         colormap = cb.alpha_colormap,
         colorrange = cb.resolved_colorrange,
-        visible = cb.show_catigorical,
-        inspectable = false
+        colorscale = cb.scale,
+        visible = cb.show_heatmap,
+        inspectable = false,
     )
 
-    map!(extrema, cb, :xrange, :xlims)
-    map!(extrema, cb, :yrange, :ylims)
+    map!(cb, :barbox, [:xlims, :ylims]) do bb
+        xmin, ymin = minimum(bb)
+        xmax, ymax = maximum(bb)
+        return (xmin, xmax), (ymin, ymax)
+    end
+
+    # Image considers values/colors to represent the center of a cell/pixel.
+    # Colormap sampling considers the first/last color as edge colors.
+    # At low colormap resolutions (e.g. `[:black, :white]`) this results in
+    # noticeable differences, so we resample to a "high enough" resolution.
+    # TODO: Try using edge based interpolation, e.g. mesh/poly?
+    map!(
+        cb, [:alpha_colormap, :nsteps, :vertical, :is_inverted], :image_pixels
+    ) do colors, N, vertical, rev
+        colors = rev ? reverse(colors) : colors
+        colors = resample_cmap(colors, N)
+        return vertical ? reshape(colors, 1, N) : reshape(colors, N, 1)
+    end
 
     image!(
         blockscene,
-        cb.xlims, cb.ylims, cb.continuous_pixels;
-        colormap = cb.alpha_colormap,
-        colorrange = cb.resolved_colorrange,
-        visible = cb.show_continuous,
+        cb.xlims, cb.ylims, cb.image_pixels;
+        visible = cb.show_image,
         inspectable = false
     )
 
@@ -553,8 +605,9 @@ function initialize_block!(cb::Colorbar; kwargs...)
             if ticks !== automatic
                 return ticks, formatter
             else
+                # TODO: consider just letting automatic pass?
                 labels = get_ticklabels(formatter, cs)
-                return (eachindex(cs), labels), automatic
+                return (cs, labels), automatic
             end
         else
             return ticks, formatter
@@ -563,12 +616,19 @@ function initialize_block!(cb::Colorbar; kwargs...)
     ComputePipeline.set_type!(cb.finalticks, Any)
 
     map!(cb, [:cb_colors, :merged_color_mapping_type, :resolved_colorrange], :ticklimits) do cs, type, limits
-        return type === Makie.categorical ? (0.5, length(cs) + 0.5) : limits
+        if type === Makie.categorical
+            # padding for the center -> edge transformation of cb_colors
+            low, high = limits
+            cellsize = (high - low) / (length(cs) - 1)
+            return (low - 0.5cellsize, high + 0.5cellsize)
+        else
+            return limits
+        end
     end
 
     axis = LineAxis(
         blockscene, ComputePipeline.ComputeGraphView(cb.attributes, :axis),
-        endpoints = cb.axispoints, flipped = cb.flipaxis,
+        endpoints = cb.axispoints, flipped = cb.flipaxis, reversed = cb.is_inverted,
         limits = cb.ticklimits, ticklabelalign = cb.ticklabelalign, label = cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
