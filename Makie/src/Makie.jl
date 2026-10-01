@@ -431,7 +431,7 @@ export set_shading_algorithm!, set_directional_light!
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 export FastPixel
 export update!
-export Ann, CandidatePlacement
+export Ann
 
 """
     cleanup_globals()

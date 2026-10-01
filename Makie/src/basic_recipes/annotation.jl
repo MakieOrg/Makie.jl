@@ -165,8 +165,7 @@ be very close to their associated data points so connection plots are typically 
     "The default line width for connection styles that have lines"
     linewidth = 1.0
     """
-    The algorithm used to automatically place labels with reduced overlaps. `automatic` uses
-    `CandidatePlacement()`.
+    The algorithm used to automatically place labels with reduced overlaps.
     The positioning of the labels with a given input may change between non-breaking versions.
     """
     algorithm = automatic
