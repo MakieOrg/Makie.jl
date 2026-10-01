@@ -319,6 +319,12 @@ function register_colorrange!(
         if colorrange === automatic
             return Vec2f(autorange)
         else
+            if colorrange[1] isa Real && colorrange[2] isa Real && colorrange[1] > colorrange[2]
+                error("colorrange = $colorrange must be sorted.")
+            end
+            # Checking that (automatic, value) or (value, automatic) is sorted
+            # is rather annoying since we need a pre-colorscale auto_colorrange
+            # for it. (Especially for reusing this function in recipes.)
             low = process_color_value(dc, colorscale, first(colorrange), first(autorange))
             high = process_color_value(dc, colorscale, last(colorrange), last(autorange))
             if low ≈ high
