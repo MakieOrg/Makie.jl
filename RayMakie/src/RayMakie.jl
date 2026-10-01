@@ -99,6 +99,18 @@ include("overlay/Overlay.jl")
 # RayMakieState
 # =============================================================================
 
+"""
+The Makie lights a traced scene was given, and the keys their Hikari lights are
+stored under — one key per Makie light, or two for a `SunSkyLight` (its sky and
+its sun) — so `sync_lights!` can replace them in place when they change.
+"""
+mutable struct TracedLights
+    lights::Vector{Makie.AbstractLight}
+    keys::Vector{Vector{Hikari.SetKey}}
+    ambient::RGBf
+    ambient_key::Union{Nothing, Hikari.SetKey}
+end
+
 mutable struct RayMakieState
     makie_scene::Makie.Scene
     # `nothing` for an overlay-only scene, which has no film at all. It used to
@@ -128,6 +140,9 @@ mutable struct RayMakieState
     # all and the compute node never re-ran.
     refit_eligible_rebuilds::Int
     topology_rebuilds::Int
+    # The scene's lights as last handed to the tracer; `nothing` for an
+    # overlay-only scene. See `sync_lights!`.
+    lights::Union{Nothing, TracedLights}
 end
 
 # Helper to get HWTLAS from state
@@ -359,31 +374,71 @@ include("plots/text_overlay.jl")
 # init_scene! — create Hikari scene from Makie scene, call draw_atomic per plot
 # =============================================================================
 
+trace_lights(l::Tuple) = l
+trace_lights(l::Hikari.Light) = (l,)
+trace_lights(::Nothing) = ()
+
+scene_ambient(rscene) = haskey(rscene.compute, :ambient_color) ? RGBf(rscene.compute[:ambient_color][]) : RGBf(0, 0, 0)
+
 function init_lights!(hikari_scene, rscene)
-    makie_lights = Makie.get_lights(rscene)
-    for light in makie_lights
-        l = to_trace_light(light)
-        if l isa Tuple
-            for li in l
-                push!(hikari_scene.lights, li)
-            end
-        elseif !isnothing(l)
-            push!(hikari_scene.lights, l)
-        end
-    end
+    makie_lights = copy(Makie.get_lights(rscene))
+    keys = [Hikari.SetKey[push!(hikari_scene.lights, l) for l in trace_lights(to_trace_light(light))]
+            for light in makie_lights]
 
     # Add ambient light if present, but skip if we already have SunSkyLight or EnvironmentLight
     has_infinite = any(T -> T <: Hikari.EnvironmentLight, hikari_scene.lights.data_order)
-    if !has_infinite && haskey(rscene.compute, :ambient_color)
-        ambient_color = rscene.compute[:ambient_color][]
-        if ambient_color != RGBf(0, 0, 0)
-            push!(hikari_scene.lights, Hikari.AmbientLight(RGB{Float32}(ambient_color)))
-        end
+    ambient = scene_ambient(rscene)
+    ambient_key = nothing
+    if !has_infinite && ambient != RGBf(0, 0, 0)
+        ambient_key = push!(hikari_scene.lights, Hikari.AmbientLight(RGB{Float32}(ambient)))
     end
 
     # Note: area lights (emissive meshes) are added later during draw_atomic,
     # so the light list may be empty here. That's OK.
+    return TracedLights(makie_lights, keys, ambient, ambient_key)
+end
 
+"""
+    sync_lights!(state)
+
+Hand the tracer the lights the scene has now. A light that moved or dimmed
+(`set_light!`) is replaced in place and the film restarts; the tracer used to
+keep the lights it was built with, so a light following the camera stayed where
+it started and a dimmed sun never dimmed.
+
+The Hikari light set cannot remove an entry, so a scene whose light COUNT or a
+light's KIND changed after its first frame is refused rather than drawn with
+lights it no longer has.
+"""
+function sync_lights!(state::RayMakieState)
+    tl = state.lights
+    current = Makie.get_lights(state.makie_scene)
+    length(current) == length(tl.lights) || error(
+        "RayMakie: this scene had $(length(tl.lights)) lights when it was first traced and has " *
+        "$(length(current)) now. A traced scene can move and change its lights (`set_light!`), " *
+        "not add or remove them.")
+    changed = false
+    for (i, light) in enumerate(current)
+        light === tl.lights[i] && continue
+        new = trace_lights(to_trace_light(light))
+        length(new) == length(tl.keys[i]) || error(
+            "RayMakie: light $i changed from a $(typeof(tl.lights[i])) to a $(typeof(light)) after the scene was first traced.")
+        for (key, l) in zip(tl.keys[i], new)
+            Hikari.update_light!(state.hikari_scene, key, l)
+        end
+        tl.lights[i] = light
+        changed = true
+    end
+    ambient = scene_ambient(state.makie_scene)
+    if ambient != tl.ambient
+        tl.ambient_key === nothing && error(
+            "RayMakie: this scene was first traced without an ambient light, and one cannot be added afterwards.")
+        Hikari.update_light!(state.hikari_scene, tl.ambient_key, Hikari.AmbientLight(RGB{Float32}(ambient)))
+        tl.ambient = ambient
+        changed = true
+    end
+    changed && (state.needs_film_clear = true)
+    return state
 end
 
 """
@@ -468,7 +523,7 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
     )
 
     hikari_scene = Hikari.Scene(backend=ka_backend, hw_accel=screen.config.hw_accel)
-    init_lights!(hikari_scene, rscene)
+    lights = init_lights!(hikari_scene, rscene)
 
     # Onto the backend, in memory the film owns
     film = Hikari.Film(ka_backend, film)
@@ -479,7 +534,7 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
     # Clear film when Makie camera changes (rotation, zoom, pan)
 
     state = RayMakieState(rscene, film, camera, hikari_scene, false,
-                          new_volpath(screen.config), false, false, 0, 0)
+                          new_volpath(screen.config), false, false, 0, 0, lights)
     # Guard: only clear film when the projection matrix actually changes.
     # Makie's Observable fires on every notify(), even when the value is identical.
     # Without this guard, GLMakie re-renders (triggered by overlay image updates)
@@ -499,7 +554,7 @@ end
 # owns, with viewport-remapped projection matrices — so a per-scene film is not
 # "the same buffer" in a second copy, it is a buffer nothing ever reads.
 function create_overlay_only_state(scene::Makie.Scene, screen)
-    state = RayMakieState(scene, nothing, nothing, nothing, false, nothing, true, false, 0, 0)
+    state = RayMakieState(scene, nothing, nothing, nothing, false, nothing, true, false, 0, 0, nothing)
     return state
 end
 

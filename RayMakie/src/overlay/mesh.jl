@@ -154,6 +154,278 @@ end
                                    diffuse, specular, shininess, backlight)
 end
 
+# ─── the tracer's lights ─────────────────────────────────────────────────────
+#
+# A display-encoded film stands in for the traced picture, so its lights mean
+# what they mean to Hikari (pbrt-v4): a directional light of colour `c` is
+# irradiance `c` on a surface facing it, a point or spot light is intensity `c`
+# falling off as `1/r²`, and the plot's `Diffuse` material reflects `albedo/π`
+# of it, with no highlight. GLMakie's Blinn-Phong has none of the `1/π` and adds
+# a highlight, which lit a directional scene 2.5x brighter than its traced self.
+#
+# A light gives its irradiance and the direction it comes from; the material
+# turns that into radiance (`reflect_light`).
+
+"""
+    incoming(kind, lc, params, idx, world_pos) -> (irradiance at normal incidence, direction to the light)
+"""
+@inline function incoming(kind::Int32, lc::Vec3f, params, idx::Int32, world_pos::Vec3f)
+    if kind == LIGHT_POINT
+        @inbounds position = Vec3f(params[idx + 1], params[idx + 2], params[idx + 3])
+        light_vec = position - world_pos
+        return lc * (1f0 / dot(light_vec, light_vec)), _unit(light_vec)
+    elseif kind == LIGHT_DIRECTIONAL
+        @inbounds light_dir = Vec3f(params[idx + 1], params[idx + 2], params[idx + 3])
+        return lc, -light_dir
+    elseif kind == LIGHT_SPOT
+        @inbounds position = Vec3f(params[idx + 1], params[idx + 2], params[idx + 3])
+        @inbounds spot_dir = _unit(Vec3f(params[idx + 4], params[idx + 5], params[idx + 6]))
+        @inbounds inner = params[idx + 7]
+        @inbounds outer = params[idx + 8]
+        light_vec = position - world_pos
+        cone = smoothstep(outer, inner, dot(-_unit(light_vec), spot_dir))
+        return lc * (cone / dot(light_vec, light_vec)), _unit(light_vec)
+    else  # LIGHT_RECT, which the tracer does not convert; lit as its direction
+        @inbounds light_dir = Vec3f(params[idx + 10], params[idx + 11], params[idx + 12])
+        return lc, -light_dir
+    end
+end
+
+@inline schlick(f0::Vec3f, c::Float32) = f0 + (Vec3f(1f0) - f0) * (1f0 - c)^5
+
+"""
+    reflect_light(E, l, n, v, base, conductor) -> radiance
+
+What the surface sends to the eye (`v`, towards it) of irradiance `E` arriving
+from `l`. A `Diffuse` reflects `base/π`. A conductor (`conductor[4]`, its GGX α,
+above zero) reflects by a GGX microfacet lobe with Schlick's Fresnel from its
+normal-incidence reflectance `conductor[1:3]`: the tracer's `Conductor` with
+the exact Fresnel of its η and k replaced by that curve, which follows it to
+within a few percent short of grazing.
+"""
+@inline function reflect_light(E::Vec3f, l::Vec3f, n::Vec3f, v::Vec3f, base::Vec3f, conductor::Vec4f)
+    nl = dot(n, l)
+    nl <= 0f0 && return Vec3f(0f0)
+    conductor[4] <= 0f0 && return E .* base * (nl * Float32(inv(π)))
+    a2 = conductor[4] * conductor[4]
+    h = _unit(v + l)
+    nv = max(dot(n, v), 1f-4)
+    nh = max(dot(n, h), 0f0)
+    t = nh * nh * (a2 - 1f0) + 1f0
+    d = a2 / (Float32(π) * t * t)
+    k = 0.5f0 * conductor[4]
+    g = (nv / (nv * (1f0 - k) + k)) * (nl / (nl * (1f0 - k) + k))
+    f = schlick(Vec3f(conductor[1], conductor[2], conductor[3]), max(dot(v, h), 0f0))
+    return E .* f * (d * g / (4f0 * nv))
+end
+
+"""
+What a surface reflects of light arriving equally from everywhere with radiance
+`L` (the ambient light), and of the environment's irradiance: all of it, times
+`base`, for a `Diffuse`; for a conductor its Fresnel at the viewing angle.
+"""
+@inline ambient_reflectance(n::Vec3f, v::Vec3f, base::Vec3f, conductor::Vec4f) =
+    conductor[4] <= 0f0 ? base : schlick(Vec3f(conductor[1], conductor[2], conductor[3]), max(dot(n, v), 0f0))
+
+light_parameter_count(kind) = kind == LIGHT_POINT ? Int32(5) : kind == LIGHT_DIRECTIONAL ? Int32(3) :
+                              kind == LIGHT_SPOT ? Int32(8) : Int32(12)
+
+# ─── the shadow map ──────────────────────────────────────────────────────────
+#
+# One directional light casts, through a depth map the frame renders from it
+# before anything else (see `shadow_frame` in overlay/shadow.jl). `params` is
+# (resolution, world size of a texel, on, 0); a receiver outside the map, or a
+# frame without one, is lit.
+
+@inline function shadow_depth(shadow_map, res::Int32, x::Int32, y::Int32)
+    x = clamp(x, Int32(0), res - Int32(1))
+    y = clamp(y, Int32(0), res - Int32(1))
+    @inbounds return shadow_map[y * res + x + Int32(1)]
+end
+
+"""
+How much of the shadowed light reaches `world_pos`: 1 lit, 0 in shadow.
+
+The point is pushed off the surface along its normal before it is looked up,
+more at grazing light, so a surface does not shadow itself (acne) without the
+depth bias that detaches shadows from their casters. The comparison is a 4x4
+tap box filter with bilinear weights, so a hard shadow's edge moves smoothly
+instead of in texel steps as the caster animates.
+"""
+@inline function shadow_visibility(shadow_map, light_space::Mat4f, params::Vec4f,
+                                   world_pos::Vec3f, normal::Vec3f, light_dir::Vec3f)
+    params[3] == 0f0 && return 1f0
+    res = unsafe_trunc(Int32, params[1])
+    texel = params[2]
+    cosl = clamp(dot(light_dir, -normal), 0f0, 1f0)
+    p = world_pos + normal * (texel * (0.6f0 + 1.8f0 * (1f0 - cosl)))
+    c = light_space * Vec4f(p[1], p[2], p[3], 1f0)
+    (abs(c[1]) > 1f0 || abs(c[2]) > 1f0) && return 1f0
+    depth = 0.5f0 * (c[3] + 1f0)
+    depth > 1f0 && return 1f0
+    u = (0.5f0 * c[1] + 0.5f0) * params[1] - 0.5f0
+    v = (0.5f0 * c[2] + 0.5f0) * params[1] - 0.5f0
+    x0 = unsafe_trunc(Int32, floor(u))
+    y0 = unsafe_trunc(Int32, floor(v))
+    fx = u - Float32(x0)
+    fy = v - Float32(y0)
+    bias = 2f-4
+    lit = 0f0
+    for j in Int32(-1):Int32(2)
+        wy = j == Int32(-1) ? 1f0 - fy : j == Int32(2) ? fy : 1f0
+        for i in Int32(-1):Int32(2)
+            wx = i == Int32(-1) ? 1f0 - fx : i == Int32(2) ? fx : 1f0
+            d = shadow_depth(shadow_map, res, x0 + i, y0 + j)
+            lit += depth - bias <= d ? wx * wy : 0f0
+        end
+    end
+    return lit * (1f0 / 9f0)
+end
+
+# ─── ambient occlusion ───────────────────────────────────────────────────────
+#
+# The tracer's ambient light is uniform from every direction, so what a point
+# gets of it is the cosine-weighted share of its hemisphere that is open. That
+# is measured here the way the sun's shadow is: depth maps along `count`
+# directions spread over the sphere, all in one atlas, and a point averages
+# which of them see it. Every map covers the sphere `centre`/`radius` around
+# what the camera sees; `ao_matrix` is shared with the host that renders them.
+
+"""The `k`th of `n` directions (0-based) on a Fibonacci sphere, pointing away from the surface."""
+@inline function ao_direction(k::Int32, n::Int32)
+    z = 1f0 - (2f0 * Float32(k) + 1f0) / Float32(n)
+    r = sqrt(max(0f0, 1f0 - z * z))
+    phi = Float32(k) * 2.3999632f0
+    return Vec3f(r * cos(phi), r * sin(phi), z)
+end
+
+"""An orthonormal frame whose third axis is `z`, the same on host and device."""
+@inline function light_basis(z::Vec3f)
+    up = abs(z[3]) < 0.99f0 ? Vec3f(0f0, 0f0, 1f0) : Vec3f(0f0, 1f0, 0f0)
+    x = _unit(cross(up, z))
+    return x, cross(z, x), z
+end
+
+"""
+Orthographic light matrix, GL clip convention: the square of half-width `half`
+around `centre` seen along `-z` and snapped to its texels, depth over
+`±depth_radius` with the side nearest the light at 0.
+"""
+@inline function ortho_light(z::Vec3f, centre::Vec3f, half::Float32, depth_radius::Float32, texel::Float32)
+    x, y, z = light_basis(z)
+    cx = round(dot(x, centre) / texel) * texel
+    cy = round(dot(y, centre) / texel) * texel
+    cz = dot(z, centre)
+    s = 1f0 / half
+    a = -1f0 / depth_radius
+    b = cz / depth_radius
+    return Mat4f(s * x[1], s * y[1], a * z[1], 0f0,
+                 s * x[2], s * y[2], a * z[2], 0f0,
+                 s * x[3], s * y[3], a * z[3], 0f0,
+                 -s * cx, -s * cy, b, 1f0)
+end
+
+"""
+    ao_matrix(k, count, centre, params) -> Mat4f
+
+The `k`th ambient map's light matrix. `centre` is (centre, radius) and `params`
+(depth radius, resolution, count, atlas columns), the two uniforms every mesh
+reads.
+"""
+@inline function ao_matrix(k::Int32, centre::Vec4f, params::Vec4f)
+    n = unsafe_trunc(Int32, params[3])
+    radius = centre[4]
+    return ortho_light(ao_direction(k, n), Vec3f(centre[1], centre[2], centre[3]), radius,
+                       params[1], 2f0 * radius / params[2])
+end
+
+@inline function ao_depth(ao_map, width::Int32, x0::Int32, y0::Int32, res::Int32, x::Int32, y::Int32)
+    x = clamp(x, Int32(0), res - Int32(1)) + x0
+    y = clamp(y, Int32(0), res - Int32(1)) + y0
+    @inbounds return ao_map[y * width + x + Int32(1)]
+end
+
+"""Depth comparison at texel position (`u`, `v`) over 2x2 texels with bilinear weights."""
+@inline function ao_compare(ao_map, width::Int32, x0::Int32, y0::Int32, res::Int32,
+                            u::Float32, v::Float32, depth::Float32)
+    xi = unsafe_trunc(Int32, floor(u))
+    yi = unsafe_trunc(Int32, floor(v))
+    fx = u - Float32(xi)
+    fy = v - Float32(yi)
+    lit = 0f0
+    for j in Int32(0):Int32(1), i in Int32(0):Int32(1)
+        d = ao_depth(ao_map, width, x0, y0, res, xi + i, yi + j)
+        w = (i == Int32(0) ? 1f0 - fx : fx) * (j == Int32(0) ? 1f0 - fy : fy)
+        lit += depth <= d ? w : 0f0
+    end
+    return lit
+end
+
+"""
+How much of one direction's cone of ambient light reaches the point `c` (light
+clip space) of the tile at `x0`,`y0`.
+
+A direction stands for the cone around it, about `spread` wide (tangent of the
+half-angle), so its shadow is soft and grows with the distance to what casts
+it, as the traced ambient's does: the blockers near the point are averaged
+first, and the comparison is spread over the penumbra that distance gives.
+With hard lookups every direction drew its own copy of a caster's outline.
+"""
+@inline function ao_lookup(ao_map, width::Int32, x0::Int32, y0::Int32, res::Int32, c::Vec4f,
+                           texel::Float32, depth_span::Float32, spread::Float32)
+    (abs(c[1]) > 1f0 || abs(c[2]) > 1f0) && return 1f0
+    depth = 0.5f0 * (c[3] + 1f0) - 1f-4
+    depth > 1f0 && return 1f0
+    u = (0.5f0 * c[1] + 0.5f0) * Float32(res) - 0.5f0
+    v = (0.5f0 * c[2] + 0.5f0) * Float32(res) - 0.5f0
+    search = 12f0
+    blockers = 0f0
+    found = 0f0
+    for j in Int32(0):Int32(3), i in Int32(0):Int32(3)
+        du = (Float32(i) - 1.5f0) * (search / 1.5f0)
+        dv = (Float32(j) - 1.5f0) * (search / 1.5f0)
+        d = ao_depth(ao_map, width, x0, y0, res, unsafe_trunc(Int32, floor(u + du + 0.5f0)),
+                     unsafe_trunc(Int32, floor(v + dv + 0.5f0)))
+        if d < depth
+            blockers += d
+            found += 1f0
+        end
+    end
+    found == 0f0 && return 1f0
+    distance = (depth - blockers / found) * depth_span
+    r = clamp(distance * spread / texel, 1f0, 24f0)
+    lit = 0f0
+    for j in Int32(-1):Int32(1), i in Int32(-1):Int32(1)
+        lit += ao_compare(ao_map, width, x0, y0, res, u + Float32(i) * r, v + Float32(j) * r, depth)
+    end
+    return lit * (1f0 / 9f0)
+end
+
+"""The cosine-weighted share of the ambient light that reaches `world_pos`."""
+@inline function ambient_visibility(ao_map, centre::Vec4f, params::Vec4f, world_pos::Vec3f, normal::Vec3f)
+    params[3] == 0f0 && return 1f0
+    n = unsafe_trunc(Int32, params[3])
+    res = unsafe_trunc(Int32, params[2])
+    cols = unsafe_trunc(Int32, params[4])
+    width = cols * res
+    texel = 2f0 * centre[4] / params[2]
+    p = world_pos + normal * (1.5f0 * texel)
+    # Half the angle between neighbouring directions, as a tangent.
+    spread = 0.5f0 * sqrt(4f0 * Float32(π) / Float32(n))
+    depth_span = 2f0 * params[1]
+    open = 0f0
+    total = 0f0
+    for k in Int32(0):n - Int32(1)
+        w = dot(normal, ao_direction(k, n))
+        w <= 0f0 && continue
+        c = ao_matrix(k, centre, params) * Vec4f(p[1], p[2], p[3], 1f0)
+        open += w * ao_lookup(ao_map, width, (k % cols) * res, (k ÷ cols) * res, res, c,
+                              texel, depth_span, spread)
+        total += w
+    end
+    return total > 0f0 ? open / total : 1f0
+end
+
 # Irradiance over π from nine SH coefficients with the cosine lobe folded in
 # (Ramamoorthi and Hanrahan 2001), columns in the order `project_environment!` writes.
 @inline function env_irradiance(sh, n::Vec3f)
@@ -164,6 +436,49 @@ end
            col(5) * (1.092548f0 * x * y) + col(6) * (1.092548f0 * y * z) +
            col(7) * (0.315392f0 * (3f0 * z * z - 1f0)) + col(8) * (1.092548f0 * x * z) +
            col(9) * (0.546274f0 * (x * x - y * y))
+end
+
+"""
+The scene's lights on a surface point as the tracer sees them — see
+`reflect_light` — with the shadowed light (`shadow_light`, its place in the
+light list) looked up in the shadow map. `normal` faces the camera: the tracer's
+`Diffuse` reflects on whichever side is seen. `v` points to the eye.
+"""
+@inline function illuminate_physical(world_pos::Vec3f, normal::Vec3f, v::Vec3f, base_color::Vec3f,
+                                     conductor::Vec4f, shading_mode::Int32, ambient::Vec3f,
+                                     light_color::Vec3f, light_direction::Vec3f, N_lights::Int32,
+                                     light_types, light_colors, light_parameters, has_env::Int32,
+                                     env_sh, shadow_map, light_space::Mat4f, shadow_light::Int32,
+                                     shadow_params::Vec4f, ao_map, ao_centre::Vec4f, ao_params::Vec4f)
+    open = ambient_visibility(ao_map, ao_centre, ao_params, world_pos, normal)
+    albedo = ambient_reflectance(normal, v, base_color, conductor)
+    final_color = open * ambient .* albedo
+    if has_env != Int32(0)
+        # A conductor sees the environment in its mirror direction, blurred to
+        # irradiance: right for a rough one, soft for a polished one.
+        towards = conductor[4] > 0f0 ? 2f0 * dot(normal, v) * normal - v : normal
+        final_color = final_color + open * albedo .* max.(env_irradiance(env_sh, towards), 0f0)
+    end
+    if shading_mode == SHADING_FAST
+        vis = shadow_light == Int32(1) ?
+            shadow_visibility(shadow_map, light_space, shadow_params, world_pos, normal, light_direction) : 1f0
+        final_color = final_color + vis * reflect_light(light_color, -light_direction, normal, v, base_color, conductor)
+    elseif shading_mode == SHADING_MULTI
+        idx = Int32(0)
+        for i in Int32(1):min(N_lights, Int32(length(light_types)))
+            @inbounds kind = light_types[i]
+            @inbounds lc = light_colors[i]
+            (kind < LIGHT_POINT || kind > LIGHT_RECT) && return Vec3f(1f0, 0f0, 1f0)
+            E, l = incoming(kind, lc, light_parameters, idx, world_pos)
+            c = reflect_light(E, l, normal, v, base_color, conductor)
+            if i == shadow_light
+                c = c * shadow_visibility(shadow_map, light_space, shadow_params, world_pos, normal, -l)
+            end
+            final_color = final_color + c
+            idx += light_parameter_count(kind)
+        end
+    end
+    return final_color
 end
 
 """
@@ -339,12 +654,15 @@ const MESH_ARG_NAMES = (
     :has_env, :env_sh, :diffuse, :specular, :shininess, :backlight,
     :exposure, :tonemap, :white_point, :inv_gamma, :apply_gamma,
     :strokewidth, :strokecolor, :resolution, :px_per_unit, :viewport_origin,
-    :num_clip_planes, :fxaa,
+    :num_clip_planes,
+    :physical, :shadow_map, :light_space, :shadow_light, :shadow_params,
+    :ao_map, :ao_centre, :ao_params, :conductor,
+    :fxaa,
 )
 const MESH_NARGS = length(MESH_ARG_NAMES)
 
 # The arg-less spelling, as in `overlay/lines.jl`. Written out rather than
-# splatted: inference resolves a splat of at most 32 elements, and a 52-element
+# splatted: inference resolves a splat of at most 32 elements, and a 61-element
 # `args...` stays a dynamic `_apply_iterate` that no GPU compiler accepts.
 @generated function mesh_vertex(args::Vararg{Any,MESH_NARGS})
     return :(mesh_vertex(VertexIndex(vertex_index()), $((:(args[$i]) for i in 1:MESH_NARGS)...)))
@@ -363,7 +681,10 @@ function mesh_vertex(vertexid::VertexIndex,
         diffuse::Vec3f, specular::Vec3f, shininess::Float32, backlight::Float32,
         exposure::Float32, tonemap::Int32, white_point::Float32, inv_gamma::Float32, apply_gamma::Int32,
         strokewidth::Float32, strokecolor::Vec4f, resolution::Vec2f, px_per_unit::Float32,
-        viewport_origin::Vec2f, num_clip_planes::Int32, fxaa::Int32)
+        viewport_origin::Vec2f, num_clip_planes::Int32,
+        physical::Int32, shadow_map, light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
+        ao_map, ao_centre::Vec4f, ao_params::Vec4f, conductor::Vec4f,
+        fxaa::Int32)
     v0 = vertexid.value - Int32(1)
     tri = v0 ÷ Int32(3)
     @inbounds vi = Int32(faces[v0 + Int32(1)])
@@ -416,7 +737,9 @@ film mapping, the stroke, and the premultiplied output a blended pass wants.
         shininess::Float32, backlight::Float32,
         exposure::Float32, tonemap::Int32, white_point::Float32, inv_gamma::Float32,
         apply_gamma::Int32, strokewidth::Float32, strokecolor::Vec4f,
-        resolution::Vec2f, px_per_unit::Float32)
+        resolution::Vec2f, px_per_unit::Float32, physical::Int32, shadow_map,
+        light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
+        ao_map, ao_centre::Vec4f, ao_params::Vec4f, conductor::Vec4f)
     world_pos = inputs.world_pos
     for i in Int32(1):num_clip_planes
         @inbounds plane = clip_planes[i]
@@ -433,10 +756,19 @@ film mapping, the stroke, and the premultiplied output a blended pass wants.
             base = Vec3f(Hikari.srgb_gamma_to_linear(base[1]), Hikari.srgb_gamma_to_linear(base[2]),
                          Hikari.srgb_gamma_to_linear(base[3]))
         end
-        rgb = illuminate(world_pos, _unit(inputs.camdir), _unit(inputs.world_normal),
-                         base, shading_mode, ambient,
-                         light_color, light_direction, N_lights, light_types, light_colors,
-                         light_parameters, has_env, env_sh, diffuse, specular, shininess, backlight)
+        camdir = _unit(inputs.camdir)
+        normal = _unit(inputs.world_normal)
+        rgb = if physical != Int32(0)
+            illuminate_physical(world_pos, dot(normal, camdir) > 0f0 ? -normal : normal, -camdir,
+                                base, conductor, shading_mode, ambient, light_color, light_direction,
+                                N_lights, light_types, light_colors, light_parameters, has_env,
+                                env_sh, shadow_map, light_space, shadow_light, shadow_params,
+                                ao_map, ao_centre, ao_params)
+        else
+            illuminate(world_pos, camdir, normal, base, shading_mode, ambient,
+                       light_color, light_direction, N_lights, light_types, light_colors,
+                       light_parameters, has_env, env_sh, diffuse, specular, shininess, backlight)
+        end
         rgb = film_mapping(rgb, exposure, tonemap, white_point, inv_gamma, apply_gamma)
         color = Vec4f(rgb[1], rgb[2], rgb[3], color[4])
     end
@@ -462,7 +794,10 @@ function mesh_fragment(inputs,
         diffuse::Vec3f, specular::Vec3f, shininess::Float32, backlight::Float32,
         exposure::Float32, tonemap::Int32, white_point::Float32, inv_gamma::Float32, apply_gamma::Int32,
         strokewidth::Float32, strokecolor::Vec4f, resolution::Vec2f, px_per_unit::Float32,
-        viewport_origin::Vec2f, num_clip_planes::Int32, fxaa::Int32)
+        viewport_origin::Vec2f, num_clip_planes::Int32,
+        physical::Int32, shadow_map, light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
+        ao_map, ao_centre::Vec4f, ao_params::Vec4f, conductor::Vec4f,
+        fxaa::Int32)
     color = color_source == COLOR_VERTEX_CMAP_FRAG ?
         get_color_from_cmap(inputs.colour[1], cmap, colorrange, colormap_linear,
                             lowclip, highclip, nan_color) :
@@ -471,7 +806,9 @@ function mesh_fragment(inputs,
         light_types, light_colors, light_parameters, model, view, projection, has_normals,
         shading_mode, ambient, light_color, light_direction, N_lights, has_env, env_sh,
         diffuse, specular, shininess, backlight, exposure, tonemap, white_point,
-        inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit), fxaa)
+        inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit,
+        physical, shadow_map, light_space, shadow_light, shadow_params,
+        ao_map, ao_centre, ao_params, conductor), fxaa)
 end
 
 @inline texel(u::Float32, v::Float32) =
@@ -494,7 +831,10 @@ function mesh_fragment_textured(inputs,
         diffuse::Vec3f, specular::Vec3f, shininess::Float32, backlight::Float32,
         exposure::Float32, tonemap::Int32, white_point::Float32, inv_gamma::Float32, apply_gamma::Int32,
         strokewidth::Float32, strokecolor::Vec4f, resolution::Vec2f, px_per_unit::Float32,
-        viewport_origin::Vec2f, num_clip_planes::Int32, fxaa::Int32)
+        viewport_origin::Vec2f, num_clip_planes::Int32,
+        physical::Int32, shadow_map, light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
+        ao_map, ao_centre::Vec4f, ao_params::Vec4f, conductor::Vec4f,
+        fxaa::Int32)
     color = if color_source == COLOR_MATCAP
         vn = _unit(inputs.view_normal)
         texel(1f0 - (0.5f0 * vn[2] + 0.5f0), 0.5f0 * vn[1] + 0.5f0)
@@ -515,7 +855,9 @@ function mesh_fragment_textured(inputs,
         light_types, light_colors, light_parameters, model, view, projection, has_normals,
         shading_mode, ambient, light_color, light_direction, N_lights, has_env, env_sh,
         diffuse, specular, shininess, backlight, exposure, tonemap, white_point,
-        inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit), fxaa)
+        inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit,
+        physical, shadow_map, light_space, shadow_light, shadow_params,
+        ao_map, ao_centre, ao_params, conductor), fxaa)
 end
 
 function get_mesh_pipeline!(screen, textured::Bool)

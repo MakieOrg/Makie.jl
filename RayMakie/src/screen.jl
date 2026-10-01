@@ -75,6 +75,18 @@ Configuration for RayMakie rendering.
   - The same scene, the same camera, the same lights — only the path changes.
 * `fxaa`: Run FXAA over the raster path for plots with `fxaa = true` (default:
   true), as GLMakie does. The traced image is never filtered.
+* `shadows`: Shadow the brightest directional light on the raster path
+  (default: true), as the tracer's shadow rays do. Only a display-encoded film
+  (`gamma` set) lights like the tracer, and only it gets them.
+* `shadow_resolution`: Texels along a side of the shadow map (default: 2048)
+* `shadow_distance`: How far from the camera the shadow map reaches, in scene
+  units (default: 40)
+* `ambient_occlusion`: Directions the raster path measures the ambient light's
+  occlusion along (default: 0, off), as the tracer's ambient light
+  is occluded. Display-encoded films only, like `shadows`. Experimental: 32
+  directions still show their separate outlines.
+* `ao_resolution`: Texels along a side of each direction's depth map (default: 512)
+* `ao_distance`: How far from the camera ambient occlusion reaches (default: 12)
 * `accumulate`: Let samples build up across reads instead of restarting each one
   (default: false)
   - What a path-traced viewport does: hold still and the image converges, move
@@ -137,12 +149,21 @@ struct ScreenConfig
     # attribute asks for it (mesh, surface, meshscatter by default), as GLMakie's
     # `fxaa` screen option does. The traced image is never filtered.
     fxaa::Bool
+    # The raster path's shadow map. See overlay/shadow.jl.
+    shadows::Bool
+    shadow_resolution::Int
+    shadow_distance::Float32
+    ambient_occlusion::Int
+    ao_resolution::Int
+    ao_distance::Float32
 
     function ScreenConfig(samples, max_depth, hw_accel, regularize, russian_roulette_depth,
                           max_component_value, sensor, filter, exposure, tonemap, gamma,
                           device=Raycore.KA.CPU(), denoise=false, denoise_config=nothing,
                           visible=true, title="RayMakie", vsync=true,
-                          accumulate=false, rasterize=false, fxaa=true)
+                          accumulate=false, rasterize=false, fxaa=true,
+                          shadows=true, shadow_resolution=2048, shadow_distance=40f0,
+                          ambient_occlusion=0, ao_resolution=512, ao_distance=12f0)
         unset(x) = x isa Makie.Automatic ? nothing : x
         actual_exposure = Float32(exposure)
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
@@ -160,7 +181,9 @@ struct ScreenConfig
                    unset(russian_roulette_depth), mcv === nothing ? nothing : Float32(mcv),
                    unset(sensor), unset(filter), actual_exposure, tonemap, actual_gamma,
                    actual_device, denoise, denoise_config, actual_visible, string(title), vsync,
-                   accumulate, rasterize, fxaa)
+                   accumulate, rasterize, fxaa,
+                   shadows, round(Int, shadow_resolution), Float32(shadow_distance),
+                   round(Int, ambient_occlusion), round(Int, ao_resolution), Float32(ao_distance))
     end
 end
 
@@ -294,6 +317,10 @@ mutable struct Screen <: Makie.MakieScreen
     # those differ by two: without this the window came out half the size
     # GLMakie gives, because `size(scene)` was handed to the drawable as pixels.
     px_per_unit::Float32
+    # The raster path's shadow map, allocated by the first mesh that reads it;
+    # see `shadow_buffer`.
+    shadowmap::Any
+    aomap::Any
 
     function Screen(scene, state, config)
         s = new(scene, state, RayMakieState[], nothing, nothing, config,   # …, output_buffer, memory, …
@@ -310,7 +337,8 @@ mutable struct Screen <: Makie.MakieScreen
                 nothing,           # fb_readback_buf
                 Dict{Symbol, Union{GraphicsPipeline, Mantle.MeshPipeline}}(), # gfx_pipelines
                 Dict{Symbol, Tuple{Any, Any, Any, Any}}(), # frame_plans
-                1.0f0)                                      # px_per_unit
+                1.0f0,                                      # px_per_unit
+                nothing, nothing)                           # shadowmap, aomap
         # Only set the stop flag from the finalizer — never wait on tasks or
         # touch GLFW from GC (runs during allocation, can't yield or call C libs safely).
         finalizer(s -> (s.stop_renderloop[] = true), s)
@@ -583,6 +611,7 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
 
     # Poll compute graph for updates on this scene's plots
     poll_all_plots(screen, state.makie_scene)
+    sync_lights!(state)
     # `Hikari.sync!(scene)`, NOT `Raycore.sync!(tlas)`.
     #
     # The two are not the same commit. The TLAS one rebuilds the acceleration

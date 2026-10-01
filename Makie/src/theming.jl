@@ -241,7 +241,15 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # same camera, same lights — only the path changes.
         rasterize = false,
         # FXAA over the raster path, for plots with `fxaa = true`, as in GLMakie.
-        fxaa = true
+        fxaa = true,
+        # The raster path's shadow map for the brightest directional light.
+        shadows = true,
+        shadow_resolution = 2048,
+        shadow_distance = 40.0f0,
+        # Ambient occlusion on the raster path: directions (0 = off), map size, reach.
+        ambient_occlusion = 0,
+        ao_resolution = 512,
+        ao_distance = 12.0f0
     )
 )
 

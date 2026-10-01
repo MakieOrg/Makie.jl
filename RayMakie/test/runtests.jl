@@ -136,6 +136,7 @@ const TEST_FILES = [
     "test_recolor_keeps_blas.jl",
     "test_transform_update_hwtlas.jl",
     "test_update_paths.jl",
+    "test_light_updates.jl",
     "test_render_allocates_nothing.jl",
     # Leak / GC regressions.
     "test_materials_scene.jl",
@@ -199,6 +200,7 @@ const GRAPHICS_TEST_FILES = [
     "test_device_arrays.jl",
     "test_image_updates.jl",
     "test_mesh_raster.jl",
+    "test_uv_transform.jl",
 ]
 
 @testset "RayMakie" begin

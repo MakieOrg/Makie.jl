@@ -20,6 +20,20 @@ function to_spectrum(data::Colorant)
 end
 to_spectrum(data::AbstractMatrix{<:Colorant}) = map(to_spectrum, data)
 
+# 8-bit textures (every PNG and glTF image) take a 256-entry decode table and
+# all threads: per pixel `srgb_gamma_to_linear` made a 4096² texture cost 0.65 s,
+# which is most of a frame when a texture is animated. Same values as above.
+function to_spectrum(data::AbstractMatrix{<:Union{AbstractRGB{N0f8}, TransparentRGB{<:AbstractRGB{N0f8}}}})
+    lut = [Hikari.srgb_gamma_to_linear(Float32(reinterpret(N0f8, UInt8(i)))) for i in 0:255]
+    decode(x::N0f8) = @inbounds lut[reinterpret(x) + 1]
+    out = similar(data, Hikari.RGBSpectrum)
+    Threads.@threads for i in eachindex(data, out)
+        c = @inbounds data[i]
+        @inbounds out[i] = Hikari.RGBSpectrum(decode(red(c)), decode(green(c)), decode(blue(c)), Float32(Colors.alpha(c)))
+    end
+    return out
+end
+
 # A colour that is linear already: glTF's `baseColorFactor` is, by the spec,
 # where its `baseColorTexture` is sRGB.
 linear_spectrum(c) = Hikari.RGBSpectrum(Float32(c[1]), Float32(c[2]), Float32(c[3]), 1f0)

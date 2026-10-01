@@ -37,7 +37,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
     end
 
     # 2. Color → Hikari texture (independent of mesh geometry)
-    register_computation!(attr, [:color], [:trace_color_tex]) do args, changed, last
+    # Only the tracer reads it; see `plots/mesh.jl`.
+    haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
+    register_computation!(attr, [:color, :rasterize], [:trace_color_tex]) do args, changed, last
+        args.rasterize && last !== nothing && return nothing
         return (color_to_texture(args.color, plot),)
     end
 
@@ -52,7 +55,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
     # any surface whose scene has no 3D camera (`surface(fill(3f0, 20, 20))` gets
     # an `EmptyCamera`). Tracing those pushed into a `hikari_scene` that is
     # `nothing`, and the compute graph reported "this plot will not be drawn".
-    haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
 
     # 3. HWTLAS management: combine mesh, color, model_f32c
     register_computation!(attr, [:trace_surface_mesh, :trace_color_tex, :model_f32c, :rasterize],

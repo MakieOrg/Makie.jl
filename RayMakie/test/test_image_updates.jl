@@ -9,12 +9,12 @@
 # recomputed, `update_texture!` ran and really did produce new bindings. The
 # picture never moved.
 #
-# The cause is that a composited frame is a RECORDED Mantle plan, and
-# `cmd_bind_descriptor_sets` bakes the descriptor set handle into the command
-# buffer. Handing `rebind!` a DIFFERENT set writes a value nothing reads again.
-# `update_texture!` now uploads into the texture it already has, so the baked
-# set stays correct; `frame_signature` carries the bindings' identity so the
-# cases that genuinely need a new texture rebuild the plan.
+# The cause was that a composited frame was a RECORDED Mantle plan, and
+# `cmd_bind_descriptor_sets` baked the descriptor set handle into the command
+# buffer. A frame is now an unrecorded plan whose draws are cells, re-read on
+# every run, so a new set, a new buffer and a new count all reach the frame
+# without rebuilding it; `update_texture!` still uploads into the texture it
+# already has, because that is cheaper than a new one.
 #
 # Tested against ONE screen, deliberately. Every earlier test of this made a
 # fresh `Screen` per frame, which rebuilds the plan and so could never see it.
@@ -54,8 +54,7 @@ countcolour(img, c; tol = 0.3) =
 
     @testset "a resized image needs a new texture, and still updates" begin
         # The path `update_texture!` cannot take the fast route on, so it makes
-        # a new texture — and `frame_signature` has to notice, or the recorded
-        # plan keeps the old one.
+        # a new texture and new bindings, which the draw's cell hands the next run.
         obs = Observable(fill(RED, 16, 16))
         fig = Figure(size = (200, 200)); ax = Axis(fig[1, 1])
         image!(ax, obs)
@@ -84,17 +83,13 @@ end
 
 
 @testset "text! updates when its length changes" begin
-    # The other half of the same bug, and the one with a visible symptom: a
-    # composited frame is a RECORDED plan, `vkCmdDraw` bakes the vertex count,
-    # and `record_draw!` bakes the address of the packed arguments. So a label
-    # that grew kept drawing the OLD glyph count — "RAY TRACED" came out as
-    # "RAY TR", because the button had once said "RASTER" — and one that shrank
-    # kept drawing the longer string's quads.
-    #
-    # `frame_signature` now carries each device array's `argidentity` (the
-    # address, which changes exactly when `resize!` had to reallocate) and the
-    # draw counts (which `resize!` DOWNWARD does not change, because it stays
-    # inside its capacity).
+    # The other half of the same bug, and the one with a visible symptom: when
+    # a composited frame was a RECORDED plan, `vkCmdDraw` baked the vertex count
+    # and `record_draw!` the address of the packed arguments. So a label that
+    # grew kept drawing the OLD glyph count — "RAY TRACED" came out as "RAY TR",
+    # because the button had once said "RASTER" — and one that shrank kept
+    # drawing the longer string's quads. The frame now reads both from the
+    # draw's cell on every run.
 
     ink(img) = count(p -> Colors.red(p) < 0.5 && Colors.green(p) < 0.5, img)
 
@@ -157,16 +152,8 @@ end
 
 
 @testset "a camera move still does not rebuild the plan" begin
-    # The other half of the bargain. `frame_signature` now carries each device
-    # array's address and the draw counts, which is what makes changed content
-    # visible — and the risk is that it starts changing every frame and the plan
-    # cache stops being a cache.
-    #
-    # Measured when it was added: 54 render objects, 2.57 ms a frame, ONE
-    # signature over 20 static frames. A 25-frame zoom on an axis WITH tick
-    # labels rebuilt 6 times — the labels genuinely changed — and the same zoom
-    # with `hidedecorations!` rebuilt none. So the cost lands only where
-    # correctness requires it.
+    # The other half of the bargain: what the frame reads from its cells must
+    # not also be in `frame_signature`, or the plan cache stops being a cache.
 
     fig = Figure(size = (600, 450))
     ax = Axis(fig[1, 1])
@@ -188,4 +175,33 @@ end
     # One signature across fifteen different camera positions: a zoom rebinds,
     # it does not re-record.
     @test length(signatures) == 1
+end
+
+
+@testset "a mesh whose triangle count changes keeps its plan" begin
+    # A whirlpool's hole moving through a sea mesh changes its triangle count
+    # every frame. With the counts and buffer addresses in `frame_signature`
+    # every such frame compiled a new plan; the draw's cell carries both.
+    strip(n) = Makie.GeometryBasics.Mesh([Point3f(i, j, 0) for i in 0:n for j in 0:1],
+                                         [Makie.GeometryBasics.GLTriangleFace(2i + 1, 2i + 3, 2i + 4) for i in 0:n-1];
+                                         normal = [Vec3f(0, 0, 1) for i in 0:n for j in 0:1])
+    red(img) = count(p -> Colors.red(p) > 0.6 && Colors.green(p) < 0.5, img)
+    sc = Scene(; size = (320, 160), lights = [AmbientLight(RGBf(1, 1, 1))])
+    cam3d!(sc)
+    m = mesh!(sc, strip(2); color = RGBf(1, 0, 0), shading = NoShading)
+    update_cam!(sc, Vec3f(5, 0.5, 12), Vec3f(5, 0.5, 0), Vec3f(0, 1, 0))
+    screen = RayMakie.Screen(sc; visible = false, rasterize = true)
+    ink = Int[]
+    plans = Set{UInt}()
+    for n in (2, 8, 4, 2)
+        m[1] = strip(n)
+        push!(ink, red(Makie.colorbuffer(screen)))
+        push!(plans, objectid(screen.frame_plans[:readback][2]))
+    end
+    close(screen)
+    @test ink[1] > 100
+    @test isapprox(ink[2] / ink[1], 4.0; atol = 0.3)    # eight triangles are drawn, not two
+    @test isapprox(ink[3] / ink[1], 2.0; atol = 0.3)
+    @test ink[4] == ink[1]
+    @test length(plans) == 1
 end

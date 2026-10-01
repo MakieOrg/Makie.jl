@@ -16,7 +16,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
     state = screen.state
     hikari_scene = state.hikari_scene
 
-    register_computation!(attr, [:color], [:trace_color_tex]) do args, changed, last
+    haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
+
+    # Only the tracer reads it. Converted once, which types the slot, then left
+    # alone while rasterizing: an animated 4096² face texture cost a `pow` per
+    # channel per texel every frame, for a texture nothing drew. Switching back
+    # to tracing changes `rasterize` and converts the current colour.
+    register_computation!(attr, [:color, :rasterize], [:trace_color_tex]) do args, changed, last
+        args.rasterize && last !== nothing && return nothing
         return (color_to_texture(args.color, plot),)
     end
 
@@ -32,11 +39,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
     #
     # Separate slots also mean flipping back and forth costs nothing: neither
     # renderer's object is torn down when the other is showing.
-    haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
 
     register_computation!(attr,
         [:mesh, :positions_transformed_f32c, :faces, :normals,
-         :texturecoordinates, :trace_color_tex, :model_f32c, :material, :rasterize],
+         :texturecoordinates, :uv_transform, :trace_color_tex, :model_f32c, :material, :rasterize],
         [:trace_renderobject]) do args, changed, last
         # `nothing` when this plot is not being traced — the slot still exists,
         # so its type never changes, and the collectors skip a `nothing`.
@@ -84,7 +90,7 @@ function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, la
     needs_rebuild = !is_trace_robj(last_robj) ||
                     changed.mesh || changed.positions_transformed_f32c ||
                     changed.faces || changed.normals ||
-                    changed.texturecoordinates
+                    changed.texturecoordinates || changed.uv_transform
 
     # A colour change is a material swap, with one catch: `MultiTypeSet.update!`
     # replaces in place and so requires the same CONCRETE type. Recolouring can
@@ -155,9 +161,32 @@ function trace_material_for_color(plot, args)
     return extract_material(plot, color_tex)
 end
 
+"""
+    traced_uvs(mesh, uv_transform) -> mesh
+
+`mesh` with the uvs the tracer samples it at.
+
+Makie samples a mesh's texture at `uv_transform * (u, v, 1)`, the first
+component along the image's first axis; that is how the raster path reads it.
+Hikari samples the first axis at `1 - v` and the second at `u`, which is Makie's
+default transform, so a default leaves the mesh as it is and anything else is
+baked into the uvs. Without it the tracer ignored `uv_transform`, and a face
+animated by moving it over a sheet of expressions showed the whole sheet.
+"""
+function traced_uvs(mesh::GeometryBasics.Mesh, t::Mat{2, 3})
+    t == Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0) && return mesh
+    hasproperty(mesh, :uv) || return mesh
+    return GeometryBasics.mesh(mesh; uv = map(texturecoordinates(mesh)) do uv
+        p = t * Vec3f(uv[1], uv[2], 1)
+        Vec2f(p[2], 1 - p[1])
+    end)
+end
+traced_uvs(mesh::GeometryBasics.MetaMesh, t::Mat{2, 3}) = GeometryBasics.MetaMesh(traced_uvs(mesh.mesh, t), mesh.meta)
+traced_uvs(mesh, t) = mesh
+
 function mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx)
     transform = Mat4f(args.model_f32c)
-    robj = push_to_scene(args.mesh, hikari_scene, plot, args.trace_color_tex,
+    robj = push_to_scene(traced_uvs(args.mesh, args.uv_transform), hikari_scene, plot, args.trace_color_tex,
                          args.positions_transformed_f32c, args.faces,
                          args.normals, args.texturecoordinates, transform,
                          reuse_mat_idx)
@@ -441,6 +470,28 @@ function shading_code(mode)
 end
 
 """
+    raster_conductor(material) -> Vec4f
+
+A conductor's normal-incidence reflectance, from its η and k at 630, 532 and
+465 nm for red, green and blue and times its tint, and its GGX α: what
+`reflect_light` in overlay/mesh.jl shades it with. Every other material has
+α = 0 and is drawn as a `Diffuse`.
+
+The raster path samples one texture, the colour; a conductor whose roughness
+or tint is a texture is drawn at roughness 0.5 and untinted.
+"""
+raster_conductor(::Any) = Vec4f(0)
+function raster_conductor(m::Hikari.Conductor)
+    f0(λ, i) = (n = spectral(m.eta, λ, i); k = spectral(m.k, λ, i); ((n - 1)^2 + k^2) / ((n + 1)^2 + k^2))
+    tint = m.reflectance.kind == Hikari.TexKind.CONST_SPECTRUM ? m.reflectance.rgb.c : Vec4f(1)
+    r = m.roughness.kind == Hikari.TexKind.CONST_FLOAT ? m.roughness.f : 0.5f0
+    α = m.remap_roughness ? Hikari.roughness_to_α(r) : r
+    return Vec4f(f0(630f0, 1) * tint[1], f0(532f0, 2) * tint[2], f0(465f0, 3) * tint[3], max(α, 1f-3))
+end
+spectral(s::Hikari.PiecewiseLinearSpectrum, λ, i) = Hikari.sample(s, λ)
+spectral(h::Hikari.TexHandle, λ, i) = h.rgb.c[i]
+
+"""
     raster_shading(screen, plot, args) -> (uniforms, buffers)
 
 The lighting, film mapping and stroke state every lit raster surface is shaded
@@ -451,9 +502,16 @@ function raster_shading(screen, plot, args)
     config = screen.config
     ambient = RGBf(args.raster_ambient)
     lc = RGBf(args.raster_light_color)
+    shading_mode = shading_code(Makie.get_shading_mode(plot))
+    # A display-encoded film stands in for the traced one and lights as it does;
+    # see `lambert` in overlay/mesh.jl. Without `gamma` this is GLMakie's shader.
+    physical = config.gamma !== nothing
+    caster, direction = shadow_light(args.raster_light_types, args.raster_light_colors,
+                                     args.raster_light_parameters)
+    shadowed = physical && config.shadows && shading_mode != SHADING_NONE
     uniforms = (
         eyeposition = Vec3f(args.eyeposition),
-        shading_mode = shading_code(Makie.get_shading_mode(plot)),
+        shading_mode = shading_mode,
         ambient = Vec3f(ambient.r, ambient.g, ambient.b),
         light_color = Vec3f(lc.r, lc.g, lc.b),
         light_direction = Vec3f(args.raster_light_direction),
@@ -469,6 +527,11 @@ function raster_shading(screen, plot, args)
         apply_gamma = Int32(config.gamma !== nothing),
         strokewidth = Float32(args.strokewidth), strokecolor = rgba4(args.strokecolor),
         resolution = Vec2f(args.resolution), px_per_unit = Float32(screen.px_per_unit),
+        physical = Int32(physical),
+        conductor = physical ? raster_conductor(overlay_material(plot)) : Vec4f(0),
+        # Which light the map is made from; `shadow_frame` reads these two to fit
+        # it, and they are not stage arguments.
+        shadow_light = shadowed ? caster : Int32(0), shadow_direction = direction,
     )
     buffers = (
         light_types = nonempty(Vector{Int32}(args.raster_light_types)),
@@ -517,6 +580,8 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
         colorinfo = raster_color(geometry.color, args, length(geometry.positions))
         textured = colorinfo.texture !== nothing
         fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured)
+        # What the shadow map is fitted around; not a stage argument.
+        geometry_dirty && (uniforms = merge(uniforms, (local_bounds = isempty(geometry.positions) ? Rect3f() : Rect3f(geometry.positions),)))
         uniforms = merge(uniforms, (
             has_normals = Int32(geometry.normals !== nothing),
             has_uvs = Int32(geometry.uvs isa AbstractVector{<:VecTypes{2}}),
@@ -569,6 +634,13 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
     for (name, value) in pairs(uniforms)
         robj.uniforms[name] = value
     end
+    # Written every frame by `shadow_frame`; until then, no shadow.
+    get!(robj.uniforms, :light_space, Mat4f(I))
+    get!(robj.uniforms, :shadow_params, Vec4f(0))
+    get!(robj.uniforms, :ao_centre, Vec4f(0))
+    get!(robj.uniforms, :ao_params, Vec4f(0))
+    robj.buffers[:shadow_map] = shadow_buffer(screen)
+    robj.buffers[:ao_map] = ao_buffer(screen)
     raster_strokes(overlay_material(plot)) || (robj.uniforms[:strokewidth] = 0f0)
     color_dirty && (robj.vertex_count = vertex_count)
     if color_dirty && colorinfo.texture !== nothing
@@ -647,11 +719,15 @@ function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, co
         to_value(plot.material) : nothing
 
     inner = mesh_val.mesh
-    views = inner.views
     mat_names = mesh_val[:material_names]
     materials_dict = mesh_val[:materials]
     gb_faces = GeometryBasics.faces(inner)
     n_faces = length(gb_faces)
+    # GeometryBasics: empty `views` means the mesh is not split, one submesh over
+    # all faces. `material_names` names one material per submesh.
+    views = isempty(inner.views) ? [1:n_faces] : inner.views
+    length(views) == length(mat_names) || throw(ArgumentError(
+        "MetaMesh has $(length(views)) submesh(es) but $(length(mat_names)) material names"))
 
     per_face_materials = Vector{Hikari.Material}(undef, n_faces)
     mat_cache = Dict{String, Hikari.Material}()
@@ -680,6 +756,9 @@ function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, co
             per_face_materials[fi] = mat
         end
     end
+    uncovered = count(i -> !isassigned(per_face_materials, i), 1:n_faces)
+    uncovered == 0 || throw(ArgumentError(
+        "MetaMesh views leave $uncovered of $n_faces faces without a material"))
 
     handle = push!(hikari_scene, inner, per_face_materials; transform=transform)
     return (handle=handle, instance_idx=Raycore.n_instances(hikari_scene.accel))

@@ -24,4 +24,5 @@ include("renderobject.jl")  # RenderObject, update_robj!, construct_robj
 include("lines.jl")
 include("scatter.jl")
 include("mesh.jl")
+include("shadow.jl")        # the directional light's shadow map, for mesh.jl
 include("gfx_image.jl")

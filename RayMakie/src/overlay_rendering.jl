@@ -234,46 +234,25 @@ or resizing.
 function frame_signature(robjs, w, h)
     (w, h,
      map(robjs) do (robj, vp)
-         # `isnothing(indices)` and not the buffer's identity: WHETHER a draw is
-         # indexed decides which command the backend records and so is compiled
-         # in, but WHICH buffer holds the indices is rebound.
-         # `objectid(robj.bindings)` IS here, and the comment that used to say
-         # it need not be was wrong. A composited frame is a RECORDED plan and
-         # `cmd_bind_descriptor_sets` bakes the set handle, so handing `rebind!`
-         # a DIFFERENT set changes a value nothing reads again — the frame keeps
-         # drawing the old texture. New pixels in the SAME texture are the fast
-         # path and do not come through here at all: `update_texture!` uploads
-         # into the existing image and leaves the set alone.
-         (objectid(robj), objectid(robj.pipeline), objectid(robj.bindings), vp,
-          isnothing(get(robj.buffers, :indices, nothing)),
+         # Everything else is the cell's, and the plan reads the cell on every
+         # run: a plan holding cells cannot be recorded (Mantle refuses), so it
+         # is emitted afresh each frame, and `packdraw!`/`emitdraw!` take the
+         # arguments — buffer addresses included — the count, the index buffer,
+         # the instances and the texture table from the cell as it is then.
+         #
+         # This used to carry every device array's identity, the counts and the
+         # texture table's identity too, from when frames were RECORDED and all
+         # of those were baked into the command buffer. Kept after the frame
+         # stopped being recorded, they rebuilt the plan whenever a mesh changed
+         # its triangle count — a whirlpool's hole moving through the sea made
+         # every frame of a film compile its plan from scratch.
+         #
+         # `isnothing(indices)`: WHETHER a draw is indexed decides the command
+         # the backend emits. Whether it samples textures decides its layout.
+         (objectid(robj), objectid(robj.pipeline), vp,
+          isnothing(get(robj.buffers, :indices, nothing)), isnothing(robj.bindings),
           # The argument TYPES, because those are the pipeline and the layout.
-          # Not the values and not the counts — a camera move and a tick recount
-          # both leave those to the draw's cell, which is the whole point.
-          map(typeof, build_args(robj)),
-          # But DO carry each device array's identity. `record_draw!` bakes the
-          # address of the packed argument block into a push constant, so a
-          # buffer that `resize!` had to REALLOCATE is one a plan recorded
-          # earlier cannot see. It showed up as text frozen at the glyph count
-          # of whatever it first drew — "RAY TRACED" rendering as "RAY TR",
-          # because the label had once said "RASTER" — and as the axis tick
-          # labels that a zoom never redrew.
-          #
-          # `argidentity` is `nothing` for everything that is not a device
-          # array, so a uniform still costs no rebuild.
-          map(Mantle.argidentity, build_args(robj)),
-          # And the COUNTS, for the same reason: `record_draw!` passes them to
-          # `vkCmdDraw`, which bakes them. Rebinding a smaller count into the
-          # cell changes nothing the recorded command reads — text shrinking
-          # from twelve glyphs to two kept drawing twelve. The address above
-          # does not catch this on its own, because `resize!` DOWNWARD stays
-          # inside its capacity and keeps the buffer it had.
-          #
-          # This does mean a plot whose element count changes rebuilds its
-          # plan. That is the price of the counts being compiled in, and it is
-          # paid on a tick recount or a relaid-out label, not on a camera move.
-          robj.vertex_count, robj.instances,
-          isnothing(get(robj.buffers, :indices, nothing)) ? 0 :
-              length(robj.buffers[:indices]))
+          map(typeof, build_args(robj)))
      end)
 end
 
@@ -344,15 +323,23 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
     # FXAA only when a plot asked for it: with every flag 0 the pass returns each
     # pixel unchanged (its early exit), so skipping it is exact.
     fxaa = screen.config.fxaa && any(((robj, _),) -> wants_fxaa(robj), robjs)
-    sig = (key, objectid(source), fxaa, frame_signature(robjs, w, h))
+    # Before the overlays are bound: it writes the light matrix into every mesh
+    # that receives. Which meshes cast is fixed by the plan, the matrix is not.
+    shadow = shadow_frame(screen, robjs)
+    jobs = shadow === nothing ? () : shadow_jobs(shadow)
+    sig = (key, objectid(source), fxaa, shadow_signature(shadow), frame_signature(robjs, w, h))
     cached = get(screen.frame_plans, key, nothing)
     if cached !== nothing && cached[1] == sig
-        rebind_overlay_args!(cached[4], robjs, dev)
+        cells, shadowcells = cached[4]
+        rebind_overlay_args!(cells, robjs, dev)
+        rebind_shadow_cells!(shadowcells, dev, jobs)
         return cached[2], cached[3]
     end
 
     cells = [overlay_binding(robj, dev) for (robj, _) in robjs]
+    shadowcells = shadow_cells(dev, jobs)
     g = Mantle.Graph(dev)
+    shadow === nothing || shadow_pass!(g, screen, shadow, jobs, shadowcells)
     target = mktarget(g)
     # The depth attachment the overlay pipelines test against. `Float32` is what
     # makes it one: a single-component 32-bit float attachment is `D32_SFLOAT`
@@ -413,7 +400,7 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
     # frame, which is also what lets a rebound cell be seen — a recording packs
     # its arguments once and `Mantle.rebind!` on one is refused by name.
     plan = Mantle.Plan(g)
-    screen.frame_plans[key] = (sig, plan, extra, cells)
+    screen.frame_plans[key] = (sig, plan, extra, (cells, shadowcells))
     return plan, extra
 end
 
