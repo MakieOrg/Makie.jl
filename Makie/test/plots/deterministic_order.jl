@@ -18,6 +18,14 @@ using Random: MersenneTwister, shuffle
     @test Makie.canonical_line_order(open_line) == Makie.canonical_line_order(reverse(open_line)) == open_line
 end
 
+@testset "#5812 canonical_line_order with NaN" begin
+    # should not error
+    Makie.canonical_line_order([(1.0f0, 1.0f0), (2.0f0, 2.0f0), (0.0f0, NaN32), (1.0f0, 1.0f0)])
+    Makie.canonical_line_order([(1.0f0, 1.0f0), (2.0f0, 2.0f0), (0.0f0, Inf32), (1.0f0, 1.0f0)])
+    Makie.canonical_line_order([(-Inf, 1.0f0), (2.0f0, 2.0f0), (0.0f0, Inf32), (-Inf32, 1.0f0)])
+    Makie.canonical_line_order([(NaN32, 1.0f0), (2.0f0, 2.0f0), (0.0f0, Inf32), (NaN, 1.0f0)])
+end
+
 @testset "hexbin bin order independent of input order" begin
     x = repeat(range(0, 1, length = 20), 20)
     y = repeat(range(0, 1, length = 20), inner = 20)
