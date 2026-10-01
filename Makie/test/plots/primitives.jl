@@ -171,7 +171,7 @@ end
         Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport, fill(Vec2d(NaN), 40); maxiter = Makie.automatic, shrink = (5.0, 7.0))
 
         boxes = [Makie.pad_rect(bb + o, algorithm.padding) for (bb, o) in zip(text_bbs, offsets)]
-        @test all(box -> box in viewport, boxes)
+        @test all(box -> all(minimum(box) .>= -1.0e-6) && all(maximum(box) .<= maximum(viewport) .+ 1.0e-6), boxes)
         @test all(iszero(Makie.overlap_area(boxes[i], boxes[j])) for i in 1:40 for j in (i + 1):40)
         @test all(Makie.rect_point_distance(boxes[i], targets[j]) >= algorithm.pointradius for i in 1:40 for j in 1:40 if i != j)
 

@@ -5,7 +5,15 @@ baremodule Ann # bare for cleanest tab-completion behavior
 
         using Base
 
-        struct Line end
+        """
+            Line(; attach = :pill)
+
+        A straight connection from the label to its point. With `attach = :pill` it starts on a pill
+        shape inscribed in the label's bounding box, with `attach = :center` at the center of the label.
+        """
+        Base.@kwdef struct Line
+            attach::Symbol = :pill
+        end
         struct Corner end
         Base.@kwdef struct Arc
             height::Float64 = 0.5 # positive numbers are arcs going up then down, negative down then up, 1 is half circle
@@ -391,6 +399,8 @@ end
 
 is_fixed(offset::Vec2) = !any(isnan, offset)
 
+quantize(x) = round.(x ./ PLACEMENT_RESOLUTION) .* PLACEMENT_RESOLUTION
+
 pad_rect(rect::Rect2, padding) = Rect2d(rect.origin .- padding, rect.widths .+ 2 * padding)
 
 """
@@ -430,7 +440,8 @@ label (at most `annealmaxmoves`), from `annealtemperature` cooling by `annealcoo
 down to `annealmintemperature`, and uses its own generator started from `seed`, so the same
 input gives the same layout on every Julia version. On updates, the previous layout is kept
 unless a fresh solve is better by more than `stabilitymargin`, so that labels do not jump
-between equally good positions.
+between equally good positions. With the default of zero, the result does not depend on
+earlier updates unless two layouts have exactly the same cost.
 """
 Base.@kwdef struct CandidatePlacement
     gaps::Vector{Float64} = [4.0, 10.0, 18.0, 30.0, 48.0, 72.0, 104.0, 150.0, 210.0]
@@ -452,12 +463,13 @@ Base.@kwdef struct CandidatePlacement
     annealcooling::Float64 = 0.9
     annealtemperature::Float64 = 300.0
     annealmintemperature::Float64 = 20.0
-    stabilitymargin::Float64 = 30.0
+    stabilitymargin::Float64 = 0.0
     restarts::Int = 3
     seed::UInt64 = 0
 end
 
 const PENALTY_TOLERANCE = 1.0e-9
+const PLACEMENT_RESOLUTION = 0.01
 
 is_feasible(c, algorithm::CandidatePlacement) = c.cost < algorithm.overlappenalty
 
@@ -495,7 +507,10 @@ function place_labels!(
     n = length(offsets)
     (n == 0 || maxiter == 0) && return
 
-    targets = Point2d.(textpositions)
+    # positions are quantized so that floating point noise from different transforms cannot tip
+    # the layout between equally good solutions
+    targets = quantize.(Point2d.(textpositions))
+    text_bbs = [Rect2d(quantize(origin(bb)), quantize(widths(bb))) for bb in text_bbs]
     neighbors, radius = neighbor_lists(algorithm, targets, text_bbs)
     candidates = map(1:n) do i
         if is_fixed(fixed[i])
@@ -743,7 +758,7 @@ end
 viewport_penalty(algorithm, box, ::Nothing) = 0.0
 viewport_penalty(algorithm, box, viewport::Rect2) = overlap_penalty(algorithm, prod(widths(box)) - overlap_area(box, viewport))
 
-overlap_penalty(algorithm::CandidatePlacement, area) = area > 0 ? algorithm.overlappenalty * (1 + area / 100) : 0.0
+overlap_penalty(algorithm::CandidatePlacement, area) = area > PENALTY_TOLERANCE ? algorithm.overlappenalty * (1 + area / 100) : 0.0
 
 # a label without a leader could be read as belonging to any other point within reach of the
 # pill inscribed in the label, the more so the closer it is, unless the own point lies between them
@@ -840,7 +855,11 @@ function segment_intersects_rect(a::Point2, b::Point2, rect::Rect2)
     return true
 end
 
-startpoint(::Ann.Paths.Line, text_bb, p2) = leader_start_point(text_bb, p2)
+function startpoint(line::Ann.Paths.Line, text_bb, p2)
+    line.attach === :pill && return leader_start_point(text_bb, p2)
+    line.attach === :center && return Point2d(center(text_bb))
+    return error("Unknown attachment point $(repr(line.attach)), use :pill or :center")
+end
 
 function startpoint(::Ann.Paths.Corner, text_bb, p2)
     l = left(text_bb)

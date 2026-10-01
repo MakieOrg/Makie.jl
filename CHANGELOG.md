@@ -5,7 +5,7 @@
 - `annotation` places labels with a new candidate-based algorithm that avoids overlaps, covered points and crossing leaders [#5820](https://github.com/MakieOrg/Makie.jl/pull/5820).
 - `annotation` keeps labels with given offsets or positions fixed while placing the remaining ones around them [#5820](https://github.com/MakieOrg/Makie.jl/pull/5820).
 - `annotation` no longer draws leaders for labels that sit within the `shrink` distance of their point [#5820](https://github.com/MakieOrg/Makie.jl/pull/5820).
-- `annotation` leaders with `Ann.Paths.Line` attach to a pill shape around the label instead of pointing at its center [#5820](https://github.com/MakieOrg/Makie.jl/pull/5820).
+- `annotation` leaders with `Ann.Paths.Line` attach to a pill shape around the label instead of pointing at its center, `Ann.Paths.Line(attach = :center)` keeps the old behavior [#5820](https://github.com/MakieOrg/Makie.jl/pull/5820).
 - `annotation` uses the ink bounding box of each label for placement and leader clipping [#5820](https://github.com/MakieOrg/Makie.jl/pull/5820).
 - Fixed plot-list children (e.g. the parts of `annotation!` arrows) being reused in an address-dependent order, which made the draw order and SVG output differ between identical runs. [#5815](https://github.com/MakieOrg/Makie.jl/pull/5815)
 - `datashader` is much faster: with 100M points, aggregating and displaying an update went from 47 ms to 26 ms, and per-update allocations from 9.2 MiB to 11 KiB [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).

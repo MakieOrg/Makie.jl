@@ -2557,12 +2557,12 @@ end
     annotation!(
         ax, 0, -100, pi / 2, 1.0,
         text = "Peak", style = Ann.Styles.LineArrow(), color = :red,
-        textcolor = :orange, align = (:right, :top)
+        textcolor = :orange, align = (:right, :top), path = Ann.Paths.Line(attach = :center),
     )
     annotation!(
         ax, 0, 100, 3pi / 2, -1.0,
         text = "Trough", style = Ann.Styles.LineArrow(), font = :bold,
-        fontsize = 24,
+        fontsize = 24, path = Ann.Paths.Line(attach = :center),
     )
     annotation!(
         ax, -100, 0, 5pi / 2, 1.0,
@@ -2580,7 +2580,7 @@ end
     )
     annotation!(
         ax, 0, -100, 10, sin(10),
-        style = Ann.Styles.LineArrow(),
+        style = Ann.Styles.LineArrow(), path = Ann.Paths.Line(attach = :center),
     )
     ylims!(ax, -1.5, 1.8)
     annotation!(
