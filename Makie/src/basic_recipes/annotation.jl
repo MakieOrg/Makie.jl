@@ -274,13 +274,8 @@ function plot!(p::Annotation)
         :algorithm, :screenpoints_target, :screenpoints_label, :text_bbs,
         :viewport, :maxiter, :shrink,
     ]
-    register_computation!(p.attributes, inputs, [:offsets, :placement_view]) do args, changed, cached
+    register_computation!(p.attributes, inputs, [:offsets]) do args, changed, cached
         offsets = isnothing(cached) ? Vec2f[] : cached[1]
-        view = placement_view(args.screenpoints_target, args.viewport)
-        # keep the previous layout as a warm start across small view changes,
-        # so zooming and panning only move labels that have to move
-        reset = isnothing(cached) || length(offsets) != length(args.screenpoints_target) ||
-            changed.algorithm || !similar_view(cached[2], view)
         resize!(offsets, length(args.screenpoints_target))
 
         calculate_best_offsets!(
@@ -291,11 +286,10 @@ function plot!(p::Annotation)
             args.text_bbs,
             Rect2d((0, 0), widths(args.viewport));
             maxiter = args.maxiter,
-            reset,
             shrink = args.shrink,
         )
 
-        return (offsets, view)
+        return (offsets,)
     end
 
     # create observable updating offsets in text plot
@@ -367,7 +361,6 @@ end
 function calculate_best_offsets!(
         algorithm, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
         maxiter::Union{Automatic, Int},
-        reset::Bool,
         shrink,
     )
     if !(length(offsets) == length(textpositions) == length(textpositions_offset) == length(text_bbs))
@@ -382,10 +375,7 @@ function calculate_best_offsets!(
         )
     end
 
-    if reset
-        offsets .= zero.(eltype(offsets))
-    end
-
+    offsets .= zero.(eltype(offsets))
     fixed = Vec2d.(textpositions_offset .- textpositions)
     for i in eachindex(offsets)
         is_fixed(fixed[i]) && (offsets[i] = fixed[i])
@@ -395,24 +385,10 @@ function calculate_best_offsets!(
     # doesn't really work because projection into screen space needs x and y together
 
     algorithm = algorithm === automatic ? CandidatePlacement() : algorithm
-    return place_labels!(algorithm, offsets, textpositions, text_bbs, bbox, fixed; maxiter, reset, shrink)
+    return place_labels!(algorithm, offsets, textpositions, text_bbs, bbox, fixed; maxiter, shrink)
 end
 
 is_fixed(offset::Vec2) = !any(isnan, offset)
-
-function placement_view(targets, viewport)
-    finite = filter(t -> all(isfinite, t), targets)
-    bbox = isempty(finite) ? Rect2d(0, 0, 0, 0) : Rect2d(finite)
-    return (bbox = bbox, size = Vec2d(widths(viewport)))
-end
-
-function similar_view(old, new)
-    old.size == new.size || return false
-    old_widths = max.(widths(old.bbox), 1)
-    zoom = max.(widths(new.bbox), 1) ./ old_widths
-    pan = norm(center(new.bbox) - center(old.bbox)) / maximum(old_widths)
-    return all(1 / WARM_START_ZOOM .<= zoom .<= WARM_START_ZOOM) && pan <= WARM_START_PAN
-end
 
 pad_rect(rect::Rect2, padding) = Rect2d(rect.origin .- padding, rect.widths .+ 2 * padding)
 
@@ -441,8 +417,7 @@ annealing and finished with local descent, where every label is repeatedly moved
 cheapest candidate given all others until nothing moves. This is repeated `restarts` times and
 the layout with the lowest total cost is kept. `maxiter` bounds the number of descent passes.
 The annealing uses its own generator started from `seed`, so the same input gives the same
-layout on every Julia version. When the view changes, the previous layout is kept as the
-starting point and only labels that are in conflict or find a clearly better position move.
+layout on every Julia version.
 """
 Base.@kwdef struct CandidatePlacement
     gaps::Vector{Float64} = [4.0, 10.0, 18.0, 30.0, 48.0, 72.0, 104.0, 150.0, 210.0]
@@ -468,9 +443,6 @@ const ANNEAL_COOLING = 0.9
 const ANNEAL_TEMPERATURE = 300.0
 const ANNEAL_MIN_TEMPERATURE = 20.0
 const PENALTY_TOLERANCE = 1.0e-9
-const WARM_START_HYSTERESIS = 10.0
-const WARM_START_ZOOM = 1.4
-const WARM_START_PAN = 0.5
 
 is_feasible(c) = c.cost < OVERLAP_PENALTY
 
@@ -502,7 +474,7 @@ end
 function place_labels!(
         algorithm::CandidatePlacement, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2},
         text_bbs::Vector{<:Rect2}, bbox::Rect2, fixed::Vector{Vec2d};
-        maxiter::Union{Automatic, Int}, reset::Bool, shrink,
+        maxiter::Union{Automatic, Int}, shrink,
     )
     maxiter = maxiter === automatic ? 20 : maxiter
     n = length(offsets)
@@ -522,34 +494,23 @@ function place_labels!(
     end
     problem = PlacementProblem(targets, candidates, neighbors, algorithm.padding)
 
-    if reset
-        layout = first.(candidates)
-        rng = LabelPlacementRNG(algorithm.seed)
-        trials = map(1:algorithm.restarts) do _
-            trial = copy(layout)
-            anneal_placement!(trial, problem, rng)
-            descend_placement!(trial, problem, maxiter)
-            return trial
-        end
-        if isempty(trials)
-            descend_placement!(layout, problem, maxiter)
-        else
-            layout = argmin(trial -> total_energy(trial, problem), trials)
-        end
+    layout = first.(candidates)
+    rng = LabelPlacementRNG(algorithm.seed)
+    trials = map(1:algorithm.restarts) do _
+        trial = copy(layout)
+        anneal_placement!(trial, problem, rng)
+        descend_placement!(trial, problem, maxiter)
+        return trial
+    end
+    if isempty(trials)
+        descend_placement!(layout, problem, maxiter)
     else
-        layout = [previous_candidate(candidates[i], offsets[i]) for i in 1:n]
-        descend_placement!(layout, problem, maxiter; hysteresis = WARM_START_HYSTERESIS)
-        if any(i -> pairwise_penalty(layout[i], i, problem, layout) >= CROSSING_PENALTY, 1:n)
-            anneal_placement!(layout, problem, LabelPlacementRNG(algorithm.seed))
-            descend_placement!(layout, problem, maxiter; hysteresis = WARM_START_HYSTERESIS)
-        end
+        layout = argmin(trial -> total_energy(trial, problem), trials)
     end
 
     offsets .= (c -> c.offset).(layout)
     return
 end
-
-previous_candidate(candidates, offset) = argmin(c -> norm(c.offset - offset), candidates)
 
 function total_energy(layout, problem::PlacementProblem)
     static = sum(c -> c.cost, layout)
@@ -568,9 +529,9 @@ function neighbor_lists(algorithm::CandidatePlacement, targets, text_bbs)
     return neighbors, radius
 end
 
-function best_candidate(i, problem::PlacementProblem, layout; hysteresis = 0.0)
+function best_candidate(i, problem::PlacementProblem, layout)
     best = layout[i]
-    best_cost = best.cost + pairwise_penalty(best, i, problem, layout) - hysteresis
+    best_cost = best.cost + pairwise_penalty(best, i, problem, layout)
     for c in problem.candidates[i]
         c.cost >= best_cost && break
         cost = c.cost + pairwise_penalty(c, i, problem, layout; bound = best_cost - c.cost)
@@ -581,11 +542,11 @@ function best_candidate(i, problem::PlacementProblem, layout; hysteresis = 0.0)
     return best
 end
 
-function descend_placement!(layout, problem::PlacementProblem, maxiter; hysteresis = 0.0)
+function descend_placement!(layout, problem::PlacementProblem, maxiter)
     for _ in 1:maxiter
         moved = false
         for i in eachindex(layout)
-            best = best_candidate(i, problem, layout; hysteresis)
+            best = best_candidate(i, problem, layout)
             best === layout[i] && continue
             layout[i] = best
             moved = true
