@@ -276,7 +276,10 @@ function plot!(p::Annotation)
     ]
     register_computation!(p.attributes, inputs, [:offsets]) do args, changed, cached
         offsets = isnothing(cached) ? Vec2f[] : cached[1]
-        resize!(offsets, length(args.screenpoints_target))
+        if length(offsets) != length(args.screenpoints_target)
+            resize!(offsets, length(args.screenpoints_target))
+            fill!(offsets, zero(eltype(offsets)))
+        end
 
         calculate_best_offsets!(
             args.algorithm,
@@ -375,7 +378,6 @@ function calculate_best_offsets!(
         )
     end
 
-    offsets .= zero.(eltype(offsets))
     fixed = Vec2d.(textpositions_offset .- textpositions)
     for i in eachindex(offsets)
         is_fixed(fixed[i]) && (offsets[i] = fixed[i])
@@ -419,7 +421,8 @@ annealing and finished with local descent, where every label is repeatedly moved
 cheapest candidate given all others until nothing moves. This is repeated `restarts` times and
 the layout with the lowest total cost is kept. `maxiter` bounds the number of descent passes.
 The annealing uses its own generator started from `seed`, so the same input gives the same
-layout on every Julia version.
+layout on every Julia version. On updates, the previous layout is kept unless a fresh solve
+is clearly better, so that labels do not jump between equally good positions.
 """
 Base.@kwdef struct CandidatePlacement
     gaps::Vector{Float64} = [4.0, 10.0, 18.0, 30.0, 48.0, 72.0, 104.0, 150.0, 210.0]
@@ -446,6 +449,7 @@ const ANNEAL_COOLING = 0.9
 const ANNEAL_TEMPERATURE = 300.0
 const ANNEAL_MIN_TEMPERATURE = 20.0
 const PENALTY_TOLERANCE = 1.0e-9
+const STABILITY_MARGIN = 30.0
 
 is_feasible(c) = c.cost < OVERLAP_PENALTY
 
@@ -497,7 +501,12 @@ function place_labels!(
     end
     problem = PlacementProblem(targets, candidates, neighbors, algorithm.padding)
 
-    layout = solve_placement(algorithm, problem, candidates, maxiter)
+    # the previous layout is kept unless a fresh solve is clearly better, so that labels do not
+    # jump between equally good positions on small view changes
+    previous = [argmin(c -> norm(c.offset - offsets[i]), candidates[i]) for i in 1:n]
+    descend_placement!(previous, problem, maxiter)
+    fresh = solve_placement(algorithm, problem, candidates, maxiter)
+    layout = total_energy(previous, problem) <= total_energy(fresh, problem) + STABILITY_MARGIN ? previous : fresh
 
     offsets .= (c -> c.offset).(layout)
     return
