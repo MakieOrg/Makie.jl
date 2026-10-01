@@ -6,6 +6,7 @@
 - `annotation` keeps labels with given offsets or positions fixed while placing the remaining ones around them [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
 - `annotation` no longer draws leaders for labels that sit within the `shrink` distance of their point [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
 - `annotation` leaders with `Ann.Paths.Line` attach to a pill shape around the label instead of pointing at its center [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
+- `annotation` uses the ink bounding box of each label for placement and leader clipping [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
 - Added `FastInterpolations` as the default `Resampler` interpolation backend for ~2-9x faster resampling; passing an `Interpolations` degree keeps the old behavior [#5706](https://github.com/MakieOrg/Makie.jl/pull/5706).
 - Fixed 2D CairoMakie meshes not anti-aliasing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
 - Fixed uniformly colored 2D CairoMakie meshes always rasterizing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)

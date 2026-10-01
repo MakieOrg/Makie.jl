@@ -230,9 +230,9 @@ function plot!(p::Annotation)
         visible = p.visible,
     )
 
-    # text bounding boxes per string, excluding `offsets` (including them here
+    # ink bounding boxes per string, excluding `offsets` (including them here
     # would error when input lengths change as they do not get resized beforehand)
-    register_raw_string_boundingboxes!(txt)
+    register_ink_string_boundingboxes!(txt)
 
     add_constant!(p.attributes, :space, :data)
     register_projected_positions!(
@@ -240,7 +240,7 @@ function plot!(p::Annotation)
         output_name = :screenpoints_target, output_space = :pixel
     )
 
-    map!(p, [txt.raw_string_boundingboxes, p.screenpoints_target], :text_bbs) do bboxes, px_pos
+    map!(p, [txt.ink_string_boundingboxes, p.screenpoints_target], :text_bbs) do bboxes, px_pos
         return _guard_nonfinite.(Rect2d.(bboxes)) .+ px_pos
     end
 
@@ -334,6 +334,34 @@ function plot!(p::Annotation)
     plotlist!(p, p.plotspecs; visible = p.visible[])
 
     return p
+end
+
+# like `register_raw_string_boundingboxes!` but with the ink extent of each glyph instead of its
+# ascender, descender and advance, so that labels hug their visible shape
+function register_ink_string_boundingboxes!(plot)
+    inputs = [
+        :text_blocks, :glyphindices, :text_scales, :glyph_extents, :glyph_origins, :text_rotation,
+        :linesegments, :linewidths, :lineindices,
+    ]
+    map!(plot.attributes, inputs, :ink_string_boundingboxes) do blocks, glyphs, scales, extents, origins, rotation, segments, linewidths, lineindices
+        text_bbs = map(blocks) do idxs
+            output = Rect3d()
+            for i in idxs
+                glyphs[i] == 0 && continue
+                ink = extents[i].ink_bounding_box
+                scale = sv_getindex(scales, i)
+                glyphbb = Rect3d(to_ndim(Point3d, origin(ink) .* scale, 0), to_ndim(Vec3d, widths(ink) .* scale, 0))
+                output = update_boundingbox(output, rotate_bbox(glyphbb, rotation[i]) + origins[i])
+            end
+            return output
+        end
+        for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
+            bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
+            text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
+        end
+        return text_bbs
+    end
+    return plot.ink_string_boundingboxes
 end
 
 function calculate_best_offsets!(
