@@ -467,6 +467,7 @@ const ANNEAL_STAGES = 50
 const ANNEAL_COOLING = 0.9
 const ANNEAL_TEMPERATURE = 300.0
 const ANNEAL_MIN_TEMPERATURE = 20.0
+const PENALTY_TOLERANCE = 1.0e-9
 const WARM_START_HYSTERESIS = 10.0
 const WARM_START_ZOOM = 1.4
 const WARM_START_PAN = 0.5
@@ -476,16 +477,20 @@ is_feasible(c) = c.cost < OVERLAP_PENALTY
 struct LabelCandidate
     offset::Vec2d
     box::Rect2d
-    extent::Rect2d
+    extent_min::Vec2d
+    extent_max::Vec2d
     leader_start::Point2d
     cost::Float64
+    nreachable::Int
 end
 
-function LabelCandidate(offset, box::Rect2, target::Point2, leader_start, cost)
-    lower = min.(minimum(box), target)
-    upper = max.(maximum(box), target)
-    return LabelCandidate(Vec2d(offset), box, Rect2d(lower, upper - lower), leader_start, cost)
+# `nreachable` is the number of neighbors, sorted by distance, that this candidate can touch at all
+function LabelCandidate(offset, box::Rect2, target::Point2, leader_start, cost, nreachable)
+    extent_min = min.(minimum(box), target)
+    extent_max = max.(maximum(box), target)
+    return LabelCandidate(Vec2d(offset), box, extent_min, extent_max, leader_start, cost, nreachable)
 end
+
 
 struct PlacementProblem
     targets::Vector{Point2d}
@@ -504,14 +509,15 @@ function place_labels!(
     (n == 0 || maxiter == 0) && return
 
     targets = Point2d.(textpositions)
-    neighbors = neighbor_lists(algorithm, targets, text_bbs)
+    neighbors, radius = neighbor_lists(algorithm, targets, text_bbs)
     candidates = map(1:n) do i
         if is_fixed(fixed[i])
-            [candidate_at_offset(algorithm, text_bbs[i], targets[i], fixed[i])]
+            [candidate_at_offset(algorithm, text_bbs[i], targets[i], fixed[i], length(neighbors[i]))]
         elseif any(iszero, widths(text_bbs[i]))
-            [candidate_at_offset(algorithm, text_bbs[i], targets[i], Vec2d(0))]
+            [candidate_at_offset(algorithm, text_bbs[i], targets[i], Vec2d(0), length(neighbors[i]))]
         else
-            label_candidates(algorithm, targets, neighbors[i], i, text_bbs[i], bbox, shrink)
+            neighbor_reach = maximum(j -> radius[j], neighbors[i]; init = 0.0)
+            label_candidates(algorithm, targets, neighbors[i], neighbor_reach, i, text_bbs[i], bbox, shrink)
         end
     end
     problem = PlacementProblem(targets, candidates, neighbors, algorithm.padding)
@@ -551,17 +557,15 @@ function total_energy(layout, problem::PlacementProblem)
     return static + pairwise / 2
 end
 
+# neighbors of each label sorted by distance, together with the farthest reach of each label
 function neighbor_lists(algorithm::CandidatePlacement, targets, text_bbs)
     maxgap = maximum(algorithm.gaps)
     radius = [maxgap + norm(widths(pad_rect(bb, algorithm.padding))) for bb in text_bbs]
-    return map(eachindex(targets)) do i
-        filter(j -> j != i && norm(targets[i] - targets[j]) < radius[i] + radius[j], eachindex(targets))
+    neighbors = map(eachindex(targets)) do i
+        close = filter(j -> j != i && norm(targets[i] - targets[j]) < radius[i] + radius[j], eachindex(targets))
+        sort!(close; by = j -> norm(targets[i] - targets[j]))
     end
-end
-
-function rect_corners(rect::Rect2)
-    (l, b), (r, t) = extrema(rect)
-    return (Point2d(l, b), Point2d(r, b), Point2d(r, t), Point2d(l, t))
+    return neighbors, radius
 end
 
 function best_candidate(i, problem::PlacementProblem, layout; hysteresis = 0.0)
@@ -614,26 +618,29 @@ function anneal_placement!(layout, problem::PlacementProblem, rng::LabelPlacemen
         nfeasible = count(is_feasible, candidates)
         nfeasible == 0 ? length(candidates) : nfeasible
     end
-    penalties = fill(NaN, n)
-    current_penalty(i) = isnan(penalties[i]) ? (penalties[i] = pairwise_penalty(layout[i], i, problem, layout)) : penalties[i]
+    penalties = [pairwise_penalty(layout[i], i, problem, layout) for i in 1:n]
     temperature = ANNEAL_TEMPERATURE
     for _ in 1:ANNEAL_STAGES
         temperature < ANNEAL_MIN_TEMPERATURE && break
-        conflicted = filter(i -> current_penalty(i) > 0, 1:n)
+        conflicted = filter(i -> penalties[i] > PENALTY_TOLERANCE, 1:n)
         isempty(conflicted) && break
         accepted = 0
         for _ in 1:min(ANNEAL_MOVES_PER_LABEL * length(conflicted), ANNEAL_MAX_MOVES_PER_STAGE)
             i = conflicted[next_int(rng, length(conflicted))]
             candidate = problem.candidates[i][next_int(rng, nproposals[i])]
-            candidate === layout[i] && continue
-            old_cost = layout[i].cost + current_penalty(i)
-            new_cost = candidate.cost + pairwise_penalty(candidate, i, problem, layout)
-            delta = new_cost - old_cost
-            if delta <= 0 || next_float(rng) < exp(-delta / temperature)
-                layout[i] = candidate
-                penalties[i] = NaN
-                penalties[problem.neighbors[i]] .= NaN
-                accepted += delta != 0
+            previous = layout[i]
+            candidate === previous && continue
+            # the move is accepted iff its cost increase stays below -T log(u), so the pairwise
+            # evaluation can stop as soon as that bound is exceeded
+            bound = previous.cost + penalties[i] - candidate.cost - temperature * log(next_float(rng))
+            penalty = pairwise_penalty(candidate, i, problem, layout; bound)
+            penalty >= bound && continue
+            layout[i] = candidate
+            accepted += penalty + candidate.cost != penalties[i] + previous.cost
+            penalties[i] = penalty
+            for k in 1:max(candidate.nreachable, previous.nreachable)
+                j = problem.neighbors[i][k]
+                penalties[j] += pair_penalty(candidate, i, layout[j], j, problem) - pair_penalty(previous, i, layout[j], j, problem)
             end
         end
         accepted == 0 && break
@@ -642,21 +649,20 @@ function anneal_placement!(layout, problem::PlacementProblem, rng::LabelPlacemen
     return
 end
 
-function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, text_bb, viewport, shrink)
+function label_candidates(algorithm::CandidatePlacement, targets, neighbors, neighbor_reach, i, text_bb, viewport, shrink)
     target = targets[i]
     padded_bb = pad_rect(text_bb, algorithm.padding)
     diagonal = norm(widths(padded_bb))
     margin = algorithm.pointradius + minimum(algorithm.padding)
     leaderthreshold = leader_visible_distance(shrink)
     reach(gap) = gap + diagonal + leaderthreshold + margin
-    obstacles = sort(neighbors; by = j -> norm(targets[j] - target))
-    obstacle_distances = [norm(targets[j] - target) for j in obstacles]
+    neighbor_distances = [norm(targets[j] - target) for j in neighbors]
     candidates = Vector{LabelCandidate}(undef, length(algorithm.gaps) * algorithm.nangles)
     # labels of points outside the viewport stay with their point, where they are clipped,
     # instead of piling up along the viewport edge
     keep_inside = target in viewport ? viewport : nothing
     for (index, (gap, k)) in enumerate(Iterators.product(algorithm.gaps, 0:(algorithm.nangles - 1)))
-        reachable = view(targets, view(obstacles, 1:searchsortedlast(obstacle_distances, reach(gap))))
+        reachable = view(targets, view(neighbors, 1:searchsortedlast(neighbor_distances, reach(gap))))
         angle = 2pi * k / algorithm.nangles
         direction = Vec2d(cos(angle), sin(angle))
         ring_center = target + direction * ring_distance(padded_bb, direction, gap)
@@ -673,7 +679,8 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
             (stranded ? STRANDED_PENALTY : 0.0) +
             slide_penalty(box, unslid, target, minimum(algorithm.gaps)) +
             static_penalty(algorithm, box, leader_start, target, reachable, keep_inside, claim_distance)
-        candidates[index] = LabelCandidate(offset, box, target, leader_start, cost)
+        nreachable = searchsortedlast(neighbor_distances, farthest_corner_distance(box, target) + neighbor_reach)
+        candidates[index] = LabelCandidate(offset, box, target, leader_start, cost, nreachable)
     end
     return sort!(candidates; by = c -> c.cost, alg = QuickSort)
 end
@@ -697,9 +704,9 @@ function slide_inside(box::Rect2, viewport::Rect2)
     return box + shift
 end
 
-function candidate_at_offset(algorithm::CandidatePlacement, text_bb, target, offset)
+function candidate_at_offset(algorithm::CandidatePlacement, text_bb, target, offset, nreachable)
     box = pad_rect(text_bb, algorithm.padding) + offset
-    return LabelCandidate(offset, box, target, leader_start_point(box, target), 0.0)
+    return LabelCandidate(offset, box, target, leader_start_point(box, target), 0.0, nreachable)
 end
 
 # distance along `direction` at which a box centered there keeps `gap` between its
@@ -717,6 +724,8 @@ function ring_distance(rect::Rect2, direction::VecTypes{2}, gap)
 end
 
 nearest_point(rect::Rect2, p::Point2) = Point2d(clamp.(p, minimum(rect), maximum(rect)))
+
+farthest_corner_distance(rect::Rect2, p::Point2) = norm(max.(abs.(minimum(rect) - p), abs.(maximum(rect) - p)))
 
 # leaders attach to the pill inscribed in the label box, perpendicular on its straight sides and
 # turning toward the target around its rounded ends
@@ -754,6 +763,7 @@ overlap_penalty(area) = area > 0 ? OVERLAP_PENALTY * (1 + area / 100) : 0.0
 # a label without a leader could be read as belonging to any other point within reach of the
 # pill inscribed in the label, the more so the closer it is, unless the own point lies between them
 function ambiguity_penalty(box, point, target, claim_distance)
+    claim_distance > 0 || return 0.0
     distance = pill_distance(box, point)
     distance < claim_distance || return 0.0
     start = leader_start_point(box, target)
@@ -769,20 +779,30 @@ end
 pill_distance(box::Rect2, p::Point2) = norm(p - leader_start_point(box, p))
 
 function pairwise_penalty(c::LabelCandidate, i, problem::PlacementProblem, layout; bound = Inf)
-    targets = problem.targets
     penalty = 0.0
-    for j in problem.neighbors[i]
-        other = layout[j]
-        rects_disjoint(c.extent, other.extent) && continue
-        penalty += overlap_penalty(overlap_area(c.box, other.box))
-        if segments_cross(c.leader_start, targets[i], other.leader_start, targets[j])
-            penalty += CROSSING_PENALTY
-        end
-        penalty += leader_label_penalty(other.leader_start, targets[j], c.box, problem.padding)
-        penalty += leader_label_penalty(c.leader_start, targets[i], other.box, problem.padding)
+    neighbors = problem.neighbors[i]
+    for k in 1:c.nreachable
+        j = neighbors[k]
+        penalty += pair_penalty(c, i, layout[j], j, problem)
         penalty >= bound && return penalty
     end
     return penalty
+end
+
+function pair_penalty(c::LabelCandidate, i, other::LabelCandidate, j, problem::PlacementProblem)
+    extents_disjoint(c, other) && return 0.0
+    targets = problem.targets
+    penalty = overlap_penalty(overlap_area(c.box, other.box))
+    if segments_cross(c.leader_start, targets[i], other.leader_start, targets[j])
+        penalty += CROSSING_PENALTY
+    end
+    penalty += leader_label_penalty(other.leader_start, targets[j], c.box, problem.padding)
+    penalty += leader_label_penalty(c.leader_start, targets[i], other.box, problem.padding)
+    return penalty
+end
+
+function extents_disjoint(a::LabelCandidate, b::LabelCandidate)
+    return any(a.extent_max .< b.extent_min) || any(b.extent_max .< a.extent_min)
 end
 
 function leader_label_penalty(leader_start, target, box, padding)
@@ -790,8 +810,6 @@ function leader_label_penalty(leader_start, target, box, padding)
     textbox = pad_rect(box, -padding)
     return segment_intersects_rect(leader_start, target, textbox) ? CROSSING_PENALTY : CROSSING_PENALTY / 3
 end
-
-rects_disjoint(a::Rect2, b::Rect2) = any(maximum(a) .< minimum(b)) || any(maximum(b) .< minimum(a))
 
 function overlap_area(a::Rect2, b::Rect2)
     return prod(max.(0, min.(maximum(a), maximum(b)) .- max.(minimum(a), minimum(b))))
@@ -817,15 +835,23 @@ end
 
 cross2d(a::VecTypes{2}, b::VecTypes{2}) = a[1] * b[2] - a[2] * b[1]
 
+# Liang-Barsky clipping of the segment parameter range against the rect's slabs
 function segment_intersects_rect(a::Point2, b::Point2, rect::Rect2)
-    (l, bo), (r, t) = extrema(rect)
-    inside(p) = l < p[1] < r && bo < p[2] < t
-    (inside(a) || inside(b)) && return true
-    corners = rect_corners(rect)
-    for k in 1:4
-        segments_cross(a, b, corners[k], corners[mod1(k + 1, 4)]) && return true
+    lower, upper = extrema(rect)
+    tmin, tmax = 0.0, 1.0
+    for dim in 1:2
+        d = b[dim] - a[dim]
+        if d == 0
+            lower[dim] < a[dim] < upper[dim] || return false
+        else
+            t1 = (lower[dim] - a[dim]) / d
+            t2 = (upper[dim] - a[dim]) / d
+            tmin = max(tmin, min(t1, t2))
+            tmax = min(tmax, max(t1, t2))
+            tmin < tmax || return false
+        end
     end
-    return false
+    return true
 end
 
 startpoint(::Ann.Paths.Line, text_bb, p2) = leader_start_point(text_bb, p2)
