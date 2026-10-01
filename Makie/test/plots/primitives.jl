@@ -190,11 +190,11 @@ end
         targets = [Point2f(100, 100), Point2f(200, 100)]
         text_bbs = [Rect2d(-30, -8, 60, 16) + t for t in targets]
         algorithm = Makie.CandidatePlacement()
-        stale = [Vec2f(100, 0), Vec2f(0, 21)]
+        stale = [Vec2f(100, 0), Vec2f(0, 22)]
         Makie.place_labels!(algorithm, stale, targets, text_bbs, Rect2d(0, 0, 500, 400), fill(Vec2d(NaN), 2); maxiter = Makie.automatic, reset = false, leaderthreshold = 19.0)
         box = Makie.pad_rect(text_bbs[1] + stale[1], algorithm.padding)
         @test Makie.rect_point_distance(box, targets[2]) >= algorithm.pointradius
-        @test stale[2] == Vec2f(0, 21)
+        @test stale[2] == Vec2f(0, 22)
     end
 
     @testset "labels of points outside the viewport stay with their points" begin

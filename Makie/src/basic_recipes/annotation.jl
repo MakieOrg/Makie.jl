@@ -447,7 +447,7 @@ starting point and only labels that are in conflict or find a clearly better pos
 Base.@kwdef struct CandidatePlacement
     gaps::Vector{Float64} = [4.0, 10.0, 18.0, 30.0, 48.0, 72.0, 104.0, 150.0, 210.0]
     nangles::Int = 32
-    padding::Vec2d = Vec2d(4, 3)
+    padding::Vec2d = Vec2d(4, 4)
     pointradius::Float64 = 5.0
     centroidweight::Float64 = 0.15
     leaderpenalty::Float64 = 4.0
