@@ -93,7 +93,6 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     else
         add_input!(attr, key, val)
         # maybe best to not make assumptions about user attributes?
-        # CairoMakie rasterize needs this (or be treated with more care)
         attr[key].value = RefValue{Any}(nothing)
     end
     return plot
@@ -581,7 +580,7 @@ function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outpu
     return register_computation!(f, p.attributes, inputs, outputs)
 end
 
-function Base.map!(f, p::Plot, inputs::Union{Vector{Symbol}, Vector{Computed}, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
+function Base.map!(f, p::Plot, inputs::Union{Vector, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
     return map!(f, p.attributes, inputs, outputs)
 end
 
@@ -874,9 +873,15 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         register_camera!(scene, plot)
     end
     calculated_attributes!(Plot{Func}, plot)
+    add_resolved_shading!(plot, scene)
+
+    if !haskey(plot, :rasterize)
+        # just always convert for for simplicity
+        convert = AttributeConvert(:rasterize, plotsym(typeof(plot)))
+        add_input!(convert, plot.attributes, :rasterize, get(plot.kw, :rasterize, false))
+    end
 
     plot!(plot)
-
 
     documented_attr = plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw
@@ -1035,14 +1040,22 @@ function calculated_attributes!(::Type{MeshScatter}, plot::Plot)
     register_colormapping!(attr)
     register_position_transforms!(attr)
     register_pattern_uv_transform!(attr)
+    map!(attr, :marker, [:vertex_position, :faces, :normal, :uv]) do mesh
+        faces = decompose(GLTriangleFace, mesh)
+        normals = decompose_normals(mesh)
+        texturecoordinates = decompose_uv(mesh)
+        positions = decompose(Point3f, mesh)
+        return (positions, faces, normals, texturecoordinates)
+    end
     map!(Rect3d, attr, :marker, :marker_bb)
     map!(meshscatter_data_limits, attr, [:positions, :marker_bb, :markersize, :rotation], :data_limits)
-    return map!(
+    map!(
         meshscatter_boundingbox, attr, [
             :positions_transformed, :model,
             :transform_marker, :marker_bb, :markersize, :rotation,
         ], :boundingbox
     )
+    return
 end
 
 
@@ -1093,14 +1106,15 @@ get_colormapping(plot::Plot) = get_colormapping(plot, plot.attributes)
 function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     isnothing(attr[:scaled_colorrange][]) && return nothing
     haskey(attr, :cb_colormapping) && return attr[:cb_colormapping][]
-
     map!(attr, [:colorrange, :raw_color], :unscaled_colorrange) do colorrange, color
         if colorrange === automatic
             return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
         elseif first(colorrange) == automatic
-            return Vec2f(first(distinct_extrema_nan(color)), last(colorrange))
+            lastcolor = last(colorrange)
+            return Vec2f(min(first(distinct_extrema_nan(color)), lastcolor), lastcolor)
         elseif last(colorrange) == automatic
-            return Vec2f(first(colorrange), last(distinct_extrema_nan(color)))
+            firstcolor = first(colorrange)
+            return Vec2f(firstcolor, max(firstcolor, last(distinct_extrema_nan(color))))
         else
             lo, hi = Vec2f(colorrange)
             lo == hi || return Vec2f(lo, hi)

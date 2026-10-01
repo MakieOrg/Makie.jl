@@ -1209,8 +1209,9 @@ pattern:
 struct Linestyle
     value::Vector{Float32}
 end
+Base.:(==)(a::Linestyle, b::Linestyle) = a.value == b.value
 
-to_linestyle(style::Linestyle) = Float32[x - style.value[1] for x in style.value]
+to_linestyle(style::Linestyle) = Linestyle(Float32[x - style.value[1] for x in style.value])
 
 # TODO only use NTuple{2, <: Real} and not any other container
 const GapType = Union{Real, Symbol, Tuple, AbstractVector}
@@ -1224,7 +1225,7 @@ end
 
 function line_pattern(linestyle::Symbol, gaps::GapType)
     pattern = line_diff_pattern(linestyle, gaps)
-    return isnothing(pattern) ? pattern : Float32[0.0; cumsum(pattern)]
+    return isnothing(pattern) ? nothing : Linestyle(Float32[0.0; cumsum(pattern)])
 end
 
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."
@@ -1580,29 +1581,33 @@ end
 to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continuous resampling.")
 
 """
-    categorical_colors(colormaplike, categories::Integer)
+    categorical_colors(colormaplike, categories::Integer, cycle = false)
 
 Creates categorical colors and tries to match `categories`.
 Will error if color scheme doesn't contain enough categories. Will drop the n last colors, if request less colors than contained in scheme.
 """
-function categorical_colors(cols::AbstractVector{<:Colorant}, categories::Integer)
-    if length(cols) < categories
-        error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+function categorical_colors(cols::AbstractVector{<:Colorant}, categories::Integer, cycle = false)
+    if cycle
+        return [cols[mod1(i, end)] for i in 1:categories]
+    else
+        if length(cols) < categories
+            error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+        end
+        return cols[1:categories]
     end
-    return cols[1:categories]
 end
 
-function categorical_colors(cols::AbstractVector, categories::Integer)
-    return categorical_colors(to_color.(cols), categories)
+function categorical_colors(cols::AbstractVector, categories::Integer, cycle = false)
+    return categorical_colors(to_color.(cols), categories, cycle)
 end
 
-function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
+function categorical_colors(cs::Union{String, Symbol}, categories::Integer, cycle = false)
     cs_string = string(cs)
     return if cs_string in all_gradient_names
         if haskey(ColorBrewer.colorSchemes, cs_string)
             return to_colormap(ColorBrewer.palette(cs_string, categories))
         else
-            return categorical_colors(to_colormap(cs_string), categories)
+            return categorical_colors(to_colormap(cs_string), categories, cycle)
         end
     else
         error(
@@ -2429,3 +2434,5 @@ to_lrbt_padding(pad::VecTypes{4}) = to_ndim(Vec4f, pad, 0)
 
 convert_attribute(x::Plane, ::key"clip_planes") = Plane3f[x]
 convert_attribute(x::Vector{<:Plane}, ::key"clip_planes") = Plane3f.(x)
+
+convert_attribute(x::Integer, ::key"rasterize") = Int(x)

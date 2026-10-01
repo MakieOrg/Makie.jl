@@ -134,3 +134,15 @@ end
     end
 
 end
+
+@testset "contourf constant field" begin
+    n = 33
+    xs = ys = range(-1, 1; length = n)
+    c = 0.25f0
+    zs = fill(c, n, n)
+    zs[1:7:end] .= prevfloat(c)   # one ulp, as produced by interpolation
+
+    _, _, p = contourf(xs, ys, zs)
+    @test !any(≈(c), p.computed_levels[])
+    @test length(p.plots[1][1][]) == 1
+end
