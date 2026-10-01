@@ -22,6 +22,7 @@
 - Adjusted `series` to cycle colors sampled from `color` if more are needed. This can be controlled by the new `cycle_color` attribute. By default cycling is enabled with a warning. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
 - Added colormapping to `series`, allowing `color` to be set to values. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
 - Fixed `Linestyle` warning when drawing lines or linesegments with SpecApi. [#5810](https://github.com/MakieOrg/Makie.jl/pull/5810)
+- Fixed hang in Colorbar by not keeping partially automatic colorranges sorted [#5806](https://github.com/MakieOrg/Makie.jl/pull/5806)
 - Fixed empty reduce error in `Makie.canonical_line_order` when NaN appears in the input [#5817](https://github.com/MakieOrg/Makie.jl/pull/5817)
 
 ## [0.24.15] - 2026-09-18
