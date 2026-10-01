@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- `annotation` places labels with a new candidate-based algorithm that avoids overlaps, covered points and crossing leaders [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
+- `annotation` places labels with a new candidate-based algorithm, `CandidatePlacement`, that avoids overlaps, covered points and crossing leaders [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
 - `annotation` keeps labels with given offsets or positions fixed while placing the remaining ones around them [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
 - `annotation` no longer draws leaders for labels that sit within the `shrink` distance of their point [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).
 - `annotation` leaders with `Ann.Paths.Line` attach to a pill shape around the label instead of pointing at its center [#TODO](https://github.com/MakieOrg/Makie.jl/pull/TODO).

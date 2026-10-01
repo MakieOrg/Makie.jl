@@ -166,7 +166,7 @@ be very close to their associated data points so connection plots are typically 
     linewidth = 1.0
     """
     The algorithm used to automatically place labels with reduced overlaps. `automatic` uses
-    `Makie.CandidatePlacement()`.
+    `CandidatePlacement()`.
     The positioning of the labels with a given input may change between non-breaking versions.
     """
     algorithm = automatic
@@ -395,7 +395,7 @@ is_fixed(offset::Vec2) = !any(isnan, offset)
 pad_rect(rect::Rect2, padding) = Rect2d(rect.origin .- padding, rect.widths .+ 2 * padding)
 
 """
-    CandidatePlacement(; gaps, nangles, padding, pointradius, centroidweight, leaderpenalty, directionpreference, restarts, seed)
+    CandidatePlacement(; kwargs...)
 
 The default label placement algorithm of `annotation`. Each label is placed on one of a finite
 set of candidate positions around its target point. Candidates lie on rings with the given `gaps`
@@ -409,7 +409,13 @@ the own point lies in between), and finally the gap to the target.
 the point, which keeps labels compact around their points, and `leaderpenalty` pixels of gap are
 added for visible leaders that deviate from the eight main directions. `directionpreference`
 pixels of gap separate positions below from above and left from right, so that otherwise
-equivalent positions do not flip on small changes of the view.
+equivalent positions do not flip on small changes of the view. The penalties themselves are
+`overlappenalty` (per overlap, plus a share per 100 square pixels), `crossingpenalty` (per
+crossing or leader through another label, a third of it for a leader through its padding),
+`leaderpointpenalty`, `ambiguitypenalty` (per competing point, scaled by closeness) and
+`strandedpenalty` (for labels too far from their point to go without a leader but too close
+to get one). Points within `shieldwidth` pixels of the line behind the own point do not count
+as competing.
 
 Labels with an empty bounding box, for example from empty strings, stay at their target and
 only act as obstacles, which allows labelling a subset of points while avoiding all of them.
@@ -420,9 +426,12 @@ Labels start at their cheapest candidates, then the assignment is improved by si
 annealing and finished with local descent, where every label is repeatedly moved to its
 cheapest candidate given all others until nothing moves. This is repeated `restarts` times and
 the layout with the lowest total cost is kept. `maxiter` bounds the number of descent passes.
-The annealing uses its own generator started from `seed`, so the same input gives the same
-layout on every Julia version. On updates, the previous layout is kept unless a fresh solve
-is clearly better, so that labels do not jump between equally good positions.
+The annealing runs up to `annealstages` stages, each with `annealmoves` proposals per conflicted
+label (at most `annealmaxmoves`), from `annealtemperature` cooling by `annealcooling` per stage
+down to `annealmintemperature`, and uses its own generator started from `seed`, so the same
+input gives the same layout on every Julia version. On updates, the previous layout is kept
+unless a fresh solve is better by more than `stabilitymargin`, so that labels do not jump
+between equally good positions.
 """
 Base.@kwdef struct CandidatePlacement
     gaps::Vector{Float64} = [4.0, 10.0, 18.0, 30.0, 48.0, 72.0, 104.0, 150.0, 210.0]
@@ -432,26 +441,26 @@ Base.@kwdef struct CandidatePlacement
     centroidweight::Float64 = 0.15
     leaderpenalty::Float64 = 4.0
     directionpreference::Float64 = 0.5
+    overlappenalty::Float64 = 1000.0
+    crossingpenalty::Float64 = 300.0
+    leaderpointpenalty::Float64 = 100.0
+    ambiguitypenalty::Float64 = 100.0
+    strandedpenalty::Float64 = 100.0
+    shieldwidth::Float64 = 8.0
+    annealmoves::Int = 100
+    annealmaxmoves::Int = 3000
+    annealstages::Int = 50
+    annealcooling::Float64 = 0.9
+    annealtemperature::Float64 = 300.0
+    annealmintemperature::Float64 = 20.0
+    stabilitymargin::Float64 = 30.0
     restarts::Int = 3
     seed::UInt64 = 0
 end
 
-const OVERLAP_PENALTY = 1000.0
-const CROSSING_PENALTY = 300.0
-const LEADER_POINT_PENALTY = 100.0
-const AMBIGUITY_PENALTY = 100.0
-const STRANDED_PENALTY = 100.0
-const AMBIGUITY_SHIELD_WIDTH = 8.0
-const ANNEAL_MOVES_PER_LABEL = 100
-const ANNEAL_MAX_MOVES_PER_STAGE = 3000
-const ANNEAL_STAGES = 50
-const ANNEAL_COOLING = 0.9
-const ANNEAL_TEMPERATURE = 300.0
-const ANNEAL_MIN_TEMPERATURE = 20.0
 const PENALTY_TOLERANCE = 1.0e-9
-const STABILITY_MARGIN = 30.0
 
-is_feasible(c) = c.cost < OVERLAP_PENALTY
+is_feasible(c, algorithm::CandidatePlacement) = c.cost < algorithm.overlappenalty
 
 struct LabelCandidate
     offset::Vec2d
@@ -472,10 +481,10 @@ end
 
 
 struct PlacementProblem
+    algorithm::CandidatePlacement
     targets::Vector{Point2d}
     candidates::Vector{Vector{LabelCandidate}}
     neighbors::Vector{Vector{Int}}
-    padding::Vec2d
 end
 
 function place_labels!(
@@ -499,14 +508,14 @@ function place_labels!(
             label_candidates(algorithm, targets, neighbors[i], neighbor_reach, i, text_bbs[i], bbox, shrink)
         end
     end
-    problem = PlacementProblem(targets, candidates, neighbors, algorithm.padding)
+    problem = PlacementProblem(algorithm, targets, candidates, neighbors)
 
     # the previous layout is kept unless a fresh solve is clearly better, so that labels do not
     # jump between equally good positions on small view changes
     previous = [argmin(c -> norm(c.offset - offsets[i]), candidates[i]) for i in 1:n]
     descend_placement!(previous, problem, maxiter)
     fresh = solve_placement(algorithm, problem, candidates, maxiter)
-    layout = total_energy(previous, problem) <= total_energy(fresh, problem) + STABILITY_MARGIN ? previous : fresh
+    layout = total_energy(previous, problem) <= total_energy(fresh, problem) + algorithm.stabilitymargin ? previous : fresh
 
     offsets .= (c -> c.offset).(layout)
     return
@@ -569,10 +578,8 @@ function descend_placement!(layout, problem::PlacementProblem, maxiter)
     return layout
 end
 
-# Own generator so that layouts are reproducible across Julia versions, which the generators in
-# Random do not guarantee. Knuth's MMIX linear congruential generator (a = 6364136223846793005,
-# c = 1442695040888963407, m = 2^64), whose low bits have short periods, so the output is scrambled
-# with the first xorshift-multiply step of the MurmurHash3 64-bit finalizer.
+# simple generator (Knuth's MMIX LCG with one MurmurHash3 finalizer step) for reproducible layouts
+# across Julia versions without a StableRNGs dependency, the quality of the randomness matters little
 mutable struct LabelPlacementRNG
     state::UInt64
 end
@@ -587,19 +594,20 @@ next_int(rng::LabelPlacementRNG, n::Int) = Int(next_uint(rng) % UInt64(n)) + 1
 next_float(rng::LabelPlacementRNG) = Float64(next_uint(rng) >> 11) / 2.0^53
 
 function anneal_placement!(layout, problem::PlacementProblem, rng::LabelPlacementRNG)
+    algorithm = problem.algorithm
     n = length(layout)
     nproposals = map(problem.candidates) do candidates
-        nfeasible = count(is_feasible, candidates)
+        nfeasible = count(c -> is_feasible(c, algorithm), candidates)
         nfeasible == 0 ? length(candidates) : nfeasible
     end
     penalties = [pairwise_penalty(layout[i], i, problem, layout) for i in 1:n]
-    temperature = ANNEAL_TEMPERATURE
-    for _ in 1:ANNEAL_STAGES
-        temperature < ANNEAL_MIN_TEMPERATURE && break
+    temperature = algorithm.annealtemperature
+    for _ in 1:algorithm.annealstages
+        temperature < algorithm.annealmintemperature && break
         conflicted = filter(i -> penalties[i] > PENALTY_TOLERANCE, 1:n)
         isempty(conflicted) && break
         accepted = 0
-        for _ in 1:min(ANNEAL_MOVES_PER_LABEL * length(conflicted), ANNEAL_MAX_MOVES_PER_STAGE)
+        for _ in 1:min(algorithm.annealmoves * length(conflicted), algorithm.annealmaxmoves)
             i = conflicted[next_int(rng, length(conflicted))]
             candidate = problem.candidates[i][next_int(rng, nproposals[i])]
             previous = layout[i]
@@ -618,7 +626,7 @@ function anneal_placement!(layout, problem::PlacementProblem, rng::LabelPlacemen
             end
         end
         accepted == 0 && break
-        temperature *= ANNEAL_COOLING
+        temperature *= algorithm.annealcooling
     end
     return
 end
@@ -651,8 +659,8 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, nei
         cost = gap + algorithm.centroidweight * norm(center(box) - target) +
             algorithm.directionpreference * (0.5 * (1 - sin(angle)) + 0.25 * (1 - cos(angle))) +
             (leader_visible ? algorithm.leaderpenalty * sin(4 * leader_angle(leader_start, target))^2 : 0.0) +
-            (stranded ? STRANDED_PENALTY : 0.0) +
-            slide_penalty(box, unslid, target, minimum(algorithm.gaps)) +
+            (stranded ? algorithm.strandedpenalty : 0.0) +
+            slide_penalty(algorithm, box, unslid, target) +
             static_penalty(algorithm, box, leader_start, target, reachable, keep_inside, claim_distance)
         nreachable = searchsortedlast(neighbor_distances, farthest_corner_distance(box, target) + neighbor_reach)
         candidates[index] = LabelCandidate(offset, box, target, leader_start, cost, nreachable)
@@ -670,7 +678,10 @@ end
 leaderless_distance(shrink) = sum(shrink)
 leader_visible_distance(shrink) = sum(shrink) + maximum(shrink)
 
-slide_penalty(box, unslid, target, mingap) = box != unslid && rect_point_distance(box, target) < mingap ? OVERLAP_PENALTY : 0.0
+function slide_penalty(algorithm::CandidatePlacement, box, unslid, target)
+    slid_onto_point = box != unslid && rect_point_distance(box, target) < minimum(algorithm.gaps)
+    return slid_onto_point ? algorithm.overlappenalty : 0.0
+end
 
 slide_inside(box::Rect2, ::Nothing) = box
 function slide_inside(box::Rect2, viewport::Rect2)
@@ -718,26 +729,26 @@ function static_penalty(algorithm::CandidatePlacement, box, leader_start, target
     leader_clearance = r + minimum(algorithm.padding)
     for t in obstacles
         if rect_point_distance(box, t) < r
-            penalty += OVERLAP_PENALTY
+            penalty += algorithm.overlappenalty
         else
-            penalty += ambiguity_penalty(box, t, target, claim_distance)
+            penalty += ambiguity_penalty(algorithm, box, t, target, claim_distance)
         end
         if segment_point_distance(leader_start, target, t) < leader_clearance
-            penalty += LEADER_POINT_PENALTY
+            penalty += algorithm.leaderpointpenalty
         end
     end
-    penalty += viewport_penalty(box, viewport)
+    penalty += viewport_penalty(algorithm, box, viewport)
     return penalty
 end
 
-viewport_penalty(box, ::Nothing) = 0.0
-viewport_penalty(box, viewport::Rect2) = overlap_penalty(prod(widths(box)) - overlap_area(box, viewport))
+viewport_penalty(algorithm, box, ::Nothing) = 0.0
+viewport_penalty(algorithm, box, viewport::Rect2) = overlap_penalty(algorithm, prod(widths(box)) - overlap_area(box, viewport))
 
-overlap_penalty(area) = area > 0 ? OVERLAP_PENALTY * (1 + area / 100) : 0.0
+overlap_penalty(algorithm::CandidatePlacement, area) = area > 0 ? algorithm.overlappenalty * (1 + area / 100) : 0.0
 
 # a label without a leader could be read as belonging to any other point within reach of the
 # pill inscribed in the label, the more so the closer it is, unless the own point lies between them
-function ambiguity_penalty(box, point, target, claim_distance)
+function ambiguity_penalty(algorithm::CandidatePlacement, box, point, target, claim_distance)
     claim_distance > 0 || return 0.0
     distance = pill_distance(box, point)
     distance < claim_distance || return 0.0
@@ -747,8 +758,8 @@ function ambiguity_penalty(box, point, target, claim_distance)
     own_distance = norm(own)
     along = dot(other, own) / own_distance
     lateral = abs(own[1] * other[2] - own[2] * other[1]) / own_distance
-    shielded = along > own_distance && lateral < AMBIGUITY_SHIELD_WIDTH
-    return shielded ? 0.0 : AMBIGUITY_PENALTY * (1 - distance / claim_distance)
+    shielded = along > own_distance && lateral < algorithm.shieldwidth
+    return shielded ? 0.0 : algorithm.ambiguitypenalty * (1 - distance / claim_distance)
 end
 
 pill_distance(box::Rect2, p::Point2) = norm(p - leader_start_point(box, p))
@@ -766,13 +777,14 @@ end
 
 function pair_penalty(c::LabelCandidate, i, other::LabelCandidate, j, problem::PlacementProblem)
     extents_disjoint(c, other) && return 0.0
+    algorithm = problem.algorithm
     targets = problem.targets
-    penalty = overlap_penalty(overlap_area(c.box, other.box))
+    penalty = overlap_penalty(algorithm, overlap_area(c.box, other.box))
     if segments_cross(c.leader_start, targets[i], other.leader_start, targets[j])
-        penalty += CROSSING_PENALTY
+        penalty += algorithm.crossingpenalty
     end
-    penalty += leader_label_penalty(other.leader_start, targets[j], c.box, problem.padding)
-    penalty += leader_label_penalty(c.leader_start, targets[i], other.box, problem.padding)
+    penalty += leader_label_penalty(algorithm, other.leader_start, targets[j], c.box)
+    penalty += leader_label_penalty(algorithm, c.leader_start, targets[i], other.box)
     return penalty
 end
 
@@ -780,10 +792,10 @@ function extents_disjoint(a::LabelCandidate, b::LabelCandidate)
     return any(a.extent_max .< b.extent_min) || any(b.extent_max .< a.extent_min)
 end
 
-function leader_label_penalty(leader_start, target, box, padding)
+function leader_label_penalty(algorithm::CandidatePlacement, leader_start, target, box)
     segment_intersects_rect(leader_start, target, box) || return 0.0
-    textbox = pad_rect(box, -padding)
-    return segment_intersects_rect(leader_start, target, textbox) ? CROSSING_PENALTY : CROSSING_PENALTY / 3
+    textbox = pad_rect(box, -algorithm.padding)
+    return segment_intersects_rect(leader_start, target, textbox) ? algorithm.crossingpenalty : algorithm.crossingpenalty / 3
 end
 
 function overlap_area(a::Rect2, b::Rect2)

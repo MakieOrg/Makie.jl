@@ -6,7 +6,9 @@ annotation
 
 ### Automatic label placement
 
-If only target points are specified, text label offsets are automatically optimized for less overlap with their data points, each other and the axis boundary. Labels are placed on candidate positions around their points, and a layout is chosen that avoids overlapping labels, covered points and crossing leader lines where possible, preferring short leaders.
+If only target points are specified, text label offsets are automatically optimized for less overlap with their data points, each other and the axis boundary.
+Labels are placed on candidate positions around their points, and a layout is chosen that avoids overlapping labels,
+covered points and crossing leader lines where possible, preferring short leaders.
 
 In this example, you can see how the `text` recipe results in an unreadable overlap for some labels, while `annotation` pushes labels apart.
 

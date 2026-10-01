@@ -267,14 +267,15 @@ end
     end
 
     @testset "ambiguity penalty" begin
+        algorithm = Makie.CandidatePlacement(ambiguitypenalty = 100.0)
         box = Rect2d(0, 0, 60, 20)
         target = Point2d(30, -4)
-        @test Makie.ambiguity_penalty(box, Point2d(-4, 10), target, 20.0) == 0.8 * Makie.AMBIGUITY_PENALTY
-        @test Makie.ambiguity_penalty(box, Point2d(10, -4), target, 20.0) == 0.8 * Makie.AMBIGUITY_PENALTY
-        @test Makie.ambiguity_penalty(box, Point2d(-4, 10), target, 0.0) == 0
-        @test Makie.ambiguity_penalty(box, Point2d(30, -30), target, 20.0) == 0
-        @test Makie.ambiguity_penalty(box, Point2d(90, -40), target, 20.0) == 0
-        @test Makie.ambiguity_penalty(box, Point2d(50, -10), target, 20.0) == 0.5 * Makie.AMBIGUITY_PENALTY
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(-4, 10), target, 20.0) == 80
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(10, -4), target, 20.0) == 80
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(-4, 10), target, 0.0) == 0
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(30, -30), target, 20.0) == 0
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(90, -40), target, 20.0) == 0
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(50, -10), target, 20.0) == 50
     end
 
     @testset "placement geometry" begin
