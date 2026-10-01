@@ -292,7 +292,7 @@ function plot!(p::Annotation)
             Rect2d((0, 0), widths(args.viewport));
             maxiter = args.maxiter,
             reset,
-            leaderthreshold = sum(args.shrink) + maximum(args.shrink),
+            shrink = args.shrink,
         )
 
         return (offsets, view)
@@ -311,7 +311,7 @@ function plot!(p::Annotation)
         broadcast_foreach(text_bbs, points, clipstart, offsets) do text_bb, p2, clipstart, offset
             offset_bb = text_bb + offset
 
-            (p2 in offset_bb || rect_point_distance(offset_bb, p2) < sum(shrink)) && return
+            (p2 in offset_bb || rect_point_distance(offset_bb, p2) < leaderless_distance(shrink)) && return
             p1 = startpoint(path, offset_bb, p2)
             _path = connection_path(path, p1, p2)
 
@@ -368,7 +368,7 @@ function calculate_best_offsets!(
         algorithm, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
         maxiter::Union{Automatic, Int},
         reset::Bool,
-        leaderthreshold::Real,
+        shrink,
     )
     if !(length(offsets) == length(textpositions) == length(textpositions_offset) == length(text_bbs))
         error(
@@ -395,7 +395,7 @@ function calculate_best_offsets!(
     # doesn't really work because projection into screen space needs x and y together
 
     algorithm = algorithm === automatic ? CandidatePlacement() : algorithm
-    return place_labels!(algorithm, offsets, textpositions, text_bbs, bbox, fixed; maxiter, reset, leaderthreshold)
+    return place_labels!(algorithm, offsets, textpositions, text_bbs, bbox, fixed; maxiter, reset, shrink)
 end
 
 is_fixed(offset::Vec2) = !any(isnan, offset)
@@ -459,6 +459,7 @@ const OVERLAP_PENALTY = 1000.0
 const CROSSING_PENALTY = 300.0
 const LEADER_POINT_PENALTY = 100.0
 const AMBIGUITY_PENALTY = 100.0
+const STRANDED_PENALTY = 100.0
 const AMBIGUITY_SHIELD_WIDTH = 8.0
 const ANNEAL_MOVES_PER_LABEL = 100
 const ANNEAL_MAX_MOVES_PER_STAGE = 3000
@@ -496,7 +497,7 @@ end
 function place_labels!(
         algorithm::CandidatePlacement, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2},
         text_bbs::Vector{<:Rect2}, bbox::Rect2, fixed::Vector{Vec2d};
-        maxiter::Union{Automatic, Int}, reset::Bool, leaderthreshold::Real,
+        maxiter::Union{Automatic, Int}, reset::Bool, shrink,
     )
     maxiter = maxiter === automatic ? 20 : maxiter
     n = length(offsets)
@@ -510,7 +511,7 @@ function place_labels!(
         elseif any(iszero, widths(text_bbs[i]))
             [candidate_at_offset(algorithm, text_bbs[i], targets[i], Vec2d(0))]
         else
-            label_candidates(algorithm, targets, neighbors[i], i, text_bbs[i], bbox, leaderthreshold)
+            label_candidates(algorithm, targets, neighbors[i], i, text_bbs[i], bbox, shrink)
         end
     end
     problem = PlacementProblem(targets, candidates, neighbors, algorithm.padding)
@@ -641,11 +642,12 @@ function anneal_placement!(layout, problem::PlacementProblem, rng::LabelPlacemen
     return
 end
 
-function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, text_bb, viewport, leaderthreshold)
+function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, text_bb, viewport, shrink)
     target = targets[i]
     padded_bb = pad_rect(text_bb, algorithm.padding)
     diagonal = norm(widths(padded_bb))
     margin = algorithm.pointradius + minimum(algorithm.padding)
+    leaderthreshold = leader_visible_distance(shrink)
     reach(gap) = gap + diagonal + leaderthreshold + margin
     obstacles = sort(neighbors; by = j -> norm(targets[j] - target))
     obstacle_distances = [norm(targets[j] - target) for j in obstacles]
@@ -662,10 +664,13 @@ function label_candidates(algorithm::CandidatePlacement, targets, neighbors, i, 
         box = slide_inside(unslid, keep_inside)
         offset = center(box) - center(padded_bb)
         leader_start = leader_start_point(box, target)
-        leader_visible = rect_point_distance(text_bb + offset, target) >= leaderthreshold
+        text_distance = rect_point_distance(text_bb + offset, target)
+        leader_visible = text_distance >= leaderthreshold
+        stranded = !leader_visible && text_distance >= leaderless_distance(shrink)
         claim_distance = leader_visible ? 0.0 : leaderthreshold
         cost = gap + algorithm.centroidweight * norm(center(box) - target) +
             (leader_visible ? algorithm.leaderpenalty * sin(4 * leader_angle(leader_start, target))^2 : 0.0) +
+            (stranded ? STRANDED_PENALTY : 0.0) +
             slide_penalty(box, unslid, target, minimum(algorithm.gaps)) +
             static_penalty(algorithm, box, leader_start, target, reachable, keep_inside, claim_distance)
         candidates[index] = LabelCandidate(offset, box, target, leader_start, cost)
@@ -677,6 +682,11 @@ function leader_angle(leader_start, target)
     v = target - leader_start
     return atan(v[2], v[1])
 end
+
+# labels closer to their point than the shrink distance get no leader, and leaders that would be
+# shorter than the larger shrink radius are dropped as stubs
+leaderless_distance(shrink) = sum(shrink)
+leader_visible_distance(shrink) = sum(shrink) + maximum(shrink)
 
 slide_penalty(box, unslid, target, mingap) = box != unslid && rect_point_distance(box, target) < mingap ? OVERLAP_PENALTY : 0.0
 
