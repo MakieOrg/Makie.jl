@@ -24,6 +24,8 @@
 - Fixed `Linestyle` warning when drawing lines or linesegments with SpecApi. [#5810](https://github.com/MakieOrg/Makie.jl/pull/5810)
 - Fixed empty reduce error in `Makie.canonical_line_order` when NaN appears in the input [#5817](https://github.com/MakieOrg/Makie.jl/pull/5817)
 
+- Added `horizontal` to `SliderGrid` so grids can lay out vertical labeled sliders in columns (`horizontal = false`)
+
 ## [0.24.15] - 2026-09-18
 
 - Fixed `contourf` and `tricontourf` drawing a constant field in two colors, by placing the constant value in the middle of a band instead of on a band edge [#5787](https://github.com/MakieOrg/Makie.jl/pull/5787).
