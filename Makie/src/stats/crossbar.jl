@@ -42,6 +42,12 @@ and the limits of the box with `ymins` and `ymaxs`. Each argument is given as an
     strokewidth = @inherit patchstrokewidth
     "Sets the outline color of crossbars."
     strokecolor = @inherit patchstrokecolor
+    "Sets the linestyle for the outline of crossbar."
+    strokestyle = @inherit linestyle nothing
+    "Sets the joinstyle for the outline of crossbar."
+    strokejoinstyle = @inherit joinstyle
+    "Sets the miter limit for the outline of crossbar."
+    strokemiterlimit = @inherit miter_limit
 
     # notch
     "Whether to draw the notch, which refers to a narrowed region around the midline/`y`."
@@ -60,6 +66,10 @@ and the limits of the box with `ymins` and `ymaxs`. Each argument is given as an
     midlinecolor = automatic
     "Sets the width of the midline."
     midlinewidth = @inherit linewidth
+    "Sets the linestyle of the midline."
+    midlinestyle = @inherit linestyle
+    "Sets the linecap of the midline."
+    midlinecap = @inherit linecap
 
     """
     Sets which attributes to cycle when creating multiple plots. The values to
@@ -130,7 +140,12 @@ function Makie.plot!(plot::CrossBar)
         end
         return boxes, midlines
     end
-    poly!(plot, Attributes(plot), plot.boxes)
+    # linecap is irrelevant since the poly outline is always closed
+    poly!(
+        plot, Attributes(plot), plot.boxes,
+        linestyle = plot.strokestyle,
+        joinstyle = plot.strokejoinstyle, miter_limit = plot.strokemiterlimit,
+    )
 
     map!(plot, [:midlinecolor, :strokecolor], :linesegmentcolor) do mc, sc
         return mc === automatic ? sc : mc
@@ -139,9 +154,11 @@ function Makie.plot!(plot::CrossBar)
         plot,
         color = plot.linesegmentcolor,
         linewidth = plot.midlinewidth,
+        linecap = plot.midlinecap,
+        linestyle = plot.midlinestyle,
         visible = plot.show_midline,
         inspectable = plot.inspectable,
-        plot.midlines,
+        plot.midlines, depth_shift = -1.0e-5
     )
     return plot
 end

@@ -13,45 +13,45 @@ end
         # Based on number of lights
         lights = Makie.AbstractLight[]
         scene = Scene(lights = lights)
-        @test Makie.get_shading_mode(scene) == FastShading # Should this be NoShading?
+        @test scene.compute.lighting_mode[] == FastShading # Should this be NoShading?
 
         # shading mode should be constant after the first get_shading_mode() call
         # (Which should happen when the first renderobject is created)
         push!(lights, PointLight(RGBf(0.1, 0.1, 0.1), Point3f(0)))
-        @test Makie.get_shading_mode(scene) == FastShading
+        @test scene.compute.lighting_mode[] == FastShading
 
         scene = Scene(lights = lights)
-        @test Makie.get_shading_mode(scene) == MultiLightShading
+        @test scene.compute.lighting_mode[] == MultiLightShading
 
         lights = Makie.AbstractLight[]
         push!(lights, AmbientLight(RGBf(0.1, 0.1, 0.1)))
         scene = Scene(lights = lights)
-        @test Makie.get_shading_mode(scene) == FastShading
+        @test scene.compute.lighting_mode[] == FastShading
 
         push!(lights, DirectionalLight(RGBf(0.1, 0.1, 0.1), Vec3f(1)))
         scene = Scene(lights = lights)
-        @test Makie.get_shading_mode(scene) == FastShading
+        @test scene.compute.lighting_mode[] == FastShading
 
         push!(lights, PointLight(RGBf(0.1, 0.1, 0.1), Point3f(0)))
         scene = Scene(lights = lights)
-        @test Makie.get_shading_mode(scene) == MultiLightShading
+        @test scene.compute.lighting_mode[] == MultiLightShading
 
         # Based on light types
         lights = [SpotLight(RGBf(0.1, 0.1, 0.1), Point3f(0), Vec3f(1), Vec2f(0.2, 0.3))]
         scene = Scene(lights = lights)
-        @test Makie.get_shading_mode(scene) == MultiLightShading
+        @test scene.compute.lighting_mode[] == MultiLightShading
 
         lights = [EnvironmentLight(1.0, rand(2, 2))]
         scene = Scene(lights = lights)
-        @test Makie.get_shading_mode(scene) == FastShading # only affects RPRMakie so skipped here
+        @test scene.compute.lighting_mode[] == FastShading # only affects RPRMakie so skipped here
 
         lights = [PointLight(RGBf(0.1, 0.1, 0.1), Point3f(0))]
         scene = Scene(lights = lights)
-        @test Makie.get_shading_mode(scene) == MultiLightShading
+        @test scene.compute.lighting_mode[] == MultiLightShading
 
         lights = [PointLight(RGBf(0.1, 0.1, 0.1), Point3f(0), Vec2f(0.1, 0.2))]
         scene = Scene(lights = lights)
-        @test Makie.get_shading_mode(scene) == MultiLightShading
+        @test scene.compute.lighting_mode[] == MultiLightShading
     end
 
     @testset "Helper functions" begin
@@ -107,4 +107,22 @@ end
 
         @test_throws ErrorException set_directional_light!(a, color = RGBf(0, 0, 1))
     end
+end
+
+@testset "onplot" begin
+    scene = Scene()
+    p = scatter!(scene, rand(10))
+    @test scene.onplot[] == Pair(true, p)
+    p2 = scatterlines!(scene, rand(10))
+    @test scene.onplot[] == Pair(true, p2)
+    delete!(scene, p)
+    @test scene.onplot[] == Pair(false, p)
+    p3 = lines!(scene, rand(10))
+    @test scene.onplot[] == Pair(true, p3)
+    buffer = []
+    on(x -> push!(buffer, x), scene.onplot)
+    Makie.free(scene)
+    @test Pair(false, p2) in buffer
+    @test Pair(false, p3) in buffer
+    @test length(buffer) == 2
 end

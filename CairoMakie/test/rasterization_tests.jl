@@ -14,8 +14,8 @@ end
     fig = Figure()
     ax = Axis(fig[1, 1])
     lp = lines!(ax, vcat(1:10, 10:-1:1))
-    pts = Makie.GeometryBasics.Point2f[(0, 0), (1, 0), (0, 1)]
-    pl = poly!(ax, Makie.GeometryBasics.Polygon(pts))
+    pts = Point2f[(0, 0), (1, 0), (0, 1)]
+    pl = poly!(ax, Polygon(pts))
 
     @testset "Unrasterized SVG" begin
         @test !svg_has_image(fig)
@@ -28,4 +28,21 @@ end
         @test svg_has_image(fig)
     end
 
+end
+
+@recipe RasterizeTest begin end
+Makie.plot!(p::RasterizeTest) = scatter!(p, rand(10))
+
+@testset "rasterize availability" begin
+    # only the top level matters because CairoMakie rasterizes everything below
+    f, a, p = rasterizetest(1)
+    @test haskey(p, :rasterize)
+    @test p.rasterize[] == 0
+
+    p.rasterize[] = 10
+    @test p.rasterize[] == 10
+
+    f, a, p = rasterizetest(1, rasterize = true)
+    @test haskey(p, :rasterize)
+    @test p.rasterize[] == 1
 end

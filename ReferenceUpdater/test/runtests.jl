@@ -127,21 +127,34 @@ end
             joinpath(dir, "reference"), [
                 "CairoMakie/changed.png" => "ref-changed",
                 "GLMakie/unapproved.png" => "ref-unapproved",
+                "CairoMakie/gone.png" => "ref-gone",
+                "GLMakie/gone.png" => "ref-gone",
             ]
         )
         write(joinpath(dir, "scores.tsv"), "0.9\tCairoMakie/changed.png\n0.8\tGLMakie/unapproved.png\n")
         write(joinpath(dir, "new_files.txt"), "WGLMakie/newthing.png\n")
+        write(joinpath(dir, "missing_files.txt"), "CairoMakie/gone.png\nGLMakie/gone.png\n")
 
         h = reference_hash(joinpath(refdir, "CairoMakie/changed.png"))
         write_manifest(
             [
                 RefimageUpdate("CairoMakie/changed.png", h),
                 RefimageUpdate("WGLMakie/newthing.png", "new"),
+                RefimageUpdate("CairoMakie/gone.png", "delete"),
             ], joinpath(dir, "refimage_updates")
         )
 
         cov = approval_coverage(dir; threshold = 0.05, reference_folder = refdir)
-        @test cov.n_changed == 3                 # changed + unapproved + new
-        @test cov.n_approved == 2                 # changed + new, not unapproved
+        @test cov.new == (total = 1, approved = 1)
+        @test cov.changed == (total = 2, approved = 1)
+        @test cov.deleted == (total = 2, approved = 1)
+        @test !fully_approved(cov)
+        @test coverage_summary(cov) == "Approved 1/1 new, 1/2 changed, 1/2 deleted images"
     end
+end
+
+@testset "coverage_summary without changes" begin
+    cov = (; new = (total = 0, approved = 0), changed = (total = 0, approved = 0), deleted = (total = 0, approved = 0))
+    @test coverage_summary(cov) == "No new, changed or deleted images"
+    @test fully_approved(cov)
 end

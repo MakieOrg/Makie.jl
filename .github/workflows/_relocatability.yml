@@ -7,7 +7,6 @@ jobs:
     name: Relocatability ${{ matrix.backend }}
     env:
       MODERNGL_DEBUGGING: "true"
-      JULIA_NUM_PRECOMPILE_TAKS: 1
       JULIA_NUM_THREADS: 1
       JULIA_IMAGE_THREADS: 2
     runs-on: ${{ matrix.os }}
@@ -35,6 +34,15 @@ jobs:
       - name: Install dependencies for GPU backends
         if: matrix.backend != 'CairoMakie'
         run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
+      # The sysimage compile peaks near the runner's 16GB; without extra swap the
+      # runner intermittently dies with "The runner has received a shutdown signal"
+      - name: Increase swap space
+        run: |
+          sudo fallocate -l 8G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
+          swapon --show
       - name: Relocatability test
         run: |
           if [ "${{ matrix.backend }}" != "CairoMakie" ]; then

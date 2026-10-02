@@ -47,7 +47,7 @@ function cairo_draw(screen::Screen, root_scene::Scene)
         # Collect and depth sort all plots within the current scene group
         plots = AbstractPlot[]
         for scene in scenes
-            Makie.collect_atomic_plots(scene.plots, plots, is_atomic_plot = is_cairomakie_atomic_plot)
+            Makie.collect_atomic_plots(scene.plots, plots, is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
         end
         sort!(plots; by = Makie.zvalue2d)
 
@@ -78,8 +78,10 @@ function cairo_draw(screen::Screen, root_scene::Scene)
             # TODO: In future, this can also be set to a Tuple{Module, Int} which describes
             # the backend module which should be used to render the scene, and the pixel density
             # at which it should be rendered.
-            if to_value(get(p, :rasterize, false)) != false && should_rasterize
-                draw_plot_as_image(pparent, screen, p, p[:rasterize][])
+            # TODO: Should this work recursively, starting with non-CairoMakie-primitive recipes?
+            rasterize = Int(p.rasterize[]::Integer)
+            if should_rasterize && rasterize != 0
+                draw_plot_as_image(pparent, screen, p, rasterize)
             else # draw vector
                 draw_plot(pparent, screen, p)
             end
@@ -102,7 +104,9 @@ CairoMakie can treat them as atomic plots and render them directly.
 Plots with children are by default recursed into.  This can be overridden
 by defining specific dispatches for `is_cairomakie_atomic_plot` for a given plot type.
 """
-is_cairomakie_atomic_plot(plot::Plot) = Makie.is_atomic_plot(plot) || isempty(plot.plots) || to_value(get(plot, :rasterize, false)) != false
+is_cairomakie_atomic_plot(plot::Plot) = Makie.is_atomic_plot(plot) || isempty(plot.plots)
+is_cairomakie_atomic_plot_or_rasterized(plot::Plot) = is_cairomakie_atomic_plot(plot) || Int(plot.rasterize[]::Integer) > 0
+
 
 """
     check_parent_plots(f, plot::Plot)::Bool

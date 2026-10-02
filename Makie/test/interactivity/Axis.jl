@@ -165,6 +165,128 @@
             @test newlim.widths ≈ lim.widths ./ Vec2(2, 3) atol = 1.0e-6
         end
 
+        @testset "Log-scale selection rectangle" begin
+            fig = Figure()
+            log_axis = Axis(fig[1, 1]; yscale = log10, limits = (-20, 30, 1.0e-28, 2.0e6))
+            x = range(0, 10; length = 500)
+            lines!(log_axis, x, 1.0e-8 .* exp.(1.5 .* x))
+            Makie.update_state_before_display!(fig)
+
+            axbox = viewport(log_axis.scene)[]
+            original_limits = log_axis.targetlimits[]
+            log_events = events(log_axis)
+
+            function select_rectangle!(from, to)
+                log_events.mouseposition[] = Tuple(from)
+                log_events.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+                log_events.mouseposition[] = Tuple(to)
+                log_events.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+                return log_axis.targetlimits[]
+            end
+
+            above = axbox.origin + axbox.widths .* Vec2(0.25, 0.85)
+            below = axbox.origin + axbox.widths .* Vec2(0.75, 0.25)
+            above_to_below = select_rectangle!(above, below)
+
+            limits!(log_axis, original_limits)
+            below_to_above = select_rectangle!(below, above)
+
+            # Rect ≈ relies on LinearAlgebra's Vector ≈ which scales uncertainty
+            # by norm(vec). We don't want that here since dimensions are independent
+            @test all(origin(above_to_below) .≈ origin(below_to_above))
+            @test all(widths(above_to_below) .≈ widths(below_to_above))
+            @test all(isfinite, minimum(above_to_below))
+            @test all(isfinite, maximum(above_to_below))
+            @test all(>(0), widths(above_to_below))
+            @test Makie.validate_limits_for_scale(
+                (minimum(above_to_below)[2], maximum(above_to_below)[2]), log10
+            )
+
+            rectanglezoom = log_axis.interactions[:rectanglezoom][2]
+            crosses_lower_domain = Makie._clamp_rectanglezoom_limits(
+                Point2d(0), Vec2d(1, 1.5e6),
+                minimum(log_axis.finallimits[]), maximum(log_axis.finallimits[])
+            )
+            @test minimum(crosses_lower_domain)[2] == minimum(log_axis.finallimits[])[2]
+            @test_logs min_level = Base.CoreLogging.Warn rectanglezoom.callback(crosses_lower_domain)
+            @test log_axis.targetlimits[] == crosses_lower_domain
+
+            @test_logs (:warn, r"Rectangle zoom ignored") rectanglezoom.callback(Rect2(0, 0, 1, 0))
+            @test log_axis.targetlimits[] == crosses_lower_domain
+
+            transform = Makie.transform_func(log_axis)
+            inverse_transform = Makie.inverse_transform(transform)
+            normalized = Makie._rectanglezoom_data_position(
+                log_axis, Point2(0, -Inf), transform, inverse_transform
+            )
+            @test all(isfinite, normalized)
+            @test normalized[2] in Makie.defined_interval(log10)
+            @test log_axis.targetlimits[] == crosses_lower_domain
+
+            extreme_limits = Rect2d(-405.2319423642585, 6.459629536e-314, 773.8642383678962, 4.977561884756848e217)
+            limits!(log_axis, extreme_limits)
+
+            above = axbox.origin + axbox.widths .* Vec2(0.25, 0.85)
+            below = axbox.origin + axbox.widths .* Vec2(0.75, 0.25)
+            above_to_below = select_rectangle!(above, below)
+
+            limits!(log_axis, extreme_limits)
+            below_to_above = select_rectangle!(below, above)
+
+            @test all(origin(above_to_below) .≈ origin(below_to_above))
+            @test all(widths(above_to_below) .≈ widths(below_to_above))
+            @test all(isfinite, minimum(above_to_below))
+            @test all(isfinite, maximum(above_to_below))
+            @test all(>(0), widths(above_to_below))
+            @test Makie.validate_limits_for_scale(
+                (minimum(above_to_below)[2], maximum(above_to_below)[2]), log10
+            )
+        end
+
+        @testset "Log-scale scroll zoom limits" begin
+            fig = Figure()
+            scroll_axis = Axis(fig[1, 1]; yscale = log10)
+            lines!(scroll_axis, 0:1, [1.0, 2.0])
+            Makie.update_state_before_display!(fig)
+
+            limits!(scroll_axis, Rect2(-20, 1.0e-318, 50, 1.0e245))
+            original_limits = scroll_axis.targetlimits[]
+            axis_box = viewport(scroll_axis.scene)[]
+            events(scroll_axis).mouseposition[] = Tuple(axis_box.origin + axis_box.widths / 2)
+            scrollzoom = scroll_axis.interactions[:scrollzoom][2]
+
+            @test_logs min_level = Base.CoreLogging.Warn Makie.process_interaction(
+                scrollzoom, ScrollEvent(0, -1), scroll_axis
+            )
+            @test scroll_axis.targetlimits[] == original_limits
+        end
+
+        @testset "Log-scale pan limits" begin
+            fig = Figure()
+            pan_axis = Axis(fig[1, 1]; yscale = log10)
+            lines!(pan_axis, 0:1, [1.0, 2.0])
+            Makie.update_state_before_display!(fig)
+
+            # This range is still valid for log10, but a full-height pan makes
+            # its transformed lower bound underflow on inverse transformation.
+            limits!(pan_axis, Rect2(-20, 1.0e-318, 50, 1.0e245))
+            original_limits = pan_axis.targetlimits[]
+            axis_box = viewport(pan_axis.scene)[]
+            drag_event = MouseEvent(
+                Makie.to_drag_event(pan_axis.panbutton[]),
+                1.0,
+                Point2d(0, 0),
+                Point2f(axis_box.origin + axis_box.widths),
+                0.0,
+                Point2d(0, 0),
+                Point2f(axis_box.origin),
+            )
+            dragpan = pan_axis.interactions[:dragpan][2]
+
+            @test_nowarn Makie.process_interaction(dragpan, drag_event, pan_axis)
+            @test pan_axis.targetlimits[] == original_limits
+        end
+
         @test init == Makie._PICK_COUNTER[]
 
         # Ctrl-click to restore

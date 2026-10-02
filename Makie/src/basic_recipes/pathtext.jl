@@ -13,15 +13,15 @@ Newlines in `text` are currently not supported.
 @recipe PathText (path::Union{PointVector{2, <:Real}, BezierPath},) begin
     "The text to place along the path. May be `String` or `RichText`. Must not contain newlines."
     text = ""
-    "The color of the text. May be a single value or a vector with one entry per character."
+    "The color of the text. To color parts of the text differently, use `rich` text."
     color = @inherit textcolor
     "Sets the font. Can be a `Symbol` that is looked up in `fonts` or a font path/name."
     font = @inherit font
     "Dictionary of fonts that can be referenced by `Symbol`."
     fonts = @inherit fonts
-    "Color of the text stroke. May be per-character."
+    "Color of the text stroke."
     strokecolor = :black
-    "Width of the text stroke in pixels. May be per-character."
+    "Width of the text stroke in pixels."
     strokewidth = 0
     "Font size in pixels."
     fontsize = @inherit fontsize
@@ -404,14 +404,14 @@ end
 # Layout
 ################################################################################
 
-# Layout a single-line RichText into a GlyphCollection with the baseline at y=0.
-# We call the layout sub-steps directly, skipping apply_alignment_and_justification!
-# which would shift all origins by the descender height.
-function _layout_richtext_for_path(text::RichText, fontsize, font, fonts)
+# Layout a single-line RichText with the baseline at y=0. We call the layout
+# sub-steps directly, skipping apply_justification! since a single line has no
+# unused width to distribute (which also means the layout box is irrelevant here).
+function _layout_richtext_for_path(text::RichText, fontsize, font, fonts, color)
     lines = [GlyphInfo[]]
-    gs = GlyphState(0, 0, Vec2f(fontsize), font, RGBAf(0, 0, 0, 1))
+    gs = GlyphState(0, 0, Vec2f(fontsize), font, color)
     process_rt_node!(lines, gs, text, fonts)
-    return GlyphCollection(reduce(vcat, lines))
+    return glyph_arrays(reduce(vcat, lines), Rect2f(0, 0, 0, 0), 0.0f0)
 end
 
 # `sample_fn(s)` returns `(point, tangent, subpath_id)` or `nothing`.
@@ -421,17 +421,16 @@ end
 # `y_offsets` (optional) are per-glyph perpendicular shifts from the path
 # baseline (e.g. sub/superscript displacement in RichText).
 function _place_glyphs_on_path(
-        x_positions, advances, chars, sample_fn, frac, total_path_len;
+        x_positions, advances, sample_fn, frac, total_path_len;
         y_offsets = nothing,
     )
     positions = Point2f[]
     rotations = Quaternionf[]
-    placed_chars = String[]
 
     total_text_len = isempty(x_positions) ? 0.0f0 : x_positions[end] + advances[end]
     start_s = frac * (total_path_len - total_text_len)
 
-    for (i, (x, adv, c)) in enumerate(zip(x_positions, advances, chars))
+    for (i, (x, adv)) in enumerate(zip(x_positions, advances))
         s0 = start_s + x
         sample_start = sample_fn(s0)
         sample_start === nothing && break
@@ -459,10 +458,10 @@ function _place_glyphs_on_path(
         end
         push!(positions, pt)
         push!(rotations, to_rotation(Vec2f(normal)))
-        push!(placed_chars, string(c))
     end
 
-    return (positions, rotations, placed_chars)
+    # the loop only ever breaks, so what got placed is the prefix `1:length(positions)`
+    return (positions, rotations)
 end
 
 # Perpendicular baseline shift (in pixels) from valign and font metrics.
@@ -482,20 +481,34 @@ function _valign_shift(va, fontsize, font)
     end
 end
 
-# Per-glyph style overrides from RichText layout (or `nothing` for plain strings
-# where the recipe's own color/font/fontsize attributes are used as-is).
-const _PathtextGlyphStyles = @NamedTuple{
-    colors::Vector{RGBAf},
+# What the text side of layout hands to the path side. `colors` is `nothing` for
+# plain strings, where the recipe's own `color` attribute is used as-is; `RichText`
+# carries a color per glyph. `y_offsets` are perpendicular shifts from the path
+# baseline (sub/superscript displacement), also `nothing` when there are none.
+const _PathtextGlyphs = @NamedTuple{
+    glyphindices::Vector{UInt64},
     fonts::Vector{NativeFont},
-    fontsizes::Vector{Float32},
+    scales::Vector{Vec2f},
+    colors::Union{Nothing, Vector{RGBAf}},
+    x_positions::Vector{Float32},
+    y_offsets::Union{Nothing, Vector{Float32}},
+    advances::Vector{Float32},
 }
 
-_empty_layout() = (Point2f[], Quaternionf[], String[], nothing)
+_empty_glyphs() = convert(
+    _PathtextGlyphs, (
+        glyphindices = UInt64[], fonts = NativeFont[], scales = Vec2f[], colors = nothing,
+        x_positions = Float32[], y_offsets = nothing, advances = Float32[],
+    )
+)
 
-# Dispatch for the text side of layout. Returns per-glyph arrays and optional
-# per-glyph styles (or `nothing` for plain `AbstractString`).
-function _layout_glyphs(text::AbstractString, fontsize::Float32, font, fonts)
+_empty_layout() = (Point2f[], Quaternionf[], UInt64[], NativeFont[], Vec2f[], nothing)
+
+# Dispatch for the text side of layout.
+function _layout_glyphs(text::AbstractString, fontsize::Float32, font, fonts, color)
     chars = collect(text)
+    # advances come from the requested font, while a glyph missing from it renders
+    # from a fallback font, so the two can disagree for such glyphs
     advances = Float32[Float32(GlyphExtent(font, c).hadvance) * fontsize for c in chars]
     x_positions = similar(advances)
     acc = 0.0f0
@@ -503,27 +516,36 @@ function _layout_glyphs(text::AbstractString, fontsize::Float32, font, fonts)
         x_positions[i] = acc
         acc += advances[i]
     end
-    return (chars, x_positions, nothing, advances, nothing)
+    glyph_fonts = NativeFont[find_font_for_char(c, font) for c in chars]
+    return convert(
+        _PathtextGlyphs, (
+            glyphindices = UInt64[FreeTypeAbstraction.glyph_index(f, c) for (f, c) in zip(glyph_fonts, chars)],
+            fonts = glyph_fonts,
+            scales = fill(to_2d_scale(fontsize), length(chars)),
+            colors = nothing,
+            x_positions = x_positions,
+            y_offsets = nothing,
+            advances = advances,
+        )
+    )
 end
 
-function _layout_glyphs(text::RichText, fontsize::Float32, font, fonts)
-    gc = _layout_richtext_for_path(text, fontsize, font, fonts)
-    n = length(gc.glyphs)
-    n == 0 && return (Char[], Float32[], Float32[], Float32[], nothing)
+function _layout_glyphs(text::RichText, fontsize::Float32, font, fonts, color)
+    layout = _layout_richtext_for_path(text, fontsize, font, fonts, color)
+    n = length(layout.glyphindices)
+    n == 0 && return _empty_glyphs()
 
-    chars = _richtext_chars(text)
-    length(chars) != n && error("RichText character count ($(length(chars))) does not match glyph count ($n).")
-
-    scales = collect_vector(gc.scales, n)
-    x_positions = Float32[gc.origins[i][1] for i in 1:n]
-    y_offsets = Float32[gc.origins[i][2] for i in 1:n]
-    advances = Float32[gc.extents[i].hadvance * scales[i][1] for i in 1:n]
-    styles = (
-        colors = collect_vector(gc.colors, n),
-        fonts = collect_vector(gc.fonts, n),
-        fontsizes = Float32[s[1] for s in scales],
-    )::_PathtextGlyphStyles
-    return (chars, x_positions, y_offsets, advances, styles)
+    return convert(
+        _PathtextGlyphs, (
+            glyphindices = layout.glyphindices,
+            fonts = layout.fonts,
+            scales = layout.scales,
+            colors = layout.colors,
+            x_positions = Float32[o[1] for o in layout.origins],
+            y_offsets = Float32[o[2] for o in layout.origins],
+            advances = Float32[layout.extents[i].hadvance * layout.scales[i][1] for i in 1:n],
+        )
+    )
 end
 
 # Dispatch for the path side of layout. Returns `(total_path_len, sample_fn)`
@@ -542,14 +564,14 @@ function _prepare_path_sampler(pixel_bp::BezierPath, d::Real)
     return (total, s -> _sample_bezierpath_at(segs, s, d))
 end
 
-function _pathtext_layout(pixel_path, text, fontsize, font, fonts, align, offset)
+function _pathtext_layout(pixel_path, text, fontsize, font, fonts, align, offset, color)
     _font = to_font(fonts, font)
     _fontsize = Float32(to_fontsize(fontsize))
     halign, valign = align
     perp_offset = Float64(offset) + _valign_shift(valign, _fontsize, _font)
 
-    chars, x_positions, y_offsets, advances, styles = _layout_glyphs(text, _fontsize, _font, fonts)
-    isempty(chars) && return _empty_layout()
+    glyphs = _layout_glyphs(text, _fontsize, _font, fonts, color)
+    isempty(glyphs.glyphindices) && return _empty_layout()
 
     prepared = _prepare_path_sampler(pixel_path, perp_offset)
     prepared === nothing && return _empty_layout()
@@ -557,27 +579,28 @@ function _pathtext_layout(pixel_path, text, fontsize, font, fonts, align, offset
 
     error_msg = "Invalid halign $(repr(halign)) for `pathtext`. Expected `:left`, `:center`, `:right`, or a `Real`."
     frac = halign2num(halign, error_msg)
-    pos, rot, placed = _place_glyphs_on_path(
-        x_positions, advances, chars, sample_fn, frac, total_path_len;
-        y_offsets,
+    pos, rot = _place_glyphs_on_path(
+        glyphs.x_positions, glyphs.advances, sample_fn, frac, total_path_len;
+        y_offsets = glyphs.y_offsets,
     )
 
-    truncated_styles = if styles === nothing
-        nothing
-    else
-        m = length(pos)
-        (
-            colors = styles.colors[1:m],
-            fonts = styles.fonts[1:m],
-            fontsizes = styles.fontsizes[1:m],
-        )::_PathtextGlyphStyles
-    end
-    return (pos, rot, placed, truncated_styles)
+    # a path too short for the whole string places a prefix of the glyphs
+    placed = 1:length(pos)
+    colors = glyphs.colors === nothing ? nothing : glyphs.colors[placed]
+    return (pos, rot, glyphs.glyphindices[placed], glyphs.fonts[placed], glyphs.scales[placed], colors)
 end
 
 ################################################################################
 # plot!
 ################################################################################
+
+function _single_pathtext_value(value, name::Symbol)
+    isscalar(value) && return value
+    return error(
+        "`pathtext` takes a single $name, got $(length(value)) values. " *
+            "To style parts of the text differently, use `rich` text."
+    )
+end
 
 function _validate_pathtext(text::AbstractString)
     occursin('\n', text) && throw(ArgumentError("`pathtext` does not support newlines in `text`."))
@@ -604,39 +627,67 @@ function plot!(p::PathText)
 
     map!(_reassemble_path, p, [:_pathtext_control_points_pixel, :path], :_pathtext_pixel_path)
 
-    # Compute per-character positions, rotations, chars, and optional per-glyph styles.
+    # Resolve the color before layout: `RichText` bakes it in as the color of the
+    # parts it doesn't style itself. Recipe attributes don't go through
+    # `convert_attribute`, so colormapping needs the conversion done here.
+    map!(to_color, p, [:color], :converted_color)
+    map!(to_color, p, [:nan_color], :converted_nan_color)
+    register_colormapping!(p.attributes, :converted_color)
+    add_computation!(p.attributes, Val(:computed_color); nan_color = :converted_nan_color)
+
+    # `pathtext` draws one string, so each style attribute takes one value. Styling
+    # parts of the text differently is `rich` text's job: shaping can merge several
+    # code points into one glyph, so a vector indexed per character has nothing
+    # well-defined to index (`text` dropped the same thing).
+    map!(c -> _single_pathtext_value(c, :color), p, [:computed_color], :_pathtext_single_color)
+    for name in (:strokecolor, :strokewidth)
+        map!(v -> _single_pathtext_value(v, name), p, [name], Symbol(:_pathtext_single_, name))
+    end
+
+    # Bending the text is per-glyph positions and rotations, which is exactly what
+    # `Glyphs` takes, so the glyphs go there directly rather than through `text`.
     map!(
         _pathtext_layout, p,
-        [:_pathtext_pixel_path, :_pathtext_validated_text, :fontsize, :font, :fonts, :align, :offset],
-        [:_pathtext_positions, :_pathtext_rotations, :_pathtext_chars, :_pathtext_glyph_styles]
+        [
+            :_pathtext_pixel_path, :_pathtext_validated_text, :fontsize, :font, :fonts,
+            :align, :offset, :_pathtext_single_color,
+        ],
+        [
+            :_pathtext_positions, :_pathtext_rotations, :_pathtext_glyphindices,
+            :_pathtext_fonts, :_pathtext_scales, :_pathtext_layout_colors,
+        ]
     )
 
-    # For RichText, per-glyph color/font/fontsize come from the layout.
-    # For plain strings, fall through to the recipe's own attributes.
-    map!(p, [:_pathtext_glyph_styles, :color], :_pathtext_color) do styles, user_color
-        return styles !== nothing ? styles.colors : user_color
-    end
-    map!(p, [:_pathtext_glyph_styles, :font], :_pathtext_font) do styles, user_font
-        return styles !== nothing ? styles.fonts : user_font
-    end
-    map!(p, [:_pathtext_glyph_styles, :fontsize], :_pathtext_fontsize) do styles, user_fs
-        return styles !== nothing ? styles.fontsizes : user_fs
+    # RichText brings a color per glyph; a plain string is one color throughout.
+    map!(p, [:_pathtext_layout_colors, :_pathtext_single_color], :_pathtext_color) do layout_colors, color
+        return layout_colors === nothing ? color : layout_colors
     end
 
-    text!(
+    # positions are already the glyph origins, in pixels
+    map!(p, [:_pathtext_positions], :_pathtext_marker_offsets) do positions
+        return fill(Point3f(0), length(positions))
+    end
+
+    glyphs!(
         p,
-        p.attributes,
+        # `alpha` is already folded into the color here, so don't let the child
+        # apply it a second time
+        shared_attributes(
+            p, Glyphs;
+            drop = [:color, :alpha, :font, :strokecolor, :strokewidth, :rotation, :space, :markerspace]
+        ),
         p._pathtext_positions;
-        text = p._pathtext_chars,
+        glyph_indices = p._pathtext_glyphindices,
+        font = p._pathtext_fonts,
+        scale = p._pathtext_scales,
+        marker_offset = p._pathtext_marker_offsets,
         rotation = p._pathtext_rotations,
-        fontsize = p._pathtext_fontsize,
-        font = p._pathtext_font,
         color = p._pathtext_color,
-        align = (:left, :baseline),
+        strokecolor = p._pathtext_single_strokecolor,
+        strokewidth = p._pathtext_single_strokewidth,
         space = :pixel,
         markerspace = :pixel,
         transformation = :nothing,
-        offset = Vec2f(0),
     )
 
     return p

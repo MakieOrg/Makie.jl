@@ -832,9 +832,9 @@ end
         fig[1, 2], r, r, r, data, bbox_visible = false, colormap = :RdBu,
         colorrange = (0.2, 0.8), lowclip = :black, highclip = :green
     )
-    p.update_xz[](3)
-    p.update_yz[](4)
-    p.update_xy[](10)
+    p.update_xz[](3) # test deprecated syntax
+    p.yz_index = 4
+    p.xy_index = 10
     fig
 end
 
@@ -885,8 +885,71 @@ end
     f
 end
 
-@reference_test "Volume lowclip highclip" begin
-    data = [(x * x + y * y - z * z) for x in 0:10, y in 10:-1:0, z in 0:10]
+@reference_test "Stage Camera" begin
+    fig = Figure()
+
+    function testscene(gridpos; kwargs...)
+        lscene = LScene(gridpos, show_axis = false, scenekw = (; camera = stage_cam!))
+
+        mesh!(
+            lscene,
+            Rect3f(Vec3f(-5, -5, 0), Vec3f(10, 10, 0.1)),
+            color = :lightgray,
+            alpha = 0.8
+        )
+
+        boxes = [
+            (pos = Vec3f(-0.5, -0.5, 0), size = Vec3f(1, 1, 1), color = :red),
+            (pos = Vec3f(2, 1, 0), size = Vec3f(0.5, 0.5, 1.5), color = :blue),
+            (pos = Vec3f(-2, 1, 0), size = Vec3f(1.5, 1, 2), color = :green),
+            (pos = Vec3f(1, -2, 0), size = Vec3f(0.6, 0.6, 0.6), color = :yellow),
+            (pos = Vec3f(-2, -2.5, 0), size = Vec3f(1, 1.5, 2.4), color = :purple),
+        ]
+
+        for box in boxes
+            mesh!(
+                lscene,
+                Rect3f(box.pos, box.size),
+                color = box.color,
+            )
+        end
+
+        text!(
+            lscene, 0, 1, text = join(["$k = $v" for (k, v) in pairs(kwargs)], "\n"),
+            space = :relative, align = (:left, :top), offset = (5, -5)
+        )
+
+        Makie.stage_cam!(
+            lscene.scene; azimuth = 45.0,
+            elevation = 30.0,
+            stage_size = 8.0,
+            lookat = (0, 0, 1),
+            mm = haskey(kwargs, :fov) ? nothing : 50.0,
+            crop_factor = 1.0, kwargs...
+        )
+        return
+    end
+
+    testscene(fig[1, 1])
+    testscene(fig[1, 2], azimuth = 90, elevation = 45)
+    testscene(fig[2, 1], stage_size = 12)
+    testscene(fig[2, 2], stage_size = 4)
+    testscene(fig[3, 1], mm = 24)
+    testscene(fig[3, 2], mm = 100)
+    testscene(fig[4, 1], fov = 30)
+    testscene(fig[4, 2], fov = 90)
+    testscene(fig[5, 1], crop_factor = 1.5)
+    testscene(fig[5, 2], elevation = 90)
+    testscene(fig[6, 1], relative_offset = (0.5, 0))
+    testscene(fig[6, 2], relative_offset = (-0.3, 0.3))
+
+    # check that aspect ratio changes of scenes are correctly picked up
+    resize!(fig.scene, 800, 1050)
+    fig
+end
+
+@reference_test "Volume lowclip highclip nan_color" begin
+    data = Float32[(x * x + y * y - z * z) for x in 0:10, y in 10:-1:0, z in 0:10]
     f = Figure()
 
     # mip is a bit special because colorrange affects value sampling
@@ -902,15 +965,21 @@ end
         f[1, 3], data, algorithm = :mip,
         colorrange = (10, 30), lowclip = :transparent, highclip = :red,
     )
+    volume(
+        f[2, 3], ifelse.(0 .< data .< 30, NaN, data), algorithm = :mip,
+        nan_color = :red
+    )
+
+    data[7:10, 1:4, 1:4] .= NaN
 
     volume(
-        f[2, 1], data, algorithm = :absorption,
-        colorrange = (10, 30), lowclip = :transparent, highclip = :transparent,
+        f[2, 1], data, algorithm = :absorption, colorrange = (10, 30),
+        lowclip = :transparent, highclip = :transparent, nan_color = :red,
         absorption = 10, transparency = true
     )
     contour(
-        f[2, 2], data,
-        colorrange = (-30, 50), lowclip = :transparent, highclip = :transparent,
+        f[2, 2], data, colorrange = (-30, 50),
+        lowclip = :transparent, highclip = :transparent, nan_color = :red,
     )
 
     f

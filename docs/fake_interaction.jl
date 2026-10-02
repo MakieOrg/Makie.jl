@@ -372,7 +372,7 @@ function textbox_offset_pos(tb, offset::Integer)
     local_x = if off < n
         origins[off + 1][1]
     else
-        adv = Float32(text_plot.glyph_extents[][n].hadvance) * text_plot.text_scales[][n][1]
+        adv = Float32(text_plot.glyph_extents[][n].hadvance) * text_plot.glyph_scales[][n][1]
         origins[n][1] + adv
     end
     local_y = origins[glyph_idx][2]
