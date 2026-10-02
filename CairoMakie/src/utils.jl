@@ -1,6 +1,6 @@
 function extract_attributes!(attr::ComputeGraph, inputs::Vector{Symbol}, output::Symbol)
     # Make a namedtuple that holds all the attributes we need
-    return register_computation!(attr, inputs, [output]) do inputs, changed, outputs
+    return register_computation!(attr, inputs, [output]) do inputs, @nospecialize(changed), @nospecialize(outputs)
         return (inputs,)
     end
 end
@@ -265,10 +265,16 @@ function Cairo.CairoPattern(color::Makie.AbstractPattern)
 end
 
 function align_pattern(pattern::Cairo.CairoPattern, scene, model)
-    o = Makie.pattern_offset(scene.camera.projectionview[] * model, scene.camera.resolution[], true)
-    T = Mat{2, 3, Float32}(1, 0, 0, 1, -o[1], -o[2])
+    op = Makie.pattern_offset(scene.camera.projectionview[] * model, scene.camera.resolution[], true)
+    os = origin(viewport(scene)[])
+    h = height(viewport(Makie.root(scene))[])
+    T = Mat{2, 3, Float32}(1, 0, 0, 1, os[1] - op[1], h - os[2] - op[2])
     pattern_set_matrix(pattern, Cairo.CairoMatrix(T...))
     return
+end
+
+function linepattern_offset(scene::Scene, model)
+    return Makie.pattern_offset(scene.camera.projectionview[] * model, scene.camera.resolution[], true)
 end
 
 ########################################
@@ -286,6 +292,10 @@ function to_cairo_color(color::Makie.AbstractPattern, plot)
     align_pattern(cairopattern, Makie.parent_scene(plot), plot.model[])
     return cairopattern
 end
+
+# LinePattern is rendered as vector graphics in CairoMakie, so pass it through
+# without rasterizing to a CairoPattern bitmap.
+to_cairo_color(color::Makie.LinePattern, plot) = color
 
 function to_cairo_color(color, plot_object)
     return to_color((color, to_value(plot_object.alpha)))

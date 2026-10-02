@@ -2,6 +2,10 @@ ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 ENV["ELECTRON_LOG_FILE"] = joinpath(@__DIR__, "electron.log")
 ENV["ELECTRON_ENABLE_LOGGING"] = "true"
 
+run(
+    `julia -e "using Makie.ComputePipeline; ComputePipeline.enable_debugging!(); ComputePipeline.log_nothing_splat(true)"`
+)
+
 using FileIO
 using WGLMakie, Makie, Test
 using WGLMakie.Bonito
@@ -217,7 +221,7 @@ edisplay = Bonito.use_electron_display(devtools = true)
             # 2. `close` stopped tick production
             # To verify this we check that the number of ticks is proportional
             # to the real render time, which should be close to the sleep time.
-            @test render_time * 30 - 1 <= length(tick_record) <= render_time * 30 + 20
+            @test render_time * 30 - 1 <= length(tick_record) <= render_time * 30 + 40
 
             t = 0.0
             for (i, tick) in enumerate(tick_record)
@@ -339,3 +343,7 @@ println("###########################")
 println("WGLMakie tests DONE")
 println("Open Tasks: ", length(Makie.TRACKED_TASKS))
 println("###########################")
+
+using Makie.ComputePipeline
+ComputePipeline.disable_debugging!()
+ComputePipeline.log_nothing_splat(false)

@@ -6,19 +6,13 @@ The StatPlots.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2016: Thomas Breloff.
 =#
 """
-    boxplot(x, y; kwargs...)
-
-Draw a Tukey style boxplot. The boxplot has 3 components:
+Draw a Tukey style boxplot consisting of 3 components:
 - a `crossbar` spanning the interquartile (IQR) range (values from the 25th to
-the 75% percentile) with a midline marking the median
+  the 75th percentile) with a midline marking the median
 - an `errorbar` including values from the interquartile range extended by `range * iqr`
 - points marking outliers, that is, data outside the errorbar
-
-## Arguments
-- `x`: positions of the categories
-- `y`: variables within the boxes
 """
-@recipe BoxPlot (x, y) begin
+@recipe BoxPlot (x::RealVector, y::RealVector) begin
     filtered_attributes(CrossBar, exclude = (:notchmin, :notchmax, :show_midline, :midlinecolor, :midlinewidth))...
 
     "Vector of statistical weights (length of data). By default, each observation has weight `1`."
@@ -71,7 +65,38 @@ the 75% percentile) with a midline marking the median
     outlierstrokewidth = @inherit markerstrokewidth
 end
 
+function attribute_groups(::Type{<:BoxPlot})
+    groups = default_attribute_groups()
+    push!(
+        groups, "Crossbar Attributes" => sort!(
+            [
+                :mediancolor, :medianlinewidth, :notchwidth, :show_median, :show_notch,
+                :notchmin, :notchmax, # shouldn't these be settable?
+                :strokecolor, :strokewidth,
+            ]
+        )
+    )
+    push!(
+        groups, "Outlier Attributes" => sort!(
+            [
+                :show_outliers, :marker, :markersize, :outliercolor, :outlierstrokecolor,
+                :outlierstrokewidth,
+            ]
+        )
+    )
+    push!(
+        groups, "Whisker Attributes" => sort!(
+            [
+                :range, :whiskercolor, :whiskerlinewidth, :whiskerwidth,
+            ]
+        )
+    )
+    return groups
+end
+
+
 conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
+argument_dim_kwargs(::Type{<:BoxPlot}) = (:orientation,)
 
 _cycle(v::AbstractVector, idx::Integer) = v[mod1(idx, length(v))]
 _cycle(v, idx::Integer) = v

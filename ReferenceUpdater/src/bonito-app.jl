@@ -711,7 +711,7 @@ function BackendCard(
 end
 
 """
-    upload_selection(tag, marked_for_upload, marked_for_deletion, root_path)
+    upload_selection(tag, marked_for_upload, marked_for_deletion, recorded_path)
 
 Upload selected reference images.
 """
@@ -719,9 +719,8 @@ function upload_selection(
         tag::String,
         marked_for_upload::Set{String},
         marked_for_deletion::Set{String},
-        root_path::String
+        recorded_path::String
     )
-    recorded_path = joinpath(root_path, "recorded")
 
     @info "Downloading latest reference image folder for $tag"
     tmpdir = try
@@ -973,7 +972,10 @@ function create_app_content(session::Session, root_path::String)
                     Bonito.evaljs(session, js"const overlay = $(loading_overlay); overlay.classList.add('active')")
                     upload_for_upload_set = Set{String}(selections["upload_files"])
                     marked_for_deletion_set = Set{String}(selections["delete_files"])
-                    @time upload_selection(tag_textfield.value[], upload_for_upload_set, marked_for_deletion_set, root_path)
+                    @time upload_selection(
+                        tag_textfield.value[], upload_for_upload_set, marked_for_deletion_set,
+                        joinpath(root_path, "recorded")
+                    )
                 catch e
                     @error "Upload process failed." exception = e
                 finally

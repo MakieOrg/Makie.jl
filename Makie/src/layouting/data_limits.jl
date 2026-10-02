@@ -148,11 +148,6 @@ function foreach_plot(f, plot::Plot)
     end
 end
 
-function for_each_atomic_plot(f, plot::Text)
-    f(plot)
-    return f(plot.plots[1]) # linesegments for latex
-end
-
 function for_each_atomic_plot(f, plot::Plot)
     return if is_atomic_plot(plot)
         f(plot)

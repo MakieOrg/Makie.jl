@@ -2,7 +2,7 @@
 ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Test
 using LinearAlgebra
-
+using Markdown
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics
@@ -32,8 +32,11 @@ end
         include("isolated/observables.jl")
         include("isolated/timing.jl")
         include("isolated/Plane.jl")
+        include("isolated/render_pipeline.jl")
         include("isolated/texture_atlas.jl")
         include("isolated/datetime_ticks.jl")
+        include("isolated/argument_docs.jl")
+        include("isolated/recipes.jl") # @recipe, @Block generated code
         include("isolated/showoff.jl")
     end
 
@@ -45,6 +48,7 @@ end
         include("plots/bracket.jl")
         include("plots/hist.jl")
         include("plots/poly.jl")
+        include("plots/mesh_stroke.jl")
         include("plots/contourf.jl")
         include("plots/tricontour.jl")
         include("plots/voronoiplot.jl")

@@ -54,10 +54,28 @@ function delete_screen!(scene::Scene, screen::MakieScreen)
     return
 end
 
+function render_pipeline_compat!(target, source, defaults)
+    if haskey(source, :render_pipeline)
+        target[:render_pipeline] = source[:render_pipeline]
+    elseif any(in(keys(source)), (:ssao, :fxaa, :oit)) ||
+            (to_value(defaults[:render_pipeline]) == automatic)
+        ssao = to_value(get(source, :ssao, defaults[:ssao]))
+        fxaa = to_value(get(source, :fxaa, defaults[:fxaa]))
+        oit = to_value(get(source, :oit, defaults[:oit]))
+        target[:render_pipeline] = default_pipeline(; ssao, fxaa, oit)
+    else
+        target[:render_pipeline] = to_value(defaults[:render_pipeline])
+    end
+    return
+end
+
 function set_screen_config!(backend::Module, new_values)
     key = nameof(backend)
     backend_defaults = CURRENT_DEFAULT_THEME[key]
     bkeys = keys(backend_defaults)
+    if key == :GLMakie
+        render_pipeline_compat!(backend_defaults, pairs(new_values), backend_defaults)
+    end
     for (k, v) in pairs(new_values)
         if !(k in bkeys)
             error("$k is not a valid screen config. Applicable options: $(keys(backend_defaults)). For help, check `?$(backend).ScreenConfig`")
@@ -67,10 +85,17 @@ function set_screen_config!(backend::Module, new_values)
     return backend_defaults
 end
 
-function merge_screen_config(::Type{Config}, config::Dict) where {Config}
+function merge_screen_config(::Type{Config}, _config::Dict) where {Config}
     backend = parentmodule(Config)
     key = nameof(backend)
     backend_defaults = CURRENT_DEFAULT_THEME[key]
+    # To not deprecate ssao, fxaa, oit:
+    if key == :GLMakie
+        config = Dict{Symbol, Any}(_config)
+        render_pipeline_compat!(config, _config, backend_defaults)
+    else
+        config = _config
+    end
     arguments = map(fieldnames(Config)) do name
         if haskey(config, name)
             return config[name]

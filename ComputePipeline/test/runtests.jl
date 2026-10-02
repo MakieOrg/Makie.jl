@@ -2,13 +2,20 @@ using ComputePipeline
 using Test
 using Random
 
-using ComputePipeline: InputFunctionWrapper, isdirty, ResolveException, map_latest!
+using ComputePipeline: isdirty, ResolveException, map_latest!
 using ComputePipeline.Observables
 
-@testset "ComputePipeline.jl" begin
+# Use failfast to prevent deadlocks from keeping these tests running
+@testset "ComputePipeline.jl" failfast = true begin
     # Sanity check for CI
     @test ComputePipeline.ENABLE_COMPUTE_CHECKS
 
-    include("unit_tests.jl")
-    include("system_tests.jl")
+    @testset "Concurrency tests"  begin
+        include("concurrency.jl")
+    end
+
+    @testset "general" failfast = false begin
+        include("unit_tests.jl")
+        include("system_tests.jl")
+    end
 end
