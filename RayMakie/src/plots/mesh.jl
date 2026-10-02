@@ -356,7 +356,7 @@ function environment_sh(lights)
     sh = zeros(Float32, 3, 9)
     has = false
     for light in lights
-        light isa Makie.EnvironmentLight || continue
+        light isa Union{Makie.EnvironmentLight, Makie.SunSkyLight} || continue
         has = true
         project_environment!(sh, light)
     end
@@ -369,12 +369,30 @@ end
 function project_environment!(sh, light::Makie.EnvironmentLight)
     data = map(c -> Hikari.RGBSpectrum(Float32(red(c)), Float32(green(c)), Float32(blue(c))), light.image)
     env = Hikari.EnvironmentMap(data, Hikari.rotation_matrix(light.rotation_angle, light.rotation_axis))
-    n = size(env.data, 1)
+    return project_equal_area!(sh, env.data, env.rotation, Float32(light.intensity))
+end
+
+"""
+A `SunSkyLight`'s sky, baked as the tracer bakes it (`Hikari.sunsky_to_envlight`;
+its radiance is `intensity` times the map), coarser: nine coefficients need no
+512² texels. Its sun is a light of its own; see `with_suns`.
+"""
+function project_environment!(sh, light::Makie.SunSkyLight)
+    g = light.ground_albedo
+    sky, _ = Hikari.sunsky_to_envlight(; direction = Vec3f(light.direction), intensity = 1f0,
+                                       turbidity = light.turbidity, ground_enabled = light.ground_enabled,
+                                       ground_albedo = Hikari.RGBSpectrum(red(g), green(g), blue(g)), resolution = 64)
+    return project_equal_area!(sh, sky.env_map.data, sky.env_map.rotation, light.intensity)
+end
+
+"Project an equal-area square map of radiance times `intensity` onto `sh`; every texel covers the same solid angle."
+function project_equal_area!(sh, data, rotation, intensity::Float32)
+    n = size(data, 1)
     dω = Float32(4π) / Float32(n * n)
-    scale = Float32(light.intensity) * dω
+    scale = intensity * dω
     for j in 1:n, i in 1:n
-        d = Hikari.uv_to_direction_equal_area(Point2f((i - 0.5f0) / n, (j - 0.5f0) / n), env.rotation)
-        c = env.data[j, i].c
+        d = Hikari.uv_to_direction_equal_area(Point2f((i - 0.5f0) / n, (j - 0.5f0) / n), rotation)
+        c = data[j, i].c
         x, y, z = d[1], d[2], d[3]
         basis = (0.282095f0, 0.488603f0 * y, 0.488603f0 * z, 0.488603f0 * x,
                  1.092548f0 * x * y, 1.092548f0 * y * z, 0.315392f0 * (3f0 * z * z - 1f0),

@@ -59,6 +59,25 @@ raster_look(::Hikari.NullMaterial) = RasterLook(RGBAf(0, 0, 0, 0), NO_EMISSION)
 # A pure emitter reflects nothing.
 raster_look(m::Hikari.Emissive) = with_emission(RasterLook(RGBAf(0, 0, 0, 1), NO_EMISSION), m)
 
+"""
+Clear water and the like: a dielectric over a scattering medium. The tracer sees
+through the surface into the medium and gets back what it scatters; the raster
+path has nothing behind the surface to show, so it draws the medium as the
+diffuse body under a coat (see `raster_material`), in the reflectance of an
+infinitely deep slab of it: per channel, with single-scattering albedo
+ω = σs / (σa + σs), (1 - √(1-ω)) / (1 + √(1-ω)) (the two-stream result). Drawn
+as glass it showed whatever was behind the water, the sky.
+"""
+function deep_reflectance(medium::Hikari.HomogeneousMedium)
+    a, s = medium.σ_a.c, medium.σ_s.c
+    r(i) = (q = sqrt(1f0 - s[i] / (a[i] + s[i])); (1f0 - q) / (1f0 + q))
+    return Hikari.RGBSpectrum(r(1), r(2), r(3))
+end
+
+raster_look(m::Hikari.MediumInterface{<:Hikari.Dielectric, <:Hikari.HomogeneousMedium}) =
+    m.emission === nothing ? RasterLook(srgb(deep_reflectance(m.inside)), NO_EMISSION) :
+                             with_emission(RasterLook(srgb(deep_reflectance(m.inside)), NO_EMISSION), m.emission)
+
 function raster_look(m::Hikari.MediumInterface)
     surface = raster_look(m.material)
     surface === nothing && return nothing
@@ -224,11 +243,29 @@ function with_emitters(N, types, colors, parameters, emitters)
     return (N + length(emitters), types, colors, parameters)
 end
 
+"""
+Makie's light arrays plus the sun of every `SunSkyLight`, as a directional light
+of the tracer's colour (`Hikari.sunsky_sun_rgb`). Makie leaves sun-and-sky
+lights to the backend and drops them from its arrays, so a raster frame under
+one was lit by nothing but its sky. (The sky is in `environment_sh`.)
+"""
+function with_suns(lights, n, types, colors, params)
+    suns = filter(l -> l isa Makie.SunSkyLight, lights)
+    isempty(suns) && return (n, types, colors, params)
+    return (n + length(suns),
+            vcat(types, fill(Int32(Makie.LightType.DirectionalLight), length(suns))),
+            vcat(colors, [RGBf(Hikari.sunsky_sun_rgb(s.intensity)) for s in suns]),
+            vcat(params, reduce(vcat, [Float32.(-normalize(s.direction)) for s in suns])))
+end
+
 function register_raster_emitters!(graph)
     haskey(graph, :raster_emitters) && return
     Makie.ComputePipeline.add_input!(graph, :raster_emitters, RasterEmitter[])
+    Makie.ComputePipeline.map!(with_suns, graph,
+        [:lights, :N_lights, :light_types, :light_colors, :light_parameters],
+        [:raster_sun_N_lights, :raster_sun_light_types, :raster_sun_light_colors, :raster_sun_light_parameters])
     Makie.ComputePipeline.map!(with_emitters, graph,
-        [:N_lights, :light_types, :light_colors, :light_parameters, :raster_emitters],
+        [:raster_sun_N_lights, :raster_sun_light_types, :raster_sun_light_colors, :raster_sun_light_parameters, :raster_emitters],
         [:raster_all_N_lights, :raster_all_light_types, :raster_all_light_colors, :raster_all_light_parameters])
     return
 end
@@ -275,6 +312,15 @@ Lambert in the plot's colour.
 """
 raster_material(::Any) = LAMBERT
 raster_material(m::Hikari.MediumInterface) = raster_material(m.material)
+
+"A dielectric over a scattering medium, as a coat over its deep reflectance; see `deep_reflectance`."
+function raster_material(m::Hikari.MediumInterface{<:Hikari.Dielectric, <:Hikari.HomogeneousMedium})
+    d = m.material
+    α = material_alpha(d.u_roughness, d.v_roughness, d.remap_roughness)
+    η = handle_float(d.index, 1.5f0)
+    fe, fi = coat_averages(η)
+    return RasterMaterial(Vec4f(MAT_COATED_DIFFUSE, α, η, 0.01f0), Vec4f(0), Vec4f(0, 0, 0, fe), Vec4f(0, 0, 0, fi))
+end
 
 function raster_material(m::Hikari.CoatedDiffuse)
     α = material_alpha(m.u_roughness, m.v_roughness, m.remap_roughness)
