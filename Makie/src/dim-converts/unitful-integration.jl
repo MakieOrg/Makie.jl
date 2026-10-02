@@ -96,20 +96,6 @@ end
 
 UnitfulConversion() = UnitfulConversion(automatic)
 
-function update_unit!(conversion::UnitfulConversion, vals)
-    if conversion.unit[] === automatic
-        conversion.unit[] = to_unit(first(vals))
-
-        # TODO, somehow we need another notify to update the axis label
-        # The interactions in Lineaxis are too complex to debug this in a sane amount of time
-        # So, I think we should just revisit this once we move lineaxis to use compute graph
-        notify(conversion.unit)
-    end
-    return
-end
-
-needs_tick_update_observable(conversion::UnitfulConversion) = conversion.unit
-
 # TODO: Convert the unit to rich text arguments instead of parsing the string
 # TODO: Could also consider UnitfulLatexify?
 function unit_string_to_rich(str::String)
@@ -152,18 +138,16 @@ function get_label_suffix(::LaTeXString, conversion::UnitfulConversion, format)
     return apply_format(latexify(unit), format)
 end
 
-function convert_dim_value(conversion::UnitfulConversion, attr, values, last_values)
-    unit = conversion.unit[]
+function update_dim_conversion!(conversion::UnitfulConversion, values)
     if !isempty(values)
-        # try if conversion works, to through error if not!
-        # Is there a function for this to check in Unitful?
-        unit_convert(unit, values[1])
+        if conversion.unit[] === automatic
+            conversion.unit[] = to_unit(first(values))
+            return true
+        end
     end
-
-    update_unit!(conversion, values)
-    return unit_convert(conversion.unit[], values)
+    return false
 end
 
-function convert_dim_value(conversion::UnitfulConversion, value::SupportedUnits)
-    return unit_convert(conversion.unit[], value)
+function convert_dim_value(dc::UnitfulConversion, values)
+    return unit_convert(dc.unit[], values)
 end

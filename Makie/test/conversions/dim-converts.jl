@@ -66,7 +66,7 @@ end
     scatter!(ax, 1:4, Categorical(["b", "d", "a", "c"]))
     ylims!(ax, "0", "x")
     Makie.update_state_before_display!(ax)
-    lims = Makie.convert_dim_value.(Ref(ax), 2, ["0", "x"])
+    lims = Makie.update_sync_convert_dim_value(ax, 2, ["0", "x"])
     (xmin, ymin), (xmax, ymax) = extrema(ax.finallimits[])
     @test [ymin, ymax] == lims
 end
@@ -86,12 +86,12 @@ end
     # Unitful works as well
     scatter!(ax, LinRange(0u"yr", 0.1u"yr", 5))
     # TODO, how to check for this case?
-    @test_throws ResolveException scatter!(ax, 1:4) # happens inside graph in dim_convert
+    @test_throws ArgumentError scatter!(ax, 1:4) # happens inside graph in dim_convert
     @test_throws ArgumentError scatter!(ax, Hour(1):Hour(1):Hour(4), 1:4)
 
     # TODO, DynamicQuantities does not work with Dates. Is this by design?
     f, ax, pl = scatter(rand(Hour(1):Hour(1):Hour(20), 10))
-    @test_throws ResolveException{Makie.Unitful.DimensionError} scatter!(ax, LinRange(0 * DQ.u"yr", 0.1 * DQ.u"yr", 5))
+    @test_throws ArgumentError scatter!(ax, LinRange(0 * DQ.u"yr", 0.1 * DQ.u"yr", 5))
 end
 
 function test_cleanup(arg)

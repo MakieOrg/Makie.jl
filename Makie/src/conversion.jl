@@ -167,16 +167,6 @@ function convert_arguments end
 
 convert_arguments(::NoConversion, args...; kw...) = args
 
-get_element_type(::T) where {T} = T
-get_element_type(t::Tuple) = get_element_type(first(t))
-function get_element_type(arr::AbstractArray{T}) where {T}
-    if T == Any
-        return mapreduce(typeof, promote_type, arr)
-    else
-        return T
-    end
-end
-
 """
     types_for_plot_arguments(PlotType, trait)
     types_for_plot_arguments(PlotType)

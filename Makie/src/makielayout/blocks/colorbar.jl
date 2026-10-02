@@ -245,7 +245,11 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
     haskey(cmap, :colorscale) && (cmap[:scale] = pop!(cmap, :colorscale))
     haskey(cmap, :color) && (cmap[:values] = pop!(cmap, :color))
-    haskey(cmap, :color_dim_convert) && (cmap[:dim_conversion] = pop!(cmap, :color_dim_convert))
+    if haskey(cmap, :color_dim_convert)
+        cmap[:dim_conversion] = pop!(cmap, :color_dim_convert)
+    elseif haskey(plot, :color_dim_convert)
+        cmap[:dim_conversion] = plot.color_dim_convert
+    end
 
     cmap_keys = collect(keys(cmap))
     haskey(cmap, :colorrange) && push!(cmap_keys, :limits)
@@ -282,16 +286,18 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     # Auto dim conversion
     cdc = cb.dim_conversion[]
+    map!(cdc -> cdc.dim_convert, cb, :dim_conversion, :dim_convert_4)
+
     if hasinput(cb.attributes, :dim_conversion)
         # If :dim_conversion is a node rather than a ComputePipeline.Input it is
         # passed along from another source (typically a plot) that (most likely)
         # initialized the conversion.
         # If it is an Input the setup still needs to happen:
-        on(_ -> notify(cb.dim_conversion), cdc.update)
-        update_dim_conversion!(cb.dim_conversion[], cb.values[])
+        init_dim_conversion!(cb.dim_conversion[], cb.values[])
+        register_cdc_synchronization!(cb.attributes, cdc, cb.values)
+    else
+        add_input!(cb, :dim_convert_4_sync, cdc.sync_node)
     end
-    # We need to pull the actual conversion in the computegraph either way
-    map!(cdc -> cdc.dim_convert, cb, :dim_conversion, :resolved_cdc)
 
     if haskey(kwargs, :dim_converted)
         # If extract_colormap() extracted :dim_converted we use that directly
@@ -303,8 +309,9 @@ function initialize_block!(cb::Colorbar; kwargs...)
         if cdc.dim_convert isa Union{Nothing, NoDimConversion}
             ComputePipeline.map!(to_color, cb, :values, :dc_values)
         else
-            map!(cb, [:resolved_cdc, :values], :dc_values) do dc, color
-                converted = convert_dim_value(dc, cb.attributes, color, nothing)
+            plot_id = objectid(cb.attributes)
+            map!(cb, [:dim_convert_4, :values, :dim_convert_4_sync], :dc_values) do dc, color, _
+                converted = convert_dim_value(dc, plot_id, color)
                 return to_color(converted)
             end
         end
@@ -317,7 +324,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     register_computation!(
         cb.attributes,
-        [:resolved_cdc, :colorrange, :limits, :_derived_colorrange],
+        [:dim_convert_4, :colorrange, :limits, :_derived_colorrange],
         [:resolved_colorrange]
     ) do (dc, _colorrange, limits, _autorange), changed, @nospecialize(cached)
         colorrange = if changed.limits && (limits !== automatic)
@@ -339,7 +346,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
-    map!(cb, [:resolved_cdc, :color_mapping_type], :merged_color_mapping_type) do dc, cmt
+    map!(cb, [:dim_convert_4, :color_mapping_type], :merged_color_mapping_type) do dc, cmt
         return (cmt === Makie.continuous) && isa(dc, CategoricalConversion) ? Makie.categorical : cmt
     end
 
@@ -350,7 +357,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     map!(
         cb,
-        [:color_mapping, :merged_color_mapping_type, :resolved_cdc, :dc_values, :resolved_colorrange],
+        [:color_mapping, :merged_color_mapping_type, :dim_convert_4, :dc_values, :resolved_colorrange],
         :cb_colors
     ) do mapping, mapping_type, dc, values, limits
         if mapping_type === Makie.continuous
@@ -587,7 +594,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     map!(
         cb,
-        [:cb_colors, :merged_color_mapping_type, :ticks, :resolved_cdc, :tickformat],
+        [:cb_colors, :merged_color_mapping_type, :ticks, :dim_convert_4, :tickformat],
         [:finalticks, :finaltickformat]
     ) do cs, type, ticks, dc, formatter
         # For categorical we just enumerate
@@ -626,7 +633,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
         labelfont = cb.labelfont, ticklabelfont = cb.ticklabelfont,
-        dim_convert = cb.resolved_cdc,
+        dim_convert = cb.dim_convert_4, dim_convert_sync = cb.dim_convert_4_sync,
         ticks = cb.finalticks, tickformat = cb.finaltickformat,
         ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
         ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,

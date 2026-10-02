@@ -144,6 +144,7 @@ mutable struct Scene <: AbstractScene
             deregister_callbacks = Observables.ObserverFunction[]
         )
         replace_computed_with_obs!(theme)
+        graph = ComputeGraph()
         scene = new(
             parent,
             events,
@@ -162,16 +163,16 @@ mutable struct Scene <: AbstractScene
             visible,
             ssao,
             deregister_callbacks,
-            ComputeGraph(),
-            DimConversions(),
+            graph,
+            DimConversions(graph),
             false,
             nothing
         )
-        add_camera_computation!(scene.compute, scene)
-        add_light_computation!(scene.compute, scene, lights)
-        add_input!(scene.compute, :transform_func, transformation.transform_func)
-        ComputePipeline.set_type!(scene.compute.transform_func, Any)
-        add_input!(scene.compute, :cycle_counters, Dict{Symbol, Int}())
+        add_camera_computation!(graph, scene)
+        add_light_computation!(graph, scene, lights)
+        add_input!(graph, :transform_func, transformation.transform_func)
+        ComputePipeline.set_type!(graph.transform_func, Any)
+        add_input!(graph, :cycle_counters, Dict{Symbol, Int}())
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true
@@ -591,10 +592,21 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
 
     scene.onplot[] = false => plot
 
-    # Remove references to the plot compute graph from any parent compute graph.
+    # Avoid `disconnect!` destroying plot_graph -> shared_graph dim convert connections
+    # TODO: Is this working right
+    for i in 1:4
+        name = Symbol(:dim_convert_, i, :_update)
+        if haskey(plot, name)
+            for dep in plot[name].parent.dependents
+                ComputePipeline.delete_input!(dep, plot[name])
+            end
+        end
+    end
+
+    # Disconnect the plot compute graph from other graphs (input and output).
     # (E.g. the scene compute graph)
     # This is meant to make the plot graph GC-able.
-    ComputePipeline.unsafe_disconnect_from_parents!(plot.attributes)
+    ComputePipeline.disconnect!(plot.attributes)
 
     # TODO, if we want to delete a subplot of a plot,
     # It won't be in scene.plots directly, but will still be deleted
