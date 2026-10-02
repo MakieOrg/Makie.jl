@@ -59,6 +59,21 @@ barplot(tbl.cat, tbl.height,
         )
 ```
 
+Stacked bars start at zero by default, which cannot be shown on a log-scaled axis.
+In that case the baseline of each stack is automatically placed at half the smallest positive stack total.
+You can also set the baseline explicitly with `fillto`, which then applies to every stack:
+
+```@figure barplot
+barplot(tbl.cat, tbl.height,
+        stack = tbl.grp,
+        color = tbl.grp,
+        fillto = 0.05,
+        axis = (xticks = (1:3, ["left", "middle", "right"]),
+                yscale = log10,
+                title = "Stacked bars on a log axis"),
+        )
+```
+
 Passing `grp` to `dodge` will instead draw the individual height values as separate bars side by side.
 Here 1 is the left most and 3 the right most bar.
 The gap between dodged bars can be adjusted with `dodge_gap`.
