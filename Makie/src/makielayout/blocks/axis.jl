@@ -63,8 +63,8 @@ function calculate_axis_projection_matrix(scene::Scene, tf, lims, xrev::Bool, yr
     nearclip = -10_000f0
     farclip = 10_000f0
 
-    # we are computing transformed camera position, so this isn't space dependent
-    tlims = Makie.apply_transform(tf, lims)
+    # positivize widths in case the transform inverts space
+    tlims = positivize(apply_transform(tf, lims))
 
     update_limits!(scene.float32convert, tlims) # update float32 scaling
     lims32 = f32_convert(scene.float32convert, tlims)  # get scaled limits
@@ -1444,6 +1444,12 @@ defaultlimits(limits::Tuple{Real, Nothing}, scale) = (limits[1], defaultlimits(s
 defaultlimits(limits::Tuple{Nothing, Real}, scale) = (defaultlimits(scale)[1], limits[2])
 defaultlimits(limits::Tuple{Nothing, Nothing}, scale) = defaultlimits(scale)
 
+"""
+    defaultlimits(scale)
+
+Returns a tuple (low, high) of default limits based on the x/y/zscale of an axis.
+These are used when limits can't be determined from the content of an Axis.
+"""
 defaultlimits(scale::ReversibleScale) = inverse_transform(scale).(scale.limits)
 defaultlimits(scale::Makie.Symlog10) = defaultlimits(scale.scale)
 defaultlimits(scale::LogFunctions) = let inv_scale = inverse_transform(scale)
@@ -1453,6 +1459,11 @@ defaultlimits(::typeof(identity)) = (0.0, 10.0)
 defaultlimits(::typeof(sqrt)) = (0.0, 100.0)
 defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
 
+"""
+    defined_interval(scale)
+
+Returns an Interval on which the given x/y/zscale is defined.
+"""
 defined_interval(scale::ReversibleScale) = scale.interval
 defined_interval(scale::Makie.Symlog10) = defined_interval(scale.scale)
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)

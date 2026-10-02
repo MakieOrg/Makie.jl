@@ -582,9 +582,9 @@ end
         f, ax, pl1 = scatter(rand(10))
         pl2 = scatter!(ax, rand(10); color = rand(RGBf, 10))
         pl3 = barplot!(ax, 1:3; colorrange = (0, 1))
-        @test_throws ErrorException Colorbar(f[1, 2], pl1)
-        @test_throws ErrorException Colorbar(f[1, 2], pl2)
-        @test_throws ErrorException Colorbar(f[1, 2], pl3)
+        @test_throws ResolveException Colorbar(f[1, 2], pl1)
+        @test_throws ResolveException Colorbar(f[1, 2], pl2)
+        @test_throws ResolveException Colorbar(f[1, 2], pl3)
     end
     @testset "Recipes" begin
         f, ax, pl = barplot(1:3; color = 1:3)

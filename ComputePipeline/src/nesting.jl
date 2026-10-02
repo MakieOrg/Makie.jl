@@ -150,6 +150,7 @@ end
 isfinal(temp::TemporarySearchResult) = is_final_level(temp.next_index)
 
 merged_key(temp::TemporarySearchResult) = merged_key(temp.keys)
+merged_key(temp::TemporarySearchResult, keys...) = merged_key(temp.keys..., keys...)
 merged_key(keys::Symbol...) = merged_key(keys)
 merged_key(keys::Tuple{Symbol}) = keys[1]
 merged_key(keys::Tuple{Symbol, Vararg{Symbol}}) = reduce((a, b) -> Symbol(a, :(.), b), keys)

@@ -553,6 +553,9 @@ end
     if !isnothing(conversion)
         get!(attributes, :dim_conversions, conversion)
     end
+    if scene isa Plot
+        get!(attributes, :color_dim_convert, scene.color_dim_convert)
+    end
     get!(attributes, :force_dimconverts, scene isa Scene)
     plot = Plot{default_plot_func(F, args)}(args, attributes)
     plot!(scene, plot)

@@ -305,7 +305,8 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         px_o = extents[1]
         px_width = extents[2] - extents[1]
         tickvalues_scaled = scale.(tickvalues)
-        tick_fractions = (tickvalues_scaled .- scale(limits[1])) ./ (scale(limits[2]) - scale(limits[1]))
+        low, high = minmax(scale(limits[1]), scale(limits[2]))
+        tick_fractions = (tickvalues_scaled .- low) ./ (high - low)
 
         tick_scenecoords = px_o .+ px_width .* tick_fractions
 

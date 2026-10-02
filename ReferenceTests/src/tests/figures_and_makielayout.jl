@@ -873,3 +873,110 @@ end
     end
     f
 end
+
+@reference_test "Color dim convert + Colorbar" begin
+    f = Figure()
+    a = Axis(f[1, 1][1, 1], title = "default colorrange")
+    p = scatter!(a, 1:5, 1:5, color = (1:5) .* u"m", markersize = 20)
+    scatter!(a, 6:10, 6:10, color = (6:10) .* u"m", markersize = 20; p.color_dim_convert)
+    Colorbar(f[1, 1][1, 2], p)
+
+    a2 = Axis(f[1, 2][1, 1], title = "set colorrange")
+    p2 = scatter!(a2, 1:5, 1:5, color = (1:5) .* u"m", markersize = 20, colorrange = (1, 10))
+    scatter!(a2, 6:10, 6:10, color = (6:10) .* u"m", markersize = 20; p2.color_dim_convert, colorrange = (1, 10))
+    Colorbar(f[1, 2][1, 2], p2, ticks = [1, 3, 5, 10])
+
+    a = Axis(f[2, 1][1, 1])
+    p = scatter!(
+        RNG.randn(50), RNG.randn(50),
+        color = Categorical(["A" for _ in 1:50]),
+        strokewidth = 1, strokecolor = :black, colormap = :heat
+    )
+    scatter!(
+        (2 .+ RNG.randn(50)), (2.5 .+ RNG.randn(50)),
+        color = Categorical(["B" for _ in 1:50]),
+        color_dim_convert = p.color_dim_convert,
+        strokewidth = 1, strokecolor = :black, colormap = :heat
+    )
+    scatter!(
+        (3 .+ RNG.randn(50)), (5 .+ RNG.randn(50)),
+        color = Categorical(["C" for _ in 1:50]),
+        color_dim_convert = p.color_dim_convert,
+        strokewidth = 1, strokecolor = :black, colormap = :heat
+    )
+    cb = Colorbar(f[2, 1][1, 2], p)
+
+    a = Axis(f[2, 2][1, 1])
+    hidedecorations!(a)
+    p1 = heatmap!(10 .* RNG.rand(10, 10) .* u"K", colormap = :blues)
+    p2 = scatter!(
+        1:10,
+        color = Categorical(["A", "B", "B", "C", "C", "C", "A", "A", "B", "B"]),
+        colormap = :solar,
+        markersize = 20, strokewidth = 1, strokecolor = :white
+    )
+    Colorbar(f[2, 2][1, 0], p1, unit_in_label = false, unit_in_ticklabel = true)
+    Colorbar(f[2, 2][1, 2], p2)
+
+    f
+end
+
+@reference_test "Inverting colorscale" begin
+    colorscale = Observable{Any}(inv)
+    kwargs = (colorscale, markersize = 20, strokecolor = :black, strokewidth = 1)
+
+    # Tests:
+    # rows: different colormap types (top continuous, middle Categorical, bottom banded)
+    # columns: different color ranges that may result in different spacing
+
+    # 1. colorscale = inv
+    # Colorbar ticks are pre-colorscale and should continue to be in ascending
+    # order (i.e. small at the bottom, large at the top). The shows colors should
+    # be sampled based on post-colorscale values, which is inverse to what you
+    # would usually see (smallest tick = highest scaled value = high end of colormap)
+    # colors: (yellow, yellow, white) .. (dark purple, black, blue) (bottom to top)
+
+    # 2. colorscale = log10
+    # Ticks are pre-colorscale but formatted as 10^x, in ascending order. The
+    # colorscale does not invert values, so we should see:
+    # (dark purple, black, blue) .. (yellow, yellow, white)
+
+    # 3. colorscale = identity
+    # probably not worth testing?
+
+    f = Figure(size = (500, 700))
+    a, p = scatter(f[1, 1], 1:10, color = 1:10, colorrange = (1, 10); kwargs...)
+    Colorbar(f[1, 2], p)
+    a, p = scatter(f[1, 3], 1:10, color = 11:20; kwargs...)
+    Colorbar(f[1, 4], p)
+    a, p = scatter(f[1, 5], 1:10, color = 91:100; kwargs...)
+    Colorbar(f[1, 6], p, ticks = (91:3:100, ["A", "B", "C", "D"]))
+
+    a, p = scatter(f[2, 1], 1:10, color = 1:10, colorrange = (1, 10), colormap = Categorical(:magma); kwargs...)
+    cb = Colorbar(f[2, 2], p)
+    a, p = scatter(f[2, 3], 1:10, color = 11:20, colormap = Categorical(:magma); kwargs...)
+    Colorbar(f[2, 4], p)
+    a, p = scatter(f[2, 5], 1:10, color = 91:100, colormap = Categorical(:magma); kwargs...)
+    Colorbar(f[2, 6], p, ticks = (91:3:100, ["A", "B", "C", "D"]))
+
+    cg = cgrad(:terrain, 10, categorical = true)
+    a, p = scatter(f[3, 1], 1:10, color = 1:10, colorrange = (1, 10), colormap = cg; kwargs...)
+    cb = Colorbar(f[3, 2], p)
+    a, p = scatter(f[3, 3], 1:10, color = 11:20, colormap = cg; kwargs...)
+    Colorbar(f[3, 4], p)
+    a, p = scatter(f[3, 5], 1:10, color = 91:100, colormap = cg; kwargs...)
+    Colorbar(f[3, 6], p, ticks = (91:3:100, ["A", "B", "C", "D"]))
+
+    f
+
+    st = Makie.Stepper(f)
+    Makie.step!(st)
+
+    colorscale[] = log10
+    Makie.step!(st)
+
+    # colorscale[] = identity
+    # Makie.step!(st)
+
+    st
+end

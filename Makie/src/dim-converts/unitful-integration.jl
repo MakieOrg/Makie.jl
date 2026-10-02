@@ -131,8 +131,7 @@ function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin,
     unit isa Automatic && return [], []
     unit_str = unit_string(unit)
     rich_unit_str = unit_string_to_rich(unit_str)
-    tick_vals = get_tickvalues(ticks, scale, vmin, vmax)
-    labels = get_ticklabels(formatter, tick_vals)
+    tick_vals, labels = get_ticks(ticks, scale, formatter, vmin, vmax)
     if show_in_label
         labels = map(lbl -> rich(lbl, rich_unit_str), labels)
     end
