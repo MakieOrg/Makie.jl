@@ -17,13 +17,14 @@ end
 
 # ── Vertex Shader ──
 # 6 vertices (2 triangles) covering the screen-space quad.
-# BDA args: screen_bl (Vec2f), screen_tr (Vec2f), res (Vec2f), fxaa (Int32)
+# BDA args: screen_bl (Vec2f), screen_tr (Vec2f), res (Vec2f), depth (Float32), fxaa (Int32)
 # Outputs: UV coordinates for fragment texture sampling.
 
 function image_overlay_vertex(
     screen_bl::Vec2f,
     screen_tr::Vec2f,
     res::Vec2f,
+    depth::Float32,
     fxaa::Int32,
 )
     vid = vertex_index()
@@ -62,7 +63,10 @@ function image_overlay_vertex(
     end
 
     ndc = screen_to_ndc(pos, res[1], res[2])
-    return (position = Vec4f(ndc[1], ndc[2], 0f0, 1f0), uv = uv)
+    # The plane's own depth, as every other overlay draw has it. A constant 0
+    # here is the NEAREST depth: an image then hid every line, marker and
+    # label background drawn over it in its axis, whatever their z.
+    return (position = Vec4f(ndc[1], ndc[2], depth, 1f0), uv = uv)
 end
 
 # ── Fragment Shader ──
@@ -73,6 +77,7 @@ function image_overlay_fragment(
     screen_bl::Vec2f,
     screen_tr::Vec2f,
     res::Vec2f,
+    depth::Float32,
     fxaa::Int32,
 )
     # `sample_texture_2d` per component, which is the portable verb every backend

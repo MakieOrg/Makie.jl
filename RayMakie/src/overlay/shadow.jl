@@ -71,24 +71,36 @@ end
 """
     shadow_light(types, colors, parameters) -> (index, direction)
 
-The directional light that casts: the brightest one, as its place in Makie's
-light list and the direction it travels. `(0, Vec3f(0))` when there is none.
+The light that casts: the brightest directional one, as its place in the light
+list and the direction it travels. A scene lit only by glowing meshes (a
+softbox) gets its shadows from the brightest of those instead (radiance times
+area), cast straight along its normal: from overhead, which is where a softbox
+hangs, when it shines both ways. `(0, Vec3f(0))` when there is none.
 """
 function shadow_light(types, colors, parameters)
     best, lum, dir = 0, 0f0, Vec3f(0)
+    ebest, elum, edir = 0, 0f0, Vec3f(0)
     idx = 0
     for i in eachindex(types)
         kind = Int32(types[i])
+        c = RGBf(colors[i])
+        l = 0.2126f0 * c.r + 0.7152f0 * c.g + 0.0722f0 * c.b
         if kind == LIGHT_DIRECTIONAL
-            c = RGBf(colors[i])
-            l = 0.2126f0 * c.r + 0.7152f0 * c.g + 0.0722f0 * c.b
             if l > lum
                 best, lum = i, l
                 dir = normalize(Vec3f(parameters[idx + 1], parameters[idx + 2], parameters[idx + 3]))
             end
+        elseif kind == LIGHT_EMITTER
+            power = l * parameters[idx + 7]
+            if power > elum
+                ebest, elum = i, power
+                n = normalize(Vec3f(parameters[idx + 4], parameters[idx + 5], parameters[idx + 6]))
+                edir = parameters[idx + 8] != 0f0 && n[3] > 0f0 ? -n : n
+            end
         end
         idx += light_parameter_count(kind)
     end
+    best == 0 && return Int32(ebest), edir
     return Int32(best), dir
 end
 
@@ -191,6 +203,7 @@ function shadow_frame(screen, robjs)
     view = meshes[first].uniforms[:view]::Mat4f
     projection = meshes[first].uniforms[:projection]::Mat4f
     casters = filter(r -> r.uniforms[:view] == view && r.vertex_count > 0 &&
+                          get(r.uniforms, :casts_shadow, true)::Bool &&
                           !isempty(r.uniforms[:local_bounds]::Rect3f), meshes)
     isempty(casters) && return nothing
     bounds = mapreduce(r -> world_bounds(r.uniforms[:local_bounds], r.uniforms[:model]), union, casters)

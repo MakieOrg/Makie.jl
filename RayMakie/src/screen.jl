@@ -507,7 +507,29 @@ function Base.close(screen::Screen)
     # a `Mantle.Plan` and `run!` decides what it is submitted on. Which is the
     # answer to "do we even need batch queues if Mantle batches from the graph"
     # — no, and this package is the last thing that was asking for one.
+    #
+    # FREED, not just dropped. A dropped plan's finalizer hands it to its
+    # device's pool, which tears it down only the next time it reclaims, and
+    # until then the plan's passes, which captured this screen and every render
+    # object it drew, keep all of it alive: every texture the figure uploaded.
+    # A render loop making one figure per frame and launching no kernels never
+    # reclaims, and kept 24 MB of a sheet texture per frame (measured, 2026-10-01).
+    # A freed plan is still handed over by its finalizer, so the pool's waiting
+    # teardown is run here too: what earlier screens dropped goes now.
+    devs = Set{Any}()
+    for (_, plan, _, _) in values(screen.frame_plans)
+        push!(devs, plan.graph.dev)
+        Mantle.free!(plan)
+    end
     empty!(screen.frame_plans)
+    # The device's queue too: the textures and buffers dropped figures leave
+    # behind are retired onto it by their finalizers, and only its `reclaim!`
+    # destroys them. Nothing on the raster path called it, and a render loop
+    # had 58 726 of them waiting (measured, 2026-10-01).
+    for d in devs
+        Mantle.reclaim!(Mantle.pool(d), d)
+        Mantle.supports_batch_queue(d) && Mantle.reclaim!(Mantle.batchqueue(d))
+    end
 
     # The atlas is global and outlives this screen, so the hook has to come off
     # or it keeps the screen alive and marks a dead one dirty forever.

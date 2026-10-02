@@ -40,7 +40,7 @@ import Mantle: DeviceArray, GraphicsPipeline, Framebuffer, OffscreenTarget, Wind
                transition_image!,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
-import Mantle: Premultiplied, Opaque, TriangleList, NoCull, DepthOff, DepthLess, DepthLessEq
+import Mantle: Premultiplied, Opaque, TriangleList, NoCull, DepthOff, DepthLess, DepthLessEq, DepthLessEqReadOnly
 # The stages a pipeline is made of, and the device-side names a shader body calls.
 # Phase 2.8 ported the shaders instead of the names: each stage declares its own
 # `outputs`, a field that belongs to the primitive is `Flat{T}` there, and a
@@ -362,6 +362,7 @@ function draw_atomic(screen, scene, plot::Makie.AbstractPlot)
 end
 
 include("plots/mesh.jl")
+include("plots/raster_material.jl")
 include("plots/image.jl")
 include("plots/meshscatter.jl")
 include("plots/surface.jl")

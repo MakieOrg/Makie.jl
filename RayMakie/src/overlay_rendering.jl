@@ -104,6 +104,9 @@ function collect_overlay_robjs(state::RayMakieState, root_scene::Makie.Scene, ra
         vp = Makie.viewport(rscene)[]
         vp_y = Float32(root_h - vp.origin[2])
         vp_rect = (Float32(vp.origin[1]), vp_y, Float32(vp.widths[1]), -Float32(vp.widths[2]))
+        # The scene's glowing meshes light it in RASTER mode, so they are
+        # gathered before any of its draws resolves its light buffers.
+        raster && sync_raster_emitters!(rscene)
         for p in rscene.plots
             Makie.for_each_atomic_plot(p) do ap
                 # `:raster_renderobject` first: a plot that can go both ways
@@ -419,6 +422,9 @@ function overlay_robjs(screen; scenes = nothing)
         screen.state = ss
         append!(robjs, collect_overlay_robjs(ss, screen.scene, screen.rasterize; scenes))
     end
+    # See-through meshes after the opaque ones, in their order otherwise: they
+    # write no depth, so whatever they cover has to be drawn first.
+    sort!(robjs; by = ((robj, _),) -> get(robj.uniforms, :see_through, false)::Bool, alg = Base.Sort.DEFAULT_STABLE)
     # Every pipeline checked BEFORE the graph is built, so one this backend
     # cannot run is a named error rather than a half-composited frame.
     for (robj, _) in robjs

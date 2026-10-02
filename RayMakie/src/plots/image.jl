@@ -86,6 +86,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
 
         p_bl = project_to_screen(x_min, y_min)
         p_tr = project_to_screen(x_max, y_max)
+        # The quad's depth, from the same projection: the GL clip range mapped to
+        # the 0..1 one the depth test reads (`gl_to_clip_depth`, after the divide).
+        c4 = pv * model * Vec4f(x_min, y_min, 0f0, 1f0)
+        depth = 0.5f0 * (c4[3] / c4[4] + 1f0)
 
         # The texel tuple the texture is uploaded from, in the SOURCE's precision
         # — see `texeldata`. Straight to the tuple: this used to build an
@@ -112,6 +116,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
             robj.uniforms[:screen_bl] = Vec2f(p_bl)
             robj.uniforms[:screen_tr] = Vec2f(p_tr)
             robj.uniforms[:res] = Vec2f(Float32(root_w), Float32(root_h))
+            robj.uniforms[:depth] = depth
             update_texture!(robj, img_ntuple; filter=:linear, wrap=:clamp)
             robj.visible = true
             return (robj,)
@@ -121,12 +126,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
         pipeline = get_image_pipeline!(screen)
         robj = RenderObject(pipeline;
             backend = screen.config.device,
-            arg_names = (:screen_bl, :screen_tr, :res, :fxaa),
+            arg_names = (:screen_bl, :screen_tr, :res, :depth, :fxaa),
             fxaa = plot_fxaa(plot),
             uniforms = Dict{Symbol, Any}(
                 :screen_bl => Vec2f(p_bl),
                 :screen_tr => Vec2f(p_tr),
                 :res => Vec2f(Float32(root_w), Float32(root_h)),
+                :depth => depth,
             ),
             vertex_count = 6,
             instances = 1,

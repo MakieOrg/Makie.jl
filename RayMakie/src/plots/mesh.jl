@@ -307,11 +307,13 @@ const RASTER_MESH_DEPS = [
 # Plot input => scene node. Prefixed, not GLMakie's `:ambient`, `:light_types`, …:
 # GLMakie force-deletes those on a plot it displays, and with them every node
 # that depends on them, so a figure shown by both backends would lose this one.
+# The light list is the scene's Makie lights with its glowing meshes after them
+# (`with_emitters`, plots/raster_material.jl).
 const RASTER_LIGHT_NODES = (
     :raster_ambient => :ambient_color, :raster_light_color => :dirlight_color,
     :raster_light_direction => :dirlight_final_direction,
-    :raster_N_lights => :N_lights, :raster_light_types => :light_types,
-    :raster_light_colors => :light_colors, :raster_light_parameters => :light_parameters,
+    :raster_N_lights => :raster_all_N_lights, :raster_light_types => :raster_all_light_types,
+    :raster_light_colors => :raster_all_light_colors, :raster_light_parameters => :raster_all_light_parameters,
     :raster_env_sh => :raster_env_sh, :raster_has_env => :raster_has_env,
 )
 
@@ -335,6 +337,7 @@ function register_raster_lights!(scene)
     haskey(graph, :N_lights) || Makie.register_multi_light_computation(scene, 64, 5 * 64)
     haskey(graph, :raster_env_sh) ||
         Makie.ComputePipeline.map!(environment_sh, graph, :lights, [:raster_env_sh, :raster_has_env])
+    register_raster_emitters!(graph)
     return
 end
 
@@ -469,27 +472,6 @@ function shading_code(mode)
     return SHADING_NONE
 end
 
-"""
-    raster_conductor(material) -> Vec4f
-
-A conductor's normal-incidence reflectance, from its η and k at 630, 532 and
-465 nm for red, green and blue and times its tint, and its GGX α: what
-`reflect_light` in overlay/mesh.jl shades it with. Every other material has
-α = 0 and is drawn as a `Diffuse`.
-
-The raster path samples one texture, the colour; a conductor whose roughness
-or tint is a texture is drawn at roughness 0.5 and untinted.
-"""
-raster_conductor(::Any) = Vec4f(0)
-function raster_conductor(m::Hikari.Conductor)
-    f0(λ, i) = (n = spectral(m.eta, λ, i); k = spectral(m.k, λ, i); ((n - 1)^2 + k^2) / ((n + 1)^2 + k^2))
-    tint = m.reflectance.kind == Hikari.TexKind.CONST_SPECTRUM ? m.reflectance.rgb.c : Vec4f(1)
-    r = m.roughness.kind == Hikari.TexKind.CONST_FLOAT ? m.roughness.f : 0.5f0
-    α = m.remap_roughness ? Hikari.roughness_to_α(r) : r
-    return Vec4f(f0(630f0, 1) * tint[1], f0(532f0, 2) * tint[2], f0(465f0, 3) * tint[3], max(α, 1f-3))
-end
-spectral(s::Hikari.PiecewiseLinearSpectrum, λ, i) = Hikari.sample(s, λ)
-spectral(h::Hikari.TexHandle, λ, i) = h.rgb.c[i]
 
 """
     raster_shading(screen, plot, args) -> (uniforms, buffers)
@@ -503,6 +485,12 @@ function raster_shading(screen, plot, args)
     ambient = RGBf(args.raster_ambient)
     lc = RGBf(args.raster_light_color)
     shading_mode = shading_code(Makie.get_shading_mode(plot))
+    # Makie picks FAST shading for a scene with no lights of its own, which
+    # reads only the one directional light; a scene lit by glowing meshes needs
+    # the light list.
+    if shading_mode == SHADING_FAST && LIGHT_EMITTER in args.raster_light_types
+        shading_mode = SHADING_MULTI
+    end
     # A display-encoded film stands in for the traced one and lights as it does;
     # see `lambert` in overlay/mesh.jl. Without `gamma` this is GLMakie's shader.
     physical = config.gamma !== nothing
@@ -528,7 +516,7 @@ function raster_shading(screen, plot, args)
         strokewidth = Float32(args.strokewidth), strokecolor = rgba4(args.strokecolor),
         resolution = Vec2f(args.resolution), px_per_unit = Float32(screen.px_per_unit),
         physical = Int32(physical),
-        conductor = physical ? raster_conductor(overlay_material(plot)) : Vec4f(0),
+        material = physical ? raster_material(overlay_material(plot)) : LAMBERT,
         # Which light the map is made from; `shadow_frame` reads these two to fit
         # it, and they are not stage arguments.
         shadow_light = shadowed ? caster : Int32(0), shadow_direction = direction,
@@ -577,15 +565,24 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
     local colorinfo
     if color_dirty
         geometry = raster_geometry(overlay_material(plot), args)
+        # A mesh drawn by its material alone looks like that material.
+        look = plot_raster_look(plot)
+        look === nothing || (geometry = merge(geometry, (color = look.color,)))
         colorinfo = raster_color(geometry.color, args, length(geometry.positions))
         textured = colorinfo.texture !== nothing
-        fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured)
+        see_through = is_see_through(look, plot)
+        fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured, see_through)
         # What the shadow map is fitted around; not a stage argument.
         geometry_dirty && (uniforms = merge(uniforms, (local_bounds = isempty(geometry.positions) ? Rect3f() : Rect3f(geometry.positions),)))
         uniforms = merge(uniforms, (
             has_normals = Int32(geometry.normals !== nothing),
             has_uvs = Int32(geometry.uvs isa AbstractVector{<:VecTypes{2}}),
             color_source = colorinfo.source, uniform_color = colorinfo.uniform,
+            emission = look === nothing ? NO_EMISSION : look.emission,
+            # What the shadow map is drawn from, and when the mesh is drawn
+            # (see-through after opaque); not stage arguments.
+            casts_shadow = casts_shadow(look),
+            see_through = see_through,
         ))
         vertex_count = 3 * length(geometry.faces)
         if fresh || geometry_dirty
@@ -615,7 +612,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
 
     robj = if fresh
         backend = screen.config.device
-        RenderObject(get_mesh_pipeline!(screen, colorinfo.texture !== nothing);
+        RenderObject(get_mesh_pipeline!(screen, colorinfo.texture !== nothing, see_through);
             backend,
             fxaa = plot_fxaa(plot),
             arg_names = MESH_ARG_NAMES,
@@ -657,7 +654,9 @@ end
 
 """
 Swap the material of an existing mesh scene handle in place — no BLAS/HWTLAS
-rebuild.  For a `MediumInterface`, unpack to surface + inside updates.
+rebuild.  A `MediumInterface` goes to Hikari whole, which refreshes its
+surface material and both media: `outside` matters for nested media, e.g. a
+box of finer medium inside another, or glass inside a cloud.
 """
 function update_trace_material!(hikari_scene, state, robj, new_material)
     hikari_scene === nothing && return
@@ -665,13 +664,7 @@ function update_trace_material!(hikari_scene, state, robj, new_material)
     h = hasproperty(robj, :handle) ? robj.handle : return
     interface_idx = h isa Hikari.SceneHandle ? h.interface :
                     hasproperty(robj, :mat_idx) ? robj.mat_idx : return
-    if new_material isa Hikari.MediumInterface
-        Hikari.update_material!(hikari_scene, interface_idx, new_material.material)
-        new_material.inside !== nothing &&
-            Hikari.update_material!(hikari_scene, interface_idx, new_material.inside)
-    elseif new_material isa Hikari.Material
-        Hikari.update_material!(hikari_scene, interface_idx, new_material)
-    end
+    new_material isa Hikari.Material && Hikari.update_material!(hikari_scene, interface_idx, new_material)
     state.needs_film_clear = true
     return nothing
 end

@@ -44,6 +44,9 @@ const LIGHT_POINT = Int32(2)
 const LIGHT_DIRECTIONAL = Int32(3)
 const LIGHT_SPOT = Int32(4)
 const LIGHT_RECT = Int32(5)
+# Not a Makie light: a glowing mesh the raster path lights with, as the tracer
+# makes its triangles area lights. See plots/raster_material.jl.
+const LIGHT_EMITTER = Int32(6)
 
 @inline _unit(v::Vec3f) = v * (1f0 / sqrt(dot(v, v)))
 
@@ -185,50 +188,274 @@ end
         light_vec = position - world_pos
         cone = smoothstep(outer, inner, dot(-_unit(light_vec), spot_dir))
         return lc * (cone / dot(light_vec, light_vec)), _unit(light_vec)
+    elseif kind == LIGHT_EMITTER
+        # A flat patch of area A and radiance L (`lc`): irradiance L A cosθ /
+        # (r² + A/π), cosθ at the patch. On its axis that is exactly what a disc
+        # of that area gives, and it tends to π L, an infinite plane, close up.
+        @inbounds centre = Vec3f(params[idx + 1], params[idx + 2], params[idx + 3])
+        @inbounds n = Vec3f(params[idx + 4], params[idx + 5], params[idx + 6])
+        @inbounds area = params[idx + 7]
+        @inbounds two_sided = params[idx + 8]
+        light_vec = centre - world_pos
+        d2 = dot(light_vec, light_vec)
+        l = _unit(light_vec)
+        c = -dot(n, l)
+        c = two_sided != 0f0 ? abs(c) : max(c, 0f0)
+        return lc * (area * c / (d2 + area * Float32(inv(π)))), l
     else  # LIGHT_RECT, which the tracer does not convert; lit as its direction
         @inbounds light_dir = Vec3f(params[idx + 10], params[idx + 11], params[idx + 12])
         return lc, -light_dir
     end
 end
 
-@inline schlick(f0::Vec3f, c::Float32) = f0 + (Vec3f(1f0) - f0) * (1f0 - c)^5
+# ─── pbrt's materials ────────────────────────────────────────────────────────
+#
+# The Hikari material a mesh is traced with, as the raster shader evaluates it
+# (`raster_material` in plots/raster_material.jl converts one): pbrt-v4's
+# BxDFs, closed-form. A Trowbridge-Reitz (GGX) lobe with Smith's masking and the
+# exact Fresnel terms where pbrt has a microfacet lobe; the stochastic layered
+# BxDF of a coated material as its single-scattering limit, a coat lobe over
+# the base seen through the coat twice, with the base's light bouncing inside
+# the coat summed in closed form (energy-conserving: a white base under a
+# clear coat reflects all of uniform light).
+#
+# What a raster pass cannot do it leaves out: refraction (glass is see-through
+# with its Fresnel transmittance), and light reflected off other surfaces.
+
+const MAT_LAMBERT = 0f0                # `Diffuse`, or a plot without a Hikari material
+const MAT_COATED_DIFFUSE = 1f0
+const MAT_CONDUCTOR = 2f0
+const MAT_COATED_CONDUCTOR = 3f0
+const MAT_DIELECTRIC = 4f0
+const MAT_THIN_DIELECTRIC = 5f0
+const MAT_DIFFUSE_TRANSMISSION = 6f0
 
 """
-    reflect_light(E, l, n, v, base, conductor) -> radiance
+    RasterMaterial(a, b, c, d)
 
-What the surface sends to the eye (`v`, towards it) of irradiance `E` arriving
-from `l`. A `Diffuse` reflects `base/π`. A conductor (`conductor[4]`, its GGX α,
-above zero) reflects by a GGX microfacet lobe with Schlick's Fresnel from its
-normal-incidence reflectance `conductor[1:3]`: the tracer's `Conductor` with
-the exact Fresnel of its η and k replaced by that curve, which follows it to
-within a few percent short of grazing.
+A pbrt material for the raster shader. The base colour (diffuse reflectance,
+glass transmittance) comes with the mesh's colour, so it can be a texture.
+
+* `a`: kind (`MAT_*`), α of the top lobe (coat, conductor or glass), η of the
+  coat or glass, coat thickness (DiffuseTransmission: its scale)
+* `b`: conductor η at 630, 532 and 465 nm (relative to the coat when coated),
+  α of a coated conductor's conductor
+* `c`: conductor k likewise, and the coat's hemispherical-average external
+  Fresnel reflectance F̄ₑ
+* `d`: tint (a conductor's reflectance, glass Kr, DiffuseTransmission's
+  transmittance), and the coat's internal F̄ᵢ
 """
-@inline function reflect_light(E::Vec3f, l::Vec3f, n::Vec3f, v::Vec3f, base::Vec3f, conductor::Vec4f)
-    nl = dot(n, l)
-    nl <= 0f0 && return Vec3f(0f0)
-    conductor[4] <= 0f0 && return E .* base * (nl * Float32(inv(π)))
-    a2 = conductor[4] * conductor[4]
-    h = _unit(v + l)
-    nv = max(dot(n, v), 1f-4)
-    nh = max(dot(n, h), 0f0)
+struct RasterMaterial
+    a::Vec4f
+    b::Vec4f
+    c::Vec4f
+    d::Vec4f
+end
+
+const LAMBERT = RasterMaterial(Vec4f(0), Vec4f(0), Vec4f(0), Vec4f(0))
+
+@inline material_kind(m::RasterMaterial) = m.a[1]
+
+"""Whether glass: drawn see-through with its Fresnel transmittance."""
+@inline is_glass(m::RasterMaterial) =
+    material_kind(m) == MAT_DIELECTRIC || material_kind(m) == MAT_THIN_DIELECTRIC
+
+# Trowbridge-Reitz (isotropic) as pbrt-v4 writes it, from cosines.
+@inline function tr_d(nh::Float32, α::Float32)
+    a2 = α * α
     t = nh * nh * (a2 - 1f0) + 1f0
-    d = a2 / (Float32(π) * t * t)
-    k = 0.5f0 * conductor[4]
-    g = (nv / (nv * (1f0 - k) + k)) * (nl / (nl * (1f0 - k) + k))
-    f = schlick(Vec3f(conductor[1], conductor[2], conductor[3]), max(dot(v, h), 0f0))
-    return E .* f * (d * g / (4f0 * nv))
+    return a2 / (Float32(π) * t * t)
+end
+@inline function tr_lambda(c::Float32, α::Float32)
+    c2 = max(c * c, 1f-8)
+    return (sqrt(1f0 + α * α * (1f0 - c2) / c2) - 1f0) * 0.5f0
+end
+@inline tr_g(nv::Float32, nl::Float32, α::Float32) = 1f0 / (1f0 + tr_lambda(nv, α) + tr_lambda(nl, α))
+
+"""
+A microfacet lobe of roughness α, without its Fresnel: D G / (4 cos θₒ), i.e.
+f cos θᵢ / F. Seen in an area light (`widen` > 0, see `emitter_highlight`) the
+lobe is evaluated towards the light's representative point and its peak
+lowered to the widened lobe's, (α / (α + widen))² (Karis): the energy of a
+light that size, without blurring a sharp lobe's edge. A smooth lobe (below
+pbrt's threshold) is evaluated at α = 0.01, still a mirror to the eye but wide
+enough that its peak is not lost to Float32 rounding of n·h; for a point light
+(`widen` 0) it sees nothing, as a delta lobe never meets one.
+"""
+@inline function microfacet(nv::Float32, nl::Float32, nh::Float32, α::Float32, widen::Float32)
+    if α < 1f-3
+        widen == 0f0 && return 0f0
+        α = 1f-2
+    end
+    α2 = α + widen
+    norm = (α / α2) * (α / α2)
+    return tr_d(nh, α) * norm * tr_g(nv, nl, α2) / (4f0 * nv)
+end
+
+@inline fr_dielectric(c::Float32, η::Float32) = Hikari.fresnel_dielectric(c, η)
+@inline fr_conductor(c::Float32, m::RasterMaterial) =
+    Vec3f(Hikari.fr_complex(c, m.b[1], m.c[1]), Hikari.fr_complex(c, m.b[2], m.c[2]),
+          Hikari.fr_complex(c, m.b[3], m.c[3])) .* Vec3f(m.d[1], m.d[2], m.d[3])
+
+"""pbrt's ThinDielectric: both faces' reflections summed, R = F + T²F/(1-F²)."""
+@inline function thin_reflectance(c::Float32, η::Float32)
+    r = fr_dielectric(c, η)
+    t = 1f0 - r
+    return r < 1f0 ? r + t * t * r / (1f0 - r * r) : r
+end
+
+"""The cosine inside a coat of index η of a direction with cosine `c` outside it."""
+@inline coat_cos(c::Float32, η::Float32) = sqrt(max(1f0 - (1f0 - c * c) / (η * η), 1f-4))
+
+"""
+How much of what a coat's base sends up, and of what reaches it, gets through:
+the two Fresnel transmittances and the coat's absorption over its thickness
+along both paths (pbrt's `Tr`), over the light that bounces back down
+(1 - R F̄ᵢ) and the radiance spread over the wider cone in air (η²).
+"""
+@inline function coat_transfer(nv::Float32, nl::Float32, m::RasterMaterial)
+    η, thickness = m.a[3], m.a[4]
+    tr = exp(-thickness / coat_cos(nv, η) - thickness / coat_cos(nl, η))
+    return (1f0 - fr_dielectric(nv, η)) * (1f0 - fr_dielectric(nl, η)) * tr / (η * η)
 end
 
 """
-What a surface reflects of light arriving equally from everywhere with radiance
-`L` (the ambient light), and of the environment's irradiance: all of it, times
-`base`, for a `Diffuse`; for a conductor its Fresnel at the viewing angle.
+    diffuse_part(m, base, n, v, l) -> f cos θᵢ (rgb)
+
+The material's diffuse lobe towards the eye `v` per unit irradiance from `l`:
+Lambert, a coated base seen through its coat, or DiffuseTransmission's
+reflectance (lit side) and transmittance (from behind).
 """
-@inline ambient_reflectance(n::Vec3f, v::Vec3f, base::Vec3f, conductor::Vec4f) =
-    conductor[4] <= 0f0 ? base : schlick(Vec3f(conductor[1], conductor[2], conductor[3]), max(dot(n, v), 0f0))
+@inline function diffuse_part(m::RasterMaterial, base::Vec3f, n::Vec3f, v::Vec3f, l::Vec3f)
+    kind = material_kind(m)
+    nl = dot(n, l)
+    if kind == MAT_DIFFUSE_TRANSMISSION
+        s = m.a[4] * Float32(inv(π)) * abs(nl)
+        return nl >= 0f0 ? base * s : Vec3f(m.d[1], m.d[2], m.d[3]) * s
+    end
+    nl <= 0f0 && return Vec3f(0f0)
+    kind == MAT_LAMBERT && return base * (nl * Float32(inv(π)))
+    kind == MAT_COATED_DIFFUSE || return Vec3f(0f0)
+    nv = max(dot(n, v), 1f-4)
+    return base * (Float32(inv(π)) * nl * coat_transfer(nv, nl, m)) ./ (Vec3f(1f0) - base * m.d[4])
+end
+
+"""
+    specular_part(m, n, v, l, widen) -> f cos θᵢ (rgb)
+
+The material's microfacet lobes towards the eye `v` per unit irradiance from
+`l`, widened by `widen` (half an area light's angular radius, zero for a point
+or directional light): a lobe narrower than pbrt's smoothness threshold then
+sees nothing, as a delta lobe never meets a point light.
+"""
+@inline function specular_part(m::RasterMaterial, n::Vec3f, v::Vec3f, l::Vec3f, widen::Float32)
+    kind = material_kind(m)
+    (kind == MAT_LAMBERT || kind == MAT_DIFFUSE_TRANSMISSION) && return Vec3f(0f0)
+    nl = dot(n, l)
+    nl <= 0f0 && return Vec3f(0f0)
+    nv = max(dot(n, v), 1f-4)
+    h = _unit(v + l)
+    nh = max(dot(n, h), 0f0)
+    vh = max(dot(v, h), 0f0)
+    spec = microfacet(nv, nl, nh, m.a[2], widen)
+    if kind == MAT_COATED_DIFFUSE
+        return Vec3f(spec * fr_dielectric(vh, m.a[3]))
+    elseif kind == MAT_CONDUCTOR
+        return fr_conductor(vh, m) * spec
+    elseif kind == MAT_COATED_CONDUCTOR
+        η = m.a[3]
+        under = microfacet(nv, nl, nh, m.b[4], widen) * coat_transfer(nv, nl, m) * η * η
+        return Vec3f(spec * fr_dielectric(vh, η)) + fr_conductor(vh, m) * under
+    elseif kind == MAT_DIELECTRIC
+        return Vec3f(m.d[1], m.d[2], m.d[3]) * (spec * fr_dielectric(vh, m.a[3]))
+    else  # MAT_THIN_DIELECTRIC
+        return Vec3f(spec * thin_reflectance(vh, m.a[3]))
+    end
+end
+
+"""
+What the material reflects of light arriving equally from everywhere (the
+ambient light, the environment), split as (diffuse, specular): the diffuse
+part is lit by the irradiance around the normal, the specular part by the
+light around the mirror direction.
+"""
+@inline function ambient_response(m::RasterMaterial, base::Vec3f, n::Vec3f, v::Vec3f)
+    kind = material_kind(m)
+    nv = max(dot(n, v), 1f-4)
+    if kind == MAT_LAMBERT
+        return base, Vec3f(0f0)
+    elseif kind == MAT_DIFFUSE_TRANSMISSION
+        # uniform light reaches it from both sides
+        return (base + Vec3f(m.d[1], m.d[2], m.d[3])) * m.a[4], Vec3f(0f0)
+    elseif kind == MAT_COATED_DIFFUSE
+        η = m.a[3]
+        # the coat transfer averaged over the incoming hemisphere: (1 - F̄ₑ) for
+        # the Fresnel term, the absorption along a typical (60°) path
+        tr = exp(-m.a[4] / coat_cos(nv, η) - m.a[4] / coat_cos(0.5f0, η))
+        diffuse = base * ((1f0 - fr_dielectric(nv, η)) * (1f0 - m.c[4]) * tr / (η * η)) ./ (Vec3f(1f0) - base * m.d[4])
+        return diffuse, Vec3f(fr_dielectric(nv, η))
+    elseif kind == MAT_CONDUCTOR
+        return Vec3f(0f0), fr_conductor(nv, m)
+    elseif kind == MAT_COATED_CONDUCTOR
+        fc = fr_dielectric(nv, m.a[3])
+        return Vec3f(0f0), Vec3f(fc) + fr_conductor(nv, m) * ((1f0 - fc) * (1f0 - m.c[4]))
+    elseif kind == MAT_DIELECTRIC
+        return Vec3f(0f0), Vec3f(m.d[1], m.d[2], m.d[3]) * fr_dielectric(nv, m.a[3])
+    else
+        return Vec3f(0f0), Vec3f(thin_reflectance(nv, m.a[3]))
+    end
+end
+
+"""
+How much of what is behind glass gets through it at this angle (one surface:
+a closed solid has two, and both are drawn): the Fresnel transmittance times
+the glass's own (`base`, its Kt) for a dielectric, everything not reflected
+for a thin one.
+"""
+@inline function glass_transmittance(m::RasterMaterial, base::Vec3f, n::Vec3f, v::Vec3f)
+    nv = max(dot(n, v), 1f-4)
+    material_kind(m) == MAT_THIN_DIELECTRIC && return 1f0 - thin_reflectance(nv, m.a[3])
+    lum = 0.2126f0 * base[1] + 0.7152f0 * base[2] + 0.0722f0 * base[3]
+    return (1f0 - fr_dielectric(nv, m.a[3])) * lum
+end
+
+"""
+    emitter_highlight(m, n, v, p, centre, en, area, two_sided, L) -> radiance
+
+The specular reflection of a glowing patch (centre, normal `en`, `area`) in the
+material's lobes, by the representative-point method: the lobe is evaluated
+towards the point of the patch nearest the mirror ray, widened by the patch's
+angular size, and weighted by its solid angle. In a mirror that is the patch's
+radiance where the mirror ray meets it; in a rough lobe, the light's
+highlight.
+"""
+@inline function emitter_highlight(m::RasterMaterial, n::Vec3f, v::Vec3f, p::Vec3f,
+                                   centre::Vec3f, en::Vec3f, area::Float32, two_sided::Float32, L::Vec3f)
+    r = 2f0 * dot(n, v) * n - v
+    radius = sqrt(area * Float32(inv(π)))
+    q = centre
+    denom = dot(r, en)
+    if abs(denom) > 1f-6
+        t = dot(centre - p, en) / denom
+        if t > 0f0
+            off = p + t * r - centre
+            len = sqrt(dot(off, off))
+            q = len > radius ? centre + off * (radius / len) : centre + off
+        end
+    end
+    lv = q - p
+    d2 = dot(lv, lv)
+    l = lv * (1f0 / sqrt(d2))
+    cl = -dot(en, l)
+    cl = two_sided != 0f0 ? abs(cl) : max(cl, 0f0)
+    solid_angle = area * cl / (d2 + area * Float32(inv(π)))
+    widen = 0.5f0 * radius / sqrt(d2)
+    # the specular lobes only: the diffuse part comes with the patch's irradiance
+    return L .* specular_part(m, n, v, l, widen) * solid_angle
+end
 
 light_parameter_count(kind) = kind == LIGHT_POINT ? Int32(5) : kind == LIGHT_DIRECTIONAL ? Int32(3) :
-                              kind == LIGHT_SPOT ? Int32(8) : Int32(12)
+                              kind == LIGHT_SPOT ? Int32(8) : kind == LIGHT_EMITTER ? Int32(8) : Int32(12)
 
 # ─── the shadow map ──────────────────────────────────────────────────────────
 #
@@ -439,38 +666,54 @@ end
 end
 
 """
-The scene's lights on a surface point as the tracer sees them — see
-`reflect_light` — with the shadowed light (`shadow_light`, its place in the
-light list) looked up in the shadow map. `normal` faces the camera: the tracer's
-`Diffuse` reflects on whichever side is seen. `v` points to the eye.
+The scene's lights on a surface point as the tracer sees them, through the
+surface's pbrt material (`diffuse_part`, `specular_part`): each light's
+irradiance through both lobes, a glowing patch's specular through its
+highlight (`emitter_highlight`), the ambient light and environment through
+`ambient_response`. The shadowed light (`shadow_light`, its place in the light
+list) is looked up in the shadow map. `normal` faces the camera: the tracer's
+materials reflect on whichever side is seen. `v` points to the eye.
 """
 @inline function illuminate_physical(world_pos::Vec3f, normal::Vec3f, v::Vec3f, base_color::Vec3f,
-                                     conductor::Vec4f, shading_mode::Int32, ambient::Vec3f,
+                                     material::RasterMaterial, shading_mode::Int32, ambient::Vec3f,
                                      light_color::Vec3f, light_direction::Vec3f, N_lights::Int32,
                                      light_types, light_colors, light_parameters, has_env::Int32,
                                      env_sh, shadow_map, light_space::Mat4f, shadow_light::Int32,
                                      shadow_params::Vec4f, ao_map, ao_centre::Vec4f, ao_params::Vec4f)
     open = ambient_visibility(ao_map, ao_centre, ao_params, world_pos, normal)
-    albedo = ambient_reflectance(normal, v, base_color, conductor)
-    final_color = open * ambient .* albedo
+    diffuse_albedo, specular_albedo = ambient_response(material, base_color, normal, v)
+    final_color = open * ambient .* (diffuse_albedo + specular_albedo)
     if has_env != Int32(0)
-        # A conductor sees the environment in its mirror direction, blurred to
-        # irradiance: right for a rough one, soft for a polished one.
-        towards = conductor[4] > 0f0 ? 2f0 * dot(normal, v) * normal - v : normal
-        final_color = final_color + open * albedo .* max.(env_irradiance(env_sh, towards), 0f0)
+        # The diffuse lobe sees the irradiance around the normal, the specular
+        # one the environment around the mirror direction, blurred to
+        # irradiance: right for a rough lobe, soft for a polished one.
+        mirror = 2f0 * dot(normal, v) * normal - v
+        final_color = final_color + open * (diffuse_albedo .* max.(env_irradiance(env_sh, normal), 0f0) +
+                                            specular_albedo .* max.(env_irradiance(env_sh, mirror), 0f0))
     end
     if shading_mode == SHADING_FAST
         vis = shadow_light == Int32(1) ?
             shadow_visibility(shadow_map, light_space, shadow_params, world_pos, normal, light_direction) : 1f0
-        final_color = final_color + vis * reflect_light(light_color, -light_direction, normal, v, base_color, conductor)
+        l = -light_direction
+        final_color = final_color + vis * light_color .*
+            (diffuse_part(material, base_color, normal, v, l) + specular_part(material, normal, v, l, 0f0))
     elseif shading_mode == SHADING_MULTI
         idx = Int32(0)
         for i in Int32(1):min(N_lights, Int32(length(light_types)))
             @inbounds kind = light_types[i]
             @inbounds lc = light_colors[i]
-            (kind < LIGHT_POINT || kind > LIGHT_RECT) && return Vec3f(1f0, 0f0, 1f0)
+            (kind < LIGHT_POINT || kind > LIGHT_EMITTER) && return Vec3f(1f0, 0f0, 1f0)
             E, l = incoming(kind, lc, light_parameters, idx, world_pos)
-            c = reflect_light(E, l, normal, v, base_color, conductor)
+            c = E .* diffuse_part(material, base_color, normal, v, l)
+            if kind == LIGHT_EMITTER
+                @inbounds centre = Vec3f(light_parameters[idx + 1], light_parameters[idx + 2], light_parameters[idx + 3])
+                @inbounds en = Vec3f(light_parameters[idx + 4], light_parameters[idx + 5], light_parameters[idx + 6])
+                @inbounds area = light_parameters[idx + 7]
+                @inbounds two_sided = light_parameters[idx + 8]
+                c = c + emitter_highlight(material, normal, v, world_pos, centre, en, area, two_sided, lc)
+            else
+                c = c + E .* specular_part(material, normal, v, l, 0f0)
+            end
             if i == shadow_light
                 c = c * shadow_visibility(shadow_map, light_space, shadow_params, world_pos, normal, -l)
             end
@@ -519,6 +762,10 @@ scene's shading mode, plus the environment's diffuse irradiance.
                 final_color = final_color + calc_rect_light(lc, light_parameters, idx, world_pos,
                     camdir, normal, base_color, diffuse, specular, shininess, backlight)
                 idx += Int32(12)
+            elseif kind == LIGHT_EMITTER
+                # GLMakie's shader has no area light: an emitter lights only a
+                # display-encoded (physical) film.
+                idx += Int32(8)
             else
                 return Vec3f(1f0, 0f0, 1f0)
             end
@@ -656,7 +903,7 @@ const MESH_ARG_NAMES = (
     :strokewidth, :strokecolor, :resolution, :px_per_unit, :viewport_origin,
     :num_clip_planes,
     :physical, :shadow_map, :light_space, :shadow_light, :shadow_params,
-    :ao_map, :ao_centre, :ao_params, :conductor,
+    :ao_map, :ao_centre, :ao_params, :material, :emission,
     :fxaa,
 )
 const MESH_NARGS = length(MESH_ARG_NAMES)
@@ -683,7 +930,7 @@ function mesh_vertex(vertexid::VertexIndex,
         strokewidth::Float32, strokecolor::Vec4f, resolution::Vec2f, px_per_unit::Float32,
         viewport_origin::Vec2f, num_clip_planes::Int32,
         physical::Int32, shadow_map, light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
-        ao_map, ao_centre::Vec4f, ao_params::Vec4f, conductor::Vec4f,
+        ao_map, ao_centre::Vec4f, ao_params::Vec4f, material::RasterMaterial, emission::Vec4f,
         fxaa::Int32)
     v0 = vertexid.value - Int32(1)
     tri = v0 ÷ Int32(3)
@@ -739,11 +986,23 @@ film mapping, the stroke, and the premultiplied output a blended pass wants.
         apply_gamma::Int32, strokewidth::Float32, strokecolor::Vec4f,
         resolution::Vec2f, px_per_unit::Float32, physical::Int32, shadow_map,
         light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
-        ao_map, ao_centre::Vec4f, ao_params::Vec4f, conductor::Vec4f)
+        ao_map, ao_centre::Vec4f, ao_params::Vec4f, material::RasterMaterial, emission::Vec4f)
     world_pos = inputs.world_pos
     for i in Int32(1):num_clip_planes
         @inbounds plane = clip_planes[i]
         dot(world_pos, Vec3f(plane[1], plane[2], plane[3])) - plane[4] < 0f0 && discard()
+    end
+    # What the surface emits (see `RasterLook`): mode 1 a constant radiance,
+    # mode 2 the sampled colour, which then has no surface under it. Linear,
+    # mapped through the film below and added over the reflected light, the
+    # way the tracer adds an emitter's radiance.
+    glow = Vec3f(0f0)
+    premultiplied = false
+    if emission[4] == 1f0
+        glow = Vec3f(emission[1], emission[2], emission[3])
+    elseif emission[4] == 2f0
+        glow = Vec3f(color[1], color[2], color[3]) * emission[1]
+        color = Vec4f(0f0, 0f0, 0f0, 0f0)
     end
     if shading_mode != SHADING_NONE && has_normals != Int32(0)
         # Lit, then film-mapped like the traced image, so the base colour is
@@ -758,9 +1017,10 @@ film mapping, the stroke, and the premultiplied output a blended pass wants.
         end
         camdir = _unit(inputs.camdir)
         normal = _unit(inputs.world_normal)
+        facing = dot(normal, camdir) > 0f0 ? -normal : normal
         rgb = if physical != Int32(0)
-            illuminate_physical(world_pos, dot(normal, camdir) > 0f0 ? -normal : normal, -camdir,
-                                base, conductor, shading_mode, ambient, light_color, light_direction,
+            illuminate_physical(world_pos, facing, -camdir,
+                                base, material, shading_mode, ambient, light_color, light_direction,
                                 N_lights, light_types, light_colors, light_parameters, has_env,
                                 env_sh, shadow_map, light_space, shadow_light, shadow_params,
                                 ao_map, ao_centre, ao_params)
@@ -770,15 +1030,28 @@ film mapping, the stroke, and the premultiplied output a blended pass wants.
                        light_parameters, has_env, env_sh, diffuse, specular, shininess, backlight)
         end
         rgb = film_mapping(rgb, exposure, tonemap, white_point, inv_gamma, apply_gamma)
-        color = Vec4f(rgb[1], rgb[2], rgb[3], color[4])
+        if physical != Int32(0) && is_glass(material)
+            # Glass shows what it reflects, over what it lets through: its
+            # reflection is the premultiplied colour, its opacity what it
+            # does not transmit.
+            color = Vec4f(rgb[1], rgb[2], rgb[3], 1f0 - glass_transmittance(material, base, facing, -camdir))
+            premultiplied = true
+        else
+            color = Vec4f(rgb[1], rgb[2], rgb[3], color[4])
+        end
     end
     ndc, z_gradient = fragment_ndc(inputs.clip)
     tri = unsafe_trunc(Int32, inputs.tri + 0.5f0)
     color = apply_stroke(color, stroke_data, tri, ndc, z_gradient, projection * view * model,
                          px_per_unit * resolution, strokewidth, strokecolor, px_per_unit)
     a = color[4]
-    a < 1f-3 && discard()
-    return Vec4f(color[1] * a, color[2] * a, color[3] * a, a)
+    out = premultiplied ? Vec3f(color[1], color[2], color[3]) : Vec3f(color[1] * a, color[2] * a, color[3] * a)
+    if emission[4] != 0f0
+        # Premultiplied: a glow with no surface (alpha 0) adds to what is behind it.
+        out = out + film_mapping(glow, exposure, tonemap, white_point, inv_gamma, apply_gamma)
+    end
+    (a < 1f-3 && out[1] + out[2] + out[3] < 1f-3) && discard()
+    return Vec4f(out[1], out[2], out[3], a)
 end
 
 function mesh_fragment(inputs,
@@ -796,7 +1069,7 @@ function mesh_fragment(inputs,
         strokewidth::Float32, strokecolor::Vec4f, resolution::Vec2f, px_per_unit::Float32,
         viewport_origin::Vec2f, num_clip_planes::Int32,
         physical::Int32, shadow_map, light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
-        ao_map, ao_centre::Vec4f, ao_params::Vec4f, conductor::Vec4f,
+        ao_map, ao_centre::Vec4f, ao_params::Vec4f, material::RasterMaterial, emission::Vec4f,
         fxaa::Int32)
     color = color_source == COLOR_VERTEX_CMAP_FRAG ?
         get_color_from_cmap(inputs.colour[1], cmap, colorrange, colormap_linear,
@@ -808,7 +1081,7 @@ function mesh_fragment(inputs,
         diffuse, specular, shininess, backlight, exposure, tonemap, white_point,
         inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit,
         physical, shadow_map, light_space, shadow_light, shadow_params,
-        ao_map, ao_centre, ao_params, conductor), fxaa)
+        ao_map, ao_centre, ao_params, material, emission), fxaa)
 end
 
 @inline texel(u::Float32, v::Float32) =
@@ -833,7 +1106,7 @@ function mesh_fragment_textured(inputs,
         strokewidth::Float32, strokecolor::Vec4f, resolution::Vec2f, px_per_unit::Float32,
         viewport_origin::Vec2f, num_clip_planes::Int32,
         physical::Int32, shadow_map, light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
-        ao_map, ao_centre::Vec4f, ao_params::Vec4f, conductor::Vec4f,
+        ao_map, ao_centre::Vec4f, ao_params::Vec4f, material::RasterMaterial, emission::Vec4f,
         fxaa::Int32)
     color = if color_source == COLOR_MATCAP
         vn = _unit(inputs.view_normal)
@@ -857,17 +1130,25 @@ function mesh_fragment_textured(inputs,
         diffuse, specular, shininess, backlight, exposure, tonemap, white_point,
         inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit,
         physical, shadow_map, light_space, shadow_light, shadow_params,
-        ao_map, ao_centre, ao_params, conductor), fxaa)
+        ao_map, ao_centre, ao_params, material, emission), fxaa)
 end
 
-function get_mesh_pipeline!(screen, textured::Bool)
-    get!(screen.gfx_pipelines, textured ? :mesh_textured : :mesh) do
+"""
+    get_mesh_pipeline!(screen, textured, see_through)
+
+The mesh pipeline: with a texture or without, and for see-through surfaces
+(glass, a glow) one that tests depth without writing it, so what is behind
+them still draws. Those are drawn after everything opaque (`overlay_robjs`).
+"""
+function get_mesh_pipeline!(screen, textured::Bool, see_through::Bool = false)
+    key = Symbol(textured ? :mesh_textured : :mesh, see_through ? :_see_through : :_opaque)
+    get!(screen.gfx_pipelines, key) do
         GraphicsPipeline(; vertex = VertexShader(mesh_vertex; outputs = MESH_VERTEX_OUT),
                            fragment = textured ? FragmentShader(mesh_fragment_textured; textures = 1) :
                                                  FragmentShader(mesh_fragment),
                            blend = Premultiplied(),
                            topology = TriangleList(),
                            cull = NoCull(),
-                           depth = DepthLessEq())
+                           depth = see_through ? DepthLessEqReadOnly() : DepthLessEq())
     end
 end
