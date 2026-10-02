@@ -122,6 +122,10 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
     return texture(color, uv);
 }
 
+// Edge stroking is only compiled into stroked (de-indexed) mesh programs. Behind a
+// runtime strokewidth check the code still costs, e.g. most of the frame time of a
+// full-screen mesh on software rasterizers.
+#ifdef MESH_STROKE
 // Edge stroking, ported from GLMakie's mesh_stroke.frag. stroke_data holds 9 texels per
 // triangle: 3x corner positions with the width multiplier of the edge from that corner
 // to the next, then per corner 2x wing edge endpoints with their width multipliers
@@ -219,6 +223,9 @@ vec4 apply_stroke(vec4 color) {
 
     return mix(get_strokecolor(), color, face_factor);
 }
+#else
+vec4 apply_stroke(vec4 color) { return color; }
+#endif
 
 vec2 encode_uint_to_float(uint value) {
     float lower = float(value & 0xFFFFu) / 65535.0;
