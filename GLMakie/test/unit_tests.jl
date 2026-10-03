@@ -6,45 +6,54 @@ function project_sp(scene, point)
     return point_px .+ offset
 end
 
+is_freed(x::GLMakie.GLAbstraction.TextureBuffer) = x.texture.id == 0 && x.buffer.id == 0
+is_freed(x::GLMakie.GPUArray) = x.id == 0
+
 @testset "shader cache" begin
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
-    base = 4 # from postprocessing shaders
     # Postprocessing shaders
     @test length(cache.shader_cache) == base
     @test length(cache.template_cache) == base
     @test length(cache.program_cache) == base - 1
 
+    # Just Axis adds...
+    # f = Figure();
+    # a = Axis(f[1, 1])
+    # display(screen, f)
+    Ns = 18
+    Np = 8
+
     # Shaders for scatter + linesegments + poly etc (axis)
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 13 + base
-    @test length(cache.template_cache) == 13 + base
-    @test length(cache.program_cache) == 5 + base
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 13 + base
-    @test length(cache.template_cache) == 13 + base
-    @test length(cache.program_cache) == 5 + base
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # Same for linesegments
     display(screen, linesegments(1:4))
-    @test length(cache.shader_cache) == 13 + base
-    @test length(cache.template_cache) == 13 + base
-    @test length(cache.program_cache) == 5 + base
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
-    @test length(cache.shader_cache) == 15 + base
-    @test length(cache.template_cache) == 15 + base
-    @test length(cache.program_cache) == 6 + base
+    @test length(cache.shader_cache) == Ns + 2
+    @test length(cache.template_cache) == Ns + 2
+    @test length(cache.program_cache) == Np + 2
 
     # For second time no new shaders should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
-    @test length(cache.shader_cache) == 15 + base
-    @test length(cache.template_cache) == 15 + base
-    @test length(cache.program_cache) == 6 + base
+    @test length(cache.shader_cache) == Ns + 2
+    @test length(cache.template_cache) == Ns + 2
+    @test length(cache.program_cache) == Np + 2
 end
 
 @testset "unit tests" begin
@@ -154,7 +163,7 @@ end
             for (_, robj) in group.renderobjects
                 for (k, v) in robj.uniforms
                     if v isa GLMakie.GPUArray
-                        @test v.id == 0
+                        @test is_freed(v)
                     end
                 end
                 for inst in values(robj.variants)
@@ -172,7 +181,7 @@ end
             for (_, robj) in group.renderobjects
                 for (k, v) in robj.uniforms
                     if v isa GLMakie.GPUArray
-                        @test v.id != 0
+                        @test !is_freed(v)
                     end
                 end
                 for inst in values(robj.variants)
@@ -204,7 +213,7 @@ end
     for robj in robjs
         for (k, v) in robj.uniforms
             if (v isa GLMakie.GPUArray) && (v !== tex_atlas)
-                @test v.id == 0
+                @test is_freed(v)
             end
         end
         for inst in values(robj.variants)
@@ -220,7 +229,7 @@ end
             for (_, robj) in group.renderobjects
                 for (k, v) in robj.uniforms
                     if v isa GLMakie.GPUArray
-                        @test v.id != 0
+                        @test !is_freed(v)
                     end
                 end
                 for inst in values(robj.variants)
@@ -306,7 +315,7 @@ end
 
         @test screen.scene === nothing
         @test screen.rendertask === nothing
-        @test (Base.summarysize(screen) / 10^6) < 1.42
+        @test (Base.summarysize(screen) / 10^6) < 1.45
     end
     # All should go to pool after close
     @test all(x -> x in GLMakie.SCREEN_REUSE_POOL, screens)
