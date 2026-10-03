@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "highlight.js": "^11.9.0"
+  }
+}
