@@ -116,9 +116,50 @@ one number or a tuple of four numbers for left, right, bottom and top paddings v
 All other keyword arguments such as `size` and `backgroundcolor` are forwarded to the
 [`Scene`](@ref) owned by the figure which acts as the container for all other visual objects.
 """
+function InvalidAttributeError(::Type{Figure}, attributes::Set{Symbol})
+    return InvalidAttributeError(Figure, "figure", attributes)
+end
+
+function attribute_names(::Type{Figure})
+    scene_keywords = (
+        :viewport,
+        :events,
+        :clear,
+        :transform_func,
+        :camera,
+        :camera_controls,
+        :transformation,
+        :plots,
+        :children,
+        :current_screens,
+        :parent,
+        :visible,
+        :ssao,
+        :lights,
+        :theme,
+        :deregister_callbacks,
+    )
+    return union(keys(current_default_theme()), scene_keywords, (:figure_padding, :resolution))
+end
+
+function is_attribute(::Type{Figure}, sym::Symbol)
+    return sym in attribute_names(Figure) ||
+        !isnothing(symbol_to_block(sym)) ||
+        !isnothing(symbol_to_plot(sym))
+end
+
+function _check_figure_kwargs(kwdict::Dict)
+    badnames = Set{Symbol}(key for key in keys(kwdict) if !is_attribute(Figure, key))
+    if !isempty(badnames)
+        throw(InvalidAttributeError(Figure, badnames))
+    end
+    return
+end
+
 function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
+    _check_figure_kwargs(kwargs_dict)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera = campixel!, clear = true, kwargs_dict...)
     padding = convert(Observable{Any}, padding)
