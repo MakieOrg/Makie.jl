@@ -355,10 +355,13 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     # Do we need those? Maybe also viewport?
     # type assert for safety
     add_input!(plot_graph, :viewport, scene_graph[:viewport]::Computed)
+    add_input!(plot_graph, :in3Dscene, scene_graph[:is3D]::Computed)
+
     for key in [:resolution, :scene_origin]
         haskey(plot_graph.inputs, key) && continue
         add_input!(Vec2f, plot_graph, key, getindex(scene_graph, key)::Computed)
     end
+
     for key in [:eyeposition, :upvector, :view_direction]
         add_input!(Vec3f, plot_graph, key, getindex(scene_graph, key)::Computed)
     end

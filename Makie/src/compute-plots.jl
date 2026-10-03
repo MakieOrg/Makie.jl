@@ -26,6 +26,11 @@ end
 ComputePipeline.add_input!(f, p::Plot, args...; kwargs...) = add_input!(f, p.attributes, args...; kwargs...)
 ComputePipeline.add_input!(p::Plot, args...; kwargs...) = add_input!(p.attributes, args...; kwargs...)
 
+const PrimitivePlotTypes = Union{
+    Scatter, Lines, LineSegments, Glyphs, Mesh,
+    MeshScatter, Image, Heatmap, Surface, Voxels, Volume,
+}
+
 Base.haskey(x::Plot, key) = haskey(x.attributes, key)
 Base.get(f::Function, x::Plot, key::Symbol) = haskey(x.attributes, key) ? x.attributes[key] : f()
 Base.get(x::Plot, key::Symbol, default) = get(() -> default, x, key)
@@ -37,17 +42,55 @@ function Base.setindex!(plot::Plot, val, key::Int)
     return setindex!(plot, val, sym)
 end
 
+add_depth_estimate!(@nospecialize(::Scene), @nospecialize(::Plot)) = nothing
+function add_depth_estimate!(@nospecialize(scene::Scene), @nospecialize(plot::PrimitivePlotTypes))
+    # Expensive estimate based on center of data limits considering all
+    # transformation and projection steps
+    map!(plot, :data_limits, :center) do bbox
+        return minimum(bbox) + 0.5 * widths(bbox)
+    end
 
-function data_limits(plot::Plot)::Rect3d
-    if haskey(plot, :data_limits)
-        return plot.data_limits[]
+    register_projected_positions!(
+        scene, plot,
+        output_space = :clip,
+        apply_transform = true,
+        apply_model = true,
+        input_name = :center,
+        output_name = :clip_center
+    )
+
+    map!(plot, [:clip_center, :depth_shift], :depth_estimate3D) do center, shift
+        return Float32(center[3] + shift)
     end
-    isempty(plot.plots) && return Rect3d()
-    bb_ref = Base.RefValue(data_limits(plot.plots[1]))
-    for i in 2:length(plot.plots)
-        update_boundingbox!(bb_ref, data_limits(plot.plots[i]))
+
+    # Cheap estimate based on what's relevant in 2D
+    # TODO: Should maybe skip data_limits for just z limits?
+    map!(
+        plot, [:data_limits, :model, :projectionview, :depth_shift], :depth_estimate2D
+    ) do lims, model, pv, depth_shift
+        # We can still have z values and they can still spread, so consider widths
+        z = minimum(lims)[3] + 0.5 * widths(lims)[3]
+        # We assume model does not scale z or rotate xy into z - only translation
+        z += model[3, 4]
+        # We assume projectionview doesn't rotate either
+        z = pv[3, 3] * z + pv[3, 4]
+        return z + depth_shift
     end
-    return bb_ref[]
+
+    map!(ifelse, plot, [:in3Dscene, :depth_estimate3D, :depth_estimate2D], :depth_estimate)
+
+    return
+end
+
+function depth_estimate(@nospecialize(plot))
+    if haskey(plot, :depth_estimate)
+        return plot.depth_estimate[]::Float32
+    elseif !isempty(plot.plots)
+        sum = mapreduce(depth_estimate, +, plot.plots)::Float32
+        return sum / length(plot.plots)
+    else
+        return 0f0
+    end
 end
 
 function ComputePipeline.update!(plot::Plot, dict)
@@ -270,7 +313,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         return (color, val, color isa AbstractPattern, auto_colorrange)
     end
 
-    return map!(
+    map!(
         attr,
         [:colorrange, :colorscale, :auto_colorrange], :scaled_colorrange
     ) do colorrange, colorscale, autorange
@@ -280,6 +323,30 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
             return combined_colorrange(colorscale, colorrange, autorange)
         end
     end
+
+    # This should be false if all colors are fully opaque or fully transparent,
+    # i.e. if alpha == 0.0 or 1.0.
+    map!(
+        attr,
+        [:scaled_color, :alpha_colormap, :lowclip_color, :highclip_color, :nan_color],
+        :has_transparent_color
+    ) do color, cmap, lowclip, highclip, nancolor
+        if color isa Union{AbstractArray{<:Real}, Real}
+            return any(c -> 0.0 < alpha(c) < 1.0, cmap) ||
+                0.0 < alpha(lowclip) < 1.0 ||
+                0.0 < alpha(highclip) < 1.0 ||
+                0.0 < alpha(nancolor) < 1.0
+        elseif color isa Colorant
+            return 0.0 < alpha(color) < 1.0
+        elseif color isa AbstractArray
+            return any(c -> 0.0 < alpha(c) < 1.0, color)
+        else
+            @error("Did not recognize $(typeof(color))")
+            return true
+        end
+    end
+
+    return
 end
 
 """
@@ -373,6 +440,10 @@ function register_positions_transformed_f32c!(
             # fast path: can swap order of f32c and model, i.e. apply model on GPU
         elseif false # is_rot_free
             # fast path: can merge model into f32c and skip applying model matrix on CPU
+        elseif positions isa VecTypes
+            p4d = to_ndim(Point4d, to_ndim(Point3d, positions, 0), 1)
+            p4d = model * p4d
+            return (f32_convert(f32c, p4d[Vec(1, 2, 3)]),)
         else
             # TODO: avoid reallocating?
             output = map(positions) do point
@@ -387,6 +458,9 @@ function register_positions_transformed_f32c!(
 end
 
 function register_model_f32c!(attr)
+    # In case this is called with volume, voxels
+    haskey(attr, :model_f32c) && return
+
     map!(attr, [:model, :f32c, :space], :model_f32c) do model, f32c, space
         trans, scale = decompose_translation_scale_matrix(model)
 
@@ -679,11 +753,6 @@ function register_marker_computations!(attr::ComputeGraph)
     end
 end
 
-const PrimitivePlotTypes = Union{
-    Scatter, Lines, LineSegments, Glyphs, Mesh,
-    MeshScatter, Image, Heatmap, Surface, Voxels, Volume,
-}
-
 """
     uses_convert_attribute(::Type{<:Plot})
 
@@ -948,6 +1017,8 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         add_input!(convert, plot.attributes, :rasterize, get(plot.kw, :rasterize, false))
     end
 
+    add_depth_estimate!(scene, plot)
+
     plot!(plot)
 
     # Used to add things like `label` for Legend
@@ -1057,7 +1128,7 @@ function calculated_attributes!(::Type{Image}, plot::Plot)
     attr = plot.attributes
     calculated_attributes!(Heatmap, plot)
     # this must not sort to preserve inverse value ranges (e.g. 1..0), data_limits
-    # must must sort to generate non-negative widths in that case
+    # must sort to generate non-negative widths in that case
     map!(attr, [:x, :y], :positions) do x, y
         mini = Vec3d(first(x), first(y), 0)
         maxi = Vec3d(last(x), last(y), 0)

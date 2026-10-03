@@ -185,10 +185,11 @@ struct SortPlots <: GLRenderStage end
 
 construct(::Val{:ZSort}, screen, parent) = SortPlots()
 
-Makie.zvalue2d(@nospecialize(x::Tuple{Int64, RenderObject})) = x[2].zindex
 function run_stage(screen, scene_groups, ::SortPlots)
+    get_zindex(t::Tuple) = get_zindex(t[2])
+    get_zindex(robj::RenderObject) = robj.zindex
     for scene_group in scene_groups
-        sort!(scene_group.renderobjects; by = Makie.zvalue2d)
+        sort!(scene_group.renderobjects; by = get_zindex)
     end
     return
 end

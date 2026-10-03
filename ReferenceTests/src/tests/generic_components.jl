@@ -868,7 +868,7 @@ end
     s
 end
 
-@reference_test "Scene (insertion) order and clearing" begin
+@reference_test "Scene render order and clearing" begin
     scene = Scene(size = (600, 450), backgroundcolor = :darkblue, clear = true)
     # trigger screen creation so we see what dynamically adding scenes does
     colorbuffer(scene)
@@ -913,4 +913,52 @@ end
     Makie.step!(st)
 
     st
+end
+
+@reference_test "plot sorting" begin
+    f = Figure(size = (500, 500))
+    a = Axis(f[1:2, 1], limits = (-5, 5, -8, 12))
+
+    # z based
+    scatter!(a, Point3f(0, 0, 0), color = :green, marker = Rect, markersize = 50)
+    scatter!(a, Point3f(-1, 0, -1), color = :red, marker = Rect, markersize = 50)
+    scatter!(a, Point3f(1, 0, 1), color = :blue, marker = Rect, markersize = 50)
+
+    scatter!(a, Point3f(1, -3, 1), color = :blue, marker = Rect, markersize = 50)
+    scatter!(a, Point3f(-1, -3, -1), color = :red, marker = Rect, markersize = 50)
+    scatter!(a, Point3f(0, -3, 0), color = :green, marker = Rect, markersize = 50)
+
+    # translation resistant
+    p = scatter!(a, Point3f(1, 3, 2), color = :blue, marker = Rect, markersize = 50)
+    translate!(p, 0, 0, -1)
+    p = scatter!(a, Point3f(-1, 3, -2), color = :red, marker = Rect, markersize = 50)
+    translate!(p, 0, 0, 1)
+    p = scatter!(a, Point3f(0, 3, -2), color = :green, marker = Rect, markersize = 50)
+    translate!(p, 0, 0, 2)
+
+    # translation based
+    p = scatter!(a, Point3f(0, 6, 0), color = :green, marker = Rect, markersize = 50)
+    p = scatter!(a, Point3f(1, 6, 1), color = :blue, marker = Rect, markersize = 50)
+    translate!(p, 0, 0, 1)
+    p = scatter!(a, Point3f(-1, 6, 0), color = :red, marker = Rect, markersize = 50)
+    translate!(p, 0, 0, -1)
+
+    # 3D
+    ls = LScene(f[1, 2])
+    mesh!(ls, Rect3f(Point3f(0, 0, 0), Vec3f(1)), color = :green)
+    mesh!(ls, Rect3f(Point3f(2, 2, 1), Vec3f(1)), color = :blue)
+    mesh!(ls, Rect3f(Point3f(-2, -2, -1), Vec3f(1)), color = :red)
+
+    # cross-scene sorting
+    ls = LScene(f[2, 2], show_axis = false)
+    bot = Scene(ls.scene, camera = campixel!, clear = true, backgroundcolor = :lightgray)
+    top = Scene(ls.scene, camera = campixel!)
+    scatter!(bot, Point3f(120, 50, 1), color = :blue, marker = Rect, markersize = 50)
+    scatter!(bot, Point3f(80, 50, 0), color = :green, marker = Rect, markersize = 50)
+    scatter!(bot, Point3f(40, 50, -1), color = :red, marker = Rect, markersize = 50)
+    scatter!(top, Point3f(100, 75, 0.5), color = :cyan, marker = Rect, markersize = 50)
+    scatter!(top, Point3f(60, 75, -0.5), color = :yellow, marker = Rect, markersize = 50)
+    scatter!(ls, Point3f(80, 100, 0), color = :black, marker = Rect, markersize = 50)
+
+    f
 end

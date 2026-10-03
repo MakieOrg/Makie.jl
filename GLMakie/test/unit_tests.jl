@@ -20,31 +20,31 @@ end
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 13 + base
     @test length(cache.template_cache) == 13 + base
-    @test length(cache.program_cache) == 6 + base
+    @test length(cache.program_cache) == 5 + base
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 13 + base
     @test length(cache.template_cache) == 13 + base
-    @test length(cache.program_cache) == 6 + base
+    @test length(cache.program_cache) == 5 + base
 
     # Same for linesegments
     display(screen, linesegments(1:4))
     @test length(cache.shader_cache) == 13 + base
     @test length(cache.template_cache) == 13 + base
-    @test length(cache.program_cache) == 6 + base
+    @test length(cache.program_cache) == 5 + base
 
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
     @test length(cache.shader_cache) == 15 + base
     @test length(cache.template_cache) == 15 + base
-    @test length(cache.program_cache) == 7 + base
+    @test length(cache.program_cache) == 6 + base
 
     # For second time no new shaders should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
     @test length(cache.shader_cache) == 15 + base
     @test length(cache.template_cache) == 15 + base
-    @test length(cache.program_cache) == 7 + base
+    @test length(cache.program_cache) == 6 + base
 end
 
 @testset "unit tests" begin
@@ -129,7 +129,8 @@ end
         picks = unique(pick(ax.scene, rect_px))
 
         # objects returned in plot_idx should be either grid lines (i.e. LineSegments) or Scatter points
-        @test all(pi -> pi[1] isa Union{LineSegments, Scatter, Makie.Mesh}, picks)
+        # Note: if Axis uses clear instead of a poly we get a nothing pick over a mesh pick
+        @test all(pi -> pi[1] isa Union{LineSegments, Scatter, Makie.Mesh, Nothing}, picks)
         # scatter points should have indices equal to those in 99991:99998
         scatter_plot_idx = filter(pi -> pi[1] isa Scatter, picks)
         @test Set(last.(scatter_plot_idx)) == Set(99991:99998)
@@ -195,7 +196,7 @@ end
 
     @test ax.scene.plots == [hmp, lp, tp]
 
-    robjs = map(x -> x.gl_renderobject[], [hmp, lp, tp.plots...])
+    robjs = map(x -> x.gl_renderobject[], [hmp, lp, tp.plots[1], tp.plots[2].plots...])
 
     empty!(ax)
 

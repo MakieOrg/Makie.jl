@@ -632,6 +632,7 @@ function Resampler(
 end
 
 const HeatmapShader = Heatmap{<:Tuple{EndPoints{Float32}, EndPoints{Float32}, <:Resampler}}
+add_depth_estimate!(@nospecialize(::Scene), @nospecialize(::HeatmapShader)) = nothing
 
 # The things we need to do, to allow the atomic Heatmap plot type to be overloaded as a recipe
 struct HeatmapShaderConversion <: ConversionTrait end

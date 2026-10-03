@@ -1,4 +1,5 @@
 struct Axis3Camera <: AbstractCamera end
+is3D(::Axis3Camera) = true
 
 function add_attributes!(T::Type{<:Axis3}, graph, flattened_defaults)
     attr = documented_attributes(Axis3)

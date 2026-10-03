@@ -113,7 +113,9 @@ function register_voxel_colormapping!(attr)
     add_constant!(attr, :fetch_pixel, false) # for CairoMakie
     if isnothing(attr[:color][])
         map!(
-            attr, [:colormap, :alpha, :lowclip, :highclip], :voxel_colormap
+            attr,
+            [:colormap, :alpha, :lowclip, :highclip],
+            [:voxel_colormap, :has_transparent_color]
         ) do cmap, alpha, lowclip, highclip
             N = 253 + (lowclip === automatic) + (highclip === automatic)
             cm = add_alpha.(resample_cmap(cmap, N), alpha)
@@ -123,10 +125,13 @@ function register_voxel_colormapping!(attr)
             if highclip !== automatic
                 cm = [cm; to_color(highclip)]
             end
-            return cm
+            transparent = any(c -> 0.0 < Colors.alpha(c) < 1.0, cm)
+            return cm, transparent
         end
     else
-        map!(attr, [:color, :alpha], :voxel_color) do color, alpha
+        map!(
+            attr, [:color, :alpha], [:voxel_color, :has_transparent_color]
+        ) do color, alpha
             if color isa AbstractVector # one color per id
                 output = Vector{RGBAf}(undef, 255)
                 @inbounds for i in 1:min(255, length(color))
@@ -135,14 +140,16 @@ function register_voxel_colormapping!(attr)
                 for i in (min(255, length(color)) + 1):255
                     output[i] = RGBAf(0, 0, 0, 0)
                 end
-                return output
+                transparent = any(c -> 0.0 < Colors.alpha(c) < 1.0, output)
+                return output, transparent
             elseif color isa AbstractArray # image/texture
                 output = add_alpha.(to_color.(color), alpha)
-                return output
+                transparent = any(c -> 0.0 < Colors.alpha(c) < 1.0, output)
+                return output, transparent
             elseif color isa Colorant # static
                 c = add_alpha(to_color(color), alpha)
                 output = [c for _ in 1:255]
-                return output
+                return output, 0.0 < Colors.alpha(c) < 1.0
             else
                 error("Invalid color type $(typeof(color))")
             end
@@ -156,6 +163,7 @@ function calculated_attributes!(::Type{Voxels}, plot::Plot)
     attr = plot.attributes
     register_voxel_conversions!(attr)
     register_voxel_colormapping!(attr)
+    ComputePipeline.alias!(attr, :model, :model_f32c) # not handled
     map!(attr, [:x, :y, :z], :data_limits) do x, y, z
         mini, maxi = Vec3.(x, y, z)
         return Rect3d(mini, maxi .- mini)

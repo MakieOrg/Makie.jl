@@ -196,6 +196,7 @@ mutable struct Scene <: AbstractScene
             false,
             nothing
         )
+        add_input!(scene.compute, :is3D, is3D(camera_controls))
         add_camera_computation!(scene.compute, scene)
         add_light_computation!(scene.compute, scene, lights)
         add_input!(scene.compute, :transform_func, transformation.transform_func)
@@ -725,6 +726,7 @@ cameracontrols(scene::SceneLike) = cameracontrols(scene.parent)
 
 function cameracontrols!(scene::Scene, cam)
     scene.camera_controls = cam
+    scene.compute.is3D = is3D(cam)
     return cam
 end
 cameracontrols!(scene::SceneLike, cam) = cameracontrols!(parent(scene), cam)
