@@ -120,6 +120,7 @@ function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
+    _check_figure_kwargs(kwargs_dict)
     scene = Scene(; camera = campixel!, clear = true, kwargs_dict...)
     padding = convert(Observable{Any}, padding)
     alignmode = lift(Outside ∘ to_rectsides, padding)
@@ -143,6 +144,56 @@ function Figure(; kwargs...)
     # if connected correctly
     layout.parent = f
     return f
+end
+
+function InvalidAttributeError(::Type{Figure}, attributes::Set{Symbol})
+    return InvalidAttributeError(Figure, "figure", attributes)
+end
+
+function attribute_names(::Type{Figure})
+    nameset = Set{Symbol}(keys(current_default_theme()))
+    union!(nameset, (:figure_padding, :resolution))
+    union!(nameset, _scene_kwarg_names())
+    union!(nameset, _registered_plot_or_block_names())
+    return nameset
+end
+
+function _scene_kwarg_names()
+    return (
+        :viewport, :events, :clear, :transform_func, :camera, :camera_controls,
+        :transformation, :plots, :children, :current_screens, :parent, :visible,
+        :ssao, :lights, :theme, :deregister_callbacks,
+    )
+end
+
+function _registered_plot_or_block_names()
+    nameset = Set{Symbol}()
+    union!(nameset, _registered_val_method_names(symbol_to_plot))
+    union!(nameset, _registered_val_method_names(symbol_to_block))
+    return nameset
+end
+
+function _registered_val_method_names(f)
+    nameset = Set{Symbol}()
+    for method in methods(f)
+        sig = Base.unwrap_unionall(method.sig)
+        length(sig.parameters) == 2 || continue
+        valtype = sig.parameters[2]
+        valtype isa DataType || continue
+        valtype <: Val || continue
+        name = valtype.parameters[1]
+        name isa Symbol || continue
+        push!(nameset, name)
+    end
+    return nameset
+end
+
+function _check_figure_kwargs(kwdict::Dict)
+    badnames = setdiff(keys(kwdict), attribute_names(Figure))
+    if !isempty(badnames)
+        throw(InvalidAttributeError(Figure, badnames))
+    end
+    return
 end
 
 export Figure, current_axis, current_figure, current_axis!, current_figure!
