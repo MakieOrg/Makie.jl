@@ -551,9 +551,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     end
 
     # sneak in model_f32c so we don't have to pass through another variable
-    Makie.register_computation!(primitive.attributes::Makie.ComputeGraph, [:model], [:model_f32c]) do (model,), _, __
-        return (Mat4f(model),)
-    end
+    @assert haskey(primitive.attributes::Makie.ComputeGraph, :model_f32c)
 
     draw_scattered_mesh(
         scene, screen, primitive.attributes, marker,

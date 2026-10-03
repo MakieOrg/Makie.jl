@@ -261,43 +261,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         error("Duplicate robj inputs detected in $merged_inputs: $duplicates")
     end
 
-    plot_group = if plot isa Volume # manual depth compose, last
-        :volume
-    elseif plot isa Union{Scatter, Glyphs, Lines, LineSegments} # native AA
-        :native_aa
-    elseif plot isa Union{Mesh, MeshScatter, Heatmap, Image, Voxels, Surface} # fxaa, first
-        :simple
-    end
-
-    map!(
-        plot, [:in3Dscene, :has_transparent_color, :fxaa, :depth_estimate], :gl_zindex
-    ) do in3D, transparent, fxaa, depth
-        if in3D
-            # Render order:
-            if transparent || plot_group === :volume
-                # Transparent plots should render after opaque ones, back to front.
-                # Volume is always considered transparent.
-                # Volume may need other things to write to the depth buffer first
-                # to correctly depth sort.
-                return (30.0, -depth)
-            elseif plot_group === :native_aa && !fxaa
-                # Plots with native AA always have a bit of transparency from AA
-                return (20.0, -depth)
-            # elseif plot_group === :native_aa && fxaa
-                # Plots with native AA turned off (fxaa = true) are fully opaque
-                # but generally don't cover large areas
-                # return (10, -depth)
-            else
-                # Opaque plots should render front to back to reduce overdraw
-                return (0.0, depth)
-            end
-        else
-            # 2D has stricter ordering rules:
-            # 1. plots should render back to front (largest depth first)
-            # 2. (tie-breaker) plots should follow insertion order
-            return (0.0, -depth)
-        end
-    end
+    Makie.add_computation!(plot, Val{:gl_zindex}())
 
     robj = let
         args = NamedTuple(map(key -> key => getproperty(attr, key)[], merged_inputs))

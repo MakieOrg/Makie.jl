@@ -60,7 +60,7 @@ function add_depth_estimate!(@nospecialize(scene::Scene), @nospecialize(plot::Pr
     )
 
     map!(plot, [:clip_center, :depth_shift], :depth_estimate3D) do center, shift
-        return Float32(center[3] + shift)
+        return Float64(center[3] + shift)
     end
 
     # Cheap estimate based on what's relevant in 2D
@@ -74,7 +74,7 @@ function add_depth_estimate!(@nospecialize(scene::Scene), @nospecialize(plot::Pr
         z += model[3, 4]
         # We assume projectionview doesn't rotate either
         z = pv[3, 3] * z + pv[3, 4]
-        return z + depth_shift
+        return Float64(z + depth_shift)
     end
 
     map!(ifelse, plot, [:in3Dscene, :depth_estimate3D, :depth_estimate2D], :depth_estimate)
@@ -84,12 +84,12 @@ end
 
 function depth_estimate(@nospecialize(plot))
     if haskey(plot, :depth_estimate)
-        return plot.depth_estimate[]::Float32
+        return plot.depth_estimate[]::Float64
     elseif !isempty(plot.plots)
-        sum = mapreduce(depth_estimate, +, plot.plots)::Float32
+        sum = mapreduce(depth_estimate, +, plot.plots)::Float64
         return sum / length(plot.plots)
     else
-        return 0f0
+        return 0.0
     end
 end
 

@@ -358,3 +358,51 @@ function compute_colors(attributes, color_name = :scaled_color)
     compute_colors!(attributes, color_name)
     return attributes.computed_color[]
 end
+
+function glzindex(in3D, transparent, fxaa, plot_group, depth)
+    depth = clamp(depth, -2.0, 2.0)
+    if in3D
+        # Render order:
+        if transparent || plot_group === :volume
+            # Transparent plots should render after opaque ones, back to front.
+            # Volume is always considered transparent.
+            # Volume may need other things to write to the depth buffer first
+            # to correctly depth sort.
+            return 30.0 - depth
+        elseif plot_group === :native_aa && !fxaa
+            # Plots with native AA always have a bit of transparency from AA
+            return 20.0 - depth
+        # elseif plot_group === :native_aa && fxaa
+            # Plots with native AA turned off (fxaa = true) are fully opaque
+            # but generally don't cover large areas
+            # return (10, -depth)
+        else
+            # Opaque plots should render front to back to reduce overdraw
+            return depth
+        end
+    else
+        # 2D has stricter ordering rules:
+        # 1. plots should render back to front (largest depth first)
+        # 2. (tie-breaker) plots should follow insertion order
+        return -depth
+    end
+end
+
+function add_computation!(plot::PrimitivePlotTypes, ::Val{:gl_zindex})
+    plot_group = if plot isa Volume # manual depth compose, last
+        :volume
+    elseif plot isa Union{Scatter, Glyphs, Lines, LineSegments} # native AA
+        :native_aa
+    elseif plot isa Union{Mesh, MeshScatter, Heatmap, Image, Voxels, Surface} # fxaa, first
+        :simple
+    end
+    add_constant!(plot.attributes, :plot_group, plot_group)
+
+    map!(
+        glzindex, plot,
+        [:in3Dscene, :has_transparent_color, :fxaa, :plot_group, :depth_estimate],
+        :gl_zindex
+    )
+
+    return plot.gl_zindex
+end

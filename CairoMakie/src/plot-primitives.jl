@@ -45,11 +45,12 @@ function cairo_draw(screen::Screen, root_scene::Scene)
         start_idx = stop_idx + 1
 
         # Collect and depth sort all plots within the current scene group
+        # (high depth = back, low depth = front)
         plots = AbstractPlot[]
         for scene in scenes
             Makie.collect_atomic_plots(scene.plots, plots, is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
         end
-        sort!(plots; by = Makie.zvalue2d)
+        sort!(plots; by = Makie.depth_estimate, rev = true)
 
         Cairo.save(screen.context)
         prepare_for_scene(screen, last_scene)

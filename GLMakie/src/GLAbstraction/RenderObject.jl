@@ -27,7 +27,7 @@ mutable struct RenderObject{IndexType, InstanceType}
     context # OpenGL context
     id::UInt32
     visible::Bool
-    zindex::Tuple{Float64, Float64}
+    zindex::Float64
 
     # data of the renderobject
     buffers::Dict{Symbol, GLBuffer}
@@ -126,7 +126,7 @@ function RenderObject(context, data::Dict{Symbol, Any})
 
     # Not handled as uniform
     visible = pop!(data, :visible, true)
-    zindex = pop!(data, :gl_zindex, (0.0, 0.0))
+    zindex = pop!(data, :gl_zindex, 0.0)
     @assert !isa(visible, Observable) "No more of this!"
 
     # for clean up on deletion
