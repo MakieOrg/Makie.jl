@@ -665,7 +665,7 @@ function canonical_line_order(elements)
         cycle = @view elements[begin:(end - 1)]
         smallest = minimum(cycle)
         candidates = (
-            rotate_cycle(c, i) for c in (cycle, reverse(cycle)) for i in eachindex(c) if c[i] == smallest
+            rotate_cycle(c, i) for c in (cycle, reverse(cycle)) for i in eachindex(c) if c[i] === smallest
         )
         return close_cycle(minimum(candidates))
     else

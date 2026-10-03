@@ -31,12 +31,7 @@ function download_progress_callback(total::Int, now::Int)
 end
 
 function download_refimages(tag = last_major_version())
-    url = "https://github.com/MakieOrg/Makie.jl/releases/download/refimages-$(tag)/reference_images.tar"
-
-    images_tar = Downloads.download(url; progress = download_progress_callback)
-    images = tempname()
-    isdir(images) && rm(images, recursive = true, force = true)
-    Tar.extract(images_tar, images)
-    rm(images_tar)
-    return images
+    return fetch_refimages!(tempname(), tag; progress = download_progress_callback)
 end
+
+cached_refimages() = cached_refimages(last_major_version())

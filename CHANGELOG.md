@@ -23,6 +23,8 @@
 - Added colormapping to `series`, allowing `color` to be set to values. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
 - Fixed `Linestyle` warning when drawing lines or linesegments with SpecApi. [#5810](https://github.com/MakieOrg/Makie.jl/pull/5810)
 - Fixed NaN data in `contour` and `contour3d` breaking line-masking with contour labels [#5618](https://github.com/MakieOrg/Makie.jl/pull/5818)
+- Fixed hang in Colorbar by not keeping partially automatic colorranges sorted [#5806](https://github.com/MakieOrg/Makie.jl/pull/5806)
+- Fixed empty reduce error in `Makie.canonical_line_order` when NaN appears in the input [#5817](https://github.com/MakieOrg/Makie.jl/pull/5817)
 
 ## [0.24.15] - 2026-09-18
 
