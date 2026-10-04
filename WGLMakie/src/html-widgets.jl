@@ -28,9 +28,17 @@ function resize_parent(parent, block)
         fig_height = vp.widths[2]  # Get figure height
         return [fig_height, xmin, ymin, xmax, ymax]
     end
+    visible = block.blockscene.visible
     return js"""
+        // Mirror the block's visibility onto the HTML widget so that
+        // Makie.hide!/unhide! (which toggle blockscene.visible) keep working.
+        // This doesn't need the scene, so it is applied as soon as the widget is mounted.
+        const div = $(parent);
+        function update_visibility(v) { div.style.display = v ? "flex" : "none"; }
+        $(visible).on(update_visibility);
+        update_visibility($(visible).value);
+
         $(scene).then(scene => {
-            const div = $(parent);
             const {canvas, winscale} = scene.screen;
 
             // The wrapper (canvas.parentElement) has position: relative, so widgets
@@ -68,8 +76,19 @@ function resize_parent(parent, block)
     """
 end
 
+# Suppress a widget's native WGLMakie rendering by hiding the plots in its
+# blockscene (and child scenes), leaving `blockscene.visible` free to act as the
+# show/hide signal that the HTML replacement mirrors in `resize_parent`.
+function hide_native_plots!(scene::Makie.Scene)
+    for plot in scene.plots
+        plot.visible[] = false
+    end
+    foreach(hide_native_plots!, scene.children)
+    return scene
+end
+
 function replace_widget!(slider::Makie.Slider)
-    Makie.hide!(slider)
+    hide_native_plots!(slider.blockscene)
     initial_value = slider.value[]
     range_vals = slider.range[]
     min_val = minimum(range_vals)
@@ -198,7 +217,7 @@ function replace_widget!(slider::Makie.Slider)
 end
 
 function replace_widget!(menu::Makie.Menu)
-    Makie.hide!(menu)
+    hide_native_plots!(menu.blockscene)
     initial_selection = menu.selection[]
 
     # Extract Makie styling attributes
@@ -388,7 +407,7 @@ function replace_widget!(menu::Makie.Menu)
 end
 
 function replace_widget!(textbox::Makie.Textbox)
-    Makie.hide!(textbox)
+    hide_native_plots!(textbox.blockscene)
     scene = Makie.rootparent(textbox.blockscene)
     initial_value = textbox.displayed_string[]
     validator = textbox.validator[]
@@ -487,7 +506,7 @@ function replace_widget!(textbox::Makie.Textbox)
 end
 
 function replace_widget!(button::Makie.Button)
-    Makie.hide!(button)
+    hide_native_plots!(button.blockscene)
 
     # Extract Makie styling attributes
     button_text = button.label[]
@@ -548,7 +567,7 @@ function replace_widget!(button::Makie.Button)
 end
 
 function replace_widget!(checkbox::Makie.Checkbox)
-    Makie.hide!(checkbox)
+    hide_native_plots!(checkbox.blockscene)
 
     # Extract Makie styling attributes
     size = checkbox.size[]
@@ -621,7 +640,7 @@ function replace_widget!(checkbox::Makie.Checkbox)
 end
 
 function replace_widget!(toggle::Makie.Toggle)
-    Makie.hide!(toggle)
+    hide_native_plots!(toggle.blockscene)
 
     # Extract Makie styling attributes
     length = toggle.length[]
