@@ -12,7 +12,7 @@ function cairo_zindex(@nospecialize(plot))
         return -depth + plot.zorder_shift[]::Float64
     elseif !isempty(plot.plots)
         sum = mapreduce(cairo_zindex, +, plot.plots)::Float64
-        return -sum / length(plot.plots)
+        return sum / length(plot.plots)
     else
         return 0.0
     end
