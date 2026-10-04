@@ -14,9 +14,9 @@ is_freed(x::GLMakie.GPUArray) = x.id == 0
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
     # Postprocessing shaders
-    @test length(cache.shader_cache) == base
-    @test length(cache.template_cache) == base
-    @test length(cache.program_cache) == base - 1
+    @test length(cache.shader_cache) == 4
+    @test length(cache.template_cache) == 4
+    @test length(cache.program_cache) == 3
 
     # Just Axis adds...
     # f = Figure();

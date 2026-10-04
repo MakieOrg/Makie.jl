@@ -46,7 +46,7 @@ using Makie: is_identity_transform
 
         # Nodes added: dynamic matrix name, camera matrix, combined matrix, output
         run_checks(
-            Symbol(space, :_positions), projected, 4;
+            Symbol(space, :_positions), projected, ifelse(space === :clip, 1, 4);
             output_space = space
         )
     end
