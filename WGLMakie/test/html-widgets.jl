@@ -511,4 +511,44 @@ using Electron, WGLMakie, Bonito, Test
         @test length(points[]) == initial_count + 1
         @test points[][end][1] ≈ 7.0  # X position should be slider value
     end
+
+    @testset "Widget hide!/unhide!" begin
+        # Makie.hide!/unhide! must toggle the HTML widget's
+        # visibility. The widget's container div mirrors `blockscene.visible`,
+        # which hide!/unhide! flip.
+        fig = Figure()
+        btn = Makie.Button(fig[1, 1], label = "Toggle Me")
+        sl = Makie.Slider(fig[2, 1], range = 0:0.1:10, startvalue = 5)
+
+        app = App(fig)
+        display(edisplay, app)
+
+        # The container div (parent of the rendered widget element) carries the
+        # visibility toggle.
+        container_display(selector) = evaljs_value(
+            app.session[], js"""(() => {
+                const el = document.querySelector($(selector));
+                return el ? el.parentElement.style.display : "missing";
+            })()"""
+        )
+
+        # Both widgets are visible by default.
+        @test container_display("button") == "flex"
+        @test container_display("input[type=range]") == "flex"
+
+        # hide! hides only the targeted widget.
+        Makie.hide!(btn)
+        @test container_display("button") == "none"
+        @test container_display("input[type=range]") == "flex"
+
+        # unhide! brings it back.
+        Makie.unhide!(btn)
+        @test container_display("button") == "flex"
+
+        # The same must work for a different widget type.
+        Makie.hide!(sl)
+        @test container_display("input[type=range]") == "none"
+        Makie.unhide!(sl)
+        @test container_display("input[type=range]") == "flex"
+    end
 end
