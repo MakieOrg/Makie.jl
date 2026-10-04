@@ -63,6 +63,9 @@ function cairo_draw(screen::Screen, root_scene::Scene)
         for scene in scenes
             Makie.collect_atomic_plots(scene.plots, plots, is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
         end
+        # Resolve these early in the order we find them. Otherwise cycling order
+        # changes
+        foreach(p -> p.cycle_index[], plots)
         sort!(plots; by = cairo_zindex)
 
         Cairo.save(screen.context)

@@ -390,7 +390,6 @@ const REFIMG_STYLES = Styles(
     CSS(
         ".main-container",
         "font-family" => "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-        "max-width" => "1400px",
         "margin" => "0 auto",
         "padding" => "24px",
         "background-color" => BG_LIGHT

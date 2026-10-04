@@ -311,6 +311,7 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         inspector_label = plot.inspector_label,
         clip_planes = plot.clip_planes,
         transformation = :nothing, # already processed in pos calculation
+        zorder_shift = 0.1 # prefer rendering after other stuff at the same depth
     )
 
     register_fast_string_boundingboxes!(tp)
@@ -370,10 +371,9 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         shading = NoShading,
         # stroke_alpha = plot.stroke_alpha, # TODO: doesn't exist in poly
         alpha = plot.alpha,
+        # should disambiguate these in 3D, but we currently only do 2D
         stroke_depth_shift = plot.depth_shift,
-        # move poly slightly behind - this is unnecessary atm because we also
-        # translate!(). Maybe useful when generalizing to 3D though
-        depth_shift = map(x -> x + 2.0f-7, plot, plot.depth_shift),
+        depth_shift = plot.depth_shift,
         fxaa = plot.fxaa,
         visible = plot.visible,
         transparency = plot.transparency,
@@ -383,6 +383,7 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         project_point3_to_2d = true,
         inspector_label = plot.inspector_label,
         transformation = :nothing, # already processed in bbox calculation
+        zorder_shift = 0.1 # prefer rendering after other stuff at the same depth
     )
 
     on(plot, plot.pixel_z, update = true) do z
