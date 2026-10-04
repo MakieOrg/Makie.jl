@@ -310,6 +310,19 @@ function initialize_block!(ax::Axis3)
     register_interaction!(ax, :translation, DragPan(NaN))
     register_interaction!(ax, :cursorfocus, FocusOnCursor(length(ax.scene.plots)))
 
+    #=
+    About draw order:
+
+    `overdraw = true` skips depth tests in W/GLMakie, so if plot 2 is ordered
+    to draw after 1 it will draw on top of one (regardless of depth). With that
+    we can use `zorder_shift` to draw a bunch of decorations in a specific order:
+    1. panels at `zorder_shift = -10_000` (no overdraw)
+    2. grid and tick lines at `zorder_shift = -9900`
+    3. back frame lines at `zorder_shift = -9800`
+    4. other docrations as well as plots at around -1 .. +31 (no overdraw)
+    5. front frame lines at `zorder_shift = 10_000`
+    =#
+
     return
 end
 
@@ -548,8 +561,9 @@ function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, tick
     gridline1 = linesegments!(
         topscene, endpoints, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
-        xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false
+        xautolimits = false, yautolimits = false, zautolimits = false,
+        visible = attr(:gridvisible), inspectable = false,
+        zorder_shift = -9900, overdraw = true
     )
 
     endpoints2 = lift(limits, tickvalues, min1, min2, xreversed, yreversed, zreversed) do lims, ticks, min1, min2, xrev, yrev, zrev
@@ -567,8 +581,9 @@ function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, tick
     gridline2 = linesegments!(
         topscene, endpoints2, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
-        xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false
+        xautolimits = false, yautolimits = false, zautolimits = false,
+        visible = attr(:gridvisible), inspectable = false,
+        zorder_shift = -9900, overdraw = true
     )
 
 
@@ -614,44 +629,19 @@ function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, tick
 
     framelines = linesegments!(
         topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
-        transparency = true, visible = attr(:spinesvisible), inspectable = false,
+        visible = attr(:spinesvisible), inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
-        clip_planes = Plane3f[]
+        clip_planes = Plane3f[], zorder_shift = -9800, overdraw = true
     )
 
     front_framelines = linesegments!(
         overlay, framepoints_front_spines, color = attr(:spinecolor_4),
         linewidth = attr(:spinewidth),
         visible = map((a, b) -> a && b, ax.front_spines, attr(:spinesvisible)),
-        transparency = true, inspectable = false,
+        inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
-        clip_planes = Plane3f[]
+        clip_planes = Plane3f[], zorder_shift = 10_000
     )
-
-    #= On transparency and render order
-    We have transparency = true here mostly for render order and depth testing
-    reasons.
-    In GLMakie:
-    - transparency = true gets rendered after transparency = false. This fixes
-      artifacts of the line AA, which mixes with the current background. (I.e.
-      if lines render first they will mix with the scene background color rather
-      than plots)
-    - transparency = true turns off depth writes which means the frame lines don't
-      see the grid lines and draw over them. This fixes grid lines poking through
-      frame lines, and also fixes mixing issues where frame lines meet. This
-      could also be fixed by explicit order with overdraw = true
-    - Note that transparency = true causes frame lines to never be 100% opaque
-      in GLMakie
-    In WGLMakie:
-    - transparency = true also turns off depth writes, see above
-    - transparency = true does not affect render order. Since it does turn off
-      depth writes other things will draw over the front frame lines. To fix this
-      we add an overlay scene which renders after the main scene, i.e. after
-      grid lines, back frame lines and user plots.
-    In CairoMakie:
-    - transparency does not matter, only plot order does. The overlay scene
-      forces does the same as in WGLMakie
-    =#
 
     return gridline1, gridline2, framelines
 end
@@ -715,13 +705,11 @@ function add_ticks_and_ticklabels!(
     end
 
     ticks = linesegments!(
-        topscene, tick_segments,
-        transparency = true, inspectable = false,
+        topscene, tick_segments, inspectable = false,
         color = attr(:tickcolor), linewidth = attr(:tickwidth),
-        space = :pixel, visible = attr(:ticksvisible)
+        space = :pixel, visible = attr(:ticksvisible),
+        zorder_shift = -9900, overdraw = true
     )
-    # move ticks behind plots, -10000 is the far value in campixel
-    translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()
     map!(
@@ -753,8 +741,6 @@ function add_ticks_and_ticklabels!(
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible),
         space = :pixel, inspectable = false
     )
-
-    translate!(ticklabels_text, 0, 0, 1000)
 
     label_position = Observable(Point2f(0))
     label_rotation = Observable(0.0f0)
@@ -896,7 +882,8 @@ function add_panel!(topscene, ax, dim1, dim2, dim3, limits, min3)
         xautolimits = false, yautolimits = false, zautolimits = false,
         color = attr(:panelcolor), visible = attr(:panelvisible),
         strokecolor = :transparent, strokewidth = 0,
-        transformation = (plane, 0), clip_planes = Plane3f[]
+        transformation = (plane, 0), clip_planes = Plane3f[],
+        zorder_shift = -10_000
     )
 
     on(plane_offset) do offset

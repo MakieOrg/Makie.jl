@@ -55,7 +55,8 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         transparency = plot.transparency,
         space = plot.space,
         depth_shift = plot.depth_shift,
-        clip_planes = plot.clip_planes
+        clip_planes = plot.clip_planes,
+        zorder_shift = plot.zorder_shift
     )
     wireframe!(
         plot, plot[1],
@@ -64,7 +65,7 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         visible = plot.visible, overdraw = plot.overdraw,
         inspectable = plot.inspectable, transparency = plot.transparency,
         colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift,
-        clip_planes = plot.clip_planes
+        clip_planes = plot.clip_planes, zorder_shift = plot.zorder_shift
     )
     return plot
 end
@@ -213,7 +214,8 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         inspectable = plot.inspectable,
         space = plot.space,
         depth_shift = plot.depth_shift,
-        clip_planes = plot.clip_planes
+        clip_planes = plot.clip_planes,
+        zorder_shift = plot.zorder_shift
     )
 
     map!(to_lines, plot, [:polygon, :strokewidth], [:outline, :increment_at])
@@ -235,7 +237,7 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
             return sc
         end
     end
-    return lines!(
+    lines!(
         plot, plot.outline, visible = plot.visible,
         color = plot.computed_strokecolor, linestyle = plot.linestyle, alpha = plot.alpha,
         colormap = plot.strokecolormap,
@@ -244,8 +246,8 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
         inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift,
-        clip_planes = plot.clip_planes
+        clip_planes = plot.clip_planes,
+        zorder_shift = plot.zorder_shift
     )
+    return
 end
-
-depth_estimate(p::Poly) = depth_estimate(p.plots[1])

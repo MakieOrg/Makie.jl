@@ -15,11 +15,23 @@ default_theme(::Type{<:Plot}) = Attributes(
 - `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
 - `fxaa::Bool = true` adjusts whether the plot is rendered with fxaa (anti-aliasing).
 - `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
-- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
+- `depth_shift::Real = 0` Adjusts the depth value of a plot after all other transformations, i.e. in clip space,
+    where `-1 <= depth <= 1`. This should be understood as a spatial transformation which moves the plot closer
+    (negative values, less depth) or further away (positive values, more depth) from the viewer. The main purpose
+    of this is to disambiguate plots which draw at the same depth, i.e. treat z-fighting.
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `space::Symbol = :data` sets the transformation space for box encompassing the volume plot. See `Makie.spaces()` for possible inputs.
 - `clip_planes::Vector{Plane3f} = Plane3f[]`: allows you to specify up to 8 planes behind which plot objects get clipped (i.e. become invisible). By default clip planes are inherited from the parent plot or scene.
-- `zindex::Float64 = NaN`: Controls "when" a plot is drawn with larger numbers being drawn later, as opposed to "where" (in front/behind) which is determined from coordinates and transformations. Explicitly setting this can resolve issues with transparency/blending. Defaults to using the z-translation of the plot when set to `NaN`.
+- `zorder_shift::Real = 0`: Adjust when a plot is drawn by shifting the z-index it is sorted by. The z-index is an
+    estimate of the plots depth based on its data limits. This depth value is given in clip space, in a range from
+    `-1 .. 1`, and is also affected by `depth_shift`.
+    In W/GLMakie this is mainly useful for ordering transparent plots (with `transparency = false`), including
+    partially transparent plots like `scatter`. Whenever such a plot is drawn, it will blend with what was drawn
+    before it. Therefore it can be useful to make a plot draw earlier (negative) or later (positive). Note that
+    whether a plot is under or over already drawn plots is checked independently. So this generally does not affect
+    if a plot is covered by another (opaque) plot.
+    In CairoMakie coverage is determined by "when" a plot draws, so `zorder_shift` can be used to make a plot draw
+    under (negative shift) or over (positive shift) another one.
 """
 function generic_plot_attributes!(attr)
     attr[:transformation] = :automatic
@@ -32,7 +44,7 @@ function generic_plot_attributes!(attr)
     attr[:space] = :data
     attr[:inspector_label] = automatic
     attr[:clip_planes] = automatic
-    attr[:zindex] = NaN64
+    attr[:zorder_shift] = 0.0f0
     attr[:rasterize] = false
     return attr
 end
@@ -50,7 +62,7 @@ function generic_plot_attributes(attr)
         space = attr[:space],
         inspector_label = attr[:inspector_label],
         clip_planes = attr[:clip_planes],
-        zindex = attr[:zindex],
+        zorder_shift = attr[:zorder_shift],
         rasterize = attr[:rasterize],
     )
 end
@@ -88,8 +100,6 @@ function mixin_generic_plot_attributes()
         ssao = false
         "Sets whether this plot should be seen by `DataInspector`. The default depends on the theme of the parent scene."
         inspectable = @inherit inspectable
-        "Adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `-1 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw)."
-        depth_shift = 0.0f0
         "Sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs."
         space = :data
         """
@@ -108,12 +118,27 @@ function mixin_generic_plot_attributes()
         """
         clip_planes = @inherit clip_planes automatic
         """
-        `zindex::Float64 = NaN`: Controls "when" a plot is drawn with larger numbers being drawn later,
-        as opposed to "where" (in front/behind) which is determined from coordinates and transformations.
-        Explicitly setting this can resolve issues with transparency/blending. Defaults to using the
-        z-translation of the plot when set to `NaN`.
+        `depth_shift::Real = 0` Adjusts the depth value of a plot after all other transformations, i.e. in clip space,
+        where `-1 <= depth <= 1`. This should be understood as a spatial transformation which moves the plot closer
+        (negative values, less depth) or further away (positive values, more depth) from the viewer. The main purpose of
+        this is to disambiguate plots which draw at the same depth, i.e. treat z-fighting.
         """
-        zindex = NaN64
+        depth_shift = 0.0f0
+        """
+        `zorder_shift::Real = 0`: Adjust when a plot is drawn by shifting the z-index it is sorted by. The z-index is an
+        estimate of the plots depth based on its data limits. This depth value is given in clip space, in a range from
+        `-1 .. 1`, and is also affected by `depth_shift`.
+
+        In W/GLMakie this is mainly useful for ordering transparent plots (with `transparency = false`), including
+        partially transparent plots like `scatter`. Whenever such a plot is drawn, it will blend with what was drawn
+        before it. Therefore it can be useful to make a plot draw earlier (negative shift) or later (positive shift).
+        Note that whether a plot is under or over already drawn plots is checked independently. So this generally does
+        not affect if a plot is covered by another (opaque) plot.
+
+        In CairoMakie coverage is determined by "when" a plot draws, so `zorder_shift` can be used to make a plot draw
+        under (negative shift) or over (positive shift) another one.
+        """
+        zorder_shift = 0.0f0
         "Controls whether CairoMakie rasterizes a plot (true, >0) or not (false, 0). If an integer is given, it sets the pixel density for rasterization."
         rasterize = @inherit rasterize false
     end

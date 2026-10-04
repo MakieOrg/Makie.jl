@@ -6,6 +6,19 @@
 #           Drawing pipeline           #
 ########################################
 
+function cairo_zindex(@nospecialize(plot))
+    if haskey(plot, :depth_estimate)
+        depth = clamp(plot.depth_estimate[]::Float64, -1.0, 1.0)
+        return -depth + plot.zorder_shift[]::Float64
+    elseif !isempty(plot.plots)
+        sum = mapreduce(cairo_zindex, +, plot.plots)::Float64
+        return -sum / length(plot.plots)
+    else
+        return 0.0
+    end
+end
+cairo_zindex(p::Poly) = cairo_zindex(p.plots[1])
+
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::Screen, root_scene::Scene)
     # So animations based on tick events can finish
@@ -50,7 +63,7 @@ function cairo_draw(screen::Screen, root_scene::Scene)
         for scene in scenes
             Makie.collect_atomic_plots(scene.plots, plots, is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
         end
-        sort!(plots; by = Makie.depth_estimate, rev = true)
+        sort!(plots; by = cairo_zindex)
 
         Cairo.save(screen.context)
         prepare_for_scene(screen, last_scene)
@@ -173,7 +186,7 @@ function draw_plot(scene::Scene, screen::Screen, primitive::Plot)
             Cairo.restore(screen.context)
         end
         if !isempty(primitive.plots)
-            zvals = Makie.zvalue2d.(primitive.plots)
+            zvals = cairo_zindex.(primitive.plots)
             for idx in sortperm(zvals)
                 draw_plot(scene, screen, primitive.plots[idx])
             end

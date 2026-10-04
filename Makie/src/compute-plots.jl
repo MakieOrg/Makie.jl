@@ -82,17 +82,6 @@ function add_depth_estimate!(@nospecialize(scene::Scene), @nospecialize(plot::Pr
     return
 end
 
-function depth_estimate(@nospecialize(plot))
-    if haskey(plot, :depth_estimate)
-        return plot.depth_estimate[]::Float64
-    elseif !isempty(plot.plots)
-        sum = mapreduce(depth_estimate, +, plot.plots)::Float64
-        return sum / length(plot.plots)
-    else
-        return 0.0
-    end
-end
-
 function ComputePipeline.update!(plot::Plot, dict)
     ComputePipeline.update!(plot.attributes, dict)
     return
