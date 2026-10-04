@@ -247,3 +247,5 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         clip_planes = plot.clip_planes
     )
 end
+
+depth_estimate(p::Poly) = depth_estimate(p.plots[1])
