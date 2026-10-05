@@ -161,3 +161,32 @@
     @test eventlog[7].px == Point2f(400, 400)
     empty!(eventlog)
 end
+
+@testset "double click interval is measured in tick time" begin
+    scene = Scene(size = (800, 600))
+    e = events(scene)
+    msm = addmouseevents!(scene, Observable(Rect2(200, 200, 400, 300)), priority = typemax(Int))
+    e.mouseposition[] = (300, 300)
+    eventtypes = MouseEventTypes.MouseEventType[]
+    on(msm.obs) do event
+        push!(eventtypes, event.type)
+        return false
+    end
+
+    function click_at_tick_time(t)
+        e.tick[] = Makie.Tick(Makie.OneTimeRenderTick, 0, t, 0.0)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        return e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+    end
+
+    click_at_tick_time(1.0)
+    click_at_tick_time(1.5)
+    click_at_tick_time(1.6)
+    click_at_tick_time(0.0)
+    @test eventtypes == [
+        MouseEventTypes.leftdown, MouseEventTypes.leftclick, MouseEventTypes.leftup,
+        MouseEventTypes.leftdown, MouseEventTypes.leftclick, MouseEventTypes.leftup,
+        MouseEventTypes.leftdown, MouseEventTypes.leftdoubleclick, MouseEventTypes.leftup,
+        MouseEventTypes.leftdown, MouseEventTypes.leftclick, MouseEventTypes.leftup,
+    ]
+end
