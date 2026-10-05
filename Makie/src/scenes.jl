@@ -235,6 +235,19 @@ mutable struct Scene <: AbstractScene
     end
 end
 
+function Base.setproperty!(x::Scene, f::Symbol, v)
+    ty = fieldtype(Scene, f)
+    if ty <: Observable
+        # Yikes, Base calls convert which wraps the type as an Observable and
+        # replaces the existing one instead of updating it.
+        return getfield(x, f)[] = v
+    else
+        # do what Base does
+        val = v isa ty ? v : convert(ty, v)
+        return setfield!(x, f, val)
+    end
+end
+
 function replace_computed_with_obs!(theme::Union{Dict, Attributes})
     for (key, val) in theme
         if val isa Computed

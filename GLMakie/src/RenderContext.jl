@@ -7,6 +7,7 @@ struct GLSceneGroup
     # can not be cleaned up through GC alone. It is only detached by
     # `empty!(screen)` which also clears the full render context
     scenes::Vector{Scene}
+    obsfuncs::Vector{Vector{ObserverFunction}}
     renderobjects::Vector{Tuple{Int, RenderObject}}
 end
 
@@ -15,8 +16,7 @@ function Base.show(io::IO, glscene::GLSceneGroup)
 end
 # Base.show(io::IO, ::MIME"text/plain", group::GLScene)
 
-GLSceneGroup(scene::Scene) = GLSceneGroup(Scene[scene], RenderObject[])
-GLSceneGroup() = GLSceneGroup(Scene[], RenderObject[])
+GLSceneGroup() = GLSceneGroup(Scene[], Vector{ObserverFunction}[], RenderObject[])
 
 function collect_renderobjects!(buffer, scenes::Vector)
     @assert isempty(buffer)
@@ -67,7 +67,9 @@ function delete_scene!(group::GLSceneGroup, scene::Scene)
         if choice === scene
             filter!(x -> x[1] != i, group.renderobjects)
             shift_robj_scene_idx!(group, i, -1)
+            foreach(off, group.obsfuncs[i])
             deleteat!(group.scenes, i)
+            deleteat!(group.obsfuncs, i)
             return true
         end
     end
@@ -129,9 +131,10 @@ Base.isempty(ctx::RenderContext) = isempty(ctx.groups)
 
 Empties the render context and refills it according to the given scene tree.
 """
-function recreate!(ctx::RenderContext, root::Scene)
+function recreate!(ctx::RenderContext, screen, root::Scene)
     empty!(ctx)
     push!(ctx.groups, GLSceneGroup())
+
     Makie.collect_scenes!(ctx, root) do ctx, scene
         group = ctx.groups[end]
         if !isempty(group) && scene.clear[]
@@ -140,7 +143,21 @@ function recreate!(ctx::RenderContext, root::Scene)
         end
         push!(group.scenes, scene)
         ctx.scene2group[objectid(scene)] = length(ctx.groups)
+
+        obsfuncs = onany(
+            (args...) -> screen.requires_update = true,
+            scene,
+            scene.visible, scene.backgroundcolor, scene.clear,
+            scene.ssao.bias, scene.ssao.blur, scene.ssao.radius,
+        )
+
+        # When clear changes we need to
+        obsfunc2 = on(clear -> regroup!(ctx, scene, clear), scene.clear)
+
+        push!(group.obsfuncs, [obsfuncs..., obsfunc2])
     end
+
+    screen.requires_update = true
     return
 end
 
@@ -156,7 +173,8 @@ function split_group!(ctx::RenderContext, group_idx, scene_idx)
 
     # Move scenes and associated renderobjects after scene_idx to new group
     next_group = GLSceneGroup(
-        splice!(prev_group.scenes, scene_idx : length(prev_group.scenes)),
+        splice!(prev_group.scenes, scene_idx:length(prev_group.scenes)),
+        splice!(prev_group.obsfuncs, scene_idx:length(prev_group.obsfuncs)),
         filter(prev_group.renderobjects) do (i, robj)
             return i >= scene_idx
         end
@@ -196,6 +214,7 @@ function merge_group_with_previous!(ctx, group_idx)
 
     # Move scenes and renderobjects
     prepend!(next.scenes, prev.scenes)
+    prepend!(next.obsfuncs, prev.obsfuncs)
     shift_robj_scene_idx!(next, 1, prev_Ns)
     prepend!(next.renderobjects, prev.renderobjects)
 
@@ -220,10 +239,13 @@ function regroup!(ctx::RenderContext, scene::Scene, new_clear)
     group_idx = ctx.scene2group[objectid(scene)]
     group = ctx.groups[group_idx]
     scene_idx = findfirst(x -> x === scene, group.scenes)
-    if new_clear == true
+    # scene_idx == 1 implies clear was true, all other indices imply false
+    if new_clear == true && scene_idx != 1
         split_group!(ctx, group_idx, scene_idx)
+    elseif new_clear == false && scene_idx == 1
+        merge_group_with_previous!(ctx, group_idx)
     else
-        merge_group_with_next!(ctx, group_idx)
+        # clear unchanged
     end
     return
 end
@@ -259,7 +281,9 @@ Checks if a group is valid. It is if the first scene clears and all others don't
 The first group is allowed to not start with a clearing scene.
 """
 function is_group_valid(ctx::RenderContext, group_idx)
+    @assert group_idx <= length(ctx.groups)
     group = ctx.groups[group_idx]
+    @assert length(group.scenes) == length(group.obsfuncs)
     isempty(group) && error("There should be no empty scene groups.")
     valid = (group_idx == 1) || first(group.scenes).clear[]
     for scene in @view(group.scenes[2:end])
@@ -289,20 +313,23 @@ function Makie.insert_scene!(ctx::RenderContext, screen, scene)
     shift_robj_scene_idx!(group, scene_idx, +1)
     ctx.scene2group[objectid(scene)] = group_idx
 
-    # If that insertion was invalid, fix it
-    repair_group!(ctx, group_idx)
-
     screen.requires_update = true
-    onany(
+    obsfuncs = onany(
         (args...) -> screen.requires_update = true,
         scene,
         scene.visible, scene.backgroundcolor, scene.clear,
-        scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview,
-        scene.camera.resolution
+        scene.ssao.bias, scene.ssao.blur, scene.ssao.radius,
     )
 
-    # When clear changes we need to
-    on(clear -> regroup!(ctx, scene, clear), scene.clear)
+    # When clear changes we need to split or merge groups
+    obsfunc2 = on(clear -> regroup!(ctx, scene, clear), scene.clear)
+
+    insert!(group.obsfuncs, scene_idx, [obsfuncs..., obsfunc2])
+
+    @assert length(group.scenes) == length(group.obsfuncs)
+
+    # If that insertion was invalid, fix it
+    repair_group!(ctx, group_idx)
 
     return
 end
@@ -312,6 +339,7 @@ function delete_scene!(ctx::RenderContext, scene::Scene)
         group_idx = pop!(ctx.scene2group, objectid(scene))
         group = ctx.groups[group_idx]
         delete_scene!(group, scene)
+        @assert length(group.scenes) == length(group.obsfuncs)
         if isempty(group)
             popat!(ctx.groups, group_idx)
             for (key, i) in ctx.scene2group
