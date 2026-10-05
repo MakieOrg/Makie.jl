@@ -133,6 +133,7 @@ Small shifts (abs < 1) can be used to adjust the order of the same group of plot
 A positive `zorder_shift` makes a plot draw later, a negative shift earlier.
 
 ```@figure backend=GLMakie
+GLMakie.activate!(px_per_unit = 1.0) # hide
 scene = Scene(backgroundcolor = :gray, clear = true, size = (300, 300), camera = campixel!)
 p = scatter!(scene, 150, 150, 0, marker = Rect, markersize = 200, color = :black)
 
@@ -156,6 +157,7 @@ This will cause the plot to draw regardless of there its pixel depth is above wh
 Whether a plot with `overdraw = true` covers another is then entirely based on when it draws.
 
 ```@figure backend=GLMakie
+GLMakie.activate!(px_per_unit = 1.0) # hide
 scene = Scene(backgroundcolor = :gray, clear = true, size = (300, 300), camera = campixel!)
 p = scatter!(scene, 150, 150, 0, marker = Rect, markersize = 150, color = :black)
 
