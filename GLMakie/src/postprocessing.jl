@@ -685,7 +685,7 @@ function construct(::Val{:Display}, screen, stage)
 end
 
 function run_stage(screen, scene_groups, stage::BlitToScreen)
-    copy_to_screen(screen, stage.source_framebuffer)
+    return copy_to_screen(screen, stage.source_framebuffer)
 end
 
 """

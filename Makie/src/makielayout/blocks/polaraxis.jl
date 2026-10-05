@@ -129,7 +129,7 @@ function initialize_block!(po::PolarAxis; palette = nothing)
         xpx::Float32 = if align === :center
             w / 2
         elseif align === :left
-            0f0
+            0.0f0
         elseif align === :right
             w
         elseif align isa Real

@@ -390,7 +390,7 @@ function add_computation!(plot::PrimitivePlotTypes, ::Val{:gl_zindex})
             elseif plot_group === :native_aa && !fxaa
                 # Plots with native AA always have a bit of transparency from AA
                 return 20.0 - depth + shift
-            # elseif plot_group === :native_aa && fxaa
+                # elseif plot_group === :native_aa && fxaa
                 # Plots with native AA turned off (fxaa = true) are fully opaque
                 # but generally don't cover large areas
                 # return 10.0 + depth + shift

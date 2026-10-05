@@ -58,7 +58,7 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         clip_planes = plot.clip_planes,
         zorder_shift = plot.zorder_shift
     )
-    map!(x -> default_automatic(x,- 1.0f-5), plot, :stroke_depth_shift, :final_stroke_depth_shift)
+    map!(x -> default_automatic(x, -1.0f-5), plot, :stroke_depth_shift, :final_stroke_depth_shift)
     wireframe!(
         plot, plot[1],
         color = plot.strokecolor, linestyle = plot.linestyle, space = plot.space,
@@ -238,7 +238,7 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
             return sc
         end
     end
-    map!(x -> default_automatic(x, 0f0), plot, :stroke_depth_shift, :final_stroke_depth_shift)
+    map!(x -> default_automatic(x, 0.0f0), plot, :stroke_depth_shift, :final_stroke_depth_shift)
     lines!(
         plot, plot.outline, visible = plot.visible,
         color = plot.computed_strokecolor, linestyle = plot.linestyle, alpha = plot.alpha,

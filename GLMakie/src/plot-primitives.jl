@@ -237,7 +237,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     # These must always be there!
     core_attributes = Symbol[
         :uniform_clip_planes, :uniform_num_clip_planes, :depth_shift, :visible, :fxaa, :gl_zindex,
-        :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction
+        :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction,
     ]
     append!(uniforms, core_attributes)
     haskey(attr, :preprojection) && push!(uniforms, :preprojection)

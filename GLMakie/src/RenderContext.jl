@@ -12,7 +12,7 @@ struct GLSceneGroup
 end
 
 function Base.show(io::IO, glscene::GLSceneGroup)
-    print(io, "GLSceneGroup($(length(glscene.scenes)) Scenes, $(length(glscene.renderobjects)) render objects)")
+    return print(io, "GLSceneGroup($(length(glscene.scenes)) Scenes, $(length(glscene.renderobjects)) render objects)")
 end
 # Base.show(io::IO, ::MIME"text/plain", group::GLScene)
 

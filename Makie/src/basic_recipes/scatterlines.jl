@@ -9,7 +9,7 @@ Plots `scatter` markers with `lines` between them.
             :nan_color,
             :fxaa, :visible, :transparency, :space, :clip_planes, :ssao, :overdraw,
             :cycle, :transformation, :model, :depth_shift, :rasterize,
-            :inspector_label, :inspectable, :zorder_shift
+            :inspector_label, :inspectable, :zorder_shift,
         )
     )...
     "The color of the line, and by default also of the scatter markers."

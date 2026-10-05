@@ -54,7 +54,7 @@ function cairo_draw(screen::Screen, root_scene::Scene)
             end
             stop_idx += 1
         end
-        scenes = view(all_scenes, start_idx : stop_idx)
+        scenes = view(all_scenes, start_idx:stop_idx)
         start_idx = stop_idx + 1
 
         # Collect and depth sort all plots within the current scene group
