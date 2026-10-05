@@ -778,6 +778,7 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
         if haskey(graph.inputs, name)
             input = graph.inputs[name]
             input.f = CycleConvert(input.f, scene.theme.palette, graph, name)
+
         end
     end
 
@@ -790,6 +791,16 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
     union!(exclude, conv_attributes)
 
     add_theme!(graph, attr, T, scene, exclude, user_kw, cycle)
+
+    # not resolving this during init can rarely change ordering.
+    # E.g. in "annotation manual", where ylims! somehow resolves cycled
+    # attributes of the annotations without the lines plot through
+    # plotlist updates, causing lines to get a different cycled color
+    for name in attrsyms(cycle)
+        if haskey(graph.inputs, name)
+            graph[name][]
+        end
+    end
 
     return
 end

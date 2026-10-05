@@ -2650,7 +2650,7 @@ end
 end
 
 @reference_test "annotation manual" begin
-    f, ax, _ = lines(0 .. 10, sin, figure = (; size = (600, 450)))
+    f, ax, p = lines(0 .. 10, sin, linewidth = 3, figure = (; size = (600, 450)))
 
     annotation!(
         ax, 0, -100, pi / 2, 1.0,
