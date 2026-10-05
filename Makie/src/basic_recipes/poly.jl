@@ -243,7 +243,7 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
             return sc
         end
     end
-        map!(plot, [:depth_shift, :stroke_depth_shift], :final_stroke_depth_shift) do base, added
+    map!(plot, [:depth_shift, :stroke_depth_shift], :final_stroke_depth_shift) do base, added
         return base + default_automatic(added, 0.0f0)
     end
     map!(plot, [:zorder_shift, :stroke_zorder_shift], :final_stroke_zorder_shift) do base, added
