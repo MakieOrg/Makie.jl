@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The Axis ticklabelspace reset after zooming/panning and double-click detection now use tick time, so they behave deterministically in `record` [#5825](https://github.com/MakieOrg/Makie.jl/pull/5825).
 - Fixed plot-list children (e.g. the parts of `annotation!` arrows) being reused in an address-dependent order, which made the draw order and SVG output differ between identical runs. [#5815](https://github.com/MakieOrg/Makie.jl/pull/5815)
 - `datashader` is much faster: with 100M points, aggregating and displaying an update went from 47 ms to 26 ms, and per-update allocations from 9.2 MiB to 11 KiB [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
 - Fixed `datashader` counting points twice at thread chunk boundaries, and erroring or writing out of bounds for points exactly at the upper axis limits [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
