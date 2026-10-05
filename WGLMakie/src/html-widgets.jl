@@ -235,12 +235,18 @@ function replace_widget!(menu::Makie.Menu)
         String[Makie.optionlabel(option) for option in collect(options)]
     end
 
+    # Text of the closed menu. It follows `i_selected` like the Makie widget does, so an
+    # options update that drops the selected entry (`i_selected = 0`) shows the prompt.
+    selected_label = map(menu.i_selected, option_labels, menu.prompt) do i, labels, prompt
+        return 1 <= i <= length(labels) ? labels[i] : prompt
+    end
+
     # Initial (server-side rendered) option list.
     dropdown_items = map(enumerate(option_labels[])) do (i, label_text)
         DOM.div(label_text; dataValue = i, class = option_class)
     end
 
-    current_label = Makie.optionlabel(initial_selection)
+    current_label = selected_label[]
     dropdown_style = Styles(
         CSS(
             "width" => "100%",
@@ -362,6 +368,7 @@ function replace_widget!(menu::Makie.Menu)
 
     $(option_labels).on(rebuild);
     $(menu.i_selected).on(update_background);
+    $(selected_label).on(label => { display.textContent = label; });
     update_background();
 
     // Close dropdown when clicking outside

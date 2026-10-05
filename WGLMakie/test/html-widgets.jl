@@ -259,7 +259,8 @@ using Electron, WGLMakie, Bonito, Test
                     values: Array.from(items).map(item => parseInt(item.dataset.value)),
                     selected: Array.from(items)
                         .filter(item => item.classList.contains('selected'))
-                        .map(item => item.textContent.trim())
+                        .map(item => item.textContent.trim()),
+                    shown: document.querySelector('.dropdown-display').textContent.trim()
                 }
             })()"""
         )
@@ -268,6 +269,7 @@ using Electron, WGLMakie, Bonito, Test
         initial = read_items()
         @test initial["count"] == 3
         @test initial["texts"] == ["Option A", "Option B", "Option C"]
+        @test initial["shown"] == "Option B"
 
         # Mutating `menu.options` must rebuild the dropdown entries in the DOM.
         # This is the core behavior the fix introduced: the completely different
@@ -278,6 +280,9 @@ using Electron, WGLMakie, Bonito, Test
         @test updated["count"] == 4
         @test updated["texts"] == ["Panel 1", "Panel 2", "Panel 3", "Panel 4"]
         @test updated["values"] == [1, 2, 3, 4]
+        # The selected "Option B" is gone, so Makie deselects and the prompt is shown
+        @test menu.i_selected[] == 0
+        @test updated["shown"] == menu.prompt[]
 
         # A newly added entry must stay interactive: event delegation keeps the
         # rebuilt options clickable, updating the Makie-side selection.
@@ -288,12 +293,14 @@ using Electron, WGLMakie, Bonito, Test
         )
         @test menu.selection[] == "Panel 4"
         @test menu.i_selected[] == 4
+        @test read_items()["shown"] == "Panel 4"
 
-        # The selected-entry highlight must track `i_selected` through the
-        # reactive link after the entries have been rebuilt.
+        # The selected-entry highlight and the shown text must track `i_selected`
+        # through the reactive link after the entries have been rebuilt.
         menu.i_selected[] = 2
         @test menu.selection[] == "Panel 2"
         @test read_items()["selected"] == ["Panel 2"]
+        @test read_items()["shown"] == "Panel 2"
     end
 
     @testset "Textbox - text entry" begin
