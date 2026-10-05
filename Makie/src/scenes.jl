@@ -220,7 +220,7 @@ mutable struct Scene <: AbstractScene
             end
         else
             idx = length(parent.children)
-            while idx > 1 && parent.children[idx].zindex > zindex
+            while idx > 0 && parent.children[idx].zindex > zindex
                 idx -= 1
             end
             insert!(parent.children, idx + 1, scene)
