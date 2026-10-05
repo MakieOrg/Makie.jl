@@ -1051,33 +1051,31 @@ linkyaxes!(axes::Vector{Axis}) = linkaxes!(:y, axes)
 linkyaxes!(a::Axis, others...) = linkaxes!(:y, [a, others...])
 
 """
-Keeps the ticklabelspace static for a short duration and then resets it to its previous
-value. If that value is Makie.automatic, the reset will trigger new
-protrusions for the axis and the layout will adjust. This is so the layout doesn't
-immediately readjust during interaction, which would let the whole layout jitter around.
+Keeps the ticklabelspace static until no interaction has happened for `reset.delay`
+seconds of tick time and then resets it to its previous value. If that value is
+Makie.automatic, the reset will trigger new protrusions for the axis and the layout
+will adjust. This is so the layout doesn't immediately readjust during interaction,
+which would let the whole layout jitter around.
 """
-function timed_ticklabelspace_reset(
-        ax::Axis, reset_timer::Ref,
-        prev_xticklabelspace::Ref, prev_yticklabelspace::Ref, threshold_sec::Real
-    )
+function freeze_ticklabelspace_until_idle!(ax::Axis, reset::TicklabelspaceReset)
+    reset.idle_time = 0.0
+    isnothing(reset.tick_listener) || return
 
-    if !isnothing(reset_timer[])
-        close(reset_timer[])
-    else
-        prev_xticklabelspace[] = ax.xticklabelspace[]
-        prev_yticklabelspace[] = ax.yticklabelspace[]
+    reset.prev_xticklabelspace = ax.xticklabelspace[]
+    reset.prev_yticklabelspace = ax.yticklabelspace[]
+    ax.xticklabelspace = Float64(ax.xaxis.attributes.actual_ticklabelspace[])
+    ax.yticklabelspace = Float64(ax.yaxis.attributes.actual_ticklabelspace[])
 
-        ax.xticklabelspace = Float64(ax.xaxis.attributes.actual_ticklabelspace[])
-        ax.yticklabelspace = Float64(ax.yaxis.attributes.actual_ticklabelspace[])
+    reset.tick_listener = on(events(ax.scene).tick) do tick
+        reset.idle_time += tick.delta_time
+        reset.idle_time >= reset.delay || return
+        Observables.off(reset.tick_listener)
+        reset.tick_listener = nothing
+        ax.xticklabelspace = reset.prev_xticklabelspace
+        ax.yticklabelspace = reset.prev_yticklabelspace
+        return
     end
-
-    return reset_timer[] = Timer(threshold_sec) do t
-        reset_timer[] = nothing
-
-        ax.xticklabelspace = prev_xticklabelspace[]
-        ax.yticklabelspace = prev_yticklabelspace[]
-    end
-
+    return
 end
 
 
