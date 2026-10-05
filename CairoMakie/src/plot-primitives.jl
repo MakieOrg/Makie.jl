@@ -63,9 +63,11 @@ function cairo_draw(screen::Screen, root_scene::Scene)
         for scene in scenes
             Makie.collect_atomic_plots(scene.plots, plots, is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
         end
-        # Resolve these early in the order we find them. Otherwise cycling order
-        # changes
-        foreach(p -> p.cycle_index[], plots)
+        # Resolve cycle indices early, in the order they exist in inside scenes.
+        # If we do this after sorting (i.e. through draw calls) the init order
+        # can be different, causing colors do change. (TODO: Maybe do this in Makie?)
+        foreach(init_cycle!, plots)
+
         sort!(plots; by = cairo_zindex)
 
         Cairo.save(screen.context)
@@ -242,4 +244,19 @@ end
 
 function draw_atomic(::Scene, ::Screen, x)
     return @warn "$(typeof(x)) is not supported by cairo right now"
+end
+
+function init_cycle!(@nospecialize(plot))
+    attr = plot.attributes::ComputeGraph
+    if haskey(attr, :cycle)
+        cycle = attr.cycle[]::Cycle
+        cycle_used = false
+        for name in Makie.attrsyms(cycle)
+            cycle_used = cycle_used || haskey(attr.inputs, name)
+        end
+        if cycle_used
+            attr.cycle_index[]
+        end
+    end
+    return
 end

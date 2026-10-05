@@ -311,7 +311,6 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         inspector_label = plot.inspector_label,
         clip_planes = plot.clip_planes,
         transformation = :nothing, # already processed in pos calculation
-        zorder_shift = 0.1 # prefer rendering after other stuff at the same depth
     )
 
     register_fast_string_boundingboxes!(tp)
@@ -383,7 +382,6 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         project_point3_to_2d = true,
         inspector_label = plot.inspector_label,
         transformation = :nothing, # already processed in bbox calculation
-        zorder_shift = 0.1 # prefer rendering after other stuff at the same depth
     )
 
     on(plot, plot.pixel_z, update = true) do z
