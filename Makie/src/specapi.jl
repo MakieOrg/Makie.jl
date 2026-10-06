@@ -678,7 +678,13 @@ function diff_plotlist!(
     # And at some point we may be able to optimize notify(list_of_observables)
     scores = IdDict{Any, Float64}()
     reusable_plots_sorted = [Pair{PlotSpec, Plot}(k, v) for (k, v) in reusable_plots]
-    sort!(reusable_plots_sorted, by = ((k, v),) -> v.cycle_index[], rev = true)
+    # Ties in cycle_index are broken by each plot's position in its parent, so that a spec
+    # reuses the plot at its own position. Iterating the IdDict alone gives an order that
+    # depends on object addresses, which made reuse, and with it the draw order, differ
+    # between otherwise identical runs (#5814).
+    parent_plots = isnothing(plotlist) ? scene.plots : plotlist.plots
+    position = IdDict{Plot, Int}(p => i for (i, p) in enumerate(parent_plots))
+    sort!(reusable_plots_sorted, by = ((k, v),) -> (v.cycle_index[], -get(position, v, 0)), rev = true)
     for (i, plotspec) in enumerate(plotspecs)
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         reused_plot, old_spec, idx = find_reusable_plot(scene, plotspec, reusable_plots_sorted, scores)

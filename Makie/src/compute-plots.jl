@@ -836,6 +836,7 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
         if haskey(graph.inputs, name)
             input = graph.inputs[name]
             input.f = CycleConvert(input.f, scene.theme.palette, graph, name)
+
         end
     end
 
@@ -848,6 +849,16 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
     union!(exclude, conv_attributes)
 
     add_theme!(graph, attr, T, scene, exclude, user_kw, cycle)
+
+    # not resolving this during init can rarely change ordering.
+    # E.g. in "annotation manual", where ylims! somehow resolves cycled
+    # attributes of the annotations without the lines plot through
+    # plotlist updates, causing lines to get a different cycled color
+    for name in attrsyms(cycle)
+        if haskey(graph.inputs, name)
+            graph[name][]
+        end
+    end
 
     return
 end
@@ -1502,14 +1513,15 @@ get_colormapping(plot::Plot) = get_colormapping(plot, plot.attributes)
 function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     isnothing(attr[:scaled_colorrange][]) && return nothing
     haskey(attr, :cb_colormapping) && return attr[:cb_colormapping][]
-
     map!(attr, [:colorrange, :raw_color], :unscaled_colorrange) do colorrange, color
         if colorrange === automatic
             return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
         elseif first(colorrange) == automatic
-            return Vec2f(first(distinct_extrema_nan(color)), last(colorrange))
+            lastcolor = last(colorrange)
+            return Vec2f(min(first(distinct_extrema_nan(color)), lastcolor), lastcolor)
         elseif last(colorrange) == automatic
-            return Vec2f(first(colorrange), last(distinct_extrema_nan(color)))
+            firstcolor = first(colorrange)
+            return Vec2f(firstcolor, max(firstcolor, last(distinct_extrema_nan(color))))
         else
             lo, hi = Vec2f(colorrange)
             lo == hi || return Vec2f(lo, hi)

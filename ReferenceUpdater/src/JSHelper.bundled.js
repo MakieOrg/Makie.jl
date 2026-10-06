@@ -151,15 +151,20 @@ function collectCheckedFiles() {
         deleteFiles
     };
 }
+var trigger_counter = 0;
 function toggleFiles(grid) {
-    const cards = Array.from(grid.children).filter((c)=>c.classList.contains('ref-card'));
-    cards.forEach((card)=>{
-        const checkbox = card.querySelector('.checkbox-input');
-        if (checkbox && card.dataset.hidden == 'false') {
-            checkbox.checked = !checkbox.checked;
-        }
-    });
-    updateSelectionCounts();
+    trigger_counter = trigger_counter + 1;
+    console.log("triggered", trigger_counter, grid);
+    if (trigger_counter % 2 == 0) {
+        const cards = Array.from(grid.children).filter((c)=>c.classList.contains('ref-card'));
+        cards.forEach((card)=>{
+            const checkbox = card.querySelector('.checkbox-input');
+            if (checkbox && card.dataset.hidden == 'false') {
+                checkbox.checked = !checkbox.checked;
+            }
+        });
+        updateSelectionCounts();
+    }
     return;
 }
 function updateSelectionCounts() {

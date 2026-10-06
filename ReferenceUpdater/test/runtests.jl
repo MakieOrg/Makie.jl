@@ -1,6 +1,7 @@
 using Test
 
 include(joinpath(@__DIR__, "..", "..", "ReferenceTests", "src", "refimage_manifest.jl"))
+include(joinpath(@__DIR__, "..", "..", "ReferenceTests", "src", "refimage_cache.jl"))
 include(joinpath(@__DIR__, "..", "..", "ReferenceTests", "src", "runtests.jl"))
 include(joinpath(@__DIR__, "..", "src", "manifest.jl"))
 
@@ -71,6 +72,55 @@ end
         @test !haskey(by_path, "GLMakie/stale.png")               # inert entry pruned
         @test by_path["CairoMakie/a.png"] == reference_hash(joinpath(refdir, "CairoMakie/a.png"))
         @test by_path["GLMakie/dropme.png"] == "delete"
+    end
+end
+
+@testset "title_image_paths" begin
+    mktempdir() do refdir
+        make_reference_tree(
+            refdir, [
+                "CairoMakie/changed.png" => "c",
+                "GLMakie/changed.png" => "g",
+                "GLMakie/Menu search/step-1.png" => "s1",
+                "GLMakie/Menu search/step-2.png" => "s2",
+                "WGLMakie/Record Video.mp4" => "v",
+                "WGLMakie/changed.png" => "w",
+            ]
+        )
+        backends = ("GLMakie", "CairoMakie", "WGLMakie")
+
+        @test title_image_paths(["changed"], backends, refdir) == ["CairoMakie/changed.png", "GLMakie/changed.png", "WGLMakie/changed.png"]
+        @test title_image_paths(["changed"], ("CairoMakie", "GLMakie"), refdir) == ["CairoMakie/changed.png", "GLMakie/changed.png"]
+        @test title_image_paths(["Menu search", "Record Video"], backends, refdir) == ["GLMakie/Menu search/step-1.png", "GLMakie/Menu search/step-2.png", "WGLMakie/Record Video.mp4"]
+        @test title_image_paths(["brand new"], ("CairoMakie", "GLMakie"), refdir) == ["CairoMakie/brand new.png", "GLMakie/brand new.png"]
+    end
+end
+
+@testset "cached_download" begin
+    mktempdir() do cache_root
+        n_fetches = Ref(0)
+        fetch!(content) = (n_fetches[] += 1; make_reference_tree(content, ["CairoMakie/a.png" => "fetch $(n_fetches[])"]))
+
+        content = cached_download(fetch!, cache_root, "v0.24.0", "sha256:aaa")
+        @test read(joinpath(content, "CairoMakie/a.png"), String) == "fetch 1"
+        @test cached_download(fetch!, cache_root, "v0.24.0", "sha256:aaa") == content
+        @test n_fetches[] == 1
+
+        write(joinpath(content, "leftover.png"), "x")
+        content = cached_download(fetch!, cache_root, "v0.24.0", "sha256:bbb")
+        @test n_fetches[] == 2
+        @test read(joinpath(content, "CairoMakie/a.png"), String) == "fetch 2"
+        @test !isfile(joinpath(content, "leftover.png"))
+
+        @test_throws "interrupted" cached_download(_ -> error("interrupted"), cache_root, "v0.24.0", "sha256:ccc")
+        cached_download(fetch!, cache_root, "v0.24.0", "sha256:ccc")
+        @test n_fetches[] == 3
+
+        cached_download(fetch!, cache_root, "v0.25.0", "sha256:ddd")
+        @test readdir(cache_root) == ["v0.24.0", "v0.25.0"]
+        cached_download(fetch!, cache_root, "v0.25.0", "sha256:ddd"; now = time() + 31 * 24 * 60 * 60)
+        @test readdir(cache_root) == ["v0.25.0"]
+        @test n_fetches[] == 5
     end
 end
 
