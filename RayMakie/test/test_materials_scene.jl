@@ -7,9 +7,6 @@ using GeometryBasics, Hikari
 using Colors
 using RayMakie
 using Makie
-# `Raycore.KA.CPU()` is the default backend for every entry point below, but the
-# import was missing — the file depended on whatever harness ran it having
-# imported Raycore already. Same failure shape as denoise.jl's unbound `KA`.
 using Raycore
 
 """
@@ -85,7 +82,7 @@ function create_test_materials_scene(; size=(400, 300))
 end
 
 """
-    test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
+    test_render_materials(; backend=RayMakie.Mantle.defaultbackend(), samples=1)
 
 Test rendering the materials scene with the given backend.
 
@@ -99,7 +96,7 @@ and it is what made the sphere in test_window_frame.jl come out white and
 invisible when that file ran in the suite and orange when it ran alone.
 Per-call config leaks nothing and needs no restoring.
 """
-function test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
+function test_render_materials(; backend=RayMakie.Mantle.defaultbackend(), samples=1)
     scene = create_test_materials_scene()
     # This file once drifted across three API moves at once, which is why it
     # errored on its first line and sat outside runtests.jl: `Hikari.FilmSensor`
@@ -123,8 +120,10 @@ end
         Dict(k => t[k][] for k in (:device, :exposure, :tonemap, :gamma))
     end
 
-    @testset "CPU Array backend" begin
-        img = test_render_materials(backend=Raycore.KA.CPU(), samples=1)
+    # On the GPU: Mantle has had no host device since 5c2d4c6, and a CPU
+    # backend renders nothing here (`Device(::KA.CPU)` has no method).
+    @testset "GPU backend" begin
+        img = test_render_materials(samples=1)
         @test size(img) == (300, 400)
         @test eltype(img) <: Colorant
     end
@@ -140,6 +139,6 @@ end
 # Can be run standalone to test
 if abspath(PROGRAM_FILE) == @__FILE__
     println("Running materials scene test...")
-    @time test_render_materials(backend=Raycore.KA.CPU(), samples=1)
+    @time test_render_materials(samples=1)
     println("Test completed successfully!")
 end
