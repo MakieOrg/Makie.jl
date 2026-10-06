@@ -684,7 +684,13 @@ function diff_plotlist!(
     # between otherwise identical runs (#5814).
     parent_plots = isnothing(plotlist) ? scene.plots : plotlist.plots
     position = IdDict{Plot, Int}(p => i for (i, p) in enumerate(parent_plots))
-    sort!(reusable_plots_sorted, by = ((k, v),) -> (v.cycle_index[], -get(position, v, 0)), rev = true)
+    function sortby((k, v))
+        # The plot did not cycle any attributes if cycle_index has not been initialized
+        cycle_idx = ComputePipeline.is_initialized(v.cycle_index) ? v.cycle_index[] : 0
+        return (cycle_idx, -get(position, v, 0))
+    end
+    sort!(reusable_plots_sorted, by = sortby, rev = true)
+
     for (i, plotspec) in enumerate(plotspecs)
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         reused_plot, old_spec, idx = find_reusable_plot(scene, plotspec, reusable_plots_sorted, scores)

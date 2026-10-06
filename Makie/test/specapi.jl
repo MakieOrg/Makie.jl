@@ -123,7 +123,8 @@ end
         specs = [S.Lines([Point2f(0, i), Point2f(1, i)]; cycle = []) for i in 1:n]
         plots = Makie.diff_plotlist!(scene, specs)
         order = copy(scene.plots)
-        @test allequal(p -> p.cycle_index[], order)   # all tied: only the tie-break decides
+        # all tied: only the tie-break decides
+        @test all(p -> !Makie.ComputePipeline.is_initialized(p.cycle_index), order)
         # new data scores the same against every old plot, so each spec takes the plot at
         # its own position
         specs2 = [S.Lines([Point2f(0, -i), Point2f(1, -i)]; cycle = []) for i in 1:n]
