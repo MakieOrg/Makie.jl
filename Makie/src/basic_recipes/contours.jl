@@ -79,11 +79,91 @@ with z-elevation for each level.
     documented_attributes(Contour)...
 end
 
+"""
+    label_info(lev, vertices)
+
+Return the points `(before, at, after)` of a contour line's label as `Point3f`s
+with the level as z. `at` is the label position, `after - before` its direction.
+An open line is labeled at the middle by arc length of its longest finite piece,
+a closed loop at its top, the vertex with the largest y (the middle of the top
+edge if that is flat). The result does not depend on the start point or direction
+of the line.
+"""
 function label_info(lev, vertices)
-    mid = ceil(Int, 0.5f0 * length(vertices))
-    # take 3 pts around half segment
-    pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
-    return tuple(to_ndim.(Point3f, pts, lev)...)
+    before, at, after = label_anchor(Point2d.(vertices))
+    first_neighbor, second_neighbor = minmax_by_tuple(before, after)
+    return to_ndim.(Point3f, (first_neighbor, at, second_neighbor), lev)
+end
+
+minmax_by_tuple(a, b) = isless(Tuple(b), Tuple(a)) ? (b, a) : (a, b)
+
+is_finite_point(p) = all(isfinite, p)
+
+is_closed_line(vertices) = length(vertices) > 2 && first(vertices) == last(vertices)
+
+function label_anchor(vertices)
+    is_closed_line(vertices) || return longest_piece_middle_anchor(vertices)
+    cycle = vertices[begin:(end - 1)]
+    gap = findfirst(!is_finite_point, cycle)
+    gap === nothing && return loop_top_anchor(cycle)
+    return longest_piece_middle_anchor(rotate_cycle(cycle, gap))
+end
+
+function longest_piece_middle_anchor(vertices)
+    pieces = [view(vertices, run) for run in finite_runs(vertices)]
+    filter!(piece -> arc_length(piece) > 0, pieces)
+    isempty(pieces) && return ntuple(_ -> Point2d(NaN), 3)
+    anchors = arc_length_middle_anchor.(pieces)
+    longest = argmin(i -> (-arc_length(pieces[i]), Tuple(anchors[i][2])), eachindex(pieces))
+    return anchors[longest]
+end
+
+function finite_runs(vertices)
+    runs = UnitRange{Int}[]
+    run_start = nothing
+    for i in eachindex(vertices)
+        if !is_finite_point(vertices[i])
+            run_start === nothing || push!(runs, run_start:(i - 1))
+            run_start = nothing
+        elseif run_start === nothing
+            run_start = i
+        end
+    end
+    run_start === nothing || push!(runs, run_start:lastindex(vertices))
+    return runs
+end
+
+segment_lengths(piece) = [norm(b - a) for (a, b) in zip(piece[begin:(end - 1)], piece[(begin + 1):end])]
+
+arc_length(piece) = sum(segment_lengths(piece); init = 0.0)
+
+function arc_length_middle_anchor(piece)
+    cumulative = cumsum(segment_lengths(piece))
+    half = last(cumulative) / 2
+    k = findfirst(>=(half), cumulative)
+    segment_start = k == 1 ? 0.0 : cumulative[k - 1]
+    t = (half - segment_start) / (cumulative[k] - segment_start)
+    a, b = piece[k], piece[k + 1]
+    t == 1 && return (a, b, piece[k + 2])
+    return (a, a + t * (b - a), b)
+end
+
+function loop_top_anchor(cycle)
+    top_y = maximum(p -> p[2], cycle)
+    is_top(i) = cycle[mod1(i, length(cycle))][2] == top_y
+    leftmost_top = argmin(i -> Tuple(cycle[i]), filter(is_top, eachindex(cycle)))
+
+    run_start, run_stop = leftmost_top, leftmost_top
+    while is_top(run_start - 1) && run_stop - run_start + 1 < length(cycle)
+        run_start -= 1
+    end
+    while is_top(run_stop + 1) && run_stop - run_start + 1 < length(cycle)
+        run_stop += 1
+    end
+
+    run_with_neighbors = [cycle[mod1(i, length(cycle))] for i in (run_start - 1):(run_stop + 1)]
+    run_start == run_stop && return Tuple(run_with_neighbors)
+    return arc_length_middle_anchor(run_with_neighbors[(begin + 1):(end - 1)])
 end
 
 function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d, Contour}}
