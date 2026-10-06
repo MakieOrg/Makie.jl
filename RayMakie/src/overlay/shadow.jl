@@ -15,13 +15,23 @@
 # what casts, and move in whole texels: fitted afresh each frame with a size
 # that followed the camera, every edge crawled as it moved.
 
-shadow_vertex(positions, faces, model::Mat4f, light_space::Mat4f) =
-    shadow_vertex(VertexIndex(vertex_index()), positions, faces, model, light_space)
+shadow_vertex(positions, faces, model::Mat4f, light_space::Mat4f,
+              instance_positions, instance_rotations, instance_scales,
+              f32c_scale::Vec3f, transform_marker::Int32) =
+    shadow_vertex(VertexIndex(vertex_index()), positions, faces, model, light_space,
+                  instance_positions, instance_rotations, instance_scales, f32c_scale, transform_marker)
 
-function shadow_vertex(vertexid::VertexIndex, positions, faces, model::Mat4f, light_space::Mat4f)
+# Placed as the mesh stage places it (`instance_place`), so an instanced mesh
+# casts every instance's shadow.
+function shadow_vertex(vertexid::VertexIndex, positions, faces, model::Mat4f, light_space::Mat4f,
+                       instance_positions, instance_rotations, instance_scales,
+                       f32c_scale::Vec3f, transform_marker::Int32)
     @inbounds vi = Int32(faces[vertexid.value])
     @inbounds p = positions[vi]
-    return (position = gl_to_clip_depth(light_space * (model * Vec4f(p[1], p[2], p[3], 1f0))),)
+    world, _ = instance_place(Vec3f(p[1], p[2], p[3]), Vec3f(0f0, 0f0, 0f0), instance_index(), model,
+                              instance_positions, instance_rotations, instance_scales,
+                              f32c_scale, transform_marker)
+    return (position = gl_to_clip_depth(light_space * world),)
 end
 
 # Writes no attachment: the depth test is the whole pass.
@@ -278,14 +288,17 @@ shadow_signature(shadow) = (shadow.sun === nothing ? 0 : shadow.sun.res,
                             map(objectid, shadow.casters))
 
 shadow_args(robj, light_space) =
-    (robj.buffers[:raster_positions], robj.buffers[:raster_faces], robj.uniforms[:model]::Mat4f, light_space)
+    (robj.buffers[:raster_positions], robj.buffers[:raster_faces], robj.uniforms[:model]::Mat4f, light_space,
+     robj.buffers[:instance_positions], robj.buffers[:instance_rotations], robj.buffers[:instance_scales],
+     robj.uniforms[:f32c_scale]::Vec3f, robj.uniforms[:transform_marker]::Int32)
 
 shadow_cells(dev, jobs) =
-    Mantle.DrawBinding[Mantle.DrawBinding(dev, shadow_args(robj, m), robj.vertex_count) for (robj, m, _, _) in jobs]
+    Mantle.DrawBinding[Mantle.DrawBinding(dev, shadow_args(robj, m), robj.vertex_count; instances = robj.instances)
+                       for (robj, m, _, _) in jobs]
 
 function rebind_shadow_cells!(cells, dev, jobs)
     for (cell, (robj, m, _, _)) in zip(cells, jobs)
-        Mantle.rebind!(cell, dev, shadow_args(robj, m), robj.vertex_count)
+        Mantle.rebind!(cell, dev, shadow_args(robj, m), robj.vertex_count; instances = robj.instances)
     end
     return nothing
 end
