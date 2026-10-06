@@ -332,6 +332,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     )
 
     if owns_glscreen
+        GLFW.SetWindowRefreshCallback(window, refreshwindowcb(screen))
         GLFW.SetWindowContentScaleCallback(window, scalechangecb(screen))
     end
 
@@ -738,6 +739,7 @@ function destroy!(screen::Screen)
     if GLAbstraction.context_alive(window)
         close(screen; reuse = false)
         if screen.owns_glscreen
+            GLFW.SetWindowRefreshCallback(window, nothing)
             GLFW.SetWindowContentScaleCallback(window, nothing)
         end
     else
@@ -992,6 +994,25 @@ end
 function set_framerate!(screen::Screen, fps = 30)
     return screen.config.framerate = fps
 end
+
+function refreshwindowcb(screen, window)
+    # On Windows and macOS, GLFW.PollEvents() blocks while the user moves or resizes the
+    # window, so the renderloop can't run. GLFW calls this callback from inside that blocked
+    # poll and it is the only chance to redraw at the new size (see the GLFW docs on
+    # glfwPollEvents). On X11 and Wayland event processing never blocks and the callback
+    # fires for every damage/configure event, so rendering here only duplicates (and
+    # delays) the renderloop. Just ask for a redraw there.
+    if GLFW.GetPlatform() in (GLFW.PLATFORM_WIN32, GLFW.PLATFORM_COCOA)
+        screen.render_tick[] = Makie.BackendTick
+        poll_updates(screen)
+        render_frame(screen)
+        GLFW.SwapBuffers(window)
+    else
+        screen.requires_update = true
+    end
+    return
+end
+refreshwindowcb(screen) = window -> refreshwindowcb(screen, window)
 
 function scalechangecb(screen, window, xscale, yscale)
     sf = min(xscale, yscale)
