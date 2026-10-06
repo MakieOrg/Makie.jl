@@ -370,7 +370,7 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         shading = NoShading,
         # stroke_alpha = plot.stroke_alpha, # TODO: doesn't exist in poly
         alpha = plot.alpha,
-        # should disambiguate these in 3D, but we currently only do 2D
+        # should separate these for 3D, but we currently only support 2D
         stroke_depth_shift = plot.depth_shift,
         depth_shift = plot.depth_shift,
         fxaa = plot.fxaa,

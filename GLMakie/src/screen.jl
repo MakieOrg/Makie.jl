@@ -550,7 +550,6 @@ end
 
 function Makie.insertplots!(screen::Screen, scene::Scene)
     gl_switch_context!(screen.glscreen)
-    # add_scene!(screen, scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
@@ -611,6 +610,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         cplot === plot && continue # don't delete the plot itself
         delete!(screen, scene, cplot)
     end
+
     # I think we can double delete renderobjects, so this may be ok
     # TODO, is it?
     if haskey(plot, :gl_renderobject)
@@ -630,12 +630,22 @@ function Base.empty!(screen::Screen)
     # we should never just "empty" an already destroyed screen
     @assert !was_destroyed(screen.glscreen)
 
+    # destroy all renderobjects
+    # removes all renderobjects from render context
+    # removes all gl_renderobject plot compute graphs
     for plot in collect(values(screen.cache2plot))
         delete!(screen, Makie.rootparent(plot), plot)
     end
 
-    empty!(screen.render_context)
+    # disconnected scene -> requires_update callbacks
+    # removes all scenes, scene groups, renderobjects (redundant) from render context
+    unsafe_empty!(screen.render_context)
 
+    # Detaches root scene from screen
+    # delete!'s every scene:
+    # - deleting all of its plots (redundant)
+    # - deleting it from render context (redundant)
+    # - removing this screen from scene.current_screens (still needed?)
     if !isnothing(screen.scene)
         Makie.disconnect_screen(screen.scene, screen)
         delete!(screen, screen.scene)

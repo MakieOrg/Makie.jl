@@ -79,7 +79,7 @@ translate!(ax_inset.blockscene, 0, 0, 150)
 ```
 
 !!! note
-    This is no longer necessary in Makie 0.25+
+    Translating `ax_inset.blockscene` is no longer necessary in Makie 0.25+.
 
 ### 7. Add a Legend
 

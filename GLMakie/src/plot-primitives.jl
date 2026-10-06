@@ -8,7 +8,6 @@ draw_atomic(::Screen, ::Scene, ::PlotList) = nothing
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     gl_switch_context!(screen.glscreen)
-    # add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)

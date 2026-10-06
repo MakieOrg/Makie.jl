@@ -103,7 +103,7 @@ So a plot can be both in front of and behind another plot.
 
 The per pixel depth is a result of interpolating the plots coordinates (typically given as arguments), its transformations (transform function, model transformations), camera matrices (i.e. the perspective the plot is seen from) and the `depth_shift` attribute.
 The latter is meant to resolve overlap issues (z-fighting) by nudging a plots depth values closer to the viewer (negative) or further away (positive).
-If the final depth value falls outside a 0 .. 1 range the plot is clipped, meaning that the pixel wont be drawn.
+If the final depth value falls outside a 0 .. 1 range the plot is clipped, meaning that the pixel won't be drawn.
 
 ```@figure backend=GLMakie
 scene = Scene(backgroundcolor = :gray, clear = true, size = (300, 300), camera = campixel!)

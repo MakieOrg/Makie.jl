@@ -16,7 +16,7 @@ base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
 
 # Package = "CairoMakie"
 # n_samples = 2
-base_branch = "ff/breaking-0.25"
+# base_branch = "breaking-release"
 
 @info("Benchmarking $(Package) against $(base_branch) with $(n_samples) samples")
 

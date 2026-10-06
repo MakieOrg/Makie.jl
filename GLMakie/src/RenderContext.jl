@@ -1,9 +1,17 @@
+# A scene group always starts with a clear = true scene and contains all
+# clear = false scenes until the next clear = true scene (which begin the next
+# group). These scenes in a group make up a continuous view of the back to front
+# ordered list of all scenes.
+# If no clear = true scene exists in the scene tree, there will be exactly one
+# scene group containing all scenes.
+# All renderobjects associated with the scenes of a SceneGroup are inside the
+# group. The integer they are paired with referes back to the scene in scenes.
 struct GLSceneGroup
     # This does not need to be a WeakRef because
-    # 1. child scene cleanup no longer relies on GC. If a child scene is removed
-    # from the scene tree on the Makie side it must be explicitly removed in the
-    # backend as well to ensure they stay in sync.
-    # 2. The root scene is also kept in `Screen` as a direct reference, so it
+    # 1. The child scene cleanup no longer relies on GC. Instead it now happens
+    # explicitly and immediately when the scene is removed via empty! or delete!.
+    # To keep backends in sync, this also triggers cleanup in backends immediately.
+    # 2. The root scene is kept in `Screen` as a direct reference, so it
     # can not be cleaned up through GC alone. It is only detached by
     # `empty!(screen)` which also clears the full render context
     scenes::Vector{Scene}
@@ -14,7 +22,6 @@ end
 function Base.show(io::IO, glscene::GLSceneGroup)
     return print(io, "GLSceneGroup($(length(glscene.scenes)) Scenes, $(length(glscene.renderobjects)) render objects)")
 end
-# Base.show(io::IO, ::MIME"text/plain", group::GLScene)
 
 GLSceneGroup() = GLSceneGroup(Scene[], Vector{ObserverFunction}[], RenderObject[])
 
@@ -76,6 +83,18 @@ function delete_scene!(group::GLSceneGroup, scene::Scene)
     return false
 end
 
+function unsafe_empty!(group::GLSceneGroup)
+    for obsfuncs in group.obsfuncs
+        foreach(off, obsfuncs)
+    end
+
+    empty!(group.scenes)
+    empty!(group.obsfuncs)
+    empty!(group.renderobjects)
+
+    return false
+end
+
 # Just deletes tracking. OpenGL destruction happens up the call stack
 function delete_robj!(group::GLSceneGroup, robj::RenderObject)
     filter!(x -> x[2] !== robj, group.renderobjects)
@@ -85,13 +104,9 @@ end
 ################################################################################
 
 struct RenderContext
-    # Needed for plot (and scene?) insertion?
-    # Needed for scene insertion?
-    # Is objectid ok?
-    # GC'd scenes call delete!(screen, scene), which cleans up entries here.
-    # Even if an entry remains past GC, it should only be addressed with scenes
-    # that have been added before, which overwrites/updates id collisions.
-    # And even if that doesn't work, we check scene equality in scenes
+    # Identifies the group, by index, which the objectid of a scene related to.
+    # Note: Since scene deletion updates this it should be ok to use Scenes as
+    # keys as well.
     scene2group::Dict{UInt64, Int}
 
     # sorted back (first) to front (last)
@@ -118,8 +133,11 @@ function Base.show(io::IO, ::MIME"text/plain", ctx::RenderContext)
     return io
 end
 
-function Base.empty!(ctx::RenderContext)
+# We don't take care of cleaning up render objects here!
+# The root scene should probably also be detached outside.
+function unsafe_empty!(ctx::RenderContext)
     empty!(ctx.scene2group)
+    foreach(unsafe_empty!, ctx.groups)
     empty!(ctx.groups)
     return
 end
