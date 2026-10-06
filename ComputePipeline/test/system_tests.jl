@@ -317,3 +317,44 @@ using ComputePipeline: MapFunctionWrapper
 
     end
 end
+
+# A slot is typed by its first value, and the typed edges around it captured
+# that `RefValue`. A value of another type gets a new slot and those edges are
+# rebuilt (`store!`). A plot's `color` going from one colour to one per element
+# is the case that found it: every node downstream failed to convert, for good.
+@testset "a value of another type re-types the slot" begin
+    graph = ComputeGraph()
+    add_input!(graph, :color, 1.0)
+    map!(x -> x .* 2, graph, :color, :scaled)
+    map!(x -> (x, typeof(x)), graph, :scaled, :info)
+    @test graph[:info][] == (2.0, Float64)
+    graph.color = [1.0, 2.0]
+    @test graph[:info][] == ([2.0, 4.0], Vector{Float64})
+    graph.color = 3.0
+    @test graph[:info][] == (6.0, Float64)
+    graph.color = Float32[5, 6]
+    @test graph[:info][] == (Float32[10, 12], Vector{Float32})
+
+    # One output of a multi-output edge changing type, read by an edge that
+    # reads both outputs.
+    g2 = ComputeGraph()
+    add_input!(g2, :x, 1)
+    register_computation!(g2, [:x], [:a, :b]) do (x,), changed, cached
+        return (x, x isa Int ? "int" : :sym)
+    end
+    map!((a, b) -> string(a, "/", b), g2, [:a, :b], :c)
+    @test g2[:c][] == "1/int"
+    g2.x = 2.5
+    @test g2[:c][] == "2.5/sym"
+    g2.x = 3
+    @test g2[:c][] == "3/int"
+
+    # A slot declared wider keeps its type.
+    g3 = ComputeGraph()
+    add_input!(g3, :v, 1)
+    map!(identity, g3, :v, :w)
+    ComputePipeline.set_type!(g3.w, Union{Int, Float64})
+    g3.v = 2.0
+    @test g3[:w][] == 2.0
+    @test eltype(g3.w) == Union{Int, Float64}
+end
