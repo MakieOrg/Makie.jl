@@ -37,32 +37,46 @@ function Makie.disconnect!(window::GLFW.Window, ::typeof(window_open))
     return GLFW.SetWindowCloseCallback(window, nothing)
 end
 
-mutable struct WindowResizeUpdater
-    scene::Scene
+mutable struct WindowResizeUpdater <: Function
     screen::Screen
-    new_size::Tuple{Cint, Cint}
-    need_update::Bool
+    window_area::Observable{Rect2i}
+    pending::Union{Nothing, Tuple{Cint, Cint}}
 end
 
-function (wru::WindowResizeUpdater)(::Makie.TickState)
-    !wru.need_update && return
-    wru.need_update = false
+function (u::WindowResizeUpdater)(::GLFW.Window, width::Cint, height::Cint)
+    # GLFW.PollEvents() delivers every queued size event of a drag in one call, and each
+    # window_area update re-solves the layout. Only remember the latest size here and
+    # apply it once per render tick.
+    u.pending = (width, height)
+    return
+end
 
-    area = wru.scene.events.window_area
-    winscale = wru.screen.scalefactor[]
-    width, height = wru.new_size
-    window = to_native(wru.screen)
+function (u::WindowResizeUpdater)(::Makie.TickState)
+    isnothing(u.pending) && return Consume(false)
+    width, height = u.pending
+    u.pending = nothing
+
+    window = to_native(u.screen)
+    winscale = u.screen.scalefactor[]
     gl_switch_context!(window)
     if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)
         winscale /= scale_factor(window)
     end
     winw, winh = round.(Int, (width, height) ./ winscale)
+    area = u.window_area
     if Vec(winw, winh) != widths(area[])
-        area[] = Recti(minimum(area[]), winw, winh)
+        @print_error area[] = Recti(minimum(area[]), winw, winh)
     end
     return Consume(false)
 end
 
+"""
+Registers a callback for the window size.
+Updates `scene.events.window_area::Observable{Rect2i}`, which is in Makie units (window
+pixels divided by the scale factor). Size events received during a frame are coalesced and
+the latest size is applied once per render tick, before the mouse position is updated.
+[GLFW Docs](https://www.glfw.org/docs/latest/group__window.html#gaaca1c2715759d03da9834eac19323d4a)
+"""
 function Makie.window_area(scene::Scene, screen::Screen)
     disconnect!(screen, window_area)
 
@@ -71,14 +85,6 @@ function Makie.window_area(scene::Scene, screen::Screen)
     props = MonitorProperties(monitor)
     scene.events.window_dpi[] = minimum(props.dpi)
 
-    window = to_native(screen)
-    initial_size = Cint.(window_size(window))
-    updater = WindowResizeUpdater(scene, screen, initial_size, true)
-    function windowsizecb(width::Cint, height::Cint)
-        updater.new_size = (width, height)
-        updater.need_update = true
-        return
-    end
     # TODO put back window position, but right now it makes more trouble than it helps
     #function windowposcb(window, x::Cint, y::Cint)
     #    area = scene.events.window_area
@@ -91,10 +97,15 @@ function Makie.window_area(scene::Scene, screen::Screen)
     #    return
     #end
 
-    GLFW.SetWindowSizeCallback(window, (win, w, h) -> windowsizecb(w, h))
+    window = to_native(screen)
+    updater = WindowResizeUpdater(screen, scene.events.window_area, nothing)
+    GLFW.SetWindowSizeCallback(window, updater)
     #GLFW.SetWindowPosCallback(window, (win, x, y) -> windowposcb(win, x, y))
+    on(updater, screen.render_tick, priority = typemax(Int))
 
-    on(updater, scene, screen.render_tick, priority = typemax(Int))
+    # apply the current size right away so window_area is valid before the first tick
+    updater(window, Cint.(window_size(window))...)
+    updater(Makie.BackendTick)
     return
 end
 
@@ -102,7 +113,7 @@ function Makie.disconnect!(screen::Screen, ::typeof(window_area))
     window = to_native(screen)
     #GLFW.SetWindowPosCallback(window, nothing)
     GLFW.SetWindowSizeCallback(window, nothing)
-    filter!(wru -> !isa(wru[2], WindowResizeUpdater), screen.render_tick.listeners)
+    filter!(p -> !isa(p[2], WindowResizeUpdater), screen.render_tick.listeners)
     return
 end
 function Makie.disconnect!(::GLFW.Window, ::typeof(window_area))
