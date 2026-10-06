@@ -50,3 +50,34 @@ using Makie: label_info
         @test isequal(label_info(2, [(1.0, 1.0), (1.0, 1.0)]), no_label)
     end
 end
+
+@testset "contour label gap" begin
+    box = Rect2d(-1.5, -1, 3, 2)
+    masked(line, center, angle) = Makie.label_gap_masked_line(line, line, center, angle, box)
+
+    @testset "line is cut exactly at the label box" begin
+        line = Point2f.(0:10, 0)
+        expected = Point2f[(0, 0), (1, 0), (2, 0), (3, 0), (3.5, 0), (NaN, NaN), (6.5, 0), (7, 0), (8, 0), (9, 0), (10, 0)]
+        @test isequal(masked(line, Point2f(5, 0), 0.0), expected)
+    end
+
+    @testset "segment crossing the whole label box is cut" begin
+        line = Point2f[(0, 0), (10, 0)]
+        @test isequal(masked(line, Point2f(5, 0), 0.0), Point2f[(0, 0), (3.5, 0), (NaN, NaN), (6.5, 0), (10, 0)])
+    end
+
+    @testset "rotated label box" begin
+        line = Point2f[(0, 0), (4, 4)]
+        result = masked(line, Point2f(2, 2), pi / 4)
+        offset = 1.5 / sqrt(2)
+        @test result[[1, 5]] == line
+        @test isnan(result[3])
+        @test result[2] ≈ Point2f(2 - offset, 2 - offset)
+        @test result[4] ≈ Point2f(2 + offset, 2 + offset)
+    end
+
+    @testset "line ending inside the label box" begin
+        line = Point2f[(0, 0), (4, 0), (5, 0), (NaN, NaN)]
+        @test isequal(masked(line, Point2f(5, 0), 0.0), Point2f[(0, 0), (3.5, 0), (NaN, NaN)])
+    end
+end

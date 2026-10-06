@@ -344,6 +344,86 @@ function repeat_level_data_per_vertex(counts, x::AbstractVector{T}) where {T}
     return output
 end
 
+"""
+    register_label_frame_boxes!(texts::Text)
+
+Register `:label_frame_boxes`, the unrotated bounding box of each string relative
+to its position, i.e. in the frame of the rotated label.
+"""
+function register_label_frame_boxes!(texts)
+    register_raw_glyph_boundingboxes!(texts)
+    map!(
+        texts.attributes,
+        [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation],
+        :label_frame_boxes
+    ) do blocks, glyph_boxes, origins, rotations
+        return map(blocks) do glyph_indices
+            isempty(glyph_indices) && return Rect2d(Point2d(NaN), Vec2d(0))
+            return mapreduce(union, glyph_indices) do i
+                unrotated_origin = inv(rotations[i]) * to_ndim(Vec3d, origins[i], 0)
+                return Rect2d(glyph_boxes[i]) + Point2d(unrotated_origin[1], unrotated_origin[2])
+            end
+        end
+    end
+    return texts.label_frame_boxes
+end
+
+pad_label_box(box, padding = 0.2 * widths(box)[2]) = Rect2d(minimum(box) .- padding, widths(box) .+ 2padding)
+
+"""
+    label_gap_masked_line(line, pixel_line, center, angle, box)
+
+Cut the part of `line` out that lies inside `box`, the label box in the frame of a
+label at `center` rotated by `angle`. Positions are compared in pixel space via
+`pixel_line`, and the line is cut exactly at the box edges, so the gap does not
+depend on where the vertices of the line are.
+"""
+function label_gap_masked_line(line, pixel_line, center, angle, box)
+    local_line = to_label_frame.(pixel_line, Ref(center), angle)
+
+    masked = empty(line)
+    push_gap!() = (isempty(masked) || isnan(last(masked))) || push!(masked, eltype(line)(NaN))
+    for i in eachindex(line, local_line)
+        if i > firstindex(line)
+            t_enter, t_exit = segment_box_overlap(local_line[i - 1], local_line[i], box)
+            if t_enter < t_exit
+                a, b = line[i - 1], line[i]
+                t_enter > 0 && push!(masked, a + t_enter * (b - a))
+                push_gap!()
+                t_exit < 1 && push!(masked, a + t_exit * (b - a))
+            end
+        end
+        if is_inside_box(local_line[i], box) || !is_finite_point(line[i])
+            push_gap!()
+        else
+            push!(masked, line[i])
+        end
+    end
+    return masked
+end
+
+function to_label_frame(p, center, angle)
+    dx, dy = p[1] - center[1], p[2] - center[2]
+    return Point2d(cos(angle) * dx + sin(angle) * dy, cos(angle) * dy - sin(angle) * dx)
+end
+
+is_inside_box(p, box) = all(minimum(box) .< p .< maximum(box))
+
+function segment_box_overlap(a, b, box)
+    t_enter, t_exit = 0.0, 1.0
+    direction = b - a
+    for k in 1:2
+        low, high = minimum(box)[k] - a[k], maximum(box)[k] - a[k]
+        if direction[k] == 0
+            low < 0 < high || return (1.0, 0.0)
+        else
+            t1, t2 = minmax(low / direction[k], high / direction[k])
+            t_enter, t_exit = max(t_enter, t1), min(t_exit, t2)
+        end
+    end
+    return t_enter, t_exit
+end
+
 function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     map!(nan_extrema, plot, :converted_3, :zrange)
     map!(plot, [:levels, :zrange], :zlevels) do levels, zrange
@@ -381,9 +461,6 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     map!(plot, [:elements_per_segment, :level_colors, :labels], :computed_lbl_colors) do counts, colors, labels
         return labels ? [colors[i] for (i, _) in counts] : RGBAf[]
     end
-
-    map!(repeat_level_data_per_vertex, plot, [:elements_per_segment, :level_colors], :contour_colors)
-    map!(repeat_level_data_per_vertex, plot, [:elements_per_segment, :linewidth], :contour_linewidth)
 
     # TODO:
     # Should we make yes/no labels a constructor-time decisions so we can avoid
@@ -428,57 +505,50 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         transform_marker = false
     )
 
-    register_string_boundingboxes!(texts)
-    add_input!(plot.attributes, :string_boundingboxes, texts.string_boundingboxes)
-
-    P = T <: Contour ? Point2f : Point3f
+    register_markerspace_positions!(texts)
+    register_label_frame_boxes!(texts)
+    add_input!(plot.attributes, :label_pixel_positions, texts.markerspace_positions)
+    add_input!(plot.attributes, :label_frame_boxes, texts.label_frame_boxes)
 
     pixel_pos_node = register_projected_positions!(plot, Point2f, input_name = :contour_points, output_space = :pixel)
 
     map!(
         plot,
-        [:labels, :string_boundingboxes, :contour_points, :elements_per_segment],
-        :masked_lines
-    ) do use_labels, bboxes, segments, elements_per_segment
-        use_labels || return segments
+        [:labels, :label_pixel_positions, :label_frame_boxes, :text_rotation, :contour_points, :elements_per_segment],
+        [:masked_lines, :masked_elements_per_segment]
+    ) do use_labels, centers, boxes, angles, segments, elements_per_segment
+        use_labels || return segments, elements_per_segment
 
         # To avoid always projecting, pull these in indirectly.
-        # string boundingboxes will already update on everything that could trigger
+        # label positions will already update on everything that could trigger
         # pixel_contour_points, so this should be fine
         pixel_pos = pixel_pos_node[]
 
-        masked = copy(segments)
-        nan = P(NaN32)
+        masked = empty(segments)
+        masked_elements_per_segment = empty(elements_per_segment)
         start = 0
         for (n, (level, N_points)) in enumerate(elements_per_segment)
             current_range = start .+ (1:N_points)
+            line = view(segments, current_range)
 
             # simple heuristic to turn off masking segments when it has few
             # points, to avoid removing short contour lines entirely.
             if count(!isnan, view(pixel_pos, current_range)) >= 10
-                bb = Rect2(bboxes[n])
-
-                for i in current_range
-                    if pixel_pos[i] in bb
-                        masked[i] = nan
-                        for dir in (-1, +1)
-                            j = i
-                            while true
-                                j += dir
-                                checkbounds(Bool, segments, j) || break
-                                pixel_pos[j] in bb || break
-                                masked[j] = nan
-                            end
-                        end
-                    end
-                end
+                box = pad_label_box(boxes[n])
+                center = Point2f(centers[n])
+                line = label_gap_masked_line(line, view(pixel_pos, current_range), center, angles[n], box)
             end
+            append!(masked, line)
+            push!(masked_elements_per_segment, level => length(line))
 
             start += N_points
         end
 
-        return masked
+        return masked, masked_elements_per_segment
     end
+
+    map!(repeat_level_data_per_vertex, plot, [:masked_elements_per_segment, :level_colors], :contour_colors)
+    map!(repeat_level_data_per_vertex, plot, [:masked_elements_per_segment, :linewidth], :contour_linewidth)
 
 
     lines!(
