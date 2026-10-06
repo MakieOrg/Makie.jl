@@ -177,19 +177,60 @@ The function resolves the inherited attributes and returns the final set of defa
 
 #### Axis Utilities
 
-You can control which kind of axis is used for the plot by defining
+You can control which kind of axis is used for a given plot and/or set of arguments by defining a method of `preferred_axis_type()`.
+There are various methods Makie will try to call.
+The first one that succeeds (does not return nothing) will set the axis type.
+In the order they are tried in, the methods are:
+
+1. `Makie.preferred_axis_type(::Plot, input_args...)`
+2. `Makie.preferred_axis_type(::Type{<: Plot}, input_args...)`
+3. `Makie.preferred_axis_type(::Plot, converted_args...)`
+4. `Makie.preferred_axis_type(::Type{<: Plot}, converted_args...)`
+5. `Makie.preferred_axis_type(::Plot)`
+6. `Makie.preferred_axis_type(::Type{<: Plot})`
+7. `Makie.preferred_axis_type(input_args...)`
+8. `Makie.preferred_axis_type(converted_args...)`
+9. `Makie.preferred_axis_type(arg)` for each argument
+10. `Makie.preferred_axis_type(converted)` for each converted argument
+
+`input_args` refer to the (unprocessed) user arguments passed to the plot.
+`convert_args` are the argument after `expand_dimensions()`, `convert_arguments()` and dim converts have been processed.
+If none of the methods are defined `Makie.Axis` will be used as the default.
+
+You can also control the attributes an axis is initialized with by implementing a method of `preferred_axis_attributes()`.
+Like above, there are multiple call signatures and the first one that returns a valid result will be chosen.
+In this case the valid result is a non-empty key-value collection.
+In call order, the methods are:
+
+1. `Makie.preferred_axis_attributes(AxisType, ::Plot, input_args...)`
+2. `Makie.preferred_axis_attributes(AxisType, ::Plot)`
+3. `Makie.preferred_axis_attributes(AxisType, input_args...)`
+
+The `AxisType` is either set automatically by `preferred_axis_type` or explicitly by `axis = (type = AxisType, ...)` when creating the plot. If none of the methods are defined, no plot or argument based defaults will be added when creating the axis.
+
+As an example, we may default `MyPlot` to use an `Axis` regardless of the given arguments by implementing
 
 ```julia
-Makie.args_preferred_axis(::Type{<: MyPlot}, x, y, z) =  Makie.LScene
+Makie.preferred_axis_type(::MyPlot) = Axis
 ```
 
-or
+And we may set default attributes for when `MyPlot` creates an `Axis` by implementing
 
 ```julia
-Makie.preferred_axis_type(plot::MyPlot) = Makie.LScene
+function Makie.preferred_axis_attributes(::Type{Axis}, ::MyPlot)
+    return (
+        xgridvisible = false, ygridvisible = false,
+        title = "MyPlot", xlabel = "x", ylabel = "y"
+    )
+end
 ```
 
-Note that Makie defaults to `Makie.Axis` as the preferred axis.
+!!! warn
+    The plot passed to these function is only partially initialized.
+    User attributes, default (plot) attributes and arguments are available.
+    Child plots and any computation added by `plot!(::Plot)` is not yet available.
+    Anything that connects to a parent scene is generally available, but has not yet been updated.
+    This includes transformations, float32convert, dim conversions, attribute cycling and scene based theming.
 
 ### plot!() Method
 

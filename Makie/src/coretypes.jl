@@ -104,22 +104,6 @@ Singleton instance to indicate that an attribute will get calculated automatical
 """
 const automatic = Automatic()
 
-abstract type Unit{T} <: Number end
-
-"""
-Unit in pixels on screen.
-This one is a bit tricky, since it refers to a static attribute (pixels on screen don't change)
-but since every visual is attached to a camera, the exact scale might change.
-So in the end, this is just relative to some normed camera - the value on screen, depending on the camera,
-will not actually sit on those pixels. Only camera that guarantees the correct mapping is the
-`:pixel` camera type.
-"""
-struct Pixel{T} <: Unit{T}
-    value::T
-end
-
-const px = Pixel(1)
-
 """
     Billboard([angle::Real])
     Billboard([angles::Vector{<: Real}])

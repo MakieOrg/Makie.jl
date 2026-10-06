@@ -548,7 +548,7 @@ end
         sleep(0.15) # wait for WGLMakie
         @test isempty(di.temp_plots) # verify cleanup
         e.mouseposition[] = mp
-        sleep(0.2 + (i == 2)) # wait for WGLMakie, datashader extra slow
+        sleep(0.4 + (i == 2)) # wait for WGLMakie, datashader extra slow
         Makie.step!(st)
     end
 

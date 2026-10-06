@@ -742,6 +742,11 @@ end
     barplot(fig[1, 1], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3, direction = :x)
     barplot(fig[1, 2], [1, 2], [0.5, 0.2], bar_labels = [lab1, lab2], flip_labels_at = 0.3)
 
+    rlab1 = rich("D", subscript("1"))
+    rlab2 = rich("D", superscript("2"))
+    barplot(fig[2, 1], [1, 2], [0.5, 0.2], bar_labels = [rlab1, rlab2], flip_labels_at = 0.3, direction = :x, label_size = 24)
+    barplot(fig[2, 2], [1, 2], [0.5, 0.2], bar_labels = :y, flip_labels_at = 0.3, label_size = 24, label_formatter = x -> rich("v=", superscript("$(round(x; digits = 1))")))
+
     fig
 end
 
@@ -840,6 +845,30 @@ end
 @reference_test "Voxel - gap attribute" begin
     # test direct mapping of ids to colors & upsampling of vector colormap
     voxels(RNG.rand(3, 3, 3), gap = 0.3)
+end
+
+@reference_test "Voxel resize" begin
+    function make_data(N)
+        r = range(-2pi, 2pi, N)
+        return [sin(x) * sin(y) + sin(z) for x in r, y in r, z in r]
+    end
+    f, a1, p1 = voxels(make_data(10), figure = (size = (300, 500),))
+    a2, p2 = voxels(f[2, 1], -1 .. 1, -1 .. 1, -1 .. 1, trunc.(UInt8, max.(0, 100 .* make_data(10))))
+    f
+
+    st = Stepper(f)
+    Makie.step!(st)
+
+    update!(p1, arg1 = collect(reshape(1:1000, (10, 10, 10))))
+    update!(p2, arg4 = reshape(UInt8.(mod.(1:1000, 255)), (10, 10, 10)))
+    Makie.step!(st)
+
+    update!(p1, arg1 = make_data(20))
+    center!(a1.scene)
+    update!(p2, arg4 = trunc.(UInt8, max.(0, 100 .* make_data(20))))
+    Makie.step!(st)
+
+    st
 end
 
 @reference_test "Plot transform overwrite" begin

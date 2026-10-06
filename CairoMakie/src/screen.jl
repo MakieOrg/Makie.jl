@@ -218,12 +218,6 @@ end
 
 Base.close(screen::Screen) = empty!(screen)
 
-function destroy!(screen::Screen)
-    isdefined(screen, :surface) || return
-    Cairo.destroy(screen.surface)
-    return Cairo.destroy(screen.context)
-end
-
 function Base.isopen(screen::Screen)
     return !(screen.surface.ptr == C_NULL || screen.context.ptr == C_NULL)
 end
@@ -292,11 +286,9 @@ function Makie.apply_screen_config!(
     # since they need to use the new IO, or if the resolution changed!
     new_resolution = scaled_scene_resolution(new_rendertype, config, scene)
     if SCREEN_RT !== new_rendertype || is_vector_backend(new_rendertype) || size(screen) != new_resolution
-        old_screen = screen
         surface = surface_from_output_type(new_rendertype, io, new_resolution...)
         screen = Screen(scene, config, surface)
         @assert new_resolution == size(screen)
-        destroy!(old_screen)
     end
     apply_config!(screen, config)
     screen.scene = scene

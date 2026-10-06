@@ -228,7 +228,7 @@ function add_light_computation!(graph, scene, lights)
     end
 
     add_input!((k, c) -> RGBf(to_color(c)), graph, :ambient_color, ambient_color)
-    add_input!(graph, :lights, convert(Vector{AbstractLight}, filtered_lights))
+    add_input!((k, lights) -> convert(Vector{AbstractLight}, lights), graph, :lights, filtered_lights)
     add_input!(graph, :shading, get(scene.theme, :shading, automatic))
     graph[:shading].value = RefValue{Any}(nothing) # allow shading to switch between automatic and ShadingAlgorithm
 
@@ -253,27 +253,17 @@ function add_light_computation!(graph, scene, lights)
         return final_dir
     end
 
-    return
-end
-
-# shading is a compile time variable for robjs, but it is allowed to change
-# when the robj is recompiled (e.g. screen reopened) so we make it dynamic
-# here. It should not be used outside of renderobject construction
-function get_shading_mode(scene)
-    graph = scene.compute
-    if !haskey(graph, :lighting_mode)
-        register_computation!(graph, Symbol[:shading, :lights], [:lighting_mode]) do (shading, _lights), changed, cached
-            mode = if shading === automatic
-                lights = filter(l -> !isa(l, EnvironmentLight), _lights)
-                is_fast = length(lights) == 0 || (length(lights) == 1 && lights[1] isa DirectionalLight)
-                ifelse(is_fast, FastShading, MultiLightShading)
-            else
-                shading
-            end::Makie.ShadingAlgorithm
-            return (mode,)
+    map!(graph, [:shading, :lights], :lighting_mode) do shading, _lights
+        if shading === automatic
+            lights = filter(l -> !isa(l, EnvironmentLight), _lights)
+            is_fast = length(lights) == 0 || (length(lights) == 1 && lights[1] isa DirectionalLight)
+            return ifelse(is_fast, FastShading, MultiLightShading)
+        else
+            return shading
         end
     end
-    return graph[:lighting_mode][]
+
+    return
 end
 
 # These return the number of parameter slots they used
@@ -308,9 +298,11 @@ function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
     # TODO: Maybe be smarter with view and DirectionalLight?
     # I.e. only apply and update them, not all lights?
     # Though the array will need to be pushed to the gpu as long as any are present anyway...
-    return register_computation!(
-        scene.compute, [:lights, :eye_to_world], [:N_lights, :light_types, :light_colors, :light_parameters]
-    ) do (lights, iview), changed, cached
+    return map!(
+        scene.compute,
+        [:lights, :eye_to_world],
+        [:N_lights, :light_types, :light_colors, :light_parameters]
+    ) do lights, iview
 
         n_lights = 0
         n_params = 0
@@ -333,10 +325,59 @@ function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
         parameters = Float32[]
         foreach(light -> push_parameters!(parameters, light, iview), usable_lights)
 
-        return (n_lights, types, colors, parameters)
+        return n_lights, types, colors, parameters
     end
 end
 
+################################################################################
+# Plot Interface
+
+
+add_resolved_shading!(@nospecialize(plot), scene) = nothing
+
+function add_resolved_shading!(plot::Union{Mesh, MeshScatter}, scene)
+    normals_name = haskey(plot, :normal) ? :normal : :normals
+    map!(
+        plot,
+        [scene.compute.lighting_mode, :shading, normals_name],
+        [:shading_mode, :use_shading]
+    ) do s_shading, p_shading, normals
+        mode = if p_shading isa ShadingAlgorithm
+            p_shading
+        elseif p_shading isa Bool
+            p_shading ? s_shading : NoShading
+        else
+            @error "Found $(plotsym(typeof(plot))) plot that did not correctly define `shading` as either a Bool or a Makie.ShadingAlgorithm. Defaulting to `shading = true`."
+            s_shading
+        end
+        if mode != NoShading && isnothing(normals)
+            @warn "Found $(plotsym(typeof(plot))) using `shading = $p_shading` that is missing the normals required for shading. Switching to `NoShading/false`."
+            mode = NoShading
+        end
+        return mode, mode != NoShading
+    end
+    return
+end
+
+function add_resolved_shading!(plot::Union{Surface, Volume, Voxels}, scene)
+    map!(
+        plot,
+        [scene.compute.lighting_mode, :shading],
+        [:shading_mode, :use_shading]
+    ) do s_shading, p_shading
+        if p_shading isa ShadingAlgorithm
+            return p_shading, p_shading != NoShading
+        elseif p_shading == true
+            return s_shading, s_shading != NoShading
+        elseif p_shading == false
+            return NoShading, false
+        else
+            @error "$(plotsym(typeof(plot))) did not correctly define `shading` as either a Bool or a Makie.ShadingAlgorithm. Defaulting to `shading = true`."
+            return s_shading, s_shading != NoShading
+        end
+    end
+    return
+end
 
 ################################################################################
 # User Interface
@@ -346,13 +387,13 @@ end
 
 Sets the shading algorithm of the scene. This is only valid before displaying these scene.
 """
-set_shading_algorithm!(scene, mode) = set_shading_algorithm!(get_scene(scene).compute, mode)
+function set_shading_algorithm!(scene, mode)
+    isopen(get_scene(scene)) && @warn "Changing the shading mode requires the scene/figure to be redisplayed."
+    set_shading_algorithm!(get_scene(scene).compute, mode)
+    return
+end
 function set_shading_algorithm!(graph::ComputeGraph, mode::Union{Automatic, Makie.ShadingAlgorithm})
-    if haskey(graph, :lighting_mode)
-        error("Shading mode has already been set.")
-    else
-        graph.shading = mode
-    end
+    graph.shading[] = mode
     return
 end
 
@@ -375,8 +416,8 @@ Not to be used with `MultiLightShading`.
 """
 set_directional_light!(scene; kwargs...) = set_directional_light!(get_scene(scene).compute; kwargs...)
 function set_directional_light!(graph::ComputeGraph; kwargs...)
-    lights = graph[:lights][]
-    if graph[:shading][] == MultiLightShading || length(lights) != 1 || !isa(first(lights), DirectionalLight)
+    lights = graph[:lights][]::Vector{AbstractLight}
+    if graph[:lighting_mode][]::ShadingAlgorithm == MultiLightShading || length(lights) != 1 || !isa(first(lights), DirectionalLight)
         error("Cannot set directional light - Scene not in FastShading mode.")
     end
     light = lights[1]
@@ -393,7 +434,7 @@ included in the lights list.)
 """
 set_light!(scene, idx; kwargs...) = set_light!(get_scene(scene).compute, idx; kwargs...)
 function set_light!(graph::ComputeGraph, idx; kwargs...)
-    lights = graph[:lights][]
+    lights = graph[:lights][]::Vector{AbstractLight}
     light = lights[idx]
     T = typeof(light)
     data = map(name -> get(kwargs, name, getfield(light, name)), fieldnames(T))
@@ -410,7 +451,7 @@ the lights list.)
 """
 set_light!(scene, idx, light::AbstractLight) = set_light!(get_scene(scene).compute, idx, light)
 function set_light!(graph::ComputeGraph, idx, light::AbstractLight)
-    lights = graph[:lights][]
+    lights = graph[:lights][]::Vector{AbstractLight}
     lights[idx] = light
     update!(graph, lights = lights)
     return
@@ -423,7 +464,7 @@ Returns the current lights vector of the scene. The ambient light is not include
 in here.
 """
 get_lights(scene) = get_lights(get_scene(scene).compute)
-get_lights(graph::ComputeGraph) = graph[:lights][]
+get_lights(graph::ComputeGraph) = graph[:lights][]::Vector{AbstractLight}
 
 """
     set_lights!(scene, lights)
@@ -447,7 +488,7 @@ Adds a new light to the active lights. The light should not be an AmbientLight.
 """
 push_light!(scene, light) = push_light!(get_scene(scene).compute, light)
 function push_light!(graph::ComputeGraph, light::AbstractLight)
-    lights = graph[:lights][]
+    lights = graph[:lights][]::Vector{AbstractLight}
     push!(lights, light)
     update!(graph, lights = lights)
     return

@@ -408,7 +408,7 @@ end
         symlog = Makie.Symlog10(lo, hi; linscale)
         reverse_symlog = Makie.inverse_transform(symlog)
 
-        @test symlog.name == :Symlog10
+        @test symlog isa Makie.Symlog10
 
         # Check that forward and inverse are consistent
         x = [range(lo, hi; length = 5); [lo - 5, lo - 2, hi + 2, hi + 5]]
@@ -417,7 +417,7 @@ end
         @test isapprox(x, x2; atol)
 
         # Check that forward(hi) - forward(lo) == 2*linscale
-        @test isapprox(symlog.forward(hi) - symlog.forward(lo), 2 * linscale; atol)
+        @test isapprox(symlog(hi) - symlog(lo), 2 * linscale; atol)
 
         # Check that forward is linear inside region
         @test is_linear(symlog, lo, hi; atol)
@@ -430,13 +430,13 @@ end
         # Check continuity at boundaries
         ε = 1.0e-10
         @test isapprox(
-            symlog.forward(lo + ε),
-            symlog.forward(lo - ε);
+            symlog(lo + ε),
+            symlog(lo - ε);
             atol = 1.0e-8,
         )
         @test isapprox(
-            symlog.forward(hi + ε),
-            symlog.forward(hi - ε);
+            symlog(hi + ε),
+            symlog(hi - ε);
             atol = 1.0e-8,
         )
     end

@@ -569,6 +569,20 @@ function Base.setproperty!(pl::PlotList, property::Symbol, value)
     end
 end
 
+function boundingbox(plot::PlotList, space::Symbol = :data)
+    # Assume primitive plot
+    isempty(plot.plots) && return Rect3d()
+
+    # Assume combined plot
+    bb_ref = Base.RefValue(boundingbox(plot.plots[1], space))
+    for i in 2:length(plot.plots)
+        update_boundingbox!(bb_ref, boundingbox(plot.plots[i], space))
+    end
+
+    return bb_ref[]
+end
+
+
 convert_arguments(::Type{<:AbstractPlot}, args::AbstractArray{<:PlotSpec}) = (args,)
 
 plottype(::Type{<:Plot{F}}, ::Union{PlotSpec, AbstractVector{PlotSpec}}) where {F} = PlotList
@@ -611,7 +625,13 @@ function diff_plotlist!(
     # And at some point we may be able to optimize notify(list_of_observables)
     scores = IdDict{Any, Float64}()
     reusable_plots_sorted = [Pair{PlotSpec, Plot}(k, v) for (k, v) in reusable_plots]
-    sort!(reusable_plots_sorted, by = ((k, v),) -> v.cycle_index[], rev = true)
+    # Ties in cycle_index are broken by each plot's position in its parent, so that a spec
+    # reuses the plot at its own position. Iterating the IdDict alone gives an order that
+    # depends on object addresses, which made reuse, and with it the draw order, differ
+    # between otherwise identical runs (#5814).
+    parent_plots = isnothing(plotlist) ? scene.plots : plotlist.plots
+    position = IdDict{Plot, Int}(p => i for (i, p) in enumerate(parent_plots))
+    sort!(reusable_plots_sorted, by = ((k, v),) -> (v.cycle_index[], -get(position, v, 0)), rev = true)
     for (i, plotspec) in enumerate(plotspecs)
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         reused_plot, old_spec, idx = find_reusable_plot(scene, plotspec, reusable_plots_sorted, scores)
@@ -1071,7 +1091,7 @@ function update_fig!(fig::Union{Figure, GridPosition, GridSubposition}, layout_o
     return fig
 end
 
-args_preferred_axis(::GridLayoutSpec) = FigureOnly
+preferred_axis_type(::GridLayoutSpec) = FigureOnly
 
 plot!(plot::Plot{plot, Tuple{GridLayoutSpec}}) = plot
 

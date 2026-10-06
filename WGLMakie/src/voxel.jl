@@ -75,16 +75,15 @@ function create_shader(scene::Scene, plot::Voxels)
         end
     end
 
-    add_primitive_shading!(scene, attr)
     inputs = [
         :dummy_data,
 
         :depth_shift, :world_normalmatrix,
-        :gap, :chunk_u8, :voxel_model,
+        :gap, :chunk_sampler, :voxel_model,
         :wgl_colormap, :wgl_uv_transform, :wgl_color,
 
         :diffuse, :specular, :shininess, # :backlight,
-        :depthsorting, :primitive_shading,
+        :depthsorting, :use_shading,
         :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
 
@@ -104,9 +103,9 @@ function voxel_program(attr)
         :view_direction => Vec3f(1),
         :depthsorting => attr.depthsorting,
         :world_normalmatrix => attr.world_normalmatrix,
-        :shading => attr.primitive_shading,
+        :shading => attr.use_shading,
         :gap => attr.gap,
-        :chunk_u8 => attr.chunk_u8,
+        :chunk_sampler => attr.chunk_sampler,
         :voxel_model => attr.voxel_model,
         :wgl_colormap => attr.wgl_colormap,
         :wgl_uv_transform => attr.wgl_uv_transform,

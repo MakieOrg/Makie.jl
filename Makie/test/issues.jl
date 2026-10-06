@@ -106,4 +106,15 @@
         p.sdf_uv[]
         @test true
     end
+
+    @testset "#5744 to_rotation resolution" begin
+        v = normalize(Vec3f(0.001, 0, -1))
+        @assert v !== Vec3f(0, 0, -1)
+        @test to_rotation(v) !== to_rotation(Vec3f(0, 0, -1))
+    end
+
+    @testset "#5024 no Linestyle warning in SpecApi" begin
+        f, a, p = plotlist(S.Lines(rand(10), linestyle = :dash))
+        @test_logs p.plots[1].linestyle[]
+    end
 end

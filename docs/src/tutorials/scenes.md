@@ -39,7 +39,7 @@ scene
 
 When using `Scenes` directly, one needs to manually set up the camera
 and center the camera to the content of the scene
-As described in more detail the camera section, we have multiple `cam***!` functions to set a certain projection and camera type for the scene.
+As described in more detail in the camera section, we have multiple `cam***!` functions to set a certain projection and camera type for the scene.
 
 ```@figure scenes
 cam3d!(subwindow)

@@ -63,8 +63,8 @@ data = map([(x,y,z) for x in r, y in r, z in r]) do (x,y,z)
 end
 
 f = Figure(backgroundcolor = :black, size = (700, 400))
-volume(f[1, 1], data, algorithm = :absorptionrgba, absorption = 20)
-volume(f[1, 2], data, algorithm = :additive)
+volume(f[1, 1], data, algorithm = :absorptionrgba, absorption = 10)
+volume(f[1, 2], data, algorithm = :additive, absorption = 10)
 f
 ```
 

@@ -225,3 +225,15 @@ end
         @test length(unique([a, b, c])) == 2
     end
 end
+
+@testset "align validation" begin
+    @test_throws "Text align must be a two-element tuple, got :center" text(1, 2, align = :center)
+    @test_throws "Vertical text align must be a Real or :top, :bottom, :center, :baseline. Got :centr" text(1, 2, align = (1, :centr))
+    @test_throws "Horizontal text align must be a Real or :left, :right, :center. Got :centr" text(1, 2, align = (:centr, 1))
+    @test_throws "Text align must be a two-element tuple, got :center" text(1:2, 3:4, text = ["A", "B"], align = [:center, :center])
+    @test_throws "Vertical text align must be a Real or :top, :bottom, :center, :baseline. Got :centr" text(1:2, 3:4, text = ["A", "B"], align = [(:center, :centr), (:center, :center)])
+
+    @test text(1, 2, align = (:center, :baseline)) isa Makie.FigureAxisPlot
+    @test text(1, 2, align = Vec2f(0, 0)) isa Makie.FigureAxisPlot
+    @test text(1:2, 3:4, text = ["A", "B"], align = [Vec2f(0, 0), Vec2f(1, 1)]) isa Makie.FigureAxisPlot
+end

@@ -63,12 +63,28 @@ function show_glyph(ctx, glyph, x, y)
     )
 end
 
+function show_glyphs(ctx, glyphs::Vector{CairoGlyph})
+    return ccall(
+        (:cairo_show_glyphs, Cairo.libcairo),
+        Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
+        ctx.ptr, glyphs, length(glyphs)
+    )
+end
+
 function glyph_path(ctx, glyph, x, y)
     cg = Ref(CairoGlyph(glyph, x, y))
     return ccall(
         (:cairo_glyph_path, Cairo.libcairo),
         Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
         ctx.ptr, cg, 1
+    )
+end
+
+function glyphs_path(ctx, glyphs::Vector{CairoGlyph})
+    return ccall(
+        (:cairo_glyph_path, Cairo.libcairo),
+        Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
+        ctx.ptr, glyphs, length(glyphs)
     )
 end
 
