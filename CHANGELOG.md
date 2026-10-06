@@ -75,6 +75,10 @@
 
 ## Unreleased
 
+- Fixed plot-list children (e.g. the parts of `annotation!` arrows) being reused in an address-dependent order, which made the draw order and SVG output differ between identical runs. [#5815](https://github.com/MakieOrg/Makie.jl/pull/5815)
+- `datashader` is much faster: with 100M points, aggregating and displaying an update went from 47 ms to 26 ms, and per-update allocations from 9.2 MiB to 11 KiB [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
+- Fixed `datashader` counting points twice at thread chunk boundaries, and erroring or writing out of bounds for points exactly at the upper axis limits [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
+- `Makie.equalize_histogram` no longer errors on `NaN` or constant input [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
 - Added `FastInterpolations` as the default `Resampler` interpolation backend for ~2-9x faster resampling; passing an `Interpolations` degree keeps the old behavior [#5706](https://github.com/MakieOrg/Makie.jl/pull/5706).
 - Fixed 2D CairoMakie meshes not anti-aliasing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
 - Fixed uniformly colored 2D CairoMakie meshes always rasterizing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
@@ -90,6 +94,10 @@
 - Fixed error on empty `series`. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
 - Adjusted `series` to cycle colors sampled from `color` if more are needed. This can be controlled by the new `cycle_color` attribute. By default cycling is enabled with a warning. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
 - Added colormapping to `series`, allowing `color` to be set to values. [#5796](https://github.com/MakieOrg/Makie.jl/pull/5796)
+- Fixed `Linestyle` warning when drawing lines or linesegments with SpecApi. [#5810](https://github.com/MakieOrg/Makie.jl/pull/5810)
+- Fixed NaN data in `contour` and `contour3d` breaking line-masking with contour labels [#5618](https://github.com/MakieOrg/Makie.jl/pull/5818)
+- Fixed hang in Colorbar by not keeping partially automatic colorranges sorted [#5806](https://github.com/MakieOrg/Makie.jl/pull/5806)
+- Fixed empty reduce error in `Makie.canonical_line_order` when NaN appears in the input [#5817](https://github.com/MakieOrg/Makie.jl/pull/5817)
 
 ## [0.24.15] - 2026-09-18
 

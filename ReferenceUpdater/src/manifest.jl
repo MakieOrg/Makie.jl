@@ -1,3 +1,5 @@
+const ALL_BACKENDS = ("GLMakie", "CairoMakie", "WGLMakie")
+
 function add_manifest_selection(
         upload_paths, delete_paths, reference_folder::AbstractString;
         manifest_dir = refimage_manifest_dir()
@@ -66,23 +68,66 @@ pass a vector of `<Backend>/<name>.png` paths to select explicitly.
 """
 function add_pr_updates_to_manifest(
         pr = nothing; commit = nothing, select = :auto, threshold = 0.05,
-        backends = ("GLMakie", "CairoMakie", "WGLMakie"),
+        backends = ALL_BACKENDS,
         tag = last_major_version(), manifest_dir = refimage_manifest_dir()
     )
     artifact_dir = download_artifacts(; pr, commit)
-    reference_folder = download_refimages(tag)
-    try
-        paths = manifest_candidates(artifact_dir, select; threshold, backends)
-        if isempty(paths)
-            @info "No candidate images to add to the manifest."
-            return manifest_dir
-        end
-        add_to_manifest(paths, reference_folder; manifest_dir)
-        @info "Added $(length(paths)) entr$(length(paths) == 1 ? "y" : "ies") to $manifest_dir"
-    finally
-        rm(reference_folder; force = true, recursive = true)
+    reference_folder = cached_refimages(tag)
+    paths = manifest_candidates(artifact_dir, select; threshold, backends)
+    if isempty(paths)
+        @info "No candidate images to add to the manifest."
+        return manifest_dir
     end
+    add_to_manifest(paths, reference_folder; manifest_dir)
+    @info "Added $(length(paths)) entr$(length(paths) == 1 ? "y" : "ies") to $manifest_dir"
     return manifest_dir
+end
+
+function reference_paths_by_title(reference_folder, backends)
+    by_title = Dict{String, Vector{String}}()
+    for (root, _, files) in walkdir(reference_folder), file in files
+        path = replace(relpath(joinpath(root, file), reference_folder), '\\' => '/')
+        any(b -> startswith(path, b * "/"), backends) || continue
+        push!(get!(by_title, recording_title(path), String[]), path)
+    end
+    return by_title
+end
+
+"""
+    title_image_paths(titles, backends, reference_folder)
+
+The `<Backend>/...` paths of the images that the reference tests `titles` produce. A title
+with stored references maps to all of its stored images in `backends` (stepper frames and
+videos included); a title without any maps to `<Backend>/<title>.png` in every backend.
+"""
+function title_image_paths(titles, backends, reference_folder)
+    by_title = reference_paths_by_title(reference_folder, backends)
+    paths = String[]
+    for title in titles
+        append!(paths, get(() -> ["$b/$title.png" for b in backends], by_title, title))
+    end
+    return sort!(paths)
+end
+
+"""
+    pin_images(titles; backends = $(ALL_BACKENDS), delete = false, tag = last_major_version())
+
+Add manifest entries for the images of the reference tests `titles` without any CI run:
+changed tests are pinned to the hash of their current reference, tests without a stored
+reference are pinned as `new`, and `delete = true` marks the stored images for deletion.
+Pass `backends` when a new test does not run in every backend. The reference images are
+cached and only downloaded again when the release changes.
+"""
+function pin_images(
+        titles; backends = ALL_BACKENDS, delete = false,
+        tag = last_major_version(), manifest_dir = refimage_manifest_dir()
+    )
+    reference_folder = cached_refimages(tag)
+    paths = title_image_paths(titles, backends, reference_folder)
+    upload_paths, delete_paths = delete ? (String[], paths) : (paths, String[])
+    add_manifest_selection(upload_paths, delete_paths, reference_folder; manifest_dir)
+    @info "Pinned $(length(paths)) image$(length(paths) == 1 ? "" : "s") in $manifest_dir" paths
+    return paths
 end
 
 function read_path_list(file)

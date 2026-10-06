@@ -18,6 +18,8 @@ using Pkg.TOML
 using Statistics
 using ImageShow
 using Downloads: download
+import JSON3
+import Scratch
 
 # Deps for tests
 using Makie.ComputePipeline: ResolveException
@@ -44,6 +46,7 @@ include("database.jl")
 include("stable_rng.jl")
 include("compare_media.jl")
 include("refimage_manifest.jl")
+include("refimage_cache.jl")
 include("runtests.jl")
 include("image_download.jl")
 include("cross_backend_scores.jl")
