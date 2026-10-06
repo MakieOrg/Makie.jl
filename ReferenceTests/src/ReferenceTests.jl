@@ -8,6 +8,7 @@ using Test
 using MeshIO
 using FileIO
 using MacroTools
+using FFMPEG_jll
 using Makie
 using Makie: Record, Stepper, Axis
 using Printf

@@ -2312,6 +2312,35 @@ end
     f
 end
 
+@reference_test "Mesh Pattern Continuity" begin
+    img = fill(RGBf(1, 1, 1), 16, 16)
+    img[1:8, 1:8] .= RGBf(1, 0, 0)
+    img[12:16, 1:8] .= RGBf(0, 1, 0)
+    img[1:8, 12:16] .= RGBf(0, 0, 1)
+
+    scene = Scene(size = (400, 300))
+    sub = Scene(scene, viewport = Rect2f(0, 0, 100, 150))
+    mesh!(sub, Rect2f(-1, -1, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(0, 0, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(-1, 0, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(0, -1, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(100, 0, 100, 150)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(0, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(100, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+
+    pat = Pattern("x")
+    sub = Scene(scene, viewport = Rect2f(200, 0, 100, 150))
+    mesh!(sub, Rect2f(-1, -1, 1, 1), color = pat)
+    mesh!(sub, Rect2f(0, 0, 1, 1), color = pat)
+    mesh!(sub, Rect2f(-1, 0, 1, 1), color = pat)
+    mesh!(sub, Rect2f(0, -1, 1, 1), color = pat)
+    mesh!(Scene(scene, viewport = Rect2f(300, 0, 100, 150)), Rect2f(-1, -1, 2, 2), color = pat)
+    mesh!(Scene(scene, viewport = Rect2f(200, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = pat)
+    mesh!(Scene(scene, viewport = Rect2f(300, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = pat)
+
+    scene
+end
+
 @reference_test "Color patterns in recipes" begin
     pattern = Makie.Pattern('x', linecolor = :darkgreen, backgroundcolor = RGBf(0.7, 0.8, 0.5))
 
@@ -2333,6 +2362,75 @@ end
     translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
     Makie.step!(st)
     st
+end
+
+@reference_test "LinePattern in recipes" begin
+    lp_diag = Makie.LinePattern(
+        direction = Vec2f(1, 1),
+        width = 1.1f0,
+        tilesize = (10, 10),
+        linecolor = (:black, 0.9),
+        backgroundcolor = (:gold, 0.25),
+    )
+    lp_horiz = Makie.LinePattern(
+        direction = Vec2f(1, 0),
+        width = 1.0f0,
+        tilesize = (8, 8),
+        linecolor = (:navy, 0.9),
+        backgroundcolor = (:skyblue, 0.3),
+    )
+    lp_cross = Makie.LinePattern(
+        direction = [Vec2f(1, 1), Vec2f(1, -1)],
+        width = 1.0f0,
+        tilesize = (10, 10),
+        linecolor = (:purple, 0.85),
+        backgroundcolor = (:plum, 0.25),
+    )
+
+    f = Figure(size = (900, 700))
+
+    ax_poly = Axis(f[1, 1], title = "poly")
+    poly!(
+        ax_poly,
+        Point2f[
+            (0.05, 0.05), (0.45, 0.08), (0.35, 0.35), (0.48, 0.58), (0.28, 0.88),
+            (0.12, 0.62), (0.02, 0.45), (0.16, 0.28), (0.05, 0.05),
+        ],
+        color = lp_diag,
+    )
+    poly!(
+        ax_poly,
+        Point2f[
+            (0.58, 0.1), (0.92, 0.1), (0.92, 0.3), (0.76, 0.3), (0.76, 0.9),
+            (0.58, 0.9), (0.58, 0.1),
+        ],
+        color = lp_horiz,
+    )
+    xlims!(ax_poly, 0, 1)
+    ylims!(ax_poly, 0, 1)
+
+    ax_bar = Axis(f[1, 2], title = "barplot")
+    barplot!(ax_bar, 1:4, [2, 4, 3, 5], color = lp_horiz)
+
+    ax_band = Axis(f[2, 1], title = "band")
+    x = range(0, 2pi, length = 80)
+    y = 0.5 .* sin.(x)
+    band!(ax_band, x, y .- 0.2, y .+ 0.2, color = lp_cross)
+
+    ax_text = Axis(f[2, 2], title = "textlabel")
+    textlabel!(
+        ax_text,
+        Point2f(0.5, 0.5),
+        text = "LinePattern",
+        background_color = lp_diag,
+        cornerradius = 8,
+        cornervertices = 10,
+        padding = 8,
+    )
+    xlims!(ax_text, 0, 1)
+    ylims!(ax_text, 0, 1)
+
+    f
 end
 
 @reference_test "Transformed 2D Arrows" begin
@@ -2564,7 +2662,7 @@ end
 end
 
 @reference_test "annotation manual" begin
-    f, ax, _ = lines(0 .. 10, sin, figure = (; size = (600, 450)))
+    f, ax, p = lines(0 .. 10, sin, linewidth = 3, figure = (; size = (600, 450)))
 
     annotation!(
         ax, 0, -100, pi / 2, 1.0,

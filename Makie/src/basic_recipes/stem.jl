@@ -1,10 +1,6 @@
 """
-    stem(xs, ys, [zs]; kwargs...)
-
 Plots markers at the given positions with stem lines extending from `offset`.
 All stems are connected to a trunk line.
-
-The conversion trait of `stem` is `PointBased`.
 """
 @recipe Stem begin
     "Sets the color of stem lines. Can be a Symbol, Colorant, Real or Vector thereof."
@@ -78,7 +74,7 @@ trunkpoint(stempoint::P, offset::Point3) where {P <: Point3} = P(offset...)
 function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
 
     map!(s, [:converted_1, :offset], :stemtuples) do ps, to
-        tuple.(trunkpoint.(ps, to), ps)
+        return tuple.(trunkpoint.(ps, to), ps)
     end
 
     map!(s, [:stemtuples], :trunkpoints) do st
