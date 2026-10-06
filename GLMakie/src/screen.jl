@@ -192,6 +192,11 @@ mutable struct Screen{GLWindow} <: MakieScreen
     (`screen.rendertrace = true`).
     """
     rendertrace::Bool
+    # Plots whose render object no longer fits their attributes: a uniform that
+    # changed its type, or one colour that became one per element, which
+    # compiles a different shader variant. `poll_updates` deletes and inserts
+    # them again, which is how any plot gets its first render object.
+    rebuilds::Vector{Plot}
 
     function Screen(
             glscreen::GLWindow,
@@ -217,7 +222,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             Observable(0.0f0), screen2scene,
             screens, renderlist, GLRenderPipeline(), cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
-            Observable(true), Observable(0.0f0), nothing, reuse, true, false, false
+            Observable(true), Observable(0.0f0), nothing, reuse, true, false, false, Plot[]
         )
         push!(ALL_SCREENS, screen) # track all created screens
         return screen
@@ -1096,8 +1101,31 @@ function poll_updates(screen)
                     end
                 end
             end
+            rebuild_renderobjects!(screen)
         end
     end
+    return
+end
+
+"""
+    rebuild_renderobjects!(screen)
+
+Give every plot in `screen.rebuilds` a new render object: delete it from the
+screen and insert it again, the way it got its first one. Its compute graph
+keeps every value; only the render object and its node are made anew, for the
+attribute types the plot has now. Outside the loop over `cache2plot`, which
+`delete!` and `insert!` change.
+"""
+function rebuild_renderobjects!(screen::Screen)
+    isempty(screen.rebuilds) && return
+    plots = unique(screen.rebuilds)
+    empty!(screen.rebuilds)
+    for plot in plots
+        scene = Makie.parent_scene(plot)
+        delete!(screen, scene, plot)
+        insert!(screen, scene, plot)
+    end
+    screen.requires_update = true
     return
 end
 

@@ -549,3 +549,33 @@ end
     # @test eltype(p5.gl_renderobject[][:image]) === RGBA{N0f8}
     # @test eltype(p6.gl_renderobject[].vertexarray.buffers["intensity"]) === N0f8
 end
+
+# A plot's colour going from one value to one per element and back changes the
+# shader variant, not just a uniform. It used to log "Uniforms can not change
+# their type" (and before that fail in the compute graph), and the plot stayed
+# drawn in its first colour, or not at all. Now the render object is rebuilt
+# (`rebuild_renderobjects!`).
+@testset "colour changes kind: one value, one per element, colormapped" begin
+    fig = Figure(; size = (400, 300))
+    ax = Axis(fig[1, 1]; limits = (0, 11, 0, 2))
+    sc = scatter!(ax, [Point2f(i, 1) for i in 1:10]; markersize = 20, color = :red)
+    screen = GLMakie.Screen(fig.scene; start_renderloop = false, visible = false, px_per_unit = 1)
+    reds(img) = count(c -> red(c) > 0.8 && green(c) < 0.3 && blue(c) < 0.3, img)
+    blues(img) = count(c -> blue(c) > 0.8 && red(c) < 0.3 && green(c) < 0.3, img)
+    greens(img) = count(c -> green(c) > 0.6 && red(c) < 0.3 && blue(c) < 0.3, img)
+    i0 = copy(colorbuffer(screen))
+    @test reds(i0) > 500
+    sc.color = [isodd(i) ? RGBAf(0, 0, 1, 1) : RGBAf(0, 0.8, 0, 1) for i in 1:10]
+    i1 = copy(colorbuffer(screen))
+    @test reds(i1) == 0
+    @test blues(i1) > 200 && greens(i1) > 200
+    @test abs(blues(i1) - greens(i1)) < 50
+    sc.color = :red
+    i2 = copy(colorbuffer(screen))
+    @test reds(i2) == reds(i0)
+    sc.color = Float32.(1:10)                    # through the colormap now
+    i3 = copy(colorbuffer(screen))
+    @test reds(i3) == 0 && blues(i3) == 0
+    @test isempty(screen.rebuilds)
+    close(screen)
+end
