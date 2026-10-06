@@ -93,16 +93,17 @@ end
     label_anchor(pixel_line, labelposition)
 
 Find where to put the label of a contour line, given its vertices projected to
-pixel space. Returns `(; from, to, t, before, after)`: the label sits at fraction
-`t` between the vertices `from` and `to`, and is oriented along the direction from
-vertex `before` to vertex `after`. Returns `nothing` if no segment is visible.
+pixel space. Returns `(; from, to, t, direction)`: the label sits at fraction `t`
+between the vertices `from` and `to` and is oriented along the pixel space vector
+`direction`. Returns `nothing` if no segment is visible.
 
 `labelposition` ranges from -1 to 1. On an open line, 0 is the middle by arc length
 of its longest finite piece and -1 and 1 are its ends, with 1 the end further
-right. On a closed loop, 0 is the top (the highest vertex, or the middle of a flat
-top edge), positive values move clockwise and -1 and 1 both lead to the point
-opposite the top. The result does not depend on the start point or direction of
-the line.
+right. On a closed loop, 0 is the top, where the label is horizontal, positive
+values move clockwise and -1 and 1 both lead to the point opposite the top. The top
+is the peak of the parabola through the highest vertex and its neighbors, or the
+middle of the top edge if that is flat. The result does not depend on the start
+point or direction of the line.
 """
 function label_anchor(pixel_line, labelposition)
     is_closed_line(pixel_line) || return open_line_anchor(pixel_line, collect(eachindex(pixel_line)), labelposition)
@@ -139,10 +140,32 @@ function loop_anchor(pixel_line, cycle, labelposition)
 
     total_length = path_length(pixel_line, path)
     total_length > 0 || return nothing
-    flat_top = collect(Iterators.takewhile(i -> pixel_line[i][2] == top_y, path))
-    flat_top_length = path_length(pixel_line, flat_top)
-    distance = mod(flat_top_length / 2 + labelposition * total_length / 2, total_length)
-    return anchor_at_distance(pixel_line, path, distance)
+    top_distance = loop_top_distance(pixel_line, path, total_length)
+    distance = mod(top_distance + labelposition * total_length / 2, total_length)
+    anchor = anchor_at_distance(pixel_line, path, distance)
+    return labelposition == 0 ? merge(anchor, (; direction = Vec2d(1, 0))) : anchor
+end
+
+function loop_top_distance(pixel_line, path, total_length)
+    top = pixel_line[path[1]]
+    flat_top = collect(Iterators.takewhile(i -> pixel_line[i][2] == top[2], path))
+    length(flat_top) > 1 && return path_length(pixel_line, flat_top) / 2
+
+    previous, next = pixel_line[path[end - 1]], pixel_line[path[2]]
+    peak_x = parabola_peak_x(previous, top, next)
+    if previous[1] < peak_x < top[1]
+        return total_length - (top[1] - peak_x) / (top[1] - previous[1]) * norm(top - previous)
+    elseif top[1] < peak_x < next[1]
+        return (peak_x - top[1]) / (next[1] - top[1]) * norm(next - top)
+    end
+    return 0.0
+end
+
+function parabola_peak_x(p0, p1, p2)
+    slope01 = (p1[2] - p0[2]) / (p1[1] - p0[1])
+    slope12 = (p2[2] - p1[2]) / (p2[1] - p1[1])
+    curvature = (slope12 - slope01) / (p2[1] - p0[1])
+    return (p0[1] + p1[1]) / 2 - slope01 / (2 * curvature)
 end
 
 function is_counterclockwise(pixel_line, cycle)
@@ -182,30 +205,27 @@ function anchor_at_distance(pixel_line, path, distance)
         len = segment_length(pixel_line, from, to)
         if len > 0 && covered + len >= distance
             t = (distance - covered) / len
-            t <= 0 && return vertex_anchor(path, j)
-            t >= 1 && return vertex_anchor(path, j + 1)
-            return (; from, to, t, before = from, after = to)
+            t <= 0 && return vertex_anchor(pixel_line, path, j)
+            t >= 1 && return vertex_anchor(pixel_line, path, j + 1)
+            return (; from, to, t, direction = Vec2d(pixel_line[to] - pixel_line[from]))
         end
         covered += len
     end
-    return vertex_anchor(path, length(path))
+    return vertex_anchor(pixel_line, path, length(path))
 end
 
-function vertex_anchor(path, j)
+function vertex_anchor(pixel_line, path, j)
     closed = first(path) == last(path)
     before = j > 1 ? path[j - 1] : closed ? path[end - 1] : path[j]
     after = j < length(path) ? path[j + 1] : closed ? path[2] : path[j]
-    return (; from = path[j], to = path[j], t = 0.0, before, after)
+    return (; from = path[j], to = path[j], t = 0.0, direction = Vec2d(pixel_line[after] - pixel_line[before]))
 end
 
 anchor_point(line, anchor) = lerp_points(line[anchor.from], line[anchor.to], anchor.t)
 
 lerp_points(a, b, t) = a + t * (b - a)
 
-function anchor_angle(pixel_line, anchor)
-    direction = pixel_line[anchor.after] - pixel_line[anchor.before]
-    return to_upright_angle(atan(direction[2], direction[1]))
-end
+anchor_angle(anchor) = to_upright_angle(atan(anchor.direction[2], anchor.direction[1]))
 
 function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d, Contour}}
     PT = T <: Contour3d ? Point3f : Point2f
@@ -528,7 +548,7 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
                 push!(pixel_positions, Point2f(NaN))
             else
                 push!(positions, anchor_point(view(points, line_without_separator), anchor))
-                push!(rotations, anchor_angle(pixel_line, anchor))
+                push!(rotations, anchor_angle(anchor))
                 push!(pixel_positions, anchor_point(pixel_line, anchor))
             end
         end

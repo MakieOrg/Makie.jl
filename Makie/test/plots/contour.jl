@@ -1,61 +1,65 @@
 using Makie, Test
+using LinearAlgebra: normalize
 
 function label_at(line, labelposition = 0.0)
     anchor = Makie.label_anchor(line, labelposition)
-    return Makie.anchor_point(line, anchor), Set([line[anchor.before], line[anchor.after]])
+    direction = normalize(Vec2d(anchor.direction))
+    points_left_or_down = direction[1] < -1.0e-9 || (abs(direction[1]) <= 1.0e-9 && direction[2] < 0)
+    return Makie.anchor_point(line, anchor), points_left_or_down ? -direction : direction
 end
+
+const horizontal = Vec2d(1, 0)
+const vertical = Vec2d(0, 1)
 
 @testset "contour label placement" begin
     @testset "open line is labeled at the middle by arc length" begin
         l_shape = Point2f[(0, 0), (0.5, 0), (1, 0), (4, 0), (4, 2)]
-        expected = (Point2f(3, 0), Set(Point2f[(1, 0), (4, 0)]))
-        @test label_at(l_shape) == expected
-        @test label_at(reverse(l_shape)) == expected
+        @test all(label_at(l_shape) .≈ (Point2f(3, 0), horizontal))
+        @test all(label_at(reverse(l_shape)) .≈ (Point2f(3, 0), horizontal))
     end
 
     @testset "labelposition moves along an open line towards its right end" begin
         l_shape = Point2f[(0, 0), (0.5, 0), (1, 0), (4, 0), (4, 2)]
         for line in (l_shape, reverse(l_shape))
-            @test label_at(line, 0.5) == (Point2f(4, 0.5), Set(Point2f[(4, 0), (4, 2)]))
-            @test label_at(line, 1.0) == (Point2f(4, 2), Set(Point2f[(4, 0), (4, 2)]))
-            @test label_at(line, -1.0) == (Point2f(0, 0), Set(Point2f[(0, 0), (0.5, 0)]))
+            @test all(label_at(line, 0.5) .≈ (Point2f(4, 0.5), vertical))
+            @test all(label_at(line, 1.0) .≈ (Point2f(4, 2), vertical))
+            @test all(label_at(line, -1.0) .≈ (Point2f(0, 0), horizontal))
         end
     end
 
-    @testset "middle on a vertex uses its neighbors" begin
+    @testset "middle on a vertex is oriented along its neighbors" begin
         line = Point2f[(0, 0), (1, 0), (1, 1), (2, 1), (2, 2)]
-        expected = (Point2f(1, 1), Set(Point2f[(1, 0), (2, 1)]))
-        @test label_at(line) == expected
-        @test label_at(reverse(line)) == expected
+        @test all(label_at(line) .≈ (Point2f(1, 1), normalize(Vec2d(1, 1))))
+        @test all(label_at(reverse(line)) .≈ (Point2f(1, 1), normalize(Vec2d(1, 1))))
     end
 
     @testset "NaN vertices are skipped and the longest finite piece wins" begin
         line = Point2f[(NaN, 0), (NaN, 0), (0, 0), (2, 0), (NaN, 1), (5, 0), (5, 4), (NaN, 0)]
-        expected = (Point2f(5, 2), Set(Point2f[(5, 0), (5, 4)]))
-        @test label_at(line) == expected
-        @test label_at(reverse(line)) == expected
+        @test all(label_at(line) .≈ (Point2f(5, 2), vertical))
+        @test all(label_at(reverse(line)) .≈ (Point2f(5, 2), vertical))
     end
 
-    @testset "closed loop is labeled at its top vertex" begin
+    @testset "closed loop is labeled horizontally at the peak of the parabola through its top" begin
         loop = Point2f[(0, 0), (2, 1), (1, 3), (-1, 2), (0, 0)]
         rotated = Point2f[(1, 3), (-1, 2), (0, 0), (2, 1), (1, 3)]
-        expected = (Point2f(1, 3), Set(Point2f[(-1, 2), (2, 1)]))
-        @test label_at(loop) == label_at(reverse(loop)) == label_at(rotated) == expected
+        for line in (loop, reverse(loop), rotated)
+            @test all(label_at(line) .≈ (Point2f(0.3, 2.65), horizontal))
+        end
     end
 
     @testset "labelposition moves clockwise around a closed loop" begin
         square = Point2f[(0, 0), (0, 2), (2, 2), (2, 0), (0, 0)]
         for loop in (square, reverse(square))
-            @test label_at(loop) == (Point2f(1, 2), Set(Point2f[(0, 2), (2, 2)]))
-            @test label_at(loop, 0.5) == (Point2f(2, 1), Set(Point2f[(2, 2), (2, 0)]))
-            @test label_at(loop, -0.5) == (Point2f(0, 1), Set(Point2f[(0, 0), (0, 2)]))
-            @test label_at(loop, 1.0) == label_at(loop, -1.0) == (Point2f(1, 0), Set(Point2f[(2, 0), (0, 0)]))
+            @test all(label_at(loop) .≈ (Point2f(1, 2), horizontal))
+            @test all(label_at(loop, 0.5) .≈ (Point2f(2, 1), vertical))
+            @test all(label_at(loop, -0.5) .≈ (Point2f(0, 1), vertical))
+            @test all(label_at(loop, 1.0) .≈ label_at(loop, -1.0) .≈ (Point2f(1, 0), horizontal))
         end
     end
 
     @testset "closed loop with NaN vertices is labeled like an open line" begin
         loop = Point2f[(0, 0), (0, 4), (NaN, 5), (1, 0), (0, 0)]
-        @test label_at(loop) == (Point2f(0, 1.5), Set(Point2f[(0, 0), (0, 4)]))
+        @test all(label_at(loop) .≈ (Point2f(0, 1.5), vertical))
     end
 
     @testset "line without a visible segment has no label" begin
