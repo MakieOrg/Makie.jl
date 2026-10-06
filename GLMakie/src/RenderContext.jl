@@ -150,7 +150,7 @@ Base.isempty(ctx::RenderContext) = isempty(ctx.groups)
 Empties the render context and refills it according to the given scene tree.
 """
 function recreate!(ctx::RenderContext, screen, root::Scene)
-    empty!(ctx)
+    unsafe_empty!(ctx)
     push!(ctx.groups, GLSceneGroup())
 
     Makie.collect_scenes!(ctx, root) do ctx, scene
