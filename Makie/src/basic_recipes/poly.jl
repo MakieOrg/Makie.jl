@@ -58,20 +58,14 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         clip_planes = plot.clip_planes,
         zorder_shift = plot.zorder_shift
     )
-    map!(plot, [:depth_shift, :stroke_depth_shift], :final_stroke_depth_shift) do base, added
-        return base + default_automatic(added, -1.0f-5)
-    end
-    map!(plot, [:zorder_shift, :stroke_zorder_shift], :final_stroke_zorder_shift) do base, added
-        return base + default_automatic(added, 0.0f0)
-    end
     wireframe!(
         plot, plot[1],
         color = plot.strokecolor, linestyle = plot.linestyle, space = plot.space,
         linewidth = plot.strokewidth, linecap = plot.linecap,
         visible = plot.visible, overdraw = plot.overdraw,
         inspectable = plot.inspectable, transparency = plot.transparency,
-        colormap = plot.strokecolormap, depth_shift = plot.final_stroke_depth_shift,
-        clip_planes = plot.clip_planes, zorder_shift = plot.final_stroke_zorder_shift
+        colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift,
+        clip_planes = plot.clip_planes, zorder_shift = plot.zorder_shift
     )
     return plot
 end
@@ -243,12 +237,6 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
             return sc
         end
     end
-    map!(plot, [:depth_shift, :stroke_depth_shift], :final_stroke_depth_shift) do base, added
-        return base + default_automatic(added, 0.0f0)
-    end
-    map!(plot, [:zorder_shift, :stroke_zorder_shift], :final_stroke_zorder_shift) do base, added
-        return base + default_automatic(added, 1.0f-5)
-    end
     lines!(
         plot, plot.outline, visible = plot.visible,
         color = plot.computed_strokecolor, linestyle = plot.linestyle, alpha = plot.alpha,
@@ -257,10 +245,8 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
         space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
-        inspectable = plot.inspectable,
-        depth_shift = plot.final_stroke_depth_shift,
-        clip_planes = plot.clip_planes,
-        zorder_shift = plot.final_stroke_zorder_shift
+        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift,
+        clip_planes = plot.clip_planes, zorder_shift = plot.zorder_shift
     )
     return
 end
