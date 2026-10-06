@@ -60,6 +60,16 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     "Font size of the contour labels"
     labelsize = 10 # arbitrary
     """
+    Position of the contour labels along their lines, from -1 to 1, either one value
+    or one per level. On an open line, 0 is the middle of its longest visible piece
+    and -1 and 1 are its ends, with 1 the end further right on screen. On a closed
+    loop, 0 is its top on screen, positive values move the label clockwise and -1
+    and 1 both lead to the point opposite the top.
+    """
+    labelposition = 0.0
+    "Distance in pixels between a contour label and the ends of the line around it."
+    labelpadding = 5
+    """
     Sets the tolerance for sampling of a `level` in 3D contour plots.
     """
     isorange = automatic
@@ -80,43 +90,71 @@ with z-elevation for each level.
 end
 
 """
-    label_info(lev, vertices)
+    label_anchor(pixel_line, labelposition)
 
-Return the points `(before, at, after)` of a contour line's label as `Point3f`s
-with the level as z. `at` is the label position, `after - before` its direction.
-An open line is labeled at the middle by arc length of its longest finite piece,
-a closed loop at its top, the vertex with the largest y (the middle of the top
-edge if that is flat). The result does not depend on the start point or direction
-of the line.
+Find where to put the label of a contour line, given its vertices projected to
+pixel space. Returns `(; from, to, t, before, after)`: the label sits at fraction
+`t` between the vertices `from` and `to`, and is oriented along the direction from
+vertex `before` to vertex `after`. Returns `nothing` if no segment is visible.
+
+`labelposition` ranges from -1 to 1. On an open line, 0 is the middle by arc length
+of its longest finite piece and -1 and 1 are its ends, with 1 the end further
+right. On a closed loop, 0 is the top (the highest vertex, or the middle of a flat
+top edge), positive values move clockwise and -1 and 1 both lead to the point
+opposite the top. The result does not depend on the start point or direction of
+the line.
 """
-function label_info(lev, vertices)
-    before, at, after = label_anchor(Point2d.(vertices))
-    first_neighbor, second_neighbor = minmax_by_tuple(before, after)
-    return to_ndim.(Point3f, (first_neighbor, at, second_neighbor), lev)
+function label_anchor(pixel_line, labelposition)
+    is_closed_line(pixel_line) || return open_line_anchor(pixel_line, collect(eachindex(pixel_line)), labelposition)
+    cycle = collect(firstindex(pixel_line):(lastindex(pixel_line) - 1))
+    gap = findfirst(i -> !is_finite_point(pixel_line[i]), cycle)
+    gap === nothing && return loop_anchor(pixel_line, cycle, labelposition)
+    return open_line_anchor(pixel_line, rotate_cycle(cycle, gap), labelposition)
 end
-
-minmax_by_tuple(a, b) = isless(Tuple(b), Tuple(a)) ? (b, a) : (a, b)
 
 is_finite_point(p) = all(isfinite, p)
 
 is_closed_line(vertices) = length(vertices) > 2 && first(vertices) == last(vertices)
 
-function label_anchor(vertices)
-    is_closed_line(vertices) || return longest_piece_middle_anchor(vertices)
-    cycle = vertices[begin:(end - 1)]
-    gap = findfirst(!is_finite_point, cycle)
-    gap === nothing && return loop_top_anchor(cycle)
-    return longest_piece_middle_anchor(rotate_cycle(cycle, gap))
-end
-
-function longest_piece_middle_anchor(vertices)
-    pieces = [view(vertices, run) for run in finite_runs(vertices)]
-    filter!(piece -> arc_length(piece) > 0, pieces)
-    isempty(pieces) && return ntuple(_ -> Point2d(NaN), 3)
-    anchors = arc_length_middle_anchor.(pieces)
-    longest = argmin(i -> (-arc_length(pieces[i]), Tuple(anchors[i][2])), eachindex(pieces))
+function open_line_anchor(pixel_line, path, labelposition)
+    pieces = [path[run] for run in finite_runs(view(pixel_line, path))]
+    filter!(piece -> path_length(pixel_line, piece) > 0, pieces)
+    isempty(pieces) && return nothing
+    anchors = map(pieces) do piece
+        rightward = left_to_right(pixel_line, piece)
+        return anchor_at_distance(pixel_line, rightward, (1 + labelposition) / 2 * path_length(pixel_line, piece))
+    end
+    longest = argmin(eachindex(pieces)) do i
+        return (-path_length(pixel_line, pieces[i]), Tuple(anchor_point(pixel_line, anchors[i])))
+    end
     return anchors[longest]
 end
+
+function loop_anchor(pixel_line, cycle, labelposition)
+    top_y = maximum(i -> pixel_line[i][2], cycle)
+    leftmost_top = argmin(i -> Tuple(pixel_line[i]), filter(i -> pixel_line[i][2] == top_y, cycle))
+    from_top = rotate_cycle(cycle, findfirst(==(leftmost_top), cycle))
+    clockwise = is_counterclockwise(pixel_line, from_top) ? [first(from_top); reverse(from_top[2:end])] : from_top
+    path = push!(clockwise, leftmost_top)
+
+    total_length = path_length(pixel_line, path)
+    total_length > 0 || return nothing
+    flat_top = collect(Iterators.takewhile(i -> pixel_line[i][2] == top_y, path))
+    flat_top_length = path_length(pixel_line, flat_top)
+    distance = mod(flat_top_length / 2 + labelposition * total_length / 2, total_length)
+    return anchor_at_distance(pixel_line, path, distance)
+end
+
+function is_counterclockwise(pixel_line, cycle)
+    ps = [pixel_line[i] for i in cycle]
+    signed_double_area = sum(eachindex(ps)) do i
+        a, b = ps[i], ps[mod1(i + 1, length(ps))]
+        return a[1] * b[2] - a[2] * b[1]
+    end
+    return signed_double_area > 0
+end
+
+left_to_right(pixel_line, path) = isless(Tuple(pixel_line[last(path)]), Tuple(pixel_line[first(path)])) ? reverse(path) : path
 
 function finite_runs(vertices)
     runs = UnitRange{Int}[]
@@ -133,37 +171,40 @@ function finite_runs(vertices)
     return runs
 end
 
-segment_lengths(piece) = [norm(b - a) for (a, b) in zip(piece[begin:(end - 1)], piece[(begin + 1):end])]
+segment_length(pixel_line, from, to) = Float64(norm(pixel_line[to] - pixel_line[from]))
 
-arc_length(piece) = sum(segment_lengths(piece); init = 0.0)
+path_length(pixel_line, path) = sum(segment_length(pixel_line, path[j], path[j + 1]) for j in 1:(length(path) - 1); init = 0.0)
 
-function arc_length_middle_anchor(piece)
-    cumulative = cumsum(segment_lengths(piece))
-    half = last(cumulative) / 2
-    k = findfirst(>=(half), cumulative)
-    segment_start = k == 1 ? 0.0 : cumulative[k - 1]
-    t = (half - segment_start) / (cumulative[k] - segment_start)
-    a, b = piece[k], piece[k + 1]
-    t == 1 && return (a, b, piece[k + 2])
-    return (a, a + t * (b - a), b)
+function anchor_at_distance(pixel_line, path, distance)
+    covered = 0.0
+    for j in 1:(length(path) - 1)
+        from, to = path[j], path[j + 1]
+        len = segment_length(pixel_line, from, to)
+        if len > 0 && covered + len >= distance
+            t = (distance - covered) / len
+            t <= 0 && return vertex_anchor(path, j)
+            t >= 1 && return vertex_anchor(path, j + 1)
+            return (; from, to, t, before = from, after = to)
+        end
+        covered += len
+    end
+    return vertex_anchor(path, length(path))
 end
 
-function loop_top_anchor(cycle)
-    top_y = maximum(p -> p[2], cycle)
-    is_top(i) = cycle[mod1(i, length(cycle))][2] == top_y
-    leftmost_top = argmin(i -> Tuple(cycle[i]), filter(is_top, eachindex(cycle)))
+function vertex_anchor(path, j)
+    closed = first(path) == last(path)
+    before = j > 1 ? path[j - 1] : closed ? path[end - 1] : path[j]
+    after = j < length(path) ? path[j + 1] : closed ? path[2] : path[j]
+    return (; from = path[j], to = path[j], t = 0.0, before, after)
+end
 
-    run_start, run_stop = leftmost_top, leftmost_top
-    while is_top(run_start - 1) && run_stop - run_start + 1 < length(cycle)
-        run_start -= 1
-    end
-    while is_top(run_stop + 1) && run_stop - run_start + 1 < length(cycle)
-        run_stop += 1
-    end
+anchor_point(line, anchor) = lerp_points(line[anchor.from], line[anchor.to], anchor.t)
 
-    run_with_neighbors = [cycle[mod1(i, length(cycle))] for i in (run_start - 1):(run_stop + 1)]
-    run_start == run_stop && return Tuple(run_with_neighbors)
-    return arc_length_middle_anchor(run_with_neighbors[(begin + 1):(end - 1)])
+lerp_points(a, b, t) = a + t * (b - a)
+
+function anchor_angle(pixel_line, anchor)
+    direction = pixel_line[anchor.after] - pixel_line[anchor.before]
+    return to_upright_angle(atan(direction[2], direction[1]))
 end
 
 function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d, Contour}}
@@ -173,9 +214,6 @@ function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d
     # index relates to the drawn line segments, outputs is (level, count)
     elements_per_segment = Pair{UInt32, UInt32}[]
     levels = Float32[]
-    lbl_pos_low = PT[]
-    lbl_pos_center = PT[]
-    lbl_pos_high = PT[]
 
     for (lvl, c) in enumerate(Contours.levels(contours))
         for elem in Contours.lines(c)
@@ -186,17 +224,10 @@ function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d
             end
             push!(points, PT(NaN32))
             push!(elements_per_segment, lvl => length(vertices) + 1)
-
-            if labels
-                p1, p2, p3 = label_info(c.level, vertices)
-                push!(levels, c.level)
-                push!(lbl_pos_low, p1)
-                push!(lbl_pos_center, p2)
-                push!(lbl_pos_high, p3)
-            end
+            labels && push!(levels, c.level)
         end
     end
-    return points, elements_per_segment, levels, lbl_pos_low, lbl_pos_center, lbl_pos_high
+    return points, elements_per_segment, levels
 end
 
 to_levels(x::AbstractVector{<:Number}, cnorm) = x
@@ -335,6 +366,14 @@ function has_changed(old_args, new_args)
     return false
 end
 
+function line_ranges(elements_per_segment)
+    counts = Int.(last.(elements_per_segment))
+    return [(level, (stop - count + 1):stop) for ((level, _), count, stop) in zip(elements_per_segment, counts, cumsum(counts))]
+end
+
+level_value(x::Real, level) = x
+level_value(x::AbstractVector, level) = x[level]
+
 repeat_level_data_per_vertex(counts, x) = x
 function repeat_level_data_per_vertex(counts, x::AbstractVector{T}) where {T}
     output = T[]
@@ -368,7 +407,7 @@ function register_label_frame_boxes!(texts)
     return texts.label_frame_boxes
 end
 
-pad_label_box(box, padding = 0.2 * widths(box)[2]) = Rect2d(minimum(box) .- padding, widths(box) .+ 2padding)
+pad_label_box(box, padding) = Rect2d(minimum(box) .- padding, widths(box) .+ 2padding)
 
 """
     label_gap_masked_line(line, pixel_line, center, angle, box)
@@ -453,7 +492,7 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     map!(
         plot,
         [:converted_1, :converted_2, :converted_3, :zlevels, :labels],
-        [:contour_points, :elements_per_segment, :computed_levels, :lbl_pos1, :lbl_pos2, :lbl_pos3]
+        [:contour_points, :elements_per_segment, :computed_levels]
     ) do args...
         return contourlines(args..., T)
     end
@@ -467,13 +506,33 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     # all the extra work for it entirely?
     # (i.e. no text plot, no boundingboxes, no projections?)
 
-    map!(plot, [:lbl_pos1, :lbl_pos2, :lbl_pos3], [:text_positions, :raw_lbl_directions]) do ps1, ps2, ps3
-        # TODO: Is this necessary?
-        pos = map(ps1, ps2, ps3) do p1, p2, p3
-            p = ifelse(isnan(p2), p1, p2)
-            return ifelse(isnan(p), p3, p)
+    register_projected_positions!(plot, Point2f, input_name = :contour_points, output_space = :pixel)
+
+    map!(
+        plot,
+        [:labels, :labelposition, :contour_points, :pixel_contour_points, :elements_per_segment],
+        [:text_positions, :text_rotation, :label_pixel_positions]
+    ) do use_labels, labelposition, points, pixel_points, elements_per_segment
+        positions = eltype(points)[]
+        rotations = Float32[]
+        pixel_positions = Point2f[]
+        use_labels || return positions, rotations, pixel_positions
+
+        for (level, line_range) in line_ranges(elements_per_segment)
+            line_without_separator = line_range[begin:(end - 1)]
+            pixel_line = view(pixel_points, line_without_separator)
+            anchor = label_anchor(pixel_line, level_value(labelposition, level))
+            if anchor === nothing
+                push!(positions, eltype(points)(NaN))
+                push!(rotations, 0.0f0)
+                push!(pixel_positions, Point2f(NaN))
+            else
+                push!(positions, anchor_point(view(points, line_without_separator), anchor))
+                push!(rotations, anchor_angle(pixel_line, anchor))
+                push!(pixel_positions, anchor_point(pixel_line, anchor))
+            end
         end
-        return pos, ps3 .- ps1
+        return positions, rotations, pixel_positions
     end
 
     map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
@@ -484,14 +543,6 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     map!(plot, [:labelcolor, :computed_lbl_colors], :text_color) do user_color, computed_color
         return ifelse(user_color === nothing, computed_color, to_color(user_color))
     end
-
-    # transform directions to pixel-space angles
-    register_projected_rotations_2d!(
-        plot,
-        position_name = :text_positions, direction_name = :raw_lbl_directions,
-        output_name = :text_rotation,
-        rotation_transform = to_upright_angle
-    )
 
     texts = text!(
         plot,
@@ -505,43 +556,30 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         transform_marker = false
     )
 
-    register_markerspace_positions!(texts)
     register_label_frame_boxes!(texts)
-    add_input!(plot.attributes, :label_pixel_positions, texts.markerspace_positions)
     add_input!(plot.attributes, :label_frame_boxes, texts.label_frame_boxes)
-
-    pixel_pos_node = register_projected_positions!(plot, Point2f, input_name = :contour_points, output_space = :pixel)
 
     map!(
         plot,
-        [:labels, :label_pixel_positions, :label_frame_boxes, :text_rotation, :contour_points, :elements_per_segment],
+        [:labels, :label_pixel_positions, :label_frame_boxes, :text_rotation, :labelpadding, :contour_points, :pixel_contour_points, :elements_per_segment],
         [:masked_lines, :masked_elements_per_segment]
-    ) do use_labels, centers, boxes, angles, segments, elements_per_segment
-        use_labels || return segments, elements_per_segment
+    ) do use_labels, centers, boxes, angles, padding, points, pixel_points, elements_per_segment
+        use_labels || return points, elements_per_segment
 
-        # To avoid always projecting, pull these in indirectly.
-        # label positions will already update on everything that could trigger
-        # pixel_contour_points, so this should be fine
-        pixel_pos = pixel_pos_node[]
-
-        masked = empty(segments)
+        masked = empty(points)
         masked_elements_per_segment = empty(elements_per_segment)
-        start = 0
-        for (n, (level, N_points)) in enumerate(elements_per_segment)
-            current_range = start .+ (1:N_points)
-            line = view(segments, current_range)
+        for (n, (level, line_range)) in enumerate(line_ranges(elements_per_segment))
+            line = view(points, line_range)
+            pixel_line = view(pixel_points, line_range)
 
             # simple heuristic to turn off masking segments when it has few
             # points, to avoid removing short contour lines entirely.
-            if count(!isnan, view(pixel_pos, current_range)) >= 10
-                box = pad_label_box(boxes[n])
-                center = Point2f(centers[n])
-                line = label_gap_masked_line(line, view(pixel_pos, current_range), center, angles[n], box)
+            if count(!isnan, pixel_line) >= 10
+                box = pad_label_box(boxes[n], padding)
+                line = label_gap_masked_line(line, pixel_line, centers[n], angles[n], box)
             end
             append!(masked, line)
             push!(masked_elements_per_segment, level => length(line))
-
-            start += N_points
         end
 
         return masked, masked_elements_per_segment
