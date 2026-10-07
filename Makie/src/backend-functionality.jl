@@ -360,6 +360,9 @@ function compute_colors(attributes, color_name = :scaled_color)
 end
 
 function add_computation!(plot::PrimitivePlotTypes, ::Val{:gl_zindex})
+    add_depth_estimate!(parent_scene(plot), plot)
+    register_has_transparent_color!(plot.attributes)
+
     plot_group = if plot isa Volume # manual depth compose, last
         :volume
     elseif plot isa Union{Scatter, Glyphs, Lines, LineSegments} # native AA
