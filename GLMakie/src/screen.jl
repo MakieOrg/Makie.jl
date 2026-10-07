@@ -1001,7 +1001,8 @@ function refreshwindowcb(screen, window)
     # poll and it is the only chance to redraw at the new size (see the GLFW docs on
     # glfwPollEvents). On X11 and Wayland event processing never blocks and the callback
     # fires for every damage/configure event, so rendering here only duplicates (and
-    # delays) the renderloop. Just ask for a redraw there.
+    # delays) the renderloop. Just mark the screen as dirty in that case and let the
+    # renderloop handle it.
     if GLFW.GetPlatform() in (GLFW.PLATFORM_WIN32, GLFW.PLATFORM_COCOA)
         screen.render_tick[] = Makie.BackendTick
         poll_updates(screen)
