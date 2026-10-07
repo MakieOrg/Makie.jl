@@ -809,7 +809,8 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
         colorinfo = raster_color(geometry.color, args, ncolors; fragment = fragment_cmap(plot, args))
         textured = colorinfo.texture !== nothing
         see_through = is_see_through(look, plot)
-        fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured, see_through)
+        pickable = plot.inspectable[] !== false
+        fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured, see_through, pickable)
         # What the shadow map is fitted around; not a stage argument.
         (geometry_dirty || instances_dirty) &&
             (uniforms = merge(uniforms, (local_bounds = instanced_bounds(geometry, instances),)))
@@ -857,7 +858,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
 
     robj = if fresh
         backend = screen.config.device
-        RenderObject(get_mesh_pipeline!(screen, colorinfo.texture !== nothing, see_through);
+        RenderObject(get_mesh_pipeline!(screen, colorinfo.texture !== nothing, see_through, pickable);
             backend,
             fxaa = plot_fxaa(plot),
             arg_names = MESH_ARG_NAMES,

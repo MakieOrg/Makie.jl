@@ -349,6 +349,28 @@ end
     g2.x = 3
     @test g2[:c][] == "3/int"
 
+    # A node read by another graph: the reading graph's input shares the slot
+    # (`compute_identity`), so it must follow the new one. A `poly` created empty
+    # and filled later is the case: its child mesh plot kept drawing the empty
+    # vector of the old type. Two graphs down, the same holds.
+    parent = ComputeGraph()
+    add_input!(parent, :x, Float64[])
+    map!(x -> x .* 2, parent, :x, :doubled)
+    child = ComputeGraph()
+    add_input!(child, :arg, parent.doubled)
+    map!(v -> (copy(v), eltype(v)), child, :arg, :info)
+    grandchild = ComputeGraph()
+    add_input!(grandchild, :arg, child.arg)
+    map!(v -> (copy(v), eltype(v)), grandchild, :arg, :info)
+    @test child[:info][] == (Float64[], Float64)
+    @test grandchild[:info][] == (Float64[], Float64)
+    parent.x = Float32[1, 2]
+    @test child[:info][] == (Float32[2, 4], Float32)
+    @test grandchild[:info][] == (Float32[2, 4], Float32)
+    parent.x = [3.0]
+    @test child[:info][] == ([6.0], Float64)
+    @test grandchild[:info][] == ([6.0], Float64)
+
     # A slot declared wider keeps its type.
     g3 = ComputeGraph()
     add_input!(g3, :v, 1)

@@ -1260,19 +1260,26 @@ end
 end
 
 """
-    get_mesh_pipeline!(screen, textured, see_through)
+    get_mesh_pipeline!(screen, textured, see_through = false, pickable = true)
 
 The mesh pipeline: with a texture or without, and for see-through surfaces
 (glass, a glow) one that tests depth without writing it, so what is behind
 them still draws. Those are drawn after everything opaque (`overlay_robjs`).
+
+A plot with `inspectable = false` is drawn but not picked: its pipeline leaves
+the id target alone, so a click on it finds what is behind it. A glowing sheet
+over a cut-open instrument is the case: it covers every part, and clicking a
+part should select the part.
 """
-function get_mesh_pipeline!(screen, textured::Bool, see_through::Bool = false)
-    key = Symbol(textured ? :mesh_textured : :mesh, see_through ? :_see_through : :_opaque)
+function get_mesh_pipeline!(screen, textured::Bool, see_through::Bool = false, pickable::Bool = true)
+    key = Symbol(textured ? :mesh_textured : :mesh, see_through ? :_see_through : :_opaque,
+                 pickable ? "" : :_unpicked)
     get!(screen.gfx_pipelines, key) do
         GraphicsPipeline(; vertex = VertexShader(mesh_vertex; outputs = MESH_VERTEX_OUT),
                            fragment = textured ? FragmentShader(mesh_fragment_textured; textures = 1) :
                                                  FragmentShader(mesh_fragment),
-                           blend = Premultiplied(),
+                           # The colour, then the pick id (`RASTER_METADATA`).
+                           blend = pickable ? Premultiplied() : PerAttachment(Premultiplied(), NoWrite()),
                            topology = TriangleList(),
                            cull = NoCull(),
                            depth = see_through ? DepthLessEqReadOnly() : DepthLessEq())

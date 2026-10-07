@@ -959,9 +959,35 @@ function retyped!(node::Computed)
     writer === nothing || foreach(rebuild_typed!, writer.dependents)
     return
 end
-rebuild_typed!(edge::ComputeEdge) =
-    (isassigned(edge.typed_edge) && (edge.typed_edge[] = TypedEdge_no_call(edge)); return)
+
+"""
+    rebuild_typed!(edge)
+
+Rebuild `edge`'s typed edge around the slots its nodes hold now. An edge whose
+outputs share their inputs' slots (`compute_identity`, which is how a plot reads
+its parent's nodes) takes the new input slots as its outputs' too, which
+re-types those outputs, so the edges reading them are rebuilt in turn. Before
+this, such an output kept the old slot and the value it last had: a `poly`
+created empty and filled later converted its `Float32` meshes, and its child
+mesh plot went on drawing the empty `Float64` vector from before, while its
+colours had the new length.
+"""
+function rebuild_typed!(edge::ComputeEdge)
+    isassigned(edge.typed_edge) || return
+    moved = follow_slots!(edge.callback, edge)
+    edge.typed_edge[] = TypedEdge_no_call(edge)
+    moved && foreach(rebuild_typed!, edge.dependents)
+    return
+end
 rebuild_typed!(::Union{Input, Nothing}) = nothing
+
+"""
+    follow_slots!(callback, edge) -> Bool
+
+Point the outputs of `edge` at its inputs' slots if the edge shares them, and
+answer whether any output got a new slot. Only `compute_identity` shares.
+"""
+follow_slots!(@nospecialize(callback), ::ComputeEdge) = false
 
 function set_result!(edge::TypedEdge, result, i, value)
     if isnothing(value) || is_same(edge.outputs[i][], value)
@@ -1261,6 +1287,18 @@ function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
     end
 
     return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs)
+end
+
+# A rebuilt identity edge shares its inputs' new slots (`rebuild_typed!`).
+function follow_slots!(::typeof(compute_identity), edge::ComputeEdge)
+    moved = false
+    for (input, output) in zip(edge.inputs, edge.outputs)
+        output.value === input.value && continue
+        output.value = input.value
+        output.dirty = true
+        moved = true
+    end
+    return moved
 end
 
 function locked_resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}

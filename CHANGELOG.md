@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A plot whose input changes type (a `poly` created empty and filled later) passes the new value to its child plots. They kept the old empty value before, and GLMakie failed with mismatched buffer lengths.
+
+- RayMakie raster picking skips meshes with `inspectable = false`. They are still drawn, and a click on them picks what lies behind.
+
 - RayMakie rejects frames when a plot's render object fails to update, and refreshes retained meshes' emission through Hikari's mesh handle without rebuilding their geometry. Mesh replacements reuse face-light slots to avoid duplicate illumination.
 
 - Forwarded container layouts batch size and padding updates, and `Subfigure` publishes content size after layout completes. Unchanged control rectangles and unused intrinsic text dimensions no longer trigger repeated geometry/layout updates.
