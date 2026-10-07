@@ -996,10 +996,21 @@ function set_framerate!(screen::Screen, fps = 30)
 end
 
 function refreshwindowcb(screen, window)
-    screen.render_tick[] = Makie.BackendTick
-    poll_updates(screen)
-    render_frame(screen)
-    GLFW.SwapBuffers(window)
+    # On Windows and macOS, GLFW.PollEvents() blocks while the user moves or resizes the
+    # window, so the renderloop can't run. GLFW calls this callback from inside that blocked
+    # poll and it is the only chance to redraw at the new size (see the GLFW docs on
+    # glfwPollEvents). On X11 and Wayland event processing never blocks and the callback
+    # fires for every damage/configure event, so rendering here only duplicates (and
+    # delays) the renderloop. Just mark the screen as dirty in that case and let the
+    # renderloop handle it.
+    if GLFW.GetPlatform() in (GLFW.PLATFORM_WIN32, GLFW.PLATFORM_COCOA)
+        screen.render_tick[] = Makie.BackendTick
+        poll_updates(screen)
+        render_frame(screen)
+        GLFW.SwapBuffers(window)
+    else
+        screen.requires_update = true
+    end
     return
 end
 refreshwindowcb(screen) = window -> refreshwindowcb(screen, window)

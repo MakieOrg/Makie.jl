@@ -536,3 +536,39 @@ end
     empty!(scene)
     @test length(screen.render_tick.listeners) == N
 end
+
+@testset "window resize coalescing" begin
+    scene = Scene(size = (200, 150))
+    screen = display(scene, visible = false)
+    updaters = filter(p -> p[2] isa GLMakie.WindowResizeUpdater, screen.render_tick.listeners)
+    @test length(updaters) == 1
+    updater = updaters[1][2]
+    window = GLMakie.to_native(screen)
+    w, h = Cint.(GLMakie.window_size(window))
+
+    received = Rect2i[]
+    on(x -> push!(received, x), scene.events.window_area)
+
+    # size callbacks only record the latest size ...
+    updater(window, w + Cint(10), h + Cint(10))
+    updater(window, w + Cint(20), h + Cint(20))
+    @test isempty(received)
+
+    # ... which is applied once on the next tick
+    updater(Makie.RegularRenderTick)
+    @test length(received) == 1
+    @test widths(received[1]) == widths(scene.events.window_area[])
+    updater(Makie.RegularRenderTick)
+    @test length(received) == 1
+
+    # applying the same size again does nothing
+    updater(window, w + Cint(20), h + Cint(20))
+    updater(Makie.RegularRenderTick)
+    @test length(received) == 1
+
+    updater(window, w, h)
+    updater(Makie.RegularRenderTick)
+    @test length(received) == 2
+    @test widths(received[2]) == Vec2i(200, 150)
+    close(screen)
+end
