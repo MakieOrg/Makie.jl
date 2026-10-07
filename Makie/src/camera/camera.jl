@@ -149,8 +149,14 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     # thus they need to react to all matrix updates. We add a trigger node here
     # to simplify this (i.e. avoid the need to listen to 25 matrices or some
     # subset of the inputs)
-    # Note: The value needs to change so that the update doesn't get discarded
-    map!((a, b, c) -> time(), graph, [:view, :projection, :viewport], :camera_trigger)
+    # Note: The value needs to change so that the update doesn't get discarded.
+    # A counter, not `time()`: on Windows `time()` advances every 16 ms, so two
+    # camera updates inside one tick produced the same value, ComputePipeline
+    # dropped the second as unchanged, and every plot kept the matrices from
+    # before it. Seen as tick labels drawn with an LScene's pre-layout (square)
+    # projection in roughly half of fresh RayMakie screens on a Windows laptop.
+    camera_updates = Ref(UInt64(0))
+    map!((a, b, c) -> (camera_updates[] += UInt64(1)), graph, [:view, :projection, :viewport], :camera_trigger)
 
     map!(graph, :viewport, [:scene_origin, :resolution]) do viewport
         return (Vec2d(origin(viewport)), Vec2d(widths(viewport)))
