@@ -42,7 +42,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
 
     register_computation!(attr,
         [:mesh, :positions_transformed_f32c, :faces, :normals,
-         :texturecoordinates, :uv_transform, :trace_color_tex, :model_f32c, :material, :rasterize],
+         :texturecoordinates, :uv_transform, :trace_color_tex, :model_f32c, :material, :rasterize,
+         :visible],
         [:trace_renderobject]) do args, changed, last
         # `nothing` when this plot is not being traced — the slot still exists,
         # so its type never changes, and the collectors skip a `nothing`.
@@ -112,11 +113,16 @@ function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, la
             needs_rebuild = true
         end
     end
+    # A multi-material mesh keeps no material to give its lights back when it
+    # is shown again, so it is built again instead.
+    shown_rebuild = !needs_rebuild && changed.visible && args.visible &&
+                    !hasproperty(last_robj, :material)
+    needs_rebuild |= shown_rebuild
 
     if needs_rebuild
         # Classify BEFORE rebuilding, and only for a mesh that already had a
         # BLAS — the first build is not something a refit could have avoided.
-        if is_trace_robj(last_robj)
+        if is_trace_robj(last_robj) && !shown_rebuild
             # `changed.mesh` is deliberately NOT consulted: `:mesh` is the
             # container `register_mesh_decomposition!` decomposes, so replacing
             # `arg1` dirties it whatever the new mesh contains. The decomposed
@@ -149,10 +155,13 @@ function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, la
         retained_material = keep_material ? last_robj.material : nothing
         area_lights = is_trace_robj(last_robj) && last_robj.handle isa Hikari.SceneHandle ?
             last_robj.handle.area_lights : Hikari.SetKey[]
-        return mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx, retained_material; area_lights)
+        robj = mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx, retained_material; area_lights)
+        return trace_visibility!(hikari_scene, state, robj, args, changed, true)
     end
 
-    return mesh_trace_update!(hikari_scene, state, last_robj, args, changed, recolor_material)
+    robj = mesh_trace_update!(hikari_scene, state, last_robj, args, changed, recolor_material)
+    return trace_visibility!(hikari_scene, state, robj, args, changed, false;
+                             restyled = changed.material || recolor_material !== nothing)
 end
 
 """
@@ -912,18 +921,59 @@ end
 # Handle management
 # =============================================================================
 
+"""
+    delete_trace_handles!(hikari_scene, robj)
+
+Take a plot's meshes out of the traced scene, with the light of their emitting
+faces. Removing only the geometry left a deleted lamp lighting the scene, and a
+volume (whose object is its bare handle) was never removed at all.
+"""
 function delete_trace_handles!(hikari_scene, robj)
-    tlas = hikari_scene.accel
-    if hasproperty(robj, :handles)
-        for h in robj.handles
-            actual_handle = h isa Hikari.SceneHandle ? h.geometry : h
-            delete!(tlas, actual_handle)
-        end
-    elseif hasproperty(robj, :handle)
-        h = robj.handle
-        actual_handle = h isa Hikari.SceneHandle ? h.geometry : h
-        delete!(tlas, actual_handle)
+    foreach(h -> delete!(hikari_scene, h), first(trace_parts(robj)))
+    return nothing
+end
+
+"""
+    trace_parts(robj) -> (handles, materials)
+
+The meshes a plot's traced object put into the scene, each with the material it
+was pushed with (`nothing` where the object keeps none).
+"""
+trace_parts(handle::Hikari.SceneHandle) = ([handle], (nothing,))   # a volume's box
+function trace_parts(robj::NamedTuple)
+    hasproperty(robj, :handles) && return (robj.handles, robj.materials)
+    return ([robj.handle], (hasproperty(robj, :material) ? robj.material : nothing,))
+end
+
+"""
+    set_trace_visible!(hikari_scene, state, robj, visible) -> robj
+
+Hide or show what a plot put into the traced scene, as its `visible` says. A
+hidden plot keeps its geometry and its lights' slots, so showing it again
+rebuilds nothing; until then no ray hits it and it lights nothing. Before this
+the tracer read no `visible` at all, and a hidden mesh was path traced anyway.
+"""
+function set_trace_visible!(hikari_scene, state, robj, visible::Bool)
+    handles, materials = trace_parts(robj)
+    Raycore.set_visible!(hikari_scene, handles, visible, materials)
+    state.needs_film_clear = true
+    return robj
+end
+
+"""
+    trace_visibility!(hikari_scene, state, robj, args, changed, fresh; restyled) -> robj
+
+What a trace node does with `visible` after building (`fresh`) or updating its
+object: hide a new object that is hidden, follow a change of `visible`, and hide
+again what a material change (`restyled`) switched back on.
+"""
+function trace_visibility!(hikari_scene, state, robj, args, changed, fresh::Bool; restyled::Bool = false)
+    if fresh
+        args.visible || set_trace_visible!(hikari_scene, state, robj, false)
+    elseif changed.visible || (restyled && !args.visible)
+        set_trace_visible!(hikari_scene, state, robj, args.visible)
     end
+    return robj
 end
 
 function update_trace_transform!(hikari_scene, state, robj, transform)

@@ -307,13 +307,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
 
     # 5. Render object — single dispatch point: create on first frame, update otherwise.
     register_computation!(attr,
-        [:trace_marker_mesh, :trace_transforms, :trace_materials],
+        [:trace_marker_mesh, :trace_transforms, :trace_materials, :visible],
         [:trace_renderobject]) do args, changed, last
         if isnothing(last) || isnothing(last.trace_renderobject) ||
            !hasproperty(last.trace_renderobject, :handles)
-            return (meshscatter_create!(hikari_scene, state, args),)
+            robj = meshscatter_create!(hikari_scene, state, args)
+            return (trace_visibility!(hikari_scene, state, robj, args, changed, true),)
         end
-        return (meshscatter_update!(hikari_scene, state, last.trace_renderobject,
-                                     args, changed),)
+        last_robj = last.trace_renderobject
+        robj = meshscatter_update!(hikari_scene, state, last_robj, args, changed)
+        # A new instance count or marker pushes the instances again, visible.
+        fresh = robj.handles !== last_robj.handles
+        return (trace_visibility!(hikari_scene, state, robj, args, changed, fresh;
+                                  restyled = changed.trace_materials),)
     end
 end

@@ -143,12 +143,16 @@ see_through_look(::RasterLook) = true   # an image look is an emitted image, mod
 # -----------------------------------------------------------------------------
 
 """
-    RasterEmitter(centre, normal, area, two_sided, L)
+    RasterEmitter(centre, normal, area, two_sided, L, axis, half)
 
 A glowing mesh as the raster path lights with it: a flat patch of `area`
 emitting radiance `L` from its `centre` along its `normal`, both ways when
 `two_sided`. The tracer makes every triangle of it an area light; this is the
-same light with the triangles summed.
+same light with the triangles summed. `axis` is the patch's long in-plane
+direction and `half` its half extents along `axis` and `normal × axis`: what a
+glossy surface reflects of it is that rectangle, not a disc of its area. A
+24×5 softbox drawn as a disc put a 12-unit-wide highlight on every flat glass
+face under it.
 """
 struct RasterEmitter
     centre::Vec3f
@@ -156,6 +160,8 @@ struct RasterEmitter
     area::Float32
     two_sided::Bool
     L::Vec3f
+    axis::Vec3f
+    half::Vec2f
 end
 
 """The radiance a material emits and whether both sides do, or `nothing`."""
@@ -177,7 +183,8 @@ The area light a mesh plot is, in the space the raster path draws in (the
 plot's model matrix applied to its transformed, Float32-converted positions):
 its largest face fixes the normal, and the faces turned the same way give the
 area and the centre. For a thin box (a softbox) that is one side, which is the
-side that shines; the other is behind it.
+side that shines; the other is behind it. The in-plane extent of those faces'
+corners gives the rectangle (`patch_extent`).
 """
 function raster_emitter(plot)
     e = emission_of(overlay_material(plot))
@@ -195,14 +202,47 @@ function raster_emitter(plot)
     ref = normalize(first(argmax(t -> norm(t[1]), tris)))
     area = 0f0
     centre = Vec3f(0)
-    for (n, c) in tris
+    corners = Vec3f[]
+    for ((n, c), f) in zip(tris, faces)
         a = norm(n) / 2
         # turned the way of the largest face: within 60 degrees of it
         (a > 0 && dot(n, ref) > 0.5f0 * norm(n)) || continue
         area += a
         centre += a * c
+        push!(corners, P[f[1]], P[f[2]], P[f[3]])
     end
-    return RasterEmitter(centre / area, ref, area, e.two_sided, e.L)
+    centre = centre / area
+    # Each corner once: two triangles of a quad share a diagonal, and counting
+    # its ends twice turned a 24×5 softbox's axis towards that diagonal and
+    # shrank its rectangle to 21×6.
+    axis, half = patch_extent(unique!(corners), centre, ref, area)
+    return RasterEmitter(centre, ref, area, e.two_sided, e.L, axis, half)
+end
+
+"""
+    patch_extent(points, centre, normal, area) -> (axis, half)
+
+The rectangle a flat patch covers: its principal in-plane direction (of the
+corners' spread about `centre`) and its half extents along it and across. The
+extents are scaled to the patch's `area`, so a disc or a ring keeps its light's
+size rather than its bounding box's.
+"""
+function patch_extent(points, centre::Vec3f, normal::Vec3f, area::Float32)
+    seed = abs(normal[1]) < 0.9f0 ? Vec3f(1, 0, 0) : Vec3f(0, 1, 0)
+    e1 = normalize(seed - dot(seed, normal) * normal)
+    e2 = cross(normal, e1)
+    sxx = sxy = syy = 0f0
+    for p in points
+        x, y = dot(p - centre, e1), dot(p - centre, e2)
+        sxx += x * x; sxy += x * y; syy += y * y
+    end
+    θ = 0.5f0 * atan(2sxy, sxx - syy)
+    axis = cos(θ) * e1 + sin(θ) * e2
+    across = cross(normal, axis)
+    hu = maximum(p -> abs(dot(p - centre, axis)), points)
+    hv = maximum(p -> abs(dot(p - centre, across)), points)
+    s = sqrt(area / max(4hu * hv, 1f-12))
+    return axis, Vec2f(hu * s, hv * s)
 end
 
 """
@@ -230,7 +270,7 @@ end
 
 """
 The scene's Makie lights (Makie's multi-light packing) with its emitters after
-them, as `LIGHT_EMITTER`s: centre, normal, area, two-sided.
+them, as `LIGHT_EMITTER`s: centre, normal, area, two-sided, axis, half extents.
 """
 function with_emitters(N, types, colors, parameters, emitters)
     isempty(emitters) && return (N, types, colors, parameters)
@@ -238,7 +278,7 @@ function with_emitters(N, types, colors, parameters, emitters)
     colors = vcat(colors, [RGBf(e.L...) for e in emitters])
     parameters = copy(parameters)
     for e in emitters
-        push!(parameters, e.centre..., e.normal..., e.area, Float32(e.two_sided))
+        push!(parameters, e.centre..., e.normal..., e.area, Float32(e.two_sided), e.axis..., e.half...)
     end
     return (N + length(emitters), types, colors, parameters)
 end

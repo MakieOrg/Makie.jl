@@ -98,11 +98,19 @@ function disagreement(a, b; tol = 0.1)
     return (fraction = bad / length(a), mean = total / length(a))
 end
 
+# A scene's lights through the same steps as its compute graph
+# (`register_raster_lights!`): its sky lights, their shapes at unit intensity,
+# their SH, then the SH at their intensities.
+function sky_sh(lights)
+    sky = RayMakie.environment_lights(lights)
+    return RayMakie.environment_sh(sky, map(RayMakie.unit_sh ∘ RayMakie.unit_intensity, sky))
+end
+
 @testset "raster mesh: GLMakie's mesh shader" begin
     @testset "an environment's irradiance" begin
         # A white map of intensity 1 lights every normal to exactly 1: the
         # identity the spherical-harmonic projection has to keep.
-        sh, has = RayMakie.environment_sh([EnvironmentLight(1f0, fill(RGBf(1, 1, 1), 64, 64))])
+        sh, has = sky_sh([EnvironmentLight(1f0, fill(RGBf(1, 1, 1), 64, 64))])
         @test has == 1
         for n in (Vec3f(0, 0, 1), Vec3f(1, 0, 0), Vec3f(0, -1, 0), RayMakie._unit(Vec3f(1, 1, 1)))
             @test isapprox(RayMakie.env_irradiance(sh, n), Vec3f(1, 1, 1); atol = 0.02)
@@ -112,11 +120,11 @@ end
         n = 64
         sky = [Hikari.equal_area_square_to_sphere(Point2f((i - 0.5f0) / n, (j - 0.5f0) / n))[3] > 0 ?
                RGBf(1, 1, 1) : RGBf(0, 0, 0) for j in 1:n, i in 1:n]
-        sh2, _ = RayMakie.environment_sh([EnvironmentLight(1f0, sky)])
+        sh2, _ = sky_sh([EnvironmentLight(1f0, sky)])
         @test RayMakie.env_irradiance(sh2, Vec3f(0, 0, 1))[1] > 0.9
         @test RayMakie.env_irradiance(sh2, Vec3f(0, 0, -1))[1] < 0.1
         # No environment light, no environment term.
-        @test RayMakie.environment_sh([PointLight(RGBf(1, 1, 1), Point3f(0))])[2] == 0
+        @test sky_sh([PointLight(RGBf(1, 1, 1), Point3f(0))])[2] == 0
     end
 
     @testset "a colormapped mesh maps per vertex" begin
@@ -232,4 +240,64 @@ unmapped(sc; kw...) = Makie.colorbuffer(raster_screen(sc; tonemap = nothing, gam
         d = disagreement(gl, unmapped(stroke_scene(kind; fxaa = true)); tol = 0.02)
         @test d.fraction < 0.005
     end
+end
+
+# A glowing sheet with no surface (a `NullMaterial` emitting an image) over a
+# lit grey one. The tracer adds the glow to what is behind it before the film
+# maps the sum; the raster path maps them apart and blends. Added after the
+# film, a pale green glow over grey clipped to white.
+function quad(z; size = 4f0)
+    h = size / 2
+    GeometryBasics.Mesh(Point3f[(-h, -h, z), (h, -h, z), (h, h, z), (-h, h, z)],
+                        GLTriangleFace[(1, 2, 3), (1, 3, 4)];
+                        normal = fill(Vec3f(0, 0, 1), 4), uv = Vec2f[(0, 0), (1, 0), (1, 1), (0, 1)])
+end
+
+function glow_over_grey()
+    sc = Scene(; size = (64, 64), backgroundcolor = RGBf(0, 0, 0), lights = [AmbientLight(RGBf(0.3, 0.3, 0.3))])
+    cam3d!(sc; center = false)
+    mesh!(sc, quad(0f0); material = Hikari.Diffuse(Kd = (0.5, 0.5, 0.5)))
+    tint = [Hikari.RGBSpectrum(0.15f0, 0.45f0, 0.22f0, 1f0) for _ in 1:4, _ in 1:4]
+    glow = Hikari.MediumInterface(Hikari.NullMaterial();
+        emission = Hikari.Emissive(Le = Hikari.Texture(tint), scale = 2f0, two_sided = true))
+    mesh!(sc, quad(0.01f0); material = glow)
+    update_cam!(sc, cameracontrols(sc), Vec3f(0, 0, 3), Vec3f(0), Vec3f(0, 1, 0))
+    return sc
+end
+
+@testset "a glow over a surface keeps its colour" begin
+    raster = Makie.colorbuffer(raster_screen(glow_over_grey()))[32, 32]
+    traced = Makie.colorbuffer(RayMakie.Screen(glow_over_grey(); samples = 64, max_depth = 2,
+                                               hw_accel = false))[32, 32]
+    # measured: raster (0.75, 0.96, 0.84), traced (0.84, 0.94, 0.88); added: white
+    @test green(raster) - red(raster) > 0.15
+    @test abs(red(raster) - red(traced)) < 0.12
+    @test abs(green(raster) - green(traced)) < 0.12
+    @test abs(blue(raster) - blue(traced)) < 0.12
+end
+
+# A glowing image drawn smaller than it is: a line one texel wide, at a slant, in
+# an image four times the size of the frame. Point-sampled, a pixel sees the
+# line only where its centre lands within a texel of it, and 23 of the 64 rows
+# came out empty: a dotted line. Filtered over each pixel's footprint, every
+# row has its piece.
+function slanted_line_glow(; n = 256, px = 64)
+    sc = Scene(; size = (px, px), backgroundcolor = RGBf(0, 0, 0), lights = [AmbientLight(RGBf(0, 0, 0))])
+    cam3d!(sc; center = false)
+    off, on = Hikari.RGBSpectrum(0f0, 0f0, 0f0, 1f0), Hikari.RGBSpectrum(0f0, 1f0, 0f0, 1f0)
+    img = [j == round(Int, 0.61 * i) + 40 ? on : off for i in 1:n, j in 1:n]
+    glow = Hikari.MediumInterface(Hikari.NullMaterial();
+        emission = Hikari.Emissive(Le = Hikari.Texture(img), scale = 4f0, two_sided = true))
+    mesh!(sc, quad(0f0); material = glow)
+    cam = cameracontrols(sc)
+    cam.fov[] = 45
+    # The quad exactly fills the frame.
+    update_cam!(sc, cam, Vec3f(0, 0, 2f0 / tand(22.5f0)), Vec3f(0), Vec3f(0, 1, 0))
+    return sc
+end
+
+@testset "a minified glowing line stays a line" begin
+    img = Makie.colorbuffer(raster_screen(slanted_line_glow()))
+    empty_rows = count(i -> maximum(c -> green(c), img[i, :]) <= 0.05, axes(img, 1))
+    @test empty_rows == 0
 end

@@ -12,7 +12,9 @@ using Raycore
 using GeometryBasics
 using KernelAbstractions
 using Lava, Mantle
-using Colors
+# Through Makie: Colors is not a test dependency, so `using Colors` only loaded
+# in an environment that happened to have it.
+using Makie.Colors
 
 # Whichever backend registered — `LavaBackend` is a Vulkan type and naming it
 # made this file unloadable anywhere else.
@@ -295,6 +297,10 @@ end
 
             Base.delete!(screen, scene)
             @test isnothing(screen.state)
+            # `delete!` drops the scene, not the window: without this the render
+            # loop `display` started kept running after the file finished, 34867
+            # frames on 2026-10-07 until the next file's device reset failed it.
+            close(screen)
         end
 
         # Regression (2026-04-20): Makie's `free(scene)` → `empty!(scene)` →

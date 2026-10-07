@@ -57,7 +57,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
     # `nothing`, and the compute graph reported "this plot will not be drawn".
 
     # 3. HWTLAS management: combine mesh, color, model_f32c
-    register_computation!(attr, [:trace_surface_mesh, :trace_color_tex, :model_f32c, :rasterize],
+    register_computation!(attr, [:trace_surface_mesh, :trace_color_tex, :model_f32c, :rasterize, :visible],
                           [:trace_renderobject]) do args, changed, last
         (args.rasterize || !should_raytrace(scene, plot) || isnothing(hikari_scene)) &&
             return (nothing,)
@@ -69,7 +69,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
             mat = extract_material(plot, color_tex)
             handle = push!(hikari_scene, gb_mesh, mat; transform=transform)
             state.needs_film_clear = true
-            return ((handle=handle, material=mat, instance_idx=Raycore.n_instances(hikari_scene.accel)),)
+            robj = (handle=handle, material=mat, instance_idx=Raycore.n_instances(hikari_scene.accel))
+            return (trace_visibility!(hikari_scene, state, robj, args, changed, true),)
         end
 
         robj = last.trace_renderobject
@@ -79,7 +80,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
             mat = extract_material(plot, color_tex)
             handle = push!(hikari_scene, gb_mesh, mat; transform=transform)
             state.needs_film_clear = true
-            return ((handle=handle, material=mat, instance_idx=Raycore.n_instances(hikari_scene.accel)),)
+            robj = (handle=handle, material=mat, instance_idx=Raycore.n_instances(hikari_scene.accel))
+            return (trace_visibility!(hikari_scene, state, robj, args, changed, true),)
         end
 
         if changed.trace_color_tex
@@ -95,7 +97,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
             update_trace_transform!(hikari_scene, state, robj, transform)
         end
 
-        return (robj,)
+        return (trace_visibility!(hikari_scene, state, robj, args, changed, false),)
     end
 
     # RASTER: the mesh shader, as for `mesh!`. What a surface lacks of its

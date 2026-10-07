@@ -420,18 +420,23 @@ for a thin one.
 end
 
 """
-    emitter_highlight(m, n, v, p, centre, en, area, two_sided, L) -> radiance
+    emitter_highlight(m, n, v, p, centre, en, area, two_sided, L, axis, half) -> radiance
 
-The specular reflection of a glowing patch (centre, normal `en`, `area`) in the
-material's lobes, by the representative-point method: the lobe is evaluated
-towards the point of the patch nearest the mirror ray, widened by the patch's
-angular size, and weighted by its solid angle. In a mirror that is the patch's
-radiance where the mirror ray meets it; in a rough lobe, the light's
-highlight.
+The specular reflection of a glowing patch (centre, normal `en`, `area`, the
+rectangle `half` extents along `axis` and `en × axis`) in the material's lobes,
+by the representative-point method: the lobe is evaluated towards the point of
+the rectangle nearest the mirror ray, widened by the patch's angular size, and
+weighted by its solid angle. In a mirror that is the patch's radiance where
+the mirror ray meets it, so a long, narrow softbox reflects as a long, narrow
+highlight; in a rough lobe, the light's highlight.
 """
 @inline function emitter_highlight(m::RasterMaterial, n::Vec3f, v::Vec3f, p::Vec3f,
-                                   centre::Vec3f, en::Vec3f, area::Float32, two_sided::Float32, L::Vec3f)
+                                   centre::Vec3f, en::Vec3f, area::Float32, two_sided::Float32, L::Vec3f,
+                                   axis::Vec3f, half::Vec2f)
     r = 2f0 * dot(n, v) * n - v
+    across = cross(en, axis)
+    # The lobe's widening keeps the patch's total energy (a disc of its area);
+    # only where the highlight sits follows the rectangle.
     radius = sqrt(area * Float32(inv(π)))
     q = centre
     denom = dot(r, en)
@@ -439,8 +444,8 @@ highlight.
         t = dot(centre - p, en) / denom
         if t > 0f0
             off = p + t * r - centre
-            len = sqrt(dot(off, off))
-            q = len > radius ? centre + off * (radius / len) : centre + off
+            q = centre + clamp(dot(off, axis), -half[1], half[1]) * axis +
+                         clamp(dot(off, across), -half[2], half[2]) * across
         end
     end
     lv = q - p
@@ -455,7 +460,7 @@ highlight.
 end
 
 light_parameter_count(kind) = kind == LIGHT_POINT ? Int32(5) : kind == LIGHT_DIRECTIONAL ? Int32(3) :
-                              kind == LIGHT_SPOT ? Int32(8) : kind == LIGHT_EMITTER ? Int32(8) : Int32(12)
+                              kind == LIGHT_SPOT ? Int32(8) : kind == LIGHT_EMITTER ? Int32(13) : Int32(12)
 
 # ─── the shadow map ──────────────────────────────────────────────────────────
 #
@@ -710,7 +715,9 @@ materials reflect on whichever side is seen. `v` points to the eye.
                 @inbounds en = Vec3f(light_parameters[idx + 4], light_parameters[idx + 5], light_parameters[idx + 6])
                 @inbounds area = light_parameters[idx + 7]
                 @inbounds two_sided = light_parameters[idx + 8]
-                c = c + emitter_highlight(material, normal, v, world_pos, centre, en, area, two_sided, lc)
+                @inbounds axis = Vec3f(light_parameters[idx + 9], light_parameters[idx + 10], light_parameters[idx + 11])
+                @inbounds half = Vec2f(light_parameters[idx + 12], light_parameters[idx + 13])
+                c = c + emitter_highlight(material, normal, v, world_pos, centre, en, area, two_sided, lc, axis, half)
             else
                 c = c + E .* specular_part(material, normal, v, l, 0f0)
             end
@@ -765,7 +772,7 @@ scene's shading mode, plus the environment's diffuse irradiance.
             elseif kind == LIGHT_EMITTER
                 # GLMakie's shader has no area light: an emitter lights only a
                 # display-encoded (physical) film.
-                idx += Int32(8)
+                idx += light_parameter_count(kind)
             else
                 return Vec3f(1f0, 0f0, 1f0)
             end
@@ -995,8 +1002,9 @@ film mapping, the stroke, and the premultiplied output a blended pass wants.
     end
     # What the surface emits (see `RasterLook`): mode 1 a constant radiance,
     # mode 2 the sampled colour, which then has no surface under it. Linear,
-    # mapped through the film below and added over the reflected light, the
-    # way the tracer adds an emitter's radiance.
+    # added to the reflected light and mapped through the film with it, the
+    # way the tracer adds an emitter's radiance; a glow with no surface is
+    # mapped alone and blended over what is behind it.
     glow = Vec3f(0f0)
     premultiplied = false
     if emission[4] == 1f0
@@ -1005,7 +1013,8 @@ film mapping, the stroke, and the premultiplied output a blended pass wants.
         glow = Vec3f(color[1], color[2], color[3]) * emission[1]
         color = Vec4f(0f0, 0f0, 0f0, 0f0)
     end
-    if shading_mode != SHADING_NONE && has_normals != Int32(0)
+    lit = shading_mode != SHADING_NONE && has_normals != Int32(0)
+    if lit
         # Lit, then film-mapped like the traced image, so the base colour is
         # decoded to the linear reflectance the traced path's `to_spectrum` makes
         # of it. Only when the film encodes for display again: with `gamma =
@@ -1030,6 +1039,12 @@ film mapping, the stroke, and the premultiplied output a blended pass wants.
                        light_color, light_direction, N_lights, light_types, light_colors,
                        light_parameters, has_env, env_sh, diffuse, specular, shininess, backlight)
         end
+        if emission[4] == 1f0
+            # A glowing surface: its light and what it reflects add up before
+            # the film maps them, as the tracer sums radiance. Mapped apart
+            # and added, a saturating film counts the glow twice.
+            rgb = rgb + glow
+        end
         rgb = film_mapping(rgb, exposure, tonemap, white_point, inv_gamma, apply_gamma)
         if physical != Int32(0) && is_glass(material)
             # Glass shows what it reflects, over what it lets through: its
@@ -1047,8 +1062,18 @@ film mapping, the stroke, and the premultiplied output a blended pass wants.
                          px_per_unit * resolution, strokewidth, strokecolor, px_per_unit)
     a = color[4]
     out = premultiplied ? Vec3f(color[1], color[2], color[3]) : Vec3f(color[1] * a, color[2] * a, color[3] * a)
-    if emission[4] != 0f0
-        # Premultiplied: a glow with no surface (alpha 0) adds to what is behind it.
+    if emission[4] == 2f0
+        # A glow with no surface over what is behind it. The tracer adds the two
+        # before its film saturates them; added after, a green outline over a
+        # dark wall clipped to white. Premultiplied blending can only scale
+        # what is behind by one factor, so the glow covers it by its brightest
+        # channel: over black, a dark wall and the floor that is within a few
+        # percent of the film of the sum.
+        g = film_mapping(glow, exposure, tonemap, white_point, inv_gamma, apply_gamma)
+        out = out + g
+        a = max(a, max(g[1], g[2], g[3]))
+    elseif emission[4] == 1f0 && !lit
+        # Unlit: the colour is shown as given, with the glow on top of it.
         out = out + film_mapping(glow, exposure, tonemap, white_point, inv_gamma, apply_gamma)
     end
     (a < 1f-3 && out[1] + out[2] + out[3] < 1f-3) && discard()
@@ -1090,10 +1115,36 @@ end
     Vec4f(sample_texture_2d(UInt32(0), u, v, UInt32(0)), sample_texture_2d(UInt32(0), u, v, UInt32(1)),
           sample_texture_2d(UInt32(0), u, v, UInt32(2)), sample_texture_2d(UInt32(0), u, v, UInt32(3)))
 
+"""
+    footprint_texel(uv) -> Vec4f
+
+The bound texture averaged over the pixel's footprint: three by three taps
+spread across the uv one pixel covers (`dFdx`, `dFdy`). These textures have no
+mip levels, so one tap of a minified image is whichever texel it lands on, and a
+glowing outline one texel wide came out as a dotted line wherever the image was
+smaller on screen than in texels. Called in uniform control flow only, as
+derivatives must be.
+"""
+@inline function footprint_texel(uv::Vec2f)
+    dx = Vec2f(dFdx(uv[1]), dFdx(uv[2])) * (1f0 / 3f0)
+    dy = Vec2f(dFdy(uv[1]), dFdy(uv[2])) * (1f0 / 3f0)
+    c = Vec4f(0f0)
+    for j in -1:1, i in -1:1
+        p = uv + Float32(i) * dx + Float32(j) * dy
+        c = c + texel(p[1], p[2])
+    end
+    return c * (1f0 / 9f0)
+end
+
 # The same stages over ONE bound texture: an image, an intensity image through
 # the colormap, a matcap, or a pattern. mesh.frag's `get_color` overloads with a
 # sampler, and `get_pattern_color`.
-function mesh_fragment_textured(inputs,
+#
+# `@inline`, and on Metal that is required: its texture bindings become entry
+# parameters, so a stage that samples has to be inlined into the entry, and with
+# the footprint filter in it this body grew past what the optimiser inlines by
+# itself.
+@inline function mesh_fragment_textured(inputs,
         positions, faces, normals, uvs, vertex_colors, vertex_values, cmap, stroke_data,
         clip_planes, light_types, light_colors, light_parameters,
         model::Mat4f, view::Mat4f, projection::Mat4f, eyeposition::Vec3f,
@@ -1123,6 +1174,10 @@ function mesh_fragment_textured(inputs,
     elseif color_source == COLOR_IMAGE_CMAP
         get_color_from_cmap(sample_texture_2d(UInt32(0), inputs.uv[1], inputs.uv[2], UInt32(0)),
                             cmap, colorrange, colormap_linear, lowclip, highclip, nan_color)
+    elseif emission[4] == 2f0
+        # A glowing image: its thin lines are what a viewer reads, so it is
+        # filtered over the pixel rather than point-sampled.
+        footprint_texel(Vec2f(inputs.uv[1], inputs.uv[2]))
     else
         texel(inputs.uv[1], inputs.uv[2])
     end

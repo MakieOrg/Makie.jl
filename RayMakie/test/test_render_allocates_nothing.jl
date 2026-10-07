@@ -37,8 +37,14 @@ function allocfree_scene()
     return scene, plt
 end
 
-function sample_bytes(screen, n)
-    for _ in 1:n
+function sample_bytes(screen, n; warmup = 1100)
+    # Past the first 1024 submissions, because Julia keeps a boxed `UInt64` for
+    # each value below that and a box of one costs nothing. A submission token
+    # counts up from zero, so a token boxed every sample allocated only in a
+    # session that had already run this many: measured 2026-10-07 on Metal, 16 B
+    # a sample after the whole suite and 0 in this file run alone. At least one
+    # submission per sample, so this many samples is past it.
+    for _ in 1:warmup
         RayMakie.render!(screen; finalize_framebuffer = false)
     end
     # Drain the finalizers of everything the compile and the earlier test files

@@ -4,13 +4,16 @@
 
 using Test
 using GeometryBasics, Hikari
-using Colors
-using RayMakie
 using Makie
-# `Raycore.KA.CPU()` is the default backend for every entry point below, but the
-# import was missing — the file depended on whatever harness ran it having
-# imported Raycore already. Same failure shape as denoise.jl's unbound `KA`.
-using Raycore
+# Through Makie: Colors is not a test dependency, so `using Colors` only loaded
+# in an environment that happened to have it.
+using Makie.Colors
+using RayMakie
+# The device is the suite's: `Mantle.defaultbackend()`, the backend runtests.jl
+# found and activated. This rendered on `Raycore.KA.CPU()` until Mantle's host
+# backend was removed on 2026-10-01; `KA.CPU` is POCL now, and Mantle has no
+# device for it.
+using Mantle
 
 """
     create_test_materials_scene(; size=(400, 300))
@@ -85,7 +88,7 @@ function create_test_materials_scene(; size=(400, 300))
 end
 
 """
-    test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
+    test_render_materials(; backend=Mantle.defaultbackend(), samples=1)
 
 Test rendering the materials scene with the given backend.
 
@@ -99,13 +102,13 @@ and it is what made the sphere in test_window_frame.jl come out white and
 invisible when that file ran in the suite and orange when it ran alone.
 Per-call config leaks nothing and needs no restoring.
 """
-function test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
+function test_render_materials(; backend=Mantle.defaultbackend(), samples=1)
     scene = create_test_materials_scene()
     # This file once drifted across three API moves at once, which is why it
     # errored on its first line and sat outside runtests.jl: `Hikari.FilmSensor`
     # became `PixelSensor` (and `white_balance` became `whitebalance`), `Raycore`
-    # was never imported despite `Raycore.KA.CPU()` being the default argument,
-    # and `sensor` moved. It is a screen setting, next to the tracer's others.
+    # was never imported for the CPU backend this rendered on then, and `sensor`
+    # moved. It is a screen setting, next to the tracer's others.
     # `hw_accel = false` is what this ran with when the tracer was a `VolPath`.
     sensor = Hikari.PixelSensor(iso=50, exposure_time=1.0, whitebalance=0)
     img = colorbuffer(scene; backend=RayMakie, samples, max_depth=4, sensor, hw_accel=false,
@@ -123,8 +126,8 @@ end
         Dict(k => t[k][] for k in (:device, :exposure, :tonemap, :gamma))
     end
 
-    @testset "CPU Array backend" begin
-        img = test_render_materials(backend=Raycore.KA.CPU(), samples=1)
+    @testset "default device" begin
+        img = test_render_materials(samples=1)
         @test size(img) == (300, 400)
         @test eltype(img) <: Colorant
     end
@@ -140,6 +143,6 @@ end
 # Can be run standalone to test
 if abspath(PROGRAM_FILE) == @__FILE__
     println("Running materials scene test...")
-    @time test_render_materials(backend=Raycore.KA.CPU(), samples=1)
+    @time test_render_materials(samples=1)
     println("Test completed successfully!")
 end

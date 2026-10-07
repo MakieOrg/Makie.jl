@@ -144,7 +144,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Volume)
     end
 
     # 4. Medium + config → scene registration
-    register_computation!(attr, [:trace_medium, :trace_volume_config], [:trace_renderobject]) do args, changed, last
+    register_computation!(attr, [:trace_medium, :trace_volume_config, :visible], [:trace_renderobject]) do args, changed, last
         medium = args.trace_medium
         config = args.trace_volume_config
 
@@ -160,12 +160,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Volume)
             mat = Hikari.MediumInterface(Hikari.NullMaterial(); inside=medium)
             handle = push!(hikari_scene, gb_mesh, mat)
             state.needs_film_clear = true
-            return (handle,)
+            return (trace_visibility!(hikari_scene, state, handle, args, changed, true),)
         end
 
         handle = last.trace_renderobject
-        Hikari.update_material!(hikari_scene, handle.interface, medium)
-        state.needs_film_clear = true
-        return (handle,)
+        if changed.trace_medium
+            Hikari.update_material!(hikari_scene, handle.interface, medium)
+            state.needs_film_clear = true
+        end
+        return (trace_visibility!(hikari_scene, state, handle, args, changed, false),)
     end
 end

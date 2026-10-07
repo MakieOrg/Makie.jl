@@ -404,6 +404,21 @@ end
 
 scene_ambient(rscene) = haskey(rscene.compute, :ambient_color) ? RGBf(rscene.compute[:ambient_color][]) : RGBf(0, 0, 0)
 
+"""
+Whether the scene's ambient colour is no longer the traced one, asked every
+sample of a still scene and so without reading the colour out: a node's value
+read untyped is boxed, and `ambient_differs` compares it behind a barrier that
+returns a `Bool`.
+"""
+function ambient_changed(rscene::Makie.Scene, tl::TracedLights)
+    haskey(rscene.compute, :ambient_color) || return tl.ambient != RGBf(0, 0, 0)
+    node = rscene.compute[:ambient_color]
+    # The edge, not the node: resolving a node also returns its value, boxed.
+    Makie.ComputePipeline.hasparent(node) && Makie.ComputePipeline.resolve!(node.parent)
+    return ambient_differs(node.value, tl)
+end
+ambient_differs(value::Base.RefValue{RGBf}, tl::TracedLights) = value[] != tl.ambient
+
 function init_lights!(hikari_scene, rscene)
     makie_lights = copy(Makie.get_lights(rscene))
     keys = [Hikari.SetKey[push!(hikari_scene.lights, l) for l in trace_lights(to_trace_light(light))]
@@ -436,13 +451,19 @@ lights it no longer has.
 """
 function sync_lights!(state::RayMakieState)
     tl = state.lights
-    current = Makie.get_lights(state.makie_scene)
+    # Asserted: Makie stores them as this (`add_input!` in lighting.jl), and read
+    # untyped, every use below was a dynamic call boxing its result, every
+    # sample of a still scene.
+    current = Makie.get_lights(state.makie_scene)::Vector{Makie.AbstractLight}
     length(current) == length(tl.lights) || error(
         "RayMakie: this scene had $(length(tl.lights)) lights when it was first traced and has " *
         "$(length(current)) now. A traced scene can move and change its lights (`set_light!`), " *
         "not add or remove them.")
     changed = false
-    for (i, light) in enumerate(current)
+    # By index: `enumerate` over a `Vector{AbstractLight}` boxed an `(i, light)`
+    # tuple per light per sample.
+    for i in eachindex(current)
+        light = current[i]
         light === tl.lights[i] && continue
         new = retrace(state.hikari_scene.lights, tl.keys[i], tl.lights[i], light)
         length(new) == length(tl.keys[i]) || error(
@@ -453,8 +474,8 @@ function sync_lights!(state::RayMakieState)
         tl.lights[i] = light
         changed = true
     end
-    ambient = scene_ambient(state.makie_scene)
-    if ambient != tl.ambient
+    if ambient_changed(state.makie_scene, tl)
+        ambient = scene_ambient(state.makie_scene)
         tl.ambient_key === nothing && error(
             "RayMakie: this scene was first traced without an ambient light, and one cannot be added afterwards.")
         Hikari.update_light!(state.hikari_scene, tl.ambient_key, Hikari.AmbientLight(RGB{Float32}(ambient)))
@@ -919,17 +940,7 @@ function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
         ss.closed && continue
         ss.hikari_scene === nothing && continue
         if scene_contains(ss.makie_scene, pscene)
-            tlas = ss.hikari_scene.accel
-            if hasproperty(robj, :handles)
-                for h in robj.handles
-                    actual_h = h isa Hikari.SceneHandle ? h.geometry : h
-                    delete!(tlas, actual_h)
-                end
-            elseif hasproperty(robj, :handle)
-                h = robj.handle
-                actual_h = h isa Hikari.SceneHandle ? h.geometry : h
-                delete!(tlas, actual_h)
-            end
+            delete_trace_handles!(ss.hikari_scene, robj)
             ss.needs_film_clear = true
             break
         end
@@ -962,11 +973,12 @@ for name in names(Makie, all=true)
 end
 
 # ── PrecompileTools workload: bake the hw_accel render path's host inference ──
-# Cold startup of a ray-traced render has two independent costs. Lava's frozen
-# kernel cache removes the first (GPUCompiler → LLVM → SPIR-V); this removes the
-# second — Julia's own inference/codegen of colorbuffer → VolPath → Lava launch
-# — by rendering a small scene during precompilation, so PrecompileTools keeps
-# the inferred code in RayMakie's package image.
+# Cold startup of a ray-traced render has two costs: compiling its kernels and
+# shader stages (GPUCompiler → LLVM → SPIR-V), and Julia's own inference and
+# codegen of colorbuffer → VolPath → Lava launch. Rendering a small scene during
+# precompilation removes both for what it covers: PrecompileTools keeps the
+# inferred host code, and the SPIR-V is kept with each kernel's `CodeInstance`
+# (`Lava.compile_or_lookup`), so it goes into RayMakie's package image too.
 #
 # What this can and cannot bake: the RT stages and workqueue kernels are keyed on
 # the scene's whole material multi-type-set, so the material-set-specific
@@ -975,10 +987,6 @@ end
 # pipeline setup, camera, integrator core) is not, and it dominates — a single
 # one-Diffuse-sphere render here cut the unrelated 15-material `materials` scene's
 # cold host codegen from ~45s to ~10s.
-#
-# `Mantle.@compile_workload` runs both halves under this kernel-cache version: the
-# first precompile compiles this scene's kernels and freezes them to disk, later
-# precompiles load them back instead of recompiling SPIR-V.
 #
 # Rendering needs a working device, and precompilation does not always get one.
 # It is on by default; toggle it the standard PrecompileTools way, via Preferences:
@@ -992,14 +1000,13 @@ end
 # throw was reported with a twenty-line backtrace on EVERY build of RayMakie and
 # of anything depending on it — which reads as a broken install. The remaining
 # `try` is for the other case, a device that registers and then fails to render.
-const PRECOMPILE_KERNELS_VERSION = "raymakie_pc"
 Mantle.@setup_workload begin
     if isempty(Mantle.availablebackends())
         @debug "RayMakie: precompilation has no GPU backend; skipping the GPU workload"
     else
         dev = Mantle.defaultbackend()
         try
-            Mantle.@compile_workload PRECOMPILE_KERNELS_VERSION begin
+            Mantle.@compile_workload begin
                 scene = Scene(size = (96, 72),
                               lights = [PointLight(RGBf(30, 30, 30), Vec3f(4, 5, 6))])
                 cam3d!(scene)
