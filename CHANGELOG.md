@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- GLMakie now emits scroll events once per render tick instead of once per event, so scenes with expensive scroll handling (e.g. many linked axes) no longer freeze while scrolling [#5826](https://github.com/MakieOrg/Makie.jl/pull/5826).
 - Fixed contour labels next to `NaN` data being placed differently depending on the Julia version. [#5828](https://github.com/MakieOrg/Makie.jl/pull/5828)
 - Fixed plot-list children (e.g. the parts of `annotation!` arrows) being reused in an address-dependent order, which made the draw order and SVG output differ between identical runs. [#5815](https://github.com/MakieOrg/Makie.jl/pull/5815)
 - `datashader` is much faster: with 100M points, aggregating and displaying an update went from 47 ms to 26 ms, and per-update allocations from 9.2 MiB to 11 KiB [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
