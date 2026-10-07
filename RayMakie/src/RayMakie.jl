@@ -402,7 +402,20 @@ function retrace(set, keys, old::Makie.SunSkyLight, light::Makie.SunSkyLight)
             Hikari.SunLight(Hikari.sunsky_sun_rgb(light.intensity), -normalize(Vec3f(light.direction))))
 end
 
-scene_ambient(rscene) = haskey(rscene.compute, :ambient_color) ? RGBf(rscene.compute[:ambient_color][]) : RGBf(0, 0, 0)
+# Asked on every sample (`sync_lights!`), so it reads the node's own typed `Ref`
+# rather than `node[]`: `resolve!` returns `Any`, which boxes the colour — 12 B
+# per sample, and a dynamic `RGBf(::Any)` on top of it was another 32. A node
+# that is dirty has changed, and resolving it then is the point. The `::RGBf` on
+# the `RGBf(::Any)` branches is what keeps the RETURN type `RGBf`: inference does
+# not assume a constructor called on `Any` returns its type, and an `Any` return
+# boxed the colour on the fast branch too.
+function scene_ambient(rscene)
+    haskey(rscene.compute, :ambient_color) || return RGBf(0, 0, 0)
+    node = rscene.compute[:ambient_color]
+    Makie.ComputePipeline.isdirty(node) && return RGBf(node[])::RGBf
+    ref = node.value
+    return ref isa Base.RefValue{RGBf} ? ref[] : RGBf(node[])::RGBf
+end
 
 """
 Whether the scene's ambient colour is no longer the traced one, asked every
@@ -449,19 +462,21 @@ The Hikari light set cannot remove an entry, so a scene whose light COUNT or a
 light's KIND changed after its first frame is refused rather than drawn with
 lights it no longer has.
 """
-function sync_lights!(state::RayMakieState)
+sync_lights!(state::RayMakieState) = sync_lights!(state, Makie.get_lights(state.makie_scene))
+
+# A function barrier: `get_lights` reads the compute graph and infers as `Any`, and
+# every `length`, `eachindex` and `getindex` below was a dynamic call with its
+# result boxed, every sample. Dispatching once on what it returned types the loop.
+function sync_lights!(state::RayMakieState, current::AbstractVector)
     tl = state.lights
-    # Asserted: Makie stores them as this (`add_input!` in lighting.jl), and read
-    # untyped, every use below was a dynamic call boxing its result, every
-    # sample of a still scene.
-    current = Makie.get_lights(state.makie_scene)::Vector{Makie.AbstractLight}
     length(current) == length(tl.lights) || error(
         "RayMakie: this scene had $(length(tl.lights)) lights when it was first traced and has " *
         "$(length(current)) now. A traced scene can move and change its lights (`set_light!`), " *
         "not add or remove them.")
     changed = false
-    # By index: `enumerate` over a `Vector{AbstractLight}` boxed an `(i, light)`
-    # tuple per light per sample.
+    # By index, not `enumerate`: the lights are a `Vector{AbstractLight}`, and an
+    # `(i, light)` tuple of a concrete light type is built — type and all — on the
+    # heap for every light of every sample.
     for i in eachindex(current)
         light = current[i]
         light === tl.lights[i] && continue
@@ -697,13 +712,8 @@ function init_scene!(screen, mscene::Makie.Scene)
     empty!(screen.scene_states)
 
     for rscene in all_scenes
-        is_rt = should_raytrace(rscene.camera_controls)
-
-        if is_rt
-            state = create_scene_state(rscene, screen, mscene)
-        else
-            state = create_overlay_only_state(rscene, screen)
-        end
+        state = new_scene_state(screen, rscene)
+        is_rt = !state.overlay_only
         push!(screen.scene_states, state)
         screen.state = state
 
@@ -775,9 +785,9 @@ function init_scene!(screen, mscene::Makie.Scene)
         end
     end
 
-    if isempty(screen.scene_states)
-        error("No renderable scenes found.")
-    end
+    # A figure with no plots yet has no states: it is its background, which
+    # `colorbuffer` fills, and plots added later get their scene's state from
+    # `insert!` (`scene_state!`). It used to throw "No renderable scenes found."
 
     # Pre-allocate full-figure output buffer, from the pool the screen owns.
     root_w, root_h = size(mscene)
@@ -785,9 +795,19 @@ function init_scene!(screen, mscene::Makie.Scene)
     screen.memory = Hikari.DeviceMemory(ka_backend)
     screen.output_buffer = Hikari.alloc!(screen.memory, RGBA{Float32}, (Int(root_h), Int(root_w)))
 
-    screen.state = first(screen.scene_states)
+    screen.state = isempty(screen.scene_states) ? nothing : first(screen.scene_states)
     return screen.state
 end
+
+"""
+    new_scene_state(screen, rscene) -> RayMakieState
+
+The state `init_scene!` gives a scene with plots: traced for a 3D camera, overlay
+only otherwise.
+"""
+new_scene_state(screen, rscene::Makie.Scene) =
+    should_raytrace(rscene.camera_controls) ? create_scene_state(rscene, screen, screen.scene) :
+                                              create_overlay_only_state(rscene, screen)
 
 # =============================================================================
 # poll_all_plots — trigger compute graph resolution for all registered plots

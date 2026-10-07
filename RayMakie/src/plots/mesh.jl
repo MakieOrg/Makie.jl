@@ -496,7 +496,7 @@ rgba4(c) = (c = RGBA{Float32}(c); Vec4f(c.r, c.g, c.b, c.alpha))
 Where the colour comes from, as GLMakie's `add_mesh_color_attributes!` decides
 it, and what that needs uploaded.
 """
-function raster_color(color, args, npositions)
+function raster_color(color, args, npositions; fragment::Bool)
     none = Vec4f(0, 0, 0, 1)
     if args.matcap !== nothing
         return (source = COLOR_MATCAP, uniform = none, texture = texeldata(args.matcap), wrap = :clamp)
@@ -509,7 +509,7 @@ function raster_color(color, args, npositions)
                 texture = texeldata(img), wrap = pattern ? :repeat : :clamp)
     elseif color isa AbstractVector{<:Colorant}
         length(color) == npositions || throw(ArgumentError(
-            "mesh: $(length(color)) colours for $npositions vertices; RASTER mode needs one per vertex"))
+            "mesh: $(length(color)) colours for $npositions vertices or instances; RASTER mode needs one each"))
         return (source = COLOR_VERTEX, uniform = none, texture = nothing, wrap = :clamp)
     elseif color isa AbstractMatrix{<:Real}
         return (source = COLOR_IMAGE_CMAP, uniform = none,
@@ -517,7 +517,7 @@ function raster_color(color, args, npositions)
     elseif color isa AbstractArray{<:Real, 3}
         throw(ArgumentError("mesh: a 3D texture colour is not supported in RASTER mode"))
     elseif color isa AbstractVector{<:Real}
-        return (source = args.interpolate_in_fragment_shader ? COLOR_VERTEX_CMAP_FRAG : COLOR_VERTEX_CMAP,
+        return (source = fragment ? COLOR_VERTEX_CMAP_FRAG : COLOR_VERTEX_CMAP,
                 uniform = none, texture = nothing, wrap = :clamp)
     elseif color isa Real
         c = get_color_from_cmap(Float32(color), raster_colormap(args), Vec2f(args.scaled_colorrange),
@@ -574,6 +574,11 @@ raster_uv_transform(t::Mat{2, 3}) = Mat{2, 3, Float32}(t)
 raster_uv_transform(t::Mat{3, 3}) = Mat{2, 3, Float32}(t[1], t[2], t[4], t[5], t[7], t[8])
 raster_uv_transform(::Nothing) = Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0)
 
+# The one transform a pattern colour is read with (mesh.frag `get_pattern_color`):
+# a meshscatter with one transform per instance patterns with the first.
+raster_uv_uniform(t) = raster_uv_transform(t)
+raster_uv_uniform(t::AbstractVector) = isempty(t) ? raster_uv_transform(nothing) : raster_uv_transform(first(t))
+
 function shading_code(mode)
     mode === Makie.FastShading && return SHADING_FAST
     mode === Makie.MultiLightShading && return SHADING_MULTI
@@ -621,7 +626,7 @@ function raster_shading(screen, plot, args)
         white_point = 4f0,  # Hikari.postprocess!'s default, which RayMakie does not set
         inv_gamma = config.gamma === nothing ? 1f0 : 1f0 / Float32(config.gamma),
         apply_gamma = Int32(config.gamma !== nothing),
-        strokewidth = Float32(args.strokewidth), strokecolor = rgba4(args.strokecolor),
+        strokewidth = raster_strokewidth(plot, args), strokecolor = raster_strokecolor(plot, args),
         resolution = Vec2f(args.resolution), px_per_unit = Float32(screen.px_per_unit),
         physical = Int32(physical),
         material = physical ? raster_material(overlay_material(plot)) : LAMBERT,
@@ -637,6 +642,101 @@ function raster_shading(screen, plot, args)
     return uniforms, buffers
 end
 
+# ─── What differs between a mesh and a meshscatter ───────────────────────────
+#
+# One raster path draws both: a meshscatter is its marker mesh drawn once per
+# instance (GLMakie's particles.vert), a mesh is one instance at the origin.
+# These methods are the whole difference. `surface` goes through the mesh ones.
+
+"""Mesh outlines are mesh_stroke.frag's; a meshscatter is drawn with mesh_nostroke.frag."""
+raster_strokewidth(plot, args) = Float32(args.strokewidth)
+raster_strokewidth(::Makie.MeshScatter, args) = 0f0
+raster_strokecolor(plot, args) = rgba4(args.strokecolor)
+raster_strokecolor(::Makie.MeshScatter, args) = Vec4f(0)
+
+"""The triangles drawn (per instance): the plot's own, or the meshscatter's marker."""
+raster_geometry(plot, material, args) = raster_geometry(material, args)
+raster_geometry(::Makie.MeshScatter, material, args) =
+    (positions = map(p -> Vec3f(p[1], p[2], p[3]), args.vertex_position), faces = args.faces,
+     normals = args.normal, uvs = args.uv, color = args.scaled_color)
+
+geometry_changed(plot, changed) =
+    changed.positions_transformed_f32c || changed.faces || changed.normals ||
+    changed.texturecoordinates || changed.material
+geometry_changed(::Makie.MeshScatter, changed) =
+    changed.vertex_position || changed.faces || changed.normal || changed.uv || changed.material
+
+instances_changed(plot, changed) = changed.raster_uv_transform
+instances_changed(::Makie.MeshScatter, changed) =
+    changed.positions_transformed_f32c || changed.rotation || changed.markersize ||
+    changed.raster_uv_transform || changed.f32c_scale || changed.transform_marker
+
+color_changed(plot, changed) = changed.interpolate_in_fragment_shader
+color_changed(::Makie.MeshScatter, changed) = false
+
+"""Whether a vector of values is mapped per fragment; particles.vert always maps per instance."""
+fragment_cmap(plot, args) = args.interpolate_in_fragment_shader::Bool
+fragment_cmap(::Makie.MeshScatter, args) = false
+
+stroke_changed(plot, changed) = changed.stroke_data_packed
+stroke_changed(::Makie.MeshScatter, changed) = false
+raster_stroke_data(plot, args) = nonempty(Vector{Vec4f}(args.stroke_data_packed))
+raster_stroke_data(::Makie.MeshScatter, args) = Vec4f[Vec4f(0)]
+
+instance_position(p::VecTypes{2}) = Vec3f(p[1], p[2], 0f0)
+instance_position(p::VecTypes{3}) = Vec3f(p[1], p[2], p[3])
+instance_scale(s::Real) = Vec3f(s)
+instance_scale(s::VecTypes{2}) = Vec3f(s[1], s[2], 1f0)   # util.vert `_scale(vec2)`
+instance_scale(s::VecTypes{3}) = Vec3f(s)
+# A `Vec3f` is an `AbstractVector` too: one scale for all, not three.
+instance_scales(s::Union{Real, VecTypes}) = [instance_scale(s)]
+instance_scales(s::AbstractVector) = instance_scale.(s)
+instance_rotations(q::Vec4f) = [q]
+instance_rotations(q::AbstractVector{Vec4f}) = q
+instance_uv_transforms(t::AbstractVector) = raster_uv_transform.(t)
+instance_uv_transforms(t) = [raster_uv_transform(t)]
+
+"""
+    raster_instances(plot, args) -> NamedTuple
+
+Where the triangles are drawn: one instance per meshscatter position, with its
+rotation, scale and uv transform (or one each for all), and `f32c_scale` and
+`transform_marker` as particles.vert reads them. A mesh is one instance at the
+origin, unrotated, of scale 1, with `model` acting on it: exactly `model * p`.
+`colors` says whether a vector of colours or values is per instance.
+"""
+raster_instances(plot, args) =
+    (positions = [Vec3f(0)], rotations = [Vec4f(0, 0, 0, 1)], scales = [Vec3f(1)],
+     uv_transforms = [raster_uv_transform(args.raster_uv_transform)],
+     f32c_scale = Vec3f(1), transform_marker = Int32(1), colors = Int32(0))
+raster_instances(::Makie.MeshScatter, args) =
+    (positions = instance_position.(args.positions_transformed_f32c),
+     rotations = instance_rotations(normalize_rotation(args.rotation)),
+     scales = instance_scales(args.markersize),
+     uv_transforms = instance_uv_transforms(args.raster_uv_transform),
+     f32c_scale = Vec3f(args.f32c_scale), transform_marker = Int32(args.transform_marker::Bool),
+     colors = Int32(1))
+
+"""
+    instanced_bounds(geometry, instances) -> Rect3f
+
+Local bounds of everything drawn, for fitting the shadow map: the instance
+positions widened by the marker's reach at the largest scale. Reductions, so a
+device array of positions is not read back.
+"""
+function instanced_bounds(geometry, instances)
+    isempty(geometry.positions) && return Rect3f()
+    # `local_bounds`, which reduces on the device when the points are there.
+    marker = local_bounds(geometry.positions)
+    length(instances.positions) == 1 && only(instances.scales) == Vec3f(1) &&
+        return Rect3f(minimum(marker) + only(instances.positions), widths(marker))
+    reach = norm(max.(abs.(minimum(marker)), abs.(maximum(marker)))) *
+            maximum(maximum, instances.scales) * maximum(instances.f32c_scale)
+    lo = reduce((a, b) -> min.(a, b), instances.positions) .- reach
+    hi = reduce((a, b) -> max.(a, b), instances.positions) .+ reach
+    return Rect3f(lo, hi - lo)
+end
+
 """
     mesh_raster!(screen, plot, args, changed, last_robj) -> RenderObject
 
@@ -646,11 +746,12 @@ uniforms and uploads nothing.
 """
 function mesh_raster!(screen, plot, args, changed, last_robj)
     fresh = !(last_robj isa RenderObject)
-    geometry_dirty = fresh || changed.positions_transformed_f32c || changed.faces ||
-                     changed.normals || changed.texturecoordinates || changed.material
-    color_dirty = geometry_dirty || changed.scaled_color || changed.alpha_colormap ||
+    geometry_dirty = fresh || geometry_changed(plot, changed)
+    instances_dirty = fresh || instances_changed(plot, changed)
+    # Colours per instance are as many as the instances.
+    color_dirty = geometry_dirty || instances_dirty || changed.scaled_color || changed.alpha_colormap ||
                   changed.matcap || changed.fetch_pixel || changed.interpolate ||
-                  changed.interpolate_in_fragment_shader || changed.scaled_colorrange ||
+                  color_changed(plot, changed) || changed.scaled_colorrange ||
                   changed.color_mapping_type || changed.lowclip_color ||
                   changed.highclip_color || changed.nan_color
 
@@ -660,7 +761,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
         world_normalmatrix = Mat3f(args.world_normalmatrix),
         view_normalmatrix = Mat3f(args.view_normalmatrix),
         depth_shift = Float32(args.depth_shift),
-        uv_transform = raster_uv_transform(args.raster_uv_transform),
+        uv_transform = raster_uv_uniform(args.raster_uv_transform),
         colorrange = args.scaled_colorrange === nothing ? Vec2f(0, 1) : Vec2f(args.scaled_colorrange),
         colormap_linear = Int32(args.color_mapping_type === Makie.continuous),
         lowclip = rgba4(args.lowclip_color), highclip = rgba4(args.highclip_color),
@@ -671,17 +772,37 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
 
     buffers = Dict{Symbol, Any}()
     local colorinfo
+    instances = raster_instances(plot, args)
+    if instances_dirty
+        # The stage reads entry 1 for all instances or entry i for instance i
+        # (`per_instance`); any other length would read past the buffer.
+        n = length(instances.positions)
+        for (name, v) in pairs((rotations = instances.rotations, scales = instances.scales,
+                                uv_transforms = instances.uv_transforms))
+            length(v) == 1 || length(v) == n || throw(ArgumentError(
+                "meshscatter: $(length(v)) $name for $n positions; give one, or one per position"))
+        end
+        buffers[:instance_positions] = nonempty(instances.positions)
+        buffers[:instance_rotations] = instances.rotations
+        buffers[:instance_scales] = instances.scales
+        buffers[:instance_uv_transforms] = instances.uv_transforms
+    end
+    uniforms = merge(uniforms, (f32c_scale = instances.f32c_scale,
+                                transform_marker = instances.transform_marker,
+                                color_per_instance = instances.colors))
     if color_dirty
-        geometry = raster_geometry(overlay_material(plot), args)
+        geometry = raster_geometry(plot, overlay_material(plot), args)
         # A mesh drawn by its material alone looks like that material.
         look = plot_raster_look(plot)
         look === nothing || (geometry = merge(geometry, (color = look.color,)))
-        colorinfo = raster_color(geometry.color, args, length(geometry.positions))
+        ncolors = instances.colors != Int32(0) ? length(instances.positions) : length(geometry.positions)
+        colorinfo = raster_color(geometry.color, args, ncolors; fragment = fragment_cmap(plot, args))
         textured = colorinfo.texture !== nothing
         see_through = is_see_through(look, plot)
         fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured, see_through)
         # What the shadow map is fitted around; not a stage argument.
-        geometry_dirty && (uniforms = merge(uniforms, (local_bounds = local_bounds(geometry.positions),)))
+        (geometry_dirty || instances_dirty) &&
+            (uniforms = merge(uniforms, (local_bounds = instanced_bounds(geometry, instances),)))
         uniforms = merge(uniforms, (
             has_normals = Int32(geometry.normals !== nothing),
             has_uvs = Int32(geometry.uvs isa AbstractVector{<:VecTypes{2}}),
@@ -712,8 +833,8 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
             nonempty(Vector{Float32}(geometry.color)) : Float32[0f0]
         buffers[:raster_colormap] = raster_colormap(args)
     end
-    if fresh || changed.stroke_data_packed || geometry_dirty
-        buffers[:stroke_data] = nonempty(Vector{Vec4f}(args.stroke_data_packed))
+    if fresh || stroke_changed(plot, changed) || geometry_dirty
+        buffers[:stroke_data] = raster_stroke_data(plot, args)
     end
     if fresh || changed.uniform_clip_planes
         buffers[:clip_planes] = nonempty(Vector{Vec4f}(args.uniform_clip_planes))
@@ -734,7 +855,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
                                                      for (name, value) in buffers),
             uniforms = Dict{Symbol, Any}(),
             vertex_count = 0,
-            instances = 1,
+            instances = length(instances.positions),
         )
     else
         for (name, value) in buffers
@@ -754,6 +875,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
     robj.buffers[:ao_map] = ao_buffer(screen)
     raster_strokes(overlay_material(plot)) || (robj.uniforms[:strokewidth] = 0f0)
     color_dirty && (robj.vertex_count = vertex_count)
+    robj.instances = length(instances.positions)
     if color_dirty && colorinfo.texture !== nothing
         update_texture!(robj, colorinfo.texture;
                         filter = args.interpolate ? :linear : :nearest, wrap = colorinfo.wrap)

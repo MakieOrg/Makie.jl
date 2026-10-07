@@ -9,11 +9,6 @@ using Makie
 # in an environment that happened to have it.
 using Makie.Colors
 using RayMakie
-# The device is the suite's: `Mantle.defaultbackend()`, the backend runtests.jl
-# found and activated. This rendered on `Raycore.KA.CPU()` until Mantle's host
-# backend was removed on 2026-10-01; `KA.CPU` is POCL now, and Mantle has no
-# device for it.
-using Mantle
 
 """
     create_test_materials_scene(; size=(400, 300))
@@ -88,7 +83,7 @@ function create_test_materials_scene(; size=(400, 300))
 end
 
 """
-    test_render_materials(; backend=Mantle.defaultbackend(), samples=1)
+    test_render_materials(; backend=RayMakie.Mantle.defaultbackend(), samples=1)
 
 Test rendering the materials scene with the given backend.
 
@@ -102,7 +97,7 @@ and it is what made the sphere in test_window_frame.jl come out white and
 invisible when that file ran in the suite and orange when it ran alone.
 Per-call config leaks nothing and needs no restoring.
 """
-function test_render_materials(; backend=Mantle.defaultbackend(), samples=1)
+function test_render_materials(; backend=RayMakie.Mantle.defaultbackend(), samples=1)
     scene = create_test_materials_scene()
     # This file once drifted across three API moves at once, which is why it
     # errored on its first line and sat outside runtests.jl: `Hikari.FilmSensor`
@@ -126,7 +121,9 @@ end
         Dict(k => t[k][] for k in (:device, :exposure, :tonemap, :gamma))
     end
 
-    @testset "default device" begin
+    # On the GPU: Mantle has had no host device since 5c2d4c6, and a CPU
+    # backend renders nothing here (`Device(::KA.CPU)` has no method).
+    @testset "GPU backend" begin
         img = test_render_materials(samples=1)
         @test size(img) == (300, 400)
         @test eltype(img) <: Colorant

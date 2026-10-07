@@ -159,7 +159,7 @@ const TEST_FILES = [
 #
 # Kept as a list rather than deleted: it is a LEAK regression, the coverage
 # least likely to be duplicated elsewhere.
-const VULKAN_RUNTIME_TEST_FILES = ["test_caching_gc_correctness.jl"]
+const VULKAN_RUNTIME_TEST_FILES = ["test_caching_gc_correctness.jl", "test_meshscatter_traced_memory.jl"]
 
 # NOT listed: test_dolphin_update_stress.jl — and here is exactly what is known,
 # so the next person does not have to re-derive it (2026-08-25).
@@ -202,9 +202,12 @@ const GRAPHICS_TEST_FILES = [
     "test_surface_paths.jl",
     "test_window_frame.jl",
     "test_empty_plot_fills_later.jl",
+    "test_empty_figure.jl",
     "test_device_arrays.jl",
     "test_image_updates.jl",
     "test_mesh_raster.jl",
+    "test_meshscatter_raster.jl",
+    "test_meshscatter_traced_interfaces.jl",
     "test_uv_transform.jl",
 ]
 

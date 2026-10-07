@@ -237,7 +237,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         outputs = ntuple(length(result)) do i
             v = result[i] isa RefValue ? result[i] : slotfor(result[i])
             if isdefined(edge.outputs[i], :value)
-                edge.outputs[i].value[] = v[] # set value of existing node
+                store!(edge.outputs[i], v[]) # set value of existing node
             else
                 edge.outputs[i].value = v # initialize to fully typed RefValue
             end
@@ -570,7 +570,7 @@ function Base.setindex!(computed::Computed, value)
         return setindex!(computed.parent, value)
     else
         @lock GLOBAL_LOCK begin
-            computed.value[] = value
+            store!(computed, value)
             mark_dirty!(computed)
         end
         update_observables!(computed)
@@ -919,12 +919,56 @@ drag, and after this it got them and was never drawn again.
 slotfor(@nospecialize(value)) = RefValue(value)
 slotfor(::Nothing) = Ref{Any}(nothing)
 
+"""
+    store!(node::Computed, value)
+
+Put `value` in `node`'s slot.
+
+The slot is typed by the first value it held, and the typed edges that write and
+read it captured that `RefValue` concretely, which is what makes them type
+stable. A value of another type does not fit: a plot's `color` going from one
+colour to one per element is that case, and it failed with "Cannot convert
+Vector{RGBA{Float32}} to RGBA{Float32}" in every node downstream of the input,
+so the plot stayed broken for good. Such a value gets a new slot of its own
+type, and every typed edge holding the old slot is rebuilt around the new one
+(`retyped!`). The callbacks do not run for that; the next resolve runs them as
+usual. A slot declared wider with [`set_type!`](@ref) takes any value of its
+type, as before.
+"""
+function store!(node::Computed, @nospecialize(value))
+    slot = node.value
+    if value isa eltype(slot)
+        slot[] = value
+    else
+        node.value = RefValue(value)
+        retyped!(node)
+    end
+    return
+end
+
+"""
+    retyped!(node::Computed)
+
+Rebuild the typed edges that captured `node`'s previous slot: the edge writing it
+(its outputs) and the edges reading it (their inputs). An edge that was never
+resolved has no typed edge yet and builds one with the new slot when it is.
+"""
+function retyped!(node::Computed)
+    writer = getparent(node)
+    rebuild_typed!(writer)
+    writer === nothing || foreach(rebuild_typed!, writer.dependents)
+    return
+end
+rebuild_typed!(edge::ComputeEdge) =
+    (isassigned(edge.typed_edge) && (edge.typed_edge[] = TypedEdge_no_call(edge)); return)
+rebuild_typed!(::Union{Input, Nothing}) = nothing
+
 function set_result!(edge::TypedEdge, result, i, value)
     if isnothing(value) || is_same(edge.outputs[i][], value)
         edge.output_nodes[i].dirty = false
     else
         edge.output_nodes[i].dirty = true
-        edge.outputs[i][] = deref(value)
+        store!(edge.output_nodes[i], deref(value))
     end
     if !isempty(result)
         next_val = first(result)
@@ -990,7 +1034,7 @@ function locked_resolve!(input::Input)
     input.dirty || return
     value = input.f(input.value)
     if isdefined(input.output, :value)
-        input.output.value[] = deref(value)
+        store!(input.output, deref(value))
     else
         input.output.value = value isa RefValue ? value : RefValue(value)
     end

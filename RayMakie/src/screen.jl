@@ -1526,27 +1526,26 @@ end
 # The state a plot belongs to: its own scene's, as `init_scene!` assigns them.
 # The first state whose scene CONTAINS it was the figure's root state, which comes
 # first and traces nothing, so a mesh added to an `Axis3` after display was
-# rasterised in a traced scene. A scene that got no state at setup goes to the
-# innermost state around it.
-function owning_state(screen::Screen, pscene::Scene)
+# rasterised in a traced scene. A scene that had no plots at setup gets its state
+# now, as `init_scene!` would have made it: going to the innermost state around
+# it instead drew it with that scene's path and viewport, and in a figure that
+# was empty at setup there was no state at all and the plot never drew.
+function scene_state!(screen::Screen, pscene::Scene)
     for ss in screen.scene_states
         ss.makie_scene === pscene && return ss
     end
-    best = nothing
-    for ss in screen.scene_states
-        scene_contains(ss.makie_scene, pscene) || continue
-        (best === nothing || scene_contains(best.makie_scene, ss.makie_scene)) && (best = ss)
-    end
-    return best
+    state = new_scene_state(screen, pscene)
+    push!(screen.scene_states, state)
+    return state
 end
 
 function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
-    isempty(screen.scene_states) && return screen
+    # Nothing to draw into before the screen has its scene.
+    screen.output_buffer === nothing && return screen
 
     Makie.for_each_atomic_plot(plot) do p
         (haskey(p, :trace_renderobject) || haskey(p, :raster_renderobject)) && return
-        ss = owning_state(screen, Makie.parent_scene(p))
-        ss === nothing && return
+        ss = scene_state!(screen, Makie.parent_scene(p))
         screen.state = ss
         draw_atomic(screen, ss.makie_scene, p)
     end

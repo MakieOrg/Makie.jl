@@ -82,15 +82,33 @@ struct RenderObjectUpdater <: Function
     screen::Screen
     robj::RenderObject
     gl_names::Dict{Symbol, Symbol}
+    plot::Plot
 end
 
 function (updater::RenderObjectUpdater)(args::NamedTuple, changed::NamedTuple, last)
-    update_robjs!(updater.robj, args, changed, updater.gl_names)
+    fits = update_robjs!(updater.robj, args, changed, updater.gl_names)
+    # A value the render object cannot hold: the plot gets a new one before the
+    # next frame (`rebuild_renderobjects!`). Until then it draws as it was.
+    fits || push!(updater.screen.rebuilds, updater.plot)
     updater.screen.requires_update = true
     return (updater.robj,)
 end
 
+"""Whether `value` can be uploaded into GPU array `A`: an array of its dimensionality."""
+fits_gpuarray(A::GLAbstraction.GPUArray, value::AbstractArray) = ndims(value) == ndims(A)
+fits_gpuarray(::GLAbstraction.GPUArray, value) = false
+
+"""
+    update_robjs!(robj, args, changed, gl_names) -> Bool
+
+Write the changed values into `robj`. `false` when a value does not fit what
+`robj` was built for: a uniform whose type changed, or a value that is no
+longer an array for a GPU buffer or no longer a single value for a uniform. The
+shader variant is chosen by those types, so such a value needs a new render
+object, not a write into this one; nothing is written for it.
+"""
 function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Dict{Symbol, Symbol})
+    fits = true
     for name in keys(args)
         changed[name] || continue
         value = args[name]
@@ -108,21 +126,30 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
             robj.instances = value
         elseif haskey(robj.uniforms, gl_name)
             if robj.uniforms[gl_name] isa GLAbstraction.GPUArray
-                GLAbstraction.update!(robj.uniforms[gl_name], value)
+                if fits_gpuarray(robj.uniforms[gl_name], value)
+                    GLAbstraction.update!(robj.uniforms[gl_name], value)
+                else
+                    fits = false
+                end
             else
                 converted = GLAbstraction.gl_convert(robj.context, value)
-                if typeof(robj.uniforms[gl_name]) !== typeof(converted)
-                    @error("Uniforms can not change their type.\n  uniforms[$gl_name]::$(typeof(robj.uniforms[gl_name])) = $name = $converted::$(typeof(converted))\n  in robj $(robj.id)")
+                if typeof(robj.uniforms[gl_name]) === typeof(converted)
+                    robj.uniforms[gl_name] = converted
+                else
+                    fits = false
                 end
-                robj.uniforms[gl_name] = converted
             end
         elseif haskey(robj.buffers, gl_name)
-            GLAbstraction.update!(robj.buffers[gl_name], value)
+            if fits_gpuarray(robj.buffers[gl_name], value)
+                GLAbstraction.update!(robj.buffers[gl_name], value)
+            else
+                fits = false
+            end
         else
             # println("Could not update ", name)
         end
     end
-    return
+    return fits
 end
 
 function add_color_attributes!(screen, attr, data, color, colormap, colornorm)
@@ -292,7 +319,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     flag_float64(robj)
 
     register_computation!(
-        RenderObjectUpdater(screen, robj, input2glname),
+        RenderObjectUpdater(screen, robj, input2glname, plot),
         attr, merged_inputs, [:gl_renderobject]
     )
 

@@ -166,7 +166,8 @@ function extract_meshscatter_materials(plot::Makie.MeshScatter, n_instances::Int
         end
     end
 
-    return map(_ -> create_material_with_color(base_color, material_template), 1:n_instances)
+    # One material for every instance, not `n_instances` equal ones.
+    return fill(create_material_with_color(base_color, material_template), n_instances)
 end
 
 # -----------------------------------------------------------------------------
@@ -199,10 +200,18 @@ end
 function meshscatter_update!(hikari_scene, state, robj, args, changed)
     n = length(args.trace_transforms)
 
-    # Marker mesh OR instance count changed → full rebuild.
-    # Reuse mi_indices to keep scene.materials a fixed size up to the high
-    # water mark of N (avoids unbounded MultiTypeSet growth on per-frame rebuilds).
-    if changed.trace_marker_mesh || n != robj.n_instances
+    # One material object for every instance is one interface they all share
+    # (Hikari's `push_interfaces!`). Different colours for them then need an
+    # interface each, which an update in place cannot give.
+    mats = args.trace_materials
+    unshare = !allunique(robj.mi_indices) && any(m -> m !== first(mats), mats)
+    regroup = changed.trace_materials && unshare
+
+    # Marker mesh OR instance count changed, or the instances stop sharing one
+    # interface → full rebuild. Otherwise reuse mi_indices to keep
+    # scene.materials a fixed size up to the high water mark of N (avoids
+    # unbounded MultiTypeSet growth on per-frame rebuilds).
+    if changed.trace_marker_mesh || n != robj.n_instances || regroup
         delete_trace_handles!(hikari_scene, robj)
         if n == 0
             state.needs_film_clear = true
@@ -213,7 +222,8 @@ function meshscatter_update!(hikari_scene, state, robj, args, changed)
         end
         transforms_mat4 = map(mat3x4_to_mat4, Array(args.trace_transforms))
         materials = Vector(args.trace_materials)
-        reuse = isempty(robj.mi_indices) ? nothing : robj.mi_indices
+        # Shared slots can be reused only by instances that keep sharing them.
+        reuse = isempty(robj.mi_indices) || unshare ? nothing : robj.mi_indices
         handles = push!(hikari_scene, args.trace_marker_mesh, materials, transforms_mat4;
                         reuse_mi_indices = reuse)
         state.needs_film_clear = true
@@ -231,8 +241,7 @@ function meshscatter_update!(hikari_scene, state, robj, args, changed)
         state.needs_film_clear = true
     end
     if changed.trace_materials
-        foreach((h, m) -> Hikari.update_material!(hikari_scene, h.interface, m),
-                robj.handles, args.trace_materials)
+        Hikari.update_materials!(hikari_scene, robj.mi_indices, args.trace_materials)
         state.needs_film_clear = true
         # Carry the new materials on the record too. The scene update above is
         # what the renderer reads, so leaving this stale rendered CORRECTLY and
@@ -252,6 +261,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
     attr = plot.attributes
     state = screen.state
     hikari_scene = state.hikari_scene
+
+    # The path, as for a mesh: traced, or the marker mesh drawn once per
+    # instance by the raster mesh stage. `setrasterize!` switches it.
+    haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
+    israster(args) = args.rasterize || !should_raytrace(scene, plot) || isnothing(hikari_scene)
 
     # 1. Marker → GB.Mesh
     register_computation!(attr, [:marker], [:trace_marker_mesh]) do args, changed, last
@@ -298,17 +312,21 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
     # reached the scene. The value was read correctly and the node simply never
     # ran. Conditional because `:material` is only present when the user gave
     # one — same shape as image.jl's `:model_f32c` handling.
-    material_deps = haskey(attr, :material) ? [:color, :n_instances, :material] :
-                                              [:color, :n_instances]
+    material_deps = haskey(attr, :material) ? [:color, :n_instances, :material, :rasterize] :
+                                              [:color, :n_instances, :rasterize]
     register_computation!(attr, material_deps,
                           [:trace_materials]) do args, changed, last
+        # Only the tracer reads them; while rasterising, keep what there is.
+        israster(args) && last !== nothing && return nothing
         return (extract_meshscatter_materials(plot, max(args.n_instances, 1)),)
     end
 
     # 5. Render object — single dispatch point: create on first frame, update otherwise.
     register_computation!(attr,
-        [:trace_marker_mesh, :trace_transforms, :trace_materials, :visible],
+        [:trace_marker_mesh, :trace_transforms, :trace_materials, :rasterize, :visible],
         [:trace_renderobject]) do args, changed, last
+        # `nothing` when this plot is not being traced; the slot keeps its type.
+        israster(args) && return (nothing,)
         if isnothing(last) || isnothing(last.trace_renderobject) ||
            !hasproperty(last.trace_renderobject, :handles)
             robj = meshscatter_create!(hikari_scene, state, args)
@@ -321,4 +339,56 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
         return (trace_visibility!(hikari_scene, state, robj, args, changed, fresh;
                                   restyled = changed.trace_materials),)
     end
+
+    register_meshscatter_raster!(screen, scene, plot, israster)
+end
+
+"""
+Everything the raster node of a meshscatter reads: the instances, the marker
+mesh decomposed as GLMakie decomposes it, and what a mesh reads for colour,
+lighting and the camera (`RASTER_MESH_DEPS`), without the stroke.
+"""
+const RASTER_MESHSCATTER_DEPS = [
+    :positions_transformed_f32c, :rotation, :markersize, :f32c_scale, :transform_marker,
+    :raster_uv_transform,
+    :vertex_position, :faces, :normal, :uv,
+    :model_f32c, :material, :rasterize,
+    :scaled_color, :alpha_colormap, :scaled_colorrange, :color_mapping_type,
+    :lowclip_color, :highclip_color, :nan_color, :interpolate, :fetch_pixel, :matcap,
+    :shading, :diffuse, :specular, :shininess, :backlight, :depth_shift,
+    :world_normalmatrix, :view_normalmatrix,
+    :uniform_clip_planes, :uniform_num_clip_planes,
+    :view, :projection, :eyeposition, :resolution, :viewport,
+    first.(RASTER_LIGHT_NODES)...,
+]
+
+"""
+    register_meshscatter_raster!(screen, scene, plot, israster)
+
+The `:raster_renderobject` of a meshscatter: GLMakie's `draw_atomic(::MeshScatter)`
+nodes, then the mesh raster path (`mesh_raster!`) with one instance per position.
+"""
+function register_meshscatter_raster!(screen, scene, plot, israster)
+    attr = plot.attributes
+    # The marker as the tracer gets it (a symbol or a primitive becomes a mesh),
+    # decomposed as GLMakie decomposes `:marker`.
+    haskey(attr, :vertex_position) ||
+        Makie.add_computation!(attr, Val(:disassemble_mesh), :trace_marker_mesh)
+    haskey(attr, :f32c_scale) || Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
+    haskey(attr, :raster_uv_transform) ||
+        Makie.ComputePipeline.alias!(attr, :pattern_uv_transform, :raster_uv_transform)
+    haskey(attr, :material) || add_input!(attr, :material, nothing)
+    haskey(attr, :world_normalmatrix) || Makie.register_world_normalmatrix!(attr)
+    haskey(attr, :view_normalmatrix) || Makie.register_view_normalmatrix!(attr)
+    haskey(attr, :uniform_clip_planes) || Makie.add_computation!(attr, Val(:uniform_clip_planes))
+    register_raster_lights!(scene)
+    for (plotkey, scenekey) in RASTER_LIGHT_NODES
+        haskey(attr, plotkey) || add_input!(attr, plotkey, scene.compute[scenekey])
+    end
+    register_computation!(attr, RASTER_MESHSCATTER_DEPS, [:raster_renderobject]) do args, changed, last
+        israster(args) || return (nothing,)
+        last_robj = isnothing(last) ? nothing : last.raster_renderobject
+        return (mesh_raster!(screen, plot, args, changed, last_robj),)
+    end
+    return
 end

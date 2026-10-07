@@ -19,6 +19,10 @@
 #   its map, and a shaded result goes through the film's exposure, tone curve and
 #   gamma, so RASTER mode matches the traced picture it stands in for. Makie
 #   leaves both to the backend.
+# - Instancing. GLMakie draws `meshscatter` with particles.vert and this mesh.frag
+#   (without the stroke); here the one vertex stage does both. Every draw is
+#   instanced: a mesh is one instance at the origin, unrotated, of scale 1, and
+#   `instance_place` then gives exactly util.vert's `model * vec4(p, 1)`.
 
 const MESH_VERTEX_OUT = (world_pos = Vec3f, world_normal = Vec3f, view_normal = Vec3f,
                          camdir = Vec3f, uv = Vec3f, colour = Vec4f, clip = Vec4f,
@@ -894,6 +898,57 @@ coordinates `stroke_screen_space` produces.
     return ndc, Vec2f(dFdx(ndc[3]), -dFdy(ndc[3]))
 end
 
+# ─── particles.vert: placing a marker vertex at its instance ─────────────────
+
+"""
+    per_instance(buffer, i) -> element
+
+Instance `i`'s entry, or the one entry every instance shares: GLMakie's
+samplerBuffer and uniform overloads of `_scale`, `rotate` and
+`apply_uv_transform`, told apart by length instead of by type.
+"""
+@inline per_instance(buffer, i::Int32) = @inbounds buffer[ifelse(length(buffer) == 1, Int32(1), i)]
+
+"""util.vert `qmul`: `v` rotated by the unit quaternion `q` (x, y, z, w)."""
+@inline function qmul(q::Vec4f, v::Vec3f)
+    n1, n2, n3 = 2f0 * q[1], 2f0 * q[2], 2f0 * q[3]
+    n4, n5, n6 = q[1] * n1, q[2] * n2, q[3] * n3
+    n7, n8, n9 = q[1] * n2, q[1] * n3, q[2] * n3
+    n10, n11, n12 = q[4] * n1, q[4] * n2, q[4] * n3
+    return Vec3f((1f0 - (n5 + n6)) * v[1] + (n7 - n12) * v[2] + (n8 + n11) * v[3],
+                 (n7 + n12) * v[1] + (1f0 - (n4 + n6)) * v[2] + (n9 - n10) * v[3],
+                 (n8 - n11) * v[1] + (n9 + n10) * v[2] + (1f0 - (n4 + n5)) * v[3])
+end
+
+"""particles.vert `finite_div`: `v / d` with no division by zero (Makie#5477)."""
+@inline function finite_div(v::Vec3f, d::Vec3f)
+    df = map(x -> (x >= 0f0 ? 1f0 : -1f0) * max(abs(x), 0.0000001f0), d)
+    return v ./ df
+end
+
+"""
+    instance_place(p, n, i, model, positions, rotations, scales, f32c_scale, transform_marker)
+        -> (world::Vec4f, normal::Vec3f)
+
+particles.vert up to `render`: marker vertex `p` with normal `n` scaled,
+rotated and moved to instance `i`, in world space. The normal is divided by the
+scale (Makie#3702) and rotated with the vertex; `render` applies the normal
+matrices after this, as for a mesh. `transform_marker` (`scale_primitive`)
+decides whether `model` acts on the marker or only on its position.
+"""
+@inline function instance_place(p::Vec3f, n::Vec3f, i::Int32, model::Mat4f,
+                                positions, rotations, scales, f32c_scale::Vec3f, transform_marker::Int32)
+    s = per_instance(scales, i)
+    q = per_instance(rotations, i)
+    V = f32c_scale .* qmul(q, s .* p)
+    N = qmul(q, finite_div(n, s)) ./ f32c_scale
+    pos = per_instance(positions, i)
+    world = transform_marker != Int32(0) ?
+        model * Vec4f(pos[1] + V[1], pos[2] + V[2], pos[3] + V[3], 1f0) :
+        model * Vec4f(pos[1], pos[2], pos[3], 1f0) + Vec4f(V[1], V[2], V[3], 0f0)
+    return world, N
+end
+
 # ─── Makie meshes: the arguments, the stages, the pipelines ─────────────────
 
 const MESH_ARG_NAMES = (
@@ -911,6 +966,8 @@ const MESH_ARG_NAMES = (
     :num_clip_planes,
     :physical, :shadow_map, :light_space, :shadow_light, :shadow_params,
     :ao_map, :ao_centre, :ao_params, :material, :emission,
+    :instance_positions, :instance_rotations, :instance_scales, :instance_uv_transforms,
+    :f32c_scale, :transform_marker, :color_per_instance,
     :fxaa,
 )
 const MESH_NARGS = length(MESH_ARG_NAMES)
@@ -938,33 +995,40 @@ function mesh_vertex(vertexid::VertexIndex,
         viewport_origin::Vec2f, num_clip_planes::Int32,
         physical::Int32, shadow_map, light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
         ao_map, ao_centre::Vec4f, ao_params::Vec4f, material::RasterMaterial, emission::Vec4f,
+        instance_positions, instance_rotations, instance_scales, instance_uv_transforms,
+        f32c_scale::Vec3f, transform_marker::Int32, color_per_instance::Int32,
         fxaa::Int32)
     v0 = vertexid.value - Int32(1)
     tri = v0 ÷ Int32(3)
+    inst = instance_index()
     # 0-based, as `GLTriangleFace` stores it (see `raster_faces`).
     @inbounds vi = Int32(faces[v0 + Int32(1)]) + Int32(1)
     @inbounds p = positions[vi]
+    n0 = has_normals != Int32(0) ? (@inbounds normals[vi]) : Vec3f(0f0, 0f0, 0f0)
 
-    # util.vert `render`
-    position_world = model * Vec4f(p[1], p[2], p[3], 1f0)
+    # particles.vert, then util.vert `render`
+    position_world, n = instance_place(Vec3f(p[1], p[2], p[3]), n0, inst, model,
+                                       instance_positions, instance_rotations, instance_scales,
+                                       f32c_scale, transform_marker)
     view_pos = view * position_world
     view_pos = view_pos / view_pos[4]
     clip = Vec4f(projection * view_pos)
     shifted = Vec4f(clip[1], clip[2], clip[3] + clip[4] * depth_shift, clip[4])
     world_pos = Vec3f(position_world[1], position_world[2], position_world[3]) / position_world[4]
 
-    n = has_normals != Int32(0) ? (@inbounds normals[vi]) : Vec3f(0f0, 0f0, 0f0)
     uv = has_uvs != Int32(0) ? (@inbounds uvs[vi]) : Vec2f(0f0, 0f0)
-    uvt = uv_transform * Vec3f(uv[1], uv[2], 1f0)
+    uvt = per_instance(instance_uv_transforms, inst) * Vec3f(uv[1], uv[2], 1f0)
 
-    # mesh.vert `to_color`
+    # mesh.vert `to_color`, and particles.vert `get_particle_color`: one colour
+    # or value per vertex of a mesh, per instance of a meshscatter.
+    ci = color_per_instance != Int32(0) ? inst : vi
     colour = if color_source == COLOR_VERTEX
-        @inbounds vertex_colors[vi]
+        @inbounds vertex_colors[ci]
     elseif color_source == COLOR_VERTEX_CMAP
-        get_color_from_cmap((@inbounds vertex_values[vi]), cmap, colorrange, colormap_linear,
+        get_color_from_cmap((@inbounds vertex_values[ci]), cmap, colorrange, colormap_linear,
                             lowclip, highclip, nan_color)
     elseif color_source == COLOR_VERTEX_CMAP_FRAG
-        Vec4f((@inbounds vertex_values[vi]), 0f0, 0f0, 0f0)
+        Vec4f((@inbounds vertex_values[ci]), 0f0, 0f0, 0f0)
     else
         uniform_color
     end
@@ -1096,6 +1160,8 @@ function mesh_fragment(inputs,
         viewport_origin::Vec2f, num_clip_planes::Int32,
         physical::Int32, shadow_map, light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
         ao_map, ao_centre::Vec4f, ao_params::Vec4f, material::RasterMaterial, emission::Vec4f,
+        instance_positions, instance_rotations, instance_scales, instance_uv_transforms,
+        f32c_scale::Vec3f, transform_marker::Int32, color_per_instance::Int32,
         fxaa::Int32)
     color = color_source == COLOR_VERTEX_CMAP_FRAG ?
         get_color_from_cmap(inputs.colour[1], cmap, colorrange, colormap_linear,
@@ -1160,6 +1226,8 @@ end
         viewport_origin::Vec2f, num_clip_planes::Int32,
         physical::Int32, shadow_map, light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
         ao_map, ao_centre::Vec4f, ao_params::Vec4f, material::RasterMaterial, emission::Vec4f,
+        instance_positions, instance_rotations, instance_scales, instance_uv_transforms,
+        f32c_scale::Vec3f, transform_marker::Int32, color_per_instance::Int32,
         fxaa::Int32)
     color = if color_source == COLOR_MATCAP
         vn = _unit(inputs.view_normal)
