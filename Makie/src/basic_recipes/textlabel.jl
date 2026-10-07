@@ -372,7 +372,7 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         alpha = plot.alpha,
         # should separate these for 3D, but we currently only support 2D
         stroke_depth_shift = plot.depth_shift,
-        depth_shift = plot.depth_shift,
+        depth_shift = map(x -> x + 2.0f-7, plot, plot.depth_shift),
         fxaa = plot.fxaa,
         visible = plot.visible,
         transparency = plot.transparency,
