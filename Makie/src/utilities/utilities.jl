@@ -669,7 +669,7 @@ function canonical_line_order(elements)
         )
         return close_cycle(minimum(candidates))
     else
-        return last(elements) < first(elements) ? reverse(elements) : elements
+        return isless(last(elements), first(elements)) ? reverse(elements) : elements
     end
 end
 
