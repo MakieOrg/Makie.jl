@@ -57,6 +57,16 @@ on(pf.graph[:values]) do vals; update_plot!(vals) end
 on(_ -> open!(modal), settings_button.clicks)
 ```
 
+## Filtering fields
+
+`filter_fields!` hides and collapses rows in one layout update. It retains their
+widgets, accessories and values, so filtering does not reset an edit:
+
+```julia
+filter_fields!(field -> field in (:iterations, :tolerance), pf)
+filter_fields!(_ -> true, pf) # show every field again
+```
+
 ## Clearing a form
 
 [`clear!`](@ref) removes all blocks from a `GridLayout` recursively, which is

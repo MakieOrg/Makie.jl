@@ -9,6 +9,7 @@ export MouseTo
 export LeftClick
 export LeftDown
 export LeftUp
+export MouseDown, MouseUp
 export RightClick, MiddleClick
 export TypeText
 export KeyPress
@@ -115,6 +116,20 @@ mouseevents_start(l::LeftClick) = [Makie.MouseButtonEvent(Mouse.left, Mouse.pres
 mouseevents_end(l::LeftClick) = [Makie.MouseButtonEvent(Mouse.left, Mouse.release)]
 
 struct LeftDown end
+
+"Press a button and hold it through subsequent pointer actions."
+struct MouseDown
+    button::Mouse.Button
+end
+duration(::MouseDown, _) = 0.0
+mouseevents_start(m::MouseDown) = [Makie.MouseButtonEvent(m.button, Mouse.press)]
+
+"Release a held pointer button."
+struct MouseUp
+    button::Mouse.Button
+end
+duration(::MouseUp, _) = 0.0
+mouseevents_start(m::MouseUp) = [Makie.MouseButtonEvent(m.button, Mouse.release)]
 
 duration(::LeftDown, _) = 0.0
 mouseevents_start(l::LeftDown) = [Makie.MouseButtonEvent(Mouse.left, Mouse.press)]

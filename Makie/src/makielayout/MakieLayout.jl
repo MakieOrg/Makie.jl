@@ -43,7 +43,7 @@ include("rebuild.jl")          # replace_content! that reuses the blocks it find
 export @Block, Block
 export axislegend, axiscolorbar
 export open!, close!, replace_content!, refresh_contentsize!
-export card_accessory, filter_cards!
+export card_accessory, filter_cards!, filter_fields!
 export Between, OneOf, FilePath, convert_form_input
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export linkxaxes!, linkyaxes!, linkaxes!

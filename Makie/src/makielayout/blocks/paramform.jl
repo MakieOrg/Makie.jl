@@ -301,14 +301,17 @@ function initialize_block!(pf::ParamForm, spec, accessory = nothing)
     pf.widgets = Dict{Symbol, Any}()
     pf.accessories = Dict{Symbol, Any}()
     row = 1
+    field_rows = Pair{Symbol, Int}[]
     if pf.title[] !== nothing
         Label(pf.layout[row, 1:2], pf.title[]; font = :bold, halign = :left, color = pf.titlecolor)
         row += 1
     end
     for f in fields
+        push!(field_rows, f.field => row)
         build_field!(pf, f.field, f.type, f.constraint, f.default, row, accessory)
         row += 1
     end
+    add_constant!(pf.graph, :field_rows, field_rows)
     if isempty(fields)
         add_constant!(pf.graph, :values, NamedTuple())
     else
@@ -336,6 +339,47 @@ function initialize_block!(pf::ParamForm, spec, accessory = nothing)
 end
 
 free(pf::ParamForm) = clear!(pf.layout)
+
+"""
+    filter_fields!(predicate, form::ParamForm)
+
+Show the fields whose names satisfy `predicate`, collapsing the other rows in
+one layout update. Widgets, focusable controls, accessories and values are
+retained; call with `field -> true` to show all fields again.
+"""
+function filter_fields!(predicate, pf::ParamForm)
+    changed = false
+    GridLayoutBase.with_updates_suspended(pf.layout; update=false) do
+        for (field, row) in pf.graph[:field_rows][]
+            want = predicate(field)::Bool
+            size = want ? Auto() : Fixed(1)
+            index = row - pf.layout.offsets[1]
+            for gc in pf.layout.content
+                gc.span.rows == row:row || continue
+                block = gc.content
+                if block isa GridLayout
+                    set_content_visible!(block, want)
+                elseif block isa Block
+                    want ? unhide!(block) : hide!(block)
+                    inner = getfield(block, :layout)
+                    inner isa GridLayout && set_content_visible!(inner, want)
+                    !want && block isa Textbox && block.focused[] && (block.focused[] = false)
+                end
+            end
+            if pf.layout.rowsizes[index] != size
+                rowsize!(pf.layout, row, size)
+                changed = true
+            end
+            gap = Fixed(want ? pf.rowgap[] : 0)
+            if index < pf.layout.size[1] && pf.layout.addedrowgaps[index] != gap
+                rowgap!(pf.layout, row, gap)
+                changed = true
+            end
+        end
+    end
+    changed && GridLayoutBase.update!(pf.layout)
+    return pf
+end
 
 """
     clear!(x)

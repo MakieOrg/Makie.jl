@@ -4,7 +4,7 @@ function initialize_block!(b::Button)
 
     textpos = Observable(Point2f(0, 0))
 
-    subarea = lift(scene, b.layoutobservables.computedbbox) do bbox
+    subarea = lift(scene, b.layoutobservables.computedbbox; ignore_equal_values=true) do bbox
         round_to_IRect2D(bbox)
     end
     subscene = Scene(scene, subarea)
@@ -12,7 +12,7 @@ function initialize_block!(b::Button)
 
     # the subscene camera is in absolute window coords, so the button background
     # just echoes the computed bbox.
-    buttonrect = lift(scene, b.layoutobservables.computedbbox) do bbox
+    buttonrect = lift(scene, b.layoutobservables.computedbbox; ignore_equal_values=true) do bbox
         Rect2f(bbox)
     end
 

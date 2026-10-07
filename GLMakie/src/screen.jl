@@ -1080,7 +1080,12 @@ function poll_updates(screen)
         with_context(screen.glscreen) do
             for plot in values(screen.cache2plot)
                 scene = Makie.parent_scene(plot)
-                scene.visible[] || continue # skip invisible scenes
+                Makie.scene_visible(scene) || continue
+                # Scrolled-out controls can retain dirty geometry while hidden.
+                # Resolve it when their scene re-enters the drawing area rather
+                # than uploading buffers that this frame will clip away.
+                clip = Makie.effective_clip(scene)
+                all(>(0), widths(clip)) || continue
                 # Skip updating invisible renderobjects
                 # This is basically `if is_visible || was_visible`, which makes
                 # sure the robj updates on state change. (i.e. hides and redisplays)

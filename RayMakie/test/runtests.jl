@@ -1,5 +1,6 @@
 using Test
 
+
 # The oldest hardware this should run on is an M1 (Apple GPU family 7) with
 # macOS 15. Without one, run the suite on any Apple silicon Mac with
 #
@@ -130,6 +131,9 @@ const TEST_FILES = [
     "test_material_precedence.jl",
     "test_colour_encoding.jl",
     "test_sample_budget.jl",
+    "test_preview_density.jl",
+    "test_poll_failure.jl",
+    "picking.jl",
     "test_lava_meshscatter_pervec.jl",
     "test_meshscatter_update_stress.jl",
     "test_mesh_update_stress.jl",

@@ -51,7 +51,7 @@ end
 # What the vertex stage hands the geometry stage, per input vertex. A
 # `LineStripAdjacency` primitive is four of them, read back as `prim.<name>[i]`.
 const LINES_VERTEX_OUT = (colour = Vec4f, lastlen = Float32,
-                          valid = Float32, thickness = Float32)
+                          valid = Float32, thickness = Float32, pick_index = Float32)
 
 # What the geometry stage hands the fragment stage. The first four vary across
 # the quad; the ten `Flat` ones are the SEGMENT's and are computed once before the
@@ -64,7 +64,8 @@ const LINES_GEOM_OUT = (quad_sdf = Vec3f, truncation = Vec2f, linestart = Float3
                         pattern_overwrite = Flat{Vec4f}, color1 = Flat{Vec4f},
                         color2 = Flat{Vec4f}, alpha_weight = Flat{Float32},
                         cumulative_length = Flat{Float32}, capmode = Flat{Vec2f},
-                        linepoints = Flat{Vec4f}, miter_vecs = Flat{Vec4f})
+                        linepoints = Flat{Vec4f}, miter_vecs = Flat{Vec4f},
+                        pick_index = Flat{Float32})
 
 # The index is a PARAMETER, and the arg-less spelling below hands it the builtin.
 #
@@ -111,7 +112,7 @@ function lines_vertex(
             colour = color[vid],
             lastlen = px_per_unit * lastlen[vid],
             valid = valid_vertex[vid],
-            thickness = px_per_unit * thickness[vid])
+            thickness = px_per_unit * thickness[vid], pick_index = Float32(vid))
 end
 
 # =============================================================================
@@ -309,7 +310,7 @@ function lines_geometry(
     # The segment's own values. They are `Flat` in `LINES_GEOM_OUT`, so the
     # emitter writes them once per triangle rather than once per vertex; the loop
     # below carries them along, it does not recompute them.
-    flat = (extrusion = Vec2f(f_extrusion_x, f_extrusion_y),
+    flat = (pick_index = prim.pick_index[2], extrusion = Vec2f(f_extrusion_x, f_extrusion_y),
             linewidth = halfwidth,
             pattern_overwrite = f_pattern_overwrite,
             color1 = f_color1,
@@ -496,7 +497,8 @@ function lines_fragment(
     # have shown through it. Discarding is what lets a BLENDED pass use a
     # depth buffer, which is how a scene's z translation gets honoured.
     alpha < 1f-3 && discard()
-    return raster_output(Vec4f(col[1] * alpha, col[2] * alpha, col[3] * alpha, alpha), fxaa)
+    return raster_output(Vec4f(col[1] * alpha, col[2] * alpha, col[3] * alpha, alpha), fxaa,
+                         unsafe_trunc(UInt32, inputs.pick_index + 0.5f0))
 end
 
 # =============================================================================

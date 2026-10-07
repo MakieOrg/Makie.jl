@@ -549,3 +549,4 @@ end
     # @test eltype(p5.gl_renderobject[][:image]) === RGBA{N0f8}
     # @test eltype(p6.gl_renderobject[].vertexarray.buffers["intensity"]) === N0f8
 end
+include("clipped_updates.jl")

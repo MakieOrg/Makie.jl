@@ -8,17 +8,22 @@
 # later pass an earlier pass's image by `copy!`, so the bilinear filtering the
 # GLSL gets from its sampler is done by hand in `fxaa_tex`.
 
-# The two attachments a raster fragment writes: its colour, and the flag the FXAA
-# pass reads. Alpha 1, so the blend a pipeline declares REPLACES the flag rather
-# than mixing it, which is GLMakie's unblended object-id target.
-@inline raster_output(color::Vec4f, fxaa::Int32) = (color, Vec4f(Float32(fxaa), 0f0, 0f0, 1f0))
+# A fragment writes colour and unblended integer metadata. The first word packs
+# plot ID and the FXAA bit; the second identifies its triangle, point or segment.
+const RASTER_METADATA = Vec{2,UInt32}
+@inline fxaa_enabled(flags::Int32) = (flags & Int32(1)) != Int32(0)
+@inline function raster_output(color::Vec4f, flags::Int32, index::UInt32 = UInt32(0),
+                              glow::Bool = false)
+    (color[4] <= 0f0 && (!glow || maximum(Vec3f(color[1],color[2],color[3])) <= 0f0)) && discard()
+    return (color, RASTER_METADATA(reinterpret(UInt32, flags), index))
+end
 
 # GLSL's `step`, for the stages that leave an edge to FXAA instead of smoothing it
 # with `aastep` (lines.frag, distance_shape.frag).
 @inline glsl_step(edge::Float32, x::Float32) = x < edge ? 0f0 : 1f0
 
 @inline fxaa_or_aastep(fxaa::Int32, threshold::Float32, dist::Float32, aa::Float32 = ANTIALIAS_RADIUS) =
-    fxaa != Int32(0) ? glsl_step(threshold, dist) : aastep(threshold, dist, aa)
+    fxaa_enabled(fxaa) ? glsl_step(threshold, dist) : aastep(threshold, dist, aa)
 
 # ── The traced image, blitted into both attachments ─────────────────────────
 
@@ -48,7 +53,7 @@ end
     @inbounds c = colour[i]
     @inbounds f = flag[i]
     r, g, b = unorm(c.r), unorm(c.g), unorm(c.b)
-    luma = unorm(f.r) > 0.5f0 ?
+    luma = (f[1] & UInt32(1)) != UInt32(0) ?
         round(clamp(0.299f0 * r + 0.587f0 * g + 0.114f0 * b, 0f0, 1f0) * 255f0) * (1f0 / 255f0) : 1f0
     return Vec4f(r, g, b, luma)
 end

@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- RayMakie rejects frames when a plot's render object fails to update, and refreshes retained meshes' emission through Hikari's mesh handle without rebuilding their geometry. Mesh replacements reuse face-light slots to avoid duplicate illumination.
+
+- Forwarded container layouts batch size and padding updates, and `Subfigure` publishes content size after layout completes. Unchanged control rectangles and unused intrinsic text dimensions no longer trigger repeated geometry/layout updates.
+
+- GLMakie defers uploads and draw preparation for clipped or ancestor-hidden scenes until they become visible again. Render ordering evaluates each plot's depth once, and drawing uses a per-frame scene lookup.
+
+- `replace_content!` reuses controls across layout positions. Stable `key` values preserve control identity when forms are reordered, and callback replacement respects listener priorities.
+
+- RGBA texture colormapping reuses converted storage when `alpha = 1`.
+  RayMakie raster meshes and surfaces defer spectrum textures until tracing is
+  first requested, avoiding full unused copies in raster previews.
+
+- RayMakie's raster path supports `pick`, `pick_closest`, and `pick_sorted` using
+  unblended integer object/element IDs from the completed frame, including FXAA
+  and preview pixel densities. An independent raster view can reuse the same
+  geometry and materials with a separate camera.
+
+- Added `filter_fields!` for `ParamForm`: hide and collapse fields without rebuilding their widgets or losing values, with a single layout update.
+
+- Filtered `Card` lists remove the bottom spacing of hidden cards, keeping later rows inside their parent's bounds and reachable by mouse.
+
+- RayMakie exposes `isprogressive(screen)` so preview clients can stop refinement redraws in raster mode and resume them when tracing.
+- Fixed RayMakie raster bounds for GPU meshes to use the current AcceleratedKernels reduction API, so animated GPU oceans remain visible.
+
+- RayMakie offscreen reads support `px_per_unit` to resize the film without reconstructing a scene. Animated mesh UVs and geometry reuse unchanged materials instead of re-uploading their textures.
+- Fixed nested cards and widgets taking clicks outside a scrolling parent's viewport. Pointer hit testing now respects ancestor clipping and visibility.
 - Fixed RayMakie surface and overlay alignment on HiDPI displays and in 3D sub-scenes, oriented 3D text, and raster rendering of surfaces in 2D axes. Window initialization now handles a missing primary monitor and uses the window's content scale; frame requests allow slow initial compilation.
 - `Subfigure` now anchors its content to the top-left instead of centring it. A `GridLayout` defaults to `valign = :center`, so content shorter than the scroll region floated in the middle of it; when content overflows the alignment has no effect, so this only changes the short case.
 - Added a `Card` block: a titled, foldable container for building lists of settings panels. `open` folds the body away and leaves the header; `visible = false` COLLAPSES the card — unlike `hide!`, which stops a block drawing but leaves its row at full height, so a filtered list showed holes where its hidden entries used to be. A card's bottom spacing is part of the card rather than a gap in the parent layout, so hiding one leaves no double gap; build the stack with `default_rowgap = 0`. `filter_cards!(predicate, stack, cards)` applies a filter in a single relayout (measured over 100 cards, toggling 50: 147 ms one at a time, 14 ms batched, 433 ms to rebuild them instead). Header widgets go in `card_accessory(card)`, and `headerclicks` counts presses on the title bar for list selection.

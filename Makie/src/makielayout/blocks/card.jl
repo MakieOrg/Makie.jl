@@ -146,6 +146,10 @@ Set each card's `visible` to `predicate(card)`, relayouting `stack` ONCE
 instead of once per card. This is how a filter box over a card list should
 run: cards whose state does not change are not touched at all.
 
+For a dedicated single-column card stack, `compact = true` packs visible cards
+at the top and places hidden cards together in one collapsed row. Their controls
+remain owned by the layout, and restoring the filter restores the supplied order.
+
 Measured on a stack of 100 cards, toggling 50: 147 ms one at a time, 14 ms
 through here — and 433 ms to throw the cards away and build them again, which
 is what makes rebuilding on every keystroke the wrong shape.
@@ -156,12 +160,33 @@ filter_cards!(stack, cards) do card
 end
 ```
 """
-function filter_cards!(predicate, stack::GridLayout, cards)
+function filter_cards!(predicate, stack::GridLayout, cards; compact = false)
     GridLayoutBase.with_updates_suspended(stack) do
-        for c in cards
-            want = predicate(c)::Bool
+        wanted = Bool[predicate(c)::Bool for c in cards]
+        shown = count(identity, wanted)
+        row = 0
+        moved = false
+        for (c, want) in zip(cards, wanted)
             c.visible[] == want || (c.visible = want)
+            # GridLayoutBase allocates at least one pixel per row, including
+            # Fixed(0). Report that same extent for hidden card rows so the
+            # stack's measured height contains its children after filtering.
+            gc = GridLayoutBase.gridcontent(c)
+            if gc !== nothing && gc.parent === stack && length(gc.span.rows) == 1
+                targetrow = first(gc.span.rows)
+                if compact
+                    want && (row += 1)
+                    targetrow = stack.offsets[1] + (want ? row : shown + 1)
+                    if gc.span.rows != targetrow:targetrow
+                        stack[targetrow, gc.span.cols, gc.side] = c
+                        moved = true
+                    end
+                end
+                size = want ? Auto() : Fixed(1)
+                stack.rowsizes[targetrow-stack.offsets[1]] == size || rowsize!(stack,targetrow,size)
+            end
         end
+        compact && moved && trim!(stack)
     end
     return
 end
@@ -214,6 +239,15 @@ function initialize_block!(c::Card)
 
     is_visible = lift(identity, blockscene, c.visible)
 
+    # Retain the last drawn rectangle while filtered out. Hidden cards still
+    # participate in size reporting, but need no polygon tessellation, text
+    # positioning or pixel-camera updates as their parent rearranges them.
+    visualbbox = Observable(c.layoutobservables.computedbbox[]; ignore_equal_values=true)
+    on(blockscene, c.layoutobservables.computedbbox; update=true) do bbox
+        c.visible[] && (visualbbox[] = bbox)
+        return
+    end
+
     # The header is a Fixed row so the bar has the same height whether or not
     # anything is in its accessory cell. The card's bottom margin is padding on
     # the card's own layout rather than a gap in the parent's — that is what
@@ -223,8 +257,11 @@ function initialize_block!(c::Card)
         rowsize!(layout, 1, Fixed(h))
         return
     end
-    on(blockscene, c.spacing; update = true) do s
-        layout.alignmode[] = Outside(0.0f0, 0.0f0, Float32(s), 0.0f0)
+    onany(blockscene, c.spacing, c.visible; update = true) do s, visible
+        # A collapsed card must also remove its Outside protrusion. Keeping
+        # the margin on zero-height filtered cards shifts later cards below
+        # their stack's bounds, where ancestor clipping makes rows unreachable.
+        layout.alignmode[] = Outside(0.0f0, 0.0f0, visible ? Float32(s) : 0.0f0, 0.0f0)
         GridLayoutBase.update!(layout)
         return
     end
@@ -239,7 +276,7 @@ function initialize_block!(c::Card)
     # scrolled-out content cannot un-hide a card that is folded or filtered out.
     # (That bug looked like four cards' sliders painted on top of the one card
     #  the filter had left.)
-    contentarea = lift(blockscene, c.layoutobservables.computedbbox, c.spacing) do bb, sp
+    contentarea = lift(blockscene, visualbbox, c.spacing) do bb, sp
         s = min(Float32(sp), bb.widths[2])
         return round_to_IRect2D(
             Rect2f(
@@ -284,7 +321,7 @@ function initialize_block!(c::Card)
     # ---------------------------------------------------------------- geometry
     # The card's rect is its bbox minus the spacing row at the bottom: the
     # spacing is layout, not paint.
-    cardrect = lift(blockscene, c.layoutobservables.computedbbox, c.spacing) do bb, sp
+    cardrect = lift(blockscene, visualbbox, c.spacing) do bb, sp
         s = min(Float32(sp), bb.widths[2])
         # y grows upward, so the spacing below the card is at the bottom of the
         # bbox and the paint starts above it.

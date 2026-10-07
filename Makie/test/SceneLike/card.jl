@@ -98,7 +98,11 @@ const FOLDEDHEIGHT = 26 + 8
             iseven(parse(Int, split(c.title[])[2]))
         end
         Makie.update_state_before_display!(fig)
-        @test stackheight(stack) == 4 * CARDHEIGHT
+        # GridLayoutBase reserves at least one pixel for each hidden row. The
+        # measured extent must include it so the final card stays inside bounds.
+        @test stackheight(stack) == 4 * CARDHEIGHT + 4
+        bounds = stack.layoutobservables.computedbbox[]
+        @test last(cards).layoutobservables.computedbbox[].origin[2] >= bounds.origin[2] - 1
         @test [c.visible[] for c in cards] == [false, true, false, true, false, true, false, true]
         filter_cards!(_ -> true, stack, cards)
         Makie.update_state_before_display!(fig)

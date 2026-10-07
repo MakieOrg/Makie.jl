@@ -3,34 +3,18 @@
 ################################################################################
 
 """
-Rebuilding panel content by deleting every block and constructing it again is
-the expensive way to change a label. Measured on 100 `Button`s: 230 ms and
-118 MB to delete and rebuild, of which the construction is nearly all — a
-`Button` costs 1.5 MB, and 1.03 MB of that is the `poly` and the `text` it draws
-with. The block that was already there can take the new values instead.
-
-The API stays an imperative closure that constructs blocks. What changes is the
-position it constructs them at: inside
-[`replace_content!`](@ref) `sf.layout[i, j]` yields a [`RebuildPosition`](@ref),
-and `Button(pos; label = …)` on one of those hands back the block that was in
-that cell — with the new attributes written and the previous closure's callbacks
-removed — instead of building a second one.
-"""
-
-"""
-The cell a block is being (re)built in, plus the pool it may be taken from.
-
-`(rows, cols, side, T)` is the key: a form draws the same kinds of block in the
-same cells every time, so position and type identify the block to reuse without
-comparing anything. specapi's `distance_score` matcher answers a harder question
-(match specs to blocks anywhere in the layout) and pays for it — it is quadratic
-in the number of blocks, 5.7 ms for 50 and 38.4 ms for 200.
+A rebuild shares one pool of controls. Explicit keys identify controls independently
+of layout positions; unkeyed controls prefer their old cell, then reuse another
+unclaimed control of the same type. Matching is indexed, not a pairwise search.
 """
 struct RebuildLayout
     layout::GridLayout
-    subfigure::Any                                   # `Subfigure`, holds the listener record
-    pool::Dict{Tuple{Any, Any, Any, DataType}, Block}   # what is still up for reuse
-    kept::Vector{Block}
+    subfigure::Any
+    cells::Dict{Tuple{Any, Any, Any, DataType}, Vector{Block}}
+    types::Dict{DataType, Vector{Block}}
+    keyed::Dict{Any, Block}
+    available::IdDict{Block, Nothing}
+    usedkeys::Set{Any}
 end
 
 struct RebuildPosition
@@ -71,9 +55,9 @@ Base.getproperty(rs::RebuildSubfigure, k::Symbol) =
     k === :subfigure ? getfield(rs, :subfigure) :
     getproperty(getfield(rs, :subfigure), k)
 
-"Listener counts of every observable a block has materialised, as it was built."
+"Internal listeners, recorded before the rebuild closure attaches callbacks."
 buildlisteners(block::Block) =
-    Dict{Symbol, Int}(k => length(o.listeners) for (k, o) in block.attributes.observables)
+    Dict{Symbol, Vector{Any}}(k => collect(Any, o.listeners) for (k, o) in block.attributes.observables)
 
 """
 Drop everything the previous closure hung on `block`, keep the wiring the block
@@ -81,12 +65,14 @@ made for itself.
 
 A reused block is the same object, so `on(button.clicks) do …` in a closure that
 runs on every rebuild would stack up one callback per rebuild. `snap` is what the
-block carried when it was built; anything past that came from a closure.
+block carried when it was built; other listeners came from a closure.
 """
-function reset_to_buildlisteners!(block::Block, snap::Dict{Symbol, Int})
+function reset_to_buildlisteners!(block::Block, snap::Dict{Symbol, Vector{Any}})
     for (name, obs) in block.attributes.observables
-        n = get(snap, name, 0)
-        length(obs.listeners) > n && resize!(obs.listeners, n)
+        original = get(snap, name, ())
+        # Listener order follows priority, not registration order. Truncating a
+        # count would retain high-priority user callbacks and remove internal ones.
+        filter!(listener -> any(saved -> saved === listener, original), obs.listeners)
     end
     return block
 end
@@ -107,28 +93,54 @@ reuse_arguments!(::Block, args...) = false
 reuse_arguments!(l::Label, text::AbstractString) = (l.text = text; true)
 reuse_arguments!(b::Button, label::AbstractString) = (b.label = label; true)
 
-"Take the block in this cell, or build one — see [`RebuildLayout`](@ref)."
-function (::Type{T})(pos::RebuildPosition, args...; kwargs...) where {T <: Block}
+function take_rebuild_block!(rl, blocks)
+    while !isempty(blocks)
+        block = pop!(blocks)
+        haskey(rl.available, block) || continue
+        delete!(rl.available, block)
+        return block
+    end
+    return nothing
+end
+
+function forget_rebuild_block!(sf, block)
+    delete!(sf.buildlisteners, block)
+    delete!(sf.buildkeys, block)
+    delete_layoutable!(block)
+    return nothing
+end
+
+"Reuse a keyed control anywhere in the layout, or an unkeyed control of this type."
+function (::Type{T})(pos::RebuildPosition, args...; key = nothing, kwargs...) where {T <: Block}
     rl = pos.parent
-    key = cellkey(pos, T)
-    block = get(rl.pool, key, nothing)
+    if key !== nothing
+        key in rl.usedkeys && throw(ArgumentError("duplicate rebuild key: $(repr(key))"))
+        push!(rl.usedkeys, key)
+        block = get(rl.keyed, key, nothing)
+        block === nothing || delete!(rl.available, block)
+    else
+        block = take_rebuild_block!(rl, get(rl.cells, cellkey(pos, T), Block[]))
+        block === nothing && (block = take_rebuild_block!(rl, get(rl.types, T, Block[])))
+    end
     if block !== nothing
-        delete!(rl.pool, key)
-        if isempty(args) || reuse_arguments!(block, args...)
-            reset_to_buildlisteners!(block, get(rl.subfigure.buildlisteners, block, Dict{Symbol, Int}()))
+        # Remove callbacks before applying any attributes/arguments: updates must
+        # not invoke a closure belonging to the previous document or selection.
+        snap = get!(() -> buildlisteners(block), rl.subfigure.buildlisteners, block)
+        reset_to_buildlisteners!(block, snap)
+        if block isa T && (isempty(args) || reuse_arguments!(block, args...))
             for (k, v) in kwargs
-                setproperty!(block, k, v)
+                isequal(to_value(getproperty(block, k)), v) || setproperty!(block, k, v)
             end
-            push!(rl.kept, block)
+            if gridcontent_key(block) != cellkey(pos, T)
+                rl.layout[pos.rows, pos.cols, pos.side] = block
+            end
             return block
         end
-        # arguments this type will not take back: the old block goes, a new one comes
-        delete!(rl.subfigure.buildlisteners, block)
-        delete_layoutable!(block)
+        forget_rebuild_block!(rl.subfigure, block)
     end
     block = T(rl.layout[pos.rows, pos.cols, pos.side], args...; kwargs...)
     rl.subfigure.buildlisteners[block] = buildlisteners(block)
-    push!(rl.kept, block)
+    key === nothing || (rl.subfigure.buildkeys[block] = key)
     return block
 end
 
@@ -143,8 +155,13 @@ end
     replace_content!(f, sf::Subfigure)
 
 Rebuild the subfigure's content by calling `f(sf)`, reusing the blocks already
-there: a block of the same type in the same cell takes the new attributes instead
-of being deleted and built again. Blocks the closure does not ask for are deleted,
+there. Pass `key = id` to a block constructor to preserve that control's identity
+when it moves, for example `Slider(sf.layout[row, 2]; key = (:gain, track.id))`.
+Keys must be unique within a rebuild. A key whose block type changes creates a
+new block. Unkeyed controls prefer the same cell, then any unused unkeyed control
+of the same type; give stateful controls keys when their meaning must be retained.
+Omitted attributes retain their values, including focus and uncommitted text.
+Blocks the closure does not ask for are deleted,
 the layout is trimmed and the content size refreshed.
 
 The whole rebuild is one layout pass. Otherwise every deleted block and every
@@ -155,7 +172,7 @@ rebuild's time goes: writing a `Label`'s text costs 1551 µs with updates live a
 ```julia
 replace_content!(sf) do sf
     for (i, name) in enumerate(names)
-        b = Button(sf.layout[i, 1]; label = name)
+        b = Button(sf.layout[i, 1]; key = name, label = name)
         on(b.clicks) do _        # registered fresh on every rebuild; the previous
             select(name)         # closure's callbacks are dropped from the reused
         end                      # block first
@@ -165,23 +182,36 @@ end
 """
 function replace_content!(f, sf::Subfigure)
     layout = sf.layout
-    pool = Dict{Tuple{Any, Any, Any, DataType}, Block}()
+    cells = Dict{Tuple{Any, Any, Any, DataType}, Vector{Block}}()
+    types = Dict{DataType, Vector{Block}}()
+    keyed = Dict{Any, Block}()
+    available = IdDict{Block, Nothing}()
     for c in contents(layout)
         c isa Block || continue
-        k = gridcontent_key(c)
-        k === nothing || (pool[k] = c)
+        available[c] = nothing
+        if haskey(sf.buildkeys, c)
+            keyed[sf.buildkeys[c]] = c
+        else
+            k = gridcontent_key(c)
+            k === nothing || push!(get!(() -> Block[], cells, k), c)
+            push!(get!(() -> Block[], types, typeof(c)), c)
+        end
     end
-    rl = RebuildLayout(layout, sf, pool, Block[])
-    GridLayoutBase.with_updates_suspended(layout) do
+    rl = RebuildLayout(layout, sf, cells, types, keyed, available, Set{Any}())
+    previous = layout.block_updates
+    layout.block_updates = true
+    try
         f(RebuildSubfigure(sf, rl))
-        for (_, block) in rl.pool          # asked for last time, not this time
-            delete!(sf.buildlisteners, block)
-            delete_layoutable!(block)
+        for block in keys(rl.available)   # asked for last time, not this time
+            forget_rebuild_block!(sf, block)
         end
         for c in contents(layout)          # …and anything that was never a Block
             c isa Block || delete_layoutable!(c)
         end
         trim!(layout)
+    finally
+        layout.block_updates = previous
+        GridLayoutBase.update!(layout)
     end
     refresh_contentsize!(sf)
     return sf

@@ -2,6 +2,25 @@ using Makie
 using Makie: MouseButtonEvent, Mouse, receives_events
 using Test
 
+@testset "nested input respects ancestor clipping" begin
+    root = Scene(size = (400, 400), camera = campixel!)
+    panel = Scene(root; viewport = Rect2i(100, 100, 200, 200), camera = campixel!)
+    nested = Scene(panel; viewport = Rect2i(100, 50, 200, 300), camera = campixel!, visible = true)
+    e = events(root)
+    e.mouseposition[] = (150, 75)   # in nested content, below its visible panel
+    @test Vec(e.mouseposition[]) in nested.viewport[]
+    @test !Makie.is_mouseinside(nested)
+    e.mouseposition[] = (150, 325)  # likewise above the panel
+    @test !Makie.is_mouseinside(nested)
+    e.mouseposition[] = (150, 150)
+    @test Makie.is_mouseinside(nested)
+    panel.visible[] = false
+    @test nested.visible[]       # a child needn't copy its parent's visibility
+    @test !Makie.is_mouseinside(nested)
+    panel.visible[] = true
+    @test Makie.is_mouseinside(nested)
+end
+
 @testset "Tabs event isolation (shared events + receives_events)" begin
     f = Figure()
     t = Tabs(f[1, 1], ["A", "B"])

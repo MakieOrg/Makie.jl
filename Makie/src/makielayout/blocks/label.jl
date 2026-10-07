@@ -26,17 +26,20 @@ function initialize_block!(l::Label)
 
     onany(
         topscene, l.text, l.fontsize, l.font, l.rotation, word_wrap_width,
-        l.padding
-    ) do _, _, _, _, _, pad
+        l.padding, l.width, l.height, l.word_wrap
+    ) do _, _, _, _, _, pad, _, _, _
         padding = to_lrbt_padding(pad)
         textbb[] = Rect2f(boundingbox(t, :data))
         autowidth = width(textbb[]) + padding[1] + padding[2]
         autoheight = height(textbb[]) + padding[3] + padding[4]
         if l.word_wrap[]
-            layoutobservables.autosize[] = (nothing, autoheight)
+            setautosize!(l, (nothing, autoheight))
         else
-            layoutobservables.autosize[] = (autowidth, autoheight)
+            setautosize!(l, (autowidth, autoheight))
         end
+        # The text bounds can change without changing the layout's size. Keep
+        # alignment/wrapping current without asking the parent to solve again.
+        notify(layoutobservables.computedbbox)
         return
     end
 

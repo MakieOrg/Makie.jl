@@ -115,12 +115,20 @@ end
 """
     is_mouseinside(scene)
 
-Returns true if the current mouseposition is inside the given scene.
+Returns true if the current mouseposition is inside the visible, clipped scene.
 """
 is_mouseinside(x) = is_mouseinside(get_scene(x))
 function is_mouseinside(scene::Scene)
-    scene.visible[] || return false
-    in(Vec(scene.events.mouseposition[]), viewport(scene)[]) || return false
+    # Drawing is clipped by every ancestor viewport. Nested cards can extend
+    # beyond a scrolling Subfigure even though their own viewport contains the
+    # pointer; those invisible parts must not take clicks from adjacent widgets.
+    pos = Vec(scene.events.mouseposition[])
+    ancestor = scene
+    while ancestor !== nothing
+        ancestor.visible[] || return false
+        in(pos, viewport(ancestor)[]) || return false
+        ancestor = parent(ancestor)
+    end
     return receives_events(scene)
 end
 

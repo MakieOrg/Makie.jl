@@ -79,7 +79,7 @@ function RenderObject(pipeline::Union{GraphicsPipeline, Mantle.MeshPipeline};
                      nothing, Vector{UInt8}(undef, 8))
 end
 
-wants_fxaa(robj::RenderObject) = robj.uniforms[:fxaa]::Int32 != Int32(0)
+wants_fxaa(robj::RenderObject) = fxaa_enabled(robj.uniforms[:fxaa]::Int32)
 plot_fxaa(plot) = Bool(Makie.to_value(plot.fxaa))
 
 """

@@ -10,7 +10,8 @@ const SPRITE_AA_RADIUS = 0.8f0
 # back there as `prim.<name>[1]` because a `PointList` primitive is one vertex.
 const SCATTER_VERTEX_OUT = (world_pos = Vec3f, marker_offset = Vec3f,
                             offset_width = Vec4f, rotation = Vec4f, colour = Vec4f,
-                            uv_bbox = Vec4f, stroke_colour = Vec4f, glow_colour = Vec4f)
+                            uv_bbox = Vec4f, stroke_colour = Vec4f, glow_colour = Vec4f,
+                            pick_index = Float32)
 
 # What the geometry stage hands the fragment stage. Only `uv` varies across the
 # quad's four vertices; everything else is the SPRITE's, computed once before the
@@ -20,7 +21,8 @@ const SCATTER_VERTEX_OUT = (world_pos = Vec3f, marker_offset = Vec3f,
 const SCATTER_GEOM_OUT = (uv = Vec2f, colour = Flat{Vec4f}, vp_from_u = Flat{Float32},
                           df_scale = Flat{Float32}, uv_bbox = Flat{Vec4f},
                           sp_scl = Flat{Vec2f}, shape = Flat{Float32},
-                          stroke_colour = Flat{Vec4f}, glow_colour = Flat{Vec4f})
+                          stroke_colour = Flat{Vec4f}, glow_colour = Flat{Vec4f},
+                          pick_index = Flat{Float32})
 
 # ─── Per-vertex attribute: either a single value (uniform) or array (per-element) ───
 const PerVertex{T} = Union{T, AbstractVector{<:T}}
@@ -130,7 +132,7 @@ function scatter_vertex(
             colour = gpu_read(gpu_colors, idx),
             uv_bbox = gpu_read(sdf_uv, idx),
             stroke_colour = gpu_read(gpu_stroke_color, idx),
-            glow_colour = gpu_read(gpu_glow_color, idx))
+            glow_colour = gpu_read(gpu_glow_color, idx), pick_index = Float32(idx))
 end
 
 # =============================================================================
@@ -215,7 +217,7 @@ function scatter_geometry(
     # recompute them.
     flat = (colour = col, vp_from_u = f_vp_from_u, df_scale = f_df_scale,
             uv_bbox = uv_bbox, sp_scl = sp_scl, shape = sh_f,
-            stroke_colour = scol, glow_colour = gcol)
+            stroke_colour = scol, glow_colour = gcol, pick_index = prim.pick_index[1])
 
     # Triangle strip winding: BL, TL, BR, TR (Z pattern, matching GLMakie)
     for c in Int32(1):Int32(4)
@@ -317,7 +319,8 @@ function scatter_fragment(
     # have shown through it. Discarding is what lets a BLENDED pass use a
     # depth buffer, which is how a scene's z translation gets honoured.
     color[4] < 1f-3 && discard()
-    return raster_output(Vec4f(color[1]*color[4], color[2]*color[4], color[3]*color[4], color[4]), fxaa)
+    return raster_output(Vec4f(color[1]*color[4], color[2]*color[4], color[3]*color[4], color[4]), fxaa,
+                         unsafe_trunc(UInt32, inputs.pick_index + 0.5f0))
 end
 
 # =============================================================================

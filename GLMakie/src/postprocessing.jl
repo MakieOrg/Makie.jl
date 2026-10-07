@@ -148,7 +148,9 @@ function run_stage(screen, glscene, ::SortPlots)
         # return Makie.zvalue2d(plot)
     end
 
-    sort!(screen.renderlist; by = sortby)
+    # Compute each plot's depth once. A `by` function is otherwise evaluated
+    # repeatedly by comparisons, resolving the same transformation graph.
+    permute!(screen.renderlist, sortperm(map(sortby, screen.renderlist)))
     return
 end
 
@@ -321,11 +323,14 @@ function run_stage(screen, glscene, stage::RenderPlots)
         set_draw_buffers(stage.framebuffer)
 
         glEnable(GL_SCISSOR_TEST)
+        # Scene IDs are remapped when scenes are deleted, so build the lookup
+        # from the current list instead of scanning it for every draw.
+        scenes = Dict(screen.screens)
         for (zindex, screenid, elem) in screen.renderlist
             elem.visible && haskey(elem.variants, stage.target) || continue
 
-            found, scene = id2scene(screen, screenid)
-            (found && Makie.scene_visible(scene)) || continue
+            scene = get(scenes, screenid, nothing)
+            (scene !== nothing && Makie.scene_visible(scene)) || continue
 
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
@@ -334,6 +339,7 @@ function run_stage(screen, glscene, stage::RenderPlots)
             # parents share; lets markers near a scene edge extend past it
             # while still being cut off at the enclosing container / window.
             sa = Makie.effective_clip(scene)
+            all(>(0), widths(sa)) || continue
 
             require_context(screen.glscreen)
             glViewport(gl_extent.(ppu .* minimum(a))..., gl_extent.(ppu .* widths(a))...)

@@ -934,7 +934,8 @@ function mesh_vertex(vertexid::VertexIndex,
         fxaa::Int32)
     v0 = vertexid.value - Int32(1)
     tri = v0 ÷ Int32(3)
-    @inbounds vi = Int32(faces[v0 + Int32(1)])
+    # 0-based, as `GLTriangleFace` stores it (see `raster_faces`).
+    @inbounds vi = Int32(faces[v0 + Int32(1)]) + Int32(1)
     @inbounds p = positions[vi]
 
     # util.vert `render`
@@ -1081,7 +1082,8 @@ function mesh_fragment(inputs,
         diffuse, specular, shininess, backlight, exposure, tonemap, white_point,
         inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit,
         physical, shadow_map, light_space, shadow_light, shadow_params,
-        ao_map, ao_centre, ao_params, material, emission), fxaa)
+        ao_map, ao_centre, ao_params, material, emission), fxaa,
+        unsafe_trunc(UInt32, inputs.tri + 0.5f0) + UInt32(1), emission[4] != 0f0)
 end
 
 @inline texel(u::Float32, v::Float32) =
@@ -1130,7 +1132,8 @@ function mesh_fragment_textured(inputs,
         diffuse, specular, shininess, backlight, exposure, tonemap, white_point,
         inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit,
         physical, shadow_map, light_space, shadow_light, shadow_params,
-        ao_map, ao_centre, ao_params, material, emission), fxaa)
+        ao_map, ao_centre, ao_params, material, emission), fxaa,
+        unsafe_trunc(UInt32, inputs.tri + 0.5f0) + UInt32(1), emission[4] != 0f0)
 end
 
 """

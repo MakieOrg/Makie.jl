@@ -350,6 +350,8 @@ include("overlay_rendering.jl")
 # =============================================================================
 
 include("screen.jl")
+include("picking.jl")
+include("raster_view.jl")
 
 # =============================================================================
 # draw_atomic: per-plot-type conversion via compute graph
@@ -378,6 +380,27 @@ include("plots/text_overlay.jl")
 trace_lights(l::Tuple) = l
 trace_lights(l::Hikari.Light) = (l,)
 trace_lights(::Nothing) = ()
+
+"""
+    retrace(set, keys, old, light) -> trace lights
+
+What `light` is traced as, now that it replaces `old`, whose trace lights are
+stored in `set` under `keys`.
+"""
+retrace(set, keys, old, light) = trace_lights(to_trace_light(light))
+
+# A sun and sky that only got brighter or dimmer: the sky's map does not depend
+# on the intensity, which is the map's scale. It was baked again (512² texels,
+# 13 wavelengths each) for every frame of a dimming sun; now the stored map is
+# kept, its texture slot with it, and the scale and the sun are new.
+function retrace(set, keys, old::Makie.SunSkyLight, light::Makie.SunSkyLight)
+    (old.direction == light.direction && old.turbidity == light.turbidity &&
+     old.ground_albedo == light.ground_albedo && old.ground_enabled == light.ground_enabled) ||
+        return trace_lights(to_trace_light(light))
+    sky = set[keys[1]]
+    return (Hikari.EnvironmentLight(sky.env_map, Hikari.RGBSpectrum(light.intensity / Hikari.D65_PHOTOMETRIC)),
+            Hikari.SunLight(Hikari.sunsky_sun_rgb(light.intensity), -normalize(Vec3f(light.direction))))
+end
 
 scene_ambient(rscene) = haskey(rscene.compute, :ambient_color) ? RGBf(rscene.compute[:ambient_color][]) : RGBf(0, 0, 0)
 
@@ -421,7 +444,7 @@ function sync_lights!(state::RayMakieState)
     changed = false
     for (i, light) in enumerate(current)
         light === tl.lights[i] && continue
-        new = trace_lights(to_trace_light(light))
+        new = retrace(state.hikari_scene.lights, tl.keys[i], tl.lights[i], light)
         length(new) == length(tl.keys[i]) || error(
             "RayMakie: light $i changed from a $(typeof(tl.lights[i])) to a $(typeof(light)) after the scene was first traced.")
         for (key, l) in zip(tl.keys[i], new)
@@ -775,6 +798,9 @@ function poll_all_plots(screen, mscene)
                     push!(POLL_ERROR_LOGGED, oid)
                     @error "RayMakie: failed to resolve $slot for $(typeof(p))" exception=(e, catch_backtrace())
                 end
+                # A missing/stale render object is not a valid current frame.
+                # Let preview/export/farm callers report failure and retry.
+                rethrow()
             end
         end
     end
@@ -920,7 +946,7 @@ include("vulkan_viewer.jl")
 
 # Export RayMakie-specific types
 export Screen, ScreenConfig, activate!, colorbuffer, vulkan_viewer, wait_viewer
-export setrasterize!
+export setrasterize!, isprogressive
 export pbrt_to_makie, PBRTMakieResult
 
 # Re-export DenoiseConfig from Hikari for convenience

@@ -18,12 +18,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
 
     haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
 
-    # Only the tracer reads it. Converted once, which types the slot, then left
-    # alone while rasterizing: an animated 4096² face texture cost a `pow` per
-    # channel per texel every frame, for a texture nothing drew. Switching back
-    # to tracing changes `rasterize` and converts the current colour.
+    # Only the tracer reads it. Defer even the first conversion in raster mode:
+    # a 4096² texture otherwise kept another 256 MiB of unused spectrum data.
+    # ComputePipeline's empty output slot accepts its first value when tracing
+    # starts; changing `rasterize` then converts the current colour.
     register_computation!(attr, [:color, :rasterize], [:trace_color_tex]) do args, changed, last
-        args.rasterize && last !== nothing && return nothing
+        args.rasterize && return last === nothing ? (nothing,) : nothing
         return (color_to_texture(args.color, plot),)
     end
 
@@ -91,6 +91,12 @@ function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, la
                     changed.mesh || changed.positions_transformed_f32c ||
                     changed.faces || changed.normals ||
                     changed.texturecoordinates || changed.uv_transform
+    # Emission belongs to face lights, not the surface-material slot. A mesh
+    # without emitter slots needs them constructed when it starts emitting.
+    if !needs_rebuild && changed.material && last_robj.handle isa Hikari.SceneHandle
+        needs_rebuild = args.material isa Hikari.Material && isempty(last_robj.handle.area_lights) &&
+            Hikari.get_emission_info(args.material) !== nothing
+    end
 
     # A colour change is a material swap, with one catch: `MultiTypeSet.update!`
     # replaces in place and so requires the same CONCRETE type. Recolouring can
@@ -133,7 +139,17 @@ function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, la
         # scene.materials / scene.media_interfaces stay bounded.
         is_trace_robj(last_robj) && delete_trace_handles!(hikari_scene, last_robj)
         reuse_mat_idx = reusable_material_idx(last)
-        return mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx)
+        # A moved atlas window or a deformed mesh still uses the same texture.
+        # Refreshing it here re-uploaded the entire (often 4096²) image for each
+        # facial expression. Vertex-colour textures depend on the mesh, so keep
+        # their existing rebuild path when its topology changes.
+        keep_material = reuse_mat_idx !== nothing &&
+            !(changed.trace_color_tex || changed.material) &&
+            (!(args.trace_color_tex isa AbstractVector{<:Colorant}) || !changed.mesh)
+        retained_material = keep_material ? last_robj.material : nothing
+        area_lights = is_trace_robj(last_robj) && last_robj.handle isa Hikari.SceneHandle ?
+            last_robj.handle.area_lights : Hikari.SetKey[]
+        return mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx, retained_material; area_lights)
     end
 
     return mesh_trace_update!(hikari_scene, state, last_robj, args, changed, recolor_material)
@@ -184,8 +200,17 @@ end
 traced_uvs(mesh::GeometryBasics.MetaMesh, t::Mat{2, 3}) = GeometryBasics.MetaMesh(traced_uvs(mesh.mesh, t), mesh.meta)
 traced_uvs(mesh, t) = mesh
 
-function mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx)
+function mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx, retained_material = nothing;
+                            area_lights=Hikari.SetKey[])
     transform = Mat4f(args.model_f32c)
+    if retained_material !== nothing || !isempty(area_lights)
+        robj = push_to_scene_simple(traced_uvs(args.mesh, args.uv_transform), hikari_scene,
+            plot, args.trace_color_tex, transform, reuse_mat_idx;
+            positions = args.positions_transformed_f32c, faces = args.faces,
+            normals = args.normals, uv = args.texturecoordinates, retained_material, area_lights)
+        state.needs_film_clear = true
+        return robj
+    end
     robj = push_to_scene(traced_uvs(args.mesh, args.uv_transform), hikari_scene, plot, args.trace_color_tex,
                          args.positions_transformed_f32c, args.faces,
                          args.normals, args.texturecoordinates, transform,
@@ -214,6 +239,7 @@ function mesh_trace_update!(hikari_scene, state, robj, args, changed, recolor_ma
         # requires matching concrete types, so we must preserve whatever
         # structure the user passed.
         update_trace_material!(hikari_scene, state, robj, args.material)
+        robj = merge(robj, (material = args.material,))
     end
     return robj
 end
@@ -335,35 +361,61 @@ function register_raster_lights!(scene)
     graph = scene.compute
     # GLMakie's defaults for `max_lights` and `max_light_parameters`.
     haskey(graph, :N_lights) || Makie.register_multi_light_computation(scene, 64, 5 * 64)
-    haskey(graph, :raster_env_sh) ||
-        Makie.ComputePipeline.map!(environment_sh, graph, :lights, [:raster_env_sh, :raster_has_env])
+    if !haskey(graph, :raster_env_sh)
+        # The sky's lights alone: a light that follows the camera changes the
+        # scene's lights every frame, and the SH read them all, so a sun and sky
+        # that never moved were baked again every frame. Then their shapes at
+        # unit intensity, which a dimming sun does not change either: each
+        # step stops the graph when its vector comes out equal, and only a new
+        # shape bakes.
+        Makie.ComputePipeline.map!(environment_lights, graph, :lights, :raster_env_lights)
+        Makie.ComputePipeline.map!(ls -> map(unit_intensity, ls), graph, :raster_env_lights, :raster_env_shapes)
+        Makie.ComputePipeline.map!(ls -> map(unit_sh, ls), graph, :raster_env_shapes, :raster_env_unit_sh)
+        Makie.ComputePipeline.map!(environment_sh, graph, [:raster_env_lights, :raster_env_unit_sh],
+                                   [:raster_env_sh, :raster_has_env])
+    end
     register_raster_emitters!(graph)
     return
 end
 
-"""
-    environment_sh(lights) -> (Mat{3,9,Float32}, Int32)
+"The lights a raster scene's sky is made of."
+environment_lights(lights) = filter(l -> l isa Union{Makie.EnvironmentLight, Makie.SunSkyLight}, lights)
 
-The scene's `EnvironmentLight`s as nine spherical-harmonic coefficients of their
-irradiance over π, which is what `env_irradiance` in overlay/mesh.jl evaluates.
-
-The map is read the way the tracer reads it (`Hikari.EnvironmentMap`: equal-area
-square, a 2:1 image converted), and each texel of that square covers the same
-solid angle, so the projection is a plain sum. The radiance is `intensity *
-image`, Makie's meaning: a white map of intensity 1 lights a white surface to 1.
 """
-function environment_sh(lights)
-    sh = zeros(Float32, 3, 9)
-    has = false
-    for light in lights
-        light isa Union{Makie.EnvironmentLight, Makie.SunSkyLight} || continue
-        has = true
-        project_environment!(sh, light)
+    environment_sh(lights, unit_shs) -> (Mat{3,9,Float32}, Int32)
+
+The scene's sky lights (`EnvironmentLight`, `SunSkyLight`) as nine
+spherical-harmonic coefficients of their irradiance over π, which is what
+`env_irradiance` in overlay/mesh.jl evaluates: each light's radiance at unit
+intensity (`unit_sh`), times its intensity.
+"""
+function environment_sh(lights, unit_shs)
+    sh = zero(Mat{3, 9, Float32})
+    for (light, unit) in zip(lights, unit_shs)
+        sh += Float32(light.intensity) * unit
     end
     # The clamped cosine's band weights, π, 2π/3 and π/4, over π.
-    sh[:, 2:4] .*= 2f0 / 3f0
-    sh[:, 5:9] .*= 0.25f0
-    return (Mat{3, 9, Float32}(sh), Int32(has))
+    w = Mat{3, 9, Float32}(ntuple(i -> (b = cld(i, 3); b == 1 ? 1f0 : b <= 4 ? 2f0 / 3f0 : 0.25f0), 27))
+    return (sh .* w, Int32(!isempty(lights)))
+end
+
+"`light` at intensity 1: its shape, which is what its SH is baked from."
+unit_intensity(l::Makie.SunSkyLight) = Makie.SunSkyLight(l.direction, 1f0, l.turbidity, l.ground_albedo, l.ground_enabled)
+unit_intensity(l::Makie.EnvironmentLight) = Makie.EnvironmentLight(1f0, l.image, l.rotation_angle, l.rotation_axis)
+
+"""
+    unit_sh(light) -> Mat{3,9,Float32}
+
+`light`'s radiance projected on the first nine spherical harmonics. The map is
+read the way the tracer reads it (`Hikari.EnvironmentMap`: equal-area square,
+a 2:1 image converted), and each texel of that square covers the same solid
+angle, so the projection is a plain sum. The radiance is `intensity * image`,
+Makie's meaning: a white map of intensity 1 lights a white surface to 1.
+"""
+function unit_sh(light)
+    sh = zeros(Float32, 3, 9)
+    project_environment!(sh, light)
+    return Mat{3, 9, Float32}(sh)
 end
 
 function project_environment!(sh, light::Makie.EnvironmentLight)
@@ -411,7 +463,7 @@ What the raster path draws: the plot's own triangles, or a `GeneratedGeometry`'s
 tessellation.
 """
 function raster_geometry(::Any, args)
-    return (positions = map(p -> Vec3f(Makie.to_ndim(Point3f, p, 0f0)), args.positions_transformed_f32c),
+    return (positions = raster_points(args.positions_transformed_f32c),
             faces = args.faces, normals = args.normals, uvs = args.texturecoordinates,
             color = args.scaled_color)
 end
@@ -472,13 +524,42 @@ raster_colormap(args) = args.alpha_colormap === nothing ? Vec4f[Vec4f(0, 0, 0, 1
 # A buffer the stage indexes must exist even when nothing reads it.
 nonempty(v::AbstractVector{T}) where {T} = isempty(v) ? T[zero(T)] : v
 
-function raster_faces(faces)
-    out = Vector{UInt32}(undef, 3 * length(faces))
-    @inbounds for (i, f) in enumerate(faces), j in 1:3
-        out[3 * (i - 1) + j] = UInt32(Base.to_index(f[j]))
-    end
-    return out
+# Normals and points as the stage's buffers hold them; already `Vec3f` (on the
+# device too) as they are.
+vec3s(v::AbstractVector{Vec3f}) = v
+vec3s(v::AbstractGPUArray) = map(Vec3f, v)
+vec3s(v) = Vector{Vec3f}(v)
+
+# A mesh's points as the stage reads them. Points already on the device stay
+# there as they are: the update copies them into the stage's `Vec3f` buffer,
+# converting on the way, where a `map` made a new device array every frame.
+raster_points(ps::AbstractGPUArray{Point3f, 1}) = ps
+raster_points(ps) = map(p -> Vec3f(Makie.to_ndim(Point3f, p, 0f0)), ps)
+
+# What the shadow map is fitted around. Points on the device are reduced there:
+# iterated from the host, every one was a scalar read.
+local_bounds(ps::AbstractVector) = isempty(ps) ? Rect3f() : Rect3f(ps)
+function local_bounds(ps::AbstractGPUArray{T, 1}) where {T <: VecTypes{3, Float32}}
+    isempty(ps) && return Rect3f()
+    backend = KernelAbstractions.get_backend(ps)
+    algorithm = AK.BlockReduce(; block_size = 64, switch_below = 0)
+    lo = AK.mapreduce(identity, (a, b) -> min.(a, b), ps; backend,
+                      init = T(Inf32), neutral = T(Inf32), alg = algorithm)
+    hi = AK.mapreduce(identity, (a, b) -> max.(a, b), ps; backend,
+                      init = T(-Inf32), neutral = T(-Inf32), alg = algorithm)
+    return Rect3f(Vec3f(lo), Vec3f(hi - lo))
 end
+
+# The stage reads a triangle's corners as `GLTriangleFace` holds them, 0-based
+# `UInt32`s. Faces on the device are that buffer as they are (`reinterpret`,
+# their own memory), which an update copies on the device; this was a host loop
+# over every index, which device faces could not go through and host faces went
+# through again with every update of the points. A host vector is copied flat;
+# other face types become `GLTriangleFace`s first, by a `map` that runs where
+# they are.
+raster_faces(faces::AbstractGPUArray{GLTriangleFace, 1}) = reinterpret(UInt32, faces)
+raster_faces(faces::AbstractVector{GLTriangleFace}) = collect(reinterpret(UInt32, faces))
+raster_faces(faces) = raster_faces(map(GLTriangleFace, faces))
 
 raster_uv_transform(t::Mat{2, 3}) = Mat{2, 3, Float32}(t)
 raster_uv_transform(t::Mat{3, 3}) = Mat{2, 3, Float32}(t[1], t[2], t[4], t[5], t[7], t[8])
@@ -591,7 +672,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
         see_through = is_see_through(look, plot)
         fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured, see_through)
         # What the shadow map is fitted around; not a stage argument.
-        geometry_dirty && (uniforms = merge(uniforms, (local_bounds = isempty(geometry.positions) ? Rect3f() : Rect3f(geometry.positions),)))
+        geometry_dirty && (uniforms = merge(uniforms, (local_bounds = local_bounds(geometry.positions),)))
         uniforms = merge(uniforms, (
             has_normals = Int32(geometry.normals !== nothing),
             has_uvs = Int32(geometry.uvs isa AbstractVector{<:VecTypes{2}}),
@@ -603,13 +684,19 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
             see_through = see_through,
         ))
         vertex_count = 3 * length(geometry.faces)
-        if fresh || geometry_dirty
-            buffers[:raster_positions] = nonempty(geometry.positions)
-            buffers[:raster_faces] = nonempty(raster_faces(geometry.faces))
-            buffers[:raster_normals] = geometry.normals === nothing ? Vec3f[Vec3f(0)] :
-                                       nonempty(Vector{Vec3f}(geometry.normals))
-            buffers[:raster_uvs] = uniforms.has_uvs != 0 ? nonempty(Vec2f.(geometry.uvs)) : Vec2f[Vec2f(0)]
-        end
+        # Each buffer from its own node: a surface whose points move every frame
+        # (a sea) changes nothing else, and its triangles were converted and
+        # uploaded again with every frame's points. Device arrays stay on the
+        # device; the upload is then a copy between buffers.
+        remade = fresh || changed.material
+        # A new buffer takes the stage's type; an update is copied into it.
+        (remade || changed.positions_transformed_f32c) &&
+            (buffers[:raster_positions] = nonempty(remade ? vec3s(geometry.positions) : geometry.positions))
+        (remade || changed.faces) && (buffers[:raster_faces] = nonempty(raster_faces(geometry.faces)))
+        (remade || changed.normals) &&
+            (buffers[:raster_normals] = geometry.normals === nothing ? Vec3f[Vec3f(0)] : nonempty(vec3s(geometry.normals)))
+        (remade || changed.texturecoordinates) &&
+            (buffers[:raster_uvs] = uniforms.has_uvs != 0 ? nonempty(Vec2f.(geometry.uvs)) : Vec2f[Vec2f(0)])
         buffers[:raster_vertex_color] = colorinfo.source == COLOR_VERTEX ?
             rgba4.(geometry.color) : Vec4f[Vec4f(0)]
         buffers[:raster_vertex_value] = colorinfo.source in (COLOR_VERTEX_CMAP, COLOR_VERTEX_CMAP_FRAG) ?
@@ -682,7 +769,9 @@ function update_trace_material!(hikari_scene, state, robj, new_material)
     h = hasproperty(robj, :handle) ? robj.handle : return
     interface_idx = h isa Hikari.SceneHandle ? h.interface :
                     hasproperty(robj, :mat_idx) ? robj.mat_idx : return
-    new_material isa Hikari.Material && Hikari.update_material!(hikari_scene, interface_idx, new_material)
+    if new_material isa Hikari.Material
+        Hikari.update_material!(hikari_scene, h isa Hikari.SceneHandle ? h : interface_idx, new_material)
+    end
     state.needs_film_clear = true
     return nothing
 end
@@ -792,7 +881,8 @@ end
 # `Raycore.update_item` / `Raycore.copyto_texture!` dispatch chain.
 function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform,
                                reuse_mat_idx::Union{Nothing, UInt32};
-                               positions=nothing, faces=nothing, normals=nothing, uv=nothing)
+                               positions=nothing, faces=nothing, normals=nothing, uv=nothing,
+                               retained_material = nothing, area_lights=Hikari.SetKey[])
     gb_mesh = if mesh_val isa GeometryBasics.Mesh
         mesh_val
     else
@@ -803,16 +893,16 @@ function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform
         isnothing(normals) ? GeometryBasics.normal_mesh(m) : m
     end
 
-    if color_tex isa AbstractVector{<:Colorant}
+    if retained_material === nothing && color_tex isa AbstractVector{<:Colorant}
         color_tex = build_vertex_color_texture(color_tex, gb_mesh)
     end
 
-    mat = extract_material(plot, color_tex)
+    mat = retained_material === nothing ? extract_material(plot, color_tex) : retained_material
     handle = if reuse_mat_idx === nothing
         push!(hikari_scene, gb_mesh, mat; transform=transform)
     else
-        Hikari.update_material!(hikari_scene, reuse_mat_idx, mat)
-        push!(hikari_scene, gb_mesh, reuse_mat_idx, mat; transform=transform)
+        retained_material === nothing && Hikari.update_material!(hikari_scene, reuse_mat_idx, mat)
+        push!(hikari_scene, gb_mesh, reuse_mat_idx, mat; transform=transform, area_lights)
     end
     state_instance_idx = Raycore.n_instances(hikari_scene.accel)
     return (handle=handle, mat_idx=handle.interface, material=mat, instance_idx=state_instance_idx)

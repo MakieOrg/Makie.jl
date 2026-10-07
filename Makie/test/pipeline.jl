@@ -262,3 +262,22 @@ end
     @test Makie.func2string(cos) == "cos"
     @test startswith(Makie.func2string(x -> x), "#")
 end
+
+@testset "identity alpha shares converted texture storage" begin
+    texture = [RGBAf(1, 0, 0, 0.25) RGBAf(0, 1, 0, 0.5);
+               RGBAf(0, 0, 1, 0.75) RGBAf(1, 1, 1, 1)]
+    original = copy(texture)
+    plot = mesh!(Scene(), Rect3f(Vec3f(0), Vec3f(1)); color = texture)
+    converted = plot.color[]
+    @test plot.scaled_color[] === converted
+    plot.alpha = 0.5
+    @test plot.scaled_color[] == Makie.add_alpha.(original, 0.5)
+    @test plot.scaled_color[] !== converted
+    @test converted == original
+    plot.alpha = 1.0
+    @test plot.scaled_color[] === converted
+    converted[1] = RGBAf(0, 0, 1, 0.25)
+    Makie.update!(plot; color = converted)
+    @test plot.scaled_color[] === converted
+    @test plot.scaled_color[][1] == RGBAf(0, 0, 1, 0.25)
+end

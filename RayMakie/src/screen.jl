@@ -352,6 +352,14 @@ function renderloop_running(screen::Screen)
     return !screen.stop_renderloop[] && !isnothing(screen.rendertask) && !istaskdone(screen.rendertask)
 end
 
+"""
+    isprogressive(screen::Screen) -> Bool
+
+Whether repeated reads refine the current image. Raster mode needs one draw;
+raytraced mode can accumulate additional samples while the scene holds still.
+"""
+isprogressive(screen::Screen) = !screen.rasterize
+
 function Base.show(io::IO, screen::Screen)
     scene_str = isnothing(screen.scene) ? "nothing" : "Scene($(size(screen.scene)))"
     device_name = nameof(typeof(screen.config.device))
@@ -517,11 +525,13 @@ function Base.close(screen::Screen)
     # A freed plan is still handed over by its finalizer, so the pool's waiting
     # teardown is run here too: what earlier screens dropped goes now.
     devs = Set{Any}()
-    for (_, plan, _, _) in values(screen.frame_plans)
+    for (_, plan, out, _) in values(screen.frame_plans)
         push!(devs, plan.graph.dev)
         Mantle.free!(plan)
+        Mantle.free!(out.pixels)
     end
     empty!(screen.frame_plans)
+    screen.fb_readback_buf = nothing
     # The device's queue too: the textures and buffers dropped figures leave
     # behind are retired onto it by their finalizers, and only its `reclaim!`
     # destroys them. Nothing on the raster path called it, and a render loop
@@ -660,6 +670,13 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
     # really does produce the clear colour and costs a dispatch to say so.
     if Raycore.n_instances(tlas) == 0 &&
             !any(paints_background, state.hikari_scene.lights.data_order)
+        return state.film
+    end
+    # Nothing to hit under a sky of environment maps, which is the raster path:
+    # every mesh is drawn by the rasterizer and the tracer was run only for the
+    # rays that escape. Those are looked up, not traced.
+    if Raycore.n_instances(tlas) == 0 && Hikari.paints_sky_in_rgb(state.hikari_scene.lights, state.integrator.sensor)
+        Hikari.paint_sky!(state.film, state.hikari_scene, state.camera[], state.integrator.sensor)
         return state.film
     end
     # (sync!(tlas) above already runs refit_tlas! when transforms are dirty.)
@@ -1058,25 +1075,40 @@ function composited_frame(screen::Screen)
     # `Array` of device storage is a `download`, which submits its copy on the
     # queue that last wrote the buffer and `waitfor!`s that token. It is ordered
     # and it waits; a device-wide drain in front of it adds nothing.
-    return unswizzle(reshape(Array(Mantle.storage(out)), w, h), w, h)
+    screen.fb_readback_buf = (; frame = out, key = :readback)
+    return unswizzle(reshape(Array(Mantle.storage(out.result)), w, h), w, h)
 end
 
 """
-    Makie.colorbuffer(screen, format; clear = true, samples = nothing)
+    Makie.colorbuffer(screen, format; clear = true, samples = nothing, px_per_unit = nothing)
 
 `samples` is how many samples THIS read renders, overriding the screen's own
 `samples` and the tracer's default in that order. With
 `clear = false` they accumulate onto what is already in the film, which is what
 makes a live preview converge at one sample per read while the playhead stands
 still.
+
+For an offscreen preview, `px_per_unit` changes the film resolution while keeping
+the scene's logical size, plots and animation intact. The default retains the
+screen's current density. Resizing clears the accumulated samples.
 """
 function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative;
-                           figure = nothing, clear = !screen.config.accumulate, samples = nothing)
+                           figure = nothing, clear = !screen.config.accumulate, samples = nothing,
+                           px_per_unit = nothing)
     if isempty(screen.scene_states)
         # Only init the scene -- don't open a window or start the render loop.
         # colorbuffer renders all samples synchronously and returns the result;
         # the interactive window is managed separately by display().
         init_scene!(screen, screen.scene)
+    end
+
+    if px_per_unit !== nothing
+        ppu = Float32(px_per_unit)
+        isfinite(ppu) && ppu > 0 || throw(ArgumentError("px_per_unit must be finite and positive"))
+        renderloop_running(screen) && throw(ArgumentError("preview density requires an offscreen screen"))
+        screen.px_per_unit = ppu
+        w, h = size(screen.scene)
+        resize!(screen, max(1, round(Int, w * ppu)), max(1, round(Int, h * ppu)))
     end
 
     # If the render loop is running, return the last composited frame.
@@ -1244,10 +1276,11 @@ function present_composited!(screen::Screen, win)
     # `Mantle.Keep`, not a clear: the first draw in the pass is the blit, which
     # covers every pixel, and clearing under it is one full-target write a frame
     # for nothing.
-    plan, _ = frame_plan!(screen, :window,
+    plan, out = frame_plan!(screen, :window,
                           g -> Mantle.Surface(g, win), Mantle.Keep,
                           screen.output_buffer, robjs, w, h)
     Mantle.run!(plan)
+    screen.fb_readback_buf = (; frame = out, key = :window)
     return nothing
 end
 

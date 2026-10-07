@@ -1,7 +1,7 @@
 function initialize_block!(tbox::Textbox)
     topscene = tbox.blockscene
 
-    scenearea = lift(topscene, tbox.layoutobservables.computedbbox) do bb
+    scenearea = lift(topscene, tbox.layoutobservables.computedbbox; ignore_equal_values=true) do bb
         Rect(round.(Int, bb.origin), round.(Int, bb.widths))
     end
 
@@ -119,8 +119,8 @@ function initialize_block!(tbox::Textbox)
     text_plot = only(p for p in et.plots if p isa Makie.Text)
     onany(
         topscene, placeholder_visible, tbox.editor.arg1, tbox.placeholder,
-        tbox.fontsize, tbox.font, tbox.textpadding, update = true
-    ) do placeholder_visible, current_str, ph, fs, _fnt, padding
+        tbox.fontsize, tbox.font, tbox.textpadding, tbox.width, tbox.height, update = true
+    ) do placeholder_visible, current_str, ph, fs, _fnt, padding, width, height
         l, r, b, t = padding
         # Width from the rendered text bbox (placeholder while empty, real text
         # once typed). Height is computed from line count + font metrics so an
@@ -128,7 +128,7 @@ function initialize_block!(tbox::Textbox)
         # Using a position-independent bbox here avoids registering a second
         # projected pipeline and the layout feedback cycle.
         plot = placeholder_visible ? placeholder_plot : text_plot
-        bbs = Makie.fast_string_boundingboxes(plot)
+        bbs = width isa Auto ? Makie.fast_string_boundingboxes(plot) : Rect2f[]
         text_w = if isempty(bbs) || !isfinite(minimum(bbs[1])[1])
             Float32(fs) * 0.5f0
         else
@@ -140,7 +140,13 @@ function initialize_block!(tbox::Textbox)
         font_obj = plot.selected_font[]::Makie.NativeFont
         line_h = Float32(font_obj.height / font_obj.units_per_EM * fs)
         text_h = Float32(n_lines) * line_h
-        tbox.layoutobservables.autosize[] = (text_w + l + r, text_h + b + t)
+        # Fixed/relative widths do not depend on the text. Reporting a new
+        # intrinsic width per keystroke still propagates a full parent layout,
+        # even with tellwidth=false. Only notify when a relevant size changes.
+        size = (width isa Auto ? text_w + l + r : nothing,
+                height isa Auto ? text_h + b + t : nothing)
+        isequal(tbox.layoutobservables.autosize[], size) ||
+            (tbox.layoutobservables.autosize[] = size)
         return
     end
 
@@ -250,7 +256,8 @@ function initialize_block!(tbox::Textbox)
 end
 
 function _reset_to_stored!(tbox::Textbox)
-    tbox.editor.arg1 = isnothing(tbox.stored_string[]) ? "" : tbox.stored_string[]
+    value = something(tbox.stored_string[], "")
+    tbox.editor.arg1[] == value || (tbox.editor.arg1 = value)
     return
 end
 

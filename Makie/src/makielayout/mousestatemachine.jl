@@ -144,8 +144,7 @@ function addmouseevents!(scene, bbox::Observables.AbstractObservable{<:Rect2}; p
     # a 714 px viewport put its buttons over the timeline underneath). The scene
     # already knows that boundary — it is what clips the drawing — so events use
     # the same one instead of the content being hidden block by block.
-    is_mouse_over_relevant_area() = scene.visible[] && (to_px(scene) in bbox[]) &&
-        (to_px(scene) in viewport(scene)[])
+    is_mouse_over_relevant_area() = (to_px(scene) in bbox[]) && Makie.is_mouseinside(scene)
     return _addmouseevents!(scene, is_mouse_over_relevant_area, to_px, priority)
 end
 

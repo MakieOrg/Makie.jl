@@ -242,7 +242,10 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         elseif color isa ShaderAbstractions.Sampler
             val = color
         elseif color isa AbstractArray
-            val = add_alpha.(color, alpha)
+            # Converted RGBA textures already have the required representation.
+            # Preserve their storage when alpha makes no change, including after
+            # switching back from a non-identity alpha value.
+            val = alpha == 1 && eltype(color) === RGBAf ? color : add_alpha.(color, alpha)
         else
             val = add_alpha(color, alpha)
         end

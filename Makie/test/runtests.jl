@@ -59,6 +59,7 @@ end
         include("SceneLike/figures.jl")
         include("SceneLike/makielayout.jl")
         include("SceneLike/card.jl")
+        include("SceneLike/paramform_filter.jl")
         include("SceneLike/subfigure.jl")
         include("SceneLike/PolarAxis.jl")
         include("events_isolation.jl")

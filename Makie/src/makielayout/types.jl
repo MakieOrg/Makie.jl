@@ -1532,11 +1532,12 @@ scientific-figure panels, sidebars, dialog regions, etc.
     scene::Scene
     scroll::Observable{Vec2f}
     contentsize::Observable{Vec2f}
-    # How many listeners each of a content block's observables carried when it was
+    # Which listeners each of a content block's observables carried when it was
     # built, so `replace_content!` can reuse the block and still drop what the
     # previous closure hung on it. Without the record, every rebuild registers
     # another copy of every callback.
-    buildlisteners::IdDict{Any, Dict{Symbol, Int}}
+    buildlisteners::IdDict{Any, Dict{Symbol, Vector{Any}}}
+    buildkeys::IdDict{Any, Any}
     @attributes begin
         "Whether the subfigure is shown. When `false` it renders nothing and receives no input."
         visible = true

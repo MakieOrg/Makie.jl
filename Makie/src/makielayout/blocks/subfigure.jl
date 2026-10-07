@@ -18,7 +18,7 @@ end
 function initialize_block!(sf::Subfigure)
     blockscene = sf.blockscene
 
-    content_area = lift(round_to_IRect2D, blockscene, sf.layoutobservables.computedbbox)
+    content_area = lift(round_to_IRect2D, blockscene, sf.layoutobservables.computedbbox; ignore_equal_values=true)
 
     # Unwrap the Compute graph node into a plain Observable{Bool} for the
     # parts of the API that expect one (Scene's `visible`).
@@ -37,7 +37,8 @@ function initialize_block!(sf::Subfigure)
 
     sf.scroll = Observable(Vec2f(0, 0); ignore_equal_values = true)
     sf.contentsize = Observable(Vec2f(0, 0); ignore_equal_values = true)
-    sf.buildlisteners = IdDict{Any, Dict{Symbol, Int}}()
+    sf.buildlisteners = IdDict{Any, Dict{Symbol, Vector{Any}}}()
+    sf.buildkeys = IdDict{Any, Any}()
 
     layout_bbox = Observable(Rect2f(0, 0, 1, 1); ignore_equal_values = true)
     # TOP-LEFT, not centred. A GridLayout defaults to `valign = :center`, so
@@ -46,6 +47,9 @@ function initialize_block!(sf::Subfigure)
     # content DOES overflow, the alignment makes no difference, so this only ever
     # affects the short case, where centring was never the intent.
     layout = GridLayout(; bbox = layout_bbox, valign = :top, halign = :left)
+    # GridLayout explicitly notifies computedbbox after content updates. Equal
+    # assignments from the scroll rectangle need no second placement pass.
+    layout.layoutobservables.computedbbox.ignore_equal_values = true
     layout.parent = scene
     sf.layout = layout
 
@@ -174,6 +178,9 @@ function initialize_block!(sf::Subfigure)
     # The content layout's own `computedbbox` fires when GridLayoutBase is done,
     # which is when "how tall is the content" is worth asking.
     on(blockscene, layout.layoutobservables.computedbbox) do _
+        # Autosize/protrusions can also change computedbbox during update!.
+        # Publishing content size there re-enters layout with half-updated sizes.
+        layout.block_updates && return
         refresh_contentsize!(sf)
         return
     end

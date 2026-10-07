@@ -431,18 +431,48 @@ function init_layout!(b)
     # the block's layoutobservables so from the outside, it looks like
     # the block has the same layout behavior as its internal encapsulated
     # gridlayout
-    connect!(lobservables.autosize, b.layout.layoutobservables.autosize)
-    connect!(lobservables.protrusions, b.layout.layoutobservables.protrusions)
-    # this is needed so that the update mechanism works, because the gridlayout's
-    # suggestedbbox is not connected to anything
-    on(b.layout.layoutobservables.suggestedbbox) do _
+    # The internal layout publishes autosize and protrusions in separate writes.
+    # Forward them together when its update finishes; forwarding each write
+    # separately relayouts the whole parent twice with intermediate dimensions.
+    inner = b.layout.layoutobservables
+    empty!(inner.computedbbox.listeners) # replace the standalone layout's align callback
+    on(inner.computedbbox) do _
+        b.layout.block_updates && return
+        before = lobservables.reporteddimensions[]
+        previous = lobservables.block_updates[]
+        lobservables.block_updates[] = true
+        try
+            lobservables.autosize[] = inner.autosize[]
+            lobservables.protrusions[] = inner.protrusions[]
+        finally
+            lobservables.block_updates[] = previous
+        end
+        previous && return
+        gc = lobservables.gridcontent[]
+        # The parent owns the final placement during a layout transaction.
+        # Do not lay out children against an intermediate rectangle here.
+        gc !== nothing && gc.parent isa GridLayout && gc.parent.block_updates && return
+        if gc !== nothing && !isequal(before, lobservables.reporteddimensions[])
+            GridLayoutBase.update!(gc)
+        else
+            # New/reordered children can need layout even when the container's
+            # reported extent is unchanged. Refresh this container locally.
+            notify(lobservables.suggestedbbox)
+        end
+        return
+    end
+    on(inner.suggestedbbox) do _
         notify(lobservables.suggestedbbox)
     end
-    # disable the GridLayout's own computedbbox's effect
-    empty!(b.layout.layoutobservables.computedbbox.listeners)
     # connect the block's layoutobservables.computedbbox to the align action that
     # usually the GridLayout executes itself
-    onany(GridLayoutBase.align_to_bbox!, b.layout, lobservables.computedbbox)
+    on(lobservables.computedbbox) do bbox
+        # Filtered cards still report their collapsed extent to the parent,
+        # but their hidden controls do not need new rectangles or pixel cameras.
+        b isa Card && !b.visible[] && return
+        GridLayoutBase.align_to_bbox!(b.layout, bbox)
+        return
+    end
     return
 end
 
@@ -921,7 +951,33 @@ one label change among 50 fixed-size buttons.
 """
 function setautosize!(block::Block, wh::Tuple)
     autosized(block) || return nothing
-    block.layoutobservables.autosize[] = wh
+    autosize = block.layoutobservables.autosize
+    previous = autosize[]
+    # An intrinsic width is irrelevant to a fixed/relative-width control even
+    # when its height is automatic (and conversely). Reporting it anyway makes
+    # text changes relayout the parent for dimensions the parent never uses.
+    value = (
+        to_value(block.width) isa Auto ? wh[1] : previous[1],
+        to_value(block.height) isa Auto ? wh[2] : previous[2],
+    )
+    isequal(previous, value) && return nothing
+    lo = block.layoutobservables
+    dimensions = lo.reporteddimensions[]
+    suspended = lo.block_updates[]
+    lo.block_updates[] = true
+    try
+        autosize[] = value
+    finally
+        lo.block_updates[] = suspended
+    end
+    suspended && return nothing
+    if !isequal(dimensions, lo.reporteddimensions[])
+        notify(lo.reporteddimensions)
+    elseif lo.gridcontent[] !== nothing
+        # Auto sizes with tellwidth/tellheight=false still affect this block's
+        # alignment, but have no effect on its parent's grid dimensions.
+        notify(lo.suggestedbbox)
+    end
     return nothing
 end
 

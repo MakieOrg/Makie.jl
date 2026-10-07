@@ -74,17 +74,17 @@ function Makie.extrema_nan(itr::AbstractGPUArray{<:Point{N, Float32}, 1}) where 
     lo = AK.mapreduce(
         p -> any(isnan, p) ? neutral_min : p,
         (a, b) -> Point{N, Float32}(min.(a, b)...),
-        itr, KernelAbstractions.get_backend(itr);
+        itr; backend = KernelAbstractions.get_backend(itr),
         init=neutral_min, neutral=neutral_min,
-        block_size=64, switch_below=0)
+        alg = AK.BlockReduce(; block_size = 64, switch_below = 0))
 
     # max pass: NaN points replaced with -Inf so they don't affect the maximum.
     hi = AK.mapreduce(
         p -> any(isnan, p) ? neutral_max : p,
         (a, b) -> Point{N, Float32}(max.(a, b)...),
-        itr, KernelAbstractions.get_backend(itr);
+        itr; backend = KernelAbstractions.get_backend(itr),
         init=neutral_max, neutral=neutral_max,
-        block_size=64, switch_below=0)
+        alg = AK.BlockReduce(; block_size = 64, switch_below = 0))
 
     return (lo, hi)
 end
@@ -313,3 +313,18 @@ function GeometryBasics.normals(vertices::AbstractGPUArray,
 end
 
 @inline tovec3(x, y, z) = Vec3f(x, y, z)
+
+# --- Faces ----------------------------------------------------------------------
+
+"""
+    GeometryBasics.decompose(F, faces::AbstractGPUArray)
+
+Faces on a device, as faces of type `F`, staying on the device. The generic
+method collects into a host `Vector` (`collect_with_eltype`), and Makie's mesh
+decomposition calls it on every update: a device mesh's triangles came back to
+the host each time its points moved. Triangles already of type `F` are returned
+as they are, others converted by a `map`, which runs on the device.
+"""
+function GeometryBasics.decompose(::Type{F}, faces::AbstractGPUArray{<:GeometryBasics.NgonFace{3}, 1}) where {F <: GeometryBasics.NgonFace{3}}
+    return eltype(faces) === F ? faces : map(F, faces)
+end

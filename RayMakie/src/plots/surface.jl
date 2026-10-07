@@ -40,7 +40,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
     # Only the tracer reads it; see `plots/mesh.jl`.
     haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
     register_computation!(attr, [:color, :rasterize], [:trace_color_tex]) do args, changed, last
-        args.rasterize && last !== nothing && return nothing
+        args.rasterize && return last === nothing ? (nothing,) : nothing
         return (color_to_texture(args.color, plot),)
     end
 

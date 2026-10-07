@@ -628,7 +628,7 @@ function plot!(plot::EditableText)
     # gets reset on focus and on every edit, so the caret is always solid when
     # the cursor first appears or after the user types — never half-faded mid-cycle.
     last_edit_time = Observable(0.0)
-    cursor_visible_obs = Observable(true; ignore_equal_values = true)
+    cursor_visible_obs = Observable(plot.focused[]; ignore_equal_values = true)
 
     parent = parent_scene(plot)
     push!(
@@ -645,6 +645,7 @@ function plot!(plot::EditableText)
     )
     push!(
         plot.deregister_callbacks, on(plot.focused) do f
+            cursor_visible_obs[] = f
             if f
                 last_edit_time[] = events(parent).tick[].time
             end
