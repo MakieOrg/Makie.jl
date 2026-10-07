@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The Axis ticklabelspace reset after zooming/panning and double-click detection now use tick time, so they behave deterministically in `record` [#5825](https://github.com/MakieOrg/Makie.jl/pull/5825).
 - GLMakie now emits scroll events once per render tick instead of once per event, so scenes with expensive scroll handling (e.g. many linked axes) no longer freeze while scrolling [#5826](https://github.com/MakieOrg/Makie.jl/pull/5826).
 - Fixed contour labels next to `NaN` data being placed differently depending on the Julia version. [#5828](https://github.com/MakieOrg/Makie.jl/pull/5828)
 - Fixed plot-list children (e.g. the parts of `annotation!` arrows) being reused in an address-dependent order, which made the draw order and SVG output differ between identical runs. [#5815](https://github.com/MakieOrg/Makie.jl/pull/5815)

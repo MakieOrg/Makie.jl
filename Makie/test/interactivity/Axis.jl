@@ -351,4 +351,35 @@
     end
 
     @test init == Makie._PICK_COUNTER[]
+
+    @testset "Ticklabelspace reset is driven by ticks" begin
+        ax, axbox, lim, e = cleanaxes()
+        tick!(t, dt) = e.tick[] = Makie.Tick(Makie.OneTimeRenderTick, 0, t, dt)
+
+        e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 2)
+        e.scroll[] = (0.0, 1.0)
+        frozen_x = ax.xticklabelspace[]
+        frozen_y = ax.yticklabelspace[]
+        @test frozen_x == Float64(ax.xaxis.attributes.actual_ticklabelspace[])
+        @test frozen_y == Float64(ax.yaxis.attributes.actual_ticklabelspace[])
+
+        tick!(0.15, 0.15)
+        @test ax.xticklabelspace[] == frozen_x
+
+        e.scroll[] = (0.0, 1.0)
+        tick!(0.3, 0.15)
+        @test ax.xticklabelspace[] == frozen_x
+
+        tick!(0.4, 0.1)
+        @test ax.xticklabelspace[] == Makie.automatic
+        @test ax.yticklabelspace[] == Makie.automatic
+
+        e.mousebutton[] = MouseButtonEvent(ax.panbutton[], Mouse.press)
+        e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 3)
+        e.mousebutton[] = MouseButtonEvent(ax.panbutton[], Mouse.release)
+        @test ax.xticklabelspace[] isa Float64
+
+        tick!(0.0, 0.25)
+        @test ax.xticklabelspace[] == Makie.automatic
+    end
 end
