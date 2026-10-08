@@ -1,15 +1,4 @@
 """
-    recording_title(relative_path)
-
-Recover the reference test title from a path relative to a `recorded`/`reference` folder,
-i.e. `"<Backend>/<title>.png"` or `"<Backend>/<title>/step-1.png"` for stepper tests.
-"""
-function recording_title(relative_path::String)
-    parts = splitpath(relative_path)
-    return length(parts) > 2 ? parts[2] : first(splitext(parts[end]))
-end
-
-"""
     split_missing_recordings(attempted_tests, recorded_paths, reference_paths, skipped_paths)
 
 Split the reference images that have no recording into the ones whose test ran but errored

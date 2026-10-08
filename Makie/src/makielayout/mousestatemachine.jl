@@ -203,7 +203,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     drag_threshold = 2.0 # mouse needs to move this distance before a drag starts, otherwise it's easy to drag instead of click on trackpads
     mouse_was_inside = Ref(false)
     prev_t = Ref(0.0)
-    t_last_click = Ref(0.0)
+    t_last_click = Ref(-Inf)
     b_last_click = Ref{Optional{Mouse.Button}}(nothing)
     last_click_was_double = Ref(false)
 
@@ -357,12 +357,13 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                     end
                 else
                     if mouse_was_inside[]
-                        dt_last_click = t - t_last_click[]
-                        t_last_click[] = t
+                        tick_time = events(scene).tick[].time
+                        dt_last_click = tick_time - t_last_click[]
+                        t_last_click[] = tick_time
 
                         # guard against mouse coming in from outside, then mouse upping
                         if mouse_downed_inside[]
-                            if dt_last_click < dblclick_max_interval && !last_click_was_double[] &&
+                            if 0 <= dt_last_click < dblclick_max_interval && !last_click_was_double[] &&
                                     mouse_downed_button[] == b_last_click[]
 
                                 event = to_doubleclick_event(mouse_downed_button[])
