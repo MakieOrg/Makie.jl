@@ -1171,9 +1171,21 @@ end
     zs = @. √(xs^2 + ys'^2)
 
     levels = 0.025:0.05:0.475
-    contour3d!(-zs; levels = -levels, labels = true, color = :blue)
+    front_sweep = range(0.8, 1.2, length = length(levels))
+    labelpositions = [i == 5 ? nothing : (p > 1 ? p - 2 : p) for (i, p) in enumerate(front_sweep)]
+    contour3d!(-zs; levels = -levels, labels = true, labelposition = labelpositions, color = :blue)
     contour3d!(+zs; levels = +levels, labels = true, color = :red, labelcolor = :black)
     fig
+end
+
+@reference_test "contour labelposition per line" begin
+    xs = range(0, 10, length = 60)
+    ys = range(1, 11, length = 60)
+    zs = [sin(y + 0.6 * sin(x)) for x in xs, y in ys]
+    contour(
+        xs, ys, zs; levels = [0], labels = true, labelsize = 16, labelpadding = 10,
+        labelposition = [[-0.6, nothing, 0.6]]
+    )
 end
 
 @reference_test "trimspine" begin
