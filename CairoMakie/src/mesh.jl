@@ -32,10 +32,10 @@ function cairo_project_to_screen(
 end
 
 function draw_atomic(scene::Scene, screen::Screen, primitive::Makie.Mesh)
-    Makie.compute_colors!(primitive.attributes)
     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
         draw_mesh2D(scene, screen, primitive.attributes)
     else
+        Makie.compute_colors!(primitive.attributes)
         draw_mesh3D(scene, screen, primitive.attributes)
     end
     return nothing
@@ -50,16 +50,37 @@ function draw_mesh2D(scene, screen, attr::ComputeGraph)
     if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
     end
-    color = compute_colors(attr)
-    cols = per_face_colors(color, nothing, fs, nothing, uv)
-    if cols isa Cairo.CairoPattern
-        align_pattern(cols, scene, attr.model[])
+
+    # try to detect and process per-mesh colors as multiple single-color meshes
+    views = (attr.mesh[]::GeometryBasics.Mesh).views
+    if length(attr.color[]) == length(views)
+        color = compute_colors(attr, :color)
+        cols = per_face_colors(color, nothing, fs, nothing, uv)
+        if cols isa Cairo.CairoPattern
+            align_pattern(cols, scene, attr.model[])
+            draw_mesh2D(screen, cols, vs, fs)
+        else
+            for (i, range) in enumerate(views)
+                c = sv_getindex(color, i)
+                _fs = view(fs, range)
+                _uv = isnothing(uv) ? nothing : view(uv, range)
+                cols = per_face_colors(c, nothing, _fs, nothing, _uv)
+                draw_mesh2D(screen, cols, vs, _fs)
+            end
+        end
+    else
+        color = compute_colors(attr)
+        cols = per_face_colors(color, nothing, fs, nothing, uv)
+        if cols isa Cairo.CairoPattern
+            align_pattern(cols, scene, attr.model[])
+        end
+        draw_mesh2D(screen, cols, vs, fs)
     end
-    return draw_mesh2D(screen, cols, vs, fs)
+    return
 end
 
 
-function draw_mesh2D(screen, color, vs::Vector, fs::Vector{GLTriangleFace})
+function draw_mesh2D(screen, color, vs::AbstractVector, fs::AbstractVector{GLTriangleFace})
     return draw_mesh2D(screen.context, color, vs, fs)
 end
 
@@ -104,7 +125,7 @@ end
 # A mesh of one solid color needs no pattern; switching to a plain source keeps it vectorized in SVG.
 function draw_mesh2D(
         ctx::Cairo.CairoContext, per_face_cols::FaceIterator{:Const},
-        vs::Vector, fs::Vector{GLTriangleFace}
+        vs::AbstractVector, fs::AbstractVector{GLTriangleFace}
     )
     mesh_union_path!(ctx, vs, fs)
     set_source(ctx, per_face_cols.data)
@@ -112,7 +133,7 @@ function draw_mesh2D(
     return nothing
 end
 
-function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace})
+function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::AbstractVector, fs::AbstractVector{GLTriangleFace})
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
