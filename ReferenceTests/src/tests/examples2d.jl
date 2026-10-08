@@ -1171,7 +1171,9 @@ end
     zs = @. √(xs^2 + ys'^2)
 
     levels = 0.025:0.05:0.475
-    contour3d!(-zs; levels = -levels, labels = true, labelposition = 1, color = :blue)
+    front_sweep = range(0.8, 1.2, length = length(levels))
+    labelpositions = [i == 5 ? nothing : (p > 1 ? p - 2 : p) for (i, p) in enumerate(front_sweep)]
+    contour3d!(-zs; levels = -levels, labels = true, labelposition = labelpositions, color = :blue)
     contour3d!(+zs; levels = +levels, labels = true, color = :red, labelcolor = :black)
     fig
 end
