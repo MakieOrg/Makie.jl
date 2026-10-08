@@ -564,161 +564,30 @@ function data_limits(plot::Arrows2D)
 end
 boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
 
-# Converts an arrow component shape to polygons, keeping its structure (e.g.
-# holes) where possible. Using the same type for all shapes allows the legend
-# to follow changes of the shape type.
-function _arrow_polygons(polygon::Polygon)
-    return [Polygon(Point2f.(polygon.exterior), [Point2f.(ring) for ring in polygon.interiors])]
-end
-_arrow_polygons(multipolygon::MultiPolygon) = mapreduce(_arrow_polygons, vcat, multipolygon.polygons)
-_arrow_polygons(primitive::Union{Rect2, Circle}) = [Polygon(decompose(Point2f, primitive))]
+# Legends only support arrow component shapes given by a single outline. Other
+# shapes (e.g. with holes or meshes) are replaced by the default shapes.
+const ARROW2D_DEFAULT_SHAPES = (arrowtail2d, Rect2f(0, -0.5, 1, 1), Point2f[(0, -0.5), (1, 0), (0, 0.5)])
 
-# Meshes are converted to their outline, as filling each triangle separately
-# results in visible seams between them
-function _arrow_polygons(mesh::GeometryBasics.Mesh)
-    # Identify vertices by position, as e.g. merged meshes duplicate them
-    points = Point2f[]
-    ids = Dict{Point2f, Int}()
-    vertex_id(p) = get!(() -> (push!(points, p); length(points)), ids, p)
-    ps = coordinates(mesh)
+_arrow_outline(rect::Rect2) = decompose(Point2f, rect)
+_arrow_outline(points::AbstractVector{<:VecTypes{2}}) = length(points) >= 3 ? Point2f.(points) : nothing
+_arrow_outline(shape) = nothing
 
-    # Orient all triangles counterclockwise, so that the filled region is on
-    # the left of each edge
-    triangles = NTuple{3, Int}[]
-    for face in decompose(GLTriangleFace, mesh)
-        a, b, c = map(i -> vertex_id(Point2f(ps[i])), face)
-        area = _signed_area(points[[a, b, c]])
-        area == 0 && continue
-        push!(triangles, area > 0 ? (a, b, c) : (a, c, b))
-    end
-
-    # Edges without a reverse edge in a neighboring triangle are on the outline
-    edges = Set{Tuple{Int, Int}}()
-    for (a, b, c) in triangles
-        push!(edges, (a, b), (b, c), (c, a))
-    end
-    outgoing = Dict{Int, Vector{Int}}()
-    for (i, j) in edges
-        (j, i) in edges || push!(get!(Vector{Int}, outgoing, i), j)
-    end
-
-    # Chain the outline edges to rings. Where multiple outline edges meet, the
-    # sharpest left turn keeps components touching at a vertex separate.
-    rings = Vector{Point2f}[]
-    while !isempty(outgoing)
-        start = minimum(keys(outgoing))
-        ring = [start]
-        previous, current = 0, start
-        while haskey(outgoing, current)
-            candidates = outgoing[current]
-            k = if previous == 0
-                lastindex(candidates)
-            else
-                argmax([_turn_angle(points[previous], points[current], points[w]) for w in candidates])
-            end
-            next = popat!(candidates, k)
-            isempty(candidates) && delete!(outgoing, current)
-            next == start && break
-            push!(ring, next)
-            previous, current = current, next
-        end
-        # skip degenerate rings, which may result from invalid meshes
-        length(ring) >= 3 && push!(rings, points[ring])
-    end
-
-    # Counterclockwise rings are exteriors, clockwise rings are holes of the
-    # smallest exterior containing them. The midpoint of an edge is used for
-    # the test, as rings may share vertices but not edges.
-    areas = map(_signed_area, rings)
-    exteriors = findall(>(0), areas)
-    interiors = [Vector{Point2f}[] for _ in exteriors]
-    valid = true
-    for i in findall(<(0), areas)
-        testpoint = 0.5f0 * (rings[i][1] + rings[i][2])
-        containing = filter(k -> _point_in_ring(testpoint, rings[exteriors[k]]), eachindex(exteriors))
-        if isempty(containing)
-            valid = false
-            break
-        end
-        push!(interiors[argmin(k -> areas[exteriors[k]], containing)], rings[i])
-    end
-
-    # Fall back to separate triangles if the triangulated outline (as drawn by
-    # e.g. GLMakie) does not cover the same area as the triangles, e.g. for
-    # meshes with duplicate triangles
-    triangle_polygons = [Polygon(points[collect(t)]) for t in triangles]
-    valid || return triangle_polygons
-    polygons = [Polygon(rings[k], interiors[i]) for (i, k) in enumerate(exteriors)]
-    if !isapprox(_triangulated_area(polygons), _triangulated_area(triangle_polygons), rtol = 1.0e-3)
-        return triangle_polygons
-    end
-
-    return polygons
-end
-
-function _triangulated_area(polygons)
-    return sum(polygons; init = 0.0) do polygon
-        mesh = poly_convert(polygon)
-        ps = coordinates(mesh)
-        return sum(face -> abs(_signed_area(ps[collect(face)])), decompose(GLTriangleFace, mesh); init = 0.0)
-    end
-end
-
-# Signed area of a ring, positive if it is oriented counterclockwise
-function _signed_area(ring)
-    area = 0.0
-    for (a, b) in zip(ring, circshift(ring, -1))
-        area += Float64(a[1]) * b[2] - Float64(b[1]) * a[2]
-    end
-    return 0.5 * area
-end
-
-# Angle of the turn from the direction a -> b to the direction b -> c,
-# positive for left turns
-function _turn_angle(a, b, c)
-    d1 = Vec2{Float64}(b - a)
-    d2 = Vec2{Float64}(c - b)
-    return atan(d1[1] * d2[2] - d1[2] * d2[1], dot(d1, d2))
-end
-
-# Even-odd rule test, i.e. whether a ray from the point crosses the ring an odd number of times
-function _point_in_ring(point, ring)
-    x, y = point
-    result = false
-    for (a, b) in zip(ring, circshift(ring, 1))
-        if (a[2] > y) != (b[2] > y) && x < a[1] + (y - a[2]) / (b[2] - a[2]) * (b[1] - a[1])
-            result = !result
-        end
-    end
-    return result
-end
-
-function _arrow_polygons(shapes::AbstractVector)
-    if all(x -> x isa VecTypes, shapes)
-        return [Polygon(Point2f.(shapes))]
-    else
-        return mapreduce(_arrow_polygons, vcat, shapes)
-    end
-end
-
-# other shapes supported by the plot, e.g. other geometry primitives
-_arrow_polygons(polylike) = _arrow_polygons(poly_convert(polylike))
-
-# Like _get_arrow_shape, but returns polygons instead of a mesh
-function _get_arrow_polygons(f::Function, length, width, metrics)
+# Like _get_arrow_shape, but returns the outline of the shape or `nothing` if
+# the shape is not given by a single outline
+function _get_arrow_outline(f::Function, length, width, metrics)
     nt = NamedTuple{(:taillength, :tailwidth, :shaftlength, :shaftwidth, :tiplength, :tipwidth)}(metrics)
-    return _arrow_polygons(f(length, width, nt))
+    return _arrow_outline(f(length, width, nt))
 end
 
-function _get_arrow_polygons(polylike, length, width, metrics)
-    return map_polypoints(p -> Point2f(length, width) .* p, _arrow_polygons(polylike)) # scale
+function _get_arrow_outline(shape, length, width, metrics)
+    points = _arrow_outline(shape)
+    return isnothing(points) ? nothing : [Point2f(length, width) .* p for p in points] # scale
 end
 
-# Returns the tail, shaft and tip polygons of a horizontal arrow spanning the
+# Returns the tail, shaft and tip outlines of a horizontal arrow spanning the
 # width of a legend patch, in coordinates relative to the patch. Components
-# that are not drawn are replaced by a polygon collapsed to a point, as
-# backends may fail to draw empty polygons and the components may be enabled
-# later.
+# that are not drawn are collapsed to a point, as backends may fail to draw
+# empty polygons and the components may be enabled later.
 function _arrow2d_legend_polygons(
         patchsize, should_render, tail, shaft, tip, taillength, tailwidth, shaftlength,
         minshaftlength, maxshaftlength, shaftwidth, tiplength, tipwidth
@@ -732,17 +601,20 @@ function _arrow2d_legend_polygons(
         maxshaftlength, shaftwidth, tiplength, tipwidth
     )
 
-    polygons = Vector{Polygon{2, Float32}}[]
+    polygons = Vector{Point2f}[]
     offset = 0.0
     for (i, shape) in enumerate((tail, shaft, tip))
         origin = Point2f(offset, 0.5h)
         if should_render[i]
             len, width = metrics[2i - 1], metrics[2i]
-            polygon = _get_arrow_polygons(shape, len, width, metrics)
-            push!(polygons, map_polypoints(p -> (origin .+ p) ./ Point2f(w, h), polygon))
+            points = _get_arrow_outline(shape, len, width, metrics)
+            if isnothing(points)
+                points = _get_arrow_outline(ARROW2D_DEFAULT_SHAPES[i], len, width, metrics)
+            end
+            push!(polygons, [(origin .+ p) ./ Point2f(w, h) for p in points])
             offset += len
         else
-            push!(polygons, [Polygon(fill(origin ./ Point2f(w, h), 3))])
+            push!(polygons, fill(origin ./ Point2f(w, h), 3))
         end
     end
 

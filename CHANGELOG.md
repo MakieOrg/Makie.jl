@@ -4,7 +4,6 @@
 
 - `arrows2d` now shows an arrow in the color of the plot in legends instead of a gray box [#5832](https://github.com/MakieOrg/Makie.jl/pull/5832).
 - Fixed `arrows2d` erroring with a single numeric `color` [#5832](https://github.com/MakieOrg/Makie.jl/pull/5832).
-- `PolyElement` legend entries now support polygons with holes, multipolygons and meshes as `points` [#5832](https://github.com/MakieOrg/Makie.jl/pull/5832).
 - The Axis ticklabelspace reset after zooming/panning and double-click detection now use tick time, so they behave deterministically in `record` [#5825](https://github.com/MakieOrg/Makie.jl/pull/5825).
 - GLMakie now emits scroll events once per render tick instead of once per event, so scenes with expensive scroll handling (e.g. many linked axes) no longer freeze while scrolling [#5826](https://github.com/MakieOrg/Makie.jl/pull/5826).
 - Fixed contour labels next to `NaN` data being placed differently depending on the Julia version. [#5828](https://github.com/MakieOrg/Makie.jl/pull/5828)
