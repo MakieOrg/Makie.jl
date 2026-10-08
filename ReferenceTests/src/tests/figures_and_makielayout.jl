@@ -257,6 +257,22 @@ end
     f
 end
 
+@reference_test "Legend with arrows2d" begin
+    f = Figure(size = (500, 300))
+    ax = Axis(f[1, 1])
+    arrows2d!(ax, [Point2f(0, 0)], [Vec2f(1, 1)], label = "default")
+    arrows2d!(ax, [Point2f(0, 1)], [Vec2f(1, 1)], color = :blue, tipcolor = :red, label = "tipcolor")
+    arrows2d!(ax, [Point2f(0, 2)], [Vec2f(1, 1)], color = 0.7, colorrange = (0, 1), taillength = 6, label = "colormap + tail")
+    arrows2d!(ax, [Point2f(0, 3)], [Vec2f(1, 1)], color = :orange, alpha = 0.5, shaftwidth = 6, label = "alpha")
+    arrows2d!(ax, [Point2f(0, 4)], [Vec2f(1, 1)], color = :blue, label = "override" => (; color = :green))
+    p = arrows2d!(ax, [Point2f(0, 5)], [Vec2f(1, 1)], color = :purple, label = "updated")
+    Legend(f[1, 2], ax)
+    Legend(f[1, 3], ax, patchsize = (40, 20))
+    # Disabling a component after creating the Legend should not error
+    p.tiplength = 0
+    f
+end
+
 @reference_test "Legend Image-, Mesh- and MeshScatterElements" begin
     f = Figure(size = (400, 400))
     a, p = heatmap(f[1, 1:2], RNG.rand(10, 10), label = "Heatmap" => (colormap = :RdBu,))

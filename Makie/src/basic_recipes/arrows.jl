@@ -366,6 +366,22 @@ function _get_arrow_shape(polylike, length, width, metrics)
     return mesh
 end
 
+# Returns (taillength, tailwidth, shaftlength, shaftwidth, tiplength, tipwidth)
+# of an arrow with the given total length
+function _arrow2d_metrics(
+        target_length, taillength, tailwidth, shaftlength,
+        minshaftlength, maxshaftlength, shaftwidth, tiplength, tipwidth
+    )
+    target_shaftlength = if shaftlength === automatic
+        clamp(target_length - taillength - tiplength, minshaftlength, maxshaftlength)
+    else
+        shaftlength
+    end
+    arrow_length = target_shaftlength + taillength + tiplength
+    arrow_scaling = target_length / arrow_length
+    return Float64.(arrow_scaling .* (taillength, tailwidth, target_shaftlength, shaftwidth, tiplength, tipwidth))
+end
+
 function _apply_arrow_transform(m::GeometryBasics.Mesh, R::Mat2, origin, offset)
     ps = [origin + to_ndim(Point3f, R * (p .+ (offset, 0)), 0) for p in coordinates(m)]
     return GeometryBasics.mesh(m, position = ps, pointtype = Point3f)
@@ -405,15 +421,10 @@ function Makie.plot!(plot::Arrows2D)
 
         metrics = Vector{NTuple{6, Float64}}(undef, length(directions))
         for i in eachindex(metrics)
-            target_length = norm(directions[i])
-            target_shaftlength = if shaftlength === automatic
-                clamp(target_length - taillength - tiplength, minshaftlength, maxshaftlength)
-            else
-                shaftlength
-            end
-            arrow_length = target_shaftlength + taillength + tiplength
-            arrow_scaling = target_length / arrow_length
-            metrics[i] = arrow_scaling .* (taillength, tailwidth, target_shaftlength, shaftwidth, tiplength, tipwidth)
+            metrics[i] = _arrow2d_metrics(
+                norm(directions[i]), taillength, tailwidth, shaftlength,
+                minshaftlength, maxshaftlength, shaftwidth, tiplength, tipwidth
+            )
         end
 
         return metrics
@@ -475,7 +486,9 @@ function Makie.plot!(plot::Arrows2D)
         ) do color, colorscale, alpha, order
 
             color = to_color(color)
-            return if color isa Union{Real, AbstractArray{<:Real}}
+            return if color isa Real
+                clamp(el32convert(apply_scale(colorscale, color)), -floatmax(Float32), floatmax(Float32))
+            elseif color isa AbstractArray{<:Real}
                 clamp.(el32convert(apply_scale(colorscale, color[order])), -floatmax(Float32), floatmax(Float32))
             elseif color isa AbstractArray
                 add_alpha.(color[order], alpha)
@@ -550,6 +563,77 @@ function data_limits(plot::Arrows2D)
     return update_boundingbox(Rect3d(plot.startpoints[]), Rect3d(plot.endpoints[]))
 end
 boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
+
+function _arrow_shape_points(f::Function, length, width, metrics)
+    return decompose(Point2f, f(length, width, metrics))
+end
+
+function _arrow_shape_points(polylike, length, width, metrics)
+    return [Point2f(length, width) .* p for p in decompose(Point2f, polylike)] # scale
+end
+
+# Returns the tail, shaft and tip polygons of a horizontal arrow spanning the
+# width of a legend patch, in coordinates relative to the patch. Components
+# that are not drawn are returned as zero-area polygons, as backends may fail
+# to draw empty ones.
+function _arrow2d_legend_polygons(
+        patchsize, should_render, tail, shaft, tip, taillength, tailwidth, shaftlength,
+        minshaftlength, maxshaftlength, shaftwidth, tiplength, tipwidth
+    )
+    w, h = patchsize
+    # Like linewidth or markersize, arrow metrics are shown at their actual
+    # size in pixels, i.e. the arrow looks like an arrow in the plot with a
+    # length matching the patch width.
+    metrics = _arrow2d_metrics(
+        w, taillength, tailwidth, shaftlength, minshaftlength,
+        maxshaftlength, shaftwidth, tiplength, tipwidth
+    )
+    nt = NamedTuple{(:taillength, :tailwidth, :shaftlength, :shaftwidth, :tiplength, :tipwidth)}(metrics)
+
+    polygons = Vector{Point2f}[]
+    offset = 0.0
+    for (i, shape) in enumerate((tail, shaft, tip))
+        origin = Point2f(offset, 0.5h)
+        if should_render[i]
+            len, width = metrics[2i - 1], metrics[2i]
+            points = _arrow_shape_points(shape, len, width, nt)
+            push!(polygons, [(origin .+ p) ./ Point2f(w, h) for p in points])
+            offset += len
+        else
+            push!(polygons, fill(origin ./ Point2f(w, h), 3))
+        end
+    end
+
+    return polygons
+end
+
+function legendelements(plot::Arrows2D, legend)
+    # The patchsize of the Legend is not observable here, so changes to it after
+    # creating the Legend stretch the arrow.
+    patchsize = to_value(legend[:patchsize])
+    polygons = lift(
+        (args...) -> _arrow2d_legend_polygons(patchsize, args...), plot.should_component_render,
+        plot.tail, plot.shaft, plot.tip, plot.taillength, plot.tailwidth, plot.shaftlength,
+        plot.minshaftlength, plot.maxshaftlength, plot.shaftwidth, plot.tiplength, plot.tipwidth
+    )
+    colors = (plot.calculated_tailcolor, plot.calculated_shaftcolor, plot.calculated_tipcolor)
+
+    elements = LegendElement[]
+    for i in 1:3
+        # Only include the components (tail, shaft, tip) that are currently drawn
+        plot.should_component_render[][i] || continue
+        element = PolyElement(
+            plots = plot,
+            points = lift(ps -> ps[i], polygons),
+            color = choose_scalar(colors[i], legend[:polycolor]),
+            strokecolor = :transparent,
+            strokewidth = 0,
+        )
+        push!(elements, element)
+    end
+
+    return elements
+end
 
 
 ################################################################################
