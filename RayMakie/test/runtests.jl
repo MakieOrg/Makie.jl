@@ -247,14 +247,16 @@ const GRAPHICS_TEST_FILES = [
               nameof(typeof(BACKEND)) files = GRAPHICS_TEST_FILES
     end
 
-    if isdefined(Mantle, :vk_context)
+    # The DEVICE under test, not whether the Vulkan runtime is compiled in: a Mac
+    # compiles it too, for lavapipe, while its default device stays Metal.
+    if isdefined(Mantle, :LavaDevice) && Mantle.todevice(BACKEND) isa Mantle.LavaDevice
         for fname in VULKAN_RUNTIME_TEST_FILES
             @testset "$fname" begin
                 include(joinpath(@__DIR__, fname))
             end
         end
     else
-        @info "RayMakie tests: no Vulkan runtime loaded; skipping its deferred-free \
+        @info "RayMakie tests: the device is not a Vulkan one; skipping its deferred-free \
                ledger tests" files = VULKAN_RUNTIME_TEST_FILES
     end
 end
