@@ -573,10 +573,78 @@ end
 _arrow_polygons(multipolygon::MultiPolygon) = mapreduce(_arrow_polygons, vcat, multipolygon.polygons)
 _arrow_polygons(primitive::Union{Rect2, Circle}) = [Polygon(decompose(Point2f, primitive))]
 
+# Meshes are converted to their outline, as filling each triangle separately
+# results in visible seams between them
 function _arrow_polygons(mesh::GeometryBasics.Mesh)
-    # one polygon per triangle
+    # Identify vertices by position, as e.g. merged meshes duplicate them
+    points = Point2f[]
+    ids = Dict{Point2f, Int}()
+    vertex_id(p) = get!(() -> (push!(points, p); length(points)), ids, p)
     ps = coordinates(mesh)
-    return [Polygon(Point2f[ps[i] for i in face]) for face in decompose(GLTriangleFace, mesh)]
+
+    # Edges belonging to a single triangle are on the outline
+    edge_counts = Dict{Tuple{Int, Int}, Int}()
+    for face in decompose(GLTriangleFace, mesh)
+        a, b, c = map(i -> vertex_id(Point2f(ps[i])), face)
+        allunique((a, b, c)) || continue
+        for edge in ((a, b), (b, c), (c, a))
+            key = minmax(edge...)
+            edge_counts[key] = get(edge_counts, key, 0) + 1
+        end
+    end
+    neighbors = Dict{Int, Vector{Int}}()
+    for ((i, j), count) in edge_counts
+        count == 1 || continue
+        push!(get!(Vector{Int}, neighbors, i), j)
+        push!(get!(Vector{Int}, neighbors, j), i)
+    end
+
+    # Chain the outline edges to rings
+    rings = Vector{Point2f}[]
+    while !isempty(neighbors)
+        start = minimum(keys(neighbors))
+        ring = [start]
+        current = start
+        while haskey(neighbors, current)
+            next = pop!(neighbors[current])
+            isempty(neighbors[current]) && delete!(neighbors, current)
+            next_neighbors = neighbors[next]
+            deleteat!(next_neighbors, findfirst(==(current), next_neighbors))
+            isempty(next_neighbors) && delete!(neighbors, next)
+            next == start && break
+            push!(ring, next)
+            current = next
+        end
+        # skip degenerate rings, which may result from invalid meshes
+        length(ring) >= 3 && push!(rings, points[ring])
+    end
+
+    # Rings inside an odd number of other rings are holes of the smallest
+    # ring containing them. The midpoint of an edge is used for the tests, as
+    # rings may share vertices but not edges.
+    testpoints = [0.5f0 * (ring[1] + ring[2]) for ring in rings]
+    inside(i, j) = i != j && _point_in_ring(testpoints[i], rings[j])
+    depths = [count(j -> inside(i, j), eachindex(rings)) for i in eachindex(rings)]
+    polygons = Polygon{2, Float32}[]
+    for i in eachindex(rings)
+        iseven(depths[i]) || continue
+        holes = [rings[j] for j in eachindex(rings) if depths[j] == depths[i] + 1 && inside(j, i)]
+        push!(polygons, Polygon(rings[i], holes))
+    end
+
+    return polygons
+end
+
+# Even-odd rule test, i.e. whether a ray from the point crosses the ring an odd number of times
+function _point_in_ring(point, ring)
+    x, y = point
+    result = false
+    for (a, b) in zip(ring, circshift(ring, 1))
+        if (a[2] > y) != (b[2] > y) && x < a[1] + (y - a[2]) / (b[2] - a[2]) * (b[1] - a[1])
+            result = !result
+        end
+    end
+    return result
 end
 
 function _arrow_polygons(shapes::AbstractVector)

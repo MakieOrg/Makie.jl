@@ -199,8 +199,9 @@ end
     @test length(tail_polygon.interiors) == 1
     @test xrange(tail_polygon.exterior) ≈ Vec2f(0, 4)
     @test xrange(tail_polygon.interiors[1]) ≈ Vec2f(1, 3)
-    # meshes are split into triangles
-    @test length(shaft) == 4
+    # meshes are converted to their outline
+    @test length(shaft) == 2
+    @test all(polygon -> length(polygon.exterior) == 4, shaft)
     @test xrange(shaft) ≈ Vec2f(4, 14)
     @test !any(p -> 8 + 1.0e-3 < 20 * p[1] < 10 - 1.0e-3, legend_points(shaft))
     tip_polygon = only(tip)
@@ -225,7 +226,7 @@ end
     p.tip = Polygon(ring, [hole])
     @test length(only(els[3].polypoints[]).interiors) == 1
     p.shaft = dashes
-    @test length(els[2].polypoints[]) == 4
+    @test length(els[2].polypoints[]) == 2
     p.shaft = Rect2f(0, -0.5, 1, 1)
     @test length(els[2].polypoints[]) == 1
 
@@ -236,4 +237,34 @@ end
     )
     els = arrow_legend_elements(axislegend(a))
     @test allequal(legend_points(els[1].polypoints[]))
+end
+
+@testset "arrows2d legend mesh outlines" begin
+    # Meshes are drawn by their outline in legends, to avoid seams between triangles
+    outline(shape) = Makie._arrow_polygons(Makie.poly_convert(shape))
+    ring = Point2f[(0, -0.5), (1, -0.5), (1, 0.5), (0, 0.5)]
+    hole = Point2f[(0.25, -0.25), (0.75, -0.25), (0.75, 0.25), (0.25, 0.25)]
+    island = Point2f[(0.4, -0.1), (0.6, -0.1), (0.6, 0.1), (0.4, 0.1)]
+
+    polygons = outline(Rect2f(0, -0.5, 1, 1))
+    @test length(polygons) == 1
+    @test sort(only(polygons).exterior) == sort(ring)
+    @test isempty(only(polygons).interiors)
+
+    polygons = outline(Polygon(ring, [hole]))
+    @test sort(only(polygons).exterior) == sort(ring)
+    @test sort(only(only(polygons).interiors)) == sort(hole)
+
+    # merged meshes duplicate vertices, an island inside a hole is a separate polygon
+    polygons = Makie._arrow_polygons(merge([Makie.poly_convert(Polygon(ring, [hole])), Makie.poly_convert(island)]))
+    @test length(polygons) == 2
+    @test sort([length(polygon.interiors) for polygon in polygons]) == [0, 1]
+    @test any(polygon -> sort(polygon.exterior) == sort(island), polygons)
+
+    # rings may touch at a vertex
+    polygons = Makie._arrow_polygons(merge([Makie.poly_convert(Rect2f(0, 0, 1, 1)), Makie.poly_convert(Rect2f(1, 1, 1, 1))]))
+    @test length(only(polygons).exterior) == 8
+
+    @test Makie._point_in_ring(Point2f(0.5, 0), ring)
+    @test !Makie._point_in_ring(Point2f(0.5, 0), hole .+ Point2f(1, 0))
 end
