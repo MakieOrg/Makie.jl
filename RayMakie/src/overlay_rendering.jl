@@ -424,6 +424,11 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
     # frame, which is also what lets a rebound cell be seen — a recording packs
     # its arguments once and `Mantle.rebind!` on one is refused by name.
     plan = Mantle.Plan(g)
+    # …but a plan that CAN be recorded must be: core refuses to run one that was
+    # not. That is the offscreen readback of a frame with no overlay draw, so no
+    # cell to rebind — `colorbuffer` of a live window showing only traced plots,
+    # which failed every time and returned after the loop's 60 s stall fallback.
+    Mantle.recordable(plan) && Mantle.record!(plan)
     screen.frame_plans[key] = (sig, plan, extra, (cells, shadowcells))
     return plan, extra
 end
