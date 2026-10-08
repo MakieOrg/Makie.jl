@@ -97,7 +97,7 @@ with z-elevation for each level.
 end
 
 """
-    label_anchor(pixel_line, labelposition)
+    label_anchor(pixel_line, labelposition, label_width = 0.0)
 
 Find where to put the label of a contour line, given its vertices projected to
 pixel space. Returns `(; from, to, t, direction, line_length)`: the label sits at
@@ -106,34 +106,36 @@ vector `direction` and belongs to a visible piece of `line_length` pixels. Retur
 `nothing` if no segment is visible.
 
 `labelposition` ranges from -1 to 1. On an open line, 0 is the middle by arc length
-of its longest finite piece and -1 and 1 are its ends, with 1 the end further
-right. On a closed loop, positions are measured by the angle the loop sweeps
+of its longest finite piece and at -1 and 1 a label of `label_width` pixels touches
+its ends, with 1 the end further right. On a closed loop, positions are measured by the angle the loop sweeps
 around its centroid, clockwise from the topmost crossing with the vertical through
 the centroid at 0, so that -1 and 1 both lead halfway around. For loops that every
 ray from the centroid crosses once, this is the angle of that ray, so labels of
 nested loops line up. The result does not depend on the start point or direction
 of the line.
 """
-function label_anchor(pixel_line, labelposition)
-    is_closed_line(pixel_line) || return open_line_anchor(pixel_line, collect(eachindex(pixel_line)), labelposition)
+function label_anchor(pixel_line, labelposition, label_width = 0.0)
+    is_closed_line(pixel_line) || return open_line_anchor(pixel_line, collect(eachindex(pixel_line)), labelposition, label_width)
     cycle = collect(firstindex(pixel_line):(lastindex(pixel_line) - 1))
     gap = findfirst(i -> !is_finite_point(pixel_line[i]), cycle)
     gap === nothing && return loop_anchor(pixel_line, cycle, labelposition)
-    return open_line_anchor(pixel_line, rotate_cycle(cycle, gap), labelposition)
+    return open_line_anchor(pixel_line, rotate_cycle(cycle, gap), labelposition, label_width)
 end
 
 is_finite_point(p) = all(isfinite, p)
 
 is_closed_line(vertices) = length(vertices) > 2 && first(vertices) == last(vertices)
 
-function open_line_anchor(pixel_line, path, labelposition)
+function open_line_anchor(pixel_line, path, labelposition, label_width)
     pieces = [path[run] for run in finite_runs(view(pixel_line, path))]
     filter!(piece -> path_length(pixel_line, piece) > 0, pieces)
     isempty(pieces) && return nothing
     anchors = map(pieces) do piece
         rightward = left_to_right(pixel_line, piece)
         piece_length = path_length(pixel_line, piece)
-        return with_line_length(anchor_at_distance(pixel_line, rightward, (1 + labelposition) / 2 * piece_length), piece_length)
+        center_range = max(piece_length - label_width, 0.0)
+        distance = (piece_length - center_range) / 2 + (1 + labelposition) / 2 * center_range
+        return with_line_length(anchor_at_distance(pixel_line, rightward, distance), piece_length)
     end
     longest = argmin(eachindex(pieces)) do i
         return (-anchors[i].line_length, Tuple(anchor_point(pixel_line, anchors[i])))
@@ -605,11 +607,34 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
 
     register_projected_positions!(plot, Point2f, input_name = :contour_points, output_space = :pixel)
 
+    map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
+        # Allow inconsistent output types (String, LaTexString, RichText) from formatter
+        return Ref{Any}(formatter.(levels))
+    end
+
+    map!(plot, [:labelcolor, :computed_lbl_colors], :text_color) do user_color, computed_color
+        return ifelse(user_color === nothing, computed_color, to_color(user_color))
+    end
+
+    map!(levels -> fill(Point3f(NaN), length(levels)), plot, :computed_levels, :label_measurement_positions)
+    label_measurements = text!(
+        plot,
+        plot.label_measurement_positions;
+        text = plot.text_strings,
+        align = (:center, :center),
+        fontsize = plot.labelsize,
+        font = plot.labelfont,
+        visible = false,
+        inspectable = false,
+    )
+    register_label_frame_boxes!(label_measurements)
+    add_input!(plot.attributes, :label_frame_boxes, label_measurements.label_frame_boxes)
+
     map!(
         plot,
-        [:labels, :labelposition, :zlevels, :contour_points, :pixel_contour_points, :elements_per_segment],
+        [:labels, :labelposition, :zlevels, :label_frame_boxes, :contour_points, :pixel_contour_points, :elements_per_segment],
         [:label_anchor_positions, :text_rotation, :label_pixel_positions, :label_line_lengths]
-    ) do use_labels, labelposition, levels, points, pixel_points, elements_per_segment
+    ) do use_labels, labelposition, levels, boxes, points, pixel_points, elements_per_segment
         positions = eltype(points)[]
         rotations = Float32[]
         pixel_positions = Point2f[]
@@ -617,10 +642,10 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         use_labels || return positions, rotations, pixel_positions, line_lengths
 
         line_positions = labelposition_per_line(labelposition, first.(elements_per_segment), levels)
-        for ((_, line_range), line_position) in zip(line_ranges(elements_per_segment), line_positions)
+        for ((_, line_range), line_position, box) in zip(line_ranges(elements_per_segment), line_positions, boxes)
             line_without_separator = line_range[begin:(end - 1)]
             pixel_line = view(pixel_points, line_without_separator)
-            anchor = line_position === nothing ? nothing : label_anchor(pixel_line, line_position)
+            anchor = line_position === nothing ? nothing : label_anchor(pixel_line, line_position, widths(box)[1])
             if anchor === nothing
                 push!(positions, eltype(points)(NaN))
                 push!(rotations, 0.0f0)
@@ -635,28 +660,6 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         end
         return positions, rotations, pixel_positions, line_lengths
     end
-
-    map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
-        # Allow inconsistent output types (String, LaTexString, RichText) from formatter
-        return Ref{Any}(formatter.(levels))
-    end
-
-    map!(plot, [:labelcolor, :computed_lbl_colors], :text_color) do user_color, computed_color
-        return ifelse(user_color === nothing, computed_color, to_color(user_color))
-    end
-
-    label_measurements = text!(
-        plot,
-        plot.label_anchor_positions;
-        text = plot.text_strings,
-        align = (:center, :center),
-        fontsize = plot.labelsize,
-        font = plot.labelfont,
-        visible = false,
-        inspectable = false,
-    )
-    register_label_frame_boxes!(label_measurements)
-    add_input!(plot.attributes, :label_frame_boxes, label_measurements.label_frame_boxes)
 
     map!(
         plot,

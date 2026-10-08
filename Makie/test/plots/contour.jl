@@ -1,5 +1,5 @@
 using Makie, Test
-using LinearAlgebra: normalize
+using LinearAlgebra: normalize, norm
 
 function label_at(line, labelposition = 0.0)
     anchor = Makie.label_anchor(line, labelposition)
@@ -25,6 +25,16 @@ const vertical = Vec2d(0, 1)
             @test all(label_at(line, 1.0) .≈ (Point2f(4, 2), vertical))
             @test all(label_at(line, -1.0) .≈ (Point2f(0, 0), horizontal))
         end
+    end
+
+    @testset "labels at the ends of an open line stay on the line" begin
+        l_shape = Point2f[(0, 0), (0.5, 0), (1, 0), (4, 0), (4, 2)]
+        label_width = 2.0
+        point_at(p) = Makie.anchor_point(l_shape, Makie.label_anchor(l_shape, p, label_width))
+        @test point_at(1.0) ≈ Point2f(4, 1)
+        @test point_at(-1.0) ≈ Point2f(1, 0)
+        @test point_at(0.0) ≈ Point2f(3, 0)
+        @test Makie.anchor_point(l_shape, Makie.label_anchor(l_shape, 1.0, 10.0)) ≈ Point2f(3, 0)
     end
 
     @testset "middle on a vertex is oriented along its neighbors" begin
@@ -150,7 +160,10 @@ end
     xs = range(-1, 1, length = 101)
     fig, ax, pl = contour(xs, xs, [x^2 for x in xs, y in xs], levels = [0.25], labels = true, labelposition = [[1, nothing]])
     Makie.update_state_before_display!(fig)
-    @test pl.text_positions[][1] ≈ Point2f(-0.5, 1) atol = 1.0e-3
+    first_line = pl.pixel_contour_points[][1:(last(pl.elements_per_segment[][1]) - 1)]
+    top_end = argmax(p -> p[2], first_line)
+    @test pl.text_positions[][1][1] ≈ -0.5 atol = 1.0e-3
+    @test norm(pl.label_pixel_positions[][1] - top_end) ≈ widths(pl.label_frame_boxes[][1])[1] / 2 rtol = 1.0e-3
     @test isnan(pl.text_positions[][2])
     @test pl.masked_elements_per_segment[][2] == pl.elements_per_segment[][2]
 end
