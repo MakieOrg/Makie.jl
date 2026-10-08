@@ -150,6 +150,11 @@ end
             # pixel more than it asked for, and `48 * 1.4479166` is `69.4999…`.
             # The film is the drawable; that the drawable is the scene's size in
             # units is the second assertion.
+            # After a frame: the screen opens at a GUESSED scale (the primary
+            # monitor's, 1 when the display sleeps), corrects the window to its
+            # own scale, and the drawable follows on the first frame. Read before
+            # one, the film was the guess: (80, 50) units on the 2x workers.
+            colorbuffer(screen)
             ppu = Makie.px_per_unit(screen)
             @test size(state.film.framebuffer) == size(screen.output_buffer)
             fh, fw = size(state.film.framebuffer)
