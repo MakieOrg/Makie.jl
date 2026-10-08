@@ -564,18 +564,21 @@ function data_limits(plot::Arrows2D)
 end
 boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
 
-function _arrow_shape_points(f::Function, length, width, metrics)
-    return decompose(Point2f, f(length, width, metrics))
+# Like _get_arrow_shape, but keeps the structure of the shape (e.g. holes)
+# instead of converting it to a mesh
+function _get_arrow_polygon(f::Function, length, width, metrics)
+    nt = NamedTuple{(:taillength, :tailwidth, :shaftlength, :shaftwidth, :tiplength, :tipwidth)}(metrics)
+    return f(length, width, nt)
 end
 
-function _arrow_shape_points(polylike, length, width, metrics)
-    return [Point2f(length, width) .* p for p in decompose(Point2f, polylike)] # scale
+function _get_arrow_polygon(polylike, length, width, metrics)
+    return map_polypoints(p -> Point2f(length, width) .* p, polylike) # scale
 end
 
 # Returns the tail, shaft and tip polygons of a horizontal arrow spanning the
 # width of a legend patch, in coordinates relative to the patch. Components
-# that are not drawn are returned as zero-area polygons, as backends may fail
-# to draw empty ones.
+# that are not drawn are collapsed to a point, as backends may fail to draw
+# empty polygons and the components may be enabled later.
 function _arrow2d_legend_polygons(
         patchsize, should_render, tail, shaft, tip, taillength, tailwidth, shaftlength,
         minshaftlength, maxshaftlength, shaftwidth, tiplength, tipwidth
@@ -588,19 +591,18 @@ function _arrow2d_legend_polygons(
         w, taillength, tailwidth, shaftlength, minshaftlength,
         maxshaftlength, shaftwidth, tiplength, tipwidth
     )
-    nt = NamedTuple{(:taillength, :tailwidth, :shaftlength, :shaftwidth, :tiplength, :tipwidth)}(metrics)
 
-    polygons = Vector{Point2f}[]
+    polygons = []
     offset = 0.0
     for (i, shape) in enumerate((tail, shaft, tip))
         origin = Point2f(offset, 0.5h)
+        len, width = metrics[2i - 1], metrics[2i]
+        polygon = _get_arrow_polygon(shape, len, width, metrics)
         if should_render[i]
-            len, width = metrics[2i - 1], metrics[2i]
-            points = _arrow_shape_points(shape, len, width, nt)
-            push!(polygons, [(origin .+ p) ./ Point2f(w, h) for p in points])
+            push!(polygons, map_polypoints(p -> (origin .+ p) ./ Point2f(w, h), polygon))
             offset += len
         else
-            push!(polygons, fill(origin ./ Point2f(w, h), 3))
+            push!(polygons, map_polypoints(p -> origin ./ Point2f(w, h), polygon))
         end
     end
 
@@ -618,10 +620,10 @@ function legendelements(plot::Arrows2D, legend)
     )
     colors = (plot.calculated_tailcolor, plot.calculated_shaftcolor, plot.calculated_tipcolor)
 
+    # Components (tail, shaft, tip) that are not drawn are collapsed to a point
+    # but still included, so that they show up when they are enabled later
     elements = LegendElement[]
     for i in 1:3
-        # Only include the components (tail, shaft, tip) that are currently drawn
-        plot.should_component_render[][i] || continue
         element = PolyElement(
             plots = plot,
             points = lift(ps -> ps[i], polygons),

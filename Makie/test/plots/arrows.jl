@@ -107,12 +107,14 @@ end
     f, a, p = arrows2d([0.0, 0.0], [1.0, 1.0], label = "arrow", color = :blue)
     leg = axislegend(a)
     els = arrow_legend_elements(leg)
-    # shaft and tip, the tail is not drawn by default
-    @test length(els) == 2
+    # tail, shaft and tip
+    @test length(els) == 3
     @test all(el -> el isa PolyElement, els)
     @test all(el -> el.polycolor[] == RGBAf(0, 0, 1, 1), els)
     @test all(el -> el.plots == [p], els)
-    shaft, tip = els[1].polypoints[], els[2].polypoints[]
+    tail, shaft, tip = [el.polypoints[] for el in els]
+    # The tail is not drawn by default and collapses to a point
+    @test allequal(tail)
     # The arrow spans the patch horizontally, at the default size in pixels
     # for an arrow of 20 pixels length: shaftwidth = 3, tiplength = 8, tipwidth = 14
     @test xrange(shaft) ≈ Vec2f(0, 12)
@@ -128,7 +130,6 @@ end
     )
     leg = axislegend(a)
     els = arrow_legend_elements(leg)
-    @test length(els) == 3
     @test [el.polycolor[] for el in els] == RGBAf[Makie.to_color(:orange), Makie.to_color(:green), Makie.to_color(:red)]
     tail, shaft, tip = [el.polypoints[] for el in els]
     @test maximum(first.(tail)) ≈ 4 / 20
@@ -157,19 +158,49 @@ end
     # non-square patches stretch the arrow length, not its width
     f, a, p = arrows2d([Point2f(0)], [Vec2f(1)], label = "arrow")
     els = arrow_legend_elements(axislegend(a, patchsize = (40, 20)))
-    @test xrange(els[1].polypoints[], 40) ≈ Vec2f(0, 32)
-    @test yrange(els[2].polypoints[]) ≈ Vec2f(3, 17)
+    @test xrange(els[2].polypoints[], 40) ≈ Vec2f(0, 32)
+    @test yrange(els[3].polypoints[]) ≈ Vec2f(3, 17)
 
     # the legend follows changes of the plot
     f, a, p = arrows2d([Point2f(0)], [Vec2f(1)], label = "arrow", color = :blue)
     els = arrow_legend_elements(axislegend(a))
     p.tipcolor = :red
     p.tipwidth = 10
-    @test els[1].polycolor[] == RGBAf(0, 0, 1, 1)
-    @test els[2].polycolor[] == RGBAf(1, 0, 0, 1)
-    @test yrange(els[2].polypoints[]) ≈ Vec2f(5, 15)
+    @test els[2].polycolor[] == RGBAf(0, 0, 1, 1)
+    @test els[3].polycolor[] == RGBAf(1, 0, 0, 1)
+    @test yrange(els[3].polypoints[]) ≈ Vec2f(5, 15)
     # components that are no longer drawn collapse to a point
     p.tiplength = 0
-    @test allequal(els[2].polypoints[])
-    @test xrange(els[1].polypoints[]) ≈ Vec2f(0, 20)
+    @test allequal(els[3].polypoints[])
+    @test xrange(els[2].polypoints[]) ≈ Vec2f(0, 20)
+    # and show up again when they are enabled later
+    p.tiplength = 8
+    @test xrange(els[2].polypoints[]) ≈ Vec2f(0, 12)
+    @test xrange(els[3].polypoints[]) ≈ Vec2f(12, 20)
+    p.taillength = 4
+    p.tiplength = 6
+    @test xrange(els[1].polypoints[])[2] ≈ 4
+
+    # custom shapes keep their structure, e.g. holes or disconnected parts
+    ring = Point2f[(0, -0.5), (1, -0.5), (1, 0.5), (0, 0.5)]
+    hole = Point2f[(0.25, -0.25), (0.75, -0.25), (0.75, 0.25), (0.25, 0.25)]
+    dashes = merge([Makie.poly_convert(Rect2f(0, -0.5, 0.4, 1)), Makie.poly_convert(Rect2f(0.6, -0.5, 0.4, 1))])
+    f, a, p = arrows2d(
+        [Point2f(0)], [Vec2f(1)], label = "arrow", taillength = 4, tiplength = 6,
+        tail = (l, w, metrics) -> Polygon(ring .* Point2f(l, w), [hole .* Point2f(l, w)]),
+        shaft = dashes, tip = Polygon(ring, [hole])
+    )
+    els = arrow_legend_elements(axislegend(a))
+    tail, shaft, tip = [el.polypoints[] for el in els]
+    @test tail isa Polygon
+    @test length(tail.interiors) == 1
+    @test xrange(tail.exterior) ≈ Vec2f(0, 4)
+    @test xrange(tail.interiors[1]) ≈ Vec2f(1, 3)
+    @test shaft isa GeometryBasics.Mesh
+    @test faces(shaft) == faces(dashes)
+    @test xrange(coordinates(shaft)) ≈ Vec2f(4, 14)
+    @test tip isa Polygon
+    @test length(tip.interiors) == 1
+    @test xrange(tip.exterior) ≈ Vec2f(14, 20)
+    @test yrange(tip.interiors[1]) ≈ Vec2f(6.5, 13.5)
 end
