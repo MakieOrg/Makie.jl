@@ -5,10 +5,12 @@ using GeometryBasics, Hikari
 using Colors
 using RayMakie
 using Makie
+using Mantle, Lavapipe_jll
 
 println("Testing Smoke volume...")
 
-# Try with Array backend first (safe)
+# On lavapipe, a Vulkan device in software: the same path as a GPU, and not
+# `KA.CPU()`, which is POCL since KernelAbstractions 0.10.
 let
     lights = [
         PointLight(RGBf(50, 50, 50), Vec3f(10, 10, 10)),
@@ -41,17 +43,16 @@ let
     cam.fov[] = 40
     update_cam!(ax, cam)
 
-    # Test with Array backend first
     RayMakie.activate!(
-        device=Raycore.KA.CPU(),
+        device=Mantle.backend(Mantle.Device("lavapipe")),
         exposure=1f0,
         tonemap=nothing,
         gamma=2.2f0,
         sensor=Hikari.PixelSensor(iso=50, exposure_time=1.0, whitebalance=0)
     )
 
-    println("Starting render with Smoke volume (Array backend)...")
+    println("Starting render with Smoke volume (lavapipe)...")
     img = @time colorbuffer(ax; backend=RayMakie, samples=30, max_depth=20, hw_accel=false)
 end
 
-println("Array backend test passed!")
+println("lavapipe test passed!")
