@@ -39,12 +39,21 @@ const vertical = Vec2d(0, 1)
         @test all(label_at(reverse(line)) .≈ (Point2f(5, 2), vertical))
     end
 
-    @testset "closed loop is labeled horizontally at the peak of the parabola through its top" begin
-        loop = Point2f[(0, 0), (2, 1), (1, 3), (-1, 2), (0, 0)]
-        rotated = Point2f[(1, 3), (-1, 2), (0, 0), (2, 1), (1, 3)]
-        for line in (loop, reverse(loop), rotated)
-            @test all(label_at(line) .≈ (Point2f(0.3, 2.65), horizontal))
+    @testset "labels of nested loops line up on a ray from their center" begin
+        small = Point2f[(-1, -1), (-1, 1), (1, 1), (1, 0.5), (1, -1), (-1, -1)]
+        large = Point2f[(-2, -2), (-2, 2), (2, 2), (2, -2), (-2, -2)]
+        for (loop, corner) in ((small, Point2f(1, 1)), (large, Point2f(2, 2)))
+            for line in (loop, reverse(loop))
+                @test first(label_at(line, 0.25)) ≈ corner
+                @test first(label_at(line, -0.25)) ≈ corner .* Point2f(-1, 1)
+            end
         end
+    end
+
+    @testset "every part of a loop that is not star-shaped can be labeled" begin
+        c_shape = Point2f[(0, 0), (0, 3), (3, 3), (3, 2), (1, 2), (1, 1), (3, 1), (3, 0), (0, 0)]
+        anchors = [Makie.label_anchor(c_shape, p) for p in range(-1, 1, length = 2001)]
+        @test Set(Set([a.from, a.to]) for a in anchors) == Set(Set([i, mod1(i + 1, 8)]) for i in 1:8)
     end
 
     @testset "labelposition moves clockwise around a closed loop" begin
@@ -111,5 +120,37 @@ end
     fig, ax, pl = contour(xs, xs, zs, levels = [0.5], labels = true)
     Makie.update_state_before_display!(fig)
     @test pl.text_positions[] ≈ Point2f[(0, sqrt(0.5))] atol = 1.0e-3
-    @test pl.text_rotation[] == [0]
+    @test pl.text_rotation[] ≈ [0] atol = 0.05
+end
+
+@testset "contour labels are hidden on lines too short to fit them" begin
+    xs = range(-1, 1, length = 101)
+    fig, ax, pl = contour(xs, xs, [x^2 + y^2 for x in xs, y in xs], levels = [0.0003, 0.5], labels = true)
+    Makie.update_state_before_display!(fig)
+    @test isnan(pl.text_positions[][1])
+    @test pl.text_positions[][2] ≈ Point2f(0, sqrt(0.5)) atol = 1.0e-3
+    @test pl.label_fits[] == [false, true]
+    @test pl.masked_elements_per_segment[][1] == pl.elements_per_segment[][1]
+end
+
+@testset "labelposition per level and per line" begin
+    line_levels = [1, 2, 2, 3]
+    levels = [0.1, 0.2, 0.3]
+    per_line(labelposition) = Makie.labelposition_per_line(labelposition, line_levels, levels)
+
+    @test per_line(0.5) == [0.5, 0.5, 0.5, 0.5]
+    @test per_line([0.5, nothing, -1]) == [0.5, nothing, nothing, -1]
+    @test per_line([0.5, [nothing, 1], -1]) == [0.5, nothing, 1, -1]
+
+    @test_throws "`labelposition` has 2 entries, but the plot has 3 levels" per_line([0, 1])
+    @test_throws "`labelposition[2]` has 3 entries, but level 0.2 has 2 lines" per_line([0, [0, 0, 0], 0])
+end
+
+@testset "labels of single lines can be moved or removed" begin
+    xs = range(-1, 1, length = 101)
+    fig, ax, pl = contour(xs, xs, [x^2 for x in xs, y in xs], levels = [0.25], labels = true, labelposition = [[1, nothing]])
+    Makie.update_state_before_display!(fig)
+    @test pl.text_positions[][1] ≈ Point2f(-0.5, 1) atol = 1.0e-3
+    @test isnan(pl.text_positions[][2])
+    @test pl.masked_elements_per_segment[][2] == pl.elements_per_segment[][2]
 end

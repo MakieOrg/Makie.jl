@@ -60,11 +60,18 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     "Font size of the contour labels"
     labelsize = 10 # arbitrary
     """
-    Position of the contour labels along their lines, from -1 to 1, either one value
-    or one per level. On an open line, 0 is the middle of its longest visible piece
-    and -1 and 1 are its ends, with 1 the end further right on screen. On a closed
-    loop, 0 is its top on screen, positive values move the label clockwise and -1
-    and 1 both lead to the point opposite the top.
+    Position of the contour labels along their lines, from -1 to 1. On an open line,
+    0 is the middle of its longest visible piece and -1 and 1 are its ends, with 1
+    the end further right on screen. On a closed loop, the value is an angle around
+    the loop's center on screen: 0 is the top, positive values go clockwise and -1
+    and 1 both mean the bottom, so labels of nested loops line up. `nothing` removes
+    the label.
+
+    Can be one value for all lines or a vector with one entry per level. Each entry
+    can again be a vector with one value per line of that level, because a level
+    can consist of several lines. The lines of a level are ordered from left to
+    right in data space, by the leftmost vertex of a loop or the left end of an
+    open line.
     """
     labelposition = 0.0
     "Distance in pixels between a contour label and the ends of the line around it."
@@ -93,17 +100,19 @@ end
     label_anchor(pixel_line, labelposition)
 
 Find where to put the label of a contour line, given its vertices projected to
-pixel space. Returns `(; from, to, t, direction)`: the label sits at fraction `t`
-between the vertices `from` and `to` and is oriented along the pixel space vector
-`direction`. Returns `nothing` if no segment is visible.
+pixel space. Returns `(; from, to, t, direction, line_length)`: the label sits at
+fraction `t` between the vertices `from` and `to`, is oriented along the pixel space
+vector `direction` and belongs to a visible piece of `line_length` pixels. Returns
+`nothing` if no segment is visible.
 
 `labelposition` ranges from -1 to 1. On an open line, 0 is the middle by arc length
 of its longest finite piece and -1 and 1 are its ends, with 1 the end further
-right. On a closed loop, 0 is the top, where the label is horizontal, positive
-values move clockwise and -1 and 1 both lead to the point opposite the top. The top
-is the peak of the parabola through the highest vertex and its neighbors, or the
-middle of the top edge if that is flat. The result does not depend on the start
-point or direction of the line.
+right. On a closed loop, positions are measured by the angle the loop sweeps
+around its centroid, clockwise from the topmost crossing with the vertical through
+the centroid at 0, so that -1 and 1 both lead halfway around. For loops that every
+ray from the centroid crosses once, this is the angle of that ray, so labels of
+nested loops line up. The result does not depend on the start point or direction
+of the line.
 """
 function label_anchor(pixel_line, labelposition)
     is_closed_line(pixel_line) || return open_line_anchor(pixel_line, collect(eachindex(pixel_line)), labelposition)
@@ -123,58 +132,91 @@ function open_line_anchor(pixel_line, path, labelposition)
     isempty(pieces) && return nothing
     anchors = map(pieces) do piece
         rightward = left_to_right(pixel_line, piece)
-        return anchor_at_distance(pixel_line, rightward, (1 + labelposition) / 2 * path_length(pixel_line, piece))
+        piece_length = path_length(pixel_line, piece)
+        return with_line_length(anchor_at_distance(pixel_line, rightward, (1 + labelposition) / 2 * piece_length), piece_length)
     end
     longest = argmin(eachindex(pieces)) do i
-        return (-path_length(pixel_line, pieces[i]), Tuple(anchor_point(pixel_line, anchors[i])))
+        return (-anchors[i].line_length, Tuple(anchor_point(pixel_line, anchors[i])))
     end
     return anchors[longest]
 end
 
 function loop_anchor(pixel_line, cycle, labelposition)
-    top_y = maximum(i -> pixel_line[i][2], cycle)
-    leftmost_top = argmin(i -> Tuple(pixel_line[i]), filter(i -> pixel_line[i][2] == top_y, cycle))
-    from_top = rotate_cycle(cycle, findfirst(==(leftmost_top), cycle))
-    clockwise = is_counterclockwise(pixel_line, from_top) ? [first(from_top); reverse(from_top[2:end])] : from_top
-    path = push!(clockwise, leftmost_top)
+    clockwise = is_counterclockwise(pixel_line, cycle) ? reverse(cycle) : cycle
+    n = length(clockwise)
+    segments = [(clockwise[j], clockwise[mod1(j + 1, n)]) for j in 1:n]
+    center = area_centroid([Point2d(pixel_line[i]) for i in clockwise])
+    origin = top_crossing(pixel_line, segments, center[1])
+    origin === nothing && return nothing
 
-    total_length = path_length(pixel_line, path)
-    total_length > 0 || return nothing
-    top_distance = loop_top_distance(pixel_line, path, total_length)
-    distance = mod(top_distance + labelposition * total_length / 2, total_length)
-    anchor = anchor_at_distance(pixel_line, path, distance)
-    return labelposition == 0 ? merge(anchor, (; direction = Vec2d(1, 0))) : anchor
-end
+    j0, t0 = origin
+    walk = [(segments[j0], t0, 1.0); [(segments[mod1(j0 + k, n)], 0.0, 1.0) for k in 1:(n - 1)]; (segments[j0], 0.0, t0)]
+    sweeps = [swept_angle(pixel_line, center, segment, t_start, t_stop) for (segment, t_start, t_stop) in walk]
+    total_sweep = sum(sweeps)
+    total_sweep > 0 || return nothing
+    loop_length = path_length(pixel_line, [clockwise; first(clockwise)])
 
-function loop_top_distance(pixel_line, path, total_length)
-    top = pixel_line[path[1]]
-    flat_top = collect(Iterators.takewhile(i -> pixel_line[i][2] == top[2], path))
-    length(flat_top) > 1 && return path_length(pixel_line, flat_top) / 2
-
-    previous, next = pixel_line[path[end - 1]], pixel_line[path[2]]
-    peak_x = parabola_peak_x(previous, top, next)
-    if previous[1] < peak_x < top[1]
-        return total_length - (top[1] - peak_x) / (top[1] - previous[1]) * norm(top - previous)
-    elseif top[1] < peak_x < next[1]
-        return (peak_x - top[1]) / (next[1] - top[1]) * norm(next - top)
+    target = mod(labelposition, 2) / 2 * total_sweep
+    covered = 0.0
+    for ((segment, t_start, _), sweep) in zip(walk, sweeps)
+        if sweep > 0 && covered + sweep >= target
+            t = t_at_swept_angle(pixel_line, center, segment, t_start, target - covered)
+            return with_line_length(segment_anchor(pixel_line, segment, t), loop_length)
+        end
+        covered += sweep
     end
-    return 0.0
+    return with_line_length(segment_anchor(pixel_line, segments[j0], t0), loop_length)
 end
 
-function parabola_peak_x(p0, p1, p2)
-    slope01 = (p1[2] - p0[2]) / (p1[1] - p0[1])
-    slope12 = (p2[2] - p1[2]) / (p2[1] - p1[1])
-    curvature = (slope12 - slope01) / (p2[1] - p0[1])
-    return (p0[1] + p1[1]) / 2 - slope01 / (2 * curvature)
+with_line_length(anchor, line_length) = merge(anchor, (; line_length))
+
+cross2(u, v) = u[1] * v[2] - u[2] * v[1]
+
+angle_between(u, v) = atan(cross2(u, v), u[1] * v[1] + u[2] * v[2])
+
+point_on_segment(pixel_line, (from, to), t) = lerp_points(Point2d(pixel_line[from]), Point2d(pixel_line[to]), t)
+
+segment_anchor(pixel_line, (from, to), t) = (; from, to, t, direction = Vec2d(pixel_line[to] - pixel_line[from]))
+
+function area_centroid(points)
+    edges = zip(points, circshift(points, -1))
+    double_area = sum(cross2(a, b) for (a, b) in edges)
+    double_area == 0 && return sum(points) / length(points)
+    return sum((a + b) * cross2(a, b) for (a, b) in edges) / (3 * double_area)
+end
+
+function top_crossing(pixel_line, segments, x)
+    crossings = Tuple{Int, Float64, Float64}[]
+    for (j, (from, to)) in enumerate(segments)
+        a, b = pixel_line[from], pixel_line[to]
+        if min(a[1], b[1]) <= x < max(a[1], b[1])
+            t = (x - a[1]) / (b[1] - a[1])
+            push!(crossings, (j, t, a[2] + t * (b[2] - a[2])))
+        end
+    end
+    isempty(crossings) && return nothing
+    j, t, _ = crossings[argmax(last.(crossings))]
+    return j, t
+end
+
+function swept_angle(pixel_line, center, segment, t_start, t_stop)
+    start = point_on_segment(pixel_line, segment, t_start) - center
+    stop = point_on_segment(pixel_line, segment, t_stop) - center
+    return abs(angle_between(start, stop))
+end
+
+function t_at_swept_angle(pixel_line, center, segment, t_start, angle)
+    from, to = segment
+    a, direction = Point2d(pixel_line[from]), Vec2d(pixel_line[to] - pixel_line[from])
+    start = point_on_segment(pixel_line, segment, t_start) - center
+    target_angle = atan(start[2], start[1]) + sign(cross2(start, direction)) * angle
+    ray = Vec2d(cos(target_angle), sin(target_angle))
+    return clamp(-cross2(a - center, ray) / cross2(direction, ray), t_start, 1.0)
 end
 
 function is_counterclockwise(pixel_line, cycle)
     ps = [pixel_line[i] for i in cycle]
-    signed_double_area = sum(eachindex(ps)) do i
-        a, b = ps[i], ps[mod1(i + 1, length(ps))]
-        return a[1] * b[2] - a[2] * b[1]
-    end
-    return signed_double_area > 0
+    return sum(cross2(a, b) for (a, b) in zip(ps, circshift(ps, -1))) > 0
 end
 
 left_to_right(pixel_line, path) = isless(Tuple(pixel_line[last(path)]), Tuple(pixel_line[first(path)])) ? reverse(path) : path
@@ -236,9 +278,10 @@ function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d
     levels = Float32[]
 
     for (lvl, c) in enumerate(Contours.levels(contours))
-        for elem in Contours.lines(c)
-            # Contours.jl traces cells in `Dict` order, so a line starts anywhere and runs either way
-            vertices = canonical_line_order(elem.vertices)
+        # Contours.jl traces cells in `Dict` order, so a line starts anywhere and runs either way,
+        # and the lines of a level come in any order
+        level_lines = sort!([canonical_line_order(elem.vertices) for elem in Contours.lines(c)]; by = first)
+        for vertices in level_lines
             for p in vertices
                 push!(points, to_ndim(PT, p, c.level))
             end
@@ -391,8 +434,33 @@ function line_ranges(elements_per_segment)
     return [(level, (stop - count + 1):stop) for ((level, _), count, stop) in zip(elements_per_segment, counts, cumsum(counts))]
 end
 
-level_value(x::Real, level) = x
-level_value(x::AbstractVector, level) = x[level]
+"""
+    labelposition_per_line(labelposition, line_levels, levels)
+
+Resolve the `labelposition` attribute to one value (a number or `nothing`) per contour
+line, given the level index of each line and the level values.
+"""
+labelposition_per_line(labelposition, line_levels, levels) = fill(labelposition, length(line_levels))
+
+function labelposition_per_line(labelposition::AbstractVector, line_levels, levels)
+    length(labelposition) == length(levels) || error(
+        "`labelposition` has $(length(labelposition)) entries, but the plot has $(length(levels)) levels. " *
+            "Pass one value for all lines, or one entry per level, where each entry is a number, `nothing` " *
+            "or a vector with one number or `nothing` per line of that level."
+    )
+    lines_per_level = [count(==(level), line_levels) for level in eachindex(levels)]
+    lines_seen = zeros(Int, length(levels))
+    return map(line_levels) do level
+        lines_seen[level] += 1
+        level_positions = labelposition[level]
+        level_positions isa AbstractVector || return level_positions
+        length(level_positions) == lines_per_level[level] || error(
+            "`labelposition[$level]` has $(length(level_positions)) entries, but level $(levels[level]) " *
+                "has $(lines_per_level[level]) lines."
+        )
+        return level_positions[lines_seen[level]]
+    end
+end
 
 repeat_level_data_per_vertex(counts, x) = x
 function repeat_level_data_per_vertex(counts, x::AbstractVector{T}) where {T}
@@ -407,7 +475,7 @@ end
     register_label_frame_boxes!(texts::Text)
 
 Register `:label_frame_boxes`, the unrotated bounding box of each string relative
-to its position, i.e. in the frame of the rotated label.
+to its position, i.e. in the frame of a rotated label.
 """
 function register_label_frame_boxes!(texts)
     register_raw_glyph_boundingboxes!(texts)
@@ -426,6 +494,15 @@ function register_label_frame_boxes!(texts)
     end
     return texts.label_frame_boxes
 end
+
+"""
+    label_fits_line(line_length, box, padding)
+
+Whether a label with the unrotated bounding `box` is drawn on a visible line piece
+of `line_length` pixels. The piece has to be at least twice as long as the padded
+label, so that at least as much of it stays visible as is cut out for the label.
+"""
+label_fits_line(line_length, box, padding) = line_length >= 2 * (widths(box)[1] + 2 * padding)
 
 pad_label_box(box, padding) = Rect2d(minimum(box) .- padding, widths(box) .+ 2padding)
 
@@ -530,29 +607,33 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
 
     map!(
         plot,
-        [:labels, :labelposition, :contour_points, :pixel_contour_points, :elements_per_segment],
-        [:text_positions, :text_rotation, :label_pixel_positions]
-    ) do use_labels, labelposition, points, pixel_points, elements_per_segment
+        [:labels, :labelposition, :zlevels, :contour_points, :pixel_contour_points, :elements_per_segment],
+        [:label_anchor_positions, :text_rotation, :label_pixel_positions, :label_line_lengths]
+    ) do use_labels, labelposition, levels, points, pixel_points, elements_per_segment
         positions = eltype(points)[]
         rotations = Float32[]
         pixel_positions = Point2f[]
-        use_labels || return positions, rotations, pixel_positions
+        line_lengths = Float64[]
+        use_labels || return positions, rotations, pixel_positions, line_lengths
 
-        for (level, line_range) in line_ranges(elements_per_segment)
+        line_positions = labelposition_per_line(labelposition, first.(elements_per_segment), levels)
+        for ((_, line_range), line_position) in zip(line_ranges(elements_per_segment), line_positions)
             line_without_separator = line_range[begin:(end - 1)]
             pixel_line = view(pixel_points, line_without_separator)
-            anchor = label_anchor(pixel_line, level_value(labelposition, level))
+            anchor = line_position === nothing ? nothing : label_anchor(pixel_line, line_position)
             if anchor === nothing
                 push!(positions, eltype(points)(NaN))
                 push!(rotations, 0.0f0)
                 push!(pixel_positions, Point2f(NaN))
+                push!(line_lengths, 0.0)
             else
                 push!(positions, anchor_point(view(points, line_without_separator), anchor))
                 push!(rotations, anchor_angle(anchor))
                 push!(pixel_positions, anchor_point(pixel_line, anchor))
+                push!(line_lengths, anchor.line_length)
             end
         end
-        return positions, rotations, pixel_positions
+        return positions, rotations, pixel_positions, line_lengths
     end
 
     map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
@@ -564,7 +645,29 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         return ifelse(user_color === nothing, computed_color, to_color(user_color))
     end
 
-    texts = text!(
+    label_measurements = text!(
+        plot,
+        plot.label_anchor_positions;
+        text = plot.text_strings,
+        align = (:center, :center),
+        fontsize = plot.labelsize,
+        font = plot.labelfont,
+        visible = false,
+        inspectable = false,
+    )
+    register_label_frame_boxes!(label_measurements)
+    add_input!(plot.attributes, :label_frame_boxes, label_measurements.label_frame_boxes)
+
+    map!(
+        plot,
+        [:label_anchor_positions, :label_line_lengths, :label_frame_boxes, :labelpadding],
+        [:text_positions, :label_fits]
+    ) do positions, line_lengths, boxes, padding
+        fits = label_fits_line.(line_lengths, boxes, padding)
+        return map((fit, p) -> fit ? p : eltype(positions)(NaN), fits, positions), fits
+    end
+
+    text!(
         plot,
         plot.text_positions;
         color = plot.text_color,
@@ -576,14 +679,11 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         transform_marker = false
     )
 
-    register_label_frame_boxes!(texts)
-    add_input!(plot.attributes, :label_frame_boxes, texts.label_frame_boxes)
-
     map!(
         plot,
-        [:labels, :label_pixel_positions, :label_frame_boxes, :text_rotation, :labelpadding, :contour_points, :pixel_contour_points, :elements_per_segment],
+        [:labels, :label_fits, :label_pixel_positions, :label_frame_boxes, :text_rotation, :labelpadding, :contour_points, :pixel_contour_points, :elements_per_segment],
         [:masked_lines, :masked_elements_per_segment]
-    ) do use_labels, centers, boxes, angles, padding, points, pixel_points, elements_per_segment
+    ) do use_labels, fits, centers, boxes, angles, padding, points, pixel_points, elements_per_segment
         use_labels || return points, elements_per_segment
 
         masked = empty(points)
@@ -591,10 +691,7 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         for (n, (level, line_range)) in enumerate(line_ranges(elements_per_segment))
             line = view(points, line_range)
             pixel_line = view(pixel_points, line_range)
-
-            # simple heuristic to turn off masking segments when it has few
-            # points, to avoid removing short contour lines entirely.
-            if count(!isnan, pixel_line) >= 10
+            if fits[n]
                 box = pad_label_box(boxes[n], padding)
                 line = label_gap_masked_line(line, pixel_line, centers[n], angles[n], box)
             end
