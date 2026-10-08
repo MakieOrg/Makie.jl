@@ -564,10 +564,16 @@ end
                     maxi = maximum(bbox) + Vec2(prot.right, prot.top)
                     return Rect2f(mini, maxi - mini)
                 end
-                p = poly!(fig.scene, fullarea, color = RGBf(1, 0.8, 0.6), strokecolor = :red, strokewidth = 1.5)
+                p = poly!(
+                    fig.scene, fullarea, color = RGBf(1, 0.8, 0.6), strokecolor = :red,
+                    strokewidth = 1.5, zorder_shift = -20_000
+                )
                 translate!(p, 0, 0, -10_000)
                 # axis area = layout area - protrusions
-                p = poly!(fig.scene, ax.layoutobservables.computedbbox, color = RGBf(0.8, 0.9, 1), strokecolor = :blue, strokewidth = 1.5, linestyle = :dash)
+                p = poly!(
+                    fig.scene, ax.layoutobservables.computedbbox, color = RGBf(0.8, 0.9, 1),
+                    strokecolor = :blue, strokewidth = 1.5, linestyle = :dash, zorder_shift = -20_000
+                )
                 translate!(p, 0, 0, -10_000)
             end
         end

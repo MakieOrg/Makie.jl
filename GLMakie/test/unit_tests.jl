@@ -13,7 +13,6 @@ is_freed(x::GLMakie.GPUArray) = x.id == 0
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
-
     # Postprocessing shaders
     @test length(cache.shader_cache) == 4
     @test length(cache.template_cache) == 4
@@ -139,7 +138,8 @@ end
         picks = unique(pick(ax.scene, rect_px))
 
         # objects returned in plot_idx should be either grid lines (i.e. LineSegments) or Scatter points
-        @test all(pi -> pi[1] isa Union{LineSegments, Scatter, Makie.Mesh}, picks)
+        # Note: if Axis uses clear instead of a poly we get a nothing pick over a mesh pick
+        @test all(pi -> pi[1] isa Union{LineSegments, Scatter, Makie.Mesh, Nothing}, picks)
         # scatter points should have indices equal to those in 99991:99998
         scatter_plot_idx = filter(pi -> pi[1] isa Scatter, picks)
         @test Set(last.(scatter_plot_idx)) == Set(99991:99998)
@@ -159,14 +159,16 @@ end
     @test screen in fig.scene.current_screens
     @test length(fig.scene.current_screens) == 1
     @testset "all got freed" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test is_freed(v)
+        for group in screen.render_context.groups
+            for (_, robj) in group.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test is_freed(v)
+                    end
                 end
-            end
-            for inst in values(robj.variants)
-                @test inst.vertexarray.id == 0
+                for inst in values(robj.variants)
+                    @test inst.vertexarray.id == 0
+                end
             end
         end
     end
@@ -175,19 +177,21 @@ end
     lines!(ax, 1:5, rand(5); linewidth = 3)
     text!(ax, [Point2f(2)], text = ["hi"])
     @testset "no freed object after replotting" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test !is_freed(v)
+        for group in screen.render_context.groups
+            for (_, robj) in group.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test !is_freed(v)
+                    end
                 end
-            end
-            for inst in values(robj.variants)
-                @test inst.vertexarray.id != 0
+                for inst in values(robj.variants)
+                    @test inst.vertexarray.id != 0
+                end
             end
         end
     end
     close(screen)
-    @test isempty(screen.renderlist)
+    @test isempty(screen.render_context)
 end
 
 @testset "empty!(ax)" begin
@@ -201,7 +205,7 @@ end
 
     @test ax.scene.plots == [hmp, lp, tp]
 
-    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots[1]])
+    robjs = map(x -> x.gl_renderobject[], [hmp, lp, tp.plots[1], tp.plots[2].plots...])
 
     empty!(ax)
 
@@ -221,19 +225,21 @@ end
     lines!(ax, 1:5, rand(5); linewidth = 3)
     text!(ax, [Point2f(2)], text = ["hi"])
     @testset "no freed object after replotting" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test !is_freed(v)
+        for group in screen.render_context.groups
+            for (_, robj) in group.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test !is_freed(v)
+                    end
                 end
-            end
-            for inst in values(robj.variants)
-                @test inst.vertexarray.id != 0
+                for inst in values(robj.variants)
+                    @test inst.vertexarray.id != 0
+                end
             end
         end
     end
     close(screen)
-    @test isempty(screen.renderlist)
+    @test isempty(screen.render_context)
 end
 
 @testset "closing" begin
@@ -299,11 +305,8 @@ end
     for screen in screens
         @test !isopen(screen)
 
-        @test isempty(screen.screen2scene)
-        @test isempty(screen.screens)
-        @test isempty(screen.renderlist)
-        @test isempty(screen.cache)
         @test isempty(screen.cache2plot)
+        @test isempty(screen.render_context)
 
         @test isempty(screen.window_open.listeners)
         @test isempty(screen.render_tick.listeners)
@@ -495,7 +498,7 @@ end
     lines!(ax, sin.(0.0:0.1:2pi))
     text!(ax, 10.0, 0.0, text = "sine wave")
     empty!(ax)
-    ids = [robj.id for (_, _, robj) in screen.renderlist]
+    ids = [robj.id for group in screen.render_context.groups for (_, robj) in group.renderobjects]
 
     lobj = lines!(ax, sin.(0.0:0.1:2pi))
     tex = text!(ax, 10.0, 0.0, text = "sine wave")
@@ -517,7 +520,7 @@ end
     scene = Scene()
     p = lines!(scene, Point2f[])
     screen = display(scene, visible = false)
-    robj = screen.cache[objectid(p)]
+    robj = p.gl_renderobject[]
     indexbuffer = robj.indices
     @test isempty(indexbuffer)
     @test length(indexbuffer) == 0 # skip condition for draw call

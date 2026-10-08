@@ -6,6 +6,7 @@ js_plot_type(plot::Union{Scatter, Makie.Glyphs}) = "Scatter"
 js_plot_type(plot::Union{Lines, LineSegments}) = "Lines"
 
 function serialize_three(scene::Scene, plot::Makie.PrimitivePlotTypes)
+    Makie.add_computation!(plot, Val{:gl_zindex}())
     mesh = create_shader(scene, plot)
 
     mesh[:plot_type] = js_plot_type(plot)
@@ -16,7 +17,7 @@ function serialize_three(scene::Scene, plot::Makie.PrimitivePlotTypes)
 
     mesh[:overdraw] = plot.overdraw[]
     mesh[:transparency] = plot.transparency[]
-    mesh[:zvalue] = Makie.zvalue2d(plot)
+    mesh[:gl_zindex] = plot.gl_zindex[]
     mesh[:space] = plot.space[]
 
     if haskey(plot, :markerspace)
@@ -126,6 +127,7 @@ end
 function create_wgl_renderobject(callback, attr, inputs; rename_updates = nothing)
     # default case
     haskey(attr, :uniform_clip_planes) || Makie.add_computation!(attr, Val(:uniform_clip_planes))
+    (:gl_zindex in inputs) || push!(inputs, :gl_zindex)
 
     register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
         if isnothing(last)
@@ -139,6 +141,7 @@ function create_wgl_renderobject(callback, attr, inputs; rename_updates = nothin
                 end
             end
             last.wgl_renderobject[:visible] = args.visible
+            last.wgl_renderobject[:gl_zindex] = args.gl_zindex
             update_values!(last.wgl_update_obs, Bonito.LargeUpdate(updates))
             return skip_update
         end
@@ -865,6 +868,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attr = plot.attributes
 
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
+    Makie.add_computation!(plot, Val{:gl_zindex}())
+
     backend_colors!(attr)
 
     islines = plot isa Lines
@@ -893,6 +898,6 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     dict[:uniforms][:uniform_clip_planes] = serialize_three(plot.uniform_clip_planes[])
     dict[:uniforms][:uniform_num_clip_planes] = serialize_three(plot.uniform_num_clip_planes[])
     dict[:overdraw] = plot.overdraw[]
-    dict[:zvalue] = Makie.zvalue2d(plot)
+    dict[:gl_zindex] = plot.gl_zindex[]
     return dict
 end

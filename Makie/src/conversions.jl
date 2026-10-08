@@ -2410,6 +2410,9 @@ end
 
 
 convert_attribute(value, ::key"depth_shift") = Float32(value)
+convert_attribute(value, ::key"zorder_shift") = Float64(value)
+convert_attribute(value, ::key"zindex") = Float64(value)
+convert_attribute(value, ::key"rasterize") = Int64(value)
 
 
 # SAMPLER overloads

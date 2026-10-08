@@ -323,6 +323,15 @@ macro DocumentedAttributes(expr::Expr)
     return build_documented_attributes(expr)
 end
 
+struct NestedException{E}
+    context::String
+    exception::E
+end
+function Base.showerror(io::IO, ex::NestedException)
+    println(io, ex.context)
+    Base.showerror(io, ex.exception)
+end
+
 #=
 Within @recipe and @Block `build_documented_attributes(expr)` is called directly
 and the output is evaluated in a global constant. The Code generated here
@@ -330,7 +339,7 @@ therefore only runs once per `@recipe` and `@Block` call.
 `@DocumentedAttributes` in mixins are not cached, but also only used to populate
 `@recipe` and `@Block`.
 =#
-function build_documented_attributes(expr::Expr, local_vars = tuple())
+function build_documented_attributes(expr::Expr, local_vars = tuple(); source = nothing)
     block_expr = Expr(:block)
     build_documented_attributes!(block_expr.args, expr, local_vars)
 
@@ -340,11 +349,19 @@ function build_documented_attributes(expr::Expr, local_vars = tuple())
     # This allows us to progressively step back out of nesting paths
     final_expr = quote
         let
-            attr = Makie.DocumentedAttributes()
-            state = (Int[1], Symbol[])
-            $block_expr
-            @assert isempty(state[2]) "Failed to build documented attributes: Nesting did not resolve correctly, leaving behind $state."
-            attr
+            try
+                attr = Makie.DocumentedAttributes()
+                state = (Int[1], Symbol[])
+                $block_expr
+                @assert isempty(state[2]) "Failed to build documented attributes: Nesting did not resolve correctly, leaving behind $state."
+                attr
+            catch e
+                if !isnothing($source)
+                    s = $source
+                    rethrow(NestedException("Failed to construct Attributes for $s:", e))
+                end
+                rethrow()
+            end
         end
     end
     # display(final_expr)
@@ -383,8 +400,7 @@ function build_documented_attributes!(output::Vector, expr::Expr, local_vars)
             try
                 build_documented_attributes!(output, block, local_vars)
             catch e
-                @info "While building nested attributes for $key:"
-                rethrow(e)
+                rethrow(NestedException("While building nested attributes for $key:", e))
             end
             push!(output, :(Makie._end_nesting_layer!(state)))
 
@@ -423,7 +439,11 @@ function build_documented_attributes!(output::Vector, expr::Expr, local_vars)
             mixin_expr = quote
                 mixin = $mixin
                 prev_state = last(state[1])
-                Makie._merge_attributes!(attr, state, mixin)
+                try
+                    Makie._merge_attributes!(attr, state, mixin)
+                catch e
+                    rethrow(NestedException("Failed to evaluate `$(string($(QuoteNode(mixin))))`:", e))
+                end
                 @assert last(state[1]) == prev_state "Mixin must return to the previous state when finished"
             end
             push!(output, mixin_expr)
@@ -575,9 +595,9 @@ function _merge_attributes_rec!(target, state, source, _trace, current_layer)
                 allow_edit = false
             )
             if !got_added
-                target_path = join(state[2], '.') * '.' * string(key)
-                source_path = join(_trace, '.') * '.' * string(key)
-                error("Could not add :$target_path from :$source_path because :$target_path already exists.")
+                target_path = join([state[2]..., string(key)], '.')
+                source_path = join([_trace..., string(key)], '.')
+                error("Could not add attribute :$source_path from mixin expression because :$target_path already exists.")
             end
         end
     end

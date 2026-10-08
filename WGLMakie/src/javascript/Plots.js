@@ -118,7 +118,7 @@ export class Plot {
         this.mesh.plot_uuid = this.plot_data.uuid;
         this.mesh.frustumCulled = false;
         this.mesh.matrixAutoUpdate = false;
-        this.mesh.renderOrder = this.plot_data.zvalue;
+        this.mesh.renderOrder = this.plot_data.gl_zindex;
         this.mesh.plot_object = this;
         this.mesh.visible = this.plot_data.visible;
     }
@@ -171,6 +171,8 @@ export class Plot {
                 this.update_faces(value);
             } else if (key === "visible") {
                 this.mesh.visible = value;
+            } else if (key === "gl_zindex") {
+                this.mesh.renderOrder = value;
             } else {
                 console.warn(`Unknown key ${key} in Plot: ${this.name}`);
             }
