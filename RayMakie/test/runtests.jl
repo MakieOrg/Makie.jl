@@ -205,6 +205,7 @@ const GRAPHICS_TEST_FILES = [
     "test_empty_figure.jl",
     "test_device_arrays.jl",
     "test_image_updates.jl",
+    "test_raster_alpha.jl",
     "test_mesh_raster.jl",
     "test_meshscatter_raster.jl",
     "test_meshscatter_traced_interfaces.jl",

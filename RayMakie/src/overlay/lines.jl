@@ -792,26 +792,17 @@ function sample_colormap(cmap, v::Float32, cmin::Float32, cmax::Float32, n_cmap:
     Vec4f(c0.r*(1-t)+c1.r*t, c0.g*(1-t)+c1.g*t, c0.b*(1-t)+c1.b*t, c0.alpha*(1-t)+c1.alpha*t)
 end
 
-"""Resolve per-vertex RGBA colors from plot attributes."""
-function lines_resolve_colors(plot, n)
+"""
+    lines_resolve_colors(scaled_color, colormap, colorrange, n) -> Vector{Vec4f}
 
-    color = Makie.to_value(plot.color)
-    if color isa AbstractVector{<:Colorant}
-        return Vec4f[let c = RGBA{Float32}(color[min(i, length(color))]); Vec4f(c.r, c.g, c.b, c.alpha) end for i in 1:n]
-    elseif color isa Colorant
-        c = RGBA{Float32}(color)
-        return fill(Vec4f(c.r, c.g, c.b, c.alpha), n)
-    elseif color isa AbstractVector{<:Number} && haskey(plot, :scaled_color)
-        sc = Makie.to_value(plot.scaled_color)
-        cmap = Makie.to_value(plot.alpha_colormap)
-        cr = Makie.to_value(plot.scaled_colorrange)
-        cmin, cmax = Float32(cr[1]), Float32(cr[2])
-        n_cmap = length(cmap)
-        return Vec4f[sample_colormap(cmap, Float32(sc[min(i, length(sc))]), cmin, cmax, n_cmap) for i in 1:n]
-    else
-        c = RGBA{Float32}(Makie.to_color(color))
-        return fill(Vec4f(c.r, c.g, c.b, c.alpha), n)
-    end
+Per-vertex RGBA colours from Makie's computed colour: `scaled_color` has the
+plot's `alpha` in it (and a numeric colour is looked up in `alpha_colormap`, which
+has it too). Read from the plain `color`, a line ignored `alpha`, so a keyed fade
+of a line or a grid did nothing in RASTER mode while GLMakie faded it.
+"""
+function lines_resolve_colors(scaled_color, colormap, colorrange, n)
+    colors = scatter_resolve_colors(scaled_color, colormap, colorrange, n)
+    return Vec4f[let c = colors[min(i, length(colors))]; Vec4f(c.r, c.g, c.b, c.alpha) end for i in 1:n]
 end
 
 """Resolve per-vertex linewidths."""

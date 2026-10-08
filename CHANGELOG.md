@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- RayMakie raster lines, line segments, images and heatmaps follow `alpha`, as GLMakie does, and images and heatmaps with `interpolate = false` show square pixels.
+
 - A plot whose input changes type (a `poly` created empty and filled later) passes the new value to its child plots. They kept the old empty value before, and GLMakie failed with mismatched buffer lengths.
 
 - RayMakie raster picking skips meshes with `inspectable = false`. They are still drawn, and a click on them picks what lies behind.

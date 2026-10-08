@@ -39,7 +39,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
     register_computation!(
         attr,
         [:positions_transformed_f32c, :trace_gl_indices, :trace_gl_valid_vertex,
-         :trace_gl_lastlen, :color, :linewidth, :model_f32c,
+         :trace_gl_lastlen, :scaled_color, :alpha_colormap, :scaled_colorrange, :linewidth, :model_f32c,
          :projectionview, :resolution, :gl_miter_limit,
          :linecap, :joinstyle, :linestyle],
         [:trace_renderobject]
@@ -71,10 +71,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             # Only re-upload buffers when data inputs changed (not just camera)
             data_changed = changed.positions_transformed_f32c ||
                            changed.trace_gl_indices || changed.trace_gl_valid_vertex ||
-                           changed.trace_gl_lastlen || changed.color || changed.linewidth
+                           changed.trace_gl_lastlen || changed.scaled_color || changed.alpha_colormap ||
+                           changed.scaled_colorrange || changed.linewidth
             if data_changed
                 vertex_data = to_gpu_position.(args.positions_transformed_f32c)
-                color_data = lines_resolve_colors(plot, n)
+                color_data = lines_resolve_colors(args.scaled_color, args.alpha_colormap, args.scaled_colorrange, n)
                 thickness_data = lines_resolve_thickness(plot, n)
                 valid_data = Float32.(args.trace_gl_valid_vertex)
                 lastlen_data = Float32.(args.trace_gl_lastlen)
@@ -119,7 +120,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         # Broadcast, so device positions become a device vertex buffer with no
         # host round trip — see `to_gpu_position`.
         vertex_data = to_gpu_position.(positions)
-        color_data = lines_resolve_colors(plot, n)
+        color_data = lines_resolve_colors(args.scaled_color, args.alpha_colormap, args.scaled_colorrange, n)
         thickness_data = lines_resolve_thickness(plot, n)
         valid_data = Float32.(valid)
         lastlen_data = Float32.(lastlen)
@@ -216,7 +217,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
     register_computation!(
         attr,
         [:positions_transformed_f32c, :trace_gl_indices, :trace_gl_valid_vertex,
-         :trace_gl_lastlen, :color, :linewidth, :model_f32c,
+         :trace_gl_lastlen, :scaled_color, :alpha_colormap, :scaled_colorrange, :linewidth, :model_f32c,
          :projectionview, :resolution, :linecap, :linestyle],
         [:trace_renderobject]
     ) do args, changed, cached
@@ -230,7 +231,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
         # Broadcast, so device positions become a device vertex buffer with no
         # host round trip — see `to_gpu_position`.
         vertex_data = to_gpu_position.(positions)
-        color_data = lines_resolve_colors(plot, n)
+        color_data = lines_resolve_colors(args.scaled_color, args.alpha_colormap, args.scaled_colorrange, n)
         thickness_data = lines_resolve_thickness(plot, n)
         valid_data = Float32.(args.trace_gl_valid_vertex)
         lastlen_data = Float32.(args.trace_gl_lastlen)

@@ -318,7 +318,11 @@ function scatter_fragment(
     # alpha-zero corner of a glyph or marker quad occludes whatever should
     # have shown through it. Discarding is what lets a BLENDED pass use a
     # depth buffer, which is how a scene's z translation gets honoured.
-    color[4] < 1f-3 && discard()
+    # `<=`, at the 0.001 the fill is raised to above: a glyph faded to nothing
+    # kept exactly that inside, was never discarded, and a label drawn later at
+    # the same place (a caption replacing a faded one) had holes in the shape of
+    # the invisible letters.
+    color[4] <= 1f-3 && discard()
     return raster_output(Vec4f(color[1]*color[4], color[2]*color[4], color[3]*color[4], color[4]), fxaa,
                          unsafe_trunc(UInt32, inputs.pick_index + 0.5f0))
 end

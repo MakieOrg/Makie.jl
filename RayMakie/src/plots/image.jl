@@ -45,11 +45,17 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
     attr = plot.attributes
 
     # model_f32c may not exist for Heatmap — use identity if missing
-    deps = haskey(attr, :model_f32c) ? [:x, :y, :image, :model_f32c] : [:x, :y, :image]
+    # The colours come from Makie's `scaled_color`, which has the plot's `alpha` in
+    # it (a numeric image is looked up in `alpha_colormap`, which has it too): read
+    # from the raw `image`, a keyed fade of an image did nothing in RASTER mode.
+    colour = [:scaled_color, :alpha_colormap, :scaled_colorrange, :interpolate]
+    deps = haskey(attr, :model_f32c) ? [:x, :y, colour..., :model_f32c] : [:x, :y, colour...]
     register_computation!(attr, deps, [:trace_renderobject]) do args, changed, last
         x = to_value(args.x)
         y = to_value(args.y)
-        img_data = to_value(args.image)
+        img_data = args.scaled_color
+        # `interpolate = false` (a heatmap's default) shows each value as a square.
+        filter = args.interpolate ? :linear : :nearest
         model = hasproperty(args, :model_f32c) ? Mat4f(args.model_f32c) : (haskey(plot, :model_f32c) ? Mat4f(to_value(plot.model_f32c)) : Mat4f(I))
 
         # Get image bounds in data space
@@ -100,9 +106,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
             texeldata(img_data)
         elseif img_data isa AbstractMatrix{<:Real}
             # Heatmap: apply colormap. Computed in float, so it stays float.
-            cmap_colors = to_value(plot.colormap)
-            crange = to_value(plot.colorrange)
-            texeldata(_apply_colormap(img_data, cmap_colors, crange))
+            texeldata(_apply_colormap(img_data, args.alpha_colormap, args.scaled_colorrange))
         else
             fill((1f0, 0f0, 1f0, 1f0), size(img_data))
         end
@@ -117,7 +121,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
             robj.uniforms[:screen_tr] = Vec2f(p_tr)
             robj.uniforms[:res] = Vec2f(Float32(root_w), Float32(root_h))
             robj.uniforms[:depth] = depth
-            update_texture!(robj, img_ntuple; filter=:linear, wrap=:clamp)
+            # A sampler is made with its texture: a changed filter needs a new one.
+            changed.interpolate && (robj.texture = nothing)
+            update_texture!(robj, img_ntuple; filter, wrap=:clamp)
             robj.visible = true
             return (robj,)
         end
@@ -137,7 +143,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Union{Makie.Image, Maki
             vertex_count = 6,
             instances = 1,
         )
-        update_texture!(robj, img_ntuple; filter=:linear, wrap=:clamp)
+        update_texture!(robj, img_ntuple; filter, wrap=:clamp)
         return (robj,)
     end
 end
