@@ -564,21 +564,47 @@ function data_limits(plot::Arrows2D)
 end
 boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
 
-# Like _get_arrow_shape, but keeps the structure of the shape (e.g. holes)
-# instead of converting it to a mesh
-function _get_arrow_polygon(f::Function, length, width, metrics)
-    nt = NamedTuple{(:taillength, :tailwidth, :shaftlength, :shaftwidth, :tiplength, :tipwidth)}(metrics)
-    return f(length, width, nt)
+# Converts an arrow component shape to polygons, keeping its structure (e.g.
+# holes) where possible. Using the same type for all shapes allows the legend
+# to follow changes of the shape type.
+function _arrow_polygons(polygon::Polygon)
+    return [Polygon(Point2f.(polygon.exterior), [Point2f.(ring) for ring in polygon.interiors])]
+end
+_arrow_polygons(multipolygon::MultiPolygon) = mapreduce(_arrow_polygons, vcat, multipolygon.polygons)
+_arrow_polygons(primitive::Union{Rect2, Circle}) = [Polygon(decompose(Point2f, primitive))]
+
+function _arrow_polygons(mesh::GeometryBasics.Mesh)
+    # one polygon per triangle
+    ps = coordinates(mesh)
+    return [Polygon(Point2f[ps[i] for i in face]) for face in decompose(GLTriangleFace, mesh)]
 end
 
-function _get_arrow_polygon(polylike, length, width, metrics)
-    return map_polypoints(p -> Point2f(length, width) .* p, polylike) # scale
+function _arrow_polygons(shapes::AbstractVector)
+    if all(x -> x isa VecTypes, shapes)
+        return [Polygon(Point2f.(shapes))]
+    else
+        return mapreduce(_arrow_polygons, vcat, shapes)
+    end
+end
+
+# other shapes supported by the plot, e.g. other geometry primitives
+_arrow_polygons(polylike) = _arrow_polygons(poly_convert(polylike))
+
+# Like _get_arrow_shape, but returns polygons instead of a mesh
+function _get_arrow_polygons(f::Function, length, width, metrics)
+    nt = NamedTuple{(:taillength, :tailwidth, :shaftlength, :shaftwidth, :tiplength, :tipwidth)}(metrics)
+    return _arrow_polygons(f(length, width, nt))
+end
+
+function _get_arrow_polygons(polylike, length, width, metrics)
+    return map_polypoints(p -> Point2f(length, width) .* p, _arrow_polygons(polylike)) # scale
 end
 
 # Returns the tail, shaft and tip polygons of a horizontal arrow spanning the
 # width of a legend patch, in coordinates relative to the patch. Components
-# that are not drawn are collapsed to a point, as backends may fail to draw
-# empty polygons and the components may be enabled later.
+# that are not drawn are replaced by a polygon collapsed to a point, as
+# backends may fail to draw empty polygons and the components may be enabled
+# later.
 function _arrow2d_legend_polygons(
         patchsize, should_render, tail, shaft, tip, taillength, tailwidth, shaftlength,
         minshaftlength, maxshaftlength, shaftwidth, tiplength, tipwidth
@@ -592,17 +618,17 @@ function _arrow2d_legend_polygons(
         maxshaftlength, shaftwidth, tiplength, tipwidth
     )
 
-    polygons = []
+    polygons = Vector{Polygon{2, Float32}}[]
     offset = 0.0
     for (i, shape) in enumerate((tail, shaft, tip))
         origin = Point2f(offset, 0.5h)
-        len, width = metrics[2i - 1], metrics[2i]
-        polygon = _get_arrow_polygon(shape, len, width, metrics)
         if should_render[i]
+            len, width = metrics[2i - 1], metrics[2i]
+            polygon = _get_arrow_polygons(shape, len, width, metrics)
             push!(polygons, map_polypoints(p -> (origin .+ p) ./ Point2f(w, h), polygon))
             offset += len
         else
-            push!(polygons, map_polypoints(p -> origin ./ Point2f(w, h), polygon))
+            push!(polygons, [Polygon(fill(origin ./ Point2f(w, h), 3))])
         end
     end
 

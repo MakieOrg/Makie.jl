@@ -100,9 +100,12 @@ end
     function arrow_legend_elements(leg, i = 1)
         return leg.entrygroups[][1][2][i].elements
     end
+    # all points of the polygons of a legend element
+    legend_points(ps::AbstractVector{<:Point}) = ps
+    legend_points(polygons) = reduce(vcat, [vcat(p.exterior, p.interiors...) for p in polygons])
     # extent of legend element polygons in pixels, given the patchsize
-    xrange(ps, w = 20) = w .* Vec2f(extrema(first.(ps)))
-    yrange(ps, h = 20) = h .* Vec2f(extrema(last.(ps)))
+    xrange(ps, w = 20) = w .* Vec2f(extrema(first.(legend_points(ps))))
+    yrange(ps, h = 20) = h .* Vec2f(extrema(last.(legend_points(ps))))
 
     f, a, p = arrows2d([0.0, 0.0], [1.0, 1.0], label = "arrow", color = :blue)
     leg = axislegend(a)
@@ -114,14 +117,14 @@ end
     @test all(el -> el.plots == [p], els)
     tail, shaft, tip = [el.polypoints[] for el in els]
     # The tail is not drawn by default and collapses to a point
-    @test allequal(tail)
+    @test allequal(legend_points(tail))
     # The arrow spans the patch horizontally, at the default size in pixels
     # for an arrow of 20 pixels length: shaftwidth = 3, tiplength = 8, tipwidth = 14
     @test xrange(shaft) ≈ Vec2f(0, 12)
     @test yrange(shaft) ≈ Vec2f(8.5, 11.5)
     @test xrange(tip) ≈ Vec2f(12, 20)
     @test yrange(tip) ≈ Vec2f(3, 17)
-    @test Point2f(1, 0.5) in tip
+    @test Point2f(1, 0.5) in legend_points(tip)
 
     # separate component colors and a tail
     f, a, p = arrows2d(
@@ -132,7 +135,7 @@ end
     els = arrow_legend_elements(leg)
     @test [el.polycolor[] for el in els] == RGBAf[Makie.to_color(:orange), Makie.to_color(:green), Makie.to_color(:red)]
     tail, shaft, tip = [el.polypoints[] for el in els]
-    @test maximum(first.(tail)) ≈ 4 / 20
+    @test xrange(tail)[2] ≈ 4
     @test xrange(shaft) ≈ Vec2f(4, 14)
     @test xrange(tip) ≈ Vec2f(14, 20)
 
@@ -171,7 +174,7 @@ end
     @test yrange(els[3].polypoints[]) ≈ Vec2f(5, 15)
     # components that are no longer drawn collapse to a point
     p.tiplength = 0
-    @test allequal(els[3].polypoints[])
+    @test allequal(legend_points(els[3].polypoints[]))
     @test xrange(els[2].polypoints[]) ≈ Vec2f(0, 20)
     # and show up again when they are enabled later
     p.tiplength = 8
@@ -192,15 +195,45 @@ end
     )
     els = arrow_legend_elements(axislegend(a))
     tail, shaft, tip = [el.polypoints[] for el in els]
-    @test tail isa Polygon
-    @test length(tail.interiors) == 1
-    @test xrange(tail.exterior) ≈ Vec2f(0, 4)
-    @test xrange(tail.interiors[1]) ≈ Vec2f(1, 3)
-    @test shaft isa GeometryBasics.Mesh
-    @test faces(shaft) == faces(dashes)
-    @test xrange(coordinates(shaft)) ≈ Vec2f(4, 14)
-    @test tip isa Polygon
-    @test length(tip.interiors) == 1
-    @test xrange(tip.exterior) ≈ Vec2f(14, 20)
-    @test yrange(tip.interiors[1]) ≈ Vec2f(6.5, 13.5)
+    tail_polygon = only(tail)
+    @test length(tail_polygon.interiors) == 1
+    @test xrange(tail_polygon.exterior) ≈ Vec2f(0, 4)
+    @test xrange(tail_polygon.interiors[1]) ≈ Vec2f(1, 3)
+    # meshes are split into triangles
+    @test length(shaft) == 4
+    @test xrange(shaft) ≈ Vec2f(4, 14)
+    @test !any(p -> 8 + 1.0e-3 < 20 * p[1] < 10 - 1.0e-3, legend_points(shaft))
+    tip_polygon = only(tip)
+    @test length(tip_polygon.interiors) == 1
+    @test xrange(tip_polygon.exterior) ≈ Vec2f(14, 20)
+    @test yrange(tip_polygon.interiors[1]) ≈ Vec2f(6.5, 13.5)
+
+    # other geometries supported by the plot work as well
+    f, a, p = arrows2d(
+        [Point2f(0)], [Vec2f(1)], label = "arrow",
+        shaft = Tessellation(Circle(Point2f(0.5, 0), 0.5f0), 64),
+        tip = GeometryBasics.Triangle(Point2f(0, -0.5), Point2f(1, 0), Point2f(0, 0.5))
+    )
+    els = arrow_legend_elements(axislegend(a))
+    @test isapprox(xrange(els[2].polypoints[]), Vec2f(0, 12), atol = 0.1)
+    @test xrange(els[3].polypoints[]) ≈ Vec2f(12, 20)
+    @test yrange(els[3].polypoints[]) ≈ Vec2f(3, 17)
+
+    # the legend follows changes of the shape type
+    f, a, p = arrows2d([Point2f(0)], [Vec2f(1)], label = "arrow")
+    els = arrow_legend_elements(axislegend(a))
+    p.tip = Polygon(ring, [hole])
+    @test length(only(els[3].polypoints[]).interiors) == 1
+    p.shaft = dashes
+    @test length(els[2].polypoints[]) == 4
+    p.shaft = Rect2f(0, -0.5, 1, 1)
+    @test length(els[2].polypoints[]) == 1
+
+    # shape functions of components that are not drawn are not called
+    f, a, p = arrows2d(
+        [Point2f(0)], [Vec2f(1)], label = "arrow",
+        tail = (l, w, metrics) -> l > 0 ? Point2f[(0, -0.5w), (l, 0), (0, 0.5w)] : error("tail is not drawn")
+    )
+    els = arrow_legend_elements(axislegend(a))
+    @test allequal(legend_points(els[1].polypoints[]))
 end

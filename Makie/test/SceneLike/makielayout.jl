@@ -863,6 +863,28 @@ end
     @test_nowarn Legend(f[1, 1], [[]], ["No legend elements"])
 end
 
+@testset "Legend PolyElement points" begin
+    ring = Point2f[(0, 0), (1, 0), (1, 1), (0, 1)]
+    hole = Point2f[(0.25, 0.25), (0.75, 0.25), (0.75, 0.75), (0.25, 0.75)]
+    shapes = [
+        ring, Any[ring...], [ring, ring], Polygon(ring, [hole]), MultiPolygon([Polygon(ring, [hole])]),
+        Rect2f(0, 0, 1, 1), Circle(Point2f(0.5), 0.5f0), Makie.poly_convert(ring),
+        GeometryBasics.Triangle(Point2f(0, 0), Point2f(1, 0), Point2f(1, 1)),
+    ]
+    f = Figure()
+    @test_nowarn Legend(f[1, 1], [PolyElement(points = shape) for shape in shapes], string.(1:length(shapes)))
+
+    double(p) = 2 * p
+    @test Makie.map_polypoints(double, ring) == 2 .* ring
+    @test Makie.map_polypoints(double, Any[ring...]) == 2 .* ring
+    polygon = Makie.map_polypoints(double, Polygon(ring, [hole]))
+    @test polygon.exterior == 2 .* ring
+    @test polygon.interiors == [2 .* hole]
+    mesh = Makie.map_polypoints(double, Makie.poly_convert(ring))
+    @test coordinates(mesh) == 2 .* coordinates(Makie.poly_convert(ring))
+    @test faces(mesh) == faces(Makie.poly_convert(ring))
+end
+
 @testset "Legend data gathering" begin
     function make_fig(plot_func, args...)
         f = Figure()

@@ -448,12 +448,13 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
 end
 
 # Applies `f` to all points of polygon-like data, keeping its structure (e.g. holes)
-map_polypoints(f, points::AbstractVector{<:VecTypes}) = map(f, points)
+map_polypoints(f, point::VecTypes) = f(point)
 map_polypoints(f, polygons::AbstractVector) = map(p -> map_polypoints(f, p), polygons)
 map_polypoints(f, polygon::Polygon) = Polygon(map(f, polygon.exterior), map(ring -> map(f, ring), polygon.interiors))
 map_polypoints(f, multipolygon::MultiPolygon) = MultiPolygon(map(p -> map_polypoints(f, p), multipolygon.polygons))
 map_polypoints(f, mesh::GeometryBasics.Mesh) = GeometryBasics.mesh(mesh, position = map(f, coordinates(mesh)))
 map_polypoints(f, primitive::Union{Rect2, Circle}) = map(f, decompose(Point2f, primitive))
+map_polypoints(f, polylike) = map_polypoints(f, poly_convert(polylike))
 
 function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)

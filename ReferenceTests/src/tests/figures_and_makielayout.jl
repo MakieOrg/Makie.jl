@@ -270,10 +270,13 @@ end
     ring = Point2f[(0, -0.5), (1, -0.5), (1, 0.5), (0, 0.5)]
     hole = Point2f[(0.2, -0.3), (0.8, -0.3), (0.8, 0.3), (0.2, 0.3)]
     dashes = merge([Makie.poly_convert(Rect2f(0, -0.5, 0.4, 1)), Makie.poly_convert(Rect2f(0.6, -0.5, 0.4, 1))])
+    # Outside of the axis limits, as only the legend entry is of interest here
+    # and CairoMakie does not draw such shapes correctly in the plot itself
     arrows2d!(
-        ax, [Point2f(0, 7)], [Vec2f(1, 1)], color = :black, label = "custom shapes",
+        ax, [Point2f(0, 100)], [Vec2f(1, 1)], color = :black, label = "custom shapes",
         shaft = dashes, tip = Polygon(ring, [hole]), tiplength = 10
     )
+    limits!(ax, -0.1, 1.1, -0.5, 7.5)
     Legend(f[1, 2], ax)
     Legend(f[1, 3], ax, patchsize = (40, 20))
     # Disabling and enabling components after creating the Legend should update it
