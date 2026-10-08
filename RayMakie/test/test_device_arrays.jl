@@ -14,10 +14,10 @@ const DEVBACK = Mantle.defaultbackend()
 todevice(x) = Mantle.devicearray(DEVBACK, x)
 
 "How many red pixels the figure drew — red because every plot below is red."
-function redcount(build)
+function redcount(build; screen_kw...)
     fig = Figure(size = (400, 300), backgroundcolor = :white)
     build(fig)
-    screen = RayMakie.Screen(fig.scene; visible = false)
+    screen = RayMakie.Screen(fig.scene; visible = false, screen_kw...)
     img = Makie.colorbuffer(screen)
     close(screen)
     return count(c -> red(c) > 0.6 && green(c) < 0.35 && blue(c) < 0.35, img)
@@ -57,6 +57,31 @@ end
             @test ondevice == onhost
         end
     end
+end
+
+@testset "raster mode draws a mesh built on the device, from the device" begin
+    # Positions, faces and normals all device arrays, the way a mesh extracted on
+    # the GPU arrives. In RASTER mode this once drew nothing: the shadow-map
+    # bounds iterated the positions, and the plot was logged and skipped.
+    verts = [Point3f(-1, -1, 0), Point3f(1, -1, 0), Point3f(-1, 1, 0), Point3f(1, 1, 0)]
+    fcs = [GLTriangleFace(1, 2, 3), GLTriangleFace(2, 4, 3)]
+    nrm = fill(Vec3f(0, 0, 1), 4)
+    onhost = GeometryBasics.Mesh(verts, fcs; normal = nrm)
+    ondevice = GeometryBasics.Mesh(todevice(verts), todevice(fcs); normal = todevice(nrm))
+    raster(m) = redcount(f -> mesh!(LScene(f[1, 1]), m; color = :red); rasterize = true)
+    hostcount = raster(onhost)
+    @test hostcount > 100
+    @test raster(ondevice) == hostcount
+
+    # Each step of that path stays on the device: no readback, no scalar loop.
+    devfaces = todevice(fcs)
+    @test GeometryBasics.decompose(GLTriangleFace, devfaces) === devfaces
+    rf = RayMakie.raster_faces(devfaces)
+    @test rf isa RayMakie.AbstractGPUArray
+    @test Array(rf) == RayMakie.raster_faces(fcs) == UInt32[0, 1, 2, 1, 3, 2]
+    @test RayMakie.vec3s(todevice(nrm)) isa RayMakie.AbstractGPUArray{Vec3f}
+    @test RayMakie.local_bounds(todevice(verts)) == RayMakie.local_bounds(verts) ==
+          Rect3f(Vec3f(-1, -1, 0), Vec3f(2, 2, 0))
 end
 
 @testset "vertex normals on device match GeometryBasics" begin
