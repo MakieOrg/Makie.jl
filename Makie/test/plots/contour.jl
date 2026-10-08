@@ -141,6 +141,10 @@ end
     @test pl.text_positions[][2] ≈ Point2f(0, sqrt(0.5)) atol = 1.0e-3
     @test pl.label_fits[] == [false, true]
     @test pl.masked_elements_per_segment[][1] == pl.elements_per_segment[][1]
+
+    box = Rect2d(0, 0, 10, 4)
+    @test Makie.label_fits_line(30, box, 5)
+    @test !Makie.label_fits_line(29.9, box, 5)
 end
 
 @testset "labelposition per level and per line" begin

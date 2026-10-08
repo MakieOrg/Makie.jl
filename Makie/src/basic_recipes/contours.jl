@@ -501,10 +501,12 @@ end
     label_fits_line(line_length, box, padding)
 
 Whether a label with the unrotated bounding `box` is drawn on a visible line piece
-of `line_length` pixels. The piece has to be at least twice as long as the padded
-label, so that at least as much of it stays visible as is cut out for the label.
+of `line_length` pixels. The piece has to be long enough for the padded label plus
+`min_line_beside_label` pixels of visible line on each side.
 """
-label_fits_line(line_length, box, padding) = line_length >= 2 * (widths(box)[1] + 2 * padding)
+label_fits_line(line_length, box, padding) = line_length >= widths(box)[1] + 2 * padding + 2 * min_line_beside_label
+
+const min_line_beside_label = 5
 
 pad_label_box(box, padding) = Rect2d(minimum(box) .- padding, widths(box) .+ 2padding)
 
