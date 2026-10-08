@@ -582,57 +582,103 @@ function _arrow_polygons(mesh::GeometryBasics.Mesh)
     vertex_id(p) = get!(() -> (push!(points, p); length(points)), ids, p)
     ps = coordinates(mesh)
 
-    # Edges belonging to a single triangle are on the outline
-    edge_counts = Dict{Tuple{Int, Int}, Int}()
+    # Orient all triangles counterclockwise, so that the filled region is on
+    # the left of each edge
+    triangles = NTuple{3, Int}[]
     for face in decompose(GLTriangleFace, mesh)
         a, b, c = map(i -> vertex_id(Point2f(ps[i])), face)
-        allunique((a, b, c)) || continue
-        for edge in ((a, b), (b, c), (c, a))
-            key = minmax(edge...)
-            edge_counts[key] = get(edge_counts, key, 0) + 1
-        end
-    end
-    neighbors = Dict{Int, Vector{Int}}()
-    for ((i, j), count) in edge_counts
-        count == 1 || continue
-        push!(get!(Vector{Int}, neighbors, i), j)
-        push!(get!(Vector{Int}, neighbors, j), i)
+        area = _signed_area(points[[a, b, c]])
+        area == 0 && continue
+        push!(triangles, area > 0 ? (a, b, c) : (a, c, b))
     end
 
-    # Chain the outline edges to rings
+    # Edges without a reverse edge in a neighboring triangle are on the outline
+    edges = Set{Tuple{Int, Int}}()
+    for (a, b, c) in triangles
+        push!(edges, (a, b), (b, c), (c, a))
+    end
+    outgoing = Dict{Int, Vector{Int}}()
+    for (i, j) in edges
+        (j, i) in edges || push!(get!(Vector{Int}, outgoing, i), j)
+    end
+
+    # Chain the outline edges to rings. Where multiple outline edges meet, the
+    # sharpest left turn keeps components touching at a vertex separate.
     rings = Vector{Point2f}[]
-    while !isempty(neighbors)
-        start = minimum(keys(neighbors))
+    while !isempty(outgoing)
+        start = minimum(keys(outgoing))
         ring = [start]
-        current = start
-        while haskey(neighbors, current)
-            next = pop!(neighbors[current])
-            isempty(neighbors[current]) && delete!(neighbors, current)
-            next_neighbors = neighbors[next]
-            deleteat!(next_neighbors, findfirst(==(current), next_neighbors))
-            isempty(next_neighbors) && delete!(neighbors, next)
+        previous, current = 0, start
+        while haskey(outgoing, current)
+            candidates = outgoing[current]
+            k = if previous == 0
+                lastindex(candidates)
+            else
+                argmax([_turn_angle(points[previous], points[current], points[w]) for w in candidates])
+            end
+            next = popat!(candidates, k)
+            isempty(candidates) && delete!(outgoing, current)
             next == start && break
             push!(ring, next)
-            current = next
+            previous, current = current, next
         end
         # skip degenerate rings, which may result from invalid meshes
         length(ring) >= 3 && push!(rings, points[ring])
     end
 
-    # Rings inside an odd number of other rings are holes of the smallest
-    # ring containing them. The midpoint of an edge is used for the tests, as
-    # rings may share vertices but not edges.
-    testpoints = [0.5f0 * (ring[1] + ring[2]) for ring in rings]
-    inside(i, j) = i != j && _point_in_ring(testpoints[i], rings[j])
-    depths = [count(j -> inside(i, j), eachindex(rings)) for i in eachindex(rings)]
-    polygons = Polygon{2, Float32}[]
-    for i in eachindex(rings)
-        iseven(depths[i]) || continue
-        holes = [rings[j] for j in eachindex(rings) if depths[j] == depths[i] + 1 && inside(j, i)]
-        push!(polygons, Polygon(rings[i], holes))
+    # Counterclockwise rings are exteriors, clockwise rings are holes of the
+    # smallest exterior containing them. The midpoint of an edge is used for
+    # the test, as rings may share vertices but not edges.
+    areas = map(_signed_area, rings)
+    exteriors = findall(>(0), areas)
+    interiors = [Vector{Point2f}[] for _ in exteriors]
+    valid = true
+    for i in findall(<(0), areas)
+        testpoint = 0.5f0 * (rings[i][1] + rings[i][2])
+        containing = filter(k -> _point_in_ring(testpoint, rings[exteriors[k]]), eachindex(exteriors))
+        if isempty(containing)
+            valid = false
+            break
+        end
+        push!(interiors[argmin(k -> areas[exteriors[k]], containing)], rings[i])
+    end
+
+    # Fall back to separate triangles if the triangulated outline (as drawn by
+    # e.g. GLMakie) does not cover the same area as the triangles, e.g. for
+    # meshes with duplicate triangles
+    triangle_polygons = [Polygon(points[collect(t)]) for t in triangles]
+    valid || return triangle_polygons
+    polygons = [Polygon(rings[k], interiors[i]) for (i, k) in enumerate(exteriors)]
+    if !isapprox(_triangulated_area(polygons), _triangulated_area(triangle_polygons), rtol = 1.0e-3)
+        return triangle_polygons
     end
 
     return polygons
+end
+
+function _triangulated_area(polygons)
+    return sum(polygons; init = 0.0) do polygon
+        mesh = poly_convert(polygon)
+        ps = coordinates(mesh)
+        return sum(face -> abs(_signed_area(ps[collect(face)])), decompose(GLTriangleFace, mesh); init = 0.0)
+    end
+end
+
+# Signed area of a ring, positive if it is oriented counterclockwise
+function _signed_area(ring)
+    area = 0.0
+    for (a, b) in zip(ring, circshift(ring, -1))
+        area += Float64(a[1]) * b[2] - Float64(b[1]) * a[2]
+    end
+    return 0.5 * area
+end
+
+# Angle of the turn from the direction a -> b to the direction b -> c,
+# positive for left turns
+function _turn_angle(a, b, c)
+    d1 = Vec2{Float64}(b - a)
+    d2 = Vec2{Float64}(c - b)
+    return atan(d1[1] * d2[2] - d1[2] * d2[1], dot(d1, d2))
 end
 
 # Even-odd rule test, i.e. whether a ray from the point crosses the ring an odd number of times

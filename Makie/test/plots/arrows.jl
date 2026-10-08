@@ -242,29 +242,64 @@ end
 @testset "arrows2d legend mesh outlines" begin
     # Meshes are drawn by their outline in legends, to avoid seams between triangles
     outline(shape) = Makie._arrow_polygons(Makie.poly_convert(shape))
+    merged(shapes...) = merge([Makie.poly_convert(shape) for shape in shapes])
+    # area as given by the outlines and as drawn after triangulation, e.g. by GLMakie
+    function area(polygons)
+        return sum(polygons) do polygon
+            return abs(Makie._signed_area(polygon.exterior)) - sum(ring -> abs(Makie._signed_area(ring)), polygon.interiors; init = 0.0)
+        end
+    end
+    function check_area(polygons, expected)
+        return isapprox(area(polygons), expected, rtol = 1.0e-5) &&
+            isapprox(Makie._triangulated_area(polygons), expected, rtol = 1.0e-5)
+    end
     ring = Point2f[(0, -0.5), (1, -0.5), (1, 0.5), (0, 0.5)]
     hole = Point2f[(0.25, -0.25), (0.75, -0.25), (0.75, 0.25), (0.25, 0.25)]
     island = Point2f[(0.4, -0.1), (0.6, -0.1), (0.6, 0.1), (0.4, 0.1)]
 
     polygons = outline(Rect2f(0, -0.5, 1, 1))
-    @test length(polygons) == 1
     @test sort(only(polygons).exterior) == sort(ring)
     @test isempty(only(polygons).interiors)
+    @test check_area(polygons, 1)
 
     polygons = outline(Polygon(ring, [hole]))
     @test sort(only(polygons).exterior) == sort(ring)
     @test sort(only(only(polygons).interiors)) == sort(hole)
+    @test check_area(polygons, 0.75)
 
     # merged meshes duplicate vertices, an island inside a hole is a separate polygon
-    polygons = Makie._arrow_polygons(merge([Makie.poly_convert(Polygon(ring, [hole])), Makie.poly_convert(island)]))
+    polygons = Makie._arrow_polygons(merged(Polygon(ring, [hole]), island))
     @test length(polygons) == 2
     @test sort([length(polygon.interiors) for polygon in polygons]) == [0, 1]
-    @test any(polygon -> sort(polygon.exterior) == sort(island), polygons)
+    @test check_area(polygons, 0.79)
 
-    # rings may touch at a vertex
-    polygons = Makie._arrow_polygons(merge([Makie.poly_convert(Rect2f(0, 0, 1, 1)), Makie.poly_convert(Rect2f(1, 1, 1, 1))]))
-    @test length(only(polygons).exterior) == 8
+    # components touching at a vertex are kept as separate rings
+    polygons = Makie._arrow_polygons(merged(Rect2f(0, 0, 1, 1), Rect2f(1, 1, 1, 1)))
+    @test length(polygons) == 2
+    @test all(polygon -> length(polygon.exterior) == 4, polygons)
+    @test check_area(polygons, 2)
+    polygons = Makie._arrow_polygons(merged(Point2f[(0, 0), (1, 0), (1, 1)], Point2f[(1, 1), (2, 1), (2, 2)], Point2f[(1, 1), (0, 2), (0, 1)]))
+    @test length(polygons) == 3
+    @test check_area(polygons, 1.5)
+
+    # a hole touching the exterior at a vertex
+    polygons = outline(Polygon(ring, [Point2f[(0, 0), (0.5, -0.25), (0.5, 0.25)]]))
+    @test check_area(polygons, 0.875)
+
+    # filled components inside others are not holes
+    polygons = Makie._arrow_polygons(merged(Rect2f(0, 0, 1, 1), Rect2f(0.4, 0.4, 0.2, 0.2)))
+    @test length(polygons) == 2
+    @test all(polygon -> isempty(polygon.interiors), polygons)
+    @test check_area(polygons, 1.04)
+
+    # duplicate triangles have no consistent outline and are kept as triangles
+    polygons = Makie._arrow_polygons(merged(Rect2f(0, 0, 1, 1), Rect2f(0, 0, 1, 1)))
+    @test length(polygons) == 4
+    @test all(polygon -> length(polygon.exterior) == 3, polygons)
+    @test check_area(polygons, 2)
 
     @test Makie._point_in_ring(Point2f(0.5, 0), ring)
     @test !Makie._point_in_ring(Point2f(0.5, 0), hole .+ Point2f(1, 0))
+    @test Makie._signed_area(ring) ≈ 1
+    @test Makie._signed_area(reverse(ring)) ≈ -1
 end
