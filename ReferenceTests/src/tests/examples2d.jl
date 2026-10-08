@@ -1178,6 +1178,16 @@ end
     fig
 end
 
+@reference_test "contour labelposition per line" begin
+    xs = range(0, 10, length = 60)
+    ys = range(1, 11, length = 60)
+    zs = [sin(y + 0.6 * sin(x)) for x in xs, y in ys]
+    contour(
+        xs, ys, zs; levels = [0], labels = true, labelsize = 16, labelpadding = 10,
+        labelposition = [[-0.6, nothing, 0.6]]
+    )
+end
+
 @reference_test "trimspine" begin
     with_theme(Axis = (limits = (0.5, 5.5, 0.3, 3.4), spinewidth = 8, topspinevisible = false, rightspinevisible = false)) do
         f = Figure(size = (800, 800))
