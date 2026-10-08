@@ -84,6 +84,18 @@ end
           Rect3f(Vec3f(-1, -1, 0), Vec3f(2, 2, 0))
 end
 
+@testset "raster mode draws meshscatter from device positions" begin
+    # The instance bounds reduce Point3f on the device, through workgroup memory
+    # holding `[1 x [3 x float]]`; Lava once emitted SPIR-V for that which
+    # `spirv-val` rejected, and the plot was logged and skipped.
+    pts = [Point3f(cos(t), sin(t), 0) for t in range(0, 2pi; length = 24)]
+    raster(d) = redcount(f -> meshscatter!(LScene(f[1, 1]), d; color = :red, markersize = 0.2);
+                         rasterize = true)
+    hostcount = raster(pts)
+    @test hostcount > 100
+    @test raster(todevice(pts)) == hostcount
+end
+
 @testset "vertex normals on device match GeometryBasics" begin
     g = 20
     verts = [Point3f(i / g, j / g, 0.3f0 * sin(3f0 * i / g) * cos(3f0 * j / g))
