@@ -503,7 +503,6 @@ end
     fig
 end
 
-
 @reference_test "space 2D" begin
     # This should generate a regular grid with text in a circle in a box. All
     # sizes and positions are scaled to be equal across all options.
