@@ -30,6 +30,12 @@ end
     @test svg_isnt_rasterized(scatter(1:3))
     @test svg_isnt_rasterized(lines(1:3))
     @test svg_isnt_rasterized(arrows2d(Point(0, 0), Point(1, 1), taillength = 8))
+    @test svg_isnt_rasterized(
+        arrows2d(
+            rand(3), rand(3), rand(3), rand(3), taillength = 8,
+            tipcolor = 1:3, tailcolor = rand(RGBf, 3), shaftcolor = :red
+        )
+    )
     # a single-color mesh fills a path; only a gradient needs a mesh pattern, which SVG
     # cannot draw.
     function quad_mesh(color)
