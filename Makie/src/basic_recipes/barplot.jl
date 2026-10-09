@@ -73,12 +73,14 @@ zeros that would otherwise map to `-Inf` (dropping the whole segment).
 """
 function clamp_stack_to_fillto!(from, to, fillto)
     for i in eachindex(from, to)
-        if from[i] >= 0 && to[i] >= 0
-            from[i] = max(from[i], fillto)
-            to[i] = max(to[i], fillto)
-        else
-            from[i] = min(from[i], fillto)
-            to[i] = min(to[i], fillto)
+        # We need to adjust values if:
+        # - the bar starts a stack (from == 0)
+        # - a negative stacked bar (from or to < 0) starts above fillto (from > fillto)
+        # - a positive stacked bar (from or to > 0) starts below fillto (from < fillto)
+        if iszero(from[i]) || ifelse(from[i] < 0, from[i] > fillto, from[i] < fillto)
+            from[i] = fillto
+            mini, maxi = minmax(fillto, to[i])
+            to[i] = ifelse(to[i] < 0, mini, maxi)
         end
     end
     return from, to

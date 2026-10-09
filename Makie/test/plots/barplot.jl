@@ -169,8 +169,23 @@
 
         # negative stacks are clamped symmetrically
         f, ax, p = barplot([1, 1, 2, 2], [-1, -2, 1, 2]; stack = [1, 2, 1, 2], fillto = -0.5)
-        @test bottoms(p) == [-1.0, -3.0, 0.0, 1.0]
+        @test bottoms(p) == [-1.0, -3.0, -0.5, 1.0]
         @test tops(p) == [-0.5, -1.0, 1.0, 3.0]
+
+        # bars fully within 0 .. fillto should become 0 width (top == bottom)
+        f, ax, p = barplot([1, 1], [1, 2]; stack = [1, 1], fillto = 2)
+        @test bottoms(p) == [2.0, 2.0]
+        @test tops(p) == [2.0, 3.0]
+
+        f, ax, p = barplot([1, 1], [-1, -2]; stack = [1, 1], fillto = -2)
+        @test bottoms(p) == [-2.0, -3.0]
+        @test tops(p) == [-2.0, -2.0]
+
+        # Maybe mixing positive and negative heights within a stack is nonsensical,
+        # but let's test this so we're at least aware when the behavior changes
+        f, ax, p = barplot([1, 1, 1, 1], [1, -2, 3, -4]; stack = [1, 1, 1, 1], fillto = 1.5)
+        @test bottoms(p) == [1.5, -2.0, 1.5, -6.0]
+        @test tops(p) == [1.5, 1.5, 4.0, -2.0]
 
         @test_throws ArgumentError barplot(x, y; stack, fillto = zeros(length(x)))
     end
