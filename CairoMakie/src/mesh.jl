@@ -47,7 +47,8 @@ function draw_mesh2D(scene, screen, attr::ComputeGraph)
     fs = attr.faces[]
     uv = attr.texturecoordinates[]
     uv_transform = attr.pattern_uv_transform[]
-    if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
+    no_uv::Bool = isnothing(uv)
+    if !no_uv && to_value(uv_transform) !== nothing
         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
     end
 
@@ -63,8 +64,9 @@ function draw_mesh2D(scene, screen, attr::ComputeGraph)
             for (i, range) in enumerate(views)
                 c = sv_getindex(color, i)
                 _fs = view(fs, range)
-                _uv = isnothing(uv) ? nothing : view(uv, range)
-                cols = per_face_colors(c, nothing, _fs, nothing, _uv)
+                if no_uv # uv calcs run for all uv's. not just the one accessed by faces
+                    cols = per_face_colors(c, nothing, _fs, nothing, nothing)
+                end
                 draw_mesh2D(screen, cols, vs, _fs)
             end
         end
