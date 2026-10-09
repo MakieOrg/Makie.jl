@@ -396,16 +396,20 @@ end
 @reference_test "Complex arrow marker" begin
     ring = Point2f[(0, -0.5), (1, -0.5), (1, 0.5), (0, 0.5)]
     hole = Point2f[(0.2, -0.3), (0.8, -0.3), (0.8, 0.3), (0.2, 0.3)]
-    dashes = merge([
-        Makie.poly_convert(Rect2f(0, -0.5, 0.4, 1)),
-        Makie.poly_convert(Rect2f(0.6, -0.5, 0.4, 1))]
+    dashes = merge(
+        [
+            Makie.poly_convert(Rect2f(0, -0.5, 0.4, 1)),
+            Makie.poly_convert(Rect2f(0.6, -0.5, 0.4, 1)),
+        ]
     )
 
     f = Figure(size = (400, 200))
     ax = Axis(f[1, 1])
-    p = arrows2d!(ax, [Point2f(0, 0)], [Vec2f(1, 0)],
-              shaft = dashes, tip = Makie.Polygon(ring, [hole]),
-              shaftwidth = 20, tipwidth = 60, tiplength = 60, strokemask = 0)
+    p = arrows2d!(
+        ax, [Point2f(0, 0)], [Vec2f(1, 0)],
+        shaft = dashes, tip = Makie.Polygon(ring, [hole]),
+        shaftwidth = 20, tipwidth = 60, tiplength = 60, strokemask = 0
+    )
     ylims!(ax, -1, 1)
     f
 end
