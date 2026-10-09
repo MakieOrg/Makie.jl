@@ -28,6 +28,7 @@
 - Fixed NaN data in `contour` and `contour3d` breaking line-masking with contour labels [#5618](https://github.com/MakieOrg/Makie.jl/pull/5818)
 - Fixed hang in Colorbar by not keeping partially automatic colorranges sorted [#5806](https://github.com/MakieOrg/Makie.jl/pull/5806)
 - Fixed empty reduce error in `Makie.canonical_line_order` when NaN appears in the input [#5817](https://github.com/MakieOrg/Makie.jl/pull/5817)
+- Added support for vectorizing `mesh` plots with per-mesh colors and fixed `arrows2d` not rendering correctly with more complex arrow component meshes in CairoMakie. [#5834](https://github.com/MakieOrg/Makie.jl/pull/5834)
 
 ## [0.24.15] - 2026-09-18
 
