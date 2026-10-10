@@ -585,18 +585,18 @@ function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axispo
         opp = axisposition === :left ? right(a) : left(a)
         sign = axisposition === :left ? 1 : -1
     end
-    d = ticksize * sign
+    # same geometry as the primary ticks, see `tick_extents`; outward is `+sign` here
+    outer, inner = tick_extents(tickalign, ticksize, spinewidth)
     points = Vector{Point2f}(undef, 2 * length(tickpositions))
-    spineoffset = sign * (0.5 * spinewidth)
     if side === :x
         for (i, (x, _)) in enumerate(tickpositions)
-            points[2i - 1] = Point2f(x, opp - d * tickalign + spineoffset)
-            points[2i] = Point2f(x, opp + d - d * tickalign + spineoffset)
+            points[2i - 1] = Point2f(x, opp - sign * inner)
+            points[2i] = Point2f(x, opp + sign * outer)
         end
     else
         for (i, (_, y)) in enumerate(tickpositions)
-            points[2i - 1] = Point2f(opp - d * tickalign + spineoffset, y)
-            points[2i] = Point2f(opp + d - d * tickalign + spineoffset, y)
+            points[2i - 1] = Point2f(opp - sign * inner, y)
+            points[2i] = Point2f(opp + sign * outer, y)
         end
     end
     return points

@@ -167,21 +167,42 @@ function update_ticklabel_node(
     return
 end
 
+"""
+    tick_extents(tickalign, ticksize, spinewidth)
+
+Distances from the axis spine centerline to the outer and inner tip of a tick mark, whose
+absolute drawn length is `ticksize`. A numeric `tickalign` slides the mark between the two
+spine edges: `0` starts it at the outer spine edge pointing out, `1` at the inner edge
+pointing in, and `0.5` centers it on the spine.
+`tickalign` may also be a `Symbol`, with two allowed values: `:out_spine` and `:in_spine`,
+which instead begin the tick at the axis spine centerline, pointing out- and inward,
+respectively. This is helpful to ensure that the tickmark stays attached if the spine is
+restroked at another width in postprocessing outside Makie.
+"""
+function tick_extents(tickalign::Real, ticksize, spinewidth)
+    shift = tickalign * (ticksize + spinewidth)
+    half_spinewidth = 0.5f0 * spinewidth
+    return (Float32(ticksize + half_spinewidth - shift), Float32(shift - half_spinewidth))
+end
+
+function tick_extents(tickalign::Symbol, ticksize, spinewidth)
+    tickalign === :out_spine && return (Float32(ticksize), 0.0f0)
+    tickalign === :in_spine && return (0.0f0, Float32(ticksize))
+    throw(ArgumentError(lazy"`tickalign` must be a number, `:out_spine`, or `:in_spine`; got `:$tickalign`"))
+end
+
 function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observable{Bool}, tickpositions, tickalign, ticksize, spinewidth)
     result = tick_obs[]
     empty!(result) # reuse allocated array
     sign::Int = flipped[] ? -1 : 1
+    outer, inner = tick_extents(tickalign, ticksize, spinewidth)
     if horizontal[]
         for tp in tickpositions
-            tstart = tp + sign * Point2f(0.0f0, tickalign * ticksize - 0.5f0 * spinewidth)
-            tend = tstart + sign * Point2f(0.0f0, -ticksize)
-            push!(result, tstart, tend)
+            push!(result, tp + sign * Point2f(0.0f0, inner), tp + sign * Point2f(0.0f0, -outer))
         end
     else
         for tp in tickpositions
-            tstart = tp + sign * Point2f(tickalign * ticksize - 0.5f0 * spinewidth, 0.0f0)
-            tend = tstart + sign * Point2f(-ticksize, 0.0f0)
-            push!(result, tstart, tend)
+            push!(result, tp + sign * Point2f(inner, 0.0f0), tp + sign * Point2f(-outer, 0.0f0))
         end
     end
     notify(tick_obs)
@@ -336,8 +357,14 @@ function LineAxis(parent::Scene, attrs::Attributes)
     end
 
     tickspace = Observable(0.0f0; ignore_equal_values = true)
-    map!(parent, tickspace, ticksvisible, ticksize, tickalign) do ticksvisible, ticksize, tickalign
-        ticksvisible ? max(0.0f0, ticksize * (1.0f0 - tickalign)) : 0.0f0
+    # how far the tick marks reach past the outer spine edge
+    map!(parent, tickspace, ticksvisible, ticksize, tickalign, spinewidth) do ticksvisible, ticksize, tickalign, spinewidth
+        if ticksvisible
+            outer = first(tick_extents(tickalign, ticksize, spinewidth))
+            max(0.0f0, outer - 0.5f0 * spinewidth)
+        else
+            0.0f0
+        end
     end
 
     labelgap = Observable(0.0f0; ignore_equal_values = true)
