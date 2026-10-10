@@ -783,6 +783,17 @@ end
         end
         @test isempty(d)
     end
+    @testset "Slidergrid vertical" begin
+        d = get_difference_dict() do scene
+            SliderGrid(
+                scene,
+                (label = "X", range = 0:0.1:10, startvalue = 3),
+                (label = "Y", range = 0:0.1:10, startvalue = 6);
+                horizontal = false,
+            )
+        end
+        @test isempty(d)
+    end
     @testset "Legend" begin
         d = get_difference_dict() do scene
             Legend(
@@ -1148,6 +1159,33 @@ end
         leg = @test_nowarn axislegend(ax; margin = (4, 3, 2, 1))
         @test leg.margin[] == (4, 3, 2, 1)
     end
+end
+
+@testset "SliderGrid orientation" begin
+    fig = Figure()
+    sg_h = SliderGrid(
+        fig[1, 1],
+        (label = "A", range = 0:0.1:10, startvalue = 5),
+        (label = "B", range = 0:0.1:10, startvalue = 3),
+    )
+    @test sg_h.horizontal[]
+    @test all(s -> s.horizontal[], sg_h.sliders)
+    @test length(sg_h.sliders) == 2
+    @test length(sg_h.labels) == 2
+    @test length(sg_h.valuelabels) == 2
+
+    sg_v = SliderGrid(
+        fig[1, 2],
+        (label = "X", range = 0:0.1:10, startvalue = 2, horizontal = true),
+        (label = "Y", range = 0:0.1:10, startvalue = 8);
+        horizontal = false,
+        height = 200,
+        value_column_width = 30,
+    )
+    @test !sg_v.horizontal[]
+    # Per-slider `horizontal` is ignored; grid forces child orientation.
+    @test all(s -> !s.horizontal[], sg_v.sliders)
+    @test length(sg_v.sliders) == 2
 end
 
 @testset "LScene limits" begin

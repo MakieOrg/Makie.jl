@@ -862,3 +862,21 @@ end
     end
     f
 end
+
+@reference_test "SliderGrid horizontal and vertical" begin
+    f = Figure(size = (700, 400))
+    SliderGrid(
+        f[1, 1],
+        (label = "A", range = 0:0.1:10, format = "{:.1f}", startvalue = 3),
+        (label = "B", range = 0:0.1:10, format = "{:.1f}", startvalue = 7),
+        width = 280,
+    )
+    SliderGrid(
+        f[1, 2],
+        (label = "X", range = 0:0.1:10, format = "{:.1f}", startvalue = 2),
+        (label = "Y", range = 0:0.1:10, format = "{:.1f}", startvalue = 8);
+        horizontal = false,
+        height = 280,
+    )
+    f
+end
