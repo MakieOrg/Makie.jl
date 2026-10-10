@@ -73,8 +73,10 @@ function create_linepoints(
         # A trimmed end should finish flush with the outer edge of the outermost tick,
         # i.e. half a tick width past its center. The :square linecap already extends the
         # spine by half a spine width, so the geometry only has to make up the difference.
-        trim = 0.5f0 * (tickwidth - spinewidth)
-        extents_oriented = last(tickpositions) > first(tickpositions) ? extents : reverse(extents)
+        # The first tick is at the far end of a reversed axis, so the sign follows the ticks.
+        increasing = last(tickpositions) > first(tickpositions)
+        trim = (increasing ? 0.5f0 : -0.5f0) * (tickwidth - spinewidth)
+        extents_oriented = increasing ? extents : reverse(extents)
         if horizontal
             y = position
             from = trimspine[1] ? tickpositions[1] .- Point2f(trim, 0) : Point2f(extents_oriented[1], y)
