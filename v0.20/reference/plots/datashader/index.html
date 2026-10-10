@@ -1,0 +1,205 @@
+<!DOCTYPE html><HTML lang="en"><head><meta charset="UTF-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><link href="../../../libs/highlight/github.min.css" rel="stylesheet"/><link href="../../../css/franklin.css" rel="stylesheet"/><link href="../../../css/minimal-mistakes.css" rel="stylesheet"/><link href="../../../css/makie.css" rel="stylesheet"/><link href="../../../assets/icon_transparent.png" rel="icon"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/><style>
+    .stork-wrapper {
+      width:99%
+    }
+    .stork-wrapper .stork-results {
+      max-height: 42vh;
+    }
+</style><title>datashader · Makie</title></head><body class="layout--single"><div class="site-container"><div class="masthead"><div class="masthead__inner-wrap"><div class="masthead__menu"><nav class="greedy-nav" id="site-nav"><a class="title-icon" href="../../.."><img src="../../../assets/makie_logo_transparent.svg"/></a><ul class="visible-links"><li class="masthead__menu-item"><a href="https://github.com/JuliaPlots/Makie.jl"><img class="masthead-icon" src="../../../assets/GitHub-Mark-64px.png"/></a></li><li class="masthead__menu-item"><a href="../..">Reference</a></li><li class="masthead__menu-item"><a href="../../../tutorials/">Tutorials</a></li><li class="masthead__menu-item"><a href="../../../how-to/">How-Tos</a></li><li class="masthead__menu-item"><a href="../../../explanations/">Explanations</a></li><li class="masthead__menu-item"><a href="../../../api/">API</a></li><li class="masthead__menu-item"><a href="../../../news/">News</a></li><li class="masthead__menu-item" id="masthead-search-button"><script>
+                            function toggleSearchOverlay(){
+                                const overlay = document.querySelector("#makiesearch-overlay-container");
+                                overlay.classList.toggle("hidden");
+                                overlay.querySelector("input").focus();
+                                overlay.onclick = function(e){
+                                    if (e.target !== this){
+                                        return
+                                    }
+                                    this.classList.toggle("hidden");
+                                };
+                            }
+                        </script><button onclick="toggleSearchOverlay()"><i class="fas fa-search"></i> Search</button></li></ul><button class="greedy-nav__toggle" type="button"><span class="visually-hidden">Toggle menu</span><div class="navicon"></div></button><ul class="hidden-links hidden"></ul></nav></div></div></div><div id="main" role="main"><div id="overlay"></div><div class="hidden" id="makiesearch-overlay-container"><div id="makiesearch-overlay-container-inner"><div id="makiesearch-overlay"></div></div></div><div class="content-table-hidden" id="content-table-container"><button id="on-this-page" onclick="toggle_content_table_visibility()">On this page</button><script>
+            function toggle_content_table_visibility(){
+              const c = document.querySelector("#content-table-container");
+              const ct = c.querySelector("#content-table");
+              const vh = window.visualViewport.height;
+              ct.style.height = `${Math.min(ct.scrollHeight, 0.66*vh)}px`;
+              c.classList.toggle("content-table-hidden");
+            }
+          </script><div id="content-table"><ul class="page-content"><li><a href="#examples">Examples</a></li><li><ul><li><a href="#airports">Airports</a></li><li><a href="#strange_attractors">Strange Attractors</a></li><li><a href="#bigger_examples">Bigger examples</a></li><li><ul><li><a href="#14_million_point_nyc_taxi_dataset">14 million point NYC taxi dataset</a></li><li><a href="#27_billion_osm_gps_points">2.7 billion OSM GPS points</a></li></ul></li><li><a href="#categorical_data">Categorical Data</a></li><li><a href="#advanced_api">Advanced API</a></li></ul></li></ul></div></div><div id="navbar-container"><div id="navbar"><div id="makiesearch"></div><ul><li><div class="tocitem-container"><a href="../../..">Home</a></div></li><li><input checked="" class="collapse-toggle" id="menuitem-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2"><i class="docs-chevron"></i></label><a href="../..">Reference</a></div><ul><li><input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-1"><i class="docs-chevron"></i></label><a href="../../blocks">Blocks</a></div><ul><li><div class="tocitem-container"><a href="../../blocks/axis">Axis</a></div></li><li><div class="tocitem-container"><a href="../../blocks/axis3">Axis3</a></div></li><li><div class="tocitem-container"><a href="../../blocks/box">Box</a></div></li><li><div class="tocitem-container"><a href="../../blocks/button">Button</a></div></li><li><div class="tocitem-container"><a href="../../blocks/colorbar">Colorbar</a></div></li><li><div class="tocitem-container"><a href="../../blocks/gridlayout">GridLayout</a></div></li><li><div class="tocitem-container"><a href="../../blocks/intervalslider">IntervalSlider</a></div></li><li><div class="tocitem-container"><a href="../../blocks/label">Label</a></div></li><li><div class="tocitem-container"><a href="../../blocks/legend">Legend</a></div></li><li><div class="tocitem-container"><a href="../../blocks/lscene">LScene</a></div></li><li><div class="tocitem-container"><a href="../../blocks/menu">Menu</a></div></li><li><div class="tocitem-container"><a href="../../blocks/polaraxis">PolarAxis</a></div></li><li><div class="tocitem-container"><a href="../../blocks/slider">Slider</a></div></li><li><div class="tocitem-container"><a href="../../blocks/slidergrid">SliderGrid</a></div></li><li><div class="tocitem-container"><a href="../../blocks/textbox">Textbox</a></div></li><li><div class="tocitem-container"><a href="../../blocks/toggle">Toggle</a></div></li></ul></li><li><input checked="" class="collapse-toggle" id="menuitem-2-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-2"><i class="docs-chevron"></i></label><a href="..">Plots</a></div><ul><li><div class="tocitem-container"><a href="../ablines">ablines</a></div></li><li><div class="tocitem-container"><a href="../arc">arc</a></div></li><li><div class="tocitem-container"><a href="../arrows">arrows</a></div></li><li><div class="tocitem-container"><a href="../band">band</a></div></li><li><div class="tocitem-container"><a href="../barplot">barplot</a></div></li><li><div class="tocitem-container"><a href="../boxplot">boxplot</a></div></li><li><div class="tocitem-container"><a href="../bracket">bracket</a></div></li><li><div class="tocitem-container"><a href="../contour">contour</a></div></li><li><div class="tocitem-container"><a href="../contour3d">contour3d</a></div></li><li><div class="tocitem-container"><a href="../contourf">contourf</a></div></li><li><div class="tocitem-container"><a href="../crossbar">crossbar</a></div></li><li><div class="tocitem-container"><a class="active" href="">datashader</a></div></li><li><div class="tocitem-container"><a href="../density">density</a></div></li><li><div class="tocitem-container"><a href="../ecdf">ecdfplot</a></div></li><li><div class="tocitem-container"><a href="../errorbars">errorbars</a></div></li><li><div class="tocitem-container"><a href="../heatmap">heatmap</a></div></li><li><div class="tocitem-container"><a href="../hexbin">hexbin</a></div></li><li><div class="tocitem-container"><a href="../hist">hist</a></div></li><li><div class="tocitem-container"><a href="../hvlines">hlines and vlines</a></div></li><li><div class="tocitem-container"><a href="../hvspan">hspan and vspan</a></div></li><li><div class="tocitem-container"><a href="../image">image</a></div></li><li><div class="tocitem-container"><a href="../lines">lines</a></div></li><li><div class="tocitem-container"><a href="../linesegments">linesegments</a></div></li><li><div class="tocitem-container"><a href="../mesh">mesh</a></div></li><li><div class="tocitem-container"><a href="../meshscatter">meshscatter</a></div></li><li><div class="tocitem-container"><a href="../pie">pie</a></div></li><li><div class="tocitem-container"><a href="../poly">poly</a></div></li><li><div class="tocitem-container"><a href="../qqplot">qqplot and qqnorm</a></div></li><li><div class="tocitem-container"><a href="../rainclouds">rainclouds</a></div></li><li><div class="tocitem-container"><a href="../rangebars">rangebars</a></div></li><li><div class="tocitem-container"><a href="../scatter">scatter</a></div></li><li><div class="tocitem-container"><a href="../scatterlines">scatterlines</a></div></li><li><div class="tocitem-container"><a href="../series">series</a></div></li><li><div class="tocitem-container"><a href="../spy">spy</a></div></li><li><div class="tocitem-container"><a href="../stairs">stairs</a></div></li><li><div class="tocitem-container"><a href="../stem">stem</a></div></li><li><div class="tocitem-container"><a href="../stephist">stephist</a></div></li><li><div class="tocitem-container"><a href="../streamplot">streamplot</a></div></li><li><div class="tocitem-container"><a href="../surface">surface</a></div></li><li><div class="tocitem-container"><a href="../text">text</a></div></li><li><div class="tocitem-container"><a href="../tooltip">tooltip</a></div></li><li><div class="tocitem-container"><a href="../tricontourf">tricontourf</a></div></li><li><div class="tocitem-container"><a href="../triplot">triplot</a></div></li><li><div class="tocitem-container"><a href="../violin">violin</a></div></li><li><div class="tocitem-container"><a href="../volume">volume</a></div></li><li><div class="tocitem-container"><a href="../volumeslices">volumeslices</a></div></li><li><div class="tocitem-container"><a href="../voronoiplot">voronoiplot</a></div></li><li><div class="tocitem-container"><a href="../waterfall">waterfall</a></div></li><li><div class="tocitem-container"><a href="../wireframe">wireframe</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-2-3" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-2-3"><i class="docs-chevron"></i></label><a href="../../scene">Scene</a></div><ul><li><div class="tocitem-container"><a href="../../scene/SSAO">SSAO</a></div></li><li><div class="tocitem-container"><a href="../../scene/lighting">Lighting</a></div></li><li><div class="tocitem-container"><a href="../../scene/matcap">Matcap</a></div></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-3"><i class="docs-chevron"></i></label><a href="../../../tutorials">Tutorials</a></div><ul><li><div class="tocitem-container"><a href="../../../tutorials/aspect-tutorial">Aspect ratio and size control tutorial</a></div></li><li><div class="tocitem-container"><a href="../../../tutorials/basic-tutorial">Basic Tutorial</a></div></li><li><div class="tocitem-container"><a href="../../../tutorials/layout-tutorial">Layout Tutorial</a></div></li><li><div class="tocitem-container"><a href="../../../tutorials/scenes">Scene tutorial</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-4"><i class="docs-chevron"></i></label><a href="../../../how-to">How-Tos</a></div><ul><li><div class="tocitem-container"><a href="../../../how-to/draw-boxes-around-subfigures">How to draw boxes around subfigures</a></div></li><li><div class="tocitem-container"><a href="../../../how-to/save-figure-with-transparency">How to save a <code>Figure</code> with transparency</a></div></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5"><i class="docs-chevron"></i></label><a href="../../../explanations">Explanations</a></div><ul><li><div class="tocitem-container"><a href="../../../explanations/animation">Animations</a></div></li><li><input class="collapse-toggle" id="menuitem-5-2" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5-2"><i class="docs-chevron"></i></label><a href="../../../explanations/backends">Backends</a></div><ul><li><div class="tocitem-container"><a href="../../../explanations/backends/cairomakie">CairoMakie</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/backends/glmakie">GLMakie</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/backends/rprmakie">RPRMakie</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/backends/wglmakie">WGLMakie</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../../explanations/blocks">Blocks</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/cameras">Cameras</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/colors">Colors</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/events">Events</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/faq">Frequently Asked Questions</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/figure">Figures</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/fonts">Fonts</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/headless">Headless</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/inspector">Inspecting Data</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/latex">LaTeX</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/layouting">How layouts work</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/nodes">Observables &amp; Interaction</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/plot_method_signatures">Plot Method Signatures</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/recipes">Plot Recipes</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/scenes">Scenes</a></div></li><li><div class="tocitem-container"><a href="../../../explanations/specapi">SpecApi</a></div></li><li><input class="collapse-toggle" id="menuitem-5-19" type="checkbox"/><div class="tocitem-container"><label class="tocexpander" for="menuitem-5-19"><i class="docs-chevron"></i></label><a href="../../../explanations/theming">Theming</a></div><ul><li><div class="tocitem-container"><a href="../../../explanations/theming/predefined_themes">Predefined themes</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../../explanations/transparency">Basic transparency</a></div></li></ul></li><li><div class="tocitem-container"><a href="../../../api">API</a></div></li><li><div class="tocitem-container"><a href="../../../news">Changelog</a></div></li></ul></div></div><div class="franklin-content"><h1 id="datashader"><a class="header-anchor" href="#datashader">datashader</a></h1><div class="docstring"><div class="doc-header" id="datashader"><a href="#datashader">datashader</a></div><div class="doc-content"><pre><code>datashader(points::AbstractVector{&lt;: Point})</code></pre><div class="admonition warning"><p class="admonition-title">Warning</p><p>This feature might change outside breaking releases, since the API is not yet finalized. Please be vary of bugs in the implementation and open issues if you encounter odd behaviour.</p></div><p>Points can be any array type supporting iteration &amp; getindex, including memory mapped arrays. If you have separate arrays for x and y coordinates and want to avoid conversion and copy, consider using:</p><pre><code class="language-Julia">using Makie.StructArrays
+points = StructArray{Point2f}((x, y))
+datashader(points)</code></pre><p>Do pay attention though, that if x and y don't have a fast iteration/getindex implemented, this might be slower then just copying it into a new array.</p><p>For best performance, use <code>method=Makie.AggThreads()</code> and make sure to start julia with <code>julia -tauto</code> or have the environment variable <code>JULIA_NUM_THREADS</code> set to the number of cores you have.</p><h2>Attributes</h2><h3>Specific to <code>DataShader</code></h3><ul><li><p><code>agg = AggCount()</code> can be <code>AggCount()</code>, <code>AggAny()</code> or <code>AggMean()</code>. User extendable by overloading:</p></li></ul><pre><code>```Julia
+    struct MyAgg{T} &lt;: Makie.AggOp end
+    MyAgg() = MyAgg{Float64}()
+    Makie.Aggregation.null(::MyAgg{T}) where {T} = zero(T)
+    Makie.Aggregation.embed(::MyAgg{T}, x) where {T} = convert(T, x)
+    Makie.Aggregation.merge(::MyAgg{T}, x::T, y::T) where {T} = x + y
+    Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x
+```</code></pre><ul><li><p><code>method = AggThreads()</code> can be <code>AggThreads()</code> or <code>AggSerial()</code>.</p></li><li><p><code>async::Bool = true</code> will calculate get_aggregation in a task, and skip any zoom/pan updates while busy. Great for interaction, but must be disabled for saving to e.g. png or when inlining in documenter.</p></li><li><p><code>operation::Function = automatic</code> Defaults to <code>Makie.equalize_histogram</code> function which gets called on the whole get<em>aggregation array before display (`operation(final</em>aggregation_result)`).</p></li><li><p><code>local_operation::Function = identity</code> function which gets call on each element after the aggregation (<code>map!(x-&gt; local_operation(x), final_aggregation_result)</code>).</p></li><li><p><code>point_transform::Function = identity</code> function which gets applied to every point before aggregating it.</p></li><li><p><code>binsize::Number = 1</code> factor defining how many bins one wants per screen pixel. Set to n &gt; 1 if you want a corser image.</p></li><li><p><code>show_timings::Bool = false</code> show how long it takes to aggregate each frame.</p></li><li><p><code>interpolate::Bool = true</code> If the resulting image should be displayed interpolated.</p></li></ul><h3>Color attributes</h3><ul><li><p><code>colormap::Union{Symbol, Vector{&lt;:Colorant}} = :viridis</code> sets the colormap that is sampled for numeric <code>color</code>s. <code>PlotUtils.cgrad(...)</code>, <code>Makie.Reverse(any_colormap)</code> can be used as well, or any symbol from ColorBrewer or PlotUtils. To see all available color gradients, you can call <code>Makie.available_gradients()</code>.</p></li><li><p><code>colorscale::Function = identity</code> color transform function. Can be any function, but only works well together with <code>Colorbar</code> for <code>identity</code>, <code>log</code>, <code>log2</code>, <code>log10</code>, <code>sqrt</code>, <code>logit</code>, <code>Makie.pseudolog10</code> and <code>Makie.Symlog10</code>.</p></li><li><p><code>colorrange::Tuple{&lt;:Real, &lt;:Real}</code> sets the values representing the start and end points of <code>colormap</code>.</p></li><li><p><code>nan_color::Union{Symbol, &lt;:Colorant} = RGBAf(0,0,0,0)</code> sets a replacement color for <code>color = NaN</code>.</p></li><li><p><code>lowclip::Union{Nothing, Symbol, &lt;:Colorant} = nothing</code> sets a color for any value below the colorrange.</p></li><li><p><code>highclip::Union{Nothing, Symbol, &lt;:Colorant} = nothing</code> sets a color for any value above the colorrange.</p></li><li><p><code>alpha = 1.0</code> sets the alpha value of the colormap or color attribute. Multiple alphas like in <code>plot(alpha=0.2, color=(:red, 0.5)</code>, will get multiplied.</p></li></ul><h3>Generic attributes</h3><ul><li><p><code>visible::Bool = true</code> sets whether the plot will be rendered or not.</p></li><li><p><code>overdraw::Bool = false</code> sets whether the plot will draw over other plots. This specifically means ignoring depth checks in GL backends.</p></li><li><p><code>transparency::Bool = false</code> adjusts how the plot deals with transparency. In GLMakie <code>transparency = true</code> results in using Order Independent Transparency.</p></li><li><p><code>fxaa::Bool = true</code> adjusts whether the plot is rendered with fxaa (anti-aliasing).</p></li><li><p><code>inspectable::Bool = true</code> sets whether this plot should be seen by <code>DataInspector</code>.</p></li><li><p><code>depth_shift::Float32 = 0f0</code> adjusts the depth value of a plot after all other transformations, i.e. in clip space, where <code>0 &lt;= depth &lt;= 1</code>. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).</p></li><li><p><code>model::Makie.Mat4f</code> sets a model matrix for the plot. This replaces adjustments made with <code>translate!</code>, <code>rotate!</code> and <code>scale!</code>.</p></li><li><p><code>space::Symbol = :data</code> sets the transformation space for box encompassing the volume plot. See <code>Makie.spaces()</code> for possible inputs.</p></li></ul></div></div><h2 id="examples"><a class="header-anchor" href="#examples">Examples</a></h2><h3 id="airports"><a class="header-anchor" href="#airports">Airports</a></h3><pre><code class="language-julia">using DelimitedFiles, GLMakie
+# For saving/showing/inlining into documentation we need to disable async calculation.
+Makie.set_theme!(DataShader = (; async=false))
+airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
+fig, ax, ds = datashader(airports,
+    colormap=[:white, :black],
+    # use type=Axis, so that Makie doesn't need to infer
+    # the axis type, which can be expensive for a large amount of points
+    axis = (; type=Axis),
+    # for documentation output we shouldn't calculate the image async,
+    # since it won't wait for the render to finish and inline a blank image
+    async = false,
+    figure = (; figurepadding=0, size=(360*2, 160*2))
+)
+Colorbar(fig[1, 2], ds, label="Number of airports")
+hidedecorations!(ax); hidespines!(ax)
+fig</code></pre><p></p><p><a id="example_869da11d"><img height="320" src="../../../assets/reference/plots/datashader/code/output/example_869da11d.png" width="720"/></a></p><h3 id="strange_attractors"><a class="header-anchor" href="#strange_attractors">Strange Attractors</a></h3><pre><code class="language-julia"># Taken from Lazaro Alonso in Beautiful Makie:
+# https://beautiful.makie.org/dev/examples/generated/2d/datavis/strange_attractors/?h=cliffo#trajectory
+Clifford((x, y), a, b, c, d) = Point2f(sin(a * y) + c * cos(a * x), sin(b * x) + d * cos(b * y))
+
+function trajectory(fn, x0, y0, kargs...; n=1000) #  kargs = a, b, c, d
+    xy = zeros(Point2f, n + 1)
+    xy[1] = Point2f(x0, y0)
+    @inbounds for i in 1:n
+        xy[i+1] = fn(xy[i], kargs...)
+    end
+    return xy
+end
+
+cargs = [[0, 0, -1.3, -1.3, -1.8, -1.9],
+    [0, 0, -1.4, 1.6, 1.0, 0.7],
+    [0, 0, 1.7, 1.7, 0.6, 1.2],
+    [0, 0, 1.7, 0.7, 1.4, 2.0],
+    [0, 0, -1.7, 1.8, -1.9, -0.4],
+    [0, 0, 1.1, -1.32, -1.03, 1.54],
+    [0, 0, 0.77, 1.99, -1.31, -1.45],
+    [0, 0, -1.9, -1.9, -1.9, -1.0],
+    [0, 0, 0.75, 1.34, -1.93, 1.0],
+    [0, 0, -1.32, -1.65, 0.74, 1.81],
+    [0, 0, -1.6, 1.6, 0.7, -1.0],
+    [0, 0, -1.7, 1.5, -0.5, 0.7]
+]
+
+fig = Figure(size=(1000, 1000))
+fig_grid = CartesianIndices((3, 4))
+cmap = to_colormap(:BuPu_9)
+cmap[1] = RGBAf(1, 1, 1, 1) # make sure background is white
+
+let
+    # locally, one can go pretty high with n_points,
+    # e.g. 4*(10^7), but we don't want the docbuild to become too slow.
+    n_points = 10^6
+    for (i, arg) in enumerate(cargs)
+        points = trajectory(Clifford, arg...; n=n_points)
+        r, c = Tuple(fig_grid[i])
+        ax, plot = datashader(fig[r, c], points;
+            colormap=cmap,
+            async=false,
+            axis=(; type=Axis, title=join(string.(arg), ", ")))
+        hidedecorations!(ax)
+        hidespines!(ax)
+    end
+end
+rowgap!(fig.layout,5)
+colgap!(fig.layout,1)
+fig</code></pre><p></p><p><a id="example_698a4411"><img height="1000" src="../../../assets/reference/plots/datashader/code/output/example_698a4411.png" width="1000"/></a></p><h3 id="bigger_examples"><a class="header-anchor" href="#bigger_examples">Bigger examples</a></h3><p>Timings in the comments are from running this on a 32gb Ryzen 5800H laptop. Both examples aren't fully optimized yet, and just use raw, unsorted, memory mapped Point2f arrays. In the future, we'll want to add acceleration structures to optimize access to sub-regions.</p><h4 id="14_million_point_nyc_taxi_dataset"><a class="header-anchor" href="#14_million_point_nyc_taxi_dataset">14 million point NYC taxi dataset</a></h4><pre><code class="language-julia">using GLMakie, Downloads, Parquet2
+bucket = "https://ursa-labs-taxi-data.s3.us-east-2.amazonaws.com"
+year = 2009
+month = "01"
+filename = join([year, month, "data.parquet"], "/")
+out = joinpath("$year-$month-data.parquet")
+url = bucket * "/" * filename
+Downloads.download(url, out)
+# Loading ~1.5s
+@time begin
+    ds = Parquet2.Dataset(out)
+    dlat = Parquet2.load(ds, "dropoff_latitude")
+    dlon = Parquet2.load(ds, "dropoff_longitude")
+    # One could use struct array here, but dlon/dlat are
+    # a custom array type from Parquet2 supporting missing and some other things, which slows the whole thing down.
+    # points = StructArray{Point2f}((dlon, dlat))
+    points = Point2f.(dlon, dlat)
+    groups = Parquet2.load(ds, "vendor_id")
+end
+
+# ~0.06s
+@time begin
+    f, ax, dsplot = datashader(points;
+        colormap=:fire,
+        axis=(; type=Axis, autolimitaspect = 1),
+        figure=(;figure_padding=0, size=(1200, 600))
+    )
+    # make image fill the whole screen
+    hidedecorations!(ax)
+    hidespines!(ax)
+    display(f)
+end</code></pre><video autoplay="" loop="" mute="" src="../../../assets/datashader-14million.mp4"></video><h4 id="27_billion_osm_gps_points"><a class="header-anchor" href="#27_billion_osm_gps_points">2.7 billion OSM GPS points</a></h4><p>Download the data from <a href="https://planet.osm.org/gps/simple-gps-points-120604.csv.xz">OSM GPS points</a> and use the <a href="https://gist.github.com/SimonDanisch/69788fce47c13020d9ae9dbe08546f89#file-datashader-2-7-billion-points-jl">updated script</a> from <a href="https://medium.com/hackernoon/drawing-2-7-billion-points-in-10s-ecc8c85ca8fa">drawing-2-7-billion-points-in-10s</a> to convert the CSV to a binary blob that we can memory map.</p><pre><code class="language-julia">using GLMakie, Mmap
+path = "gpspoints.bin"
+
+points = Mmap.mmap(open(path, "r"), Vector{Point2f});
+# ~ 26s
+@time begin
+    f, ax, pl = datashader(
+        points;
+        # For a big dataset its interesting to see how long each aggregation takes
+        show_timings = true,
+        # Use a local operation which is faster to calculate and looks good!
+        local_post=x-&gt; log10(x + 1),
+        #=
+            in the code we used to save the binary, we had the points in the wrong order.
+            A good chance to demonstrate the `point_transform` argument,
+            Which gets applied to every point before aggregating it
+        =#
+        point_transform=reverse,
+        axis=(; type=Axis, autolimitaspect = 1),
+        figure=(;figure_padding=0, size=(1200, 600))
+    )
+    hidedecorations!(ax)
+    hidespines!(ax)
+    display(f)
+end</code></pre><pre><code class="language-julia">aggregation took 1.395s
+aggregation took 1.176s
+aggregation took 0.81s
+aggregation took 0.791s
+aggregation took 0.729s
+aggregation took 1.272s
+aggregation took 1.117s
+aggregation took 0.866s
+aggregation took 0.724s</code></pre><video autoplay="" loop="" mute="" src="../../../assets/datashader_2-7_billion.mp4"></video><h3 id="categorical_data"><a class="header-anchor" href="#categorical_data">Categorical Data</a></h3><p>There are two ways to plot categorical data right now:</p><pre><code class="language-julia">datashader(one_category_per_point, points)
+datashader(Dict(:category_a =&gt; all_points_a, :category_b =&gt; all_points_b))</code></pre><p>The type of the category doesn't matter, but will get converted to strings internally, to be displayed nicely in the legend. Categories are currently aggregated in one Canvas per category, and then overlayed with alpha blending.</p><pre><code class="language-julia">normaldist = randn(Point2f, 1_000_000)
+ds1 = normaldist .+ (Point2f(-1, 0),)
+ds2 = normaldist .+ (Point2f(1, 0),)
+fig, ax, pl = datashader(Dict("a" =&gt; ds1, "b" =&gt; ds2))
+hidedecorations!(ax)
+fig</code></pre><p></p><p><a id="example_fe4f0329"><img height="450" src="../../../assets/reference/plots/datashader/code/output/example_fe4f0329.png" width="600"/></a></p><p>We can also re-use the previous NYC example for a categorical plot:</p><pre><code class="language-julia">@time begin
+    f = Figure(figure_padding=0, size=(1200, 600))
+    ax = Axis(
+        f[1, 1],
+        autolimitaspect=1,
+        limits=(-74.022, -73.827, 40.696, 40.793),
+        backgroundcolor=:black
+    )
+    datashader!(ax, groups, points)
+    hidedecorations!(ax)
+    hidespines!(ax)
+    # Create a styled legend
+    axislegend("Vendor ID"; titlecolor=:white, framecolor=:grey, polystrokewidth=2, polystrokecolor=(:white, 0.5), rowgap=10, backgroundcolor=:black, labelcolor=:white)
+    display(f)
+end</code></pre><p><img alt="" src="../../../assets/nyc-per-vendor.png"/></p><h3 id="advanced_api"><a class="header-anchor" href="#advanced_api">Advanced API</a></h3><p>The <code>datashader</code> recipe makes it very simple to get started, and is also efficiently implemented so that most changes like <code>f, ax, pl = datashader(...); pl.colorrange=new_range; pl.operation=log10</code> won't redo the aggregation. But if you still need more manual control, one can also use the underlying <code>Canvas</code> API directly for more manual control:</p><div class="docstring"><div class="doc-header" id="Canvas"><a href="#Canvas">Canvas</a></div><div class="doc-content"><pre><code>Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCount())
+Canvas(xmin::Number, xmax::Number, ymin::Number, ymax::Number; args...)</code></pre><h1>Example</h1><pre><code class="language-Julia">using Makie
+canvas = Canvas(-1, 1, -1, 1; op=AggCount(), resolution=(800, 800))
+aggregate!(canvas, points; point_transform=reverse, method=AggThreads())
+aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identiy)
+# Recipes are defined for canvas as well and incorperate the `get_aggregation`, but `aggregate!` must be called manually.
+image!(canvas; operation=equalize_histogram, local_operation=identiy, colormap=:viridis, colorrange=(0, 20))
+surface!(canvas; operation=equalize_histogram, local_operation=identiy)</code></pre></div></div><div class="docstring"><div class="doc-header" id="aggregate!"><a href="#aggregate!">aggregate!</a></div><div class="doc-content"><pre><code>aggregate!(c::Canvas, points; point_transform=identity, method::AggMethod=AggSerial())</code></pre><p>Aggregate points into a canvas. The points are transformed by <code>point_transform</code> before aggregation. Method can be <code>AggSerial()</code> or <code>AggThreads()</code>.</p></div></div><div class="page-foot"><div class="copyright">
+    © Makie.jl. Last modified: May 07, 2024. Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia programming language</a>.
+      <p>These docs were autogenerated using Makie: v0.20.10, GLMakie: v0.9.11, CairoMakie: v0.11.12, WGLMakie: v0.9.10</p></div></div></div></div><div class="page__footer"><footer><div class="page__footer-follow"><ul class="social-icons"><li><a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer"><i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i> Twitter</a></li><li><a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer"><i aria-hidden="true" class="fab fa-fw fa-github"></i> GitHub</a></li></ul></div><div class="page__footer-copyright">© Makie.jl. Powered by <a href="https://github.com/tlienart/Franklin.jl">Franklin</a> &amp; <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">Minimal Mistakes</a>.</div></footer></div></div><script src="../../../../versions.js" type="text/javascript"></script><script src="../../../siteinfo.js" type="text/javascript"></script><script src="../../../libs/warner.js" type="text/javascript"></script><script src="../../../libs/navbar.js"></script><link href="../../../pagefind/pagefind-ui.css" rel="stylesheet"/><script src="../../../pagefind/pagefind-ui.js" type="text/javascript"></script><script>
+        window.addEventListener('DOMContentLoaded', (event) => {
+            new PagefindUI({
+              element: "#makiesearch",
+              showImages: false
+            });
+            new PagefindUI({
+              element: "#makiesearch-overlay",
+              showImages: false
+            });
+        });
+    </script><script async="" defer="" src="https://api.makie.org/latest.js"></script><noscript><img alt="" referrerpolicy="no-referrer-when-downgrade" src="https://api.makie.org/noscript.gif"/></noscript><script src="../../../libs/highlight/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});</script></body></HTML>

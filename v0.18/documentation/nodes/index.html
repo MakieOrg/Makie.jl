@@ -1,0 +1,1302 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../libs/highlight/github.min.css" rel="stylesheet"/>
+    <link href="../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../css/makie.css" rel="stylesheet"/>
+    <link href="../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/>
+    <title>
+      Observables &amp; Interaction
+    </title>
+    <script src="../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../..">
+                <img src="../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../examples/">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="..">
+                    Documentation
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../api/">
+                    API
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../news/">
+                    News
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <div class="stork-wrapper">
+              <input class="stork-input" data-stork="makiesearch" placeholder="Search documentation"/>
+              <div class="stork-output" data-stork="makiesearch-output"></div>
+            </div>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../examples">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/blocks">
+                        Blocks &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/slidergrid">
+                            SliderGrid
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/plotting_functions">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/ablines">
+                            ablines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contour3d">
+                            contour3d
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/ecdf">
+                            ecdfplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hexbin">
+                            hexbin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvlines">
+                            hlines and vlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvspan">
+                            hspan and vspan
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/pie">
+                            pie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/qqplot">
+                            qqplot and qqnorm
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/rainclouds">
+                            rainclouds
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/spy">
+                            spy
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/tooltip">
+                            tooltip
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/tricontourf">
+                            tricontourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/waterfall">
+                            waterfall
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/aspect-tutorial">
+                        Aspect ratio and size control tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/scenes">
+                        Scene tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="..">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../backends">
+                        Backends
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/cairomakie">
+                            CairoMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/glmakie">
+                            GLMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/rprmakie">
+                            RPRMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/wglmakie">
+                            WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../blocks">
+                        Blocks
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../figure_size">
+                        Exporting a Figure with physical dimensions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../headless">
+                        Headless
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a class="active" href="">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                    <ul class="page-content">
+                      <li>
+                        <a href="#observables_interaction">
+                          Observables &amp; Interaction
+                        </a>
+                      </li>
+                      <li>
+                        <ul>
+                          <li>
+                            <a href="#the_observable_structure">
+                              The
+                              <code>
+                                Observable
+                              </code>
+                              structure
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#triggering_a_change">
+                              Triggering A Change
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#chaining_observables_with_lift">
+                              Chaining
+                              <code>
+                                Observable
+                              </code>
+                              s With
+                              <code>
+                                lift
+                              </code>
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#shorthand_macro_for_lift">
+                              Shorthand Macro For
+                              <code>
+                                lift
+                              </code>
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#problems_with_synchronous_updates">
+                              Problems With Synchronous Updates
+                            </a>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-19" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-19">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../transparency">
+                        Basic transparency
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../api">
+                    API
+                  </a>
+                </div>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../news">
+                    News
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="observables_interaction">
+            <a class="header-anchor" href="#observables_interaction">
+              Observables &amp; Interaction
+            </a>
+          </h1>
+          <p>
+            Interaction and animations in Makie are handled using
+            <a href="https://juliagizmos.github.io/Observables.jl/stable/">
+              <code>
+                Observables.jl
+              </code>
+            </a>
+            . An
+            <code>
+              Observable
+            </code>
+            is a container object whose stored value you can update interactively. You can create functions that are executed whenever an observable changes. You can also create observables whose values are updated whenever other observables change. This way you can easily build dynamic and interactive visualizations.
+          </p>
+          <p>
+            On this page you will learn how the
+            <code>
+              Observable
+            </code>
+            s pipeline and the event-based interaction system work. Besides this, there is also a video tutorial on how to make interactive visualizations (or animations) with Makie.jl and the
+            <code>
+              Observable
+            </code>
+            system:
+          </p>
+          <a class="boxlink" href="https://www.youtube.com/watch?v=L-gyDvhjzGQ">
+            <div class="title">
+              Animations &amp; Interaction
+            </div>
+            <div class="box-content">
+              <div class="description">
+                How to create animations and interactive applications in Makie.
+              </div>
+              <div class="youtube-container">
+                <iframe allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen="" frameborder="0" height="315" src="https://www.youtube.com/embed/L-gyDvhjzGQ?controls=0" title="YouTube video player" width="560"></iframe>
+              </div>
+            </div>
+          </a>
+          <h2 id="the_observable_structure">
+            <a class="header-anchor" href="#the_observable_structure">
+              The
+              <code>
+                Observable
+              </code>
+              structure
+            </a>
+          </h2>
+          <p>
+            A
+            <code>
+              Observable
+            </code>
+            is an object that allows its value to be updated interactively. Let's start by creating one:
+          </p>
+          <pre><code class="language-julia">using GLMakie, Makie
+
+x = Observable(0.0)</code>          </pre>
+          <pre><code class="plaintext code-output">Observable(0.0)
+</code>          </pre>
+          <p>
+            Each
+            <code>
+              Observable
+            </code>
+            has a type parameter, which determines what kind of objects it can store. If you create one like we did above, the type parameter will be the type of the argument. Keep in mind that sometimes you want a wider parametric type because you intend to update the
+            <code>
+              Observable
+            </code>
+            later with objects of different types. You could for example write:
+          </p>
+          <pre><code class="language-julia">x2 = Observable{Real}(0.0)
+x3 = Observable{Any}(0.0)</code>          </pre>
+          <p>
+            This is often the case when dealing with attributes that can come in different forms. For example, a color could be
+            <code>
+              :red
+            </code>
+            or
+            <code>
+              RGB(1,0,0)
+            </code>
+            .
+          </p>
+          <h2 id="triggering_a_change">
+            <a class="header-anchor" href="#triggering_a_change">
+              Triggering A Change
+            </a>
+          </h2>
+          <p>
+            You change the value of a Observable with empty index notation:
+          </p>
+          <pre><code class="language-julia">x[] = 3.34</code>          </pre>
+          <p>
+            This was not particularly interesting. But Observables allow you to register functions that are executed whenever the Observable's content is changed.
+          </p>
+          <p>
+            One such function is
+            <code>
+              on
+            </code>
+            . Let's register something on our Observable
+            <code>
+              x
+            </code>
+            and change
+            <code>
+              x
+            </code>
+            's value:
+          </p>
+          <pre><code class="language-julia">on(x) do x
+    println("New value of x is $x")
+end
+
+x[] = 5.0</code>          </pre>
+          <pre><code class="plaintext code-output">New value of x is 5.0
+</code>          </pre>
+          <div class="admonition note">
+            <p class="admonition-title">
+              Note
+            </p>
+            <p>
+              All registered functions in a
+              <code>
+                Observable
+              </code>
+              are executed synchronously in the order of registration. This means that if you change two Observables after one another, all effects of the first change will happen before the second change.
+            </p>
+          </div>
+          <p>
+            There are two ways to access the value of a
+            <code>
+              Observable
+            </code>
+            . You can use the indexing syntax or the
+            <code>
+              to_value
+            </code>
+            function:
+          </p>
+          <pre><code class="language-julia">value = x[]
+value = to_value(x)</code>          </pre>
+          <p>
+            The advantage of using
+            <code>
+              to_value
+            </code>
+            is that you can use it in situations where you could either be dealing with Observables or normal values. In the latter case,
+            <code>
+              to_value
+            </code>
+            just returns the original value, like
+            <code>
+              identity
+            </code>
+            .
+          </p>
+          <h2 id="chaining_observables_with_lift">
+            <a class="header-anchor" href="#chaining_observables_with_lift">
+              Chaining
+              <code>
+                Observable
+              </code>
+              s With
+              <code>
+                lift
+              </code>
+            </a>
+          </h2>
+          <p>
+            You can create a Observable depending on another Observable using
+            <a href="../../api/#lift">
+              <code>
+                lift
+              </code>
+            </a>
+            . The first argument of
+            <code>
+              lift
+            </code>
+            must be a function that computes the value of the output Observable given the values of the input Observables.
+          </p>
+          <pre><code class="language-julia">f(x) = x^2
+y = lift(f, x)</code>          </pre>
+          <pre><code class="plaintext code-output">Observable(25.0)
+</code>          </pre>
+          <p>
+            Now, whenever
+            <code>
+              x
+            </code>
+            changes, the derived
+            <code>
+              Observable
+            </code>
+            <code>
+              y
+            </code>
+            will immediately hold the value
+            <code>
+              f(x)
+            </code>
+            . In turn,
+            <code>
+              y
+            </code>
+            's change could trigger the update of other observables, if any have been connected. Let's connect one more observable and update x:
+          </p>
+          <pre><code class="language-julia">z = lift(y) do y
+    -y
+end
+
+x[] = 10.0
+
+@show x[]
+@show y[]
+@show z[]</code>          </pre>
+          <pre><code class="plaintext code-output">New value of x is 10.0
+x[] = 10.0
+y[] = 100.0
+z[] = -100.0
+</code>          </pre>
+          <p>
+            If
+            <code>
+              x
+            </code>
+            changes, so does
+            <code>
+              y
+            </code>
+            and then
+            <code>
+              z
+            </code>
+            .
+          </p>
+          <p>
+            Note, though, that changing
+            <code>
+              y
+            </code>
+            does not change
+            <code>
+              x
+            </code>
+            . There is no guarantee that chained Observables are always synchronized, because they can be mutated in different places, even sidestepping the change trigger mechanism.
+          </p>
+          <pre><code class="language-julia">y[] = 20.0
+
+@show x[]
+@show y[]
+@show z[]</code>          </pre>
+          <pre><code class="plaintext code-output">x[] = 10.0
+y[] = 20.0
+z[] = -20.0
+</code>          </pre>
+          <h2 id="shorthand_macro_for_lift">
+            <a class="header-anchor" href="#shorthand_macro_for_lift">
+              Shorthand Macro For
+              <code>
+                lift
+              </code>
+            </a>
+          </h2>
+          <p>
+            When using
+            <a href="../../api/#lift">
+              <code>
+                lift
+              </code>
+            </a>
+            , it can be tedious to reference each participating
+            <code>
+              Observable
+            </code>
+            at least three times, once as an argument to
+            <code>
+              lift
+            </code>
+            , once as an argument to the closure that is the first argument, and at least once inside the closure:
+          </p>
+          <pre><code class="language-julia">x = Observable(rand(100))
+y = Observable(rand(100))
+z = lift((x, y) -&gt; x .+ y, x, y)</code>          </pre>
+          <p>
+            To circumvent this, you can use the
+            <code>
+              @lift
+            </code>
+            macro. You simply write the operation you want to do with the lifted
+            <code>
+              Observable
+            </code>
+            s and prepend each
+            <code>
+              Observable
+            </code>
+            variable with a dollar sign $. The macro will lift every Observable variable it finds and wrap the whole expression in a closure. The equivalent to the above statement using
+            <code>
+              @lift
+            </code>
+            is:
+          </p>
+          <pre><code class="language-julia">z = @lift($x .+ $y)</code>          </pre>
+          <p>
+            This also works with multiline statements and tuple or array indexing:
+          </p>
+          <pre><code class="language-julia">multiline_node = @lift begin
+    a = $x[1:50] .* $y[51:100]
+    b = sum($z)
+    a .- b
+end</code>          </pre>
+          <p>
+            If the Observable you want to reference is the result of some expression, just use
+            <code>
+              $
+            </code>
+            with parentheses around that expression.
+          </p>
+          <pre><code class="language-julia">container = (x = Observable(1), y = Observable(2))
+
+@lift($(container.x) + $(container.y))</code>          </pre>
+          <h2 id="problems_with_synchronous_updates">
+            <a class="header-anchor" href="#problems_with_synchronous_updates">
+              Problems With Synchronous Updates
+            </a>
+          </h2>
+          <p>
+            One very common problem with a pipeline based on multiple observables is that you can only change observables one by one. Theoretically, each observable change triggers its listeners immediately. If a function depends on two or more observables, changing one right after the other would trigger it multiple times, which is often not what you want.
+          </p>
+          <p>
+            Here's an example where we define two Observables and lift a third one from them:
+          </p>
+          <pre><code class="language-julia">xs = Observable(1:10)
+ys = Observable(rand(10))
+
+zs = @lift($xs .+ $ys)</code>          </pre>
+          <p>
+            Now let's update both
+            <code>
+              xs
+            </code>
+            and
+            <code>
+              ys
+            </code>
+            :
+          </p>
+          <pre><code class="language-julia">xs[] = 2:11
+ys[] = rand(10)</code>          </pre>
+          <p>
+            We just triggered
+            <code>
+              zs
+            </code>
+            twice, even though we really only intended one data update. But this double triggering is only part of the problem.
+          </p>
+          <p>
+            Both
+            <code>
+              xs
+            </code>
+            and
+            <code>
+              ys
+            </code>
+            in this example had length 10, so they could still be added without a problem. If we want to append values to xs and ys, the moment we change the length of one of them, the function underlying
+            <code>
+              zs
+            </code>
+            will error because of a shape mismatch. Sometimes the only way to fix this situation, is to mutate the content of one observable without triggering its listeners, then triggering the second one.
+          </p>
+          <pre><code class="language-julia">xs.val = 1:11 # mutate without triggering listeners
+ys[] = rand(11) # trigger listeners of ys (in this case the same as xs)</code>          </pre>
+          <p>
+            Use this technique sparingly, as it increases the complexity of your code and can make reasoning about it more difficult. It also only works if you can still trigger all listeners correctly. For example, if another observable listened only to
+            <code>
+              xs
+            </code>
+            , we wouldn't have updated it correctly in the above workaround. Often, you can avoid length change problems by using arrays of containers like
+            <code>
+              Point2f
+            </code>
+            or
+            <code>
+              Vec3f
+            </code>
+            instead of synchronizing two or three observables of single element vectors manually.
+          </p>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: December 02, 2022. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.18.4, GLMakie: v0.7.4, CairoMakie: v0.9.4, WGLMakie: v0.7.4
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../libs/navbar.js"></script>
+    <script src="https://files.stork-search.net/releases/v1.4.2/stork.js"></script>
+    <img id="stork-library-path-placeholder" src="../../libs/stork" style="display:none"/>
+    <script>
+      storkfolder = document.querySelector("#stork-library-path-placeholder").src;
+      stork.register("makiesearch", `${storkfolder}/index.st`);
+        </script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script src="../../libs/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});    </script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>
