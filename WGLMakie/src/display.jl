@@ -456,7 +456,8 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
         end
         scene_ser = serialize_scene(scene)
         parent = scene.parent
-        idx = findfirst(sibling -> sibling === scene, parent.children)
+        # 0-based position for JavaScript's splice
+        idx = findfirst(sibling -> sibling === scene, parent.children) - 1
         parent_uuid = js_uuid(parent)
         err = "Cannot find scene js_uuid(scene) == $(parent_uuid)"
         evaljs_value(

@@ -567,7 +567,15 @@ function free(scene::Scene)
     return
 end
 
-Base.delete!(scene::Scene) = empty!(scene)
+function Base.delete!(scene::Scene)
+    empty!(scene)
+    # empty! only removes child scenes from screens, the scene itself must go as well
+    for screen in copy(scene.current_screens)
+        delete!(screen, scene)
+    end
+    empty!(scene.current_screens)
+    return
+end
 
 # TODO: Shouldn't empty just remove content from the given scene, rather than
 # resetting everything and removing the scene from its parent?
