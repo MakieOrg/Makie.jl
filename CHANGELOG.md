@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.24.16] - 2026-10-12
+
 - Added `fillto` support for stacked `barplot`s and made the automatic `fillto` log-scale aware for stacks, so stacked bars no longer disappear under `yscale = log10` [#5784](https://github.com/MakieOrg/Makie.jl/pull/5784).
 - Fixed `PolarAxis` erroring when tick labels switch between plain and rich text, e.g. for large radii [#5836](https://github.com/MakieOrg/Makie.jl/pull/5836).
 - The Axis ticklabelspace reset after zooming/panning and double-click detection now use tick time, so they behave deterministically in `record` [#5825](https://github.com/MakieOrg/Makie.jl/pull/5825).
@@ -1129,7 +1131,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.15...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.16...HEAD
+[0.24.16]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.15...v0.24.16
 [0.24.15]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.14...v0.24.15
 [0.24.14]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...v0.24.14
 [0.24.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.12...v0.24.13
