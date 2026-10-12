@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `fillto` support for stacked `barplot`s and made the automatic `fillto` log-scale aware for stacks, so stacked bars no longer disappear under `yscale = log10` [#5784](https://github.com/MakieOrg/Makie.jl/pull/5784).
 - Fixed `PolarAxis` erroring when tick labels switch between plain and rich text, e.g. for large radii [#5836](https://github.com/MakieOrg/Makie.jl/pull/5836).
 - The Axis ticklabelspace reset after zooming/panning and double-click detection now use tick time, so they behave deterministically in `record` [#5825](https://github.com/MakieOrg/Makie.jl/pull/5825).
 - GLMakie now emits scroll events once per render tick instead of once per event, so scenes with expensive scroll handling (e.g. many linked axes) no longer freeze while scrolling [#5826](https://github.com/MakieOrg/Makie.jl/pull/5826).
