@@ -532,6 +532,14 @@ function Base.close(screen::Screen)
     end
     empty!(screen.frame_plans)
     screen.fb_readback_buf = nothing
+    # The raster path's shadow maps, 16 MB for the sun's at the default 2048²:
+    # left to the GC they lived as long as anything still held the screen. After
+    # the plans that named them, and before the reclaim below picks them up.
+    for map in (screen.shadowmap, screen.aomap)
+        map === nothing || finalize(map)
+    end
+    screen.shadowmap = nothing
+    screen.aomap = nothing
     # The device's queue too: the textures and buffers dropped figures leave
     # behind are retired onto it by their finalizers, and only its `reclaim!`
     # destroys them. Nothing on the raster path called it, and a render loop
