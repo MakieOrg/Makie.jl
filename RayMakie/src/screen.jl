@@ -1064,7 +1064,7 @@ function composited_frame(screen::Screen)
     robjs = overlay_robjs(screen)
     plan, out = frame_plan!(screen, :readback,
                             g -> Mantle.Transient.Image(g, COMPOSITE_FORMAT, (w, h)),
-                            Mantle.Clear((0f0, 0f0, 0f0, 1f0)),
+                            Mantle.Clear((0f0, 0f0, 0f0, 0f0)),
                             screen.output_buffer, robjs, w, h;
                             finish = function (g, img)
                                 buf = Mantle.Transient.Buffer(g, COMPOSITE_FORMAT, w * h)

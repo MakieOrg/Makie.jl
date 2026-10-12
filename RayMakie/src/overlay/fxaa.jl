@@ -20,7 +20,7 @@ end
 
 # GLSL's `step`, for the stages that leave an edge to FXAA instead of smoothing it
 # with `aastep` (lines.frag, distance_shape.frag).
-@inline glsl_step(edge::Float32, x::Float32) = x < edge ? 0f0 : 1f0
+@inline glsl_step(edge::Float32, x::Float32) = x < edge ? 0.0f0 : 1.0f0
 
 @inline fxaa_or_aastep(fxaa::Int32, threshold::Float32, dist::Float32, aa::Float32 = ANTIALIAS_RADIUS) =
     fxaa_enabled(fxaa) ? glsl_step(threshold, dist) : aastep(threshold, dist, aa)
@@ -31,16 +31,18 @@ composite_blit_fragment(inputs, source, width::Int32, height::Int32) =
     raster_output(Mantle.blit_fragment(inputs, source, width, height), Int32(0))
 
 function get_composite_blit_pipeline!(screen)
-    get!(screen.gfx_pipelines, :composite_blit) do
-        GraphicsPipeline(; vertex = VertexShader(Mantle.blit_vertex),
-                           fragment = FragmentShader(composite_blit_fragment),
-                           blend = Opaque(), cull = NoCull(), depth = DepthOff())
+    return get!(screen.gfx_pipelines, :composite_blit) do
+        GraphicsPipeline(;
+            vertex = VertexShader(Mantle.blit_vertex),
+            fragment = FragmentShader(composite_blit_fragment),
+            blend = Opaque(), cull = NoCull(), depth = DepthOff()
+        )
     end
 end
 
 # ── The frame FXAA reads ────────────────────────────────────────────────────
 
-@inline unorm(x::N0f8) = Float32(reinterpret(x)) * (1f0 / 255f0)
+@inline unorm(x::N0f8) = Float32(reinterpret(x)) * (1.0f0 / 255.0f0)
 
 # One texel as postprocess.frag writes it into `color_luma`: the colour, and in
 # alpha its luma (quantised to the 8 bits that buffer has) or 1 where the plot
@@ -61,6 +63,21 @@ end
 @inline fxaa_luma(colour, flag, width::Int32, height::Int32, x::Int32, y::Int32) =
     fxaa_texel(colour, flag, width, height, x, y)[4]
 
+@inline function fxaa_alpha_texel(colour, width::Int32, height::Int32, x::Int32, y::Int32)
+    x = clamp(x, Int32(0), width - Int32(1)); y = clamp(y, Int32(0), height - Int32(1))
+    @inbounds return unorm(colour[(height - Int32(1) - y) * width + x + Int32(1)].alpha)
+end
+@inline function fxaa_alpha(colour, width::Int32, height::Int32, pos::Vec2f)
+    tx = pos[1] - 0.5f0; ty = pos[2] - 0.5f0
+    fx = floor(tx); fy = floor(ty); ax = tx - fx; ay = ty - fy
+    x = unsafe_trunc(Int32, fx); y = unsafe_trunc(Int32, fy)
+    a = fxaa_alpha_texel(colour, width, height, x, y)
+    b = fxaa_alpha_texel(colour, width, height, x + Int32(1), y)
+    c = fxaa_alpha_texel(colour, width, height, x, y + Int32(1))
+    d = fxaa_alpha_texel(colour, width, height, x + Int32(1), y + Int32(1))
+    return (a * (1.0f0 - ax) + b * ax) * (1.0f0 - ay) + (c * (1.0f0 - ax) + d * ax) * ay
+end
+
 # `FxaaTexTop`: a linear, clamp-to-edge sample at `pos`, in texel units.
 @inline function fxaa_tex(colour, flag, width::Int32, height::Int32, pos::Vec2f)
     tx = pos[1] - 0.5f0
@@ -72,7 +89,7 @@ end
     t10 = fxaa_texel(colour, flag, width, height, x0 + Int32(1), y0)
     t01 = fxaa_texel(colour, flag, width, height, x0, y0 + Int32(1))
     t11 = fxaa_texel(colour, flag, width, height, x0 + Int32(1), y0 + Int32(1))
-    return (t00 * (1f0 - ax) + t10 * ax) * (1f0 - ay) + (t01 * (1f0 - ax) + t11 * ax) * ay
+    return (t00 * (1.0f0 - ax) + t10 * ax) * (1.0f0 - ay) + (t01 * (1.0f0 - ax) + t11 * ax) * ay
 end
 
 # ── FXAA 3.11 Quality, PC, preset 12 (GLMakie's postprocessing/fxaa.frag) ────
@@ -91,9 +108,11 @@ const FXAA_QUALITY_P4 = 12.0f0
 
 # One step of the end-of-edge search: the body each `#if (FXAA_QUALITY__PS > n)`
 # block repeats, with that block's distance.
-@inline function fxaa_search_step(colour, flag, width, height, posN::Vec2f, posP::Vec2f,
-                                  offNP::Vec2f, step::Float32, lumaEndN::Float32, lumaEndP::Float32,
-                                  doneN::Bool, doneP::Bool, lumaNN::Float32, gradientScaled::Float32)
+@inline function fxaa_search_step(
+        colour, flag, width, height, posN::Vec2f, posP::Vec2f,
+        offNP::Vec2f, step::Float32, lumaEndN::Float32, lumaEndP::Float32,
+        doneN::Bool, doneP::Bool, lumaNN::Float32, gradientScaled::Float32
+    )
     if !doneN
         lumaEndN = fxaa_tex(colour, flag, width, height, posN)[4]
         lumaEndN = lumaEndN - lumaNN * 0.5f0
@@ -110,9 +129,11 @@ const FXAA_QUALITY_P4 = 12.0f0
     return posN, posP, lumaEndN, lumaEndP, doneN, doneP, doneNP
 end
 
-function fxaa_pixel_shader(colour, flag, width::Int32, height::Int32, pos::Vec2f,
-                           rcpframe::Vec2f, subpix::Float32, edge_threshold::Float32,
-                           edge_threshold_min::Float32)
+function fxaa_pixel_shader(
+        colour, flag, width::Int32, height::Int32, pos::Vec2f,
+        rcpframe::Vec2f, subpix::Float32, edge_threshold::Float32,
+        edge_threshold_min::Float32
+    )
     posM = pos
     # `FxaaTexOff` is only ever asked at the centre, so its offsets are whole texels.
     ix = unsafe_trunc(Int32, floor(posM[1]))
@@ -136,7 +157,7 @@ function fxaa_pixel_shader(colour, flag, width::Int32, height::Int32, pos::Vec2f
     rangeMaxScaled = rangeMax * edge_threshold
     range = rangeMax - rangeMin
     rangeMaxClamped = max(edge_threshold_min, rangeMaxScaled)
-    range < rangeMaxClamped && return rgbyM
+    range < rangeMaxClamped && return Vec4f(rgbyM[1], rgbyM[2], rgbyM[3], fxaa_alpha(colour, width, height, posM))
 
     lumaNW = fxaa_luma(colour, flag, width, height, ix - Int32(1), iy - Int32(1))
     lumaSE = fxaa_luma(colour, flag, width, height, ix + Int32(1), iy + Int32(1))
@@ -145,36 +166,36 @@ function fxaa_pixel_shader(colour, flag, width::Int32, height::Int32, pos::Vec2f
 
     lumaNS = lumaN + lumaS
     lumaWE = lumaW + lumaE
-    subpixRcpRange = 1f0 / range
+    subpixRcpRange = 1.0f0 / range
     subpixNSWE = lumaNS + lumaWE
-    edgeHorz1 = (-2f0 * lumaM) + lumaNS
-    edgeVert1 = (-2f0 * lumaM) + lumaWE
+    edgeHorz1 = (-2.0f0 * lumaM) + lumaNS
+    edgeVert1 = (-2.0f0 * lumaM) + lumaWE
 
     lumaNESE = lumaNE + lumaSE
     lumaNWNE = lumaNW + lumaNE
-    edgeHorz2 = (-2f0 * lumaE) + lumaNESE
-    edgeVert2 = (-2f0 * lumaN) + lumaNWNE
+    edgeHorz2 = (-2.0f0 * lumaE) + lumaNESE
+    edgeVert2 = (-2.0f0 * lumaN) + lumaNWNE
 
     lumaNWSW = lumaNW + lumaSW
     lumaSWSE = lumaSW + lumaSE
-    edgeHorz4 = (abs(edgeHorz1) * 2f0) + abs(edgeHorz2)
-    edgeVert4 = (abs(edgeVert1) * 2f0) + abs(edgeVert2)
-    edgeHorz3 = (-2f0 * lumaW) + lumaNWSW
-    edgeVert3 = (-2f0 * lumaS) + lumaSWSE
+    edgeHorz4 = (abs(edgeHorz1) * 2.0f0) + abs(edgeHorz2)
+    edgeVert4 = (abs(edgeVert1) * 2.0f0) + abs(edgeVert2)
+    edgeHorz3 = (-2.0f0 * lumaW) + lumaNWSW
+    edgeVert3 = (-2.0f0 * lumaS) + lumaSWSE
     edgeHorz = abs(edgeHorz3) + edgeHorz4
     edgeVert = abs(edgeVert3) + edgeVert4
 
     subpixNWSWNESE = lumaNWSW + lumaNESE
     lengthSign = rcpframe[1]
     horzSpan = edgeHorz >= edgeVert
-    subpixA = subpixNSWE * 2f0 + subpixNWSWNESE
+    subpixA = subpixNSWE * 2.0f0 + subpixNWSWNESE
 
     if !horzSpan
         lumaN = lumaW
         lumaS = lumaE
     end
     horzSpan && (lengthSign = rcpframe[2])
-    subpixB = (subpixA * (1f0 / 12f0)) - lumaM
+    subpixB = (subpixA * (1.0f0 / 12.0f0)) - lumaM
 
     gradientN = lumaN - lumaM
     gradientS = lumaS - lumaM
@@ -183,24 +204,24 @@ function fxaa_pixel_shader(colour, flag, width::Int32, height::Int32, pos::Vec2f
     pairN = abs(gradientN) >= abs(gradientS)
     gradient = max(abs(gradientN), abs(gradientS))
     pairN && (lengthSign = -lengthSign)
-    subpixC = clamp(abs(subpixB) * subpixRcpRange, 0f0, 1f0)
+    subpixC = clamp(abs(subpixB) * subpixRcpRange, 0.0f0, 1.0f0)
 
-    offNP = Vec2f(!horzSpan ? 0f0 : rcpframe[1], horzSpan ? 0f0 : rcpframe[2])
+    offNP = Vec2f(!horzSpan ? 0.0f0 : rcpframe[1], horzSpan ? 0.0f0 : rcpframe[2])
     posB = !horzSpan ? Vec2f(posM[1] + lengthSign * 0.5f0, posM[2]) :
-                       Vec2f(posM[1], posM[2] + lengthSign * 0.5f0)
+        Vec2f(posM[1], posM[2] + lengthSign * 0.5f0)
 
     posN = posB - offNP * FXAA_QUALITY_P0
     posP = posB + offNP * FXAA_QUALITY_P0
-    subpixD = ((-2f0) * subpixC) + 3f0
+    subpixD = ((-2.0f0) * subpixC) + 3.0f0
     lumaEndN = fxaa_tex(colour, flag, width, height, posN)[4]
     subpixE = subpixC * subpixC
     lumaEndP = fxaa_tex(colour, flag, width, height, posP)[4]
 
     pairN || (lumaNN = lumaSS)
-    gradientScaled = gradient * 1f0 / 4f0
+    gradientScaled = gradient * 1.0f0 / 4.0f0
     lumaMM = lumaM - lumaNN * 0.5f0
     subpixF = subpixD * subpixE
-    lumaMLTZero = lumaMM < 0f0
+    lumaMLTZero = lumaMM < 0.0f0
 
     lumaEndN -= lumaNN * 0.5f0
     lumaEndP -= lumaNN * 0.5f0
@@ -213,15 +234,18 @@ function fxaa_pixel_shader(colour, flag, width::Int32, height::Int32, pos::Vec2f
     if doneNP
         posN, posP, lumaEndN, lumaEndP, doneN, doneP, doneNP = fxaa_search_step(
             colour, flag, width, height, posN, posP, offNP, FXAA_QUALITY_P2,
-            lumaEndN, lumaEndP, doneN, doneP, lumaNN, gradientScaled)
+            lumaEndN, lumaEndP, doneN, doneP, lumaNN, gradientScaled
+        )
         if doneNP
             posN, posP, lumaEndN, lumaEndP, doneN, doneP, doneNP = fxaa_search_step(
                 colour, flag, width, height, posN, posP, offNP, FXAA_QUALITY_P3,
-                lumaEndN, lumaEndP, doneN, doneP, lumaNN, gradientScaled)
+                lumaEndN, lumaEndP, doneN, doneP, lumaNN, gradientScaled
+            )
             if doneNP
                 posN, posP, lumaEndN, lumaEndP, doneN, doneP, doneNP = fxaa_search_step(
                     colour, flag, width, height, posN, posP, offNP, FXAA_QUALITY_P4,
-                    lumaEndN, lumaEndP, doneN, doneP, lumaNN, gradientScaled)
+                    lumaEndN, lumaEndP, doneN, doneP, lumaNN, gradientScaled
+                )
             end
         end
     end
@@ -229,10 +253,10 @@ function fxaa_pixel_shader(colour, flag, width::Int32, height::Int32, pos::Vec2f
     dstN = !horzSpan ? posM[2] - posN[2] : posM[1] - posN[1]
     dstP = !horzSpan ? posP[2] - posM[2] : posP[1] - posM[1]
 
-    goodSpanN = (lumaEndN < 0f0) != lumaMLTZero
+    goodSpanN = (lumaEndN < 0.0f0) != lumaMLTZero
     spanLength = (dstP + dstN)
-    goodSpanP = (lumaEndP < 0f0) != lumaMLTZero
-    spanLengthRcp = 1f0 / spanLength
+    goodSpanP = (lumaEndP < 0.0f0) != lumaMLTZero
+    spanLengthRcp = 1.0f0 / spanLength
 
     directionN = dstN < dstP
     dst = min(dstN, dstP)
@@ -241,29 +265,33 @@ function fxaa_pixel_shader(colour, flag, width::Int32, height::Int32, pos::Vec2f
     pixelOffset = (dst * (-spanLengthRcp)) + 0.5f0
     subpixH = subpixG * subpix
 
-    pixelOffsetGood = goodSpan ? pixelOffset : 0f0
+    pixelOffsetGood = goodSpan ? pixelOffset : 0.0f0
     pixelOffsetSubpix = max(pixelOffsetGood, subpixH)
     posM = !horzSpan ? Vec2f(posM[1] + pixelOffsetSubpix * lengthSign, posM[2]) :
-                       Vec2f(posM[1], posM[2] + pixelOffsetSubpix * lengthSign)
+        Vec2f(posM[1], posM[2] + pixelOffsetSubpix * lengthSign)
     rgb = fxaa_tex(colour, flag, width, height, posM)
-    return Vec4f(rgb[1], rgb[2], rgb[3], lumaM)
+    return Vec4f(rgb[1], rgb[2], rgb[3], fxaa_alpha(colour, width, height, posM))
 end
 
 # fxaa.frag's `main`, with GLMakie's knob values. The fragment coordinate counts
 # rows from the top; the shader's texture from the bottom.
 function fxaa_fragment(_inputs, colour, flag, width::Int32, height::Int32)
     pos = Vec2f(frag_coord_x(), Float32(height) - frag_coord_y())
-    c = fxaa_pixel_shader(colour, flag, width, height, pos, Vec2f(1f0, 1f0),
-                          0.75f0,     # fxaaQualitySubpix
-                          0.166f0,    # fxaaQualityEdgeThreshold
-                          0.0833f0)   # fxaaQualityEdgeThresholdMin
-    return Vec4f(c[1], c[2], c[3], 1f0)
+    c = fxaa_pixel_shader(
+        colour, flag, width, height, pos, Vec2f(1.0f0, 1.0f0),
+        0.75f0,     # fxaaQualitySubpix
+        0.166f0,    # fxaaQualityEdgeThreshold
+        0.0833f0
+    )   # fxaaQualityEdgeThresholdMin
+    return c
 end
 
 function get_fxaa_pipeline!(screen)
-    get!(screen.gfx_pipelines, :fxaa) do
-        GraphicsPipeline(; vertex = VertexShader(Mantle.blit_vertex),
-                           fragment = FragmentShader(fxaa_fragment),
-                           blend = Opaque(), cull = NoCull(), depth = DepthOff())
+    return get!(screen.gfx_pipelines, :fxaa) do
+        GraphicsPipeline(;
+            vertex = VertexShader(Mantle.blit_vertex),
+            fragment = FragmentShader(fxaa_fragment),
+            blend = Opaque(), cull = NoCull(), depth = DepthOff()
+        )
     end
 end
