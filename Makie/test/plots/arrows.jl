@@ -107,21 +107,19 @@ end
     f, a, p = arrows2d([0.0, 0.0], [1.0, 1.0], label = "arrow", color = :blue)
     leg = axislegend(a)
     els = arrow_legend_elements(leg)
-    # tail, shaft and tip
-    @test length(els) == 3
-    @test all(el -> el isa PolyElement, els)
-    @test all(el -> el.polycolor[] == RGBAf(0, 0, 1, 1), els)
-    @test all(el -> el.plots == [p], els)
-    tail, shaft, tip = [el.polypoints[] for el in els]
+    # one element combines tail, shaft and tip
+    @test length(els) == 1
+    el = only(els)
+    @test el isa PolyElement
+    @test el.polycolor[] == [:blue, :blue, :blue]
+    @test el.plots == [p]
+    tail, shaft, tip = el.poly[]
     # The tail is not drawn by default and collapses to a point
-    @test allequal(tail)
+    @test isempty(faces(tail))
     # The arrow spans the patch horizontally, at the default size in pixels
     # for an arrow of 20 pixels length: shaftwidth = 3, tiplength = 8, tipwidth = 14
-    @test xrange(shaft) ≈ Vec2f(0, 12)
-    @test yrange(shaft) ≈ Vec2f(8.5, 11.5)
-    @test xrange(tip) ≈ Vec2f(12, 20)
-    @test yrange(tip) ≈ Vec2f(3, 17)
-    @test Point2f(1, 0.5) in tip
+    @test Rect3f(shaft) ≈ Rect3f(0, 8.875, 0, 12, 2.25, 0)
+    @test Rect3f(tip) ≈ Rect3f(12, 3.375, 0, 8, 13.25, 0)
 
     # separate component colors and a tail
     f, a, p = arrows2d(
@@ -129,89 +127,93 @@ end
         tailcolor = :orange, shaftcolor = :green, tipcolor = :red, taillength = 4, tiplength = 6
     )
     leg = axislegend(a)
-    els = arrow_legend_elements(leg)
-    @test [el.polycolor[] for el in els] == RGBAf[Makie.to_color(:orange), Makie.to_color(:green), Makie.to_color(:red)]
-    tail, shaft, tip = [el.polypoints[] for el in els]
-    @test xrange(tail)[2] ≈ 4
-    @test xrange(shaft) ≈ Vec2f(4, 14)
-    @test xrange(tip) ≈ Vec2f(14, 20)
+    el = only(arrow_legend_elements(leg))
+    @test el.polycolor[] == [:orange, :green, :red]
+    tail, shaft, tip = el.poly[]
+    @test Rect3f(tail) ≈ Rect3f(-3.975, 3.375, 0, 7.975, 13.25, 0)
+    @test Rect3f(shaft) ≈ Rect3f(4.0, 8.875, 0.0, 10.0, 2.25, 0.0)
+    @test Rect3f(tip) ≈ Rect3f(14.0, 3.375, 0.0, 6.0, 13.25, 0.0)
 
     # numeric scalar colors are colormapped, alpha is included
     f, a, p = arrows2d(
         [Point2f(0)], [Vec2f(1)], label = "arrow", alpha = 0.5,
         color = 0.5, colormap = [:black, :white], colorrange = (0, 1)
     )
-    els = arrow_legend_elements(axislegend(a))
-    @test all(el -> el.polycolor[] ≈ RGBAf(0.5, 0.5, 0.5, 0.5), els)
+    el = only(arrow_legend_elements(axislegend(a)))
+    @test el.polycolor[] ≈ [0.5, 0.5, 0.5]
 
     # per-arrow colors can't be represented and fall back to the default
     f, a, p = arrows2d(rand(Point2f, 2), rand(Vec2f, 2), label = "arrow", color = [:red, :blue])
     leg = axislegend(a)
-    els = arrow_legend_elements(leg)
-    @test all(el -> el.polycolor[] == leg.polycolor[], els)
+    el = only(arrow_legend_elements(leg))
+    @test el.polycolor[] == [leg.polycolor[] for _ in 1:3]
 
     # legend overrides apply to all components
     f, a, p = arrows2d([Point2f(0)], [Vec2f(1)], label = "arrow" => (; color = :red), color = :blue)
-    els = arrow_legend_elements(axislegend(a))
-    @test all(el -> el.polycolor[] == :red, els)
+    el = only(arrow_legend_elements(axislegend(a)))
+    @test el.polycolor[] == :red
 
     # non-square patches stretch the arrow length, not its width
     f, a, p = arrows2d([Point2f(0)], [Vec2f(1)], label = "arrow")
-    els = arrow_legend_elements(axislegend(a, patchsize = (40, 20)))
-    @test xrange(els[2].polypoints[], 40) ≈ Vec2f(0, 32)
-    @test yrange(els[3].polypoints[]) ≈ Vec2f(3, 17)
+    el = only(arrow_legend_elements(axislegend(a, patchsize = (40, 20))))
+    tail, shaft, tip = el.poly[]
+    @test Rect3f(shaft) ≈ Rect3f(0.0, 8.875, 0.0, 32.0, 2.25, 0.0)
+    @test Rect3f(tip) ≈ Rect3f(32.0, 3.375, 0.0, 8.0, 13.25, 0.0)
 
     # the legend follows changes of the plot
     f, a, p = arrows2d([Point2f(0)], [Vec2f(1)], label = "arrow", color = :blue)
-    els = arrow_legend_elements(axislegend(a))
+    el = only(arrow_legend_elements(axislegend(a)))
     p.tipcolor = :red
     p.tipwidth = 10
-    @test els[2].polycolor[] == RGBAf(0, 0, 1, 1)
-    @test els[3].polycolor[] == RGBAf(1, 0, 0, 1)
-    @test yrange(els[3].polypoints[]) ≈ Vec2f(5, 15)
+    @test el.polycolor[] == [:blue, :blue, :red]
+    tail, shaft, tip = el.poly[]
+    @test Rect3f(tip) ≈ Rect3f(12.0, 5.375, 0.0, 8.0, 9.25, 0.0)
     # components that are no longer drawn collapse to a point
     p.tiplength = 0
-    @test allequal(els[3].polypoints[])
-    @test xrange(els[2].polypoints[]) ≈ Vec2f(0, 20)
+    tail, shaft, tip = el.poly[]
+    @test isempty(faces(tip))
+    @test Rect3f(shaft) ≈ Rect3f(0, 8.875, 0, 20, 2.25, 0)
     # and show up again when they are enabled later
     p.tiplength = 8
-    @test xrange(els[2].polypoints[]) ≈ Vec2f(0, 12)
-    @test xrange(els[3].polypoints[]) ≈ Vec2f(12, 20)
+    tail, shaft, tip = el.poly[]
+    @test Rect3f(shaft) ≈ Rect3f(0, 8.875, 0, 12, 2.25, 0)
+    @test Rect3f(tip) ≈ Rect3f(12.0, 5.375, 0.0, 8.0, 9.25, 0.0)
     p.taillength = 4
     p.tiplength = 6
-    @test xrange(els[1].polypoints[])[2] ≈ 4
+    tail, shaft, tip = el.poly[]
+    @test Rect3f(tail) ≈ Rect3f(-3.975, 3.375, 0, 7.975, 13.25, 0)
 
     # custom shapes given by a single outline are used, also from functions
     diamond = Point2f[(0, 0), (0.5, -0.5), (1, 0), (0.5, 0.5)]
     f, a, p = arrows2d(
         [Point2f(0)], [Vec2f(1)], label = "arrow", taillength = 4, tiplength = 6,
         tail = (l, w, metrics) -> Point2f[(0, -0.5w), (l, 0), (0, 0.5w)],
-        shaft = Rect2f(0, -0.25, 1, 0.5), tip = diamond
+        shaft = Rect2f(0, -0.25, 1, 0.5), tip = diamond, strokemask = 0
     )
-    els = arrow_legend_elements(axislegend(a))
-    tail, shaft, tip = [el.polypoints[] for el in els]
-    @test 20 .* tail ≈ Point2f[(0, 3), (4, 10), (0, 17)]
-    @test xrange(shaft) ≈ Vec2f(4, 14)
-    @test yrange(shaft) ≈ Vec2f(9.25, 10.75)
-    @test 20 .* tip ≈ Point2f[(14, 10), (17, 3), (20, 10), (17, 17)]
+    el = only(arrow_legend_elements(axislegend(a)))
+    tail, shaft, tip = el.poly[]
+    @test tail.position ≈ Point3f[(0, 3, 0), (4, 10, 0), (0, 17, 0)]
+    @test Rect3f(shaft) ≈ Rect3f(4, 9.25, 0, 10, 1.5, 0)
+    @test tip.position ≈ Point3f[(14, 10, 0), (17, 3, 0), (20, 10, 0), (17, 17, 0)]
 
     # other shapes are replaced by the default shapes
     ring = Point2f[(0, -0.5), (1, -0.5), (1, 0.5), (0, 0.5)]
     hole = Point2f[(0.25, -0.25), (0.75, -0.25), (0.75, 0.25), (0.25, 0.25)]
-    f, a, p = arrows2d([Point2f(0)], [Vec2f(1)], label = "arrow", tip = Polygon(ring, [hole]))
-    els = arrow_legend_elements(axislegend(a))
-    @test 20 .* els[3].polypoints[] ≈ Point2f[(12, 3), (20, 10), (12, 17)]
+    f, a, p = arrows2d([Point2f(0)], [Vec2f(1)], label = "arrow", tip = Polygon(ring, [hole]), strokemask = 0)
+    el = only(arrow_legend_elements(axislegend(a)))
+    ps = GeometryBasics.mesh(Polygon(ring, [hole])).position
+    @test Point2f.(el.poly[][3].position) ≈ [(8, 14) .* p .+ Point2f(12, 10) for p in ps]
     # also after changes of the shape type
     p.tip = Point2f[(0, -0.5), (1, -0.5), (0.5, 0.5)]
-    @test 20 .* els[3].polypoints[] ≈ Point2f[(12, 3), (20, 3), (16, 17)]
+    @test el.poly[][3].position ≈ Point3f[(12, 3, 0), (20, 3, 0), (16, 17, 0)]
     p.tip = Makie.poly_convert(ring)
-    @test 20 .* els[3].polypoints[] ≈ Point2f[(12, 3), (20, 10), (12, 17)]
+    @test el.poly[][3].position ≈ Point3f[(12, 3, 0), (20, 3, 0), (20, 17, 0), (12, 17, 0)]
 
     # shape functions of components that are not drawn are not called
     f, a, p = arrows2d(
         [Point2f(0)], [Vec2f(1)], label = "arrow",
         tail = (l, w, metrics) -> l > 0 ? Point2f[(0, -0.5w), (l, 0), (0, 0.5w)] : error("tail is not drawn")
     )
-    els = arrow_legend_elements(axislegend(a))
-    @test allequal(els[1].polypoints[])
+    el = only(arrow_legend_elements(axislegend(a)))
+    @test isempty(faces(el.poly[][1]))
 end
