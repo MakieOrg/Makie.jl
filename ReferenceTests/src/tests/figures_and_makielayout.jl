@@ -264,7 +264,7 @@ end
     arrows2d!(ax, [Point2f(0, -1)], [Vec2f(1, 1)], color = :blue, tipcolor = :red, label = "tipcolor")
     arrows2d!(ax, [Point2f(0, -2)], [Vec2f(1, 1)], color = 0.7, colorrange = (0, 1), taillength = 6, label = "colormap + tail")
     arrows2d!(ax, [Point2f(0, -3)], [Vec2f(1, 1)], color = :orange, alpha = 0.5, shaftwidth = 6, label = "alpha")
-    arrows2d!(ax, [Point2f(0, -4)], [Vec2f(1, 1)], color = :blue, label = "override" => (; color = :green))
+    arrows2d!(ax, [Point2f(0, -4)], [Vec2f(1, 1)], color = :blue, label = "override" => (; color = :red, strokecolor = :red))
     p1 = arrows2d!(ax, [Point2f(0, -5)], [Vec2f(1, 1)], color = :purple, label = "tip enabled")
     p2 = arrows2d!(ax, [Point2f(0, -6)], [Vec2f(1, 1)], color = :purple, tiplength = 0, label = "tip disabled")
     diamond = Point2f[(0, 0), (0.5, -0.5), (1, 0), (0.5, 0.5)]
