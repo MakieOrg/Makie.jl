@@ -581,7 +581,7 @@ function legendelements(plot::Arrows2D, legend)
             :legend_arrow_length,
             :taillength, :tailwidth,
             :shaftlength, :minshaftlength, :maxshaftlength, :shaftwidth,
-            :tiplength, :tipwidth
+            :tiplength, :tipwidth,
         ],
         :legend_arrow_metrics
     )
@@ -598,7 +598,7 @@ function legendelements(plot::Arrows2D, legend)
 
         # rotate + translate
         startpoint = Point3f(0, 0.5h, 0)
-        R = rotmatrix2d(0f0)
+        R = rotmatrix2d(0.0f0)
         offset = 0.0
 
         for (shape, len, width, keep) in zip(shapes, metrics[1:2:6], metrics[2:2:6], should_render)
@@ -627,7 +627,7 @@ function legendelements(plot::Arrows2D, legend)
             poly = plot.legend_mesh,
             color = plot.legend_colors,
             strokewidth = plot.strokemask, strokecolor = plot.legend_colors
-        )
+        ),
     ]
 end
 
