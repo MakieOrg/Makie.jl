@@ -159,8 +159,8 @@ end
     @test screen in fig.scene.current_screens
     @test length(fig.scene.current_screens) == 1
     @testset "all got freed" begin
-        for group in screen.render_context.groups
-            for (_, robj) in group.renderobjects
+        for glscene in screen.render_context.scenes
+            for robj in glscene.renderobjects
                 for (k, v) in robj.uniforms
                     if v isa GLMakie.GPUArray
                         @test is_freed(v)
@@ -177,8 +177,8 @@ end
     lines!(ax, 1:5, rand(5); linewidth = 3)
     text!(ax, [Point2f(2)], text = ["hi"])
     @testset "no freed object after replotting" begin
-        for group in screen.render_context.groups
-            for (_, robj) in group.renderobjects
+        for glscene in screen.render_context.scenes
+            for robj in glscene.renderobjects
                 for (k, v) in robj.uniforms
                     if v isa GLMakie.GPUArray
                         @test !is_freed(v)
@@ -225,8 +225,8 @@ end
     lines!(ax, 1:5, rand(5); linewidth = 3)
     text!(ax, [Point2f(2)], text = ["hi"])
     @testset "no freed object after replotting" begin
-        for group in screen.render_context.groups
-            for (_, robj) in group.renderobjects
+        for glscene in screen.render_context.scenes
+            for robj in glscene.renderobjects
                 for (k, v) in robj.uniforms
                     if v isa GLMakie.GPUArray
                         @test !is_freed(v)
@@ -498,7 +498,7 @@ end
     lines!(ax, sin.(0.0:0.1:2pi))
     text!(ax, 10.0, 0.0, text = "sine wave")
     empty!(ax)
-    ids = [robj.id for group in screen.render_context.groups for (_, robj) in group.renderobjects]
+    ids = [robj.id for glscene in screen.render_context.scenes for robj in glscene.renderobjects]
 
     lobj = lines!(ax, sin.(0.0:0.1:2pi))
     tex = text!(ax, 10.0, 0.0, text = "sine wave")
