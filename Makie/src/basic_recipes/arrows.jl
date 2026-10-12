@@ -571,29 +571,31 @@ boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limi
 
 
 function legendelements(plot::Arrows2D, legend)
-    add_input!(plot.attributes, :legend_patchsize, legend.patchsize)
     # TODO: Consider adding an adjustable rotation?
-    map!(first, plot, :legend_patchsize, :legend_arrow_length)
+    # Note: patchsize is given as a value
+    patchsize = legend.patchsize
+    arrow_length = Observable(first(patchsize))
 
-    map!(
-        _arrow2d_metrics, plot,
-        [
-            :legend_arrow_length,
-            :taillength, :tailwidth,
-            :shaftlength, :minshaftlength, :maxshaftlength, :shaftwidth,
-            :tiplength, :tipwidth,
-        ],
-        :legend_arrow_metrics
+    # Fixed on breaking: ComputePipeline fails to handle Observable interfacing
+    # when the first argument is an Observable
+    arrow_metrics = map(
+        _arrow2d_metrics,
+        arrow_length,
+        ComputePipeline.get_observable!(plot.taillength), ComputePipeline.get_observable!(plot.tailwidth),
+        ComputePipeline.get_observable!(plot.shaftlength), ComputePipeline.get_observable!(plot.minshaftlength),
+        ComputePipeline.get_observable!(plot.maxshaftlength), ComputePipeline.get_observable!(plot.shaftwidth),
+        ComputePipeline.get_observable!(plot.tiplength), ComputePipeline.get_observable!(plot.tipwidth),
     )
 
-    map!(
-        plot,
-        [
-            :legend_arrow_metrics, :legend_patchsize, :should_component_render, :strokemask,
-            :tail, :shaft, :tip,
-        ],
-        :legend_mesh
-    ) do metrics, (w, h), should_render, mask, shapes...
+    meshes = map(
+        arrow_metrics,
+        ComputePipeline.get_observable!(plot.should_component_render),
+        ComputePipeline.get_observable!(plot.strokemask),
+        ComputePipeline.get_observable!(plot.tail),
+        ComputePipeline.get_observable!(plot.shaft),
+        ComputePipeline.get_observable!(plot.tip),
+    ) do metrics, should_render, mask, shapes...
+        w, h = patchsize
         meshes = GeometryBasics.Mesh[]
 
         # rotate + translate
@@ -606,27 +608,31 @@ function legendelements(plot::Arrows2D, legend)
                 mesh = _get_arrow_shape(shape, len, max(0, width - mask), metrics)
                 push!(meshes, _apply_arrow_transform(mesh, R, startpoint, offset))
                 offset += len
+            else
+                push!(meshes, GeometryBasics.Mesh(Point3f[], GLTriangleFace[]))
             end
         end
 
         return meshes
     end
 
-    add_input!(plot.attributes, :legend_polycolor, legend.polycolor)
-    map!(
+    colors = map(
         plot,
-        [:legend_polycolor, :should_component_render, :resolved_tailcolor, :resolved_shaftcolor, :resolved_tipcolor],
-        :legend_colors
-    ) do leg_col, should_render, colors...
-        return [choose_scalar(c, leg_col) for (keep, c) in zip(should_render, colors) if keep]
+        legend.polycolor,
+        ComputePipeline.get_observable!(plot.resolved_tailcolor),
+        ComputePipeline.get_observable!(plot.resolved_shaftcolor),
+        ComputePipeline.get_observable!(plot.resolved_tipcolor),
+    ) do leg_col, colors...
+        return [choose_scalar(c, leg_col) for c in colors]
     end
 
     return LegendElement[
         PolyElement(
             plots = plot,
-            poly = plot.legend_mesh,
-            color = plot.legend_colors,
-            strokewidth = plot.strokemask, strokecolor = plot.legend_colors
+            poly = meshes,
+            color = colors,
+            strokewidth = plot.strokemask,
+            strokecolor = colors,
         ),
     ]
 end
