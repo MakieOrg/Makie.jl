@@ -7,6 +7,7 @@
 ########################################
 
 function cairo_zindex(@nospecialize(plot))
+    Makie.add_depth_estimate!(Makie.parent_scene(plot), plot)
     if haskey(plot, :depth_estimate)
         depth = clamp(plot.depth_estimate[]::Float64, -1.0, 1.0)
         return -depth + plot.zorder_shift[]::Float64
@@ -101,8 +102,8 @@ function cairo_draw(screen::Screen, root_scene::Scene)
             end
             Cairo.restore(screen.context)
         end
-        Cairo.restore(screen.context)
-
+        Cairo.restore(screen.context) # prepare_for_scene
+        Cairo.restore(screen.context) # scene group
     end
 
     return

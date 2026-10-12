@@ -42,8 +42,13 @@ function Base.setindex!(plot::Plot, val, key::Int)
     return setindex!(plot, val, sym)
 end
 
+# The depth estimate is only needed for sorting plots when rendering, so backends
+# register it on demand (GLMakie/WGLMakie via `gl_zindex`, CairoMakie via
+# `cairo_zindex`). Registering it for every plot on creation makes up most of the
+# compute nodes added for render order.
 add_depth_estimate!(@nospecialize(::Scene), @nospecialize(::Plot)) = nothing
 function add_depth_estimate!(@nospecialize(scene::Scene), @nospecialize(plot::PrimitivePlotTypes))
+    haskey(plot.attributes, :depth_estimate) && return
     # Expensive estimate based on center of data limits considering all
     # transformation and projection steps
     map!(plot, :data_limits, :center) do bbox
@@ -313,6 +318,13 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         end
     end
 
+    return
+end
+
+# Only needed for render order in GLMakie/WGLMakie (see `gl_zindex`), so it is
+# registered on demand there rather than for every colormapped plot.
+function register_has_transparent_color!(attr::ComputeGraph)
+    haskey(attr, :has_transparent_color) && return
     # This should be false if all colors are fully opaque or fully transparent,
     # i.e. if alpha == 0.0 or 1.0.
     map!(
@@ -1016,8 +1028,6 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         convert = AttributeConvert(:rasterize, plotsym(typeof(plot)))
         add_input!(convert, plot.attributes, :rasterize, get(plot.kw, :rasterize, false))
     end
-
-    add_depth_estimate!(scene, plot)
 
     plot!(plot)
 
