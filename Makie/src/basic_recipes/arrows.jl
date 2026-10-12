@@ -564,89 +564,71 @@ function data_limits(plot::Arrows2D)
 end
 boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
 
-# Legends only support arrow component shapes given by a single outline. Other
-# shapes (e.g. with holes or meshes) are replaced by the default shapes.
-const ARROW2D_DEFAULT_SHAPES = (arrowtail2d, Rect2f(0, -0.5, 1, 1), Point2f[(0, -0.5), (1, 0), (0, 0.5)])
 
-_arrow_outline(rect::Rect2) = decompose(Point2f, rect)
-_arrow_outline(points::AbstractVector{<:VecTypes{2}}) = length(points) >= 3 ? Point2f.(points) : nothing
-_arrow_outline(shape) = nothing
+########################################
+# Legend
+########################################
 
-# Like _get_arrow_shape, but returns the outline of the shape or `nothing` if
-# the shape is not given by a single outline
-function _get_arrow_outline(f::Function, length, width, metrics)
-    nt = NamedTuple{(:taillength, :tailwidth, :shaftlength, :shaftwidth, :tiplength, :tipwidth)}(metrics)
-    return _arrow_outline(f(length, width, nt))
-end
-
-function _get_arrow_outline(shape, length, width, metrics)
-    points = _arrow_outline(shape)
-    return isnothing(points) ? nothing : [Point2f(length, width) .* p for p in points] # scale
-end
-
-# Returns the tail, shaft and tip outlines of a horizontal arrow spanning the
-# width of a legend patch, in coordinates relative to the patch. Components
-# that are not drawn are collapsed to a point, as backends may fail to draw
-# empty polygons and the components may be enabled later.
-function _arrow2d_legend_polygons(
-        patchsize, should_render, tail, shaft, tip, taillength, tailwidth, shaftlength,
-        minshaftlength, maxshaftlength, shaftwidth, tiplength, tipwidth
-    )
-    w, h = patchsize
-    # Like linewidth or markersize, arrow metrics are shown at their actual
-    # size in pixels, i.e. the arrow looks like an arrow in the plot with a
-    # length matching the patch width.
-    metrics = _arrow2d_metrics(
-        w, taillength, tailwidth, shaftlength, minshaftlength,
-        maxshaftlength, shaftwidth, tiplength, tipwidth
-    )
-
-    polygons = Vector{Point2f}[]
-    offset = 0.0
-    for (i, shape) in enumerate((tail, shaft, tip))
-        origin = Point2f(offset, 0.5h)
-        if should_render[i]
-            len, width = metrics[2i - 1], metrics[2i]
-            points = _get_arrow_outline(shape, len, width, metrics)
-            if isnothing(points)
-                points = _get_arrow_outline(ARROW2D_DEFAULT_SHAPES[i], len, width, metrics)
-            end
-            push!(polygons, [(origin .+ p) ./ Point2f(w, h) for p in points])
-            offset += len
-        else
-            push!(polygons, fill(origin ./ Point2f(w, h), 3))
-        end
-    end
-
-    return polygons
-end
 
 function legendelements(plot::Arrows2D, legend)
-    # The patchsize of the Legend is not observable here, so changes to it after
-    # creating the Legend stretch the arrow.
-    patchsize = to_value(legend[:patchsize])
-    polygons = lift(
-        (args...) -> _arrow2d_legend_polygons(patchsize, args...), plot.should_component_render,
-        plot.tail, plot.shaft, plot.tip, plot.taillength, plot.tailwidth, plot.shaftlength,
-        plot.minshaftlength, plot.maxshaftlength, plot.shaftwidth, plot.tiplength, plot.tipwidth
-    )
-    colors = (plot.calculated_tailcolor, plot.calculated_shaftcolor, plot.calculated_tipcolor)
+    add_input!(plot.attributes, :legend_patchsize, legend.patchsize)
+    # TODO: Consider adding an adjustable rotation?
+    map!(first, plot, :legend_patchsize, :legend_arrow_length)
 
-    # Components (tail, shaft, tip) that are not drawn are collapsed to a point
-    # but still included, so that they show up when they are enabled later
-    elements = LegendElement[]
-    for i in 1:3
-        element = PolyElement(
-            plots = plot,
-            points = lift(ps -> ps[i], polygons),
-            color = choose_scalar(colors[i], legend[:polycolor]),
-            strokecolor = :transparent,
-            strokewidth = 0,
-        )
-        push!(elements, element)
+    map!(
+        _arrow2d_metrics, plot,
+        [
+            :legend_arrow_length,
+            :taillength, :tailwidth,
+            :shaftlength, :minshaftlength, :maxshaftlength, :shaftwidth,
+            :tiplength, :tipwidth
+        ],
+        :legend_arrow_metrics
+    )
+
+    map!(
+        plot,
+        [
+            :legend_arrow_metrics, :legend_patchsize, :should_component_render, :strokemask,
+            :tail, :shaft, :tip,
+        ],
+        :legend_mesh
+    ) do metrics, (w, h), should_render, mask, shapes...
+        meshes = GeometryBasics.Mesh[]
+
+        # rotate + translate
+        startpoint = Point3f(0, 0.5h, 0)
+        R = rotmatrix2d(0f0)
+        offset = 0.0
+
+        for (shape, len, width, keep) in zip(shapes, metrics[1:2:6], metrics[2:2:6], should_render)
+            if keep
+                mesh = _get_arrow_shape(shape, len, max(0, width - mask), metrics)
+                push!(meshes, _apply_arrow_transform(mesh, R, startpoint, offset))
+                offset += len
+            end
+        end
+
+        return meshes
     end
 
-    return elements
+    add_input!(plot.attributes, :legend_polycolor, legend.polycolor)
+    map!(
+        plot,
+        [:legend_polycolor, :should_component_render, :resolved_tailcolor, :resolved_shaftcolor, :resolved_tipcolor],
+        :legend_colors
+    ) do leg_col, should_render, colors...
+        return [choose_scalar(c, leg_col) for (keep, c) in zip(should_render, colors) if keep]
+    end
+
+    return LegendElement[
+        PolyElement(
+            plots = plot,
+            poly = plot.legend_mesh,
+            color = plot.legend_colors,
+            strokewidth = plot.strokemask, strokecolor = plot.legend_colors
+        )
+    ]
 end
 
 
