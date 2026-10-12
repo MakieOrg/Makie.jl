@@ -26,7 +26,7 @@ struct PlotSpec
         if type_str[end] == '!'
             error("PlotSpec objects are supposed to be used without !, unless when using `S.$(type)(axis::P.Axis, args...; kwargs...)`")
         end
-        if !isuppercase(type_str[1])
+        if type !== :plot && !isuppercase(type_str[1])
             func = hasproperty(Makie, type) ? getproperty(Makie, type) : nothing
             func === nothing && error("PlotSpec need to be existing recipes or Makie plot objects. Found: $(type_str)")
             plot_type = Plot{func}
@@ -58,7 +58,7 @@ struct PlotSpec
         end
         return new(type, Any[args...], kw)
     end
-    PlotSpec(args...; kwargs...) = new(:plot, args...; kwargs...)
+    PlotSpec(args...; kwargs...) = PlotSpec(:plot, args...; kwargs...)
 end
 
 
