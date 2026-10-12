@@ -352,6 +352,7 @@ include("overlay_rendering.jl")
 include("screen.jl")
 include("picking.jl")
 include("raster_view.jl")
+include("renderbuffers.jl")
 
 # =============================================================================
 # draw_atomic: per-plot-type conversion via compute graph

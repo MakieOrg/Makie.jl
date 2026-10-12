@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added material-aware albedo/normal guide readback and primary-ray-only guide refresh for non-destructive downstream denoising.
+
+- Added RayMakie `renderbuffers` readback for unclamped linear HDR radiance, first-hit guides and a separate raster overlay, enabling non-destructive downstream grading and denoising.
+
+- Fixed RayMakie raster readback and FXAA preserving transparent coverage, allowing separately rendered label tracks to composite over raytraced footage.
+
 - RayMakie raster lines, line segments, images and heatmaps follow `alpha`, as GLMakie does, and images and heatmaps with `interpolate = false` show square pixels.
 
 - A plot whose input changes type (a `poly` created empty and filled later) passes the new value to its child plots. They kept the old empty value before, and GLMakie failed with mismatched buffer lengths.
