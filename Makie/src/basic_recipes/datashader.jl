@@ -835,14 +835,16 @@ function Makie.plot!(p::Union{HeatmapShader, ImageShader})
     lp = image!(
         p, p.attributes,
         p.x, p.y, p.overview_image;
-        interpolate = p.interpolate, colorrange = p.computed_colorrange, visible = p.background_visible
+        interpolate = p.interpolate, colorrange = p.computed_colorrange,
+        visible = p.background_visible, fxaa = false
     )
     translate!(lp, 0, 0, -1)
 
     image!(
         p, p.attributes,
         p.lx_endpoints, p.ly_endpoints, p.limit_image;
-        interpolate = p.interpolate, colorrange = p.computed_colorrange, visible = p.l_visible,
+        interpolate = p.interpolate, colorrange = p.computed_colorrange,
+        visible = p.l_visible, fxaa = false
     )
 
     return p
