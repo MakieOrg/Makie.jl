@@ -186,3 +186,29 @@ end
         @test !any(x -> any(isnan, x), p.offsets[])
     end
 end
+
+@testset "Resampler" begin
+    # mainly just checking that image paths to the same plot! function as
+    # heatmap when given a Resampler. The visualization should then be the same
+    # and is tested in refimages
+    f, a, p = image(Resampler([1 2; 3 4]))
+    @test p isa Makie.ImageShader
+    @test p.plots[1] isa Image
+    @test p.plots[2] isa Image
+    @test p.plots[1].visible[] === p.background_visible[]
+    p.background_visible = false
+    @test p.plots[1].visible[] === false
+
+    f, a, p = image(0..1, 0..1, Resampler([1 2; 3 4]))
+    @test p isa Makie.ImageShader
+    @test p.plots[1] isa Image
+    @test p.plots[2] isa Image
+
+    f, a, p = heatmap((0, 1), 0..1, Resampler([1 2; 3 4]))
+    @test p isa Makie.HeatmapShader
+    @test p.plots[1] isa Image
+    @test p.plots[2] isa Image
+    @test p.plots[1].visible[] === p.background_visible[]
+    p.background_visible = false
+    @test p.plots[1].visible[] === false
+end
