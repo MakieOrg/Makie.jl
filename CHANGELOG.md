@@ -31,6 +31,7 @@
 - Fixed hang in Colorbar by not keeping partially automatic colorranges sorted [#5806](https://github.com/MakieOrg/Makie.jl/pull/5806)
 - Fixed empty reduce error in `Makie.canonical_line_order` when NaN appears in the input [#5817](https://github.com/MakieOrg/Makie.jl/pull/5817)
 - Added support for vectorizing `mesh` plots with per-mesh colors and fixed `arrows2d` not rendering correctly with more complex arrow component meshes in CairoMakie. [#5834](https://github.com/MakieOrg/Makie.jl/pull/5834)
+- Added support for `Resampler` in `image` and added `background_visible` attribute to both. [#5842](https://github.com/MakieOrg/Makie.jl/pull/5842)
 
 ## [0.24.15] - 2026-09-18
 

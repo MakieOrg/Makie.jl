@@ -199,12 +199,12 @@ end
     p.background_visible = false
     @test p.plots[1].visible[] === false
 
-    f, a, p = image(0..1, 0..1, Resampler([1 2; 3 4]))
+    f, a, p = image(0 .. 1, 0 .. 1, Resampler([1 2; 3 4]))
     @test p isa Makie.ImageShader
     @test p.plots[1] isa Image
     @test p.plots[2] isa Image
 
-    f, a, p = heatmap((0, 1), 0..1, Resampler([1 2; 3 4]))
+    f, a, p = heatmap((0, 1), 0 .. 1, Resampler([1 2; 3 4]))
     @test p isa Makie.HeatmapShader
     @test p.plots[1] isa Image
     @test p.plots[2] isa Image

@@ -685,10 +685,10 @@ const ImageShader = Image{<:Tuple{EndPoints{Float32}, EndPoints{Float32}, <:Resa
 # The things we need to do, to allow the atomic Heatmap plot type to be overloaded as a recipe
 struct HeatmapShaderConversion <: ConversionTrait end
 
-conversion_trait(::Type{<: Image}, x, y, ::Resampler) = HeatmapShaderConversion()
-conversion_trait(::Type{<: Heatmap}, x, y, ::Resampler) = HeatmapShaderConversion()
-conversion_trait(::Type{<: Image}, ::Resampler) = HeatmapShaderConversion()
-conversion_trait(::Type{<: Heatmap}, ::Resampler) = HeatmapShaderConversion()
+conversion_trait(::Type{<:Image}, x, y, ::Resampler) = HeatmapShaderConversion()
+conversion_trait(::Type{<:Heatmap}, x, y, ::Resampler) = HeatmapShaderConversion()
+conversion_trait(::Type{<:Image}, ::Resampler) = HeatmapShaderConversion()
+conversion_trait(::Type{<:Heatmap}, ::Resampler) = HeatmapShaderConversion()
 
 function types_for_plot_arguments(::Type{<:Union{Image, Heatmap}}, ::HeatmapShaderConversion)
     return Tuple{EndPoints{Float32}, EndPoints{Float32}, <:Resampler}
@@ -743,12 +743,12 @@ function resample_image(x, y, image, max_resolution, limits)
 end
 
 
-function convert_arguments(::Type{<: Union{Image, Heatmap}}, image::Resampler)
+function convert_arguments(::Type{<:Union{Image, Heatmap}}, image::Resampler)
     x, y, _ = convert_arguments(Heatmap, image.data)
     return (x, y, image)
 end
 
-function convert_arguments(::Type{<: Union{Image, Heatmap}}, x, y, image::Resampler)
+function convert_arguments(::Type{<:Union{Image, Heatmap}}, x, y, image::Resampler)
     x, y, _ = convert_arguments(Heatmap, x, y, image.data)
     return (EndPoints{Float32}(x...), EndPoints{Float32}(y...), image)
 end
