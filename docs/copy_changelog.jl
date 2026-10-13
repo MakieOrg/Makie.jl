@@ -1,4 +1,7 @@
-all_lines = collect(eachline(joinpath(@__DIR__, "..", "CHANGELOG.md")))
+include(joinpath(@__DIR__, "..", "tooling", "changelog.jl"))
+
+unreleased_section = ["## Unreleased"; ""; Changelog.unreleased_lines()]
+all_lines = Changelog.insert_section(readlines(Changelog.CHANGELOG_PATH), unreleased_section)
 links = Dict{String, String}()
 kept_lines = filter(all_lines) do line
     islink = match(r"\[(Unreleased|\d+\.\d+\.\d+)\]: http.*", line) !== nothing
