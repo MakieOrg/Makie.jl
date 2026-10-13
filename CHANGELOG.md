@@ -1,17 +1,18 @@
 # Changelog
 
-## Unreleased
+## [0.24.16] - 2026-10-12
 
-- `Axis` spines now end exactly at the axis corners and rely on a `:square` linecap for corner coverage, instead of baking a half-spine-width extension into the geometry. This keeps exported figures (SVG/PDF) aligned when the stroke width is changed in an external editor; the rendered appearance is unchanged [#5765](https://github.com/MakieOrg/Makie.jl/pull/5765).
-- Inward `Axis` and `Colorbar` ticks (`tickalign = 1`) now start at the inner spine edge, mirroring outward ticks, so intermediate values like `tickalign = 0.5` center the tick on the spine. The new `tickalign` values `:out_spine` and `:in_spine` start ticks at the spine centerline instead, which keeps them attached if an exported figure is restroked at another width [#5765](https://github.com/MakieOrg/Makie.jl/pull/5765).
+- Added arrow visualization for `arrows2d` to legends [#5832](https://github.com/MakieOrg/Makie.jl/pull/5832).
+- Fixed `arrows2d` erroring with a single numeric `color` [#5832](https://github.com/MakieOrg/Makie.jl/pull/5832).
+- Added `fillto` support for stacked `barplot`s and made the automatic `fillto` log-scale aware for stacks, so stacked bars no longer disappear under `yscale = log10` [#5784](https://github.com/MakieOrg/Makie.jl/pull/5784).
 - Fixed `PolarAxis` erroring when tick labels switch between plain and rich text, e.g. for large radii [#5836](https://github.com/MakieOrg/Makie.jl/pull/5836).
-- The Axis ticklabelspace reset after zooming/panning and double-click detection now use tick time, so they behave deterministically in `record` [#5825](https://github.com/MakieOrg/Makie.jl/pull/5825).
+- Changed double-click detection and Axis ticklabelspace reset after zooming/panning to use tick time so they behave deterministically in `record` [#5825](https://github.com/MakieOrg/Makie.jl/pull/5825).
 - GLMakie now emits scroll events once per render tick instead of once per event, so scenes with expensive scroll handling (e.g. many linked axes) no longer freeze while scrolling [#5826](https://github.com/MakieOrg/Makie.jl/pull/5826).
 - Fixed contour labels next to `NaN` data being placed differently depending on the Julia version. [#5828](https://github.com/MakieOrg/Makie.jl/pull/5828)
-- Fixed plot-list children (e.g. the parts of `annotation!` arrows) being reused in an address-dependent order, which made the draw order and SVG output differ between identical runs. [#5815](https://github.com/MakieOrg/Makie.jl/pull/5815)
-- `datashader` is much faster: with 100M points, aggregating and displaying an update went from 47 ms to 26 ms, and per-update allocations from 9.2 MiB to 11 KiB [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
+- Fixed plotlist children (e.g. the parts of `annotation!` arrows) being reused in an address-dependent order, which made the draw order and SVG output differ between identical runs. [#5815](https://github.com/MakieOrg/Makie.jl/pull/5815)
+- Improved `datashader` performance: with 100M points, aggregating and displaying an update went from 47 ms to 26 ms, and per-update allocations from 9.2 MiB to 11 KiB [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
 - Fixed `datashader` counting points twice at thread chunk boundaries, and erroring or writing out of bounds for points exactly at the upper axis limits [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
-- `Makie.equalize_histogram` no longer errors on `NaN` or constant input [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
+- Fixed error on `NaN` and constant inputs in `Makie.equalize_histogram` [#5750](https://github.com/MakieOrg/Makie.jl/pull/5750).
 - Added `FastInterpolations` as the default `Resampler` interpolation backend for ~2-9x faster resampling; passing an `Interpolations` degree keeps the old behavior [#5706](https://github.com/MakieOrg/Makie.jl/pull/5706).
 - Fixed 2D CairoMakie meshes not anti-aliasing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
 - Fixed uniformly colored 2D CairoMakie meshes always rasterizing. [#5798](https://github.com/MakieOrg/Makie.jl/pull/5798)
@@ -1130,7 +1131,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.15...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.16...HEAD
+[0.24.16]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.15...v0.24.16
 [0.24.15]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.14...v0.24.15
 [0.24.14]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...v0.24.14
 [0.24.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.12...v0.24.13

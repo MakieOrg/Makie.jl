@@ -53,8 +53,8 @@ function draw_mesh2D(scene, screen, attr::ComputeGraph)
     end
 
     # try to detect and process per-mesh colors as multiple single-color meshes
-    views = (attr.mesh[]::GeometryBasics.Mesh).views
-    if length(attr.color[]) == length(views)
+    if attr.has_per_mesh_colors[]::Bool
+        views = (attr.mesh[]::GeometryBasics.Mesh).views
         color = compute_colors(attr, :color)
         cols = per_face_colors(color, nothing, fs, nothing, uv)
         if cols isa Cairo.CairoPattern
