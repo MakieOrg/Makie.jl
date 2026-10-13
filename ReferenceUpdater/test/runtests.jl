@@ -184,6 +184,13 @@ end
         write(joinpath(dir, "scores.tsv"), "0.9\tCairoMakie/changed.png\n0.8\tGLMakie/unapproved.png\n")
         write(joinpath(dir, "new_files.txt"), "WGLMakie/newthing.png\n")
         write(joinpath(dir, "missing_files.txt"), "CairoMakie/gone.png\nGLMakie/gone.png\n")
+        make_reference_tree(
+            joinpath(dir, "recorded"), [
+                "CairoMakie/changed.png" => "rec-changed",
+                "GLMakie/unapproved.png" => "rec-unapproved",
+                "WGLMakie/newthing.png" => "rec-newthing",
+            ]
+        )
 
         h = reference_hash(joinpath(refdir, "CairoMakie/changed.png"))
         write_manifest(
@@ -198,13 +205,39 @@ end
         @test cov.new == (total = 1, approved = 1)
         @test cov.changed == (total = 2, approved = 1)
         @test cov.deleted == (total = 2, approved = 1)
+        @test cov.unrecorded == String[]
         @test !fully_approved(cov)
         @test coverage_summary(cov) == "Approved 1/1 new, 1/2 changed, 1/2 deleted images"
     end
 end
 
+@testset "approval_coverage with pins that have no recording" begin
+    mktempdir() do dir
+        refdir = make_reference_tree(joinpath(dir, "reference"), ["GLMakie/renamed.png" => "ref-renamed"])
+        make_reference_tree(joinpath(dir, "recorded"), ["GLMakie/stepper/step-1.png" => "rec-step"])
+        write(joinpath(dir, "new_files.txt"), "")
+        write(joinpath(dir, "missing_files.txt"), "")
+
+        h = reference_hash(joinpath(refdir, "GLMakie/renamed.png"))
+        write_manifest(
+            [
+                RefimageUpdate("GLMakie/stepper.png", "new"),
+                RefimageUpdate("GLMakie/stepper/step-1.png", "new"),
+                RefimageUpdate("GLMakie/renamed.png", h),
+            ], joinpath(dir, "refimage_updates")
+        )
+
+        cov = approval_coverage(dir; threshold = 0.05, reference_folder = refdir)
+        @test cov.new == (total = 1, approved = 1)
+        @test cov.changed == (total = 0, approved = 0)
+        @test cov.unrecorded == ["GLMakie/renamed.png", "GLMakie/stepper.png"]
+        @test !fully_approved(cov)
+        @test coverage_summary(cov) == "Approved 1/1 new images, 2 pin files have no recorded image"
+    end
+end
+
 @testset "coverage_summary without changes" begin
-    cov = (; new = (total = 0, approved = 0), changed = (total = 0, approved = 0), deleted = (total = 0, approved = 0))
+    cov = (; new = (total = 0, approved = 0), changed = (total = 0, approved = 0), deleted = (total = 0, approved = 0), unrecorded = String[])
     @test coverage_summary(cov) == "No new, changed or deleted images"
     @test fully_approved(cov)
 end
