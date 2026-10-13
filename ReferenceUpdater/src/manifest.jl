@@ -1,3 +1,5 @@
+const ALL_BACKENDS = ("GLMakie", "CairoMakie", "WGLMakie")
+
 function add_manifest_selection(
         upload_paths, delete_paths, reference_folder::AbstractString;
         manifest_dir = refimage_manifest_dir()
@@ -66,23 +68,66 @@ pass a vector of `<Backend>/<name>.png` paths to select explicitly.
 """
 function add_pr_updates_to_manifest(
         pr = nothing; commit = nothing, select = :auto, threshold = 0.05,
-        backends = ("GLMakie", "CairoMakie", "WGLMakie"),
+        backends = ALL_BACKENDS,
         tag = last_major_version(), manifest_dir = refimage_manifest_dir()
     )
     artifact_dir = download_artifacts(; pr, commit)
-    reference_folder = download_refimages(tag)
-    try
-        paths = manifest_candidates(artifact_dir, select; threshold, backends)
-        if isempty(paths)
-            @info "No candidate images to add to the manifest."
-            return manifest_dir
-        end
-        add_to_manifest(paths, reference_folder; manifest_dir)
-        @info "Added $(length(paths)) entr$(length(paths) == 1 ? "y" : "ies") to $manifest_dir"
-    finally
-        rm(reference_folder; force = true, recursive = true)
+    reference_folder = cached_refimages(tag)
+    paths = manifest_candidates(artifact_dir, select; threshold, backends)
+    if isempty(paths)
+        @info "No candidate images to add to the manifest."
+        return manifest_dir
     end
+    add_to_manifest(paths, reference_folder; manifest_dir)
+    @info "Added $(length(paths)) entr$(length(paths) == 1 ? "y" : "ies") to $manifest_dir"
     return manifest_dir
+end
+
+function reference_paths_by_title(reference_folder, backends)
+    by_title = Dict{String, Vector{String}}()
+    for (root, _, files) in walkdir(reference_folder), file in files
+        path = replace(relpath(joinpath(root, file), reference_folder), '\\' => '/')
+        any(b -> startswith(path, b * "/"), backends) || continue
+        push!(get!(by_title, recording_title(path), String[]), path)
+    end
+    return by_title
+end
+
+"""
+    title_image_paths(titles, backends, reference_folder)
+
+The `<Backend>/...` paths of the images that the reference tests `titles` produce. A title
+with stored references maps to all of its stored images in `backends` (stepper frames and
+videos included); a title without any maps to `<Backend>/<title>.png` in every backend.
+"""
+function title_image_paths(titles, backends, reference_folder)
+    by_title = reference_paths_by_title(reference_folder, backends)
+    paths = String[]
+    for title in titles
+        append!(paths, get(() -> ["$b/$title.png" for b in backends], by_title, title))
+    end
+    return sort!(paths)
+end
+
+"""
+    pin_images(titles; backends = $(ALL_BACKENDS), delete = false, tag = last_major_version())
+
+Add manifest entries for the images of the reference tests `titles` without any CI run:
+changed tests are pinned to the hash of their current reference, tests without a stored
+reference are pinned as `new`, and `delete = true` marks the stored images for deletion.
+Pass `backends` when a new test does not run in every backend. The reference images are
+cached and only downloaded again when the release changes.
+"""
+function pin_images(
+        titles; backends = ALL_BACKENDS, delete = false,
+        tag = last_major_version(), manifest_dir = refimage_manifest_dir()
+    )
+    reference_folder = cached_refimages(tag)
+    paths = title_image_paths(titles, backends, reference_folder)
+    upload_paths, delete_paths = delete ? (String[], paths) : (paths, String[])
+    add_manifest_selection(upload_paths, delete_paths, reference_folder; manifest_dir)
+    @info "Pinned $(length(paths)) image$(length(paths) == 1 ? "" : "s") in $manifest_dir" paths
+    return paths
 end
 
 function read_path_list(file)
@@ -101,10 +146,15 @@ end
 Count the new, changed and deleted reference images in a `ReferenceImages` artifact folder
 and how many of them are approved by an active manifest entry. `threshold` is the CI
 comparison threshold (an image scoring above it needs approval, as does every new or
-deleted image). Returns `(; new, changed, deleted)`, each a `(; total, approved)` count;
-all categories approved means the PR is ready to merge.
+deleted image). Returns `(; new, changed, deleted, unrecorded)`: the first three are each
+a `(; total, approved)` count, `unrecorded` lists the active pins whose image was not
+recorded (e.g. because the test was renamed), which would fail promotion after merge.
+All categories approved and no unrecorded pins means the PR is ready to merge.
 """
-function approval_coverage(root_path; threshold = 0.05, reference_folder = joinpath(root_path, "reference"))
+function approval_coverage(
+        root_path; threshold = 0.05,
+        reference_folder = joinpath(root_path, "reference"), recorded_folder = joinpath(root_path, "recorded")
+    )
     changed = Set{String}()
     scores_file = joinpath(root_path, "scores.tsv")
     if isfile(scores_file)
@@ -118,19 +168,24 @@ function approval_coverage(root_path; threshold = 0.05, reference_folder = joinp
     missing_recordings = read_path_list(joinpath(root_path, "missing_files.txt"))
 
     c = classify_entries(read_manifest(joinpath(root_path, "refimage_updates")), reference_folder)
+    unrecorded = filter(p -> !isfile(joinpath(recorded_folder, p)), union(c.exempt_changed, c.exempt_new))
+    exempt_changed = setdiff(c.exempt_changed, unrecorded)
+    exempt_new = setdiff(c.exempt_new, unrecorded)
     counts(total, approved) = (; total = length(total), approved = length(approved))
     return (;
-        new = counts(union(new_unapproved, c.exempt_new), c.exempt_new),
-        changed = counts(changed, intersect(changed, c.exempt_changed)),
+        new = counts(union(new_unapproved, exempt_new), exempt_new),
+        changed = counts(changed, intersect(changed, exempt_changed)),
         deleted = counts(union(missing_recordings, c.to_delete), c.to_delete),
+        unrecorded = sort!(collect(unrecorded)),
     )
 end
 
 total_images(cov) = cov.new.total + cov.changed.total + cov.deleted.total
 approved_images(cov) = cov.new.approved + cov.changed.approved + cov.deleted.approved
-fully_approved(cov) = total_images(cov) == approved_images(cov)
+images_approved(cov) = total_images(cov) == approved_images(cov)
+fully_approved(cov) = images_approved(cov) && isempty(cov.unrecorded)
 
-function coverage_summary(cov)
+function approval_summary(cov)
     parts = [
         "$(c.approved)/$(c.total) $name"
             for (name, c) in (("new", cov.new), ("changed", cov.changed), ("deleted", cov.deleted))
@@ -138,6 +193,16 @@ function coverage_summary(cov)
     ]
     isempty(parts) && return "No new, changed or deleted images"
     return "Approved " * join(parts, ", ") * " images"
+end
+
+function unrecorded_summary(cov)
+    n = length(cov.unrecorded)
+    return "$n pin file$(n == 1 ? " has" : "s have") no recorded image"
+end
+
+function coverage_summary(cov)
+    isempty(cov.unrecorded) && return approval_summary(cov)
+    return approval_summary(cov) * ", " * unrecorded_summary(cov)
 end
 
 """

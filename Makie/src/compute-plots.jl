@@ -942,16 +942,17 @@ function register_mesh_decomposition!(attr)
     end
 
     return map!(
-        attr, [:arg1, :mesh, :color], [:mesh_color, :interpolate_in_fragment_shader]
+        attr, [:arg1, :mesh, :color],
+        [:mesh_color, :interpolate_in_fragment_shader, :has_per_mesh_colors]
     ) do meshes, merged, color
 
         if hasproperty(merged, :color)
-            return (merged.color, true)
+            return (merged.color, true, false)
         elseif meshes isa Vector{<:AbstractGeometry} && color isa Vector && length(color) == length(meshes)
             _color = color_per_mesh(color, map(x -> length(coordinates(x)), meshes))
-            return (_color, false)
+            return (_color, false, true)
         else
-            return (color, true)
+            return (color, true, false)
         end
     end
 end
@@ -1106,14 +1107,15 @@ get_colormapping(plot::Plot) = get_colormapping(plot, plot.attributes)
 function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     isnothing(attr[:scaled_colorrange][]) && return nothing
     haskey(attr, :cb_colormapping) && return attr[:cb_colormapping][]
-
     map!(attr, [:colorrange, :raw_color], :unscaled_colorrange) do colorrange, color
         if colorrange === automatic
             return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
         elseif first(colorrange) == automatic
-            return Vec2f(first(distinct_extrema_nan(color)), last(colorrange))
+            lastcolor = last(colorrange)
+            return Vec2f(min(first(distinct_extrema_nan(color)), lastcolor), lastcolor)
         elseif last(colorrange) == automatic
-            return Vec2f(first(colorrange), last(distinct_extrema_nan(color)))
+            firstcolor = first(colorrange)
+            return Vec2f(firstcolor, max(firstcolor, last(distinct_extrema_nan(color))))
         else
             lo, hi = Vec2f(colorrange)
             lo == hi || return Vec2f(lo, hi)
