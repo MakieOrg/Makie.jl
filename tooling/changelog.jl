@@ -8,8 +8,11 @@ module Changelog
     const PR_URL = "https://github.com/MakieOrg/Makie.jl/pull"
     const NON_ENTRY_FILES = ["README.md"]
 
+    const SECTIONS = ["Breaking", "Added", "Changed", "Deprecated", "Removed", "Fixed"]
+
     struct Entry
         pr::Int
+        section::Union{Nothing, String}
         lines::Vector{String}
     end
 
@@ -24,32 +27,44 @@ module Changelog
 
     pr_number(path) = parse(Int, chopsuffix(basename(path), ".md"))
 
-    function strip_trailing_blank_lines(lines)
-        last_content = findlast(!isempty ∘ strip, lines)
-        return last_content === nothing ? String[] : lines[1:last_content]
-    end
-
     function parse_entry_file(path)
         pr = pr_number(path)
-        lines = strip_trailing_blank_lines(readlines(path))
-        isempty(lines) && error("`changelog/$pr.md` is empty, it needs at least one `- ` entry.")
+        lines = readlines(path)
+        file_error(msg) = error("`changelog/$pr.md`: $msg")
 
         entries = Entry[]
+        section = nothing
+        empty_section_line = 0
+        continuable = false
         for (i, line) in enumerate(lines)
-            if occursin(r"^- \S", line)
-                push!(entries, Entry(pr, [rstrip(line)]))
-            elseif occursin(r"^\s+\S", line) && !isempty(entries)
+            heading = match(r"^## (.*)$", line)
+            if isempty(strip(line))
+                continue
+            elseif heading !== nothing
+                empty_section_line > 0 && file_error("Section on line $empty_section_line has no entries.")
+                section = String(strip(heading[1]))
+                section in SECTIONS ||
+                    file_error("Invalid section `## $section` on line $i, allowed are $(join(("`## $s`" for s in SECTIONS), ", ")).")
+                empty_section_line = i
+                continuable = false
+            elseif occursin(r"^- \S", line)
+                push!(entries, Entry(pr, section, [rstrip(line)]))
+                empty_section_line = 0
+                continuable = true
+            elseif occursin(r"^\s+\S", line) && continuable
                 push!(entries[end].lines, rstrip(line))
             else
-                error(
-                    "Invalid line $i in `changelog/$pr.md`: $(repr(line))\n" *
-                        "Every line must start a `- ` entry or be an indented continuation of the previous entry."
+                file_error(
+                    "Invalid line $i: $(repr(line))\n" *
+                        "Every line must be a `## <section>` heading, start a `- ` entry, be an indented continuation of the previous entry, or be blank."
                 )
             end
         end
+        empty_section_line > 0 && file_error("Section on line $empty_section_line has no entries.")
+        isempty(entries) && file_error("No entries found, add at least one `- ` entry.")
 
         occursin(Regex("$(PR_URL)/$pr\\b"), join(lines, "\n")) &&
-            error("`changelog/$pr.md` must not link to PR #$pr, the link is added automatically.")
+            file_error("Must not link to PR #$pr, the link is added automatically.")
 
         return entries
     end
@@ -59,9 +74,21 @@ module Changelog
         return [first_line; entry.lines[2:end]]
     end
 
+    render_entries(entries) = mapreduce(render_entry, vcat, entries; init = String[])
+
+    function join_blocks(blocks)
+        nonempty = filter(!isempty, blocks)
+        return isempty(nonempty) ? String[] : reduce((a, b) -> [a; ""; b], nonempty)
+    end
+
     function unreleased_lines(dir = ENTRY_DIR)
         entries = mapreduce(parse_entry_file, vcat, entry_files(dir); init = Entry[])
-        return mapreduce(render_entry, vcat, entries; init = String[])
+        unsectioned = render_entries(filter(e -> e.section === nothing, entries))
+        sectioned = map(SECTIONS) do section
+            section_entries = filter(e -> e.section == section, entries)
+            isempty(section_entries) ? String[] : ["### $section"; ""; render_entries(section_entries)]
+        end
+        return join_blocks([[unsectioned]; sectioned])
     end
 
     function insert_section(changelog_lines, section_lines)
