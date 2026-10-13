@@ -22,12 +22,12 @@ end
     @test hm.converted[][2] == Makie.EndPoints{Float32}(-0.125, 1.125)
     @test hm.converted[][3].data == Resampler(zeros(5, 5)).data
 
-    hm = Heatmap(((0, 1), 0..1, Resampler(zeros(5, 5))), Dict{Symbol, Any}())
+    hm = Heatmap(((0, 1), 0 .. 1, Resampler(zeros(5, 5))), Dict{Symbol, Any}())
     @test hm.converted[][1] == Makie.EndPoints{Float32}(-0.125, 1.125)
     @test hm.converted[][2] == Makie.EndPoints{Float32}(-0.125, 1.125)
     @test hm.converted[][3].data == Resampler(zeros(5, 5)).data
 
-    hm = Heatmap((0:1, 0..1, Resampler(zeros(5, 5))), Dict{Symbol, Any}())
+    hm = Heatmap((0:1, 0 .. 1, Resampler(zeros(5, 5))), Dict{Symbol, Any}())
     @test hm.converted[][1] == Makie.EndPoints{Float32}(-0.125, 1.125)
     @test hm.converted[][2] == Makie.EndPoints{Float32}(-0.125, 1.125)
     @test hm.converted[][3].data == Resampler(zeros(5, 5)).data
