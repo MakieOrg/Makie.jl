@@ -10,6 +10,8 @@ Plots isolines of a scalar field on an unstructured triangular grid.
     `Triangulation` from DelaunayTriangulation.jl and a given scalar field `zs`.
 """
 @recipe Tricontour (tri::DelTri.Triangulation, zs::RealVector) begin
+    mixin_colormap_attributes()...
+    filtered_attributes(Lines, allow = (:linestyle, :linewidth, :joinstyle, :miter_limit))...
     """
     Can be either an `Int` which results in n equally-spaced isolines between the
     minimum and maximum of `zs`, or an `AbstractVector{<:Real}` that lists explicit
@@ -23,12 +25,6 @@ Plots isolines of a scalar field on an unstructured triangular grid.
     color = nothing
     "Sets the colormap from which isoline colors are sampled when `color` is `nothing`."
     colormap = @inherit colormap
-    "Color transform function."
-    colorscale = identity
-    "Sets the width of the contour lines."
-    linewidth = 1.5
-    "Sets the dash pattern of the contour lines. See `?lines`."
-    linestyle = nothing
     """
     The mode with which the points in `xs` and `ys` are triangulated.
     Passing `DelaunayTriangulation()` performs a Delaunay triangulation.
@@ -38,6 +34,7 @@ Plots isolines of a scalar field on an unstructured triangular grid.
     """
     triangulation = DelaunayTriangulation()
     mixin_generic_plot_attributes()...
+    fxaa = false
 end
 
 function used_attributes(::Type{<:Tricontour}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
@@ -66,11 +63,14 @@ function convert_arguments(
     return (tri, z)
 end
 
-function _get_tricontour_levels(zs, levels)
-    levels isa Integer || return Float32.(levels)
-    zmin, zmax = extrema_nan(zs)
-    isapprox(zmin, zmax) && return Float32[]
-    return Float32.(range(zmin, zmax; length = levels))
+function _get_tricontour_levels(zs, scale, levels)
+    if levels isa Integer
+        zmin, zmax = extrema_nan(zs)
+        isapprox(zmin, zmax) && return Float32[]
+        return Float32.(range(zmin, zmax; length = levels))
+    else
+        return Float32.(apply_scale(scale, levels))
+    end
 end
 
 function _calculate_tricontour_lines!(xs_out, ys_out, colors, triangulation, zs, levels)
@@ -96,20 +96,25 @@ function _calculate_tricontour_lines!(xs_out, ys_out, colors, triangulation, zs,
 end
 
 function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
-    map!(c, [:zs, :levels], :computed_levels) do zs, levels
-        return _get_tricontour_levels(zs, levels)
-    end
+    map!(apply_scale, c, [:colorscale, :zs], :scaled_zs)
+    map!(_get_tricontour_levels, c, [:scaled_zs, :colorscale, :levels], :computed_levels)
 
-    map!(c, [:computed_levels, :zs], :computed_colorrange) do levels, zs
-        isempty(levels) || return extrema_nan(levels)
-        c = Float32(first(zs))
-        delta = max(one(c), abs(c))
-        return (c - delta, c + delta)
+    map!(
+        c, [:colorrange, :colorscale, :computed_levels, :scaled_zs], :computed_colorrange
+    ) do colorrange, scale, levels, zs
+        autorange = if isempty(levels)
+            c = Float32(first(zs))
+            delta = max(one(c), abs(c))
+            (c - delta, c + delta)
+        else
+            extrema_nan(levels)
+        end
+        return combined_colorrange(scale, colorrange, autorange)
     end
 
     register_computation!(
         c,
-        [:tri, :zs, :computed_levels],
+        [:tri, :scaled_zs, :computed_levels],
         [:line_xs, :line_ys, :line_colors]
     ) do (tri, zs, levels), _, cached
         if isnothing(cached)
@@ -128,15 +133,9 @@ function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:
     end
 
     lines!(
-        c, c.line_xs, c.line_ys;
-        color = c.final_color,
-        colormap = c.colormap,
-        colorscale = c.colorscale,
-        colorrange = c.computed_colorrange,
-        linewidth = c.linewidth,
-        linestyle = c.linestyle,
-        inspectable = c.inspectable,
-        transparency = c.transparency
+        c, c.attributes, c.line_xs, c.line_ys;
+        color = c.final_color, colorrange = c.computed_colorrange,
+        colorscale = identity
     )
 
     return c

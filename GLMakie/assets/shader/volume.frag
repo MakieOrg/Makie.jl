@@ -354,9 +354,17 @@ vec4 contours(vec3 front, vec3 dir)
                 depth = min(depth, frag_coord.z / frag_coord.w);
 #endif
 
-            vec3 N = gennormal(pos, step_size, edge_gap);
-            vec4 world_pos = model * vec4(pos, 1);
-            vec3 opaque = illuminate(world_pos.xyz / world_pos.w, camdir, N, density.rgb);
+            vec3 opaque = density.rgb;
+            // Edges between finite and NaN values become black if we branch
+            // based on intensity (because we still get NaN normals) or a max
+            // intensity/unshaded density.rgb if decide based on N (because we
+            // skip shading). Neither is great so we pick the faster version
+            if (intensity < 1.0 || intensity > 0.0) // i.e. finite
+            {
+                vec3 N = gennormal(pos, step_size, edge_gap);
+                vec4 world_pos = model * vec4(pos, 1);
+                opaque = illuminate(world_pos.xyz / world_pos.w, camdir, N, density.rgb);
+            }
             color_sum += (transmittance * opacity) * opaque;
             transmittance *= 1.0 - opacity;
             if (transmittance <= 0.01)
@@ -424,9 +432,11 @@ vec4 mip(vec3 front, vec3 dir)
     int i = 0;
     float maximum = -10000000000000000.0;
     bool highclip_visible = highclip.a > 0.0;
+    bool has_finite_sample = false;
 
     for (i; i < samples; ++i, pos += dir){
         float density = texture(volumedata, pos).x;
+        has_finite_sample = has_finite_sample || (density < 1.0) || (density > 0.0);
         // If highclip is transparent we exclude any values beyond the color
         // range so that the largest (probably) visible value is preserved.
         // We don't need this for lowclip because it will naturally get overwritten
@@ -435,6 +445,11 @@ vec4 mip(vec3 front, vec3 dir)
         if (consider_sample && (maximum < density))
             maximum = density;
     }
+    // If none of the samples set has_finite_sample, then we must have only sampled
+    // nan values
+    if (!has_finite_sample)
+        return nan_color;
+
     // If we still have the initial value then no value < color range maximum
     // was found. In this case we should use highclip.
     if (maximum == -10000000000000000.0)

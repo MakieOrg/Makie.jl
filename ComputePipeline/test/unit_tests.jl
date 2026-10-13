@@ -160,7 +160,7 @@ end
     # bitstype
     register_computation!(graph, [:in1, :in2], [:merged]) do inputs, changed, cached
         counter[:merged] += 1
-        return (changed.in1 ? inputs[1] + inputs[2] : nothing,)
+        return (changed.in1 ? inputs[1] + inputs[2] : skip_update,)
     end
     register_computation!(graph, [:merged], [:merged2]) do inputs, changed, cached
         counter[:merged2] += 1
@@ -1696,4 +1696,37 @@ end
     graph.mat = M
     @assert pointer(v) == pointer(graph.vec[]) "this is expected to be memory aliased, but isn't"
     @test graph.vecf[] == [1, 1, 1, 1]
+end
+
+@testset "skip_update vs nothing" begin
+    graph = ComputeGraph()
+    add_input!(graph, :a, 2)
+    map!(x -> iseven(x) ? x : skip_update, graph, :a, :even1)
+    register_computation!(graph, [:even1], [:counter]) do inputs, changed, cached
+        return (isnothing(cached) ? 1 : cached[1] + 1,)
+    end
+    map!(x -> iseven(x) ? x : nothing, graph, :a, :even2)
+    ComputePipeline.set_type!(graph.even2, Any)
+
+    @test graph.even1[] == 2
+    @test graph.counter[] == 1
+    @test graph.even2[] == 2
+
+    graph.a = 1
+
+    @test graph.even1[] == 2
+    @test graph.counter[] == 1
+    @test graph.even2[] === nothing
+
+    graph.a = 2
+
+    @test graph.even1[] == 2
+    @test graph.counter[] == 1
+    @test graph.even2[] == 2
+
+    graph.a = 4
+
+    @test graph.even1[] == 4
+    @test graph.counter[] == 2
+    @test graph.even2[] == 4
 end

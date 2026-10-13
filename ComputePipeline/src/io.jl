@@ -81,10 +81,10 @@ function edge_callback_location(edge)
     return edge_callback_location(f, arg_types)
 end
 function edge_callback_location(f, arg_types::Tuple)
-    if hasmethod(f, arg_types)
-        file, line = Base.functionloc(f, arg_types)
-        return "$file:$line"
-    else
+    try
+        method = Base.which(f, arg_types)
+        return "$(method.file):$(method.line)"
+    catch e
         return "unknown method location"
     end
 end
@@ -99,7 +99,7 @@ function edge_callback_to_string(f, arg_types::Tuple)
     arg_str = replace(arg_str, "Base.RefValue" => "Ref")
     func = edge_callback_name(f, "($arg_str)")
     loc = edge_callback_location(f, arg_types)
-    return "$func", "@ $loc"
+    return "$func", "$loc"
 end
 
 function Base.show(io::IO, edge::ComputeEdge)
@@ -120,7 +120,7 @@ function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
 
     f, loc = edge_callback_to_string(edge)
     println(io, "  callback:\n    $f")
-    printstyled(io, "    $loc\n", color = :light_black)
+    printstyled(io, "    @ $loc\n", color = :light_black)
 
     print(io, "  inputs:")
     for (dirty, v) in zip(edge.inputs_dirty, edge.inputs)
@@ -162,7 +162,7 @@ function Base.show(io::IO, ::MIME"text/plain", input::Input)
     println(io, "  value:    ", input.value)
     f, loc = edge_callback_to_string(input)
     print(io, "  callback: $f")
-    printstyled(io, " $loc\n", color = :light_black)
+    printstyled(io, " @ $loc\n", color = :light_black)
     print(io, "  output:   ")
     if isdirty(input)
         printstyled(io, "↻ $(input.output)\n", color = :light_black)
@@ -380,4 +380,14 @@ function show_inputs(io::IO, edge::ComputeEdge, tab = 0)
         show_inputs(io, node, tab)
     end
     return
+end
+
+source_info_str(edge::TypedEdge) = source_info_str(edge.output_nodes[1].parent)
+function source_info_str(compute_edge::ComputeEdge)
+    input_names = map(x -> x.name, compute_edge.inputs)
+    output_names = map(x -> x.name, compute_edge.outputs)
+    callback_name, callback_loc = edge_callback_to_string(compute_edge)
+    str = "Triggered by `map!` or `register_computation!` connecting $input_names " *
+        "to $output_names with callback $callback_name defined at $callback_loc."
+    return str
 end

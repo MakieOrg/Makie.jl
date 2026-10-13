@@ -22,9 +22,7 @@ jobs:
         uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
-          # WGLMakie now tests Julia 1.11 + 1.12 (Bonito v5 needs >=1.11); use the
-          # latest (1.12), which is what the old '1' resolved to.
-          name: ReferenceImages_WGLMakie_1.12
+          name: ReferenceImages_WGLMakie_1
           path: ./ReferenceImages/WGLMakie
       - uses: actions/download-artifact@v8
         with:
@@ -136,12 +134,11 @@ jobs:
       - name: Save status data for the chained status workflow
         env:
           STATE: ${{ steps.build.outputs.state }}
-          N_CHANGED: ${{ steps.build.outputs.n_changed }}
-          N_APPROVED: ${{ steps.build.outputs.n_approved }}
+          DESCRIPTION: ${{ steps.build.outputs.description }}
           REVIEW_ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
         run: >
-          printf '{"state":"%s","n_changed":%s,"n_approved":%s,"review_artifact_id":%s}\n'
-          "$STATE" "$N_CHANGED" "$N_APPROVED" "$REVIEW_ARTIFACT_ID" > refimage_status.json
+          jq -n --arg state "$STATE" --arg description "$DESCRIPTION" --argjson review_artifact_id "$REVIEW_ARTIFACT_ID"
+          '{state: $state, description: $description, review_artifact_id: $review_artifact_id}' > refimage_status.json
       - name: Upload status data
         uses: actions/upload-artifact@v7
         with:

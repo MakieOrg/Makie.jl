@@ -141,7 +141,7 @@ function add_slow_limits!(plot::Plot)
             mini = minimum(lims)
             return (Rect2d(mini - 100ws, 201ws),)
         else
-            return nothing
+            return skip_update
         end
     end
     add_input!(plot.attributes, :slow_limits_transformed, scene.compute.slow_limits_transformed)

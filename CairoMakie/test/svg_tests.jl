@@ -25,6 +25,18 @@ end
     @test svg_isnt_rasterized(scatter(1:3))
     @test svg_isnt_rasterized(lines(1:3))
     @test svg_isnt_rasterized(arrows2d(Point(0, 0), Point(1, 1), taillength = 8))
+    # a single-color mesh fills a path; only a gradient needs a mesh pattern, which SVG
+    # cannot draw.
+    function quad_mesh(color)
+        f = Figure()
+        mesh!(
+            Axis(f[1, 1]), Point2f[(0, 0), (1, 0), (1, 1), (0, 1)],
+            GLTriangleFace[(1, 2, 3), (1, 3, 4)]; color
+        )
+        return f
+    end
+    @test svg_isnt_rasterized(quad_mesh(:red))
+    @test !svg_isnt_rasterized(quad_mesh([:red, :green, :blue, :yellow]))
     @test svg_isnt_rasterized(heatmap(rand(5, 5)))
     @test !svg_isnt_rasterized(image(rand(5, 5)))
     # issue 2510
@@ -32,8 +44,8 @@ end
         begin
             fig = Figure()
             ax = Axis(fig[1, 1])
-            poly!(ax, Makie.GeometryBasics.Polygon(Point2.([[0, 0], [1, 0], [0, 1], [0, 0]])), color = ("#FF0000", 0.7), label = "foo")
-            poly!(ax, Makie.GeometryBasics.Polygon(Point2.([[0, 0], [1, 0], [0, 1], [0, 0]])), color = (:blue, 0.7), label = "bar")
+            poly!(ax, Polygon(Point2.([[0, 0], [1, 0], [0, 1], [0, 0]])), color = ("#FF0000", 0.7), label = "foo")
+            poly!(ax, Polygon(Point2.([[0, 0], [1, 0], [0, 1], [0, 0]])), color = (:blue, 0.7), label = "bar")
             fig[1, 2] = Legend(fig, ax, "Bar")
             fig
         end
@@ -110,10 +122,10 @@ end
     )
     @test !svg_isnt_rasterized(poly(rand(Point2f, 10); color = rand(RGBAf, 10)))
 
-    poly1 = Makie.GeometryBasics.Polygon(rand(Point2f, 10))
-    @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1])))
-    @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1]), color = :red))
-    @test svg_isnt_rasterized(poly(Makie.GeometryBasics.MultiPolygon([poly1, poly1]), color = [:red, :blue]))
+    poly1 = Polygon(rand(Point2f, 10))
+    @test svg_isnt_rasterized(poly(MultiPolygon([poly1, poly1])))
+    @test svg_isnt_rasterized(poly(MultiPolygon([poly1, poly1]), color = :red))
+    @test svg_isnt_rasterized(poly(MultiPolygon([poly1, poly1]), color = [:red, :blue]))
 end
 
 struct PolyWrapper
@@ -130,7 +142,7 @@ function Makie.convert_arguments(::Type{<:Poly}, poly::MultiPolyWrapper)
 end
 
 @testset "Polygon Wrappers" begin
-    poly1 = Makie.GeometryBasics.Polygon(rand(Point2f, 10))
+    poly1 = Polygon(rand(Point2f, 10))
     poly2 = PolyWrapper(poly1)
     @test svg_isnt_rasterized(poly(poly2))
     @test svg_isnt_rasterized(poly(poly2; color = :red))

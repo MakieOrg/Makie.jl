@@ -7,6 +7,7 @@ import HTTP
 import JSON3
 import ZipFile
 import REPL
+import Scratch
 import TOML
 using Dates
 
@@ -23,8 +24,10 @@ end
 include("image_download.jl")
 include("artifact-download.jl")
 include("../../ReferenceTests/src/refimage_manifest.jl")
+include("../../ReferenceTests/src/refimage_cache.jl")
 include("manifest.jl")
 include("bonito-app.jl")
+include("update_from_previous_version.jl")
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 
