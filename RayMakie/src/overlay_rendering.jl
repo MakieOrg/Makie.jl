@@ -226,9 +226,11 @@ function frame_draws!(p, screen, source, cells, robjs, w, h)
 end
 
 """
-    frame_signature(robjs, w, h)
+    frame_signature(robjs, args, w, h)
 
-What a frame plan FIXES, as opposed to what it merely reads.
+What a frame plan FIXES, as opposed to what it merely reads. `args` is
+[`build_args`](@ref) of each object, built once for the frame and handed to
+[`rebind_overlay_args!`](@ref) too.
 
 A plan compiles each pipeline around its argument TYPES and fixes whether each
 draw is indexed. It fixes none of the values: the arguments, the count, the
@@ -239,9 +241,9 @@ the point. What is left rebuilds a plan: a plot appearing or disappearing, a
 plot's pipeline or argument types changing, a viewport moving, a window opening
 or resizing.
 """
-function frame_signature(robjs, w, h)
+function frame_signature(robjs, args, w, h)
     (w, h,
-     map(robjs) do (robj, vp)
+     map(robjs, args) do (robj, vp), a
          # Everything else is the cell's, and the plan reads the cell on every
          # run: a plan holding cells cannot be recorded (Mantle refuses), so it
          # is emitted afresh each frame, and `packdraw!`/`emitdraw!` take the
@@ -260,7 +262,10 @@ function frame_signature(robjs, w, h)
          (objectid(robj), objectid(robj.pipeline), vp,
           isnothing(get(robj.buffers, :indices, nothing)), isnothing(robj.bindings),
           # The argument TYPES, because those are the pipeline and the layout.
-          map(typeof, build_args(robj)))
+          # `typeof` of the tuple says the same as a tuple of each argument's
+          # type and is one `DataType`, so every entry has the same concrete
+          # type and the vector compares without boxing.
+          typeof(a))
      end)
 end
 
@@ -284,24 +289,24 @@ function overlay_binding(robj::RenderObject, dev)
 end
 
 """
-    rebind_overlay_args!(cells, robjs, dev)
+    rebind_overlay_args!(cells, robjs, args, dev)
 
-Put this frame's values into the cells the plan draws from.
+Put this frame's values into the cells the plan draws from; `args` are the
+objects' [`build_args`](@ref), the ones [`frame_signature`](@ref) was taken of.
 
 This is the per-frame work, and all of it: no compile, no graph, no recording.
 `Mantle.rebind!` refuses a value of a different type, which is the check
 `frame_signature` does not have to make — a changed type is a changed pipeline
 and would have rebuilt the plan anyway.
 """
-function rebind_overlay_args!(cells, robjs, dev)
+function rebind_overlay_args!(cells, robjs, args, dev)
     for (i, (robj, _)) in enumerate(robjs)
         ix = get(robj.buffers, :indices, nothing)
-        args = build_args(robj)
         if ix === nothing
-            Mantle.rebind!(cells[i], dev, args, robj.vertex_count;
+            Mantle.rebind!(cells[i], dev, args[i], robj.vertex_count;
                            instances = robj.instances, bindings = robj.bindings)
         else
-            Mantle.rebind!(cells[i], dev, args, length(ix); indices = ix,
+            Mantle.rebind!(cells[i], dev, args[i], length(ix); indices = ix,
                            bindings = robj.bindings)
         end
     end
@@ -335,11 +340,12 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
     # that receives. Which meshes cast is fixed by the plan, the matrix is not.
     shadow = shadow_frame(screen, robjs)
     jobs = shadow === nothing ? () : shadow_jobs(shadow)
-    sig = (key, objectid(source), fxaa, shadow_signature(shadow), frame_signature(robjs, w, h))
+    args = [build_args(robj) for (robj, _) in robjs]
+    sig = (key, objectid(source), fxaa, shadow_signature(shadow), frame_signature(robjs, args, w, h))
     cached = get(screen.frame_plans, key, nothing)
     if cached !== nothing && cached[1] == sig
         cells, shadowcells = cached[4]
-        rebind_overlay_args!(cells, robjs, dev)
+        rebind_overlay_args!(cells, robjs, args, dev)
         rebind_shadow_cells!(shadowcells, dev, jobs)
         return cached[2], cached[3]
     end

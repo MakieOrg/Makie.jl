@@ -88,17 +88,19 @@ plot_fxaa(plot) = Bool(Makie.to_value(plot.fxaa))
 Build the args tuple for shader invocation from named buffers and uniforms,
 in the order specified by `robj.arg_names`.
 """
-function build_args(robj::RenderObject)
-    return ntuple(length(robj.arg_names)) do i
-        name = robj.arg_names[i]
-        if haskey(robj.buffers, name)
-            robj.buffers[name]
-        elseif haskey(robj.uniforms, name)
-            robj.uniforms[name]
-        else
-            error("RenderObject: missing arg '$name' in buffers or uniforms")
-        end
-    end
+#
+# `Mantle.argmap` over the names, not `ntuple(length(names))`: the length is a
+# runtime `Int`, and `ntuple` with one collects into a `Vector` and splats it back
+# into a tuple — and so does Base's `map` from 32 names on, which a 69-argument
+# stage has. A frame builds the arguments of every overlay object, and in a
+# 5000-plot GUI that was a fifth of the frame.
+build_args(robj::RenderObject) = Mantle.argmap(name -> argvalue(robj, name), robj.arg_names)
+
+function argvalue(robj::RenderObject, name::Symbol)
+    buf = get(robj.buffers, name, nothing)
+    buf === nothing || return buf
+    haskey(robj.uniforms, name) && return robj.uniforms[name]
+    error("RenderObject: missing arg '$name' in buffers or uniforms")
 end
 
 """
