@@ -8,7 +8,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
-    - uses: dangoslen/changelog-enforcer@v3
       with:
-        changeLogPath: 'CHANGELOG.md'
-        skipLabels: 'skip-changelog'
+        fetch-depth: 2
+    - uses: julia-actions/setup-julia@v2
+      with:
+        version: '1'
+    - name: Check changelog entries
+      if: ${{ contains(github.event.pull_request.labels.*.name, 'skip-changelog') }}
+      run: julia tooling/changelog.jl check
+    - name: Check changelog entries and PR entry file
+      if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-changelog') }}
+      env:
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+        mapfile -t added < <(git diff --name-only --diff-filter=A HEAD^1 HEAD -- changelog)
+        julia tooling/changelog.jl check-pr "$PR_NUMBER" "${added[@]}"
