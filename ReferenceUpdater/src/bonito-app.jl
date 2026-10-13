@@ -497,6 +497,20 @@ function failed_recordings_section(root_path)
     )
 end
 
+function unrecorded_pins_section(paths)
+    return DOM.div(
+        DOM.h2("Pin files without recorded images", class = "section-header"),
+        DOM.div(
+            "These pin files approve images that no test recorded, usually because the test " *
+                "was renamed or turned into a stepper test. Delete them from " *
+                "ReferenceTests/refimage_updates, otherwise promoting the images fails after merge.",
+            class = "section-description"
+        ),
+        DOM.ul((DOM.li(path) for path in paths), class = "failed-list"),
+        class = "section",
+    )
+end
+
 function media_element(img_name, local_path, additional_classes = ""; kw...)
     filetype = split(img_name, ".")[end]
     css_class = additional_classes == "" ? "" : " $additional_classes"
@@ -816,12 +830,13 @@ function review_content(root_path, backends, score_thresholds; display_threshold
     updated_cards = build_card_grid(imgs_with_score, backends, file -> haskey(lookup, file), review_card)
 
     cov = approval_coverage(root_path)
-    summary = if total_images(cov) == 0
-        coverage_summary(cov)
+    approval = if total_images(cov) == 0
+        approval_summary(cov)
     else
-        coverage_summary(cov) * " by pin files" *
-            (fully_approved(cov) ? "" : ", the rest still need to be added before merge")
+        approval_summary(cov) * " by pin files" *
+            (images_approved(cov) ? "" : ", the rest still need to be added before merge")
     end
+    summary = isempty(cov.unrecorded) ? approval : approval * ". " * unrecorded_summary(cov) * ", see below"
 
     cycle_controls = DOM.div(
         DOM.input(type = "checkbox", class = "cycle-checkbox"),
@@ -857,6 +872,7 @@ function review_content(root_path, backends, score_thresholds; display_threshold
     )
     failed_section = failed_recordings_section(root_path)
     isnothing(failed_section) || push!(sections, failed_section)
+    isempty(cov.unrecorded) || push!(sections, unrecorded_pins_section(cov.unrecorded))
     isempty(sections) && push!(sections, DOM.div("No differing or pinned reference images.", class = "section-description"))
 
     header = DOM.div(
