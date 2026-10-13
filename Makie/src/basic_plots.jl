@@ -306,6 +306,11 @@ Note that `heatmap` is slower to render than `image` so `image` should be prefer
 ) begin
     "Sets whether colors should be interpolated"
     interpolate = false
+    """
+    Hides the background image used when the `image` argument is a `Resampler`.
+    This may be useful with transparent images. Has no effect for other inputs.
+    """
+    background_visible = true
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
 end

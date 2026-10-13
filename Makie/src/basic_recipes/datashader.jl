@@ -829,17 +829,19 @@ function Makie.plot!(p::HeatmapShader)
         return (xe_ye_oimg..., true)
     end
 
-    gpa = generic_plot_attributes(p)
-    cpa = colormap_attributes(p)
-
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer
-    lp = image!(p, p.x, p.y, p.overview_image; gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange)
+    lp = image!(
+        p, p.attributes,
+        p.x, p.y, p.overview_image;
+        interpolate = p.interpolate, colorrange = p.computed_colorrange, visible = p.background_visible
+    )
     translate!(lp, 0, 0, -1)
 
     image!(
-        p, p.lx_endpoints, p.ly_endpoints, p.limit_image;
-        gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange, visible = p.l_visible,
+        p, p.attributes,
+        p.lx_endpoints, p.ly_endpoints, p.limit_image;
+        interpolate = p.interpolate, colorrange = p.computed_colorrange, visible = p.l_visible,
     )
 
     return p
