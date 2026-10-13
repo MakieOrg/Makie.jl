@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `arrows2d` now shows an arrow in the color of the plot in legends instead of a gray box [#5832](https://github.com/MakieOrg/Makie.jl/pull/5832).
+- Fixed `arrows2d` erroring with a single numeric `color` [#5832](https://github.com/MakieOrg/Makie.jl/pull/5832).
 - Added `fillto` support for stacked `barplot`s and made the automatic `fillto` log-scale aware for stacks, so stacked bars no longer disappear under `yscale = log10` [#5784](https://github.com/MakieOrg/Makie.jl/pull/5784).
 - Fixed `PolarAxis` erroring when tick labels switch between plain and rich text, e.g. for large radii [#5836](https://github.com/MakieOrg/Makie.jl/pull/5836).
 - The Axis ticklabelspace reset after zooming/panning and double-click detection now use tick time, so they behave deterministically in `record` [#5825](https://github.com/MakieOrg/Makie.jl/pull/5825).
