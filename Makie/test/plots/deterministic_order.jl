@@ -16,6 +16,10 @@ using Random: MersenneTwister, shuffle
 
     open_line = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
     @test Makie.canonical_line_order(open_line) == Makie.canonical_line_order(reverse(open_line)) == open_line
+
+    nan_ended_line = [(0.73, 0.0), (0.5, 0.5), (NaN, 0.0)]
+    @test isequal(Makie.canonical_line_order(nan_ended_line), nan_ended_line)
+    @test isequal(Makie.canonical_line_order(reverse(nan_ended_line)), nan_ended_line)
 end
 
 @testset "#5812 canonical_line_order with NaN" begin
