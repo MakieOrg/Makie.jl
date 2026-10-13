@@ -366,6 +366,22 @@ function _get_arrow_shape(polylike, length, width, metrics)
     return mesh
 end
 
+# Returns (taillength, tailwidth, shaftlength, shaftwidth, tiplength, tipwidth)
+# of an arrow with the given total length
+function _arrow2d_metrics(
+        target_length, taillength, tailwidth, shaftlength,
+        minshaftlength, maxshaftlength, shaftwidth, tiplength, tipwidth
+    )
+    target_shaftlength = if shaftlength === automatic
+        clamp(target_length - taillength - tiplength, minshaftlength, maxshaftlength)
+    else
+        shaftlength
+    end
+    arrow_length = target_shaftlength + taillength + tiplength
+    arrow_scaling = target_length / arrow_length
+    return Float64.(arrow_scaling .* (taillength, tailwidth, target_shaftlength, shaftwidth, tiplength, tipwidth))
+end
+
 function _apply_arrow_transform(m::GeometryBasics.Mesh, R::Mat2, origin, offset)
     ps = [origin + to_ndim(Point3f, R * (p .+ (offset, 0)), 0) for p in coordinates(m)]
     return GeometryBasics.mesh(m, position = ps, pointtype = Point3f)
@@ -405,15 +421,10 @@ function Makie.plot!(plot::Arrows2D)
 
         metrics = Vector{NTuple{6, Float64}}(undef, length(directions))
         for i in eachindex(metrics)
-            target_length = norm(directions[i])
-            target_shaftlength = if shaftlength === automatic
-                clamp(target_length - taillength - tiplength, minshaftlength, maxshaftlength)
-            else
-                shaftlength
-            end
-            arrow_length = target_shaftlength + taillength + tiplength
-            arrow_scaling = target_length / arrow_length
-            metrics[i] = arrow_scaling .* (taillength, tailwidth, target_shaftlength, shaftwidth, tiplength, tipwidth)
+            metrics[i] = _arrow2d_metrics(
+                norm(directions[i]), taillength, tailwidth, shaftlength,
+                minshaftlength, maxshaftlength, shaftwidth, tiplength, tipwidth
+            )
         end
 
         return metrics
@@ -475,7 +486,9 @@ function Makie.plot!(plot::Arrows2D)
         ) do color, colorscale, alpha, order
 
             color = to_color(color)
-            return if color isa Union{Real, AbstractArray{<:Real}}
+            return if color isa Real
+                clamp(el32convert(apply_scale(colorscale, color)), -floatmax(Float32), floatmax(Float32))
+            elseif color isa AbstractArray{<:Real}
                 clamp.(el32convert(apply_scale(colorscale, color[order])), -floatmax(Float32), floatmax(Float32))
             elseif color isa AbstractArray
                 add_alpha.(color[order], alpha)
@@ -550,6 +563,79 @@ function data_limits(plot::Arrows2D)
     return update_boundingbox(Rect3d(plot.startpoints[]), Rect3d(plot.endpoints[]))
 end
 boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
+
+
+########################################
+# Legend
+########################################
+
+
+function legendelements(plot::Arrows2D, legend)
+    # TODO: Consider adding an adjustable rotation?
+    # Note: patchsize is given as a value
+    patchsize = legend.patchsize
+    arrow_length = Observable(first(patchsize))
+
+    # Fixed on breaking: ComputePipeline fails to handle Observable interfacing
+    # when the first argument is an Observable
+    arrow_metrics = map(
+        _arrow2d_metrics,
+        arrow_length,
+        ComputePipeline.get_observable!(plot.taillength), ComputePipeline.get_observable!(plot.tailwidth),
+        ComputePipeline.get_observable!(plot.shaftlength), ComputePipeline.get_observable!(plot.minshaftlength),
+        ComputePipeline.get_observable!(plot.maxshaftlength), ComputePipeline.get_observable!(plot.shaftwidth),
+        ComputePipeline.get_observable!(plot.tiplength), ComputePipeline.get_observable!(plot.tipwidth),
+    )
+
+    meshes = map(
+        arrow_metrics,
+        ComputePipeline.get_observable!(plot.should_component_render),
+        ComputePipeline.get_observable!(plot.strokemask),
+        ComputePipeline.get_observable!(plot.tail),
+        ComputePipeline.get_observable!(plot.shaft),
+        ComputePipeline.get_observable!(plot.tip),
+    ) do metrics, should_render, mask, shapes...
+        w, h = patchsize
+        meshes = GeometryBasics.Mesh[]
+
+        # rotate + translate
+        startpoint = Point3f(0, 0.5h, 0)
+        R = rotmatrix2d(0.0f0)
+        offset = 0.0
+
+        for (shape, len, width, keep) in zip(shapes, metrics[1:2:6], metrics[2:2:6], should_render)
+            if keep
+                mesh = _get_arrow_shape(shape, len, max(0, width - mask), metrics)
+                push!(meshes, _apply_arrow_transform(mesh, R, startpoint, offset))
+                offset += len
+            else
+                push!(meshes, GeometryBasics.Mesh(Point3f[], GLTriangleFace[]))
+            end
+        end
+
+        return meshes
+    end
+
+    colors = map(
+        plot,
+        legend.polycolor,
+        ComputePipeline.get_observable!(plot.resolved_tailcolor),
+        ComputePipeline.get_observable!(plot.resolved_shaftcolor),
+        ComputePipeline.get_observable!(plot.resolved_tipcolor),
+    ) do leg_col, colors...
+        return [choose_scalar(c, leg_col) for c in colors]
+    end
+
+    return LegendElement[
+        PolyElement(
+            plots = plot,
+            poly = meshes,
+            color = colors,
+            strokewidth = plot.strokemask,
+            strokecolor = colors,
+        ),
+    ]
+end
 
 
 ################################################################################

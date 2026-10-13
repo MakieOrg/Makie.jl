@@ -234,4 +234,14 @@
             @test ax.thetaticklabelsize[] == 10
         end
     end
+
+    @testset "Tick labels changing from String to RichText" begin
+        fig = Figure()
+        ax = PolarAxis(fig[1, 1])
+        scatter!(ax, [0.0, 1.0], [1.0e6, -1.0e6])
+        reset_limits!(ax)
+        labels = first.(ax.overlay.plots[1].arg1[])
+        @test labels[2] == "0"
+        @test labels[1] isa Makie.RichText
+    end
 end
