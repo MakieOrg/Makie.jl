@@ -1,0 +1,125 @@
+module Changelog
+
+    using Dates
+
+    const ROOT = normpath(joinpath(@__DIR__, ".."))
+    const ENTRY_DIR = joinpath(ROOT, "changelog")
+    const CHANGELOG_PATH = joinpath(ROOT, "CHANGELOG.md")
+    const PR_URL = "https://github.com/MakieOrg/Makie.jl/pull"
+    const NON_ENTRY_FILES = ["README.md"]
+
+    struct Entry
+        pr::Int
+        lines::Vector{String}
+    end
+
+    function entry_files(dir = ENTRY_DIR)
+        files = filter(∉(NON_ENTRY_FILES), readdir(dir))
+        for file in files
+            occursin(r"^[1-9]\d*\.md$", file) ||
+                error("Invalid file `changelog/$file`, entry files must be named `<PR number>.md`.")
+        end
+        return sort!(joinpath.(dir, files); by = pr_number)
+    end
+
+    pr_number(path) = parse(Int, chopsuffix(basename(path), ".md"))
+
+    function strip_trailing_blank_lines(lines)
+        last_content = findlast(!isempty ∘ strip, lines)
+        return last_content === nothing ? String[] : lines[1:last_content]
+    end
+
+    function parse_entry_file(path)
+        pr = pr_number(path)
+        lines = strip_trailing_blank_lines(readlines(path))
+        isempty(lines) && error("`changelog/$pr.md` is empty, it needs at least one `- ` entry.")
+
+        entries = Entry[]
+        for (i, line) in enumerate(lines)
+            if occursin(r"^- \S", line)
+                push!(entries, Entry(pr, [rstrip(line)]))
+            elseif occursin(r"^\s+\S", line) && !isempty(entries)
+                push!(entries[end].lines, rstrip(line))
+            else
+                error(
+                    "Invalid line $i in `changelog/$pr.md`: $(repr(line))\n" *
+                        "Every line must start a `- ` entry or be an indented continuation of the previous entry."
+                )
+            end
+        end
+
+        occursin(Regex("$(PR_URL)/$pr\\b"), join(lines, "\n")) &&
+            error("`changelog/$pr.md` must not link to PR #$pr, the link is added automatically.")
+
+        return entries
+    end
+
+    function render_entry(entry::Entry)
+        first_line = "$(entry.lines[1]) [#$(entry.pr)]($PR_URL/$(entry.pr))"
+        return [first_line; entry.lines[2:end]]
+    end
+
+    function unreleased_lines(dir = ENTRY_DIR)
+        entries = mapreduce(parse_entry_file, vcat, entry_files(dir); init = Entry[])
+        return mapreduce(render_entry, vcat, entries; init = String[])
+    end
+
+    function insert_section(changelog_lines, section_lines)
+        header_idx = findfirst(==("# Changelog"), changelog_lines)
+        header_idx === nothing && error("Could not find the `# Changelog` header in CHANGELOG.md.")
+        rest = changelog_lines[(header_idx + 1):end]
+        first_content = something(findfirst(!isempty ∘ strip, rest), length(rest) + 1)
+        return [changelog_lines[1:header_idx]; ""; section_lines; ""; rest[first_content:end]]
+    end
+
+    function release!(version::VersionNumber; changelog_path = CHANGELOG_PATH, dir = ENTRY_DIR, date = today())
+        entries = unreleased_lines(dir)
+        isempty(entries) && @warn "No changelog entries found in $dir."
+        section = ["## [$version] - $(Dates.format(date, "yyyy-mm-dd"))"; ""; entries]
+        write(changelog_path, join(insert_section(readlines(changelog_path), section), "\n") * "\n")
+        rm.(entry_files(dir))
+        return
+    end
+
+    function check()
+        mktempdir() do tmp
+            changelog_copy = joinpath(tmp, "CHANGELOG.md")
+            dir_copy = joinpath(tmp, "changelog")
+            cp(CHANGELOG_PATH, changelog_copy)
+            cp(ENTRY_DIR, dir_copy)
+            release!(v"999.0.0"; changelog_path = changelog_copy, dir = dir_copy)
+            isempty(entry_files(dir_copy)) || error("Entry files were not removed after release.")
+            println("Changelog entries are valid. Release section preview:\n")
+            released = readlines(changelog_copy)
+            next_section = findnext(startswith("## "), released, findfirst(startswith("## "), released) + 1)
+            println(join(released[1:(something(next_section, length(released) + 1) - 1)], "\n"))
+        end
+        return
+    end
+
+    function check_pr(pr::Int, added_files)
+        expected = "changelog/$pr.md"
+        foreign = filter(f -> f != expected && basename(f) ∉ NON_ENTRY_FILES, added_files)
+        isempty(foreign) ||
+            error("This PR adds changelog files not named after its number $pr: $(join(foreign, ", ")). Rename them to `$expected`.")
+        isfile(joinpath(ROOT, expected)) ||
+            error("Missing `$expected`. Add it with one or more `- ` entries, or apply the `skip-changelog` label.")
+        return check()
+    end
+
+    function main(args)
+        if length(args) == 1 && args[1] == "check"
+            check()
+        elseif length(args) >= 2 && args[1] == "check-pr"
+            check_pr(parse(Int, args[2]), args[3:end])
+        else
+            error("Usage: julia changelog.jl check | check-pr <PR number> [added changelog files...]")
+        end
+        return
+    end
+
+end
+
+if abspath(PROGRAM_FILE) == @__FILE__
+    Changelog.main(ARGS)
+end
