@@ -97,7 +97,11 @@ Makie.@noconstprop function Texture(
     glBindTexture(texturetype, id)
     set_packing_alignment(data)
     numbertype = julia2glenum(eltype(T))
-    glTexImage(texturetype, 0, internalformat, dims..., 0, format, numbertype, data)
+    if prod(dims) == 0
+        glTexImage(texturetype, 0, internalformat, 1, 1, 0, format, numbertype, data)
+    else
+        glTexImage(texturetype, 0, internalformat, dims..., 0, format, numbertype, data)
+    end
     mipmap && glGenerateMipmap(texturetype)
     texture = Texture{T, NDim}(
         context, id, texturetype, numbertype, internalformat, format,
