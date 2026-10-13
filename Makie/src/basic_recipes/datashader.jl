@@ -750,7 +750,9 @@ end
 
 function convert_arguments(::Type{<:Union{Image, Heatmap}}, x, y, image::Resampler)
     x, y, _ = convert_arguments(Heatmap, x, y, image.data)
-    return (EndPoints{Float32}(x...), EndPoints{Float32}(y...), image)
+    x = to_endpoints_with_range(x, "x", HeatmapShaderConversion)
+    y = to_endpoints_with_range(y, "y", HeatmapShaderConversion)
+    return (EndPoints{Float32}(x.data...), EndPoints{Float32}(y.data...), image)
 end
 
 function empty_channel!(channel::Channel)
