@@ -1,7 +1,7 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 authors = ["Simon Danisch", "Julius Krumbiegel"]
-version = "0.24.15"
+version = "0.24.16"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -86,8 +86,8 @@ Distributions = "0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25"
 DocStringExtensions = "0.8, 0.9"
 Downloads = "1, 1.6"
 DynamicQuantities = "1, 1.8"
-FastInterpolations = "0.4.16"
 FFMPEG_jll = "4, 6, 7, 8, 9"
+FastInterpolations = "0.4.16"
 FileIO = "1.6"
 FilePaths = "0.8, 0.9"
 FixedPointNumbers = "0.6, 0.7, 0.8"

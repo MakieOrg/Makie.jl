@@ -572,7 +572,14 @@ function convert_arguments(
     if isempty(meshes)
         return (GeometryBasics.Mesh(Point{DIM, Float32}[], GLTriangleFace[]),)
     end
-    converted = [convert_arguments(T, m)[1] for m in meshes]
+    converted = map(meshes) do maybe_mesh
+        mesh = convert_arguments(T, maybe_mesh)[1]
+        # remove views so that each view in the merged mesh corresponds to one
+        # of the input meshes. (If the input mesh has, for example, 2 ranges in
+        # mesh.views, these ranges will be transferred into the merged mesh.
+        # Then we can't match e.g. per-face colors to submeshes anymore.)
+        return GeometryBasics.Mesh(vertex_attributes(mesh), faces(mesh), UnitRange{UInt32}[])
+    end
     return (merge(converted),)
 end
 
