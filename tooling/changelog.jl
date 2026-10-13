@@ -19,7 +19,7 @@ module Changelog
             occursin(r"^[1-9]\d*\.md$", file) ||
                 error("Invalid file `changelog/$file`, entry files must be named `<PR number>.md`.")
         end
-        return sort!(joinpath.(dir, files); by = pr_number)
+        return sort!(joinpath.(dir, files); by = pr_number, rev = true)
     end
 
     pr_number(path) = parse(Int, chopsuffix(basename(path), ".md"))
