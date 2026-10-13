@@ -450,14 +450,24 @@ end
 function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
-    fracpoints = attrs.polypoints
-    points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
-    pol = poly!(
-        scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
-        strokecolor = attrs.polystrokecolor, inspectable = false,
-        colormap = attrs.polycolormap, colorrange = attrs.polycolorrange,
-        linestyle = attrs.linestyle, alpha = attrs.alpha
-    )
+    if haskey(attrs, :poly)
+        pol = poly!(
+            scene, attrs.poly, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
+            strokecolor = attrs.polystrokecolor, inspectable = false,
+            colormap = attrs.polycolormap, colorrange = attrs.polycolorrange,
+            linestyle = attrs.linestyle, alpha = attrs.alpha
+        )
+        on(bb -> translate!(pol, origin(bb)..., 0), scene, bbox)
+    else
+        fracpoints = attrs.polypoints
+        points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
+        pol = poly!(
+            scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
+            strokecolor = attrs.polystrokecolor, inspectable = false,
+            colormap = attrs.polycolormap, colorrange = attrs.polycolorrange,
+            linestyle = attrs.linestyle, alpha = attrs.alpha
+        )
+    end
 
     return [pol]
 end

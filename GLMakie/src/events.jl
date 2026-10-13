@@ -221,34 +221,57 @@ function Makie.disconnect!(window::GLFW.Window, ::typeof(mouse_position))
     return nothing
 end
 
-"""
-Registers a callback for the mouse scroll.
-returns an `Observable{Vec{2, Float64}}`,
-which is an x and y offset.
-[GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#gacc95e259ad21d4f666faa6280d4018fd)
-"""
-Makie.scroll(scene::Scene, screen) = scroll(scene, to_native(screen))
 mutable struct ScrollUpdater <: Function
     event::Observable{Tuple{Float64, Float64}}
     integer_scroll::Bool
+    pending::Tuple{Float64, Float64}
 end
+
 function (sc::ScrollUpdater)(window, w::Cdouble, h::Cdouble)
     @static if Sys.isapple()
         sc.integer_scroll = sc.integer_scroll && isinteger(w) && isinteger(h)
         w, h = ifelse(sc.integer_scroll, 1.0, 0.067) .* (w, h)
     end
-    @print_error begin
-        sc.event[] = (w, h)
-    end
+    # GLFW.PollEvents() drains the whole queued backlog in one call, so dispatching here
+    # would let a listener slower than the interval between hardware scroll events grow
+    # that backlog without bound. Accumulating keeps a poll's cost independent of it.
+    sc.pending = sc.pending .+ (w, h)
     return
 end
-function Makie.scroll(scene::Scene, window::GLFW.Window)
-    updater = ScrollUpdater(scene.events.scroll, true)
-    disconnect!(window, scroll)
-    return GLFW.SetScrollCallback(window, updater)
+
+function (sc::ScrollUpdater)(::Makie.TickState)
+    sc.pending == (0.0, 0.0) && return Consume(false)
+    offset = sc.pending
+    sc.pending = (0.0, 0.0)
+    @print_error begin
+        sc.event[] = offset
+    end
+    return Consume(false)
+end
+
+"""
+Registers a callback for the mouse scroll.
+returns an `Observable{Vec{2, Float64}}`,
+which is an x and y offset.
+The offsets of all events received during a frame are summed and emitted once per render
+tick, after the mouse position has been updated.
+[GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#gacc95e259ad21d4f666faa6280d4018fd)
+"""
+function Makie.scroll(scene::Scene, screen::Screen)
+    disconnect!(screen, scroll)
+    updater = ScrollUpdater(scene.events.scroll, true, (0.0, 0.0))
+    GLFW.SetScrollCallback(to_native(screen), updater)
+    on(updater, screen.render_tick)
+    return
+end
+function Makie.disconnect!(screen::Screen, ::typeof(scroll))
+    GLFW.SetScrollCallback(to_native(screen), nothing)
+    filter!(p -> !isa(p[2], ScrollUpdater), screen.render_tick.listeners)
+    return
 end
 function Makie.disconnect!(window::GLFW.Window, ::typeof(scroll))
-    return GLFW.SetScrollCallback(window, nothing)
+    error("disconnect!(::Screen, ::scroll) should be called instead of disconnect!(::GLFW.Window, ::scroll)!")
+    return nothing
 end
 
 """
