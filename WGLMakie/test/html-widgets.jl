@@ -243,6 +243,59 @@ using Electron, WGLMakie, Bonito, Test
         @test menu.i_selected[] == 4
     end
 
+    @testset "Menu - reactive options update" begin
+        fig = Figure()
+        menu = Makie.Menu(fig[1, 1], options = ["Option A", "Option B", "Option C"], default = "Option B")
+
+        app = App(fig)
+        display(edisplay, app)
+
+        read_items() = evaljs_value(
+            app.session[], js"""(() => {
+                const items = document.querySelectorAll('[data-value]');
+                return {
+                    count: items.length,
+                    texts: Array.from(items).map(item => item.textContent.trim()),
+                    values: Array.from(items).map(item => parseInt(item.dataset.value)),
+                    selected: Array.from(items)
+                        .filter(item => item.classList.contains('selected'))
+                        .map(item => item.textContent.trim())
+                }
+            })()"""
+        )
+
+        # The initial DOM mirrors the options passed at construction.
+        initial = read_items()
+        @test initial["count"] == 3
+        @test initial["texts"] == ["Option A", "Option B", "Option C"]
+
+        # Mutating `menu.options` must rebuild the dropdown entries in the DOM.
+        # This is the core behavior the fix introduced: the completely different
+        # option set (and new length) has to be reflected in the rendered list.
+        menu.options[] = ["Panel 1", "Panel 2", "Panel 3", "Panel 4"]
+
+        updated = read_items()
+        @test updated["count"] == 4
+        @test updated["texts"] == ["Panel 1", "Panel 2", "Panel 3", "Panel 4"]
+        @test updated["values"] == [1, 2, 3, 4]
+
+        # A newly added entry must stay interactive: event delegation keeps the
+        # rebuilt options clickable, updating the Makie-side selection.
+        evaljs_value(
+            app.session[], js"""(() => {
+                document.querySelectorAll('[data-value]')[3].click(); // Select "Panel 4"
+            })()"""
+        )
+        @test menu.selection[] == "Panel 4"
+        @test menu.i_selected[] == 4
+
+        # The selected-entry highlight must track `i_selected` through the
+        # reactive link after the entries have been rebuilt.
+        menu.i_selected[] = 2
+        @test menu.selection[] == "Panel 2"
+        @test read_items()["selected"] == ["Panel 2"]
+    end
+
     @testset "Textbox - text entry" begin
         fig = Figure()
         textbox = Makie.Textbox(fig[1, 1], placeholder = "Enter text...")
