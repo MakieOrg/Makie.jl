@@ -48,9 +48,12 @@ end
         include("plots/bracket.jl")
         include("plots/hist.jl")
         include("plots/poly.jl")
+        include("plots/mesh_stroke.jl")
+        include("plots/arrows.jl")
         include("plots/contourf.jl")
         include("plots/tricontour.jl")
         include("plots/voronoiplot.jl")
+        include("plots/datashader.jl")
         include("plots/deterministic_order.jl")
         include("plots/volumeslices.jl")
     end

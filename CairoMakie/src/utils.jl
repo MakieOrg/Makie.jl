@@ -265,8 +265,10 @@ function Cairo.CairoPattern(color::Makie.AbstractPattern)
 end
 
 function align_pattern(pattern::Cairo.CairoPattern, scene, model)
-    o = Makie.pattern_offset(scene.camera.projectionview[] * model, scene.camera.resolution[], true)
-    T = Mat{2, 3, Float32}(1, 0, 0, 1, -o[1], -o[2])
+    op = Makie.pattern_offset(scene.camera.projectionview[] * model, scene.camera.resolution[], true)
+    os = origin(viewport(scene)[])
+    h = height(viewport(Makie.root(scene))[])
+    T = Mat{2, 3, Float32}(1, 0, 0, 1, os[1] - op[1], h - os[2] - op[2])
     pattern_set_matrix(pattern, Cairo.CairoMatrix(T...))
     return
 end
@@ -348,6 +350,7 @@ function to_cairo_miter_limit(miter_limit)
 end
 
 to_cairo_linestyle(::Nothing, ::Any) = nothing
+to_cairo_linestyle(ls::Linestyle, lw::Any) = to_cairo_linestyle(ls.value, lw)
 to_cairo_linestyle(::AbstractVector, ::AbstractArray) = nothing
 function to_cairo_linestyle(linestyle::AbstractVector, linewidth::Real)
     # There is a discrepancy between Makie and Cairo when it comes to linestyles.

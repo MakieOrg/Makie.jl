@@ -251,6 +251,7 @@ function initialize_block!(cb::Colorbar)
         else
             low = colorrange[1] in (automatic, nothing) ? minimum(values) : colorrange[1]
             high = colorrange[2] in (automatic, nothing) ? maximum(values) : colorrange[2]
+            low, high = minmax(low, high)
             return (Vec2d(low, high),)
         end
     end

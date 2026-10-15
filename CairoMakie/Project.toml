@@ -26,7 +26,7 @@ GeometryBasics = "0.5"
 LinearAlgebra = "1.0, 1.6"
 Makie = "=0.25.0"
 PrecompileTools = "1.0"
-julia = "1"
+julia = "1.10"
 
 [sources.Makie]
 path = "../Makie"

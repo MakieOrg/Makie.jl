@@ -35,7 +35,8 @@ function Makie.initialize_block!(cr::AllBlocks)
     Label(gl[3, 2], map(v -> "$v", sl.value))
     Toggle(gl[3, 3], toggleduration = 0.01)
     IntervalSlider(gl[4, 1])
-    Textbox(gl[4, 2:3])
+    tb = Textbox(gl[4, 2:3])
+    tb.blockscene.children[1].plots[2].blink_period = Inf # avoid time sensitive refimg
 
     return cr
 end
@@ -260,7 +261,8 @@ end
         Label(gl[3, 2]; BLOCK_UPDATES[Label]...)
         Toggle(gl[3, 3], toggleduration = 0.01; BLOCK_UPDATES[Toggle]...)
         IntervalSlider(gl[4, 1]; BLOCK_UPDATES[IntervalSlider]...)
-        Textbox(gl[4, 2:3]; BLOCK_UPDATES[Textbox]...)
+        tb = Textbox(gl[4, 2:3]; BLOCK_UPDATES[Textbox]...)
+        tb.blockscene.children[1].plots[2].blink_period = Inf # avoid time sensitive refimg
 
         lines!(fig[2:3, 1], Rect2f(2, 2, 7, 7), color = :white)
         Box(fig[0, 1:3][:, 0], width = 20; BLOCK_UPDATES[Box]...)

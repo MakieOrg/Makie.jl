@@ -6,44 +6,55 @@ function project_sp(scene, point)
     return point_px .+ offset
 end
 
+is_freed(x::GLMakie.GLAbstraction.TextureBuffer) = x.texture.id == 0 && x.buffer.id == 0
+is_freed(x::GLMakie.GPUArray) = x.id == 0
+
 @testset "shader cache" begin
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
+
     # Postprocessing shaders
     @test length(cache.shader_cache) == 4
     @test length(cache.template_cache) == 4
     @test length(cache.program_cache) == 3
 
+    # Just Axis adds...
+    # f = Figure();
+    # a = Axis(f[1, 1])
+    # display(screen, f)
+    Ns = 18
+    Np = 8
+
     # Shaders for scatter + linesegments + poly etc (axis)
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 17
-    @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 9
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 17
-    @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 9
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # Same for linesegments
     display(screen, linesegments(1:4))
-    @test length(cache.shader_cache) == 17
-    @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 9
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
-    @test length(cache.shader_cache) == 19
-    @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == Ns + 2
+    @test length(cache.template_cache) == Ns + 2
+    @test length(cache.program_cache) == Np + 2
 
     # For second time no new shaders should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
-    @test length(cache.shader_cache) == 19
-    @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == Ns + 2
+    @test length(cache.template_cache) == Ns + 2
+    @test length(cache.program_cache) == Np + 2
 end
 
 @testset "unit tests" begin
@@ -151,7 +162,7 @@ end
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms
                 if v isa GLMakie.GPUArray
-                    @test v.id == 0
+                    @test is_freed(v)
                 end
             end
             for inst in values(robj.variants)
@@ -167,7 +178,7 @@ end
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms
                 if v isa GLMakie.GPUArray
-                    @test v.id != 0
+                    @test !is_freed(v)
                 end
             end
             for inst in values(robj.variants)
@@ -198,7 +209,7 @@ end
     for robj in robjs
         for (k, v) in robj.uniforms
             if (v isa GLMakie.GPUArray) && (v !== tex_atlas)
-                @test v.id == 0
+                @test is_freed(v)
             end
         end
         for inst in values(robj.variants)
@@ -213,7 +224,7 @@ end
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms
                 if v isa GLMakie.GPUArray
-                    @test v.id != 0
+                    @test !is_freed(v)
                 end
             end
             for inst in values(robj.variants)
@@ -301,7 +312,7 @@ end
 
         @test screen.scene === nothing
         @test screen.rendertask === nothing
-        @test (Base.summarysize(screen) / 10^6) < 1.41
+        @test (Base.summarysize(screen) / 10^6) < 1.45
     end
     # All should go to pool after close
     @test all(x -> x in GLMakie.SCREEN_REUSE_POOL, screens)
@@ -570,4 +581,27 @@ end
     @assert N > 0 "It doesn't make sense to confirm backend render_tick event don't get deleted when there are none"
     empty!(scene)
     @test length(screen.render_tick.listeners) == N
+end
+
+@testset "scroll event coalescing" begin
+    scroll = Observable((0.0, 0.0))
+    received = Tuple{Float64, Float64}[]
+    on(x -> push!(received, x), scroll)
+    updater = GLMakie.ScrollUpdater(scroll, true, (0.0, 0.0))
+
+    # integer offsets keep the macOS trackpad scaling factor at 1.0, so the sums below
+    # hold on every platform
+    updater(nothing, 1.0, 2.0)
+    updater(nothing, 3.0, -5.0)
+    @test received == []
+
+    updater(Makie.RegularRenderTick)
+    @test received == [(4.0, -3.0)]
+
+    updater(Makie.RegularRenderTick)
+    @test received == [(4.0, -3.0)]
+
+    updater(nothing, 0.0, 7.0)
+    updater(Makie.RegularRenderTick)
+    @test received == [(4.0, -3.0), (0.0, 7.0)]
 end

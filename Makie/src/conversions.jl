@@ -575,7 +575,10 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) wher
         n = normals(coordinates(mesh), faces(mesh), normaltype = Vec3f)
     end
 
-    mesh = GeometryBasics.mesh(mesh, facetype = GLTriangleFace, pointtype = Point{N, float_type(T)}, normal = n)
+    # The original face type is kept so that stroking can distinguish real mesh edges
+    # from edges introduced by triangulation. Triangulation happens in the backends
+    # via the decomposed :faces attribute.
+    mesh = GeometryBasics.mesh(mesh, facetype = eltype(faces(mesh)), pointtype = Point{N, float_type(T)}, normal = n)
     mesh = GeometryBasics.expand_faceviews(mesh) # TODO: can we do this (more) in-place?
 
     return (mesh,)
@@ -589,7 +592,14 @@ function convert_arguments(
     if isempty(meshes)
         return (GeometryBasics.Mesh(Point{DIM, Float32}[], GLTriangleFace[]),)
     end
-    converted = [convert_arguments(T, m)[1] for m in meshes]
+    converted = map(meshes) do maybe_mesh
+        mesh = convert_arguments(T, maybe_mesh)[1]
+        # remove views so that each view in the merged mesh corresponds to one
+        # of the input meshes. (If the input mesh has, for example, 2 ranges in
+        # mesh.views, these ranges will be transferred into the merged mesh.
+        # Then we can't match e.g. per-face colors to submeshes anymore.)
+        return GeometryBasics.Mesh(vertex_attributes(mesh), faces(mesh), UnitRange{UInt32}[])
+    end
     return (merge(converted),)
 end
 
@@ -1224,8 +1234,9 @@ pattern:
 struct Linestyle
     value::Vector{Float32}
 end
+Base.:(==)(a::Linestyle, b::Linestyle) = a.value == b.value
 
-to_linestyle(style::Linestyle) = Float32[x - style.value[1] for x in style.value]
+to_linestyle(style::Linestyle) = Linestyle(Float32[x - style.value[1] for x in style.value])
 
 # TODO only use NTuple{2, <: Real} and not any other container
 const GapType = Union{Real, Symbol, Tuple, AbstractVector}
@@ -1239,7 +1250,7 @@ end
 
 function line_pattern(linestyle::Symbol, gaps::GapType)
     pattern = line_diff_pattern(linestyle, gaps)
-    return isnothing(pattern) ? pattern : Float32[0.0; cumsum(pattern)]
+    return isnothing(pattern) ? nothing : Linestyle(Float32[0.0; cumsum(pattern)])
 end
 
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."

@@ -358,30 +358,39 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
 
     pixel_pos_node = register_projected_positions!(plot, Point2f, input_name = :contour_points, output_space = :pixel)
 
-    map!(plot, [:string_boundingboxes, pixel_pos_node, :contour_points], :masked_lines) do bboxes, pixel_pos, segments
-        # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
-        count(isnan, segments) > length(segments) / 10 && return segments
-
-        n = 1
-        bb = Rect2(bboxes[n])
-        nlab = length(bboxes)
+    map!(
+        plot,
+        [:string_boundingboxes, pixel_pos_node, :contour_points, :elements_per_segment],
+        :masked_lines
+    ) do bboxes, pixel_pos, segments, elements_per_segment
         masked = copy(segments)
         nan = P(NaN32)
-        for (i, p) in enumerate(segments)
-            if isnan(p) && n < nlab
-                bb = Rect2(bboxes[n += 1])  # next segment is materialized by a NaN, thus consider next label
-            elseif pixel_pos[i] in bb
-                masked[i] = nan
-                for dir in (-1, +1)
-                    j = i
-                    while true
-                        j += dir
-                        checkbounds(Bool, segments, j) || break
-                        pixel_pos[j] in bb || break
-                        masked[j] = nan
+        start = 0
+        for (n, (level, N_points)) in enumerate(elements_per_segment)
+            current_range = start .+ (1:N_points)
+
+            # simple heuristic to turn off masking segments when it has few
+            # points, to avoid removing short contour lines entirely.
+            if count(!isnan, view(pixel_pos, current_range)) >= 10
+                bb = Rect2(bboxes[n])
+
+                for i in current_range
+                    if pixel_pos[i] in bb
+                        masked[i] = nan
+                        for dir in (-1, +1)
+                            j = i
+                            while true
+                                j += dir
+                                checkbounds(Bool, segments, j) || break
+                                pixel_pos[j] in bb || break
+                                masked[j] = nan
+                            end
+                        end
                     end
                 end
             end
+
+            start += N_points
         end
 
         return masked

@@ -295,7 +295,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         newxorigin = xzoomlock[] ? xorigin : xorigin + mp_axfraction[1] * (xwidth - newxwidth)
         newyorigin = yzoomlock[] ? yorigin : yorigin + mp_axfraction[2] * (ywidth - newywidth)
 
-        timed_ticklabelspace_reset(ax, s.reset_timer, s.prev_xticklabelspace, s.prev_yticklabelspace, s.reset_delay)
+        freeze_ticklabelspace_until_idle!(ax, s.ticklabelspace_reset)
 
         newrect_trans = if ispressed(scene, xzoomkey[])
             Rectd(newxorigin, yorigin, newxwidth, ywidth)
@@ -363,7 +363,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax::Axis)
     end
 
     # TODO: unnecessary now?
-    timed_ticklabelspace_reset(ax, dp.reset_timer, dp.prev_xticklabelspace, dp.prev_yticklabelspace, dp.reset_delay)
+    freeze_ticklabelspace_until_idle!(ax, dp.ticklabelspace_reset)
 
     inv_transf = ax.inverse_transform_func[]
     newrect_trans = Rectd(Vec2(xori, yori), widths(tlimits_trans))

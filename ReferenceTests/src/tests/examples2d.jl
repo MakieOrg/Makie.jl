@@ -503,7 +503,6 @@ end
     fig
 end
 
-
 @reference_test "space 2D" begin
     # This should generate a regular grid with text in a circle in a box. All
     # sizes and positions are scaled to be equal across all options.
@@ -1046,14 +1045,16 @@ end
     f
 end
 
-@reference_test "contour labels 2D" begin
+@reference_test "contour labels" begin
     paraboloid = (x, y) -> 10(x^2 + y^2)
 
     x = range(-4, 4; length = 40)
     y = range(-4, 4; length = 60)
     z = paraboloid.(x, y')
 
-    fig, ax, hm = heatmap(x, y, z)
+    fig = Figure(size = (600, 600))
+
+    ax, hm = heatmap(fig[1, 1], x, y, z)
     Colorbar(fig[1, 2], hm)
 
     contour!(
@@ -1061,17 +1062,27 @@ end
         color = :red, levels = 0:20:100, labels = true,
         labelsize = 15, labelfont = :bold, labelcolor = :orange,
     )
-    fig
-end
 
-@reference_test "contour labels with transform_func" begin
-    f = Figure(size = (400, 400))
-    a = Axis(f[1, 1], xscale = log10)
+    a = Axis(fig[1, 3], xscale = log10)
     xs = 10 .^ range(0, 3, length = 101)
     ys = range(1, 4, length = 101)
     zs = [sqrt(x * x + y * y) for x in -50:50, y in -50:50]
     contour!(a, xs, ys, zs, labels = true, labelsize = 20)
-    f
+
+    # Test with NaN, #4418, #5811
+    f(x, y) = abs(sin(x) + cos(y))
+    bad(x, y) = (x - 2) > y
+    x = range(0, 5, length = 50)
+    y = range(0, 5, length = 50)
+    z = @. f(x', y)
+    isbad = @. bad(x', y)
+    zz = copy(z)
+    zz[isbad] .= NaN
+
+    contour(fig[2, 1], x, y, zz', color = :black, labels = true, linewidth = 2, labelsize = 16)
+    contour3d!(Axis(fig[2, 3]), x, y, zz', color = :black, labels = true, linewidth = 2, labelsize = 16)
+
+    fig
 end
 
 @reference_test "contour 2d with curvilinear grid" begin
@@ -2300,6 +2311,35 @@ end
     f
 end
 
+@reference_test "Mesh Pattern Continuity" begin
+    img = fill(RGBf(1, 1, 1), 16, 16)
+    img[1:8, 1:8] .= RGBf(1, 0, 0)
+    img[12:16, 1:8] .= RGBf(0, 1, 0)
+    img[1:8, 12:16] .= RGBf(0, 0, 1)
+
+    scene = Scene(size = (400, 300))
+    sub = Scene(scene, viewport = Rect2f(0, 0, 100, 150))
+    mesh!(sub, Rect2f(-1, -1, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(0, 0, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(-1, 0, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(sub, Rect2f(0, -1, 1, 1), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(100, 0, 100, 150)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(0, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+    mesh!(Scene(scene, viewport = Rect2f(100, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = Makie.ImagePattern(img))
+
+    pat = Pattern("x")
+    sub = Scene(scene, viewport = Rect2f(200, 0, 100, 150))
+    mesh!(sub, Rect2f(-1, -1, 1, 1), color = pat)
+    mesh!(sub, Rect2f(0, 0, 1, 1), color = pat)
+    mesh!(sub, Rect2f(-1, 0, 1, 1), color = pat)
+    mesh!(sub, Rect2f(0, -1, 1, 1), color = pat)
+    mesh!(Scene(scene, viewport = Rect2f(300, 0, 100, 150)), Rect2f(-1, -1, 2, 2), color = pat)
+    mesh!(Scene(scene, viewport = Rect2f(200, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = pat)
+    mesh!(Scene(scene, viewport = Rect2f(300, 150, 100, 150)), Rect2f(-1, -1, 2, 2), color = pat)
+
+    scene
+end
+
 @reference_test "Color patterns in recipes" begin
     pattern = Makie.Pattern('x', linecolor = :darkgreen, backgroundcolor = RGBf(0.7, 0.8, 0.5))
 
@@ -2621,7 +2661,7 @@ end
 end
 
 @reference_test "annotation manual" begin
-    f, ax, _ = lines(0 .. 10, sin, figure = (; size = (600, 450)))
+    f, ax, p = lines(0 .. 10, sin, linewidth = 3, figure = (; size = (600, 450)))
 
     annotation!(
         ax, 0, -100, pi / 2, 1.0,
