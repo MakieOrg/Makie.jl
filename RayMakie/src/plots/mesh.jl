@@ -16,14 +16,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
     state = screen.state
     hikari_scene = state.hikari_scene
 
-    haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
+    # The screen's raster-or-trace mode as this plot's own input. Not named
+    # `rasterize`: since Makie 0.24.16 (#5783) every plot has a `rasterize`
+    # attribute, CairoMakie's raster density (false or an integer), which is not
+    # this switch.
+    haskey(attr, :raster_path) || add_input!(attr, :raster_path, screen.rasterize)
 
     # Only the tracer reads it. Defer even the first conversion in raster mode:
     # a 4096² texture otherwise kept another 256 MiB of unused spectrum data.
     # ComputePipeline's empty output slot accepts its first value when tracing
     # starts; changing `rasterize` then converts the current colour.
-    register_computation!(attr, [:color, :rasterize], [:trace_color_tex]) do args, changed, last
-        args.rasterize && return last === nothing ? (nothing,) : nothing
+    register_computation!(attr, [:color, :raster_path], [:trace_color_tex]) do args, changed, last
+        args.raster_path && return last === nothing ? (nothing,) : nothing
         return (color_to_texture(args.color, plot),)
     end
 
@@ -42,12 +46,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
 
     register_computation!(attr,
         [:mesh, :positions_transformed_f32c, :faces, :normals,
-         :texturecoordinates, :uv_transform, :trace_color_tex, :model_f32c, :material, :rasterize,
+         :texturecoordinates, :uv_transform, :trace_color_tex, :model_f32c, :material, :raster_path,
          :visible],
         [:trace_renderobject]) do args, changed, last
         # `nothing` when this plot is not being traced — the slot still exists,
         # so its type never changes, and the collectors skip a `nothing`.
-        (args.rasterize || !should_raytrace(scene, plot) || isnothing(hikari_scene)) &&
+        (args.raster_path || !should_raytrace(scene, plot) || isnothing(hikari_scene)) &&
             return (nothing,)
         last_robj = isnothing(last) ? nothing : last.trace_renderobject
         return (mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, last_robj),)
@@ -69,7 +73,7 @@ function register_raster_renderobject!(screen, scene, plot)
     hikari_scene = screen.state.hikari_scene
     register_raster_mesh_nodes!(plot)
     register_computation!(plot.attributes, RASTER_MESH_DEPS, [:raster_renderobject]) do args, changed, last
-        israster = args.rasterize || !should_raytrace(scene, plot) || isnothing(hikari_scene)
+        israster = args.raster_path || !should_raytrace(scene, plot) || isnothing(hikari_scene)
         israster || return (nothing,)
         last_robj = isnothing(last) ? nothing : last.raster_renderobject
         return (mesh_overlay_dispatch!(screen, scene, plot, args, changed, last_robj),)
@@ -325,7 +329,7 @@ for a surface that composed with the shift to texel centres.
 """
 const RASTER_MESH_DEPS = [
     :positions_transformed_f32c, :faces, :normals, :texturecoordinates, :model_f32c,
-    :material, :rasterize,
+    :material, :raster_path,
     :scaled_color, :alpha_colormap, :scaled_colorrange, :color_mapping_type,
     :lowclip_color, :highclip_color, :nan_color, :interpolate_in_fragment_shader,
     :interpolate, :raster_uv_transform, :fetch_pixel, :matcap,

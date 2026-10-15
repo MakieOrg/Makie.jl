@@ -264,8 +264,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
 
     # The path, as for a mesh: traced, or the marker mesh drawn once per
     # instance by the raster mesh stage. `setrasterize!` switches it.
-    haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
-    israster(args) = args.rasterize || !should_raytrace(scene, plot) || isnothing(hikari_scene)
+    haskey(attr, :raster_path) || add_input!(attr, :raster_path, screen.rasterize)
+    israster(args) = args.raster_path || !should_raytrace(scene, plot) || isnothing(hikari_scene)
 
     # 1. Marker → GB.Mesh
     register_computation!(attr, [:marker], [:trace_marker_mesh]) do args, changed, last
@@ -312,8 +312,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
     # reached the scene. The value was read correctly and the node simply never
     # ran. Conditional because `:material` is only present when the user gave
     # one — same shape as image.jl's `:model_f32c` handling.
-    material_deps = haskey(attr, :material) ? [:color, :n_instances, :material, :rasterize] :
-                                              [:color, :n_instances, :rasterize]
+    material_deps = haskey(attr, :material) ? [:color, :n_instances, :material, :raster_path] :
+                                              [:color, :n_instances, :raster_path]
     register_computation!(attr, material_deps,
                           [:trace_materials]) do args, changed, last
         # Only the tracer reads them; while rasterising, keep what there is.
@@ -323,7 +323,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
 
     # 5. Render object — single dispatch point: create on first frame, update otherwise.
     register_computation!(attr,
-        [:trace_marker_mesh, :trace_transforms, :trace_materials, :rasterize, :visible],
+        [:trace_marker_mesh, :trace_transforms, :trace_materials, :raster_path, :visible],
         [:trace_renderobject]) do args, changed, last
         # `nothing` when this plot is not being traced; the slot keeps its type.
         israster(args) && return (nothing,)
@@ -352,7 +352,7 @@ const RASTER_MESHSCATTER_DEPS = [
     :positions_transformed_f32c, :rotation, :markersize, :f32c_scale, :transform_marker,
     :raster_uv_transform,
     :vertex_position, :faces, :normal, :uv,
-    :model_f32c, :material, :rasterize,
+    :model_f32c, :material, :raster_path,
     :scaled_color, :alpha_colormap, :scaled_colorrange, :color_mapping_type,
     :lowclip_color, :highclip_color, :nan_color, :interpolate, :fetch_pixel, :matcap,
     :shading, :diffuse, :specular, :shininess, :backlight, :depth_shift,

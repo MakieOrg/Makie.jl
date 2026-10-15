@@ -106,7 +106,7 @@ end
 
 @testset "setrasterize! switches a surface both ways" begin
     # The surface read the screen's CONFIG, which the switch does not change, and
-    # had no `:rasterize` input for it to drop, so it stayed traced.
+    # had no `:raster_path` input for it to drop, so it stayed traced.
     fig, ax, plt = axis3_surface()
     scr = RayMakie.Screen(fig.scene; visible = false, samples = 1, max_depth = 2)
     Makie.update_state_before_display!(fig)

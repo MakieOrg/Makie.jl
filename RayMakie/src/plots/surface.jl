@@ -38,9 +38,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
 
     # 2. Color → Hikari texture (independent of mesh geometry)
     # Only the tracer reads it; see `plots/mesh.jl`.
-    haskey(attr, :rasterize) || add_input!(attr, :rasterize, screen.rasterize)
-    register_computation!(attr, [:color, :rasterize], [:trace_color_tex]) do args, changed, last
-        args.rasterize && return last === nothing ? (nothing,) : nothing
+    haskey(attr, :raster_path) || add_input!(attr, :raster_path, screen.rasterize)
+    register_computation!(attr, [:color, :raster_path], [:trace_color_tex]) do args, changed, last
+        args.raster_path && return last === nothing ? (nothing,) : nothing
         return (color_to_texture(args.color, plot),)
     end
 
@@ -57,9 +57,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
     # `nothing`, and the compute graph reported "this plot will not be drawn".
 
     # 3. HWTLAS management: combine mesh, color, model_f32c
-    register_computation!(attr, [:trace_surface_mesh, :trace_color_tex, :model_f32c, :rasterize, :visible],
+    register_computation!(attr, [:trace_surface_mesh, :trace_color_tex, :model_f32c, :raster_path, :visible],
                           [:trace_renderobject]) do args, changed, last
-        (args.rasterize || !should_raytrace(scene, plot) || isnothing(hikari_scene)) &&
+        (args.raster_path || !should_raytrace(scene, plot) || isnothing(hikari_scene)) &&
             return (nothing,)
         gb_mesh = args.trace_surface_mesh
         color_tex = args.trace_color_tex

@@ -859,7 +859,7 @@ Switch the screen between tracing and rasterising, and make every plot notice.
 
 The flag alone is not enough: `draw_atomic` decides the path ONCE and caches the
 answer in the plot's `trace_renderobject`, a compute node. So the mode is declared as one of
-that node's INPUTS (`:rasterize`), and setting it here is what invalidates the
+that node's INPUTS (`:raster_path`), and setting it here is what invalidates the
 cached object — the pipeline then rebuilds it down the other path. Reading the
 screen inside the node instead would change the answer it WOULD give while
 every plot kept the object it had already built.
@@ -878,7 +878,7 @@ function setrasterize!(screen, on::Bool)
     for ss in screen.scene_states
         screen.state = ss
         Makie.for_each_atomic_plot(ss.makie_scene) do p
-            haskey(p.attributes, :rasterize) || return nothing
+            haskey(p.attributes, :raster_path) || return nothing
             drop_render_objects!(screen, p)
             return nothing
         end
@@ -912,13 +912,13 @@ Both slots. A plot that can go either way registers `:trace_renderobject` AND
 `:raster_renderobject`, one of them holding `nothing`, and `init_scene!` and
 `insert!` skip a plot holding EITHER key. Dropping only the trace slot, as the
 `hw_accel` switch did after the raster path was added, left every mesh skipped
-by the rebuild: an empty scene, a blank film, and no error. `:rasterize` goes
+by the rebuild: an empty scene, a blank film, and no error. `:raster_path` goes
 with them because it is the input both nodes read, and `draw_atomic` adds it
 back with the screen's current value.
 """
 function drop_render_objects!(screen, p::Makie.AbstractPlot)
     delete_trace_robj!(screen, p)
-    for key in (:raster_renderobject, :rasterize)
+    for key in (:raster_renderobject, :raster_path)
         haskey(p.attributes, key) && delete!(p.attributes, key, force = true, recursive = true)
     end
     return nothing
