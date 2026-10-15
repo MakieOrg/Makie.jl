@@ -148,7 +148,7 @@ import InverseFunctions
 
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
-export Pixel, px, Unit, plotkey, attributes, used_attributes
+export plotkey, attributes, used_attributes
 export Linestyle
 assetpath(files...) = normpath(joinpath(artifact"MakieAssets", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))
@@ -216,7 +216,6 @@ include("float32-scaling.jl")
 
 include("interfaces.jl")
 include("compute-plots.jl")
-include("units.jl")
 include("shorthands.jl")
 
 # camera types + functions
@@ -226,6 +225,7 @@ include("event_routing.jl")
 include("camera/camera2d.jl")
 include("camera/camera3d.jl")
 include("camera/old_camera3d.jl")
+include("camera/stagecamera.jl")
 
 include("utilities/projection_utils.jl")
 
@@ -257,6 +257,7 @@ include("basic_recipes/streamplot.jl")
 include("basic_recipes/tubes.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/tricontourf.jl")
+include("basic_recipes/tricontour.jl")
 include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/voronoiplot.jl")
@@ -472,13 +473,9 @@ export DateTimeTicks
 export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, data_limits
 
-# Spaces for widths and markers
-const PixelSpace = Pixel
-export SceneSpace, PixelSpace, Pixel
-
 # camera related
-export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
-export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!
+export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, StageCamera, cam2d!, cam2d
+export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!, stage_cam!
 export update_cam!, rotate_cam!, translate_cam!, zoom!
 export viewport, plots, cameracontrols, cameracontrols!, camera, events
 export to_world

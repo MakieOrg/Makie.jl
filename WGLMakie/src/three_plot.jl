@@ -24,11 +24,16 @@ function Bonito.print_js_code(io::IO, plot::AbstractPlot, context::Bonito.JSSour
 end
 
 function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceContext)
+    # Some large scenes can initialize slowly in app mode; allow configurable retry window.
+    retry_delay_ms = max(1, something(tryparse(Int, get(ENV, "WGLMAKIE_SCENE_RETRY_DELAY_MS", "100")), 100))
+    total_wait_ms = max(retry_delay_ms, something(tryparse(Int, get(ENV, "WGLMAKIE_SCENE_RETRY_TOTAL_MS", "60000")), 60000))
+    max_retries = max(100, cld(total_wait_ms, retry_delay_ms))
+
     code = js"""$(WGL).then(WGL=> {
         function try_find_scene(_retries) {
             let retries = _retries || 0;
-            const max_retries = 100;
-            const retry_delay = 100;
+            const max_retries = $(max_retries);
+            const retry_delay = $(retry_delay_ms);
             const scene = WGL.find_scene($(js_uuid(scene)));
             if (scene) {
                 return Promise.resolve(scene);

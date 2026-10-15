@@ -24,7 +24,7 @@ This can also be called with four arguments `xs, ys, zs` and `data`. In this cas
     - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
     """
     levels = 5
-    "Sets the width of contour lines."
+    "Sets the width of contour lines. Can be set per level."
     linewidth = 1.0
     "Sets the dash pattern of contour lines. See `?lines`."
     linestyle = nothing
@@ -82,43 +82,44 @@ a level value. The z-height of the line will be given by the level value.
     documented_attributes(Contour)...
 end
 
-function label_info(lev, vertices, col)
+function label_info(lev, vertices)
     mid = ceil(Int, 0.5f0 * length(vertices))
     # take 3 pts around half segment
     pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
-    return to_ndim.(Point3f, pts, lev)..., col
+    return tuple(to_ndim.(Point3f, pts, lev)...)
 end
 
-function contourlines(::Type{<:T}, contours, cols, labels) where {T <: Union{Contour3d, Contour}}
+function contourlines(::Type{<:T}, contours, labels) where {T <: Union{Contour3d, Contour}}
     PT = T <: Contour3d ? Point3f : Point2f
 
     points = PT[]
-    colors = RGBA{Float32}[]
+    # index relates to the drawn line segments, outputs is (level, count)
+    elements_per_segment = Pair{UInt32, UInt32}[]
     levels = Float32[]
     lbl_pos_low = PT[]
     lbl_pos_center = PT[]
     lbl_pos_high = PT[]
-    lbl_color = RGBAf[]
 
-    for (color, c) in zip(cols, Contours.levels(contours))
+    for (lvl, c) in enumerate(Contours.levels(contours))
         for elem in Contours.lines(c)
-            for p in elem.vertices
+            # Contours.jl traces cells in `Dict` order, so a line starts anywhere and runs either way
+            vertices = canonical_line_order(elem.vertices)
+            for p in vertices
                 push!(points, to_ndim(PT, p, c.level))
             end
             push!(points, PT(NaN32))
-            append!(colors, fill(color, length(elem.vertices) + 1))
+            push!(elements_per_segment, lvl => length(vertices) + 1)
 
             if labels
-                p1, p2, p3, col = label_info(c.level, elem.vertices, color)
+                p1, p2, p3 = label_info(c.level, vertices)
                 push!(levels, c.level)
                 push!(lbl_pos_low, p1)
                 push!(lbl_pos_center, p2)
                 push!(lbl_pos_high, p3)
-                push!(lbl_color, col)
             end
         end
     end
-    return points, colors, levels, lbl_pos_low, lbl_pos_center, lbl_pos_high, lbl_color
+    return points, elements_per_segment, levels, lbl_pos_low, lbl_pos_center, lbl_pos_high
 end
 
 to_levels(x::AbstractVector{<:Number}, cnorm) = x
@@ -200,7 +201,7 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     end
 
     volume!(
-        plot, Attributes(plot),
+        plot, plot.attributes,
         plot.converted_1, plot.converted_2, plot.converted_3, plot.converted_4,
         alpha = 1.0, # don't apply alpha 2 times
         algorithm = 7, # contour algorithm
@@ -255,9 +256,20 @@ function has_changed(old_args, new_args)
     return false
 end
 
+repeat_level_data_per_vertex(counts, x) = x
+function repeat_level_data_per_vertex(counts, x::AbstractVector{T}) where {T}
+    output = T[]
+    for (lvl, count) in counts
+        append!(output, fill(x[lvl], count))
+    end
+    return output
+end
+
 function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     map!(nan_extrema, plot, :converted_3, :zrange)
     map!(plot, [:levels, :zrange], :zlevels) do levels, zrange
+        zmin, zmax = zrange
+        isapprox(zmin, zmax) && return eltype(zrange)[]
         if levels isa AbstractVector{<:Number}
             return levels
         elseif levels isa Integer
@@ -266,7 +278,12 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
             error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
         end
     end
-    map!(default_automatic, plot, [:colorrange, :zrange], :computed_colorrange)
+    map!(plot, [:colorrange, :zrange], :computed_colorrange) do colorrange, zrange
+        zmin, zmax = default_automatic(colorrange, zrange)
+        isapprox(zmin, zmax) || return (zmin, zmax)
+        delta = max(one(zmin), abs(zmin))
+        return (zmin - delta, zmax + delta)
+    end
 
     map!(
         color_per_level, plot,
@@ -278,11 +295,18 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
 
     map!(
         plot,
-        [:contour, :level_colors, :labels],
-        [:contour_points, :contour_colors, :computed_levels, :lbl_pos1, :lbl_pos2, :lbl_pos3, :computed_lbl_colors]
+        [:contour, :labels],
+        [:contour_points, :elements_per_segment, :computed_levels, :lbl_pos1, :lbl_pos2, :lbl_pos3]
     ) do args...
         return contourlines(T, args...)
     end
+
+    map!(plot, [:elements_per_segment, :level_colors, :labels], :computed_lbl_colors) do counts, colors, labels
+        return labels ? [colors[i] for (i, _) in counts] : RGBAf[]
+    end
+
+    map!(repeat_level_data_per_vertex, plot, [:elements_per_segment, :level_colors], :contour_colors)
+    map!(repeat_level_data_per_vertex, plot, [:elements_per_segment, :linewidth], :contour_linewidth)
 
     # TODO:
     # Should we make yes/no labels a constructor-time decisions so we can avoid
@@ -299,7 +323,8 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     end
 
     map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
-        return formatter.(levels)
+        # Allow inconsistent output types (String, LaTexString, RichText) from formatter
+        return Ref{Any}(formatter.(levels))
     end
 
     map!(plot, [:labelcolor, :computed_lbl_colors], :text_color) do user_color, computed_color
@@ -333,37 +358,46 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
 
     pixel_pos_node = register_projected_positions!(plot, Point2f, input_name = :contour_points, output_space = :pixel)
 
-    map!(plot, [:labels, :string_boundingboxes, :contour_points], :masked_lines) do use_labels, bboxes, segments
+    map!(
+        plot,
+        [:labels, :string_boundingboxes, :contour_points, :elements_per_segment],
+        :masked_lines
+    ) do use_labels, bboxes, segments, elements_per_segment
         use_labels || return segments
-
-        # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
-        count(isnan, segments) > length(segments) / 10 && return segments
 
         # To avoid always projecting, pull these in indirectly.
         # string boundingboxes will already update on everything that could trigger
         # pixel_contour_points, so this should be fine
         pixel_pos = pixel_pos_node[]
 
-        n = 1
-        bb = Rect2(bboxes[n])
-        nlab = length(bboxes)
         masked = copy(segments)
         nan = P(NaN32)
-        for (i, p) in enumerate(segments)
-            if isnan(p) && n < nlab
-                bb = Rect2(bboxes[n += 1])  # next segment is materialized by a NaN, thus consider next label
-            elseif pixel_pos[i] in bb
-                masked[i] = nan
-                for dir in (-1, +1)
-                    j = i
-                    while true
-                        j += dir
-                        checkbounds(Bool, segments, j) || break
-                        pixel_pos[j] in bb || break
-                        masked[j] = nan
+        start = 0
+        for (n, (level, N_points)) in enumerate(elements_per_segment)
+            current_range = start .+ (1:N_points)
+
+            # simple heuristic to turn off masking segments when it has few
+            # points, to avoid removing short contour lines entirely.
+            if count(!isnan, view(pixel_pos, current_range)) >= 10
+                bb = Rect2(bboxes[n])
+
+                for i in current_range
+                    if pixel_pos[i] in bb
+                        masked[i] = nan
+                        for dir in (-1, +1)
+                            j = i
+                            while true
+                                j += dir
+                                checkbounds(Bool, segments, j) || break
+                                pixel_pos[j] in bb || break
+                                masked[j] = nan
+                            end
+                        end
                     end
                 end
             end
+
+            start += N_points
         end
 
         return masked
@@ -373,7 +407,7 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     lines!(
         plot, plot.masked_lines;
         color = plot.contour_colors,
-        linewidth = plot.linewidth,
+        linewidth = plot.contour_linewidth,
         linestyle = plot.linestyle,
         linecap = plot.linecap,
         joinstyle = plot.joinstyle,

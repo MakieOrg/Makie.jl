@@ -85,10 +85,23 @@ function Makie.pick(::Scene, screen::Screen, r::Rect2)
 end
 
 """
-    ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover)
+    ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover, class="popup",
+css=POPUP_CSS)
 
-Returns a Bonito DOM element, which creates a popup whenever you click on a plot element in `plots`.
-The content of the popup is filled with the return value of js_callback, which can be a string or `HTMLNode`.
+Returns a Bonito DOM element, which creates a popup whenever you click on a plot element in
+`plots`.
+The content of the popup is filled with the return value of js_callback, which can be a string
+or `HTMLNode`.
+
+The popup is styled via `class` (the CSS class on the popup `div`, default `"popup"`) and
+`css` (a stylesheet to load — any `jsrender`-able such as an `Asset`, `Styles` or DOM node;
+default `POPUP_CSS`). To restyle, set both: a class your stylesheet targets, and the
+stylesheet
+itself. Your CSS must handle the `show` class (toggled when the popup is visible).
+
+To match the GLMakie `DataInspector` look, use the bundled preset:
+`ToolTip(fig, callback; plots, class = "datainspector-popup", css = DATAINSPECTOR_CSS)`.
+See [`DATAINSPECTOR_CSS`](@ref).
 
 Usage example:
 
@@ -121,21 +134,46 @@ struct ToolTip
     scene::Scene
     callback::Bonito.JSCode
     plot_uuids::Vector{String}
-    function ToolTip(figlike, callback; plots = nothing)
+    class::String
+    css::Any
+    function ToolTip(figlike, callback; plots = nothing, class = "popup", css = POPUP_CSS)
         scene = Makie.get_scene(figlike)
         if isnothing(plots)
             plots = scene.plots
         end
         all_plots = js_uuid.(filter!(x -> x.inspectable[], Makie.collect_atomic_plots(plots)))
-        return new(scene, callback, all_plots)
+        return new(scene, callback, all_plots, class, css)
     end
 end
 
 const POPUP_CSS = Bonito.Asset(@path joinpath(@__DIR__, "popup.css"))
 
+"""
+    DATAINSPECTOR_CSS
+
+A ready-made `ToolTip` stylesheet that mimics the GLMakie `DataInspector` popup
+(square white box, black outline, downward tail pointing at the data point).
+Pair it with `class = "datainspector-popup"`:
+
+```julia
+ToolTip(fig, callback; plots, class = "datainspector-popup", css = DATAINSPECTOR_CSS)
+```
+"""
+const DATAINSPECTOR_CSS = DOM.span(
+    # load the Makie UI font so the text matches DataInspector exactly
+    Bonito.Styles(
+        Bonito.CSS(
+            "@font-face",
+            "font-family" => "TeXGyreHerosMakie",
+            "src" => Bonito.Asset(Makie.assetpath("fonts", "TeXGyreHerosMakie-Regular.otf")),
+        )
+    ),
+    Bonito.Asset(@path joinpath(@__DIR__, "datainspector_popup.css")),
+)
+
 function Bonito.jsrender(session::Session, tt::ToolTip)
     scene = tt.scene
-    popup = DOM.div("", class = "popup")
+    popup = DOM.div("", class = tt.class)
     Bonito.evaljs(
         session, js"""
             $(scene).then(scene => {
@@ -145,5 +183,5 @@ function Bonito.jsrender(session::Session, tt::ToolTip)
             })
         """
     )
-    return DOM.span(Bonito.jsrender(session, POPUP_CSS), popup)
+    return DOM.span(Bonito.jsrender(session, tt.css), popup)
 end

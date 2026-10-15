@@ -254,7 +254,7 @@ function record_longrunning(func, figlike::FigureLike, path::AbstractString, ite
     # Assemble frames into video using VideoStreamOptions for proper encoding
     @info "record_longrunning: assembling $n frames into video at $path"
     input_pattern = joinpath(frame_folder, "frame_%0$(nd)d.$(frame_format)")
-    vso = VideoStreamOptions(video_format, framerate, compression, profile, pixel_format, preset, loop, "quiet", input_pattern, false)
+    vso = VideoStreamOptions(video_format, framerate, compression, profile, "rgb24", pixel_format, preset, loop, "quiet", input_pattern, false)
     cmd = to_ffmpeg_cmd(vso)
     # `get_ffmpeg_path()`, not `FFMPEG_jll` directly. FFMPEG_jll stopped being a
     # hard dependency of Makie and now arrives through the MakieFFMPEGExt

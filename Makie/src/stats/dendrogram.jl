@@ -33,8 +33,18 @@ Note that this recipe is still experimental and subject to change in the future.
     Can be `:down`, `:right`, `:up`, `:left` or a float.
     """
     rotation = :down
-    "Sets the position of the tree root."
+    "Sets the position of the tree root (when `absolute = false`)."
     origin = Point2d(0)
+    """
+    Controls how the given node positions are interpreted. With the default
+    `absolute = false`, positions are treated as relative and the whole tree is
+    translated so that the root ends up at `origin`. With `absolute = true`, the
+    input coordinates are kept as given, so leaf nodes stay at their specified
+    positions. This makes it easy to align leaves to other plot elements such as
+    heatmap rows or columns. `rotation`, `width`, `depth` and `origin` still apply
+    on top, with `origin` acting as an additional offset.
+    """
+    absolute = false
     """
     Scales the dendrogram so that the maximum distance between leaf nodes is `width`.
     By default no scaling is applied, i.e. the width of the dendrogram is defined
@@ -158,9 +168,9 @@ function Makie.plot!(plot::Dendrogram)
         end
     end
 
-    inputs = [:nodes, :origin, :rotation, :branch_shape, :branch_colors, :transform_func, :width, :depth]
+    inputs = [:nodes, :origin, :rotation, :branch_shape, :branch_colors, :transform_func, :width, :depth, :absolute]
 
-    map!(plot.attributes, inputs, [:node_points, :line_points, :line_colors]) do nodes, _origin, rotation, branch_shape, branch_colors, tf, width, depth
+    map!(plot.attributes, inputs, [:node_points, :line_points, :line_colors]) do nodes, _origin, rotation, branch_shape, branch_colors, tf, width, depth, absolute
 
         ps = Point2d[]
         origin = to_ndim(Vec2f, _origin, 0)
@@ -196,8 +206,10 @@ function Makie.plot!(plot::Dendrogram)
         # parse scaling
         scale = Vec2d(_parse_dendrogram_scale(nodes, width), _parse_dendrogram_scale(nodes, depth))
 
-        # move root to (0, 0), scale, then rotate, then move to origin
-        root_pos = nodes[end].position
+        # move root to (0, 0), scale, then rotate, then move to origin. With
+        # absolute = true the input coordinates are kept as given, so leaves stay
+        # at their specified positions.
+        root_pos = absolute ? Point2d(0) : nodes[end].position
         for (i, p) in enumerate(ps)
             ps[i] = R * (scale .* (p - root_pos)) + origin
         end

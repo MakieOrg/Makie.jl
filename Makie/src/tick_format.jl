@@ -28,7 +28,7 @@ function _plain_label_precision(xs)
         e10min = min(e10min, e10)
         e10max = max(e10max, e10)
     end
-    return min(-e10min, -e10max + 16)
+    return max(min(-e10min, -e10max + 16), 0)
 end
 
 # Uniform precision (in fractional digits) for scientific notation across `xs`.

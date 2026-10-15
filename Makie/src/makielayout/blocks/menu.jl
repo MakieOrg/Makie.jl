@@ -8,6 +8,7 @@ function _update_option_colors!(hovered, optionstrings, optionpolycolors, option
     resize!(optiontextcolors.val, n)
     base_textcolor = to_color(m.textcolor[])
     active_textcolor = to_color(m.textcolor_active[])
+    hover_textcolor = to_color(m.textcolor_hover[])
     for idx in 1:n
         global_idx = idx <= length(filtered_indices[]) ? filtered_indices[][idx] : idx
         if global_idx == m.i_selected[]
@@ -15,7 +16,7 @@ function _update_option_colors!(hovered, optionstrings, optionpolycolors, option
             optiontextcolors.val[idx] = active_textcolor
         elseif idx == hovered
             optionpolycolors.val[idx] = m.cell_color_hover[]
-            optiontextcolors.val[idx] = base_textcolor
+            optiontextcolors.val[idx] = hover_textcolor
         else
             optionpolycolors.val[idx] = iseven(idx) ?
                 to_color(m.cell_color_inactive_even[]) :
@@ -131,7 +132,7 @@ function initialize_block!(m::Menu; default = 1)
                          ignore_equal_values = true) do prompt, i_selected, query, open
         if open && is_searchable
             isempty(query) ? m.search_placeholder[] : query * "▏"
-        elseif i_selected == 0
+        elseif i_selected == 0 || i_selected > length(optionstrings_all[])
             prompt
         else
             optionstrings_all[][i_selected]
@@ -179,10 +180,10 @@ function initialize_block!(m::Menu; default = 1)
 
     button_hovered = Observable(false)
     selectionpoly_color = lift(
-        blockscene, button_hovered, m.selection_cell_color_inactive,
-        m.cell_color_hover
-    ) do hovered, inactive, hover
-        hovered ? to_color(hover) : to_color(inactive)
+        blockscene, button_hovered, m.is_open,
+        m.selection_cell_color_inactive, m.cell_color_hover
+    ) do hovered, is_open, inactive, hover
+        return (hovered && !is_open) ? to_color(hover) : to_color(inactive)
     end
     selectionpoly = poly!(
         blockscene, selectionarea, color = selectionpoly_color;

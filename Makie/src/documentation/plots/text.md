@@ -91,7 +91,7 @@ You can override this with the `justification` attribute.
 scene = Scene(camera = campixel!, size = (800, 800))
 
 points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
-scatter!(scene, points, marker = :circle, markersize = 10px)
+scatter!(scene, points, marker = :circle, markersize = 10)
 
 symbols = (:left, :center, :right)
 

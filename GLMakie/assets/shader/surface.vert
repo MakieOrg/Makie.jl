@@ -46,6 +46,7 @@ vec2 grid_pos(Grid2D pos, vec2 uv);
 vec2 linear_index(ivec2 dims, int index);
 vec2 linear_index(ivec2 dims, int index, vec2 offset);
 vec4 linear_texture(sampler2D tex, int index, vec2 offset);
+vec3 safe_normalize(vec3 v);
 
 {{uv_transform_type}} uv_transform;
 vec3 apply_uv_transform(Nothing t1, vec2 uv){
@@ -68,7 +69,7 @@ vec3 getnormal_fast(sampler2D zvalues, ivec2 uv)
     vec3 b = vec3(1, 1, 0);
     a.z = texelFetch(zvalues, uv, 0).r;
     b.z = texelFetch(zvalues, uv + ivec2(1, 1), 0).r;
-    return normalize(a - b);
+    return safe_normalize(a - b);
 }
 
 bool isinbounds(ivec2 uv, ivec2 size)
@@ -103,7 +104,7 @@ vec3 normal_from_points(
     }
     // normal should be zero, but needs to be here, because the dead-code
     // elimination of GLSL is overly enthusiastic
-    return (invert_normals ? -1.0 : 1.0) * normalize(result);
+    return (invert_normals ? -1.0 : 1.0) * safe_normalize(result);
 }
 
 // Overload for surface(Matrix, Matrix, Matrix)

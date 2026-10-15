@@ -580,3 +580,35 @@ include("clipped_updates.jl")
     @test isempty(screen.rebuilds)
     close(screen)
 end
+
+@testset "events after `empty!(scene)`" begin
+    scene = Scene()
+    screen = display(scene, visible = false)
+    N = length(screen.render_tick.listeners)
+    @assert N > 0 "It doesn't make sense to confirm backend render_tick event don't get deleted when there are none"
+    empty!(scene)
+    @test length(screen.render_tick.listeners) == N
+end
+
+@testset "scroll event coalescing" begin
+    scroll = Observable((0.0, 0.0))
+    received = Tuple{Float64, Float64}[]
+    on(x -> push!(received, x), scroll)
+    updater = GLMakie.ScrollUpdater(scroll, true, (0.0, 0.0))
+
+    # integer offsets keep the macOS trackpad scaling factor at 1.0, so the sums below
+    # hold on every platform
+    updater(nothing, 1.0, 2.0)
+    updater(nothing, 3.0, -5.0)
+    @test received == []
+
+    updater(Makie.RegularRenderTick)
+    @test received == [(4.0, -3.0)]
+
+    updater(Makie.RegularRenderTick)
+    @test received == [(4.0, -3.0)]
+
+    updater(nothing, 0.0, 7.0)
+    updater(Makie.RegularRenderTick)
+    @test received == [(4.0, -3.0), (0.0, 7.0)]
+end

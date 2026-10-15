@@ -225,7 +225,10 @@ mutable struct LineAxis
     elements::Dict{Symbol, Any}
 end
 
-struct LimitReset end
+struct LimitReset
+    prev_pressed::Vector{Bool}
+end
+LimitReset() = LimitReset(fill(false, 3))
 
 mutable struct RectangleZoom
     callback::Function
@@ -245,28 +248,28 @@ function RectangleZoom(callback::Function; restrict_x = false, restrict_y = fals
     )
 end
 
+mutable struct TicklabelspaceReset
+    delay::Float64
+    idle_time::Float64
+    tick_listener::Union{Nothing, Observables.ObserverFunction}
+    prev_xticklabelspace::Union{Automatic, Symbol, Float64}
+    prev_yticklabelspace::Union{Automatic, Symbol, Float64}
+end
+
+TicklabelspaceReset(delay) = TicklabelspaceReset(delay, 0.0, nothing, 0.0, 0.0)
+
 struct ScrollZoom
     speed::Float32
-    reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    reset_delay::Float32
+    ticklabelspace_reset::TicklabelspaceReset
 end
 
-function ScrollZoom(speed, reset_delay)
-    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
-end
+ScrollZoom(speed, reset_delay::Real) = ScrollZoom(speed, TicklabelspaceReset(reset_delay))
 
 struct DragPan
-    reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    reset_delay::Float32
+    ticklabelspace_reset::TicklabelspaceReset
 end
 
-function DragPan(reset_delay)
-    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
-end
+DragPan(reset_delay::Real) = DragPan(TicklabelspaceReset(reset_delay))
 
 
 struct DragRotate
@@ -663,6 +666,11 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         yzoomkey::IsPressedInputType = Makie.Keyboard.y
         "Button that needs to be pressed to allow scroll zooming."
         zoombutton::IsPressedInputType = true
+        "The key (and button) combination for triggering a limit reset (equivalent to `reset_limits!(ax)`)"
+        resetlimitskey::IsPressedInputType = Exclusively((Keyboard.left_control | Keyboard.right_control) & Mouse.left)
+        "The key (and button) combination for triggering a limit recalculation (equivalent to `autolimits!(ax)`)"
+        recomputelimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
@@ -830,11 +838,20 @@ function RectangleZoom(f::Function, ax::Axis; kw...)
     return r
 end
 
+function _axis_limits_are_valid(ax::Axis, lims::Rect)
+    mi, ma = extrema(lims)
+    return all(isfinite, mi) && all(isfinite, ma) && all(>(0), widths(lims)) &&
+        validate_limits_for_scale((mi[1], ma[1]), ax.xscale[]) &&
+        validate_limits_for_scale((mi[2], ma[2]), ax.yscale[])
+end
+
 function RectangleZoom(ax::Axis; kw...)
     return RectangleZoom(ax; kw...) do newlims
-        if !(0 in widths(newlims))
+        if _axis_limits_are_valid(ax, newlims)
             ax.localxlimits[] = (left(newlims), right(newlims))
             ax.localylimits[] = (bottom(newlims), top(newlims))
+        else
+            @warn "Rectangle zoom ignored: selected limits are invalid for this axis scale" selected_limits = newlims visible_limits = ax.finallimits[] xscale = ax.xscale[] yscale = ax.yscale[] maxlog = 1
         end
         return
     end
@@ -1133,67 +1150,6 @@ end
     end
 end
 
-"""
-A grid of one or more horizontal `Slider`s, where each slider has a
-name label on the left and a value label on the right.
-
-Each `NamedTuple` you pass specifies one `Slider`. You always have to pass `range`
-and `label`, and optionally a `format` for the value label. Beyond that, you can set
-any keyword that `Slider` takes, such as `startvalue`.
-
-The `format` keyword can be a `String` with Format.jl style, such as "{:.2f}Hz", or
-a function.
-
-## Constructors
-
-```julia
-SliderGrid(fig_or_scene, nts::NamedTuple...; kwargs...)
-```
-
-## Examples
-
-```julia
-sg = SliderGrid(fig[1, 1],
-    (label = "Amplitude", range = 0:0.1:10, startvalue = 5),
-    (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
-    (label = "Phase", range = 0:0.01:2pi,
-        format = x -> string(round(x/pi, digits = 2), "π"))
-)
-```
-
-Working with slider values:
-
-```julia
-on(sg.sliders[1].value) do val
-    # do something with `val`
-end
-```
-"""
-@Block SliderGrid begin
-    @forwarded_layout
-    sliders::Vector{Slider}
-    valuelabels::Vector{Label}
-    labels::Vector{Label}
-    @attributes begin
-        "The horizontal alignment of the block in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the block in its suggested bounding box."
-        valign = :center
-        "The width setting of the block."
-        width = Auto()
-        "The height setting of the block."
-        height = Auto()
-        "Controls if the parent layout can adjust to this block's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this block's height"
-        tellheight::Bool = true
-        "The align mode of the block in its parent GridLayout."
-        alignmode = Inside()
-        "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
-        value_column_width = automatic
-    end
-end
-
 @Block IntervalSlider begin
     selected_indices::Observable{Tuple{Int, Int}}
     displayed_sliderfractions::Observable{Tuple{Float64, Float64}}
@@ -1230,6 +1186,72 @@ end
         alignmode = Inside()
         "Controls if the buttons snap to valid positions or move freely"
         snap::Bool = true
+    end
+end
+
+"""
+A grid of one or more horizontal `Slider`s or `IntervalSlider`s, where each slider has a
+name label on the left and a value label on the right.
+
+Each `NamedTuple` you pass specifies one slider. You always have to pass `range`
+and `label`, and optionally a `format` for the value label. By default, a `Slider` is
+created. Pass `type = IntervalSlider` to create an `IntervalSlider` instead. Beyond that,
+you can set any keyword that the chosen slider type takes, such as `startvalue` for
+`Slider` or `startvalues` for `IntervalSlider`.
+
+The `format` keyword can be a `String` with Format.jl style, such as "{:.2f}Hz", or
+a function.
+
+## Constructors
+
+```julia
+SliderGrid(fig_or_scene, nts::NamedTuple...; kwargs...)
+```
+
+## Examples
+
+```julia
+sg = SliderGrid(fig[1, 1],
+    (label = "Amplitude", range = 0:0.1:10, startvalue = 5.0),
+    (label = "Band", type = IntervalSlider, range = 0:0.1:10, startvalues = (2.0, 8.0)),
+    (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10.0),
+)
+```
+
+Working with slider values:
+
+```julia
+on(sg.sliders[1].value) do val
+    # do something with `val`
+end
+
+on(sg.sliders[2].interval) do interval
+    # do something with `interval`
+end
+```
+"""
+@Block SliderGrid begin
+    @forwarded_layout
+    sliders::Vector{Union{Slider, IntervalSlider}}
+    valuelabels::Vector{Label}
+    labels::Vector{Label}
+    @attributes begin
+        "The horizontal alignment of the block in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the block in its suggested bounding box."
+        valign = :center
+        "The width setting of the block."
+        width = Auto()
+        "The height setting of the block."
+        height = Auto()
+        "Controls if the parent layout can adjust to this block's width"
+        tellwidth::Bool = true
+        "Controls if the parent layout can adjust to this block's height"
+        tellheight::Bool = true
+        "The align mode of the block in its parent GridLayout."
+        alignmode = Inside()
+        "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
+        value_column_width = automatic
     end
 end
 
@@ -1443,6 +1465,21 @@ on(menu2.selection) do selected_function
     # do something with the selected function
 end
 ```
+
+By default the menu is searchable: while it is open, its selection box acts as a
+text box and typing filters the visible options. The filter predicate is the
+`filter` attribute and defaults to a case-insensitive substring match on the
+option label. Set `searchable = false` for a plain dropdown; the attribute is
+only honored at construction time. `i_selected` and `selection` always reference
+the original options, not the visible subset.
+
+```julia
+menu3 = Menu(fig[1, 1], options = ["Apple", "Apricot", "Banana", "Cherry"],
+             search_placeholder = "filter fruit...")
+# custom filter: prefix match instead of substring
+menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
+             filter = (q, label) -> startswith(label, q))
+```
 """
 @Block Menu begin
     @attributes begin
@@ -1467,15 +1504,15 @@ end
         "Is the menu showing the available options"
         is_open = false
         "Cell color when hovered"
-        cell_color_hover = @inherit((:colors, :accent_subtle))
+        cell_color_hover::RGBAf = @inherit((:colors, :accent_subtle))
         "Cell color when active"
-        cell_color_active = @inherit((:colors, :accent))
+        cell_color_active::RGBAf = @inherit((:colors, :accent))
         "Cell color when inactive even"
-        cell_color_inactive_even = @inherit((:colors, :surface_subtle))
+        cell_color_inactive_even::RGBAf = @inherit((:colors, :surface_subtle))
         "Cell color when inactive odd"
-        cell_color_inactive_odd = @inherit((:colors, :surface_subtle))
+        cell_color_inactive_odd::RGBAf = @inherit((:colors, :surface_subtle))
         "Selection cell color when inactive"
-        selection_cell_color_inactive = @inherit((:colors, :surface))
+        selection_cell_color_inactive::RGBAf = @inherit((:colors, :surface))
         "Color of the dropdown arrow"
         dropdown_arrow_color = @inherit((:colors, :text_muted))
         "Size of the dropdown arrow"
@@ -1487,9 +1524,11 @@ end
         "Padding of entry texts"
         textpadding = (8, 10, 8, 8)
         "Color of entry texts"
-        textcolor = @inherit(:textcolor, :black)
+        textcolor::RGBAf = @inherit(:textcolor, :black)
         "Color of entry text in the currently selected row of the open dropdown."
-        textcolor_active = @inherit((:colors, :text_on_accent))
+        textcolor_active::RGBAf = @inherit((:colors, :text_on_accent))
+        "Color of the text of the entry that is hovered"
+        textcolor_hover::RGBAf = @inherit(:textcolor, :black)
         "The opening direction of the menu (:up or :down)"
         direction = automatic
         "The default message prompting a selection when i == 0"
@@ -1497,7 +1536,7 @@ end
         "Speed of scrolling in large Menu lists."
         scroll_speed = 15.0
         "If `true`, typing while the dropdown is open filters the options by `filter(query, label)` (API as in MakieOrg/Makie.jl#5642). Honored only at construction time."
-        searchable = false
+        searchable = true
         "Placeholder shown in place of the prompt while the searchable dropdown is open and the query is empty."
         search_placeholder = "Search…"
         "Predicate `(query::String, label::String) -> Bool` deciding whether an option matches the search. Used only when `searchable = true`."
@@ -2520,6 +2559,13 @@ end
         for zooming centered approximately where the cursor is. This is disabled with `viewmode = :free`.
         """
         zoommode::Symbol = :center
+        "The key (and button) combination for triggering a limit reset (equivalent to `reset_limits!(ax)`)"
+        resetlimitskey::IsPressedInputType = Exclusively((Keyboard.left_control | Keyboard.right_control) & Mouse.left)
+        "The key (and button) combination for triggering a rotation reset (sets `elevation` and `azimuth` to its default values)"
+        resetrotationkey::IsPressedInputType = (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+        "The key (and button) combination for triggering a limit recalculation (equivalent to `autolimits!(ax)`)"
+        recomputelimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+
 
         "Locks interactive translation in the x direction."
         xtranslationlock::Bool = false
@@ -2610,7 +2656,7 @@ end
         # Spine
 
         "The width of the spine."
-        spinewidth::Float32 = 2
+        spinewidth::Float32 = 1
         "The color of the spine."
         spinecolor = :black
         "Controls whether the spine is visible."
@@ -2737,7 +2783,7 @@ end
         gridz::Float32 = -100
 
         "The color of the `r` grid."
-        rgridcolor = inherit(scene, (:Axis, :xgridcolor), (:black, 0.5))
+        rgridcolor = inherit(scene, (:Axis, :xgridcolor), RGBAf(0, 0, 0, 0.12))
         "The linewidth of the `r` grid."
         rgridwidth::Float32 = inherit(scene, (:Axis, :xgridwidth), 1)
         "The linestyle of the `r` grid."
@@ -2746,7 +2792,7 @@ end
         rgridvisible::Bool = inherit(scene, (:Axis, :xgridvisible), true)
 
         "The color of the `r` minor grid."
-        rminorgridcolor = inherit(scene, (:Axis, :xminorgridcolor), (:black, 0.2))
+        rminorgridcolor = inherit(scene, (:Axis, :xminorgridcolor), RGBAf(0, 0, 0, 0.05))
         "The linewidth of the `r` minor grid."
         rminorgridwidth::Float32 = inherit(scene, (:Axis, :xminorgridwidth), 1)
         "The linestyle of the `r` minor grid."
@@ -2757,7 +2803,7 @@ end
         # Theta minor and major grid
 
         "The color of the `theta` grid."
-        thetagridcolor = inherit(scene, (:Axis, :ygridcolor), (:black, 0.5))
+        thetagridcolor = inherit(scene, (:Axis, :ygridcolor), RGBAf(0, 0, 0, 0.12))
         "The linewidth of the `theta` grid."
         thetagridwidth::Float32 = inherit(scene, (:Axis, :ygridwidth), 1)
         "The linestyle of the `theta` grid."
@@ -2767,7 +2813,7 @@ end
 
 
         "The color of the `theta` minor grid."
-        thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
+        thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), RGBAf(0, 0, 0, 0.05))
         "The linewidth of the `theta` minor grid."
         thetaminorgridwidth::Float32 = inherit(scene, (:Axis, :yminorgridwidth), 1)
         "The linestyle of the `theta` minor grid."
@@ -2780,13 +2826,13 @@ end
         "The title of the plot"
         title = ""
         "The gap between the title and the top of the axis"
-        titlegap::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> x / 2, inherit(scene, :fontsize, 16)))
+        titlegap::Float32 = inherit(scene, (:Axis, :titlegap), 4)
         "The alignment of the title.  Can be any of `:center`, `:left`, or `:right`."
         titlealign = :center
         "The fontsize of the title."
-        titlesize::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> 1.2x, inherit(scene, :fontsize, 16)))
+        titlesize::Float32 = inherit(scene, (:Axis, :titlesize), inherit(scene, :fontsize, 16))
         "The font of the title."
-        titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, "default"))
+        titlefont = inherit(scene, (:Axis, :titlefont), :bold)
         "The color of the title."
         titlecolor = inherit(scene, (:Axis, :titlecolor), inherit(scene, :textcolor, :black))
         "Controls if the title is visible."

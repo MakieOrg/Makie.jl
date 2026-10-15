@@ -89,6 +89,11 @@ function _clip_polygon(poly::Polygon, circle::Circle)
 end
 _clip_polygon(poly::Polygon, ::Any) = poly
 
+# DelaunayTriangulation stores generators in hashed containers, so their iteration
+# order depends on the Julia version. Polygons and their colors are matched by
+# position, so both have to be built in the same fixed order.
+sorted_generators(vorn) = sort!(collect(DelTri.each_generator(vorn)))
+
 function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     function voronoi_bbox(c::Circle)
         o = Float64.(origin(c))
@@ -108,7 +113,7 @@ function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     sizehint!(generators, DelTri.num_generators(vorn))
     sizehint!(polygons, DelTri.num_polygons(vorn))
 
-    for i in DelTri.each_generator(vorn)
+    for i in sorted_generators(vorn)
         !DelTri.has_polygon(vorn, i) && continue
         polygon_coords = DelTri.get_polygon_coordinates(vorn, i, voronoi_bbox(bbox))
         polygon_coords_2f = map(polygon_coords) do coords
@@ -199,7 +204,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
                 length(color) == DelTri.num_points(DelTri.get_triangulation(vorn)),
                 "Color vector must have the same length as the number of generators, including any not yet in the tessellation."
             )
-            return [color[i] for i in DelTri.each_generator(vorn)] # this matches the polygon order
+            return [color[i] for i in sorted_generators(vorn)] # this matches the polygon order
         else
             return color # constant color
         end
