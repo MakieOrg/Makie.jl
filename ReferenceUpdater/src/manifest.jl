@@ -146,10 +146,15 @@ end
 Count the new, changed and deleted reference images in a `ReferenceImages` artifact folder
 and how many of them are approved by an active manifest entry. `threshold` is the CI
 comparison threshold (an image scoring above it needs approval, as does every new or
-deleted image). Returns `(; new, changed, deleted)`, each a `(; total, approved)` count;
-all categories approved means the PR is ready to merge.
+deleted image). Returns `(; new, changed, deleted, unrecorded)`: the first three are each
+a `(; total, approved)` count, `unrecorded` lists the active pins whose image was not
+recorded (e.g. because the test was renamed), which would fail promotion after merge.
+All categories approved and no unrecorded pins means the PR is ready to merge.
 """
-function approval_coverage(root_path; threshold = 0.05, reference_folder = joinpath(root_path, "reference"))
+function approval_coverage(
+        root_path; threshold = 0.05,
+        reference_folder = joinpath(root_path, "reference"), recorded_folder = joinpath(root_path, "recorded")
+    )
     changed = Set{String}()
     scores_file = joinpath(root_path, "scores.tsv")
     if isfile(scores_file)
@@ -163,19 +168,24 @@ function approval_coverage(root_path; threshold = 0.05, reference_folder = joinp
     missing_recordings = read_path_list(joinpath(root_path, "missing_files.txt"))
 
     c = classify_entries(read_manifest(joinpath(root_path, "refimage_updates")), reference_folder)
+    unrecorded = filter(p -> !isfile(joinpath(recorded_folder, p)), union(c.exempt_changed, c.exempt_new))
+    exempt_changed = setdiff(c.exempt_changed, unrecorded)
+    exempt_new = setdiff(c.exempt_new, unrecorded)
     counts(total, approved) = (; total = length(total), approved = length(approved))
     return (;
-        new = counts(union(new_unapproved, c.exempt_new), c.exempt_new),
-        changed = counts(changed, intersect(changed, c.exempt_changed)),
+        new = counts(union(new_unapproved, exempt_new), exempt_new),
+        changed = counts(changed, intersect(changed, exempt_changed)),
         deleted = counts(union(missing_recordings, c.to_delete), c.to_delete),
+        unrecorded = sort!(collect(unrecorded)),
     )
 end
 
 total_images(cov) = cov.new.total + cov.changed.total + cov.deleted.total
 approved_images(cov) = cov.new.approved + cov.changed.approved + cov.deleted.approved
-fully_approved(cov) = total_images(cov) == approved_images(cov)
+images_approved(cov) = total_images(cov) == approved_images(cov)
+fully_approved(cov) = images_approved(cov) && isempty(cov.unrecorded)
 
-function coverage_summary(cov)
+function approval_summary(cov)
     parts = [
         "$(c.approved)/$(c.total) $name"
             for (name, c) in (("new", cov.new), ("changed", cov.changed), ("deleted", cov.deleted))
@@ -183,6 +193,16 @@ function coverage_summary(cov)
     ]
     isempty(parts) && return "No new, changed or deleted images"
     return "Approved " * join(parts, ", ") * " images"
+end
+
+function unrecorded_summary(cov)
+    n = length(cov.unrecorded)
+    return "$n pin file$(n == 1 ? " has" : "s have") no recorded image"
+end
+
+function coverage_summary(cov)
+    isempty(cov.unrecorded) && return approval_summary(cov)
+    return approval_summary(cov) * ", " * unrecorded_summary(cov)
 end
 
 """
