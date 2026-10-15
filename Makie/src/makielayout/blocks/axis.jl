@@ -376,37 +376,19 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.yaxis = yaxis
 
     xoppositelinepoints = lift(
-        blockscene, scene.viewport, ax.spinewidth, ax.xaxisposition;
+        blockscene, scene.viewport, ax.xaxisposition;
         ignore_equal_values = true
-    ) do r, sw, xaxpos
-        if xaxpos === :top
-            y = bottom(r)
-            p1 = Point2f(left(r) - 0.5sw, y)
-            p2 = Point2f(right(r) + 0.5sw, y)
-            return [p1, p2]
-        else
-            y = top(r)
-            p1 = Point2f(left(r) - 0.5sw, y)
-            p2 = Point2f(right(r) + 0.5sw, y)
-            return [p1, p2]
-        end
+    ) do r, xaxpos
+        y = xaxpos === :top ? bottom(r) : top(r)
+        return [Point2f(left(r), y), Point2f(right(r), y)]
     end
 
     yoppositelinepoints = lift(
-        blockscene, scene.viewport, ax.spinewidth, ax.yaxisposition;
+        blockscene, scene.viewport, ax.yaxisposition;
         ignore_equal_values = true
-    ) do r, sw, yaxpos
-        if yaxpos === :right
-            x = left(r)
-            p1 = Point2f(x, bottom(r) - 0.5sw)
-            p2 = Point2f(x, top(r) + 0.5sw)
-            return [p1, p2]
-        else
-            x = right(r)
-            p1 = Point2f(x, bottom(r) - 0.5sw)
-            p2 = Point2f(x, top(r) + 0.5sw)
-            return [p1, p2]
-        end
+    ) do r, yaxpos
+        x = yaxpos === :right ? left(r) : right(r)
+        return [Point2f(x, bottom(r)), Point2f(x, top(r))]
     end
 
     xticksmirrored = lift(
@@ -449,7 +431,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     xoppositeline = linesegments!(
         blockscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
-        linestyle = nothing
+        linestyle = nothing, linecap = :square
     )
     elements[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
@@ -457,7 +439,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     yoppositeline = linesegments!(
         blockscene, yoppositelinepoints, linewidth = ax.spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
-        linestyle = nothing
+        linestyle = nothing, linecap = :square
     )
     elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
@@ -603,18 +585,18 @@ function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axispo
         opp = axisposition === :left ? right(a) : left(a)
         sign = axisposition === :left ? 1 : -1
     end
-    d = ticksize * sign
+    # same geometry as the primary ticks, see `tick_extents`; outward is `+sign` here
+    outer, inner = tick_extents(tickalign, ticksize, spinewidth)
     points = Vector{Point2f}(undef, 2 * length(tickpositions))
-    spineoffset = sign * (0.5 * spinewidth)
     if side === :x
         for (i, (x, _)) in enumerate(tickpositions)
-            points[2i - 1] = Point2f(x, opp - d * tickalign + spineoffset)
-            points[2i] = Point2f(x, opp + d - d * tickalign + spineoffset)
+            points[2i - 1] = Point2f(x, opp - sign * inner)
+            points[2i] = Point2f(x, opp + sign * outer)
         end
     else
         for (i, (_, y)) in enumerate(tickpositions)
-            points[2i - 1] = Point2f(opp - d * tickalign + spineoffset, y)
-            points[2i] = Point2f(opp + d - d * tickalign + spineoffset, y)
+            points[2i - 1] = Point2f(opp - sign * inner, y)
+            points[2i] = Point2f(opp + sign * outer, y)
         end
     end
     return points
