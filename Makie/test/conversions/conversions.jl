@@ -17,10 +17,20 @@ using Makie: plotfunc, plotfunc!, func2type
 end
 
 @testset "Heatmapshader with ranges" begin
-    hm = Heatmap(((0, 1), (0, 1), Resampler(zeros(4, 4))), Dict{Symbol, Any}())
-    @test hm.converted[][1] isa Makie.EndPoints{Float32}
-    @test hm.converted[][2] isa Makie.EndPoints{Float32}
-    @test hm.converted[][3].data == Resampler(zeros(4, 4)).data
+    hm = Heatmap(((0, 1), (0, 1), Resampler(zeros(5, 5))), Dict{Symbol, Any}())
+    @test hm.converted[][1] == Makie.EndPoints{Float32}(-0.125, 1.125)
+    @test hm.converted[][2] == Makie.EndPoints{Float32}(-0.125, 1.125)
+    @test hm.converted[][3].data == Resampler(zeros(5, 5)).data
+
+    hm = Heatmap(((0, 1), 0 .. 1, Resampler(zeros(5, 5))), Dict{Symbol, Any}())
+    @test hm.converted[][1] == Makie.EndPoints{Float32}(-0.125, 1.125)
+    @test hm.converted[][2] == Makie.EndPoints{Float32}(-0.125, 1.125)
+    @test hm.converted[][3].data == Resampler(zeros(5, 5)).data
+
+    hm = Heatmap((0:1, 0 .. 1, Resampler(zeros(5, 5))), Dict{Symbol, Any}())
+    @test hm.converted[][1] == Makie.EndPoints{Float32}(-0.125, 1.125)
+    @test hm.converted[][2] == Makie.EndPoints{Float32}(-0.125, 1.125)
+    @test hm.converted[][3].data == Resampler(zeros(5, 5)).data
 end
 
 @testset "changing input types" begin
