@@ -71,6 +71,9 @@ Latexify = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 FFMPEG_jll = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
 
+[sources.ComputePipeline]
+path = "../ComputePipeline"
+
 [extensions]
 MakieDynamicQuantitiesExt = "DynamicQuantities"
 MakieFFMPEGExt = "FFMPEG_jll"
@@ -87,7 +90,7 @@ ComputePipeline = "0.2.0"
 Contour = "0.5, 0.6"
 DelaunayTriangulation = "1.0"
 Distributions = "0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25"
-DocStringExtensions = "0.8, 0.9"
+DocStringExtensions = "0.8, 0.9, 0.10"
 Downloads = "1, 1.6"
 DynamicQuantities = "1, 1.8"
 FFMPEG_jll = "4, 6, 7, 8, 9"
@@ -138,6 +141,3 @@ TriplotBase = "=0.1.0"
 UnicodeFun = "0.4"
 Unitful = "1"
 julia = "1.10"
-
-[sources.ComputePipeline]
-path = "../ComputePipeline"
