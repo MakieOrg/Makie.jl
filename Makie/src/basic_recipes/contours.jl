@@ -360,16 +360,9 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
 
     map!(
         plot,
-        [:labels, :string_boundingboxes, :contour_points, :elements_per_segment],
+        [:string_boundingboxes, pixel_pos_node, :contour_points, :elements_per_segment],
         :masked_lines
-    ) do use_labels, bboxes, segments, elements_per_segment
-        use_labels || return segments
-
-        # To avoid always projecting, pull these in indirectly.
-        # string boundingboxes will already update on everything that could trigger
-        # pixel_contour_points, so this should be fine
-        pixel_pos = pixel_pos_node[]
-
+    ) do bboxes, pixel_pos, segments, elements_per_segment
         masked = copy(segments)
         nan = P(NaN32)
         start = 0
@@ -403,9 +396,10 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         return masked
     end
 
+    select!(plot, :labels, :masked_lines, :contour_points, :final_line_points)
 
     lines!(
-        plot, plot.masked_lines;
+        plot, plot.final_line_points;
         color = plot.contour_colors,
         linewidth = plot.contour_linewidth,
         linestyle = plot.linestyle,
