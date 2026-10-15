@@ -30,10 +30,10 @@ function cairo_project_to_screen(
 end
 
 function draw_atomic(scene::Scene, screen::Screen, primitive::Makie.Mesh)
-    Makie.compute_colors!(primitive.attributes)
     if should_draw_vectorized(scene, primitive.attributes)
         draw_mesh_vectorized(scene, screen, primitive.attributes)
     else
+        Makie.compute_colors!(primitive.attributes)
         draw_mesh_rasterized(scene, screen, primitive.attributes)
     end
     return nothing
@@ -48,7 +48,8 @@ function should_draw_vectorized(scene, attr::ComputeGraph)
     # - flat color & LinePattern are vectorized
     # - generic patterns are partially vectorized (pattern is not, mesh is)
     # - vertex colors, texture, etc are fully rasterized
-    if !(attr.color[] isa Union{Colorant, Makie.LinePattern, Makie.ImagePattern})
+    if !(attr.color[] isa Union{Colorant, Makie.LinePattern, Makie.ImagePattern}) &&
+            !attr.has_per_mesh_colors[]::Bool
         return false
     end
 
@@ -64,28 +65,60 @@ function draw_mesh_vectorized(scene, screen, attr::ComputeGraph)
     fs = attr.faces[]
     uv = attr.texturecoordinates[]
     uv_transform = attr.pattern_uv_transform[]
+    no_uv::Bool = isnothing(uv)
     # FRAGILE: access the raw user-provided uv_transform before the compute graph
     # converts LinePattern → Sampler. This depends on ComputeGraph internals.
     raw_uv_transform = haskey(attr.inputs, :uv_transform) ? attr.inputs[:uv_transform].value : Makie.automatic
-    if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
+    if !no_uv && to_value(uv_transform) !== nothing
         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
     end
+
     # Check raw color before compute_colors, since the compute graph
     # rasterizes AbstractPattern (including LinePattern) to a Sampler,
     # losing the vector-drawable LinePattern struct.
     color_attr = attr.color[]
-    # Only use vector hatch path for default uv_transform. If the user provides
-    # an explicit uv_transform, preserve existing rasterized pattern semantics.
-    if color_attr isa Makie.LinePattern && raw_uv_transform === Makie.automatic
+
+    if raw_uv_transform === Makie.automatic && color_attr isa Makie.LinePattern
+        # Check raw color since the compute graph rasterizes AbstractPattern
+        # (including LinePattern) to a Sampler, losing the vector-drawable LinePattern struct.
+        # Only use vector hatch path for default uv_transform. If the user provides
+        # an explicit uv_transform, preserve existing rasterized pattern semantics.
         offset = linepattern_offset(scene, attr.model[])
         return draw_mesh2D(screen.context, color_attr, vs, fs, offset)
+
+    elseif attr.has_per_mesh_colors[]::Bool
+        # detect and process per-mesh colors as multiple single-color meshes
+        views = (attr.mesh[]::GeometryBasics.Mesh).views
+        color = compute_colors(attr, :color)
+        cols = per_face_colors(color, nothing, fs, nothing, uv)
+        if cols isa Cairo.CairoPattern
+            align_pattern(cols, scene, attr.model[])
+            draw_mesh2D(screen, cols, vs, fs)
+        else
+            for (i, range) in enumerate(views)
+                c = sv_getindex(color, i)
+                _fs = view(fs, range)
+                if no_uv # uv calcs run for all uv's. not just the one accessed by faces
+                    cols = per_face_colors(c, nothing, _fs, nothing, nothing)
+                end
+                draw_mesh2D(screen, cols, vs, _fs)
+            end
+        end
+
+    else
+        color = compute_colors(attr)
+        cols = per_face_colors(color, nothing, fs, nothing, uv)
+        if cols isa Cairo.CairoPattern
+            align_pattern(cols, scene, attr.model[])
+        end
+        draw_mesh2D(screen, cols, vs, fs)
     end
-    color = compute_colors(attr)
-    cols = per_face_colors(color, nothing, fs, nothing, uv)
-    if cols isa Cairo.CairoPattern
-        align_pattern(cols, scene, attr.model[])
-    end
-    return draw_mesh2D(screen.context, cols, vs, fs)
+    return
+end
+
+
+function draw_mesh2D(screen, color, vs::AbstractVector, fs::AbstractVector{GLTriangleFace})
+    return draw_mesh2D(screen.context, color, vs, fs)
 end
 
 function flush_pattern(ctx, pattern)
@@ -129,7 +162,7 @@ end
 # A mesh of one solid color needs no pattern; switching to a plain source keeps it vectorized in SVG.
 function draw_mesh2D(
         ctx::Cairo.CairoContext, per_face_cols::FaceIterator{:Const},
-        vs::Vector, fs::Vector{GLTriangleFace}
+        vs::AbstractVector, fs::AbstractVector{GLTriangleFace}
     )
     mesh_union_path!(ctx, vs, fs)
     set_source(ctx, per_face_cols.data)
@@ -137,8 +170,7 @@ function draw_mesh2D(
     return nothing
 end
 
-# Note: Currently not used, but maybe we want to restore/use this in the future?
-function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace})
+function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::AbstractVector, fs::AbstractVector{GLTriangleFace})
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
