@@ -608,7 +608,7 @@ function add_orphaned_node!(graph, name)
 end
 
 """
-    repalce_output!(edge, pairs...)
+    replace_output!(edge, pairs...)
 
 Replaces outputs of an edge using `old_name => new_name` pairs. The names must
 exist in `edge-graph`.
