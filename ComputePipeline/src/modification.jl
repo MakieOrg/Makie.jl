@@ -115,18 +115,62 @@ Edges that output to multiple other graphs will therefore be deleted for all
 other graphs as well. Same for edges that input from this and other graphs.
 """
 function disconnect!(attr::ComputeGraph)
+    # Disconnecting children requires the graph to still be resolvable
     for comp in values(attr.outputs)
-        if hasparent(comp)
-            _disconnect_cross_graph!(attr, comp.parent)
-        end
+        hasparent(comp) && _disconnect_cross_graph_children!(attr, comp.parent)
+    end
+    # This makes the graph (attr) not resolvable
+    for comp in values(attr.outputs)
+        hasparent(comp) && _disconnect_cross_graph_parent!(attr, comp.parent)
     end
     return
 end
 
-_disconnect_cross_graph!(attr::ComputeGraph, edge::Input) = nothing
-function _disconnect_cross_graph!(attr::ComputeGraph, edge::ComputeEdge)
+_disconnect_cross_graph_children!(attr::ComputeGraph, edge::Input) = nothing
+function _disconnect_cross_graph_children!(attr::ComputeGraph, edge::ComputeEdge)
+    # Remove this -> other graph connections:
+    # Remove all edges depending on this that are not part of this graph.
+    # Note: Careful with deleting what you're iterating through
+    # for i in length(edge.dependents):-1:1
+    for dep in reverse(edge.dependents)
+        if dep.graph !== attr
+            if length(dep.inputs) > 1
+                if all(n -> n.parent.graph === attr, dep.inputs)
+                    # multiple inputs from our graph, full edge needs to be
+                    # removed to disconnect
+                    delete!(dep)
+                else
+                    # Multiple inputs from multiple graphs. Only remove inputs
+                    # that we own. To keep the dep edge working, add constant
+                    # nodes for the nodes we ware removing.
+                    new_inputs = map(dep.inputs) do node
+                        if node in edge.outputs
+                            # map!(dep.graph, [attr.a, other.a], ...) could cause
+                            # name collisions if we're not careful here
+                            name = Symbol(node.name, string(objectid(attr)))
+                            add_constant!(dep.graph, name, node[])
+                            dep.graph[name]
+                        else
+                            node
+                        end
+                    end
+                    modify_edge!(dep, inputs = new_inputs)
+                end
+            else
+                # Just one input, must be from our graph.
+                delete!(dep)
+            end
+        end
+    end
+
+    return
+end
+
+_disconnect_cross_graph_parent!(attr::ComputeGraph, edge::Input) = nothing
+function _disconnect_cross_graph_parent!(attr::ComputeGraph, edge::ComputeEdge)
     # Remove other -> this graph connections:
     # Delete this edge if it has inputs in/from another graph
+    # Note: edge outputs are expected to be in the same graph as their parent edge.
     for input in edge.inputs
         # haskey for performance, in for safety
         if !haskey(attr.outputs, input.name) || !in(input, values(attr.outputs))
@@ -134,13 +178,6 @@ function _disconnect_cross_graph!(attr::ComputeGraph, edge::ComputeEdge)
         end
     end
 
-    # Remove this -> other graph connections:
-    # Remove all edges depending on this that are not part of this graph.
-    for dep in edge.dependents
-        if dep.graph !== attr
-            delete!(dep)
-        end
-    end
     return
 end
 
@@ -256,6 +293,14 @@ function set_type!(view::ComputeGraphView, T::Type)
     return
 end
 
+maybe_set_type!(view::ComputeGraphView, T) = set_type!(view, T)
+function maybe_set_type!(node::Computed, T)
+    if !isdefined(node, :value)
+        set_type!(node, T)
+    end
+    return
+end
+
 ################################################################################
 # TODO: test all of this:
 
@@ -306,16 +351,7 @@ function is_child_of(child::Computed, edge::ComputeEdge{ComputeGraph})
     return false
 end
 
-
-maybe_set_type!(view::ComputeGraphView, T) = set_type!(view, T)
-function maybe_set_type!(node::Computed, T)
-    if !isdefined(node, :value)
-        set_type!(node, T)
-    end
-    return
-end
-
-invalid_callback(args...) = error("The output node related to this callback is invalid and cannot not be resolved.")
+invalid_callback(args...) = error("The output node related to this callback is invalid and cannot be resolved.")
 
 # Warning: This does not completely disconnect the edge. Its outputs may still
 # refer to it
@@ -366,9 +402,11 @@ Modifies an existing compute edge.
 
 `callback` can be given to replace the callback of the edge. If one or more
 outputs have already been initialized the new callback must produce matching
-types for those outputs. Note that for `map!` callbacks `packed` can be set to
-`true` to mark the callback as returning a value that needs to be packed into
-a tuple. Without this the callback is assumed to return a tuple.
+types for those outputs.
+By default callbacks will be wrapped in `MapFunctionWrapper` if the previous
+callback was wrapped. This can be overwritten by passing `wrap_callback::Bool`.
+Whether the result of the `MapFunctionWrapper` gets packed into a tuple or not
+is based on the number of (edited) outputs and can be overwritten with `packed`.
 
 `inputs` can be given to replace the inputs of the edge. The new inputs must
 exist beforehand. This is generally safe to do assuming the callback can handle
@@ -382,17 +420,6 @@ resolved.
 """
 function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
     graph = edge.graph
-
-    callback = if haskey(kwargs, :callback)
-        callback = kwargs[:callback]
-        if !isa(callback, MapFunctionWrapper) &&
-            (isa(edge.callback, MapFunctionWrapper) || haskey(kwargs, :packed))
-
-            callback = MapFunctionWrapper(callback, get(kwargs, :packed, false))
-        end
-    else
-        edge.callback
-    end
 
     inputs, inputs_dirty = if haskey(kwargs, :inputs)
         if !isa(kwargs[:inputs], AbstractVector{Computed})
@@ -410,6 +437,21 @@ function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
         kwargs[:outputs]
     else
         edge.outputs
+    end
+
+    callback = if haskey(kwargs, :callback)
+        callback = kwargs[:callback]
+        wrap_callback = get(
+            kwargs, :wrap_callback,
+            !isa(callback, MapFunctionWrapper) && isa(edge.callback, MapFunctionWrapper)
+        )
+        if wrap_callback
+            packed = get(kwargs, :packed, length(outputs) == 1)
+            callback = MapFunctionWrapper(callback, packed)
+        end
+        callback
+    else
+        edge.callback
     end
 
     new_edge = ComputeEdge(
@@ -508,14 +550,14 @@ function modify_edge!(edge::Input; kwargs...)
 
             # replace and connect outputs
             empty!(edge.dependents)
-            append!(edge.dependents, new_node.parent.dependents)
-            setfield!(edge, :output, new_node)
-            new_node.parent = edge
-            new_node.parent_idx = 1
+            append!(edge.dependents, new_output.parent.dependents)
+            setfield!(edge, :output, new_output)
+            new_output.parent = edge
+            new_output.parent_idx = 1
         end
 
         if haskey(kwargs, :callback)
-            edge.callback = kwargs[:callback]
+            edge.f = kwargs[:callback]
         end
     end
 
@@ -524,26 +566,27 @@ function modify_edge!(edge::Input; kwargs...)
     return
 end
 
-function replace_input!(_callback, new_sources, output::Computed)
-    input = output.parent::Input
-    graph = output.parent.graph
+# TODO Way to replace ::Input? Or what was this meant to be?
+# function replace_input!(_callback, new_sources, output::Computed)
+#     input = output.parent::Input
+#     graph = output.parent.graph
 
-    # Build new edge
-    inputs = convert_to_nodes(graph, new_sources)
-    output.parent = ComputeEdge(
-        graph, MapFunctionWrapper(_callback),
-        inputs, fill(true, length(inputs)), [output],
-        Ref(false), input.dependents, Ref{TypedEdge}()
-    )
-    output.parent_idx = 1
-    for input in inputs
-        push!(input.parent.dependents, output.parent)
-    end
+#     # Build new edge
+#     inputs = convert_to_nodes(graph, new_sources)
+#     output.parent = ComputeEdge(
+#         graph, MapFunctionWrapper(_callback),
+#         inputs, fill(true, length(inputs)), [output],
+#         Ref(false), input.dependents, Ref{TypedEdge}()
+#     )
+#     output.parent_idx = 1
+#     for input in inputs
+#         push!(input.parent.dependents, output.parent)
+#     end
 
-    # Remove Input/make it GC-able
-    delete!(graph.inputs, output.name)
-    return
-end
+#     # Remove Input/make it GC-able
+#     delete!(graph.inputs, output.name)
+#     return
+# end
 
 """
     add_orphaned_node!(graph, name)
@@ -557,21 +600,30 @@ function add_orphaned_node!(graph, name)
     node.parent = ComputeEdge(
         graph, invalid_callback,
         Computed[], Bool[], [node],
-        Ref(true), ComputeEdge{ComputeGraph}[], Ref{TypedEdge}()
+        Ref(false), ComputeEdge{ComputeGraph}[], Ref{TypedEdge}()
     )
     node.parent_idx = 1
     graph.outputs[name] = node
     return node
 end
 
+"""
+    repalce_output!(edge, pairs...)
+
+Replaces outputs of an edge using `old_name => new_name` pairs. The names must
+exist in `edge-graph`.
+"""
 function replace_output!(edge::ComputeEdge, replacements::Pair{Symbol, Symbol}...)
     graph = edge.graph::ComputeGraph
-    outputs = getproperty.(edge.outputs, :name)
+    outputs = copy(edge.outputs)
     for (old, new) in replacements
-        idx = findfirst(node -> node.name == old, outputs)
+        idx = findfirst(node -> node.name === old, outputs)
         if isnothing(idx)
-            new in outputs || error("Could not find $old in edge outputs $outputs.")
+            error("Could not find $old in edge outputs $outputs.")
         else
+            if any(output -> is_child_of(output, graph[new]), edge.outputs)
+                error("Adding $new as an edge output to $edge would create a loop.")
+            end
             outputs[idx] = graph[new]
         end
     end
@@ -588,6 +640,12 @@ function replace_output!(edge::Input, replacement::Pair{Symbol, Symbol})
     return
 end
 
+"""
+    push_input!(edge, node)
+
+Adds an input to the given edge. This input will be the last argument passed to
+the edges callback.
+"""
 function push_input!(edge::ComputeEdge, node::Computed)
     if any(output -> is_child_of(node, output), edge.outputs)
         error("Adding $node as an edge input to $edge would create a loop.")
@@ -640,21 +698,30 @@ function _move_node!(target::ComputeGraph, source::ComputeGraph, node::Computed)
     return
 end
 
-function move!(target::ComputeGraph, node::Computed, move_siblings = true)
+"""
+    move!(target_graph, node)
+
+Moves a node from whatever graph it is in to `target_graph`. Any sibling node,
+i.e. output of `node.parent`, will also be moved.
+"""
+function move!(target::ComputeGraph, node::Computed)
     edge = node.parent
     source = edge.graph
 
-    if move_siblings
+    # Moving siblings destroys the assumption that all edge outputs are in the
+    # same graph, the graph specified by edge.graph. This might need special
+    # care to not break things.
+    # if move_siblings
         for _node in edge.outputs
             _validate_node_move(target, source, _node)
         end
         for _node in edge.outputs
             _move_node!(target, source, _node)
         end
-    else
-        _validate_node_move(target, source, node)
-        _move_node!(target, source, node)
-    end
+    # else
+        # _validate_node_move(target, source, node)
+        # _move_node!(target, source, node)
+    # end
 
     new_edge = ComputeEdge(
         target, edge.callback,

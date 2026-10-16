@@ -1797,7 +1797,7 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
     new_edge = ComputeEdge(f, attr, inputs)
 
     for input in inputs
-        @assert hasparent(input) "Computed should be guaranteed to have a parent edge, but does not"
+        hasparent(input) || error("Computed should be guaranteed to have a parent edge, but does not.")
         # Edges can have multiple outputs so multiple inputs of this edge could
         # come from the same edge
         parent_edge = input.parent::AbstractEdge
@@ -1828,6 +1828,7 @@ end
 MapFunctionWrapper(::typeof(compute_identity), pack = true) = compute_identity
 MapFunctionWrapper(::typeof(select), pack = true) = select
 MapFunctionWrapper(::typeof(ifelse), pack = true) = ifelse
+is_packed(::MapFunctionWrapper{pack}) where {pack} = pack
 
 function (x::MapFunctionWrapper{true})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
