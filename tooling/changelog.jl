@@ -62,7 +62,7 @@ module Changelog
         empty_section_line > 0 && file_error("Section on line $empty_section_line has no entries.")
         isempty(entries) && file_error("No entries found, add at least one `- ` entry.")
 
-        occursin(Regex("$(PR_URL)/$pr\\b"), join(lines, "\n")) &&
+        occursin(Regex("\\[#$pr\\]\\($(PR_URL)/$pr\\)\\b"), join(lines, "\n")) &&
             file_error("Must not link to PR #$pr, the link is added automatically.")
 
         return entries, sections
