@@ -1,0 +1,4 @@
+Sitemap: https://docs.makie.org/sitemap.xml
+
+User-agent: *
+Disallow:
