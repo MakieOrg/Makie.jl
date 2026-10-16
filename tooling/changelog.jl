@@ -8,7 +8,6 @@ module Changelog
     const PR_URL = "https://github.com/MakieOrg/Makie.jl/pull"
     const NON_ENTRY_FILES = ["README.md"]
 
-    const SECTIONS = ["Breaking", "Added", "Changed", "Deprecated", "Removed", "Fixed"]
 
     struct Entry
         pr::Int
@@ -34,6 +33,7 @@ module Changelog
 
         entries = Entry[]
         section = nothing
+        sections = String[]
         empty_section_line = 0
         continuable = false
         for (i, line) in enumerate(lines)
@@ -43,8 +43,7 @@ module Changelog
             elseif heading !== nothing
                 empty_section_line > 0 && file_error("Section on line $empty_section_line has no entries.")
                 section = String(strip(heading[1]))
-                section in SECTIONS ||
-                    file_error("Invalid section `## $section` on line $i, allowed are $(join(("`## $s`" for s in SECTIONS), ", ")).")
+                push!(sections, section)
                 empty_section_line = i
                 continuable = false
             elseif occursin(r"^- \S", line)
@@ -66,7 +65,7 @@ module Changelog
         occursin(Regex("$(PR_URL)/$pr\\b"), join(lines, "\n")) &&
             file_error("Must not link to PR #$pr, the link is added automatically.")
 
-        return entries
+        return entries, sections
     end
 
     function render_entry(entry::Entry)
@@ -82,9 +81,9 @@ module Changelog
     end
 
     function unreleased_lines(dir = ENTRY_DIR)
-        entries = mapreduce(parse_entry_file, vcat, entry_files(dir); init = Entry[])
+        entries, sections = mapreduce(parse_entry_file, vcat, entry_files(dir); init = Entry[])
         unsectioned = render_entries(filter(e -> e.section === nothing, entries))
-        sectioned = map(SECTIONS) do section
+        sectioned = map(sections) do section
             section_entries = filter(e -> e.section == section, entries)
             isempty(section_entries) ? String[] : ["### $section"; ""; render_entries(section_entries)]
         end
