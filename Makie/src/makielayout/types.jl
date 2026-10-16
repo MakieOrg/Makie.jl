@@ -1097,17 +1097,24 @@ end
 end
 
 """
-A grid of one or more horizontal `Slider`s or `IntervalSlider`s, where each slider has a
-name label on the left and a value label on the right.
+A grid of one or more labeled `Slider`s or `IntervalSlider`s.
+
+By default (`horizontal = true`), each slider is laid out in a row with a name
+label on the left and a value label on the right. With `horizontal = false`,
+each slider becomes a column with the name label on top, a vertical slider,
+and the value label below. Child sliders always match the grid orientation;
+a per-slider `horizontal` kwarg is ignored.
 
 Each `NamedTuple` you pass specifies one slider. You always have to pass `range`
-and `label`, and optionally a `format` for the value label. By default, a `Slider` is
+and optionally `label` and a `format` for the value label. By default, a `Slider` is
 created. Pass `type = IntervalSlider` to create an `IntervalSlider` instead. Beyond that,
-you can set any keyword that the chosen slider type takes, such as `startvalue` for
-`Slider` or `startvalues` for `IntervalSlider`.
+you can set any keyword that the chosen slider type takes (except `horizontal`), such as
+`startvalue` for `Slider` or `startvalues` for `IntervalSlider`.
 
 The `format` keyword can be a `String` with Format.jl style, such as "{:.2f}Hz", or
 a function.
+
+Orientation is fixed at construction time.
 
 ## Constructors
 
@@ -1123,6 +1130,12 @@ sg = SliderGrid(fig[1, 1],
     (label = "Band", type = IntervalSlider, range = 0:0.1:10, startvalues = (2.0, 8.0)),
     (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10.0),
 )
+
+# vertical: one column per slider
+sg_v = SliderGrid(fig[1, 2],
+    (label = "X", range = 0:0.1:10, startvalue = 3),
+    (label = "Y", range = 0:0.1:10, startvalue = 6);
+    horizontal = false, height = 250)
 ```
 
 Working with slider values:
@@ -1157,7 +1170,9 @@ end
         tellheight::Bool = true
         "The align mode of the block in its parent GridLayout."
         alignmode = Inside()
-        "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
+        "Controls if the slider grid has a horizontal orientation or not. If `false`, each slider is a vertical column with label, slider, and value stacked."
+        horizontal::Bool = true
+        "For `horizontal = true`, the width of the value label column. For `horizontal = false`, the height of the value label row. If `automatic`, the size is determined by sampling a few values from the slider ranges and picking the largest label size found."
         value_column_width = automatic
     end
 end
