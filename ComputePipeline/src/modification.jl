@@ -107,7 +107,7 @@ Removes every connection from this graph to another graph.
 
 After calling this function, parts or all of the given `graph` may no longer be
 resolvable. Any graph that depends on the given `graph` may also be partially
-or fully unresolvable due to missing connetions.
+or fully unresolvable due to missing connections.
 
 Note that this "deletes" any edge that involves this `graph` and another graph.
 Edges that output to multiple other graphs will therefore be deleted for all
