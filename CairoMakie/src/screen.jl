@@ -178,6 +178,10 @@ mutable struct Screen{SurfaceRenderType} <: Makie.MakieScreen
     visible::Bool
     config::ScreenConfig
 
+    # TODO: Is there a better place to have tick data?
+    creation_time::UInt64
+    last_render_time::UInt64
+
     function Screen()
         return new{IMAGE}()
     end
@@ -199,6 +203,8 @@ mutable struct Screen{SurfaceRenderType} <: Makie.MakieScreen
             antialias,
             visible,
             config,
+            time_ns(),
+            time_ns()
         )
     end
 

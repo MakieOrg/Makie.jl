@@ -8,6 +8,11 @@
 
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::Screen, scene::Scene)
+    # So animations based on tick events can finish
+    screen.last_render_time = Makie.next_tick!(
+        events(scene).tick, Makie.OneTimeRenderTick, screen.creation_time, screen.last_render_time
+    )
+
     Cairo.save(screen.context)
     draw_background(screen, scene)
 

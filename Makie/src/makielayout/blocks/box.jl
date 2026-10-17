@@ -2,7 +2,7 @@ function initialize_block!(box::Box)
     blockscene = box.blockscene
 
     strokecolor_with_visibility = lift(blockscene, box.strokecolor, box.strokevisible) do col, vis
-        vis ? col : RGBAf(0, 0, 0, 0)
+        vis ? to_color(col) : RGBAf(0, 0, 0, 0)
     end
 
     path = lift(blockscene, box.layoutobservables.computedbbox, box.cornerradius) do bbox, r

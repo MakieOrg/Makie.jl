@@ -90,3 +90,22 @@ end
     @test p3.color[] == to_color(:red)
     @test length(attr) == 1
 end
+
+
+@testset "plot attributes from theme" begin
+    f, a, p = with_theme(
+        Scatter = Attributes(color = :red, markersize = 99),
+        Axis3D = Attributes(
+            ticks = Attributes(gap = 12, textcolor = :blue),
+            padding = 0.3
+        )
+    ) do
+        scatter(rand(Point3f, 10))
+    end
+    ax = a.scene[OldAxis]
+    @test ax.padding[] == 0.3
+    @test ax.ticks.gap[] == 12
+    @test ax.ticks.textcolor[] == :blue
+    @test p.markersize[] == Vec2f(99)
+    @test p.color[] == to_color(:red)
+end

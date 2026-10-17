@@ -1,12 +1,14 @@
 """
-    hlines(ys; xmin = 0.0, xmax = 1.0, attrs...)
+Draws horizontal lines across an `Axis`.
 
-Create horizontal lines across a `Scene` with 2D projection.
-The lines will be placed at `ys` in data coordinates and `xmin` to `xmax`
-in scene coordinates (0 to 1). All three of these can have single or multiple values because
-they are broadcast to calculate the final line segments.
+## Arguments
+
+* `ys` Positions where lines will be drawn in data coordinates. Can be a `Real` or
+    `AbstractVector{<:Real}`. The lines span from `xmin` to `xmax` in relative coordinates (0 to 1).
+* `xmin, xmax` Attributes for setting the start and end positions of lines in relative (0 .. 1) space.
+    Can be a `Real` or `AbstractVector{<:Real}`
 """
-@recipe HLines begin
+@recipe HLines (ys::Union{Real, RealVector},) begin
     "The start of the lines in relative axis units (0 to 1) along the x dimension."
     xmin = 0
     "The end of the lines in relative axis units (0 to 1) along the x dimension."
@@ -15,14 +17,16 @@ they are broadcast to calculate the final line segments.
 end
 
 """
-    vlines(xs; ymin = 0.0, ymax = 1.0, attrs...)
+Draws vertical lines across an `Axis`.
 
-Create vertical lines across a `Scene` with 2D projection.
-The lines will be placed at `xs` in data coordinates and `ymin` to `ymax`
-in scene coordinates (0 to 1). All three of these can have single or multiple values because
-they are broadcast to calculate the final line segments.
+## Arguments
+
+* `xs` Positions where lines will be drawn in data coordinates. Can be a `Real` or
+    `AbstractVector{<:Real}`. The lines span from `ymin` to `ymax` in relative coordinates (0 to 1).
+* `ymin, ymax` Attributes for setting the start and end positions of lines in relative (0 .. 1) space.
+    Can be a `Real` or `AbstractVector{<:Real}`
 """
-@recipe VLines begin
+@recipe VLines (xs::Union{Real, RealVector},) begin
     "The start of the lines in relative axis units (0 to 1) along the y dimension."
     ymin = 0
     "The start of the lines in relative axis units (0 to 1) along the y dimension."
@@ -42,11 +46,15 @@ function projview_to_2d_limits(plot::AbstractPlot)
     end
 end
 
+argument_dims(::Type{<:HLines}, y) = (2,)
+argument_dims(::Type{<:VLines}, x) = (1,)
+
 function Makie.plot!(p::Union{HLines, VLines})
     mi = p isa HLines ? (:xmin) : (:ymin)
     ma = p isa HLines ? (:xmax) : (:ymax)
+    converted_name = p isa HLines ? (:ys) : (:xs)
     add_axis_limits!(p)
-    map!(p.attributes, [:axis_limits_transformed, :converted_1, mi, ma, :transform_func], :points) do lims, vals, mi, ma, transf
+    map!(p.attributes, [:axis_limits_transformed, converted_name, mi, ma, :transform_func], :points) do lims, vals, mi, ma, transf
         points = Point2d[]
         min_x, min_y = minimum(lims)
         max_x, max_y = maximum(lims)

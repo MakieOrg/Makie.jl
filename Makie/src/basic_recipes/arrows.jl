@@ -4,32 +4,41 @@
 
 struct ArrowLike <: ConversionTrait end
 
+function types_for_plot_arguments(::ArrowLike)
+    return Tuple{PointVector{N, <:Real}, PointVector{N, <:Real}} where {N}
+end
+
+argument_dims(::ArrowLike, x, y, f) = (1, 2)
+argument_dims(::ArrowLike, x, y, z, f::Function) = (1, 2, 3)
+argument_dims(::ArrowLike, x, y, u, v) = (1, 2, 1, 2)
+argument_dims(::ArrowLike, x, y, z, u, v, w) = (1, 2, 3, 1, 2, 3)
+
 # vec(::Point) and vec(::Vec) works (returns input), but vec(::Tuple) errors
 convert_arguments(::ArrowLike, pos::VecTypes{N}, dir::VecTypes{N}) where {N} = ([pos], [dir])
 
 function convert_arguments(::ArrowLike, pos::AbstractArray, dir::AbstractArray)
     return (
-        convert_arguments(PointBased(), vec(pos))[1],
-        convert_arguments(PointBased(), vec(dir))[1],
+        convert_arguments(PointBased(), vec(pos))...,
+        convert_arguments(PointBased(), vec(dir))...,
     )
 end
 
 function convert_arguments(::ArrowLike, x, y, u, v)
     return (
-        convert_arguments(PointBased(), vec(x), vec(y))[1],
-        convert_arguments(PointBased(), vec(u), vec(v))[1],
+        convert_arguments(PointBased(), vec(x), vec(y))...,
+        convert_arguments(PointBased(), vec(u), vec(v))...,
     )
 end
 function convert_arguments(::ArrowLike, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
     return (
         vec(Point{2, float_type(x, y)}.(x, y')),
-        convert_arguments(PointBased(), vec(u), vec(v))[1],
+        convert_arguments(PointBased(), vec(u), vec(v))...,
     )
 end
 function convert_arguments(::ArrowLike, x, y, z, u, v, w)
     return (
-        convert_arguments(PointBased(), vec(x), vec(y), vec(z))[1],
-        convert_arguments(PointBased(), vec(u), vec(v), vec(w))[1],
+        convert_arguments(PointBased(), vec(x), vec(y), vec(z))...,
+        convert_arguments(PointBased(), vec(u), vec(v), vec(w))...,
     )
 end
 
@@ -168,20 +177,14 @@ function mixin_arrow_attributes()
     end
 end
 
-const _arrow_args_docs = """
-Their positions are given by a vector of `points` or component vectors `x`, `y`
-and optionally `z`. A single point or value of `x`, `y` and `z` is also allowed.
-Which part of the arrow is aligned with the position depends on the `align` attribute.
-
-Their directions are given by a vector of `directions` or component vectors `u`,
-`v` and optionally `w` just like positions. Additionally they can also be
-calculated by a function `f` which should return a `Point` or `Vec` for each
-arrow `position::Point`.
-Note that direction can also be interpreted as end points with `argmode = :endpoint`.
-"""
 
 arrows(args...; kwargs...) = resolve_arrows_deprecation(false, args, Dict{Symbol, Any}(kwargs))
 arrows!(args...; kwargs...) = resolve_arrows_deprecation(true, args, Dict{Symbol, Any}(kwargs))
+
+function full_docs(::Type{<:Plot{arrows}}; replace_figure = true)
+    str = read(joinpath(@__DIR__, "..", "documentation", "plots", "arrows.md"), String)
+    return Markdown.parse(str)
+end
 
 # For the matlab/matplotlib users
 const quiver = arrows
@@ -270,13 +273,21 @@ function arrowtail2d(l, W, metrics)
 end
 
 """
-    arrows2d(points, directions; kwargs...)
-    arrows2d(x, y, [z], u, v, [w])
-    arrows2d(x, y, [z], f::Function)
-
 Plots arrows as 2D shapes.
 
-$_arrow_args_docs
+## Arguments
+
+* `points, directions` Defines arrow anchor positions and directions. `points` is a
+    `VecTypes{D, <:Real}` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}`. `directions`
+    is a `VecTypes{D, <:Real}` or `AbstractVector{<:VecTypes}` defining the direction arrows point
+    in. With the default `align = :tail`, points are where arrows start from.
+* `xs, ys, us, vs` Defines points and directions using separate coordinate arrays. Each can be a
+    `Real` or an `AbstractVector{<:Real}`. This is equivalent to the `points, directions` signature
+    but with coordinates given per dimension.
+* `points, f` A callback function `point -> direction` which returns a direction for each anchor
+    point. Can be used with either a `points` array or with `xs, ys` coordinates.
+* `xs, ys, f` Same as `points, f` but with coordinates given separately.
+* Setting `argmode = :endpoint` will reinterpret directions as endpoints.
 """
 @recipe Arrows2D (points, directions) begin
     """
@@ -351,6 +362,7 @@ $_arrow_args_docs
 end
 
 conversion_trait(::Type{<:Arrows2D}) = ArrowLike()
+
 
 function _get_arrow_shape(f::Function, length, width, metrics)
     nt = NamedTuple{(:taillength, :tailwidth, :shaftlength, :shaftwidth, :tiplength, :tipwidth)}(metrics)
@@ -574,28 +586,24 @@ function legendelements(plot::Arrows2D, legend)
     # TODO: Consider adding an adjustable rotation?
     # Note: patchsize is given as a value
     patchsize = legend.patchsize
-    arrow_length = Observable(first(patchsize))
+    arrow_length = map(first, patchsize)
 
     # Fixed on breaking: ComputePipeline fails to handle Observable interfacing
     # when the first argument is an Observable
     arrow_metrics = map(
         _arrow2d_metrics,
         arrow_length,
-        ComputePipeline.get_observable!(plot.taillength), ComputePipeline.get_observable!(plot.tailwidth),
-        ComputePipeline.get_observable!(plot.shaftlength), ComputePipeline.get_observable!(plot.minshaftlength),
-        ComputePipeline.get_observable!(plot.maxshaftlength), ComputePipeline.get_observable!(plot.shaftwidth),
-        ComputePipeline.get_observable!(plot.tiplength), ComputePipeline.get_observable!(plot.tipwidth),
+        plot.taillength, plot.tailwidth,
+        plot.shaftlength, plot.minshaftlength,
+        plot.maxshaftlength, plot.shaftwidth,
+        plot.tiplength, plot.tipwidth,
     )
 
     meshes = map(
         arrow_metrics,
-        ComputePipeline.get_observable!(plot.should_component_render),
-        ComputePipeline.get_observable!(plot.strokemask),
-        ComputePipeline.get_observable!(plot.tail),
-        ComputePipeline.get_observable!(plot.shaft),
-        ComputePipeline.get_observable!(plot.tip),
-    ) do metrics, should_render, mask, shapes...
-        w, h = patchsize
+        plot.should_component_render, plot.strokemask, patchsize,
+        plot.tail, plot.shaft, plot.tip,
+    ) do metrics, should_render, mask, (w, h), shapes...
         meshes = GeometryBasics.Mesh[]
 
         # rotate + translate
@@ -619,16 +627,13 @@ function legendelements(plot::Arrows2D, legend)
     colors = map(
         plot,
         legend.polycolor,
-        ComputePipeline.get_observable!(plot.resolved_tailcolor),
-        ComputePipeline.get_observable!(plot.resolved_shaftcolor),
-        ComputePipeline.get_observable!(plot.resolved_tipcolor),
+        plot.resolved_tailcolor, plot.resolved_shaftcolor, plot.resolved_tipcolor,
     ) do leg_col, colors...
         return [choose_scalar(c, leg_col) for c in colors]
     end
 
     return LegendElement[
         PolyElement(
-            plots = plot,
             poly = meshes,
             color = colors,
             strokewidth = plot.strokemask,
@@ -642,13 +647,21 @@ end
 
 
 """
-    arrows3d(points, directions; kwargs...)
-    arrows3d(x, y, [z], u, v, [w])
-    arrows3d(x, y, [z], f::Function)
-
 Plots arrows as 3D shapes.
 
-$_arrow_args_docs
+## Arguments
+
+* `points, directions` Defines arrow anchor positions and directions. `points` is a `VecTypes{D, <:Real}`
+    (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}`. `directions` is a `VecTypes{D, <:Real}`
+    or `AbstractVector{<:VecTypes}` defining the direction arrows point in. With the default `align = :tail`,
+    points are where arrows start from.
+* `xs, ys, zs, us, vs, ws` Defines points and directions using separate coordinate arrays. Each can
+    be a `Real` or an `AbstractVector{<:Real}`. This is equivalent to the `points, directions` signature
+    but with coordinates given per dimension.
+* `points, f` A callback function `point -> direction` which returns a direction for each anchor point.
+    Can be used with either a `points` array or with `xs, ys, zs` coordinates.
+* `xs, ys, zs, f` Same as `points, f` but with coordinates given separately.
+* Setting `argmode = :endpoint` will reinterpret directions as endpoints.
 """
 @recipe Arrows3D (points, directions) begin
     """
