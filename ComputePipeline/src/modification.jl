@@ -1,4 +1,3 @@
-
 function Base.empty!(attr::ComputeGraph)
     # empty!(attr.inputs)
     # empty!(attr.outputs)
@@ -712,15 +711,15 @@ function move!(target::ComputeGraph, node::Computed)
     # same graph, the graph specified by edge.graph. This might need special
     # care to not break things.
     # if move_siblings
-        for _node in edge.outputs
-            _validate_node_move(target, source, _node)
-        end
-        for _node in edge.outputs
-            _move_node!(target, source, _node)
-        end
+    for _node in edge.outputs
+        _validate_node_move(target, source, _node)
+    end
+    for _node in edge.outputs
+        _move_node!(target, source, _node)
+    end
     # else
-        # _validate_node_move(target, source, node)
-        # _move_node!(target, source, node)
+    # _validate_node_move(target, source, node)
+    # _move_node!(target, source, node)
     # end
 
     new_edge = ComputeEdge(

@@ -673,7 +673,7 @@ end
     end
 
     @testset "Input Edge" begin
-          @testset "callback" begin
+        @testset "callback" begin
             ComputePipeline.modify_edge!(graph.a.parent, callback = -)
             @test graph.a[] == -graph.inputs[:a].value
 

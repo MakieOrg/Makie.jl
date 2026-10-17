@@ -438,7 +438,7 @@ end
 function show_outputs_rec(io::IO, edge::AbstractEdge, tab = 0)
     show_edge(io, edge, tab)
     for e in edge.dependents
-        show_outputs_rec(io, e, tab+1)
+        show_outputs_rec(io, e, tab + 1)
     end
     return
 end
