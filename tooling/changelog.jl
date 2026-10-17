@@ -81,7 +81,14 @@ module Changelog
     end
 
     function unreleased_lines(dir = ENTRY_DIR)
-        entries, sections = mapreduce(parse_entry_file, vcat, entry_files(dir); init = Entry[])
+        entries = Entry[]
+        _sections = Set{String}()
+        for filepath in entry_files(dir)
+            _entries, __sections = parse_entry_file(filepath)
+            append!(entries, _entries)
+            union!(_sections, __sections)
+        end
+        sections = collect(_sections)
         unsectioned = render_entries(filter(e -> e.section === nothing, entries))
         sectioned = map(sections) do section
             section_entries = filter(e -> e.section == section, entries)
