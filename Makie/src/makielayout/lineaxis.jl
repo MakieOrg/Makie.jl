@@ -249,7 +249,13 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     # make sure we update tick calculation when needed
     obs = needs_tick_update_observable(dim_convert)
     if !isnothing(obs)
-        on(x -> ComputePipeline.mark_dirty!(dim_convert), obs)
+        on(obs) do _
+            # mark_dirty causes an infinite loop because it triggers observable updates
+            @lock ComputePipeline.GLOBAL_LOCK begin
+                ComputePipeline.locked_mark_dirty!(dim_convert)
+            end
+            return
+        end
     end
 
     map!(
