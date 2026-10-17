@@ -32,6 +32,18 @@ function data_limits(scenelike, exclude::Function = (p) -> false)
     return bb_ref[]
 end
 
+function data_limits(plot::Plot)::Rect3d
+    if haskey(plot, :data_limits)
+        return plot.data_limits[]
+    end
+    isempty(plot.plots) && return Rect3d()
+    bb_ref = Base.RefValue(data_limits(plot.plots[1]))
+    for i in 2:length(plot.plots)
+        update_boundingbox!(bb_ref, data_limits(plot.plots[i]))
+    end
+    return bb_ref[]
+end
+
 # include bbox from scaled markers
 function limits_with_marker_transforms(positions, scales, rotation, element_bbox)
     isempty(positions) && return Rect3d()

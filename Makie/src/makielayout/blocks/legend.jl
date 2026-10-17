@@ -385,7 +385,10 @@ function initialize_block!(leg::Legend; entrygroups)
                 for element in entry.elements
                     append!(
                         symbolplots,
-                        legendelement_plots!(scene, element, rect.layoutobservables.computedbbox, entry.attributes)
+                        legendelement_plots!(
+                            rect.blockscene, element,
+                            rect.layoutobservables.computedbbox, entry.attributes
+                        )
                     )
                 end
                 push!(eplots, symbolplots)

@@ -20,8 +20,8 @@ end
 block_kwargs(::Type{PolarAxis}) = Set([:palette])
 function initialize_block!(po::PolarAxis; palette = nothing)
     # Setup Scenes
-    cb = po.layoutobservables.computedbbox
-    scenearea = map(po.blockscene, cb) do cb
+    lo = po.layoutobservables
+    scenearea = map(po.blockscene, lo.computedbbox) do cb
         return Rect(round.(Int, minimum(cb)), round.(Int, widths(cb)))
     end
 
@@ -127,24 +127,33 @@ function initialize_block!(po::PolarAxis; palette = nothing)
         end
 
         xpx::Float32 = if align === :center
-            area.origin[1] + w / 2
+            w / 2
         elseif align === :left
-            area.origin[1]
+            0.0f0
         elseif align === :right
-            area.origin[1] + w
+            w
         elseif align isa Real
-            area.origin[1] + align * w
+            align * w
         else
             error("Title align $align not supported.")
         end
 
-        return Point2f(xpx, area.origin[2] + ypx)
+        return Point2f(xpx, ypx)
     end
+
+    scenearea_with_prot = map(po.blockscene, lo.computedbbox, lo.protrusions) do cb, prot
+        return Rect(
+            round.(Int, minimum(cb) .- (prot.left, prot.bottom)),
+            round.(Int, widths(cb) .+ (prot.left + prot.right, prot.bottom + prot.top))
+        )
+    end
+
+    titlescene = Scene(po.blockscene, scenearea_with_prot, clear = false, camera = campixel!)
 
     # p = scatter!(po.blockscene, title_position, color = :red, overdraw = true)
     # translate!(p, 0, 0, 9100)
     titleplot = text!(
-        po.blockscene,
+        titlescene,
         title_position;
         text = po.title,
         font = po.titlefont,
