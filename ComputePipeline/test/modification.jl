@@ -594,6 +594,7 @@ end
     add_input!(graph, :c, 3)
 
     map!(+, graph, :a, :x)
+    map!(x -> x, graph, :x, :output)
 
     @test graph.x[] == 1
 
@@ -604,19 +605,19 @@ end
                 graph.x.parent, wrap_callback = false,
                 callback = (inputs, changed, cached) -> (-inputs[1],)
             )
-            @test graph.x[] == -1
+            @test graph.output[] == -1
 
             # switch back
             ComputePipeline.modify_edge!(graph.x.parent, wrap_callback = true, callback = +)
-            @test graph.x[] == 1
+            @test graph.output[] == 1
         end
 
         @testset "Edge Inputs" begin
             ComputePipeline.modify_edge!(graph.x.parent, inputs = [graph.b])
-            @test graph.x[] == 2
+            @test graph.output[] == 2
 
             ComputePipeline.modify_edge!(graph.x.parent, inputs = [graph.a, graph.c])
-            @test graph.x[] == 4
+            @test graph.output[] == 4
         end
 
         @testset "Edge Outputs" begin

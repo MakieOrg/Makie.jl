@@ -424,7 +424,7 @@ function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
         if !isa(kwargs[:inputs], AbstractVector{Computed})
             error("`inputs` must be a Vector of `Computed` nodes.")
         end
-        kwargs[:inputs], fill(false, length(kwargs[:inputs]))
+        kwargs[:inputs], fill(true, length(kwargs[:inputs]))
     else
         edge.inputs, edge.inputs_dirty
     end
@@ -453,10 +453,11 @@ function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
         edge.callback
     end
 
+    # got_resolved should initialize as false so mark_dirty doesn't stop immediately
     new_edge = ComputeEdge(
         graph, callback,
         inputs, inputs_dirty, outputs,
-        Ref(false), edge.dependents, Ref{TypedEdge}()
+        Ref(true), edge.dependents, Ref{TypedEdge}()
     )
 
     @lock GLOBAL_LOCK begin
