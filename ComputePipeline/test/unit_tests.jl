@@ -1545,3 +1545,74 @@ end
     @test graph.counter[] == 2
     @test graph.even2[] == 4
 end
+
+@testset "mark_dirty!" begin
+    graph = ComputeGraph()
+    add_input!(graph, :input, 1)
+    map!(x -> ExplicitUpdate(x, :force), graph, :input, :middle)
+    counter = Ref(0)
+    map!(graph, :middle, :counter) do _
+        counter[] = counter[] + 1
+        return counter[]
+    end
+    map!(x -> x, graph, :counter, :output)
+
+    @test graph.output[] == 1
+    @test graph.output[] == 1
+
+    @testset "mark_dirty" begin
+        ComputePipeline.mark_dirty!(graph.input.parent)
+        @test graph.input.parent isa ComputePipeline.Input
+        @test graph.output[] == 2
+        @test graph.output[] == 2
+
+        ComputePipeline.mark_dirty!(graph.input)
+        @test graph.output[] == 3
+        @test graph.output[] == 3
+
+        # mark_dirty is somewhat user-facing. Calling it should give the expected
+        # result of resolving the edge.
+        ComputePipeline.mark_dirty!(graph.middle.parent)
+        @test graph.middle.parent isa ComputePipeline.ComputeEdge
+        @test graph.output[] == 4
+        @test graph.output[] == 4
+
+        ComputePipeline.mark_dirty!(graph.middle)
+        @test graph.output[] == 5
+        @test graph.output[] == 5
+    end
+
+    @testset "locked_mark_dirty" begin
+        ComputePipeline.locked_mark_dirty!(graph.input.parent)
+        @test graph.input.parent isa ComputePipeline.Input
+        @test graph.output[] == 6
+        @test graph.output[] == 6
+
+        ComputePipeline.locked_mark_dirty!(graph.input)
+        @test graph.output[] == 7
+        @test graph.output[] == 7
+
+        # To get mark_dirty!(::ComputeEdge) to work we need to have one or more
+        # true values in edge.inputs_dirty. This is usually set during the resolve
+        # chain, to communicate from a parent to a child which inputs changed. If
+        # none changed, resolving ends early and skips redundant updates.
+        # Overwriting inputs_dirty in locked_mark_dirty! would force every dependent
+        # to resolve. Splitting the function (first call does it, later don't)
+        # could be an option if we really want this...
+        ComputePipeline.locked_mark_dirty!(graph.middle.parent)
+        @test graph.middle.parent isa ComputePipeline.ComputeEdge
+        @test graph.output[] == 7
+        @test graph.output[] == 7
+
+        ComputePipeline.locked_mark_dirty!(graph.middle)
+        @test graph.output[] == 8
+        @test graph.output[] == 8
+    end
+
+    @testset "setindex!" begin
+        graph.middle[] = ExplicitUpdate(1, :force)
+        @test graph.output[] == 9
+        @test graph.output[] == 9
+    end
+
+end

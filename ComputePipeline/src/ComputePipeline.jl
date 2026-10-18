@@ -647,7 +647,18 @@ function mark_dirty!(computed::Computed, obs_to_update)
 end
 
 mark_dirty!(x::AbstractEdge) = mark_dirty!(x, x.graph.obs_to_update)
-function mark_dirty!(x, obs_to_update)
+function mark_dirty!(x::ComputeEdge, obs_to_update)
+    @lock GLOBAL_LOCK begin
+        if !any(x.inputs_dirty) # make sure the edge will actually resolve
+            x.inputs_dirty .= true
+        end
+        locked_mark_dirty!(x, obs_to_update)
+    end
+    update_observables!(obs_to_update)
+    return
+end
+
+function mark_dirty!(x::Input, obs_to_update)
     @lock GLOBAL_LOCK begin
         locked_mark_dirty!(x, obs_to_update)
     end
@@ -665,7 +676,12 @@ function. This should not be used externally.
 locked_mark_dirty!(x::AbstractEdge) = locked_mark_dirty!(x, x.graph.obs_to_update)
 function locked_mark_dirty!(x::Computed, obs_to_update = x.parent.graph.obs_to_update)
     x.dirty = true
-    return locked_mark_dirty!(x.parent, obs_to_update)
+    # if a node is dirty its parents dependents should be marked dirty
+    for dep in x.parent.dependents
+        mark_input_dirty!(x.parent, dep)
+        locked_mark_dirty!(dep, obs_to_update)
+    end
+    return
 end
 
 function locked_mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
