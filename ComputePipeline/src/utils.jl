@@ -105,3 +105,24 @@ function select!(
 end
 
 export select!
+
+collect_all_parents(node::Computed, buffer = Set{Computed}()) = collect_all_parents!(buffer, node)
+function collect_all_parents!(buffer, node::Computed, iter = 0)
+    was_present = node in buffer
+    push!(buffer, node)
+    if iter > 100
+        @warn "Stopping collection at $node after reaching a recursion depth of 100. Is $node part of a loop?"
+    elseif !was_present
+        collect_all_parents!(buffer, node.parent, iter + 1)
+    end
+    return buffer
+end
+function collect_all_parents!(buffer, e::ComputeEdge, iter = 0)
+    for node in e.inputs
+        collect_all_parents!(buffer, node, iter + 1)
+    end
+    return buffer
+end
+collect_all_parents!(buffer, ::Input, iter = 0) = buffer
+
+siblings(node::Computed) = node.parent.outputs
