@@ -589,21 +589,26 @@ end
 # end
 
 """
-    add_orphaned_node!(graph, name)
+    add_node!(graph, name[, init])
 
-Creates a `Computed` node in the compute graph that is not connected to anything.
-Such a node can not be resolved but it can be used as input with the promise
-that it will later become an output via `modify_edge!`.
+Creates a compute node with an invalid parent edge. If an initial value is given
+with `init`, the node will be set up as "resolved" and hold that value. Otherwise
+resolving the node will cause an error.
+
+This node can be created ahead of time to later be connected with `modify_edge!`.
+Any downstream dependency will be kept.
+It can not be used as target for `map!` and `register_computation!`.
 """
-function add_orphaned_node!(graph, name)
-    node = Computed(name)
-    node.parent = ComputeEdge(
-        graph, invalid_callback,
-        Computed[], Bool[], [node],
-        Ref(false), ComputeEdge{ComputeGraph}[], Ref{TypedEdge}()
-    )
-    node.parent_idx = 1
-    graph.outputs[name] = node
+function add_node!(graph, name)
+    register_computation!(invalid_callback, graph, Symbol[], Symbol[name])
+    return graph[name]
+end
+
+function add_node!(graph, name, init)
+    node = add_node!(graph, name)
+    node.value = init isa RefValue ? init : RefValue(init)
+    node.parent.got_resolved[] = true
+    node.dirty = false
     return node
 end
 

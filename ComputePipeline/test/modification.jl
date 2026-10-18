@@ -622,7 +622,7 @@ end
 
         @testset "Edge Outputs" begin
             # This node is a placeholder for modify_edge!
-            ComputePipeline.add_orphaned_node!(graph, :y)
+            ComputePipeline.add_node!(graph, :y)
             @test haskey(graph, :y)
             @test_throws ComputePipeline.ResolveException graph.y[]
 
@@ -684,7 +684,7 @@ end
         end
 
         @testset "Edge Output" begin
-            ComputePipeline.add_orphaned_node!(graph, :_c)
+            ComputePipeline.add_node!(graph, :_c)
 
             old_deps = copy(graph.c.parent.dependents)
             ComputePipeline.modify_edge!(graph.c.parent, output = graph._c)
