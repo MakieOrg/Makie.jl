@@ -261,7 +261,11 @@ end
 
 
 function Base.showerror(io::IO, re::ResolveException{SelectException})
-    trace_error(io, re.start, re.error.edge)
+    try
+        trace_error(io, re.start, re.error.edge)
+    catch e
+        println(io, "#error")
+    end
     print(io, "Due to ")
     printstyled(io, "ERROR: ", color = :light_red, bold = true)
     Base.showerror(io, re.error)
@@ -270,7 +274,11 @@ end
 Base.showerror(io::IO, se::SelectException) = print(io, se.msg)
 
 function Base.showerror(io::IO, re::ResolveException)
-    trace_error(io, re.start)
+    try
+        trace_error(io, re.start)
+    catch e
+        println(io, "#error")
+    end
     print(io, "Due to ")
     printstyled(io, "ERROR: ", color = :light_red, bold = true)
     Base.showerror(io, re.error)
