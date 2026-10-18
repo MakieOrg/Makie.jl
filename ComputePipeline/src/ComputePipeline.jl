@@ -579,7 +579,7 @@ end
 
 Creates `output` as an alias of `input`.
 """
-function alias!(attr::ComputeGraph, key::Symbol, alias_key::Symbol)
+function alias!(attr::AbstractComputeGraph, key::Symbol, alias_key::Symbol)
     # TODO: more efficient implementation!
     register_computation!(compute_identity, attr, [key], [alias_key])
     return attr
@@ -1580,7 +1580,7 @@ function add_constant!(attr::ComputeGraphView, args...)
     return add_constant!(attr.parent, combined, last(args))
 end
 
-function add_constants!(attr::ComputeGraph; kw...)
+function add_constants!(attr::AbstractComputeGraph; kw...)
     for (k, v) in pairs(kw)
         add_constant!(attr, k, v)
     end
