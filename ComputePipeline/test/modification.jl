@@ -288,6 +288,34 @@ end
         test_disconnected_edge(new, e)
     end
 
+    @testset "Input edge" begin
+        graph = ComputeGraph()
+        add_input!(graph, :input1, 1)
+        add_input!(graph, :input2, 1)
+        map!(x -> x, graph, :input1, :output1)
+        map!(x -> x, graph, :input2, :output2)
+
+        @test graph.output1[] == 1
+
+        delete!(graph.input1.parent)
+        @test graph.output1[] == 1
+        e = graph.input1.parent
+        @test e isa ComputeEdge
+        @test isempty(e.inputs)
+        @test e.callback == ComputePipeline.invalid_callback
+        @test e.outputs == [graph.input1]
+        @test e.dependents == [graph.output1.parent]
+
+        delete!(graph.input2.parent)
+        @test_throws ComputePipeline.ResolveException graph.output2[]
+        e = graph.input2.parent
+        @test e isa ComputeEdge
+        @test isempty(e.inputs)
+        @test e.callback == ComputePipeline.invalid_callback
+        @test e.outputs == [graph.input2]
+        @test e.dependents == [graph.output2.parent]
+    end
+
     # Deletes connections from one graph to any parent and any child graph
     @testset "disconnect!" begin
         p1 = ComputeGraph()

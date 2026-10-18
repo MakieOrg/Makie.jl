@@ -683,6 +683,12 @@ function Base.delete!(edge::ComputeEdge)
     return
 end
 
+function Base.delete!(edge::Input)
+    _disconnect_node_from_parent!(edge.output)
+    delete!(edge.graph.inputs, edge.name)
+    return
+end
+
 function _validate_node_move(target::ComputeGraph, source::ComputeGraph, node::Computed)
     exists_in_source = haskey(source.outputs, node.name)
     space_in_target = !haskey(target.outputs, node.name)
