@@ -586,7 +586,7 @@ function initialize_limit_computations!(ax)
 
 
     # (x/y)lims!() need to be able to set limits across one dimension without
-    # affecting the limits of the other. To do that we need to mark one dimnesion
+    # affecting the limits of the other. To do that we need to mark one dimension
     # as an update to discard and the other as a normal update with ExplicitUpdate.
     # To avoid showing this to the user when fetching ax.limits[] we add another
     # input here, where (x/y)lims!() can mark which dimension to deny
@@ -616,61 +616,30 @@ function initialize_limit_computations!(ax)
     setfield!(ax, :yaxislinks, Axis[])
 
     #=
-    Limit linking needs immediate updates. Consider linked ax1, ax2. If both
-    axes are updated before the backend pulls, the order in which the backend
-    pulls updates will determine whose limits are the "newest".
-    So whenever the user sets limits, or interacts with an axis we need that
-    change to be communicated to all linked axes asap. We make sure this happens
-    by adding an (unused) observable output to shared(x/y)limits here. This will
-    evaluate shared(x/y)limits whenever its input local(x/y)limits changes,
-    running the linked axis update in its callback. Note that the callback must
-    update shared(x/y)limits and not local(x/y)limits to not cause a feedback
-    loop.
-    Interactions must read from shared(x/y)limits of a dependent to get
-    up-to-date limits with linked axes, and update local(x/y)limits to trigger
-    the linked axis updates.
-    Note for refactoring - exiting and reentering the compute graph between
-    (x/y)scale and finallimits will cause ticks to update with the old
-    finallimits and the new (x/y)scale if (x/y)scale changes.
+    Interactions must read from shared(x/y)limits or a later node to get
+    up-to-date limits with linked axes, and update local(x/y)limits or earlier
+    to trigger the linked axis updates.
     =#
 
-    map!(attr, [:localxlimits, :xscale], :sharedxlimits) do _lims, xscale
+    map!(attr, [:localxlimits, :xscale], :validatedxlimits) do _lims, xscale
         lims = unwrap_explicit_update(_lims)
         if !validate_limits_for_scale(lims, xscale)
             error("Invalid x-limits $lims for scale $(xscale) which is defined on the interval $(defined_interval(xscale))")
         end
-
         return lims
     end
 
-    # Setting link.sharedxlimits will loop back to this axis, which causes state
-    # to be overwritten if it happens during resolve, i.e. in the callback above.
-    # Using a compute graph Observable to link limits is fine though
-    on(attr.sharedxlimits) do lims
-        for link in ax.xaxislinks
-            link === ax && continue
-            # The world ends if this runs with link being this Axis
-            link.sharedxlimits[] = lims
-        end
-        return
-    end
-
-    map!(attr, [:localylimits, :yscale], :sharedylimits) do _lims, yscale
+    map!(attr, [:localylimits, :yscale], :validatedylimits) do _lims, yscale
         lims = unwrap_explicit_update(_lims)
         if !validate_limits_for_scale(lims, yscale)
             error("Invalid y-limits $lims for scale $(yscale) which is defined on the interval $(defined_interval(yscale))")
         end
-
         return lims
     end
 
-    on(attr.sharedylimits) do lims
-        for link in ax.yaxislinks
-            link === ax && continue
-            link.sharedylimits[] = lims
-        end
-        return
-    end
+    # These maps may get manipulated when linking axes
+    map!(identity, attr, :validatedxlimits, :sharedxlimits)
+    map!(identity, attr, :validatedylimits, :sharedylimits)
 
     map!(attr, [:sharedxlimits, :sharedylimits], :targetlimits) do xlims, ylims
         return BBox(xlims[1], xlims[2], ylims[1], ylims[2])
@@ -1090,42 +1059,92 @@ Link both x and y axes of all given `Axis` so that they stay synchronized.
 """
 function linkaxes!(axes::Vector{<:Axis})
     linkxaxes!(axes)
-    return linkyaxes!(axes)
+    linkyaxes!(axes)
+    return
 end
 
-function linkaxes!(a::Axis, others...)
-    return linkaxes!([a, others...])
-end
-
+linkaxes!(a::Axis, others...) = linkaxes!([a, others...])
 linkaxes!(dir::Symbol, a::Axis, others...) = linkaxes!(dir, [a, others...])
 
 function linkaxes!(dir::Symbol, axes::Vector{Axis})
-    (length(axes) < 2) && return
-    all_links = Set{Axis}(axes)
-    for ax in axes
-        links = dir === :x ? ax.xaxislinks : ax.yaxislinks
-        for ax in links
-            push!(all_links, ax)
+    shared_node_name = ifelse(dir === :x, :sharedxlimits, :sharedylimits)
+    input_node_name = ifelse(dir === :x, :validatedxlimits, :validatedylimits)
+
+    # Making a new graph is probably not that much more expensive that reusing
+    # an existing one (if there is one)?
+    link_graph = ComputeGraph()
+    union_node_name = ifelse(dir === :x, :xlimitunion, :ylimitunion)
+
+    # Can't use changed here because of name collisions, so manually do track and check
+    last_input = Tuple{Float64, Float64}[]
+    map!(link_graph, Symbol[], union_node_name) do args...
+        if length(last_input) != length(args)
+            resize!(last_input, length(args))
+            changed = fill(true, length(args))
+        else
+            changed = last_input .!= args
         end
+        last_input .= args
+
+        mini = Inf
+        maxi = -Inf
+        for ((low, high), update) in zip(args, changed)
+            if update
+                mini = min(mini, low)
+                maxi = max(maxi, high)
+            end
+        end
+
+        return (mini, maxi)
     end
-    links_changed = false
-    for ax in all_links
-        links = dir === :x ? ax.xaxislinks : ax.yaxislinks
-        for linked_ax in all_links
-            if linked_ax !== ax && !(linked_ax in links)
-                links_changed = true
-                push!(links, linked_ax)
+
+    for ax in axes
+        validated_to_union = ax.attributes[input_node_name].parent.dependents[1]
+        union_to_shared = ax.attributes[shared_node_name].parent
+
+        if validated_to_union.graph === ax.attributes
+            # add validated node as input to link graph
+            ComputePipeline.push_input!(
+                link_graph[union_node_name].parent,
+                ax.attributes[input_node_name]
+            )
+            # adjust validated -> shared edge to follow from link graph
+            ComputePipeline.modify_edge!(
+                union_to_shared, inputs = [link_graph[union_node_name]]
+            )
+        else
+            # add inputs of other graph into new link graph
+            ComputePipeline.modify_edge!(
+                link_graph[union_node_name].parent,
+                inputs = vcat(
+                    link_graph[union_node_name].parent.inputs,
+                    validated_to_union.inputs
+                )
+            )
+
+            # remove input connection from other graph
+            delete!(validated_to_union)
+
+            # adjust output connections to be sourced from the new graph
+            for e in validated_to_union.dependents
+                ComputePipeline.modify_edge!(
+                    e, inputs = [link_graph[union_node_name]]
+                )
             end
         end
     end
-    if links_changed
-        ax = first(axes)
-        if dir === :x
-            notify(ComputePipeline.get_observable!(ax.sharedxlimits))
-        else
-            notify(ComputePipeline.get_observable!(ax.sharedylimits))
-        end
+
+    links = dir === :x ? :xaxislinks : :yaxislinks
+    # update first axes fully
+    for i in 2:length(axes)
+        union!(getproperty(axes[1], links), getproperty(axes[i], links))
     end
+
+    # update other axes with fully updated first axes
+    for i in 2:length(axes)
+        union!(getproperty(axes[i], links), getproperty(axes[1], links))
+    end
+
     return
 end
 
