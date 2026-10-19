@@ -200,3 +200,35 @@ end
     @test dashes(screen) == n
     close(screen)
 end
+
+# A dashed curve: a circle of 128 segments, each shorter than a dash. Without
+# GLMakie's joint handling (`lines_process_pattern`) a dash broke at every joint
+# it crossed, and the circle came out in short, uneven dashes.
+import GLMakie
+RayMakie.activate!()
+
+function dashed_circle()
+    sc = Scene(; size = (240, 240), backgroundcolor = RGBf(0, 0, 0), camera = campixel!)
+    ring = [Point2f(120 + 80cos(φ), 120 + 80sin(φ)) for φ in range(0, 2π; length = 128)]
+    lines!(sc, ring; color = :white, linewidth = 2, linestyle = :dash)
+    return sc
+end
+
+# The dashes met going once around the circle, read on its centre line.
+function circle_dashes(img)
+    lit = map(range(0, 2π; length = 1441)[1:end-1]) do φ
+        x, y = 120 + 80cos(φ), 120 + 80sin(φ)
+        img[size(img, 1) - round(Int, y) + 1, round(Int, x) + 1].r > 0.5
+    end
+    return count(i -> lit[i] && !lit[mod1(i - 1, length(lit))], eachindex(lit))
+end
+
+@testset "a dashed curve has GLMakie's dashes" begin
+    gl = circle_dashes(Makie.colorbuffer(dashed_circle(); backend = GLMakie, px_per_unit = 1))
+    RayMakie.activate!()
+    screen = RayMakie.Screen(dashed_circle(); samples = 1, max_depth = 1, hw_accel = false, rasterize = true)
+    rm = circle_dashes(Makie.colorbuffer(screen))
+    close(screen)
+    @test gl > 10
+    @test abs(rm - gl) <= 1
+end

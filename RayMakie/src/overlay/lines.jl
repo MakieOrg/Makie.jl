@@ -80,7 +80,7 @@ const LINES_GEOM_OUT = (quad_sdf = Vec3f, truncation = Vec2f, linestart = Float3
 # own forwarded call, so a signature that drifts out of step with
 # `plots/lines.jl`'s `arg_names` is a `MethodError` naming this function instead of
 # a recursion that overflows inside a shader compile.
-lines_vertex(args::Vararg{Any,16}) = lines_vertex(VertexIndex(vertex_index()), args...)
+lines_vertex(args::Vararg{Any,17}) = lines_vertex(VertexIndex(vertex_index()), args...)
 
 function lines_vertex(
     vertexid::VertexIndex,
@@ -89,6 +89,7 @@ function lines_vertex(
     lastlen::AbstractVector{Float32},   # cumulative screen-space length
     valid_vertex::AbstractVector{Float32}, # 0/1/2 validity flag
     thickness::AbstractVector{Float32}, # per-vertex linewidth
+    pattern::AbstractVector{Float32},   # the dash pattern's sdf, for the geometry stage (`pattern_at`)
     projectionview::Mat4f,
     model::Mat4f,
     px_per_unit::Float32,
@@ -128,6 +129,7 @@ function lines_geometry(
     lastlen::AbstractVector{Float32},
     valid_vertex::AbstractVector{Float32},
     thickness::AbstractVector{Float32},
+    pattern::AbstractVector{Float32},
     projectionview::Mat4f,
     model::Mat4f,
     px_per_unit::Float32,
@@ -288,24 +290,36 @@ function lines_geometry(
     shape_p = (isvalid_0 && isvalid_3) || (linecap == CAP_BUTT) ?
         max(0f0, segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (ext_0p - ext_1p))) : 1f0
 
+    # A dash that starts or stops inside a joint would be fractured across it:
+    # the segment is extended over that joint instead, or the pattern is held
+    # through it (GLMakie's `process_pattern`).
+    adjustment, f_pattern_overwrite = lines_process_pattern(pattern, pattern_length, isvalid_0, isvalid_3,
+        halfwidth * ext_0n, halfwidth * ext_1n, g_lastlen_1, segment_length, halfwidth)
+    # A joint replaced by an extruded line no longer needs shrinking to fit.
+    if adjustment[1] != 0f0 || adjustment[2] != 0f0
+        shape_n = 1f0
+        shape_p = 1f0
+    end
+
     # Flat outputs
-    f_linepoints_xy = isvalid_0 && is_trunc_0 ?
+    f_linepoints_xy = isvalid_0 && is_trunc_0 && adjustment[1] == 0f0 ?
         Vec2f(p1[1] + px_per_unit * scene_origin[1], p1[2] + px_per_unit * scene_origin[2]) :
         Vec2f(-1f12, -1f12)
     f_miter_vecs_xy = isvalid_0 && is_trunc_0 ? Vec2f(-miter_v1[1], -miter_v1[2]) :
         Vec2f(-0.70710677f0, -0.70710677f0)
-    f_linepoints_zw = isvalid_3 && is_trunc_1 ?
+    f_linepoints_zw = isvalid_3 && is_trunc_1 && adjustment[2] == 0f0 ?
         Vec2f(p2[1] + px_per_unit * scene_origin[1], p2[2] + px_per_unit * scene_origin[2]) :
         Vec2f(-1f12, -1f12)
     f_miter_vecs_zw = isvalid_3 && is_trunc_1 ? miter_v2 : Vec2f(-0.70710677f0, -0.70710677f0)
 
-    f_extrusion_x = !isvalid_0 ? 0f0 : 1f12
-    f_extrusion_y = !isvalid_3 ? 0f0 : 1f12
+    # How far the sdf reaches past the ends: a little at a line's start or end,
+    # over the joint where it was dropped, far where truncation handles it.
+    f_extrusion_x = !isvalid_0 ? 0f0 : (adjustment[1] == 0f0 ? 1f12 : halfwidth * abs(ext_0n))
+    f_extrusion_y = !isvalid_3 ? 0f0 : (adjustment[2] == 0f0 ? 1f12 : halfwidth * abs(ext_1n))
     f_capmode_x = isvalid_0 ? joinstyle : linecap
     f_capmode_y = isvalid_3 ? joinstyle : linecap
     f_alpha_weight = min(1f0, g_thickness_1 / AA_RADIUS)
     f_cumulative_length = g_lastlen_1
-    f_pattern_overwrite = Vec4f(-1f12, 1f0, 1f12, 1f0)
 
     # The segment's own values. They are `Flat` in `LINES_GEOM_OUT`, so the
     # emitter writes them once per triangle rather than once per vertex; the loop
@@ -335,7 +349,13 @@ function lines_geometry(
             side = Float32(2 * y - 1)
             dir = Float32(2 * x - 1)
 
-            offset = if is_trunc || !isvalid_far
+            adjust = x == Int32(0) ? adjustment[1] : adjustment[2]
+            offset = if adjust != 0f0
+                # the joint dropped: this end extruded along the segment
+                a = adjust * (halfwidth * abs(x == Int32(0) ? ext_0p : ext_1p) + AA_THICKNESS)
+                Vec3f(a * v1[1] + side * (halfwidth + AA_THICKNESS) * n1[1],
+                      a * v1[2] + side * (halfwidth + AA_THICKNESS) * n1[2], 0f0)
+            elseif is_trunc || !isvalid_far
                 sf * Vec3f(
                     (halfwidth * max(1f0, abs(ext_y)) + AA_THICKNESS) * dir * v1[1] + side * (halfwidth + AA_THICKNESS) * n1[1],
                     (halfwidth * max(1f0, abs(ext_y)) + AA_THICKNESS) * dir * v1[2] + side * (halfwidth + AA_THICKNESS) * n1[2],
@@ -357,9 +377,11 @@ function lines_geometry(
 
             quad_sdf = Vec3f(dot(VP1, -v1_2d), dot(VP2, v1_2d), dot(VP1, n1))
             trunc_x = !is_trunc_0 ? -1f0 :
-                dot(VP1, lines_sign_nz(dot(miter_n1, -v1_2d)) * miter_n1) - halfwidth * abs(miter_offset1)
+                dot(VP1, lines_sign_nz(dot(miter_n1, -v1_2d)) * miter_n1) - halfwidth * abs(miter_offset1) -
+                abs(adjustment[1]) * 1f12
             trunc_y = !is_trunc_1 ? -1f0 :
-                dot(VP2, lines_sign_nz(dot(miter_n2, v1_2d)) * miter_n2) - halfwidth * abs(miter_offset2)
+                dot(VP2, lines_sign_nz(dot(miter_n2, v1_2d)) * miter_n2) - halfwidth * abs(miter_offset2) -
+                abs(adjustment[2]) * 1f12
 
             f_linestart = sf * halfwidth * ext_y
             f_linelength = max(1f0, segment_length - sf * halfwidth * (
@@ -376,6 +398,78 @@ function lines_geometry(
     return nothing
 end
 
+"""
+    pattern_at(pattern, u) -> Float32
+
+The dash pattern at `u` (in pattern lengths) as the fragment stage's texture of
+it gives it: linear between texel centres, repeating. The geometry stage reads
+the same values from a buffer, since only a fragment stage samples textures.
+"""
+@inline function pattern_at(pattern::AbstractVector{Float32}, u::Float32)
+    n = Int32(length(pattern))
+    x = (u - floor(u)) * Float32(n) - 0.5f0
+    i = floor(x)
+    t = x - i
+    i0 = unsafe_trunc(Int32, i)
+    @inbounds return (1f0 - t) * pattern[mod(i0, n) + Int32(1)] + t * pattern[mod(i0 + Int32(1), n) + Int32(1)]
+end
+
+"""
+    lines_process_pattern(pattern, pattern_length, isvalid_0, isvalid_3, ext0, ext1, lastlen, segment_length, halfwidth)
+        -> (adjustment, pattern_overwrite)
+
+GLMakie's `process_pattern` (lines.geom). At each end with a neighbour, the
+pattern is sampled just before, at and just after the joint: where a dash
+starts or stops inside it, the segment is extended over the joint (adjustment
+-1 or +1 at that end, the joint dropped); otherwise the pattern's sign is held
+through the joint (`pattern_overwrite`: the uv up to or from which it is
+fixed, and the sign). `ext0` and `ext1` are the -n extrusions at the two ends
+times `halfwidth`. Without this a dash broke at every joint, and a curve of
+short segments drew short, uneven dashes.
+"""
+@inline function lines_process_pattern(pattern::AbstractVector{Float32}, pattern_length::Float32,
+                                       isvalid_0::Bool, isvalid_3::Bool, ext0::Float32, ext1::Float32,
+                                       lastlen::Float32, segment_length::Float32, halfwidth::Float32)
+    ow_start, sign_start, ow_end, sign_end = -1f12, 1f0, 1f12, 1f0
+    adjust_start = adjust_end = 0f0
+    if pattern_length > 0f0
+        width = 2f0 * halfwidth
+        uv_scale = 1f0 / (width * pattern_length)
+        if isvalid_0
+            offset = abs(ext0)
+            left = width * pattern_at(pattern, uv_scale * (lastlen - offset))
+            center = width * pattern_at(pattern, uv_scale * lastlen)
+            right = width * pattern_at(pattern, uv_scale * (lastlen + offset))
+            if (left > 0f0 && center > 0f0 && right > 0f0) || (left < 0f0 && right < 0f0)
+                ow_start, sign_start = uv_scale * (lastlen + offset + AA_RADIUS), sign(center)
+            elseif left > 0f0
+                adjust_start = -1f0         # elongate backwards
+            elseif right > 0f0
+                adjust_start = 1f0          # shorten forward
+            else
+                ow_start, sign_start = uv_scale * (lastlen + offset + AA_RADIUS), sign(center)
+            end
+        end
+        if isvalid_3
+            offset = abs(ext1)
+            at = lastlen + segment_length
+            left = width * pattern_at(pattern, uv_scale * (at - offset))
+            center = width * pattern_at(pattern, uv_scale * at)
+            right = width * pattern_at(pattern, uv_scale * (at + offset))
+            if (left > 0f0 && center > 0f0 && right > 0f0) || (left < 0f0 && right < 0f0)
+                ow_end, sign_end = uv_scale * (at - offset - AA_RADIUS), sign(center)
+            elseif left > 0f0
+                adjust_end = -1f0           # shrink backwards
+            elseif right > 0f0
+                adjust_end = 1f0            # elongate forward
+            else
+                ow_end, sign_end = uv_scale * (at - offset - AA_RADIUS), sign(center)
+            end
+        end
+    end
+    return Vec2f(adjust_start, adjust_end), Vec4f(ow_start, sign_start, ow_end, sign_end)
+end
+
 # =============================================================================
 # Lines Fragment Shader — port of GLMakie lines.frag
 # =============================================================================
@@ -389,6 +483,7 @@ function lines_fragment(
     lastlen::AbstractVector{Float32},
     valid_vertex::AbstractVector{Float32},
     thickness::AbstractVector{Float32},
+    pattern::AbstractVector{Float32},
     projectionview::Mat4f,
     model::Mat4f,
     px_per_unit::Float32,
@@ -730,6 +825,10 @@ function lines_generate_indices(ps, indices, valid)
     indices .-= UInt32(1)
     return (indices, valid)
 end
+
+"""A position in clip space, as the vertex stage projects it."""
+@inline lines_clip(p::VecTypes{2}, pvm::Mat4f) = pvm * Vec4f(p[1], p[2], 0f0, 1f0)
+@inline lines_clip(p::VecTypes{3}, pvm::Mat4f) = pvm * Vec4f(p[1], p[2], p[3], 1f0)
 
 @inline lines_screenpos(p::VecTypes{4}) = p[Vec(1, 2)] / p[4]
 @inline lines_screenpos(p::VecTypes) = p[Vec(1, 2)]

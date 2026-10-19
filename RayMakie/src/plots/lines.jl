@@ -28,11 +28,25 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         return (indices, valid)
     end
 
-    # Cumulative screen-space lengths for pattern UV
-    register_computation!(
-        attr, [:positions_transformed_f32c, :resolution], [:trace_gl_lastlen]
-    ) do (positions, resolution), changed, cached
-        return (lines_sumlengths(positions, resolution),)
+    # Cumulative screen-space lengths, which the dash pattern runs along:
+    # measured on the clip-space positions, as GLMakie's `sumlengths` measures
+    # them, so they follow the camera. Measured on the positions as given, a
+    # dash was the pattern's length in data units scaled by half the frame:
+    # 120 times too dense on a 240-pixel campixel frame. A solid line never
+    # reads them, so it does not depend on the camera (GLMakie decides this when
+    # the plot is drawn too).
+    if isnothing(plot.linestyle[])
+        register_computation!(
+            attr, [:positions_transformed_f32c, :resolution], [:trace_gl_lastlen]
+        ) do (positions, resolution), changed, cached
+            return (lines_sumlengths(positions, resolution),)
+        end
+    else
+        register_computation!(
+            attr, [:positions_transformed_f32c, :projectionview, :model_f32c, :resolution], [:trace_gl_lastlen]
+        ) do (positions, pv, model, resolution), changed, cached
+            return (lines_sumlengths(lines_clip.(positions, (Mat4f(pv) * Mat4f(model),)), resolution),)
+        end
     end
 
     # Build RenderObject: create once, update buffers on changes
@@ -95,7 +109,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             robj.uniforms[:miter_limit] = ml
             robj.uniforms[:pattern_length] = pat_length
             robj.visible = true
-            changed.linestyle && update_texture!(robj, pattern; filter=:linear, wrap=:repeat)
+            if changed.linestyle
+                update_texture!(robj, pattern; filter=:linear, wrap=:repeat)
+                update_buffer!(robj, :pattern, vec(pattern))
+            end
             return (robj,)
         end
 
@@ -116,7 +133,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         backend = screen.config.device
         robj = RenderObject(pipeline;
             backend,
-            arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
+            arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness, :pattern,
                          :projectionview, :model, :px_per_unit, :depth_shift,
                          :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length,
                          :fxaa),
@@ -127,6 +144,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
                 :lastlen => Mantle.devicearray(backend, lastlen_data),
                 :valid_vertex => Mantle.devicearray(backend, valid_data),
                 :thickness => Mantle.devicearray(backend, thickness_data),
+                # the pattern again, for the geometry stage (`lines_process_pattern`)
+                :pattern => Mantle.devicearray(backend, vec(pattern)),
                 :indices => Mantle.indexbuffer(backend, UInt32.(indices)),
             ),
             uniforms = Dict{Symbol, Any}(
@@ -257,7 +276,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
         backend = screen.config.device
         robj = RenderObject(pipeline;
             backend,
-            arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
+            arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness, :pattern,
                          :projectionview, :model, :px_per_unit, :depth_shift,
                          :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length,
                          :fxaa),
@@ -268,6 +287,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
                 :lastlen => Mantle.devicearray(backend, lastlen_data),
                 :valid_vertex => Mantle.devicearray(backend, valid_data),
                 :thickness => Mantle.devicearray(backend, thickness_data),
+                :pattern => Mantle.devicearray(backend, Float32[-1]),
                 :indices => Mantle.indexbuffer(backend, UInt32.(indices)),
             ),
             uniforms = Dict{Symbol, Any}(
