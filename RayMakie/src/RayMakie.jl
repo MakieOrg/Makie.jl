@@ -620,6 +620,19 @@ function create_overlay_only_state(scene::Makie.Scene, screen)
 end
 
 """
+    shown(scene) -> Bool
+
+Whether `scene` is drawn at all: it and every scene it sits in `visible`, which
+is what `visible = false` on a scene means to every Makie backend. A state's
+film and its plots were drawn whatever its scene said, so a hidden `LScene`
+stayed on screen.
+"""
+shown(scene::Makie.Scene) = scene.visible[] && (isnothing(scene.parent) || shown(scene.parent))
+
+"""Whether a state has a picture of its own to composite: traced (not overlay-only) and shown."""
+composites(state) = !state.overlay_only && shown(state.makie_scene)
+
+"""
     collect_overlay_scenes(scene, raster) -> Vector{Scene}
 
 Walk the scene tree and return all visible scenes that contain overlay-eligible

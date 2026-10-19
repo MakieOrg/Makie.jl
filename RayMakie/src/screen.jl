@@ -833,7 +833,7 @@ end
 function postprocess_and_composite!(screen::Screen)
     fill!(screen.output_buffer, scenebackground(screen.scene))
     for scene_state in screen.scene_states
-        scene_state.overlay_only && continue
+        composites(scene_state) || continue
         postprocess_scene_state!(screen, scene_state)
         composite_scene!(screen.output_buffer, scene_state, screen.scene, screen.px_per_unit)
     end
@@ -848,7 +848,7 @@ function postprocess_and_composite_gpu!(screen::Screen)
     for scene_state in screen.scene_states
         # Only RT scenes produce content in film.postprocess that needs compositing.
         # Overlay-only scenes render directly to the window via render_overlays!.
-        scene_state.overlay_only && continue
+        composites(scene_state) || continue
         postprocess_scene_state!(screen, scene_state)
         composite_scene!(screen.output_buffer, scene_state, screen.scene, screen.px_per_unit)
     end
@@ -1152,8 +1152,9 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         if clear
             scene_state.needs_film_clear = true
         end
-        # No film to trace into; its plots are drawn by the overlay pass.
-        scene_state.overlay_only && continue
+        # No film to trace into (its plots are drawn by the overlay pass), or
+        # a hidden scene, whose film would not be composited.
+        composites(scene_state) || continue
         n = something(samples, screen.config.samples,
                       screen.config.accumulate ? 1 : nothing,
                       scene_state.integrator.samples_per_pixel)
@@ -1184,7 +1185,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # Postprocess + composite into output_buffer (on GPU)
     fill!(screen.output_buffer, scenebackground(screen.scene))
     for scene_state in screen.scene_states
-        scene_state.overlay_only && continue
+        composites(scene_state) || continue
         postprocess_scene_state!(screen, scene_state)
         composite_scene!(screen.output_buffer, scene_state, screen.scene, screen.px_per_unit)
     end

@@ -15,7 +15,7 @@ function renderbuffers(screen::Screen)
     albedo = zeros(RGB{Float32}, h, w); normal = zeros(Vec3f, h, w)
     depth = fill(Inf32, h, w); coverage = fill(Float32(background.alpha), h, w)
     for state in screen.scene_states
-        state.overlay_only && continue
+        composites(state) || continue
         film = state.film
         rad = Array(film.framebuffer); alb = Array(film.albedo); nrm = Array(film.normal)
         dep = Array(film.depth); alpha = Array(film.postprocess)

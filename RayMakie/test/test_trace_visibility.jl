@@ -62,3 +62,26 @@ traced(sc; hw_accel, samples = 16) =
         close(screen)
     end
 end
+
+# A hidden SCENE, as an `LScene` hidden in a figure is: a traced child of a 2D
+# root. Its film was traced and composited whatever its `visible` said, so the
+# film's hidden scenes stayed on screen.
+function sphere_in_child()
+    root = Scene(; size = (64, 64), backgroundcolor = RGBf(0, 0, 0))
+    child = Scene(root; viewport = Rect2i(0, 0, 64, 64), lights = [DirectionalLight(RGBf(3, 3, 3), Vec3f(0, 1, 0))])
+    cam3d!(child; center = false)
+    mesh!(child, Sphere(Point3f(0), 1f0); material = Hikari.Diffuse(Kd = (0.8, 0.8, 0.8)))
+    update_cam!(child, cameracontrols(child), Vec3f(0, -4, 0), Vec3f(0), Vec3f(0, 0, 1))
+    return root, child
+end
+
+@testset "a hidden scene is neither traced nor drawn" begin
+    root, child = sphere_in_child()
+    screen = traced(root; hw_accel = false, samples = 4)
+    @test lum(Makie.colorbuffer(screen)[32, 32]) > 0.5
+    child.visible[] = false
+    @test lum(Makie.colorbuffer(screen)[32, 32]) < 0.01
+    child.visible[] = true
+    @test lum(Makie.colorbuffer(screen)[32, 32]) > 0.5
+    close(screen)
+end

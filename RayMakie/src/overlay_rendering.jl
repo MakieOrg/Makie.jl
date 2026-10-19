@@ -78,6 +78,9 @@ draw none of them: an `Axis3` with no spines, ticks or labels.
 function collect_overlay_robjs(state::RayMakieState, root_scene::Makie.Scene, raster::Bool;
                                scenes = nothing)
     robjs = Tuple{RenderObject, NTuple{4, Float32}}[]
+    # A hidden state's scene draws nothing: `collect_overlay_scenes` checks the
+    # scenes BELOW a root, and this is the check for the root itself.
+    shown(state.makie_scene) || return robjs
 
     overlay_scenes = if scenes !== nothing
         scenes
