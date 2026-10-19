@@ -170,3 +170,33 @@ end
         @test Array(lines_sumlengths(Mantle.devicearray(back, ps), res)) ≈ r
     end
 end
+
+# A dashed line in the raster path. Makie 0.24.16 hands the stage a converted
+# `Linestyle`, which RayMakie's lines took for a vector and failed on; and every
+# update that was not to the linestyle reset the pattern's length to 0, which
+# draws the dashes solid.
+function dashed_line(; linestyle)
+    sc = Scene(; size = (200, 40), backgroundcolor = RGBf(0, 0, 0), camera = campixel!)
+    lines!(sc, Point2f[(10, 20), (190, 20)]; color = :white, linewidth = 6, linestyle)
+    return sc
+end
+
+# How many runs of lit pixels the line's row has: one solid, several dashed.
+function dashes(screen)
+    row = Makie.colorbuffer(screen)[20, 15:185]
+    lit = map(c -> c.r > 0.5, row)
+    return count(i -> lit[i] && (i == 1 || !lit[i - 1]), eachindex(lit))
+end
+
+@testset "a dashed raster line" begin
+    raster(sc) = RayMakie.Screen(sc; samples = 1, max_depth = 1, hw_accel = false, rasterize = true)
+    @test dashes(raster(dashed_line(; linestyle = nothing))) == 1
+    sc = dashed_line(; linestyle = :dash)
+    screen = raster(sc)
+    n = dashes(screen)
+    @test n > 3
+    # another attribute changes: the dashes stay
+    sc.plots[1].color = :yellow
+    @test dashes(screen) == n
+    close(screen)
+end

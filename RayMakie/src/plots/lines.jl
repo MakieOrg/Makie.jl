@@ -63,8 +63,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         else
             lc === :butt ? Int32(0) : lc === :square ? Int32(1) : lc === :round ? Int32(2) : Int32(0)
         end
-        linestyle = to_value(args.linestyle)
-        pat_length = 0f0
+        pattern, pat_length = linepattern(to_value(args.linestyle))
 
         if !isnothing(cached) && cached.trace_renderobject isa RenderObject
             robj = cached.trace_renderobject
@@ -96,20 +95,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             robj.uniforms[:miter_limit] = ml
             robj.uniforms[:pattern_length] = pat_length
             robj.visible = true
-            if changed.linestyle && linestyle !== nothing
-                ls = linestyle isa AbstractVector ? linestyle : Makie.to_linestyle(linestyle)
-                sdf_data = Float32.(Makie.linestyle_to_sdf(ls))
-                pat_length = Float32(last(ls) - first(ls))
-                robj.uniforms[:pattern_length] = pat_length
-                # (N, 1) and not (1, N): a texture is `data[x, y]`, so the pattern runs
-                # along the FIRST index. As a row it was one texel wide, and sampling it
-                # along u gives the same value everywhere: a dashed line drawn
-                # solid. Both uploads read a single-row matrix as one contiguous
-                # run whichever way the dimensions are named, so only the shape
-                # declared here distinguishes them.
-                sdf_2d = reshape(sdf_data, length(sdf_data), 1)
-                update_texture!(robj, sdf_2d; filter=:linear, wrap=:repeat)
-            end
+            changed.linestyle && update_texture!(robj, pattern; filter=:linear, wrap=:repeat)
             return (robj,)
         end
 
@@ -159,28 +145,31 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             instances = 1,
         )
 
-        # Pattern texture (or dummy)
-        if linestyle !== nothing
-            ls = linestyle isa AbstractVector ? linestyle : Makie.to_linestyle(linestyle)
-            sdf_data = Float32.(Makie.linestyle_to_sdf(ls))
-            pat_length = Float32(last(ls) - first(ls))
-            robj.uniforms[:pattern_length] = pat_length
-            # (N, 1) and not (1, N): a texture is `data[x, y]`, so the pattern runs
-            # along the FIRST index. As a row it was one texel wide, and sampling it
-            # along u gives the same value everywhere: a dashed line drawn
-            # solid. Both uploads read a single-row matrix as one contiguous
-            # run whichever way the dimensions are named, so only the shape
-            # declared here distinguishes them.
-            sdf_2d = reshape(sdf_data, length(sdf_data), 1)
-            update_texture!(robj, sdf_2d; filter=:linear, wrap=:repeat)
-        else
-            # Dummy texture — fragment shader always references binding 0
-            update_texture!(robj, reshape(Float32[-1], 1, 1); filter=:linear, wrap=:repeat)
-        end
+        update_texture!(robj, pattern; filter=:linear, wrap=:repeat)
 
         return (robj,)
     end
 end
+
+"""
+    linepattern(linestyle) -> (texture, length)
+
+The dash pattern of a converted `linestyle` as the lines stage samples it, and
+its length. Makie's `Linestyle` holds the pattern's cumulative lengths (a
+vector before Makie 0.24.16, and RayMakie's lines failed to draw once it was
+the type). A solid line, `nothing` or fewer than two lengths, is a texel of -1
+and length 0: binding 0 always has a texture.
+
+(N, 1) and not (1, N): a texture is `data[x, y]`, so the pattern runs along the
+FIRST index. As a row it was one texel wide, and sampling it along u gives the
+same value everywhere: a dashed line drawn solid.
+"""
+function linepattern(ls::Makie.Linestyle)
+    length(ls.value) < 2 && return linepattern(nothing)
+    sdf = Float32.(Makie.linestyle_to_sdf(ls.value))
+    return reshape(sdf, length(sdf), 1), Float32(last(ls.value) - first(ls.value))
+end
+linepattern(::Nothing) = (reshape(Float32[-1], 1, 1), 0f0)
 
 # LineSegments: same pipeline but simpler — no joints, GL_LINES topology
 # TODO: implement line_segment.vert/geom matching GLMakie exactly
