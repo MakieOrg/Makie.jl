@@ -738,6 +738,87 @@ end
             @test graph._c[] == 3
         end
     end
+
+    @testset "edge case - compute_identity" begin
+        graph = ComputeGraph()
+        add_input!(graph, :in1, 1)
+        add_input!(graph, :in2, 2)
+        ComputePipeline.alias!(graph, :in1, :out1)
+        ComputePipeline.alias!(graph, :in2, :out2)
+        map!(+, graph, [:out1, :out2], :out)
+
+        function check_compute_identity(e, result = true)
+            @test result == (e.callback === ComputePipeline.compute_identity)
+            # result == true: all refs should be identical
+            # result == false: not any ref should be indentical
+            compose = result ? (a, b) -> a && b : (a, b) -> a || b
+            # edge input .=== output
+            @test result == mapreduce((a, b) -> a.value === b.value, compose, e.inputs, e.outputs)
+            # typed edge inputs .=== outputs
+            te = e.typed_edge[]
+            @test result == mapreduce(===, compose, values(te.inputs), te.outputs)
+            # dependents not corrupted (same input refs as parent edge)
+            for dep in e.dependents
+                te = dep.typed_edge[]
+                @test mapreduce((a, b) -> a === b.value, (a, b) -> a && b, values(te.inputs), dep.inputs)
+            end
+        end
+
+        @test graph.out[] == 3
+        check_compute_identity(graph.out1.parent)
+        check_compute_identity(graph.out2.parent)
+
+        ComputePipeline.modify_edge!(
+            graph.out1.parent, callback = identity, wrap_callback = true
+        )
+        @test graph.out[] == 3
+        check_compute_identity(graph.out1.parent, false)
+        check_compute_identity(graph.out2.parent, true)
+
+        ComputePipeline.modify_edge!(
+            graph.out2.parent, callback = identity, wrap_callback = true
+        )
+        @test graph.out[] == 3
+        check_compute_identity(graph.out1.parent, false)
+        check_compute_identity(graph.out2.parent, false)
+
+        ComputePipeline.modify_edge!(
+            graph.out2.parent, callback = ComputePipeline.compute_identity,
+        )
+        @test graph.out[] == 3
+        check_compute_identity(graph.out1.parent, false)
+        check_compute_identity(graph.out2.parent, true)
+
+        # This should work too
+        ComputePipeline.modify_edge!(
+            graph.out2.parent, callback = ComputePipeline.compute_identity,
+            inputs = [graph.in1, graph.in2],
+            outputs = [graph.out1, graph.out2],
+        )
+        @test graph.out[] == 3
+        @test graph.out1.parent === graph.out2.parent
+        check_compute_identity(graph.out1.parent, true)
+    end
+
+    @testset "preserved callbacks" begin
+        graph = ComputeGraph()
+        add_input!(graph, :in1, 1)
+        add_input!(graph, :in2, 2)
+        add_input!(graph, :in3, 3)
+        add_input!(graph, :bool, true)
+        map!(x -> x, graph, [:bool, :in1, :in2], :out1)
+        map!(x -> x, graph, [:in1, :in2, :in3], :out2)
+
+        ComputePipeline.modify_edge!(graph.out1.parent, callback = ifelse)
+        @test graph.out1.parent.callback === ifelse
+        ComputePipeline.modify_edge!(graph.out2.parent, callback = ComputePipeline.select)
+        @test graph.out2.parent.callback === ComputePipeline.select
+
+        ComputePipeline.modify_edge!(graph.out1.parent, callback = ifelse, wrap_callback = true)
+        @test graph.out1.parent.callback === ifelse
+        ComputePipeline.modify_edge!(graph.out2.parent, callback = ComputePipeline.select, wrap_callback = true)
+        @test graph.out2.parent.callback === ComputePipeline.select
+    end
 end
 
 @testset "move!" begin

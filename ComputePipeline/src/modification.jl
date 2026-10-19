@@ -392,6 +392,26 @@ function _replace_edge!(edge, new_edge)
     return
 end
 
+function _recreate_typed_edge(te::TypedEdge{IT, OT, F}, inputs) where {IT, OT, F}
+    N = length(inputs)
+    values = ntuple(i -> inputs[i].value, N)
+    return TypedEdge{IT, OT, F}(
+        te.callback,
+        IT(values),
+        te.inputs_dirty,
+        te.outputs,
+        te.output_nodes
+    )
+end
+
+function _update_refs_in_dependents!(edge::ComputeEdge)
+    for dep in edge.dependents
+        if isdefined(dep, :typed_edge) && isassigned(dep.typed_edge)
+            dep.typed_edge[] = _recreate_typed_edge(dep.typed_edge[], dep.inputs)
+        end
+    end
+end
+
 """
     modify_edge!(edge::ComputeEdge[; callback, inputs, outputs])
 
@@ -418,6 +438,16 @@ orphaned by replacing the edge outputs is considered invalid and will error when
 resolved.
 """
 function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
+    # `compute_identity` sets the output refs directly to input refs, so that
+    # computations can be skipped entirely. When editing this edge we need to
+    # make sure that inputs and outputs can actually hold different values.
+    if edge.callback === compute_identity
+        for node in edge.outputs
+            node.value = Ref{eltype(node.value)}(node.value[])
+        end
+        _update_refs_in_dependents!(edge)
+    end
+
     graph = edge.graph
 
     inputs, inputs_dirty = if haskey(kwargs, :inputs)
@@ -444,6 +474,10 @@ function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
             kwargs, :wrap_callback,
             !isa(callback, MapFunctionWrapper) && isa(edge.callback, MapFunctionWrapper)
         )
+        # never wrap these
+        wrap_callback = wrap_callback && callback !== compute_identity &&
+            callback !== ifelse && callback !== select
+
         if wrap_callback
             packed = get(kwargs, :packed, length(outputs) == 1)
             callback = MapFunctionWrapper(callback, packed)
@@ -459,6 +493,16 @@ function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
         inputs, inputs_dirty, outputs,
         Ref(true), edge.dependents, Ref{TypedEdge}()
     )
+
+    # If we target a compute_identity output refs must (again) be === input refs.
+    # Note that if `outputs` changed (given in kwargs) this may be a different
+    # set of outputs that we ahd originally, if we started with `compute_identity`
+    if callback === compute_identity
+        for (in, out) in zip(new_edge.inputs, new_edge.outputs)
+            out.value = in.value
+        end
+        _update_refs_in_dependents!(new_edge)
+    end
 
     @lock GLOBAL_LOCK begin
         # remove all references to `edge` that exist via edge.inputs
