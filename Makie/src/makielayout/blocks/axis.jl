@@ -509,17 +509,19 @@ function initialize_block!(ax::Axis; palette = nothing)
         :layout_protrusions
     )
 
-    connect!(ax.layoutobservables.protrusions, ax.layout_protrusions)
-
-    # trigger bboxnode so the axis layouts itself even if not connected to a
-    # layout
-    notify(ax.layoutobservables.suggestedbbox)
+    # TODO: I don't trust this
+    on(events(ax.blockscene).tick, update = true) do _
+        for _ in 1:3
+            # Checking isdirty is probably a bad idea here, because other
+            # resolves could clear dirty state before we register it here...
+            prot = ax.layout_protrusions[]
+            if prot !== ax.layoutobservables.protrusions[]
+                ax.layoutobservables.protrusions[] = prot
+            end
+        end
+    end
 
     register_events!(ax, scene)
-
-    # # Needed to fully initialize layouting for some reason...
-    # notify(ComputePipeline.get_observable!(ax.xlabelpadding))
-    # notify(ComputePipeline.get_observable!(ax.ylabelpadding))
 
     # Add them last, so we skip all the internal iterations from above!
     add_input!(ax.scene.compute, :axis_limits, ax.attributes.finallimits)
