@@ -106,17 +106,17 @@ end
 #                            Axis interactions                            #
 ############################################################################
 
-function _chosen_limits(rz, ax)
-    mini = min.(rz.from, rz.to)
-    maxi = max.(rz.from, rz.to)
+function _chosen_limits(ax, from, to, restrict_x, restrict_y)
+    mini = min.(from, to)
+    maxi = max.(from, to)
     lims_mini, lims_maxi = extrema(ax.finallimits[])
     # restrict to y change
-    if rz.restrict_x || !ax.xrectzoom[]
+    if restrict_x || !ax.xrectzoom[]
         mini = Point2(lims_mini[1], mini[2])
         maxi = Point2(lims_maxi[1], maxi[2])
     end
     # restrict to x change
-    if rz.restrict_y || !ax.yrectzoom[]
+    if restrict_y || !ax.yrectzoom[]
         mini = Point2(mini[1], lims_mini[2])
         maxi = Point2(maxi[1], lims_maxi[2])
     end
@@ -127,27 +127,6 @@ function _clamp_rectanglezoom_limits(selected_mini, selected_maxi, visible_mini,
     clamped_min = clamp.(selected_mini, visible_mini, visible_maxi)
     clamped_max = clamp.(selected_maxi, visible_mini, visible_maxi)
     return Rect2(clamped_min, Vec2(clamped_max .- clamped_min))
-end
-
-function _selection_vertices(ax_scene, outer, inner)
-    _clamp(p, plow, phigh) = Point2(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
-    proj(point) = project(ax_scene, point)
-    transf = Makie.transform_func(ax_scene)
-    outer = positivize(Makie.apply_transform(transf, outer))
-    inner = positivize(Makie.apply_transform(transf, inner))
-
-    obl = bottomleft(outer)
-    obr = bottomright(outer)
-    otl = topleft(outer)
-    otr = topright(outer)
-
-    ibl = _clamp(bottomleft(inner), obl, otr)
-    ibr = _clamp(bottomright(inner), obl, otr)
-    itl = _clamp(topleft(inner), obl, otr)
-    itr = _clamp(topright(inner), obl, otr)
-    # We plot the selection vertices in blockscene, which is pixelspace, so we need to manually
-    # project the points to the space of `ax.scene`
-    return [proj(obl), proj(obr), proj(otr), proj(otl), proj(ibl), proj(ibr), proj(itr), proj(itl)]
 end
 
 function _rectanglezoom_data_position(ax::Axis, point, transform, inverse_transform)
@@ -172,25 +151,34 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     end
 
     if event.type === MouseEventTypes.leftdragstart
-        data = _rectanglezoom_data_position(ax, event.data, transf, inv_transf)
-        prev_data = _rectanglezoom_data_position(ax, event.prev_data, transf, inv_transf)
+        data = event.data
+        prev_data = event.prev_data
 
         r.from = prev_data
         r.to = data
-        r.rectnode[] = _chosen_limits(r, ax)
+        xlims, ylims = minmax.(r.from, r.to)
+        xmin, xmax = ifelse(r.restrict_x, (-Inf, Inf), xlims)
+        ymin, ymax = ifelse(r.restrict_y, (-Inf, Inf), ylims)
+        r.rectnode[] = (xmin, xmax, ymin, ymax)
         r.active[] = true
         return Consume(true)
 
     elseif event.type === MouseEventTypes.leftdrag
-        data = _rectanglezoom_data_position(ax, event.data, transf, inv_transf)
+        data = event.data
 
         r.to = data
-        r.rectnode[] = _chosen_limits(r, ax)
+        xlims, ylims = minmax.(r.from, r.to)
+        xmin, xmax = ifelse(r.restrict_x, (-Inf, Inf), xlims)
+        ymin, ymax = ifelse(r.restrict_y, (-Inf, Inf), ylims)
+        r.rectnode[] = (xmin, xmax, ymin, ymax)
         return Consume(true)
 
     elseif event.type === MouseEventTypes.leftdragstop
         try
-            r.callback(r.rectnode[])
+            from = _rectanglezoom_data_position(ax, r.from, transf, inv_transf)
+            to = _rectanglezoom_data_position(ax, r.to, transf, inv_transf)
+            rect = _chosen_limits(ax, from, to, r.restrict_x, r.restrict_y)
+            r.callback(rect)
         catch e
             @warn "error in rectangle zoom" exception = (e, Base.catch_backtrace())
         end
@@ -212,7 +200,10 @@ function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
     r.restrict_x = Keyboard.y in event.keys
     r.active[] || return Consume(false)
 
-    r.rectnode[] = _chosen_limits(r, ax)
+    xlims, ylims = minmax.(r.from, r.to)
+    xmin, xmax = ifelse(r.restrict_x, (-Inf, Inf), xlims)
+    ymin, ymax = ifelse(r.restrict_y, (-Inf, Inf), ylims)
+    r.rectnode[] = (xmin, xmax, ymin, ymax)
     return Consume(true)
 end
 

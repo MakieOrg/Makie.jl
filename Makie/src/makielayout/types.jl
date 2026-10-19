@@ -237,14 +237,14 @@ mutable struct RectangleZoom
     restrict_y::Bool
     from::Union{Nothing, Point2d}
     to::Union{Nothing, Point2d}
-    rectnode::Observable{Rect2d}
+    rectnode::Observable{NTuple{4, Float64}}
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
 function RectangleZoom(callback::Function; restrict_x = false, restrict_y = false, modifier = true)
     return RectangleZoom(
         callback, Observable(false), restrict_x, restrict_y,
-        nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier
+        nothing, nothing, Observable((0.0, 0.0, 1.0, 1.0)), modifier
     )
 end
 
@@ -819,22 +819,45 @@ end
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
     rect_scene = Scene(ax.scene)
-    selection_vertices = lift(
-        _selection_vertices, rect_scene, Observable(ax.scene), ax.finallimits,
-        r.rectnode
-    )
+
+    # TODO: This should probably be in its own compute graph?
+    if !haskey(ax.attributes, :rectnode)
+        add_input!(ax, :rectnode, r.rectnode)
+        add_input!(ax, :f32c, ax.scene.float32convert.scaling)
+    else
+        error("TODO: Handle disconnecting and reconnecting RectangleZoom")
+    end
+
+    map!(ax, [:f32c, :projectionmatrix, :rectnode], :clip_rectnode) do f32c, pv, (l, r, b, t)
+        scale = Vec2(pv[1, 1], pv[2, 2])
+        offset = Vec2(pv[1, 4], pv[2, 4])
+        proj(p) = Point2f(scale .* f32_convert(f32c, p) .+ offset)
+
+        obl = Point2f(-1, -1)
+        obr = Point2f(+1, -1)
+        otl = Point2f(-1, +1)
+        otr = Point2f(+1, +1)
+
+        ibl = clamp.(proj(Point2d(l, b)), -1.0f0, 1.0f0)
+        ibr = clamp.(proj(Point2d(r, b)), -1.0f0, 1.0f0)
+        itl = clamp.(proj(Point2d(l, t)), -1.0f0, 1.0f0)
+        itr = clamp.(proj(Point2d(r, t)), -1.0f0, 1.0f0)
+
+        return [obl, obr, otr, otl, ibl, ibr, itr, itl]
+    end
+
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
     # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
     mesh = mesh!(
         rect_scene,
-        selection_vertices, faces, space = :pixel,
-        color = (:black, 0.2), shading = NoShading,
+        ax.clip_rectnode, faces, space = :clip,
+        color = (:black, 0.2), shading = NoShading, transformation = :nothing,
         inspectable = false, transparency = true, overdraw = true, visible = r.active
     )
     # translate forward so selection mesh and frame are never behind data
-    translate!(mesh, 0, 0, 1000)
+    translate!(mesh, 0, 0, -1)
     return r
 end
 
