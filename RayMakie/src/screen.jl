@@ -321,6 +321,9 @@ mutable struct Screen <: Makie.MakieScreen
     # see `shadow_buffer`.
     shadowmap::Any
     aomap::Any
+    # The HDR capture's device planes and the blank overlay base, sized to the
+    # output; see `renderbuffers`. Reused frame to frame, `nothing` until then.
+    hdrplanes::Any
 
     function Screen(scene, state, config)
         s = new(scene, state, RayMakieState[], nothing, nothing, config,   # …, output_buffer, memory, …
@@ -338,7 +341,8 @@ mutable struct Screen <: Makie.MakieScreen
                 Dict{Symbol, Union{GraphicsPipeline, Mantle.MeshPipeline}}(), # gfx_pipelines
                 Dict{Symbol, Tuple{Any, Any, Any, Any}}(), # frame_plans
                 1.0f0,                                      # px_per_unit
-                nothing, nothing)                           # shadowmap, aomap
+                nothing, nothing,                           # shadowmap, aomap
+                nothing)                                    # hdrplanes
         # Only set the stop flag from the finalizer — never wait on tasks or
         # touch GLFW from GC (runs during allocation, can't yield or call C libs safely).
         finalizer(s -> (s.stop_renderloop[] = true), s)
@@ -540,6 +544,7 @@ function Base.close(screen::Screen)
     end
     screen.shadowmap = nothing
     screen.aomap = nothing
+    freehdrplanes!(screen)
     # The device's queue too: the textures and buffers dropped figures leave
     # behind are retired onto it by their finalizers, and only its `reclaim!`
     # destroys them. Nothing on the raster path called it, and a render loop
@@ -759,39 +764,7 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
         return
     end
 
-    camera = scene_state.camera[]
-
-    # Depth, normal and albedo. Unconditional: `postprocess!` below composites
-    # the background wherever `isinf(depth)`, so a frame that skips this reads a
-    # depth buffer of zeros, calls nothing escaped, and comes out on a BLACK
-    # background regardless of what the user asked for. Gated on
-    # `need_aux_buffers = has_overlays || denoise` it would make the background
-    # colour of a plain 3D scene depend on whether it happens to contain a
-    # `lines!`. The denoiser is the only consumer of normal and albedo, but depth
-    # is not optional.
-    tlas = scene_state.hikari_scene.accel
-    lights = scene_state.hikari_scene.lights
-    has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
-    # …and separately, whether one of them is SEEN where a ray hits nothing. Not
-    # the same question: a `DirectionalLight` is at infinity but is a delta
-    # light, and an ambient light is at infinity but is not a background; see
-    # `paints_background`.
-    #
-    # Asked of the LIGHTS and not of the geometry. Gating this on
-    # `n_instances > 0` said "no sky" for exactly the scene that is nothing BUT
-    # sky, so the render the tracer had just produced was overwritten with the
-    # background colour.
-    paints_sky = any(paints_background, lights.data_order)
-    if Raycore.n_instances(tlas) > 0
-        # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
-        # Must re-adapt per render so mesh mutations are visible.
-        adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
-        Hikari.fill_aux_buffers!(film, adapted_scene, camera; has_infinite_lights=has_inf)
-    else
-        # Nothing to hit, so every ray escapes. Any depth `Hikari.missed` accepts
-        # will do; `Inf` is the clearest.
-        fill!(film.depth, Inf32)
-    end
+    paints_sky = fillauxbuffers!(screen, scene_state)
 
     # Apply denoising if enabled (modifies framebuffer in-place)
     if config.denoise
@@ -826,6 +799,54 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     # wireframe. Overlay-only scenes (2D Axis) handle overlays in their own path.
 
     # postprocess already writes clamped RGBA{Float32} — no extra copy needed
+end
+
+"""
+    fillauxbuffers!(screen, state) -> paints_sky::Bool
+
+The film's depth, normal and albedo from primary rays, and whether one of the
+scene's lights is seen where a ray hits nothing (`paints_background`). What the
+postprocess composites the background by, and what the HDR capture's guides and
+coverage are.
+"""
+function fillauxbuffers!(screen::Screen, scene_state::RayMakieState)
+    film = scene_state.film
+    config = screen.config
+    camera = scene_state.camera[]
+    # Depth, normal and albedo. Unconditional: `postprocess!` below composites
+    # the background wherever `isinf(depth)`, so a frame that skips this reads a
+    # depth buffer of zeros, calls nothing escaped, and comes out on a BLACK
+    # background regardless of what the user asked for. Gated on
+    # `need_aux_buffers = has_overlays || denoise` it would make the background
+    # colour of a plain 3D scene depend on whether it happens to contain a
+    # `lines!`. The denoiser is the only consumer of normal and albedo, but depth
+    # is not optional.
+    tlas = scene_state.hikari_scene.accel
+    lights = scene_state.hikari_scene.lights
+    has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
+    # …and separately, whether one of them is SEEN where a ray hits nothing. Not
+    # the same question: a `DirectionalLight` is at infinity but is a delta
+    # light, and an ambient light is at infinity but is not a background; see
+    # `paints_background`.
+    #
+    # Asked of the LIGHTS and not of the geometry. Gating this on
+    # `n_instances > 0` said "no sky" for exactly the scene that is nothing BUT
+    # sky, so the render the tracer had just produced was overwritten with the
+    # background colour.
+    paints_sky = any(paints_background, lights.data_order)
+    if Raycore.n_instances(tlas) > 0
+        # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
+        # Must re-adapt per render so mesh mutations are visible.
+        adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
+        Hikari.fill_aux_buffers!(film, adapted_scene, camera; has_infinite_lights=has_inf)
+    else
+        # Nothing to hit, so every ray escapes. Any depth `Hikari.missed` accepts
+        # will do; `Inf` is the clearest. No surface either: the guides are zero.
+        fill!(film.depth, Inf32)
+        fill!(film.normal, Vec3f(0))
+        fill!(film.albedo, RGB{Float32}(0, 0, 0))
+    end
+    return paints_sky
 end
 
 # Postprocess all scenes and composite into output buffer — shared by
@@ -1062,6 +1083,23 @@ offscreen, which is the same picture.
 """
 function composited_frame(screen::Screen)
     h, w = size(screen.output_buffer)
+    out = overlayreadback!(screen, :readback, screen.output_buffer)
+    # `Array` of device storage is a `download`, which submits its copy on the
+    # queue that last wrote the buffer and `waitfor!`s that token. It is ordered
+    # and it waits; a device-wide drain in front of it adds nothing.
+    screen.fb_readback_buf = (; frame = out, key = :readback)
+    return unswizzle(reshape(Array(Mantle.storage(out.result)), w, h), w, h)
+end
+
+"""
+    overlayreadback!(screen, key, source) -> plan output
+
+Every overlay drawn over `source` (an h×w `RGBA{Float32}` device image), read
+back into a device buffer of `COMPOSITE_FORMAT`, column-major w×h, in the plan
+output's `result`. One cached plan per `key`.
+"""
+function overlayreadback!(screen::Screen, key::Symbol, source)
+    h, w = size(screen.output_buffer)
     # Poll EVERY state — each resolves its own scene's plots — before
     # collecting, because a plot that has not been polled has no render
     # object to collect. Drawing is from the roots only.
@@ -1070,21 +1108,17 @@ function composited_frame(screen::Screen)
         poll_all_plots(screen, scene_state.makie_scene)
     end
     robjs = overlay_robjs(screen)
-    plan, out = frame_plan!(screen, :readback,
+    plan, out = frame_plan!(screen, key,
                             g -> Mantle.Transient.Image(g, COMPOSITE_FORMAT, (w, h)),
                             Mantle.Clear((0f0, 0f0, 0f0, 0f0)),
-                            screen.output_buffer, robjs, w, h;
+                            source, robjs, w, h;
                             finish = function (g, img)
                                 buf = Mantle.Transient.Buffer(g, COMPOSITE_FORMAT, w * h)
                                 Mantle.copy!(g, "read", buf, img)
                                 buf
                             end)
     Mantle.run!(plan)
-    # `Array` of device storage is a `download`, which submits its copy on the
-    # queue that last wrote the buffer and `waitfor!`s that token. It is ordered
-    # and it waits; a device-wide drain in front of it adds nothing.
-    screen.fb_readback_buf = (; frame = out, key = :readback)
-    return unswizzle(reshape(Array(Mantle.storage(out.result)), w, h), w, h)
+    return out
 end
 
 """
@@ -1110,14 +1144,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         init_scene!(screen, screen.scene)
     end
 
-    if px_per_unit !== nothing
-        ppu = Float32(px_per_unit)
-        isfinite(ppu) && ppu > 0 || throw(ArgumentError("px_per_unit must be finite and positive"))
-        renderloop_running(screen) && throw(ArgumentError("preview density requires an offscreen screen"))
-        screen.px_per_unit = ppu
-        w, h = size(screen.scene)
-        resize!(screen, max(1, round(Int, w * ppu)), max(1, round(Int, h * ppu)))
-    end
+    setdensity!(screen, px_per_unit)
 
     # If the render loop is running, return the last composited frame.
     if renderloop_running(screen)
@@ -1134,6 +1161,66 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         # No frame yet -- fall through to render one
     end
 
+    trace!(screen; clear, samples)
+    # Check if any overlay rendering is needed. Overlays require the slow path:
+    # blit to BGRA framebuffer, render overlays via graphics pipeline, readback,
+    # and convert BGRA UInt8 back to RGBA Float32. Without overlays we skip all
+    # that and download the GPU output_buffer directly.
+    # Whether anything will actually be drawn, not whether a scene happens to be
+    # 2D. `overlay_only` comes from `should_raytrace(camera_controls)`, so gating
+    # on it meant a RAYTRACED scene's overlays — every `lines!`, `scatter!` and
+    # `text!` in it, which is every decoration an `Axis3` is made of — were built
+    # and then never composited.
+    has_overlays = any(ss -> !isempty(collect_overlay_robjs(ss, screen.scene, screen.rasterize)),
+                       screen.scene_states)
+
+    # Postprocess + composite into output_buffer (on GPU)
+    fill!(screen.output_buffer, scenebackground(screen.scene))
+    for scene_state in screen.scene_states
+        composites(scene_state) || continue
+        postprocess_scene_state!(screen, scene_state)
+        composite_scene!(screen.output_buffer, scene_state, screen.scene, screen.px_per_unit)
+    end
+
+    if has_overlays
+        result = composited_frame(screen)
+    else
+        # Fast path: download RGBA{Float32} directly from GPU
+        result = Array(screen.output_buffer)
+    end
+
+    if format == Makie.GLNative
+        return Makie.jl_to_gl_format(result)
+    else # JuliaNative
+        return result
+    end
+end
+
+"""
+    setdensity!(screen, px_per_unit)
+
+Render at `px_per_unit` pixels per scene unit (resizing the films), or leave the
+density as it is for `nothing`. Offscreen only.
+"""
+setdensity!(screen::Screen, ::Nothing) = screen
+function setdensity!(screen::Screen, px_per_unit::Real)
+    ppu = Float32(px_per_unit)
+    isfinite(ppu) && ppu > 0 || throw(ArgumentError("px_per_unit must be finite and positive"))
+    renderloop_running(screen) && throw(ArgumentError("preview density requires an offscreen screen"))
+    screen.px_per_unit = ppu
+    w, h = size(screen.scene)
+    resize!(screen, max(1, round(Int, w * ppu)), max(1, round(Int, h * ppu)))
+    return screen
+end
+
+"""
+    trace!(screen; clear, samples)
+
+Trace every scene state that is composited for `samples` samples, or the
+screen's count, or one when accumulating, or the integrator's default. The
+sample loop `colorbuffer` and `renderbuffers` share.
+"""
+function trace!(screen::Screen; clear::Bool, samples)
     # Render each scene for the configured number of samples, one per `render!`.
     #
     # Accumulating: ONE sample per read, so a still camera converges over the
@@ -1170,38 +1257,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
             # it downclock.
         end
     end
-    # Check if any overlay rendering is needed. Overlays require the slow path:
-    # blit to BGRA framebuffer, render overlays via graphics pipeline, readback,
-    # and convert BGRA UInt8 back to RGBA Float32. Without overlays we skip all
-    # that and download the GPU output_buffer directly.
-    # Whether anything will actually be drawn, not whether a scene happens to be
-    # 2D. `overlay_only` comes from `should_raytrace(camera_controls)`, so gating
-    # on it meant a RAYTRACED scene's overlays — every `lines!`, `scatter!` and
-    # `text!` in it, which is every decoration an `Axis3` is made of — were built
-    # and then never composited.
-    has_overlays = any(ss -> !isempty(collect_overlay_robjs(ss, screen.scene, screen.rasterize)),
-                       screen.scene_states)
-
-    # Postprocess + composite into output_buffer (on GPU)
-    fill!(screen.output_buffer, scenebackground(screen.scene))
-    for scene_state in screen.scene_states
-        composites(scene_state) || continue
-        postprocess_scene_state!(screen, scene_state)
-        composite_scene!(screen.output_buffer, scene_state, screen.scene, screen.px_per_unit)
-    end
-
-    if has_overlays
-        result = composited_frame(screen)
-    else
-        # Fast path: download RGBA{Float32} directly from GPU
-        result = Array(screen.output_buffer)
-    end
-
-    if format == Makie.GLNative
-        return Makie.jl_to_gl_format(result)
-    else # JuliaNative
-        return result
-    end
+    return nothing
 end
 
 """
