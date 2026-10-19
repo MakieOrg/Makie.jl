@@ -248,7 +248,7 @@ function add_light_computation!(graph, scene, lights)
 
     # Split this to avoid updating WGLMakie
     # camera view matrix, not space adjusted plot matrix (right?)
-    map!(graph, [:dirlight_direction, :dirlight_cam_relative, :eye_to_world], :dirlight_final_direction) do dir, cam_relative, inv_view
+    map!(graph, [:dirlight_direction, :dirlight_cam_relative, (:camera, :eye_to_world)], :dirlight_final_direction) do dir, cam_relative, inv_view
         final_dir = cam_relative ? Vec3f(inv_view[Vec(1, 2, 3), Vec(1, 2, 3)] * dir) : dir
         return final_dir
     end

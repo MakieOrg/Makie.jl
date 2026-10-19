@@ -25,10 +25,18 @@ function Base.show(io::IO, camera::Camera)
 end
 
 function disconnect!(c::Camera)
+    # Cleanup tracked observables from camera controller
     for obsfunc in c.steering_nodes
         off(obsfunc)
     end
     empty!(c.steering_nodes)
+
+    # Clean up any incoming connections added by camera controller or other
+    for name in (:projection, :view, :eyeposition, :view_direction, :upvector)
+        x = getproperty(c, name)
+        x isa Computed && delete!(x.parent)
+    end
+
     return
 end
 
@@ -59,47 +67,48 @@ end
 When mapping over observables for the camera, we store them in the `steering_node` vector,
 to make it easier to disconnect the camera steering signals later!
 """
-function Observables.on(f, camera::Camera, observables::AbstractObservable...; priority = 0)
+function Observables.on(f, camera::Camera, observables::AbstractObservable...; kwargs...)
     # PriorityObservables don't implement on_any, because that would replace
     # the method in Observables. CameraLift acts as a workaround for now.
     cl = CameraLift(f, observables)
     for n in observables
-        obs = on(cl, n, priority = priority)
+        obs = on(cl, n; kwargs...)
         push!(camera.steering_nodes, obs)
     end
     return f
 end
 
-function Camera(viewport)
-    pixel_space = lift(viewport) do window_size
+
+function Camera(graph::ComputeGraph)
+    cam = ComputePipeline.ComputeGraphView(graph, :camera)
+
+    for name in (:view, :projection)
+        ComputePipeline.add_node!(cam, name, Mat4d(I))
+    end
+
+    map!(*, cam, [:projection, :view], :projectionview)
+
+    ComputePipeline.add_node!(cam, :view_direction, Vec3f(0, 0, -1))
+    ComputePipeline.add_node!(cam, :eyeposition, Vec3f(1))
+    ComputePipeline.add_node!(cam, :upvector, Vec3f(0, 1, 0))
+
+    map!(cam, graph.viewport, [:pixel_space, :scene_origin, :resolution]) do viewport
         nearclip = -10_000.0
         farclip = 10_000.0
-        w, h = Float64.(widths(window_size))
-        return orthographicprojection(0.0, w, 0.0, h, nearclip, farclip)
+        w, h = Float64.(widths(viewport))
+        mat = orthographicprojection(0.0, w, 0.0, h, nearclip, farclip)
+        return mat, Vec2f(origin(viewport)), Vec2f(w, h)
     end
-    view = Observable(Mat4d(I))
-    proj = Observable(Mat4d(I))
-    proj_view = map(*, proj, view)
-    return Camera(
-        pixel_space,
-        view,
-        proj,
-        proj_view,
-        lift(a -> Vec2f(widths(a)), viewport),
-        Observable(Vec3f(0, 0, -1)),
-        Observable(Vec3f(1)),
-        Observable(Vec3f(0, 1, 0)),
-        ObserverFunction[],
-    )
+
+    # Add all the derived camera matrices
+    add_camera_computation!(cam)
+
+    return Camera(cam, ObserverFunction[])
 end
 
 function set_proj_view!(camera::Camera, projection, view)
-    # hack, to not double update projectionview
-    # TODO, this makes code doing on(view), not work correctly...
-    # But nobody should do that, right?
-    # GLMakie uses map on view
-    camera.view[] = view
-    return camera.projection[] = projection
+    update!(camera.graph, view = view, projection = projection)
+    return
 end
 
 is_mouseinside(x, target) = is_mouseinside(get_scene(x), target)
@@ -127,34 +136,23 @@ function is_mouseinside(scene::Scene)
 end
 
 
-function add_camera_computation!(graph::ComputeGraph, scene)
+function add_camera_computation!(graph::ComputeGraphView)
     # This includes all combinations of:
     # [world, eye, pixel, relative, clip] to [world, eye, pixel, relative, clip]
 
-    # Inputs to be set by camera controller/scene
-    # TODO: Should we move viewport to the graph entirely?
-    add_input!(graph, :viewport, scene.viewport)
-
-    for key in [:view, :projection, :eyeposition, :upvector, :view_direction]
-        add_input!(graph, key, getproperty(scene.camera, key))
-    end
-
+    # TODO: Make this obsolete
     # Since (marker)space can change, the matrices a plot needs may change and
     # thus they need to react to all matrix updates. We add a trigger node here
     # to simplify this (i.e. avoid the need to listen to 25 matrices or some
     # subset of the inputs)
     # Note: The value needs to change so that the update doesn't get discarded
-    map!((a, b, c) -> time(), graph, [:view, :projection, :viewport], :camera_trigger)
-
-    map!(graph, :viewport, [:scene_origin, :resolution]) do viewport
-        return (Vec2d(origin(viewport)), Vec2d(widths(viewport)))
-    end
+    map!((a, b, c) -> time(), graph, [:view, :projection, graph.parent.viewport], :trigger)
 
     # Camera matrices
-    # TODO: consider aliasing view, projection
-    map!(graph, [:projection, :view], [:world_to_clip, :world_to_eye, :eye_to_clip]) do projection, view
-        return (projection * view, view, projection)
-    end
+    ComputePipeline.alias!(graph, :projectionview, :world_to_clip)
+    ComputePipeline.alias!(graph, :view, :world_to_eye)
+    ComputePipeline.alias!(graph, :projection, :eye_to_clip)
+
     map!(graph, [:projection, :view], [:clip_to_world, :eye_to_world, :clip_to_eye]) do projection, view
         # are there accuracy issues with inv first?
         iview = inv(view)
@@ -253,22 +251,22 @@ function get_view_name(space::Symbol)
 end
 
 
-get_pixelspace(graph::ComputeGraph) = graph[:pixel_to_clip][]::Mat4f
+get_pixelspace(graph::ComputeGraph) = graph[:camera][:pixel_to_clip][]::Mat4f
 
 function get_projectionview(graph::ComputeGraph, space::Symbol)
-    return Mat4f(graph[get_projectionview_name(space)][])::Mat4f
+    return Mat4f(graph[:camera][get_projectionview_name(space)][])::Mat4f
 end
 
 function get_projection(graph::ComputeGraph, space::Symbol)
-    return Mat4f(graph[get_projection_name(space)][])::Mat4f
+    return Mat4f(graph[:camera][get_projection_name(space)][])::Mat4f
 end
 
 function get_view(graph::ComputeGraph, space::Symbol)
-    return Mat4f(graph[get_view_name(space)][])::Mat4f
+    return Mat4f(graph[:camera][get_view_name(space)][])::Mat4f
 end
 
 function get_space_to_space_matrix(graph::ComputeGraph, input_space::Symbol, output_space::Symbol)
-    return Mat4f(graph[get_camera_matrix_name(input_space, output_space)][])::Mat4f
+    return Mat4f(graph[:camera][get_camera_matrix_name(input_space, output_space)][])::Mat4f
 end
 function get_preprojection(graph::ComputeGraph, space::Symbol, markerspace::Symbol)
     return get_space_to_space_matrix(graph, space, markerspace)
@@ -338,7 +336,7 @@ end
 function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     output_names = [:view, :projection, :projectionview]
     index_names = [:view_idx, :projection_idx, :projectionview_idx]
-    matrix_nodes = getindex.(Ref(scene_graph), CAMERA_MATRIX_NAMES)
+    matrix_nodes = getindex.(Ref(scene_graph[:camera]), CAMERA_MATRIX_NAMES)
 
     # Prepare nodes with indices into matrix_nodes for select
     if haskey(plot_graph, :markerspace)
@@ -385,10 +383,10 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     add_input!(plot_graph, :viewport, scene_graph[:viewport]::Computed)
     for key in [:resolution, :scene_origin]
         haskey(plot_graph.inputs, key) && continue
-        add_input!(Vec2f, plot_graph, key, getindex(scene_graph, key)::Computed)
+        add_input!(Vec2f, plot_graph, key, getindex(scene_graph.camera, key)::Computed)
     end
     for key in [:eyeposition, :upvector, :view_direction]
-        add_input!(Vec3f, plot_graph, key, getindex(scene_graph, key)::Computed)
+        add_input!(Vec3f, plot_graph, key, getindex(scene_graph.camera, key)::Computed)
     end
 
     return
@@ -452,7 +450,7 @@ function register_camera_matrix!(
     if isconst(_input) && isconst(_output)
         # both spaces are constant so we don't need to be able to switch to a
         # different camera.
-        add_input!(plot_graph, matrix_name, scene_graph[matrix_name])
+        add_input!(plot_graph, matrix_name, scene_graph[:camera][matrix_name])
         return matrix_name
     end
 
@@ -468,8 +466,8 @@ function register_camera_matrix!(
         map!(get_camera_matrix_name, plot_graph, [_input, _output], name_name)
     end
 
-    inputs = Computed[scene_graph.camera_trigger, getindex(plot_graph, name_name)]
-    map!((_, name) -> Mat4f(scene_graph[name][]::Mat4d), plot_graph, inputs, matrix_name)
+    inputs = Computed[scene_graph.camera.trigger, getindex(plot_graph, name_name)]
+    map!((_, name) -> Mat4f(scene_graph.camera[name][]::Mat4d), plot_graph, inputs, matrix_name)
 
     return matrix_name
 end

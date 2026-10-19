@@ -77,7 +77,7 @@ mutable struct Scene <: AbstractScene
     events::Events
 
     "The current pixel area of the Scene."
-    viewport::Observable{Rect2i}
+    viewport::ComputePipeline.Computed
 
     "Whether the scene should be cleared."
     clear::Observable{Bool}
@@ -128,9 +128,8 @@ mutable struct Scene <: AbstractScene
     function Scene(
             parent::Union{Nothing, Scene},
             events::Events,
-            viewport::Observable{Rect2i},
+            viewport::Union{Observable{Rect2i}, Computed, Rect2i},
             clear::Observable{Bool},
-            camera::Camera,
             camera_controls::AbstractCamera,
             transformation::Transformation,
             plots::Vector{AbstractPlot},
@@ -141,13 +140,18 @@ mutable struct Scene <: AbstractScene
             visible::Observable{Bool},
             ssao::SSAO,
             lights::Vector;
-            deregister_callbacks = Observables.ObserverFunction[]
+            deregister_callbacks = Observables.ObserverFunction[],
         )
         replace_computed_with_obs!(theme)
+
+        graph = ComputeGraph()
+        haskey(graph, :viewport) || add_input!(graph, :viewport, viewport)
+        camera = Camera(graph)
+
         scene = new(
             parent,
             events,
-            viewport,
+            graph.viewport,
             clear,
             camera,
             camera_controls,
@@ -162,16 +166,17 @@ mutable struct Scene <: AbstractScene
             visible,
             ssao,
             deregister_callbacks,
-            ComputeGraph(),
+            graph,
             DimConversions(),
             false,
             nothing
         )
-        add_camera_computation!(scene.compute, scene)
+
         add_light_computation!(scene.compute, scene, lights)
         add_input!(scene.compute, :transform_func, transformation.transform_func)
         ComputePipeline.set_type!(scene.compute.transform_func, Any)
         add_input!(scene.compute, :cycle_counters, Dict{Symbol, Int}())
+
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true
@@ -276,7 +281,7 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
 end
 
 function Scene(;
-        viewport::Union{Observable{Rect2i}, Nothing} = nothing,
+        viewport::Union{Observable{Rect2i}, Computed, Rect2i, Nothing} = nothing,
         events::Events = Events(),
         clear::Union{Automatic, Observable{Bool}, Bool} = automatic,
         transform_func = identity,
@@ -308,12 +313,11 @@ function Scene(;
         else
             m_theme.size[]
         end
-        Observable(Recti(0, 0, sz); ignore_equal_values = true)
+        Recti(0, 0, sz)
     else
         viewport
     end
 
-    cam = camera isa Camera ? camera : Camera(scene_viewport)
     _lights = lights isa Automatic ? AbstractLight[] : lights
 
     if lights isa Automatic
@@ -347,17 +351,21 @@ function Scene(;
         clear = convert(Observable{Bool}, clear)
     end
     scene = Scene(
-        parent, events, scene_viewport, clear, cam, camera_controls,
+        parent, events, scene_viewport, clear, camera_controls,
         transformation, plots, m_theme,
         children, current_screens, bg, visible, ssao, _lights;
         deregister_callbacks = deregister_callbacks
     )
-    camera isa Function && camera(scene)
+    if camera isa Function
+        camera(scene)
+    elseif !isnothing(camera)
+        @warn "Passing a camera is not implemented anymore."
+    end
 
     if wasnothing
         on(events.window_area, priority = typemax(Int)) do w_area
-            if !any(x -> x ≈ 0.0, widths(w_area)) && scene_viewport[] != w_area
-                scene_viewport[] = w_area
+            if !any(x -> x ≈ 0.0, widths(w_area)) && scene.viewport[] != w_area
+                scene.viewport[] = w_area
             end
             return Consume(false)
         end
@@ -369,7 +377,7 @@ end
 function Scene(
         parent::Scene;
         events = parent.events,
-        viewport = nothing,
+        viewport = parent.viewport,
         clear = false,
         camera = nothing,
         visible = parent.visible,
@@ -381,7 +389,6 @@ function Scene(
     if camera !== parent.camera
         camera_controls = EmptyCamera()
     end
-    child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values = true)
     deregister_callbacks = Observables.ObserverFunction[]
     _visible = Observable(true)
     if visible isa Union{Computed, Observable}
@@ -396,10 +403,10 @@ function Scene(
     end
     child = Scene(;
         events = events,
-        viewport = child_px_area,
+        viewport = viewport,
         clear = convert(Observable{Bool}, clear),
-        camera = camera,
         visible = _visible,
+        camera = camera,
         camera_controls = camera_controls,
         parent = parent,
         transformation = transformation,
@@ -411,15 +418,6 @@ function Scene(
     # if !isnothing(listener)
     #     push!(child.deregister_callbacks, listener)
     # end
-    if isnothing(viewport)
-        map!(identity, child, child_px_area, parent.viewport)
-    elseif viewport isa Rect2
-        child_px_area[] = Rect2i(viewport)
-    else
-        if !(viewport isa Observable)
-            error("viewport must be an Observable{Rect2} or a Rect2")
-        end
-    end
     push!(parent.children, child)
     child.parent = parent
     return child
@@ -501,12 +499,13 @@ function free(scene::Scene)
     # Errors should be handled at a lower level because otherwise
     # some of the cleanup will be incomplete.
     empty!(scene; reset_theme = false)
-    for field in [:backgroundcolor, :viewport, :visible]
+    for field in [:backgroundcolor, :visible]
         Observables.clear(getfield(scene, field))
     end
     for screen in copy(scene.current_screens)
         delete!(screen, scene)
     end
+    ComputePipeline.disconnect!(scene.compute)
     empty!(scene.current_screens)
     scene.parent = nothing
     return

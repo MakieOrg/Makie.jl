@@ -322,8 +322,7 @@ struct PixelCamera <: AbstractCamera end
 get_space(::PixelCamera) = :pixel
 
 
-struct UpdatePixelCam
-    camera::Camera
+struct UpdatePixelCam <: Function
     near::Float64
     far::Float64
 end
@@ -331,7 +330,8 @@ end
 function (cam::UpdatePixelCam)(window_size)
     w, h = Float64.(widths(window_size))
     projection = orthographicprojection(0.0, w, 0.0, h, cam.near, cam.far)
-    return set_proj_view!(cam.camera, projection, Mat4d(I))
+    eyepos = Vec3f(0.5w, 0.5h, cam.far) # shouldn't this be near?
+    return projection, eyepos
 end
 
 """
@@ -342,17 +342,22 @@ data of a plot will be interpreted in pixel units. This camera does not feature
 controls.
 """
 function campixel!(scene::Scene; nearclip = -10_000.0, farclip = 10_000.0)
-    disconnect!(camera(scene))
-    camera(scene).view_direction[] = Vec3f(0, 0, -1)
-    update_once = Observable(false)
-    closure = UpdatePixelCam(camera(scene), nearclip, farclip)
-    on(closure, camera(scene), viewport(scene))
-    cam = PixelCamera()
-    # update once
-    closure(viewport(scene)[])
-    cameracontrols!(scene, cam)
-    update_once[] = true
-    return cam
+    cam = camera(scene)
+    disconnect!(cam)
+    cam.view_direction[] = Vec3f(0, 0, 1)
+    cam.view[] = Mat4d(I)
+
+    ComputePipeline.modify_edge!(
+        cam.projection.parent,
+        callback = UpdatePixelCam(nearclip, farclip),
+        wrap_callback = true,
+        inputs = [scene.compute.viewport],
+        outputs = [cam.projection, cam.eyeposition]
+    )
+
+    cc = PixelCamera()
+    cameracontrols!(scene, cc)
+    return cc
 end
 
 struct RelativeCamera <: AbstractCamera end

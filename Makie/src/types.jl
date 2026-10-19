@@ -258,52 +258,27 @@ Union containing possible input types for `ispressed`.
 const IsPressedInputType = Union{Bool, BooleanOperator, Mouse.Button, Keyboard.Button, Set, Vector, Tuple}
 
 """
-    Camera(pixel_area)
+    Camera(scene_graph)
 
 Struct to hold all relevant matrices and additional parameters, to let backends
 apply camera based transformations.
 
 ## Fields
-$(TYPEDFIELDS)
+
+- `view`: View matrix is usually used to rotate, scale and translate the scene
+- `projection`: Projection matrix is used for any perspective transformation
+- `projectionview`: just projection * view
+- `eyeposition`: Eye position of the camera, used for e.g. ray tracing.
+- `upvector`: Up direction of the current camera (e.g. Vec3f(0, 1, 0) for 2d)
+- `pixel_space`: projection used to convert pixel to device units
+- `resolution`: resolution of the canvas this camera draws to
+- `view_direction`: Direction in which the camera looks.
+- `steering_nodes::Vector{ObserverFunction}`: To make camera interactive, steering
+    observables are connected to the different matrices. We need to keep track of
+    them, so, that we can connect and disconnect them.
 """
 struct Camera
-    """
-    projection used to convert pixel to device units
-    """
-    pixel_space::Observable{Mat4d}
-
-    """
-    View matrix is usually used to rotate, scale and translate the scene
-    """
-    view::Observable{Mat4d}
-
-    """
-    Projection matrix is used for any perspective transformation
-    """
-    projection::Observable{Mat4d}
-
-    """
-    just projection * view
-    """
-    projectionview::Observable{Mat4d}
-
-    """
-    resolution of the canvas this camera draws to
-    """
-    resolution::Observable{Vec2f}
-
-    """
-    Direction in which the camera looks.
-    """
-    view_direction::Observable{Vec3f}
-    """
-    Eye position of the camera, used for e.g. ray tracing.
-    """
-    eyeposition::Observable{Vec3f}
-    """
-    Up direction of the current camera (e.g. Vec3f(0, 1, 0) for 2d)
-    """
-    upvector::Observable{Vec3f}
+    graph::ComputePipeline.ComputeGraphView
 
     """
     To make camera interactive, steering observables are connected to the different matrices.
@@ -312,6 +287,18 @@ struct Camera
     steering_nodes::Vector{ObserverFunction}
 end
 
+Base.propertynames(::Camera) = (
+    :pixel_space, :view, :projection, :projectionview, :resolution, :view_direction,
+    :eyeposition, :upvector, :steering_nodes,
+)
+
+function Base.getproperty(cam::Camera, field::Symbol)
+    if field === :steering_nodes || field === :graph
+        return getfield(cam, field)
+    else
+        return getfield(cam, :graph)[field]
+    end
+end
 
 """
 Holds the transformations for Scenes.

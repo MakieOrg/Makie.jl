@@ -127,11 +127,15 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements = Dict{Symbol, Any}()
     ax.elements = elements
 
-    scene = Scene(blockscene, viewport = Rect2i(0, 0, 0, 0), visible = false)
-    add_input!(ax, :viewport, scene.viewport)
+    # TODO: Could skip init value if this didn't get pulled by an observable
+    # before `scenearea` is actually defined/connected
+    ComputePipeline.add_node!(ax.attributes, :scenearea, Rect2i(0, 0, 0, 0))
+
+    scene = Scene(blockscene, viewport = ax.attributes.scenearea, visible = false)
     # Hide to block updates, will be unhidden! in constructor who calls this!
     @assert !scene.visible[]
     ax.scene = scene
+
     # transfer conversions from axis to scene if there are any
     # or the other way around
     connect_conversions!(scene.conversions, ax)
@@ -141,8 +145,13 @@ function initialize_block!(ax::Axis; palette = nothing)
     initialize_limit_computations!(ax)
 
     add_input!(ax, :computedbbox, ax.layoutobservables.computedbbox)
-    map!(calculate_scenearea, ax, [:computedbbox, :finallimits, :aspect], :scenearea)
-    connect!(scene.viewport, ax.scenearea)
+    @assert !ComputePipeline.is_child_of(ax.attributes.targetlimits, ax.attributes.scenearea)
+    ComputePipeline.modify_edge!(
+        ax.attributes.scenearea.parent,
+        callback = calculate_scenearea,
+        wrap_callback = true,
+        inputs = getproperty.(Ref(ax.attributes), [:computedbbox, :targetlimits, :aspect]),
+    )
 
     if !isnothing(palette)
         # Backwards compatibility for when palette was part of axis!
@@ -153,13 +162,13 @@ function initialize_block!(ax::Axis; palette = nothing)
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
     background = poly!(
-        blockscene, ax.viewport; color = ax.backgroundcolor, inspectable = false,
+        blockscene, ax.scenearea; color = ax.backgroundcolor, inspectable = false,
         shading = NoShading, strokecolor = :transparent
     )
     translate!(background, 0, 0, -100)
     elements[:background] = background
 
-    map!(ax, [:xaxisposition, :viewport], :xaxis_endpoints) do xaxisposition, area
+    map!(ax, [:xaxisposition, :scenearea], :xaxis_endpoints) do xaxisposition, area
         if xaxisposition === :bottom
             return bottomline(Rect2f(area))
         elseif xaxisposition === :top
@@ -169,7 +178,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    map!(ax, [:yaxisposition, :viewport], :yaxis_endpoints) do yaxisposition, area
+    map!(ax, [:yaxisposition, :scenearea], :yaxis_endpoints) do yaxisposition, area
         if yaxisposition === :left
             return leftline(Rect2f(area))
         elseif yaxisposition === :right
@@ -250,7 +259,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         ax,
-        [:viewport, :spinewidth, :xaxisposition],
+        [:scenearea, :spinewidth, :xaxisposition],
         :xoppositelinepoints
     ) do r, sw, xaxpos
         if xaxpos === :top
@@ -268,7 +277,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         ax,
-        [:viewport, :spinewidth, :yaxisposition],
+        [:scenearea, :spinewidth, :yaxisposition],
         :yoppositelinepoints
     ) do r, sw, yaxpos
         if yaxpos === :right
@@ -286,7 +295,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         mirror_xticks, ax,
-        [(:xaxis, :tickpositions), :xticksize, :xtickalign, :viewport, :xaxisposition, :spinewidth],
+        [(:xaxis, :tickpositions), :xticksize, :xtickalign, :scenearea, :xaxisposition, :spinewidth],
         :xticksmirrored_points
     )
     map!((a, b) -> a && b, ax, [:xticksmirrored, :xticksvisible], :mirroredxticksvisible)
@@ -298,7 +307,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         mirror_yticks, ax,
-        [(:yaxis, :tickpositions), :yticksize, :ytickalign, :viewport, :yaxisposition, :spinewidth],
+        [(:yaxis, :tickpositions), :yticksize, :ytickalign, :scenearea, :yaxisposition, :spinewidth],
         :yticksmirrored_points
     )
     map!((a, b) -> a && b, ax, [:yticksmirrored, :yticksvisible], :mirroredyticksvisible)
@@ -310,7 +319,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         mirror_xticks, ax,
-        [(:xaxis, :minortickpositions), :xminorticksize, :xminortickalign, :viewport, :xaxisposition, :spinewidth],
+        [(:xaxis, :minortickpositions), :xminorticksize, :xminortickalign, :scenearea, :xaxisposition, :spinewidth],
         :xminorticksmirrored
     )
     map!((a, b) -> a && b, ax, [:xticksmirrored, :xminorticksvisible], :mirroredxminorticksvisible)
@@ -322,7 +331,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         mirror_yticks, ax,
-        [(:yaxis, :minortickpositions), :yminorticksize, :yminortickalign, :viewport, :yaxisposition, :spinewidth],
+        [(:yaxis, :minortickpositions), :yminorticksize, :yminortickalign, :scenearea, :yaxisposition, :spinewidth],
         :yminorticksmirrored
     )
     map!((a, b) -> a && b, ax, [:yticksmirrored, :yminorticksvisible], :mirroredyminorticksvisible)
@@ -352,7 +361,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         ax,
-        [(:xaxis, :tickpositions), :xaxisposition, :viewport],
+        [(:xaxis, :tickpositions), :xaxisposition, :scenearea],
         :xgrid_points
     ) do tickpos, axispos, area
         local pxheight::Float32 = height(area)
@@ -362,7 +371,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         ax,
-        [(:yaxis, :tickpositions), :yaxisposition, :viewport],
+        [(:yaxis, :tickpositions), :yaxisposition, :scenearea],
         :ygrid_points
     ) do tickpos, axispos, area
         local pxwidth::Float32 = width(area)
@@ -372,7 +381,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         ax,
-        [(:xaxis, :minortickpositions), :xaxisposition, :viewport],
+        [(:xaxis, :minortickpositions), :xaxisposition, :scenearea],
         :xminorgrid_points
     ) do tickpos, axispos, area
         local pxheight::Float32 = height(area)
@@ -382,7 +391,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         ax,
-        [(:yaxis, :minortickpositions), :yaxisposition, :viewport],
+        [(:yaxis, :minortickpositions), :yaxisposition, :scenearea],
         :yminorgrid_points
     ) do tickpos, axispos, area
         local pxwidth::Float32 = width(area)
@@ -424,7 +433,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         ax,
-        [:viewport, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion)],
+        [:scenearea, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion)],
         :subtitlepos
     ) do a, titlegap, align, xaxisposition, xaxisprotrusion
 
@@ -463,7 +472,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     map!(
         calculate_title_position, ax,
-        [:viewport, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion), :subtitle_height],
+        [:scenearea, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion), :subtitle_height],
         :titlepos
     )
 
@@ -667,7 +676,7 @@ function initialize_limit_computations!(ax)
 
     map!(
         adjustlimits, attr,
-        [:targetlimits, :autolimitaspect, :viewport, :xautolimitmargin, :yautolimitmargin],
+        [:targetlimits, :autolimitaspect, :scenearea, :xautolimitmargin, :yautolimitmargin],
         :finallimits
     )
 
@@ -679,10 +688,23 @@ function initialize_limit_computations!(ax)
         return calculate_axis_projection_matrix(ax.scene, tf, lims, xrev, yrev)
     end
 
-    # TODO: This could directly update scene.compute if we deprecate Camera
-    idm = Makie.Mat4f(Makie.I)
-    on(proj -> Makie.set_proj_view!(ax.scene.camera, proj, idm), attr.projectionmatrix, update = true)
-    connect!(ax.scene.camera.eyeposition, attr.eyeposition)
+    # Connect camera
+    cam = camera(ax.scene)
+    cam.view[] = Mat4d(I)
+
+    delete!(cam.projection.parent)
+    ComputePipeline.modify_edge!(
+        cam.projection.parent,
+        callback = compute_identity,
+        inputs = [ax.attributes.projectionmatrix]
+    )
+
+    delete!(cam.eyeposition.parent)
+    ComputePipeline.modify_edge!(
+        cam.eyeposition.parent,
+        callback = compute_identity,
+        inputs = [ax.attributes.eyeposition]
+    )
 
     return
 end
