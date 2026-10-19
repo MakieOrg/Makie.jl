@@ -607,24 +607,24 @@ means those three attributes never re-run layout, which for an expensive
 and moving it.
 """
 function register_glyph_placement!(attr::ComputeGraph)
-    inputs = [
-        :glyph_layout_origins, :text_blocks, :block_bboxes, :block_baselines,
-        :align, :rotation, :offset,
-        :layout_specs, :layout_spec_bboxes, :text_spec_block_indices,
-    ]
-    outputs = [:glyph_origins, :glyph_rotations, :text_spec_models, :text_spec_bboxes]
-    return register_computation!(attr, inputs, outputs) do inputs, changed, cached
+    register_computation!(
+        attr,
+        [
+            :glyph_layout_origins, :text_blocks, :block_bboxes, :block_baselines,
+            :align, :rotation,
+        ],
+        [:glyph_origins, :glyph_rotations]
+    ) do inputs, changed, cached
         (; glyph_layout_origins, text_blocks, block_bboxes, block_baselines) = inputs
-        (; rotation, layout_specs, layout_spec_bboxes, text_spec_block_indices) = inputs
-        (; align, offset) = inputs
+        (; rotation, align) = inputs
 
         validate_per_string(
             :rotation, rotation, length(text_blocks),
             "Glyphs within a string share one rotation."
         )
 
-        origins, rotations, spec_models, spec_bboxes = if cached === nothing
-            (Point3f[], Quaternionf[], Mat4d[], Rect3d[])
+        origins, rotations = if isnothing(cached)
+            (Point3f[], Quaternionf[])
         else
             empty!.(values(cached))
         end
@@ -641,15 +641,64 @@ function register_glyph_placement!(attr::ComputeGraph)
             end
         end
 
+        return origins, rotations
+    end
+
+    map!(
+        attr,
+        [:text_blocks, :block_bboxes, :block_baselines, :align],
+        :block_alignment_shift
+    ) do text_blocks, block_bboxes, block_baselines, align
+        return map(eachindex(text_blocks)) do i
+            return block_alignment_shift(block_bboxes[i], block_baselines[i], sv_getindex(align, i))
+        end
+    end
+
+    register_computation!(
+        attr,
+        [:block_alignment_shift, :rotation, :layout_spec_bboxes, :text_spec_block_indices],
+        [:raw_text_spec_bboxes]
+    ) do (shifts, rotation, layout_spec_bboxes, text_spec_block_indices), changed, cached
+
+        spec_bboxes = empty!(isnothing(cached) ? Rect3d[] : cached[1])
+
         for (bbox, i) in zip(layout_spec_bboxes, text_spec_block_indices)
             rot = sv_getindex(rotation, i)
-            off = to_ndim(Vec3f, sv_getindex(offset, i), 0)
-            push!(spec_models, spec_placement_matrix(rot, shifts[i], off))
-            push!(spec_bboxes, rotate_bbox(bbox - to_ndim(Vec3d, shifts[i], 0), rot) + off)
+            push!(spec_bboxes, rotate_bbox(bbox - to_ndim(Vec3d, shifts[i], 0), rot))
         end
 
-        return (origins, rotations, spec_models, spec_bboxes)
+        return (spec_bboxes,)
     end
+
+    register_computation!(
+        attr,
+        [
+            :block_alignment_shift, :rotation, :offset,
+            :raw_text_spec_bboxes, :text_spec_block_indices,
+        ],
+        [:text_spec_models, :text_spec_bboxes]
+    ) do inputs, changed, cached
+        (; rotation, raw_text_spec_bboxes, text_spec_block_indices) = inputs
+        (; block_alignment_shift, offset) = inputs
+
+        spec_models, spec_bboxes = if isnothing(cached)
+            (Mat4d[], Rect3d[])
+        else
+            empty!.(values(cached))
+        end
+
+        for (bbox, i) in zip(raw_text_spec_bboxes, text_spec_block_indices)
+            rot = sv_getindex(rotation, i)
+            off = to_ndim(Vec3f, sv_getindex(offset, i), 0)
+            push!(spec_models, spec_placement_matrix(rot, block_alignment_shift[i], off))
+            push!(spec_bboxes, bbox + off)
+        end
+
+        return spec_models, spec_bboxes
+    end
+
+
+    return
 end
 
 function register_text_computations!(attr::ComputeGraph)
@@ -919,7 +968,11 @@ function register_raw_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :glyph_rotations, :text_spec_bboxes, :text_spec_block_indices],
+            plot.attributes,
+            [
+                :text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :glyph_rotations,
+                :raw_text_spec_bboxes, :text_spec_block_indices,
+            ],
             :raw_string_boundingboxes
         ) do blocks, bbs, origins, rotation, spec_bboxes, spec_block_indices
 
@@ -960,7 +1013,11 @@ function register_fast_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :glyph_rotations, :text_spec_bboxes, :text_spec_block_indices],
+            plot.attributes,
+            [
+                :text_blocks, :raw_glyph_boundingboxes, :marker_offset, :glyph_rotations,
+                :text_spec_bboxes, :text_spec_block_indices,
+            ],
             :fast_string_boundingboxes
         ) do blocks, bbs, origins, rotation, spec_bboxes, spec_block_indices
 

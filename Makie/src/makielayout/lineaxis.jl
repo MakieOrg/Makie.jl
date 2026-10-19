@@ -507,35 +507,39 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     )
     ComputePipeline.set_type!(graph.label_with_suffix, Any)
 
+    ComputePipeline.add_node!(graph, :label_offset, Vec2f(0))
+
     labeltext = text!(
         parent, graph.labelpos, text = graph.label_with_suffix,
         fontsize = labelsize, color = labelcolor,
-        visible = labelvisible,
+        visible = labelvisible, offset = graph.label_offset,
         align = graph.labelalign, rotation = graph.labelrot, font = labelfont,
         markerspace = :data, inspectable = false
     )
 
     _labelbbox = register_raw_string_boundingboxes!(labeltext)
-    map!(bbs -> Rect2d(bbs[1]), graph, _labelbbox, :labelbbox)
+    map!(bbs -> Rect2d(only(bbs)), graph, _labelbbox, :labelbbox)
 
-    # translate axis labels on explicit rotations
-    # in order to prevent plot and axis overlap
-    onany(
-        parent, labelrotation, flipped, graph.horizontal, graph.labelbbox, update = true
-    ) do labelrotation, flipped, horizontal, bb
-        xs::Float32, ys::Float32 = if labelrotation isa Automatic
-            0.0f0, 0.0f0
-        else
-            wx, wy = widths(bb)
-            sign::Int = flipped ? 1 : -1
-            if horizontal
-                0.0f0, Float32(sign * 0.5f0 * wy)
+    @assert !ComputePipeline.is_child_of(graph.labelbbox, labeltext.offset)
+
+    ComputePipeline.modify_edge!(
+        graph.label_offset.parent,
+        callback = (labelrotation, flipped, horizontal, bb) -> begin
+            if labelrotation isa Automatic
+                return Vec2f(0)
             else
-                Float32(sign * 0.5f0 * wx), 0.0f0
+                wx, wy = widths(bb)
+                sign::Int = ifelse(flipped, 1, -1)
+                if horizontal
+                    return Vec2f(0, sign * 0.5f0 * wy)
+                else
+                    return Vec2f(sign * 0.5f0 * wx, 0)
+                end
             end
-        end
-        translate!(labeltext, xs, ys, 0.0f0)
-    end
+        end,
+        wrap_callback = true,
+        inputs = [labelrotation, flipped, graph.horizontal, graph.labelbbox]
+    )
 
     decorations[:labeltext] = labeltext
 
