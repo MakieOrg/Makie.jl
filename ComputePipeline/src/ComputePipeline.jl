@@ -675,12 +675,17 @@ function. This should not be used externally.
 """
 locked_mark_dirty!(x::AbstractEdge) = locked_mark_dirty!(x, x.graph.obs_to_update)
 function locked_mark_dirty!(x::Computed, obs_to_update = x.parent.graph.obs_to_update)
-    x.dirty = true
     # if a node is dirty its parents dependents should be marked dirty
+    x.dirty = true
     for dep in x.parent.dependents
         mark_input_dirty!(x.parent, dep)
         locked_mark_dirty!(dep, obs_to_update)
     end
+    x.dirty = false
+    # And if it has an observable that observable should be marked to trigger.
+    g = x.parent.graph
+    push!(g.onchange.val, x.name)
+    g.onchange in obs_to_update || push!(obs_to_update, g.onchange)
     return
 end
 

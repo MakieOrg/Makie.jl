@@ -1615,4 +1615,47 @@ end
         @test graph.output[] == 9
     end
 
+    @testset "Observable marking" begin
+        # make graph update asap
+        ComputePipeline.get_observable!(graph.output)
+
+        # track which names are marked for observable updates
+        counters = [0, 0]
+        on(graph.onchange, priority = typemax(Int)) do set
+            counters .+= [:input in set, :middle in set]
+        end
+        @test counters == [0, 0]
+
+        # mark_dirty should collect the right observables and trigger
+        ComputePipeline.mark_dirty!(graph.middle)
+        @test counters == [0, 1]
+        ComputePipeline.mark_dirty!(graph.middle.parent)
+        @test counters == [0, 2]
+        ComputePipeline.mark_dirty!(graph.input)
+        @test counters == [1, 3]
+        ComputePipeline.mark_dirty!(graph.input.parent)
+        @test counters == [2, 4]
+
+        # locked_mark_dirty doesn't include the obs trigger
+        ComputePipeline.locked_mark_dirty!(graph.middle)
+        @test counters == [2, 4]
+        ComputePipeline.update_observables!(graph.obs_to_update)
+        @test counters == [2, 5]
+
+        ComputePipeline.locked_mark_dirty!(graph.middle.parent)
+        @test counters == [2, 5]
+        ComputePipeline.update_observables!(graph.obs_to_update)
+        @test counters == [2, 6]
+
+        ComputePipeline.locked_mark_dirty!(graph.input)
+        @test counters == [2, 6]
+        ComputePipeline.update_observables!(graph.obs_to_update)
+        @test counters == [3, 7]
+
+        ComputePipeline.locked_mark_dirty!(graph.input.parent)
+        @test counters == [3, 7]
+        ComputePipeline.update_observables!(graph.obs_to_update)
+        @test counters == [4, 8]
+    end
+
 end
