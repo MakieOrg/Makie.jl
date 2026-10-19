@@ -785,7 +785,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
     ), shading)
 
     buffers = Dict{Symbol, Any}()
-    local colorinfo
+    local colorinfo, glow
     instances = raster_instances(plot, args)
     if instances_dirty
         # The stage reads entry 1 for all instances or entry i for instance i
@@ -810,11 +810,12 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
         look = plot_raster_look(plot)
         look === nothing || (geometry = merge(geometry, (color = look.color,)))
         ncolors = instances.colors != Int32(0) ? length(instances.positions) : length(geometry.positions)
-        colorinfo = raster_color(geometry.color, args, ncolors; fragment = fragment_cmap(plot, args))
-        textured = colorinfo.texture !== nothing
+        colorinfo = material_wrap(raster_color(geometry.color, args, ncolors; fragment = fragment_cmap(plot, args)), look)
+        glow = glow_texels(look)
+        ntextures = colorinfo.texture === nothing ? 0 : glow === nothing ? 1 : 2
         see_through = is_see_through(look, plot)
         pickable = plot.inspectable[] !== false
-        fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured, see_through, pickable)
+        fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, ntextures, see_through, pickable)
         # What the shadow map is fitted around; not a stage argument.
         (geometry_dirty || instances_dirty) &&
             (uniforms = merge(uniforms, (local_bounds = instanced_bounds(geometry, instances),)))
@@ -862,7 +863,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
 
     robj = if fresh
         backend = screen.config.device
-        RenderObject(get_mesh_pipeline!(screen, colorinfo.texture !== nothing, see_through, pickable);
+        RenderObject(get_mesh_pipeline!(screen, ntextures, see_through, pickable);
             backend,
             fxaa = plot_fxaa(plot),
             arg_names = MESH_ARG_NAMES,
@@ -892,7 +893,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
     color_dirty && (robj.vertex_count = vertex_count)
     robj.instances = length(instances.positions)
     if color_dirty && colorinfo.texture !== nothing
-        update_texture!(robj, colorinfo.texture;
+        update_texture!(robj, glow === nothing ? colorinfo.texture : (colorinfo.texture, glow);
                         filter = args.interpolate ? :linear : :nearest, wrap = colorinfo.wrap)
     end
     robj.visible = true

@@ -43,7 +43,7 @@ mutable struct RenderObject
     # The texture the bindings point at, kept so `update_texture!` can upload
     # INTO it rather than making a new one. A recorded plan bakes the descriptor
     # set, so a new set is a texture the frame will not see — see there.
-    texture::Any       # Nothing or the backend's Texture2D
+    texture::Any       # Nothing, the backend's Texture2D, or a tuple of them (`update_texture!`)
     vertex_count::Int
     instances::Int
     visible::Bool
@@ -153,6 +153,29 @@ function update_texture!(robj::RenderObject, image_data; filter=:linear, wrap=:c
     robj.bindings = bind_textures([SampledTexture(tex, sampler)])
     return robj.bindings
 end
+
+"""
+    update_texture!(robj, images::Tuple; filter, wrap) -> bindings
+
+Several textures, bound in order (binding 0, 1, …), each written into the one
+already there when all of them fit, for the same reason as one.
+"""
+function update_texture!(robj::RenderObject, images::Tuple; filter=:linear, wrap=:clamp)
+    texs = robj.texture
+    if fitsall(texs, images)
+        foreach(upload_texture_data!, texs, images)
+        return robj.bindings
+    end
+    texs = map(img -> Texture2D(robj.backend, img), images)
+    robj.texture = texs
+    robj.bindings = bind_textures([SampledTexture(t, Sampler(robj.backend; filter, wrap)) for t in texs])
+    return robj.bindings
+end
+
+# The textures a render object holds take `images` in place: as many, each of
+# its size and type.
+fitsall(texs::NTuple{N, Any}, images::NTuple{N, Any}) where {N} = all(map(texturefits, texs, images))
+fitsall(texs, images) = false
 
 """Whether `data` can be written into `tex` without making a new one."""
 texturefits(tex, data) = size(tex) == size(data) && eltype(tex) == eltype(data)
