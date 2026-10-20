@@ -272,13 +272,14 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                         @test apply_conversion(CT, m) isa
                             Tuple{EndPoints{Float32}, EndPoints{Float32}, Matrix{Float32}}
 
+                        RT = typeof(T_out(0):T_out(2):T_out(5))
+
                         @test apply_conversion(CT, xs, ys, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, xs, r, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, r, ys, +) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, r, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, i, m) isa
-                            Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, r, i, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, xs, r, m) isa Tuple{Vector{T_out}, RT, Matrix{Float32}}
+                        @test apply_conversion(CT, r, ys, +) isa Tuple{RT, Vector{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, i, r, m) isa Tuple{RT, RT, Matrix{Float32}}
+                        @test apply_conversion(CT, i, i, m) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, r, i, m) isa Tuple{RT, RT, Matrix{Float32}}
                         @test apply_conversion(CT, xgridvec, ygridvec, xgridvec) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         # TODO OffsetArray
                     end
