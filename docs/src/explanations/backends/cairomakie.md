@@ -27,6 +27,13 @@ The z-values of 3D plots will have no effect and will be projected flat onto the
 Z-layering is approximated by sorting all plot objects by their z translation value before drawing, after that by parent scene and then insertion order.
 Therefore, if you want to draw something on top of something else, but it ends up below, try translating it forward via `translate!(obj, 0, 0, some_positive_z_value)`.
 
+#### Meshes in vector output
+
+A `mesh` of a single color is filled as a path, so it stays vectorized.
+A mesh with per-vertex or per-face colors instead needs a Cairo mesh gradient: PDF stores
+that as a vector shading, but not SVG (where Cairo will rasterize). Drawing a large gradient
+mesh is also slow, so consider setting `rasterize`.
+
 #### Selective Rasterization
 
 By setting the `rasterize` attribute of a plot, you can tell CairoMakie that this plot needs to be rasterized when saving, even if saving to a vector backend.  This can be very useful for large meshes, surfaces or even heatmaps if on an irregular grid.

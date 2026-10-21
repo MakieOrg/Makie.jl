@@ -82,3 +82,40 @@ end
         strokewidth = 10, strokecolor = :black
     )
 end
+
+# Three draw_mesh2D methods (plain source, Cairo mesh pattern, Cairo pattern).
+# CairoMakie only, since the other backends are fine.
+@reference_test "mesh 2D fast paths" begin
+    n = 9
+    fan_ps = vcat([Point2f(0, 0)], [Point2f(cos(t), sin(t)) for t in range(0, 2pi, length = n + 1)[1:n]])
+    fan_fs = [GLTriangleFace(1, i + 1, i == n ? 2 : i + 2) for i in 1:n]
+    fan_cols = vcat([RGBAf(0.15, 0.35, 0.8, 1)], [RGBAf(0.95, 0.25 + 0.6i / n, 0.15, 1) for i in 1:n])
+    # two opposite-wound triangles overlapping in the middle
+    star_ps = Point2f[(0, 0), (2, 0), (1, 2), (0, 2), (2, 2), (1, 0)]
+    star_fs = GLTriangleFace[(1, 2, 3), (4, 5, 6)]
+
+    f = Figure(size = (600, 420))
+    panels = [
+        ("single color", fan_ps, fan_fs, :tomato, (-1.1, 1.1)),
+        ("per vertex", fan_ps, fan_fs, fan_cols, (-1.1, 1.1)),
+        (
+            "pattern", fan_ps, fan_fs,
+            Makie.LinePattern(width = 3, tilesize = (12, 12), linecolor = :navy, backgroundcolor = :white),
+            (-1.1, 1.1),
+        ),
+        ("self overlap", star_ps, star_fs, :black, (-0.1, 2.1)),
+        ("transparent overlap", star_ps, star_fs, RGBAf(0, 0, 0, 0.5), (-0.1, 2.1)),
+        # the NaN face is skipped, so this must match "self overlap"
+        (
+            "NaN face", vcat(star_ps, [Point2f(NaN)]),
+            vcat(star_fs, [GLTriangleFace(1, 2, 7)]), :black, (-0.1, 2.1),
+        ),
+    ]
+    for (i, (title, ps, fs, color, lims)) in enumerate(panels)
+        ax = Axis(f[fld1(i, 3), mod1(i, 3)]; title, aspect = DataAspect())
+        hidedecorations!(ax)
+        mesh!(ax, ps, fs; color)
+        limits!(ax, lims..., lims...)
+    end
+    f
+end

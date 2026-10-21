@@ -114,6 +114,23 @@ end
         plot1.changed[] == Dict(:color => yellow, :raw_color => yellow, :scaled_color => yellow)
         plot2.changed[] == Dict(:color => green, :raw_color => green, :scaled_color => green)
     end
+
+    @testset "diff_plotlist! reuses plots in a fixed order (#5814)" begin
+        # Plots with equal cycle_index used to be matched in IdDict (address) order, so which
+        # plot a spec reused, and the resulting draw order, differed between identical runs.
+        scene = Scene()
+        n = 8
+        specs = [S.Lines([Point2f(0, i), Point2f(1, i)]; cycle = []) for i in 1:n]
+        plots = Makie.diff_plotlist!(scene, specs)
+        order = copy(scene.plots)
+        @test allequal(p -> p.cycle_index[], order)   # all tied: only the tie-break decides
+        # new data scores the same against every old plot, so each spec takes the plot at
+        # its own position
+        specs2 = [S.Lines([Point2f(0, -i), Point2f(1, -i)]; cycle = []) for i in 1:n]
+        new_plots = Makie.diff_plotlist!(scene, specs2, nothing, plots)
+        @test [new_plots[s] for s in specs2] == order
+        @test scene.plots == order
+    end
 end
 
 struct TestPlot
