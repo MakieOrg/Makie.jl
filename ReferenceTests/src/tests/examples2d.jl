@@ -503,7 +503,6 @@ end
     fig
 end
 
-
 @reference_test "space 2D" begin
     # This should generate a regular grid with text in a circle in a box. All
     # sizes and positions are scaled to be equal across all options.
@@ -1046,14 +1045,16 @@ end
     f
 end
 
-@reference_test "contour labels 2D" begin
+@reference_test "contour labels" begin
     paraboloid = (x, y) -> 10(x^2 + y^2)
 
     x = range(-4, 4; length = 40)
     y = range(-4, 4; length = 60)
     z = paraboloid.(x, y')
 
-    fig, ax, hm = heatmap(x, y, z)
+    fig = Figure(size = (600, 600))
+
+    ax, hm = heatmap(fig[1, 1], x, y, z)
     Colorbar(fig[1, 2], hm)
 
     contour!(
@@ -1061,17 +1062,27 @@ end
         color = :red, levels = 0:20:100, labels = true,
         labelsize = 15, labelfont = :bold, labelcolor = :orange,
     )
-    fig
-end
 
-@reference_test "contour labels with transform_func" begin
-    f = Figure(size = (400, 400))
-    a = Axis(f[1, 1], xscale = log10)
+    a = Axis(fig[1, 3], xscale = log10)
     xs = 10 .^ range(0, 3, length = 101)
     ys = range(1, 4, length = 101)
     zs = [sqrt(x * x + y * y) for x in -50:50, y in -50:50]
     contour!(a, xs, ys, zs, labels = true, labelsize = 20)
-    f
+
+    # Test with NaN, #4418, #5811
+    f(x, y) = abs(sin(x) + cos(y))
+    bad(x, y) = (x - 2) > y
+    x = range(0, 5, length = 50)
+    y = range(0, 5, length = 50)
+    z = @. f(x', y)
+    isbad = @. bad(x', y)
+    zz = copy(z)
+    zz[isbad] .= NaN
+
+    contour(fig[2, 1], x, y, zz', color = :black, labels = true, linewidth = 2, labelsize = 16)
+    contour3d!(Axis(fig[2, 3]), x, y, zz', color = :black, labels = true, linewidth = 2, labelsize = 16)
+
+    fig
 end
 
 @reference_test "contour 2d with curvilinear grid" begin
@@ -2114,7 +2125,7 @@ end
 end
 
 @reference_test "series" begin
-    fig = Figure()
+    fig = Figure(size = (500, 750))
     data = cumsum(RNG.randn(4, 21), dims = 2)
 
     ax, sp = series(
@@ -2127,7 +2138,24 @@ end
         fig[2, 1], data, labels = ["label $i" for i in 1:4], markersize = 10.0,
         marker = Circle, markercolor = :transparent, strokewidth = 2.0, strokecolor = :black
     )
+    series!(Vector{Point2f}[]) # shouldn't error
     axislegend(ax, position = :lt)
+
+    # should cycle with warning
+    a, p = @test_logs (:warn,) series(
+        fig[3, 1], [fill(i, 10) for i in 1:10], color = [:green, :lightgreen, :yellow],
+        linewidth = 5
+    )
+
+    # force render to check that number of series plots can be changed afterwards
+    colorbuffer(fig)
+    update!(p, arg1 = [fill(i, 10) for i in 1:12])
+
+    # colormapped
+    series!(
+        a, [range(i, i + 4, 10) for i in 1:8], linewidth = 5, color = 1:8,
+        colorrange = (2, 7), lowclip = :black, highclip = :gray, colormap = [:red, :purple, :blue]
+    )
 
     fig
 end
