@@ -1,11 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- `WGLMakie.ToolTip` gained a `trigger` keyword (`:click`, the previous default behavior, or
-  `:hover`) and a `range` keyword to control the picking tolerance in pixels, so tooltips can
-  now follow the cursor on hover instead of only appearing on click [#5715](https://github.com/MakieOrg/Makie.jl/pull/5715).
-
 ## [0.24.16] - 2026-10-12
 
 - Added arrow visualization for `arrows2d` to legends [#5832](https://github.com/MakieOrg/Makie.jl/pull/5832).
