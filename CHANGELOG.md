@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `WGLMakie.ToolTip` gained a `trigger` keyword (`:click`, the previous default behavior, or
+  `:hover`) and a `range` keyword to control the picking tolerance in pixels, so tooltips can
+  now follow the cursor on hover instead of only appearing on click [#5715](https://github.com/MakieOrg/Makie.jl/pull/5715).
+
 ## [0.24.16] - 2026-10-12
 
 - Added arrow visualization for `arrows2d` to legends [#5832](https://github.com/MakieOrg/Makie.jl/pull/5832).
@@ -36,9 +42,6 @@
 
 ## [0.24.15] - 2026-09-18
 
-- `WGLMakie.ToolTip` gained a `trigger` keyword (`:click`, the previous default behavior, or
-  `:hover`) and a `range` keyword to control the picking tolerance in pixels, so tooltips can
-  now follow the cursor on hover instead of only appearing on click [#5715](https://github.com/MakieOrg/Makie.jl/pull/5715).
 - Fixed `contourf` and `tricontourf` drawing a constant field in two colors, by placing the constant value in the middle of a band instead of on a band edge [#5787](https://github.com/MakieOrg/Makie.jl/pull/5787).
 - Allowed FFMPEG_jll 9 [#5789](https://github.com/MakieOrg/Makie.jl/pull/5789).
 - Contour labels, `voronoiplot` colors, `triplot` convex hulls, `hexbin` draw order and `datashader` category colors no longer depend on `Dict` iteration order, so they stay the same across Julia versions [#5792](https://github.com/MakieOrg/Makie.jl/pull/5792).
