@@ -400,7 +400,11 @@ function retrace(set, keys, old::Makie.SunSkyLight, light::Makie.SunSkyLight)
         return trace_lights(to_trace_light(light))
     sky = set[keys[1]]
     return (Hikari.EnvironmentLight(sky.env_map, Hikari.RGBSpectrum(light.intensity / Hikari.D65_PHOTOMETRIC)),
-            Hikari.SunLight(Hikari.sunsky_sun_rgb(light.intensity), -normalize(Vec3f(light.direction))))
+        Hikari.SunLight(
+            Hikari.sunsky_sun_rgb(Vec3f(light.direction); light.intensity, light.turbidity),
+            -normalize(Vec3f(light.direction))
+        ),
+    )
 end
 
 # Asked on every sample (`sync_lights!`), so it reads the node's own typed `Ref`

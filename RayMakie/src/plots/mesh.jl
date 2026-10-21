@@ -96,6 +96,10 @@ function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, la
                     changed.mesh || changed.positions_transformed_f32c ||
                     changed.faces || changed.normals ||
                     changed.texturecoordinates || changed.uv_transform
+    # A material that carries its own geometry (metaballs) is geometry: a new one is a
+    # rebuild into the same material slot, where swapping only the stored material
+    # left the old surface standing.
+    needs_rebuild |= changed.material && args.material isa Hikari.Material && Hikari.rebuilds_with_material(args.material)
     # Emission belongs to face lights, not the surface-material slot. A mesh
     # without emitter slots needs them constructed when it starts emitting.
     if !needs_rebuild && changed.material && last_robj.handle isa Hikari.SceneHandle

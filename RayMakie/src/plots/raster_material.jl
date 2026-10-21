@@ -372,7 +372,7 @@ function with_suns(lights, n, types, colors, params)
     isempty(suns) && return (n, types, colors, params)
     return (n + length(suns),
             vcat(types, fill(Int32(Makie.LightType.DirectionalLight), length(suns))),
-            vcat(colors, [RGBf(Hikari.sunsky_sun_rgb(s.intensity)) for s in suns]),
+        vcat(colors, [RGBf(Hikari.sunsky_sun_rgb(Vec3f(s.direction); s.intensity, s.turbidity)) for s in suns]),
             vcat(params, reduce(vcat, [Float32.(-normalize(s.direction)) for s in suns])))
 end
 

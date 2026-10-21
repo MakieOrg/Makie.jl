@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- RayMakie supports additional Hikari denoisers, refreshes geometry carried by changed materials, and uses the spectral sky model's sun irradiance. Textboxes support multiline editing with Ctrl+Enter or Cmd+Enter to submit.
+
 - Added material-aware albedo/normal guide readback and primary-ray-only guide refresh for non-destructive downstream denoising.
 
 - Added RayMakie `renderbuffers` readback for unclamped linear HDR radiance, first-hit guides and a separate raster overlay, enabling non-destructive downstream grading and denoising.

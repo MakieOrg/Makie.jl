@@ -65,11 +65,12 @@ Configuration for RayMakie rendering.
   - `Raycore.KA.CPU()` - CPU rendering
   - `AMDGPU.ROCBackend()` - AMD GPU via AMDGPU.jl
   - `CUDA.CUDABackend()` - NVIDIA GPU via CUDA.jl
-* `denoise`: Enable à-trous wavelet denoising (default: false)
+* `denoise`: Enable denoising (default: false)
   - Requires auxiliary buffers (normals, depth) to be filled
   - Significantly reduces noise at low sample counts
-* `denoise_config`: Configuration for the denoiser (default: sensible defaults)
+* `denoise_config`: The `Hikari.Denoiser` (default: à-trous with sensible defaults)
   - `Hikari.DenoiseConfig(iterations=5, sigma_color=4.0, sigma_normal=128.0, sigma_depth=1.0)`
+  - `Hikari.OIDN(quality=:high)`: Intel Open Image Denoise, on the CPU
 * `rasterize`: Draw raytraceable plots through the RASTER path instead
   (default: false)
   - The same scene, the same camera, the same lights — only the path changes.
@@ -122,7 +123,7 @@ struct ScreenConfig
     gamma::Union{Float32, Nothing}
     device::Any  # KA backend: KA.CPU(), ROCBackend(), CUDABackend()
     denoise::Bool
-    denoise_config::Union{Hikari.DenoiseConfig, Nothing}
+    denoise_config::Union{Hikari.Denoiser, Nothing}
     visible::Bool
     title::String
     vsync::Bool
