@@ -1,9 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- Add Tooltips for blocks [#4451](https://github.com/MakieOrg/Makie.jl/pull/4451)
-
 ## [0.24.16] - 2026-10-12
 
 - Added arrow visualization for `arrows2d` to legends [#5832](https://github.com/MakieOrg/Makie.jl/pull/5832).
