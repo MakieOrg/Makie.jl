@@ -141,13 +141,13 @@ descriptor set pointing at the right thing, so the recorded plan is correct
 without being rebuilt. A size or format change still needs a new texture, and
 `frame_signature` carries the texture's identity so that case rebuilds the plan.
 """
-function update_texture!(robj::RenderObject, image_data; filter=:linear, wrap=:clamp)
+function update_texture!(robj::RenderObject, image_data; filter=:linear, wrap=:clamp, mipmap::Bool=false)
     tex = robj.texture
-    if tex !== nothing && texturefits(tex, image_data)
+    if tex !== nothing && texturefits(tex, image_data, mipmap)
         upload_texture_data!(tex, image_data)
         return robj.bindings
     end
-    tex = Texture2D(robj.backend, image_data)
+    tex = Texture2D(robj.backend, image_data; mipmap)
     sampler = Sampler(robj.backend; filter, wrap)
     robj.texture = tex
     robj.bindings = bind_textures([SampledTexture(tex, sampler)])
@@ -160,13 +160,13 @@ end
 Several textures, bound in order (binding 0, 1, …), each written into the one
 already there when all of them fit, for the same reason as one.
 """
-function update_texture!(robj::RenderObject, images::Tuple; filter=:linear, wrap=:clamp)
+function update_texture!(robj::RenderObject, images::Tuple; filter=:linear, wrap=:clamp, mipmap::Bool=false)
     texs = robj.texture
-    if fitsall(texs, images)
+    if fitsall(texs, images, mipmap)
         foreach(upload_texture_data!, texs, images)
         return robj.bindings
     end
-    texs = map(img -> Texture2D(robj.backend, img), images)
+    texs = map(img -> Texture2D(robj.backend, img; mipmap), images)
     robj.texture = texs
     robj.bindings = bind_textures([SampledTexture(t, Sampler(robj.backend; filter, wrap)) for t in texs])
     return robj.bindings
@@ -174,11 +174,13 @@ end
 
 # The textures a render object holds take `images` in place: as many, each of
 # its size and type.
-fitsall(texs::NTuple{N, Any}, images::NTuple{N, Any}) where {N} = all(map(texturefits, texs, images))
-fitsall(texs, images) = false
+fitsall(texs::NTuple{N, Any}, images::NTuple{N, Any}, mipmap) where {N} =
+    all(map((t, i) -> texturefits(t, i, mipmap), texs, images))
+fitsall(texs, images, mipmap) = false
 
 """Whether `data` can be written into `tex` without making a new one."""
-texturefits(tex, data) = size(tex) == size(data) && eltype(tex) == eltype(data)
+texturefits(tex, data, mipmap) = size(tex) == size(data) && eltype(tex) == eltype(data) &&
+    mipmapped(tex) == (mipmap && maximum(size(data)) > 1)
 
 """
     build_draw_args(robj::RenderObject, arg_names::Tuple)

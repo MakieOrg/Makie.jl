@@ -897,8 +897,10 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
     color_dirty && (robj.vertex_count = vertex_count)
     robj.instances = length(instances.positions)
     if color_dirty && colorinfo.texture !== nothing
+        # Filter minified mesh textures through their mip levels.
         update_texture!(robj, glow === nothing ? colorinfo.texture : (colorinfo.texture, glow);
-                        filter = args.interpolate ? :linear : :nearest, wrap = colorinfo.wrap)
+                        filter = args.interpolate ? :linear : :nearest, wrap = colorinfo.wrap,
+                        mipmap = args.interpolate)
     end
     robj.visible = true
     return robj
