@@ -37,7 +37,6 @@ import Mantle
 import Mantle: DeviceArray, GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
                Texture2D, Sampler, SampledTexture, bind_textures,
                upload_texture_data!,
-               transition_image!,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
 import Mantle: Premultiplied, Opaque, PerAttachment, NoWrite, TriangleList, NoCull, DepthOff, DepthLess, DepthLessEq, DepthLessEqReadOnly
