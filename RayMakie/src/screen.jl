@@ -700,13 +700,10 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
         Hikari.clear!(state.film)
         Hikari.clear!(state.integrator)
         state.needs_film_clear = false
+        state.guide_grid = 0
     end
 
-    # Fill auxiliary buffers if denoising is enabled (before main render)
-    if screen.config.denoise
-        adapted_scene = Adapt.adapt(screen.config.device, state.hikari_scene)
-        Hikari.fill_aux_buffers!(state.film, adapted_scene, state.camera[])
-    end
+    screen.config.denoise && refresh_guides!(screen, state)
 
     tracesample!(state.integrator, state.hikari_scene, state.film, state.camera, finalize_framebuffer)
     return state.film
@@ -812,8 +809,6 @@ coverage are.
 """
 function fillauxbuffers!(screen::Screen, scene_state::RayMakieState)
     film = scene_state.film
-    config = screen.config
-    camera = scene_state.camera[]
     # Depth, normal and albedo. Unconditional: `postprocess!` below composites
     # the background wherever `isinf(depth)`, so a frame that skips this reads a
     # depth buffer of zeros, calls nothing escaped, and comes out on a BLACK
@@ -824,7 +819,6 @@ function fillauxbuffers!(screen::Screen, scene_state::RayMakieState)
     # is not optional.
     tlas = scene_state.hikari_scene.accel
     lights = scene_state.hikari_scene.lights
-    has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
     # …and separately, whether one of them is SEEN where a ray hits nothing. Not
     # the same question: a `DirectionalLight` is at infinity but is a delta
     # light, and an ambient light is at infinity but is not a background; see
@@ -836,10 +830,7 @@ function fillauxbuffers!(screen::Screen, scene_state::RayMakieState)
     # background colour.
     paints_sky = any(paints_background, lights.data_order)
     if Raycore.n_instances(tlas) > 0
-        # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
-        # Must re-adapt per render so mesh mutations are visible.
-        adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
-        Hikari.fill_aux_buffers!(film, adapted_scene, camera; has_infinite_lights=has_inf)
+        refresh_guides!(screen, scene_state)
     else
         # Nothing to hit, so every ray escapes. Any depth `Hikari.missed` accepts
         # will do; `Inf` is the clearest. No surface either: the guides are zero.
@@ -848,6 +839,42 @@ function fillauxbuffers!(screen::Screen, scene_state::RayMakieState)
         fill!(film.albedo, RGB{Float32}(0, 0, 0))
     end
     return paints_sky
+end
+
+"""
+Guide rays per pixel and axis, and the samples a film in a window must have accumulated
+before its guides are refilled with them.
+"""
+const GUIDE_GRIDS = ((1, 0), (3, 2), (9, 8))
+
+"""
+    guide_grid(live, samples) -> Int
+
+The guide grid for a film that has accumulated `samples`. In a `live` window it starts at one ray
+per pixel, so a moving camera pays next to nothing for its guides, and refines while the camera
+holds still. An offscreen render takes the finest grid at once.
+"""
+function guide_grid(live::Bool, samples::Integer)
+    live || return last(GUIDE_GRIDS)[1]
+    return maximum(grid for (grid, from) in GUIDE_GRIDS if samples >= from)
+end
+
+"""
+    refresh_guides!(screen, state)
+
+Refill the film's depth, normal and albedo when its accumulated samples call for a finer
+[`guide_grid`](@ref) than they were filled with since the film was last cleared. Every other call
+costs nothing, which is what lets a frame ask for them every time.
+"""
+function refresh_guides!(screen::Screen, state::RayMakieState)
+    grid = guide_grid(screen.window !== nothing, state.film.iteration_index[])
+    grid > state.guide_grid || return
+    # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
+    adapted_scene = Adapt.adapt(screen.config.device, state.hikari_scene)
+    has_infinite_lights = any(Hikari.is_infinite_light, state.hikari_scene.lights.data_order)
+    Hikari.fill_aux_buffers!(state.film, adapted_scene, state.camera[]; has_infinite_lights, grid)
+    state.guide_grid = grid
+    return
 end
 
 # Postprocess all scenes and composite into output buffer — shared by

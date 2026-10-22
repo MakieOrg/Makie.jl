@@ -142,6 +142,9 @@ mutable struct RayMakieState
     # The scene's lights as last handed to the tracer; `nothing` for an
     # overlay-only scene. See `sync_lights!`.
     lights::Union{Nothing, TracedLights}
+    # The guide grid the film's depth, normal and albedo were last filled with,
+    # 0 once the film is cleared. See `refresh_guides!`.
+    guide_grid::Int
 end
 
 # Helper to get HWTLAS from state
@@ -598,7 +601,7 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
     # Clear film when Makie camera changes (rotation, zoom, pan)
 
     state = RayMakieState(rscene, film, camera, hikari_scene, false,
-                          new_volpath(screen.config), false, false, 0, 0, lights)
+                          new_volpath(screen.config), false, false, 0, 0, lights, 0)
     # Guard: only clear film when the projection matrix actually changes.
     # Makie's Observable fires on every notify(), even when the value is identical.
     # Without this guard, GLMakie re-renders (triggered by overlay image updates)
@@ -618,7 +621,7 @@ end
 # owns, with viewport-remapped projection matrices — so a per-scene film is not
 # "the same buffer" in a second copy, it is a buffer nothing ever reads.
 function create_overlay_only_state(scene::Makie.Scene, screen)
-    state = RayMakieState(scene, nothing, nothing, nothing, false, nothing, true, false, 0, 0, nothing)
+    state = RayMakieState(scene, nothing, nothing, nothing, false, nothing, true, false, 0, 0, nothing, 0)
     return state
 end
 
