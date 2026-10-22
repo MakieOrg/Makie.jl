@@ -317,6 +317,16 @@ function rebind_overlay_args!(cells, robjs, args, dev)
 end
 
 """
+One pixel of a frame copied out of an image into a buffer, which holds it row by row and not
+column-major like the Julia arrays `Mantle.blit_fragment` reads.
+"""
+function frame_blit_fragment(_inputs, colour, width::Int32, height::Int32)
+    x = unsafe_trunc(Int32, Mantle.frag_coord_x())
+    y = unsafe_trunc(Int32, Mantle.frag_coord_y())
+    return Mantle.blitcolor(colour[y * width + x + Int32(1)])
+end
+
+"""
     frame_plan!(screen, key, mktarget, clear, source, robjs, w, h; finish)
 
 The compiled plan for one composited frame, built on first use and reused until
@@ -410,7 +420,7 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
         Mantle.render!(g, fxaa ? "fxaa" : "present", target => Mantle.Discard) do p
             pipeline = fxaa ? get_fxaa_pipeline!(screen) : get!(screen.gfx_pipelines, :plain_blit) do
                 GraphicsPipeline(;vertex=VertexShader(Mantle.blit_vertex),
-                    fragment=FragmentShader(Mantle.blit_fragment),blend=Opaque(),cull=NoCull(),depth=DepthOff())
+                    fragment=FragmentShader(frame_blit_fragment),blend=Opaque(),cull=NoCull(),depth=DepthOff())
             end
             args = fxaa ? (colour_px, flag_px, Int32(w), Int32(h)) : (colour_px,Int32(w),Int32(h))
             Mantle.draw!(p, pipeline, (), 3;
