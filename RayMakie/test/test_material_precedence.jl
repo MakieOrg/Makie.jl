@@ -1,6 +1,6 @@
 using Test
 using Makie, GeometryBasics, Hikari, RayMakie
-using Makie: Scene, cam3d!, mesh!, Point3f, Sphere
+using Makie: Scene, cam3d!, mesh!, surface!, Point3f, Sphere
 using RayMakie: extract_material, color_was_set
 
 # What `material = ...` on a plot is allowed to survive.
@@ -52,6 +52,30 @@ kd_of(mat) = Hikari.device_param(nothing, mat.Kd)
         mat = extract_material(plot, ORANGE_TEX)
         @test mat isa Hikari.Diffuse
         @test kd_of(mat).rgb == Hikari.RGBSpectrum(1.0f0, 0.65f0, 0.0f0)
+    end
+
+    # An emissive material is merged with a colour the plot was given, colormapped
+    # values included, but not with the cycler's: that painted a textured mix with
+    # city lights (the film's Earth) in the palette's blue.
+    @testset "an emissive mix keeps its surface without a colour" begin
+        scene = Scene(); cam3d!(scene)
+        glow = Hikari.Emissive(Le = Hikari.RGBSpectrum(1.0f0))
+        mix = Hikari.MixMaterialSpec(Hikari.Diffuse(Kd=GREEN), Hikari.Diffuse(Kd=GREEN), Hikari.ConstTexture(0.5f0))
+        plot = mesh!(scene, Sphere(Point3f(0), 1.0f0); material=Hikari.MediumInterface(mix; emission=glow))
+        mat = extract_material(plot, ORANGE_TEX)
+        @test kd_of(mat.material.material1).rgb == GREEN
+        @test kd_of(mat.material.material2).rgb == GREEN
+
+        coloured = mesh!(scene, Sphere(Point3f(0), 1.0f0); color=:orange,
+                         material=Hikari.MediumInterface(mix; emission=glow))
+        mat = extract_material(coloured, ORANGE_TEX)
+        @test kd_of(mat.material.material1).rgb == Hikari.RGBSpectrum(1.0f0, 0.65f0, 0.0f0)
+
+        # A surface's unset colour is its colormapped heights, which do merge.
+        surf = surface!(scene, rand(Float32, 4, 4);
+                        material=Hikari.MediumInterface(Hikari.Diffuse(Kd=GREEN); emission=glow))
+        mat = extract_material(surf, ORANGE_TEX)
+        @test kd_of(mat.material).rgb == Hikari.RGBSpectrum(1.0f0, 0.65f0, 0.0f0)
     end
 
     @testset "a colour with no material still builds a Diffuse" begin
