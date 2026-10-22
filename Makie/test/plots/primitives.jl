@@ -149,13 +149,7 @@ end
 
 @testset "annotation" begin
     @testset "updates" begin
-        ps = rand(Point2f, 20)
-        f, a, p = annotation(ps, text = ["long overlapping label" for _ in 1:20], maxiter = 0)
-        offsets = copy(p.offsets[])
-        p.__advance_optimization = 1
-        @test p.offsets[] != offsets
-
-        f, a, p = annotation(Point2f.(1:10), text = string.(1:10))
+        f, a, p = annotation(Point2f.(1:10), text = string.(1:10), shrink = (0, 0))
         update!(p, arg1 = Point2f.(1:20), text = string.(1:20))
         boundingbox(p.plots[1]) # shouldn't error
         @test length(p.plots[2].plots) == 20
@@ -164,7 +158,7 @@ end
         boundingbox(p.plots[1]) # shouldn't error
         @test length(p.plots[2].plots) == 5
 
-        f, a, p = annotation(fill(Vec2f(10), 10), Point2f.(1:10), text = string.(1:10))
+        f, a, p = annotation(fill(Vec2f(10), 10), Point2f.(1:10), text = string.(1:10), shrink = (0, 0))
         update!(p, arg1 = fill(Vec2f(10), 20), arg2 = Point2f.(1:20), text = string.(1:20))
         boundingbox(p.plots[1]) # shouldn't error
         @test length(p.plots[2].plots) == 20
@@ -174,15 +168,157 @@ end
         @test length(p.plots[2].plots) == 5
     end
 
-    @testset "empty string at viewport center (no StackOverflow)" begin
-        # Empty strings produce zero-size bounding boxes. When such a label
-        # sits at the viewport center, the initial bias in
-        # calculate_best_offsets! used to call normalize(zero_vector) which
-        # produced NaN offsets. Combined with NaN != NaN defeating the
-        # ComputePipeline convergence check, this caused infinite recursion.
-        fig, ax, plt = scatter([1.0, 2.0, 3.0], [1.0, 2.0, 3.0])
-        # This must not throw a StackOverflowError
-        p = annotation!(ax, [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], text = ["A", "", "C"])
-        @test !any(x -> any(isnan, x), p.offsets[])
+    @testset "candidate placement layout" begin
+        targets = [Point2f(mod(137i, 500), mod(89i, 400)) for i in 1:40]
+        text_bbs = [Rect2d(-30, -8, 60, 16) + t for t in targets]
+        viewport = Rect2d(0, 0, 500, 400)
+        offsets = zeros(Vec2f, 40)
+        algorithm = Makie.CandidatePlacement()
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport, fill(Vec2d(NaN), 40); maxiter = Makie.automatic, shrink = (5.0, 7.0))
+
+        boxes = [Makie.pad_rect(bb + o, algorithm.padding) for (bb, o) in zip(text_bbs, offsets)]
+        @test all(box -> all(minimum(box) .>= -1.0e-6) && all(maximum(box) .<= maximum(viewport) .+ 1.0e-6), boxes)
+        @test all(iszero(Makie.overlap_area(boxes[i], boxes[j])) for i in 1:40 for j in (i + 1):40)
+        @test all(Makie.rect_point_distance(boxes[i], targets[j]) >= algorithm.pointradius for i in 1:40 for j in 1:40 if i != j)
+
+        offsets_again = zeros(Vec2f, 40)
+        Makie.place_labels!(algorithm, offsets_again, targets, text_bbs, viewport, fill(Vec2d(NaN), 40); maxiter = Makie.automatic, shrink = (5.0, 7.0))
+        @test offsets_again == offsets
+    end
+
+    @testset "direction preference breaks ties" begin
+        targets = [Point2f(100, 100)]
+        text_bbs = [Rect2d(-30, -8, 60, 16) + targets[1]]
+        offsets = zeros(Vec2f, 1)
+        Makie.place_labels!(Makie.CandidatePlacement(), offsets, targets, text_bbs, Rect2d(0, 0, 500, 400), fill(Vec2d(NaN), 1); maxiter = Makie.automatic, shrink = (5.0, 7.0))
+        @test offsets[1] == Vec2f(0, 16)
+    end
+
+    @testset "labels of points outside the viewport stay with their points" begin
+        targets = [Point2f(-300, 100), Point2f(-300, 110), Point2f(-300, 120)]
+        text_bbs = [Rect2d(-30, -8, 60, 16) + t for t in targets]
+        viewport = Rect2d(0, 0, 500, 400)
+        offsets = zeros(Vec2f, 3)
+        algorithm = Makie.CandidatePlacement()
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, viewport, fill(Vec2d(NaN), 3); maxiter = Makie.automatic, shrink = (5.0, 7.0))
+        boxes = [Makie.pad_rect(bb + o, algorithm.padding) for (bb, o) in zip(text_bbs, offsets)]
+        @test all(box -> iszero(Makie.overlap_area(box, viewport)), boxes)
+        @test all(iszero(Makie.overlap_area(boxes[i], boxes[j])) for i in 1:3 for j in (i + 1):3)
+    end
+
+    @testset "empty labels stay put as obstacles" begin
+        targets = [Point2f(mod(137i, 500), mod(89i, 400)) for i in 1:40]
+        text_bbs = [i % 4 == 0 ? Rect2d(-30, -8, 60, 16) + t : Rect2d(t, Vec2d(0, 0)) for (i, t) in enumerate(targets)]
+        offsets = zeros(Vec2f, 40)
+        algorithm = Makie.CandidatePlacement()
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, Rect2d(0, 0, 500, 400), fill(Vec2d(NaN), 40); maxiter = Makie.automatic, shrink = (5.0, 7.0))
+
+        @test all(i -> i % 4 == 0 || iszero(offsets[i]), 1:40)
+        boxes = Dict(i => Makie.pad_rect(text_bbs[i] + offsets[i], algorithm.padding) for i in 4:4:40)
+        @test all(Makie.rect_point_distance(boxes[i], targets[j]) >= algorithm.pointradius for i in 4:4:40 for j in 1:40 if i != j)
+    end
+
+    @testset "partially fixed labels" begin
+        ps = Point2f.(1:10, 1:10)
+        given = fill(Vec2f(NaN), 10)
+        given[3] = Vec2f(80, -40)
+        for algorithm in (Makie.CandidatePlacement(), Makie.CandidatePlacement(seed = 1, restarts = 0))
+            f, a, p = annotation(given, ps, text = string.(1:10); algorithm)
+            Makie.update_state_before_display!(f)
+            @test p.offsets[][3] == Vec2f(80, -40)
+            @test all(i -> i == 3 || !iszero(p.offsets[][i]), 1:10)
+
+            f, a, p = annotation(given, ps, text = string.(1:10); algorithm, maxiter = 0)
+            Makie.update_state_before_display!(f)
+            @test p.offsets[][3] == Vec2f(80, -40)
+            @test all(i -> i == 3 || iszero(p.offsets[][i]), 1:10)
+        end
+
+        positions = fill(Point2f(NaN), 10)
+        positions[3] = Point2f(6, 2)
+        f, a, p = annotation(positions, ps, text = string.(1:10), labelspace = :data)
+        Makie.update_state_before_display!(f)
+        target, label = Makie.shift_project.(Ref(a.scene), [Point2f(3, 3), Point2f(6, 2)])
+        @test p.offsets[][3] ≈ Vec2f(label - target)
+        @test all(i -> i == 3 || !iszero(p.offsets[][i]), 1:10)
+
+        targets = [Point2f(mod(137i, 500), mod(89i, 400)) for i in 1:40]
+        text_bbs = [Rect2d(-30, -8, 60, 16) + t for t in targets]
+        fixed = fill(Vec2d(NaN), 40)
+        fixed[1] = Vec2d(120, 90)
+        offsets = zeros(Vec2f, 40)
+        algorithm = Makie.CandidatePlacement()
+        Makie.place_labels!(algorithm, offsets, targets, text_bbs, Rect2d(0, 0, 500, 400), fixed; maxiter = Makie.automatic, shrink = (5.0, 7.0))
+        @test offsets[1] == Vec2f(120, 90)
+        fixed_box = Makie.pad_rect(text_bbs[1] + offsets[1], algorithm.padding)
+        @test all(iszero(Makie.overlap_area(Makie.pad_rect(text_bbs[i] + offsets[i], algorithm.padding), fixed_box)) for i in 2:40)
+    end
+
+    @testset "leader suppression" begin
+        f, a, p = annotation([Vec2f(0, 0)], [Point2f(1, 1)], text = "hello", shrink = (0, 0), align = (:center, :center))
+        Makie.update_state_before_display!(f)
+        @test isempty(p.plotspecs[])
+
+        f, a, p = annotation([Vec2f(0, 0)], [Point2f(1, 1)], text = "", shrink = (0, 0), style = Ann.Styles.LineArrow())
+        Makie.update_state_before_display!(f)
+        @test isempty(p.plotspecs[])
+
+        f, a, p = annotation([Vec2f(30, 0)], [Point2f(1, 1)], text = "hello", align = (:left, :center))
+        Makie.update_state_before_display!(f)
+        @test length(p.plotspecs[]) == 1
+
+        f, a, p = annotation([Vec2f(3, 0)], [Point2f(1, 1)], text = "hello", align = (:left, :center))
+        Makie.update_state_before_display!(f)
+        @test isempty(p.plotspecs[])
+    end
+
+    @testset "ambiguity penalty" begin
+        algorithm = Makie.CandidatePlacement(ambiguitypenalty = 100.0)
+        box = Rect2d(0, 0, 60, 20)
+        target = Point2d(30, -4)
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(-4, 10), target, 20.0) == 80
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(10, -4), target, 20.0) == 80
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(-4, 10), target, 0.0) == 0
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(30, -30), target, 20.0) == 0
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(90, -40), target, 20.0) == 0
+        @test Makie.ambiguity_penalty(algorithm, box, Point2d(50, -10), target, 20.0) == 50
+    end
+
+    @testset "placement geometry" begin
+        rect = Rect2d(0, 0, 10, 4)
+        @test Makie.ring_distance(rect, Vec2d(1, 0), 3) == 8
+        @test Makie.ring_distance(rect, Vec2d(0, -1), 3) == 5
+        @test Makie.ring_distance(rect, normalize(Vec2d(1, 1)), 3) ≈ 5 * sqrt(2)
+        @test Makie.ring_distance(rect, normalize(Vec2d(1, 1)), 0) ≈ 2 * sqrt(2)
+        @test Makie.leader_start_point(rect, Point2d(20, 2)) == Point2d(10, 2)
+        @test Makie.leader_start_point(rect, Point2d(3, 30)) == Point2d(3, 4)
+        @test Makie.leader_start_point(rect, Point2d(18, 2 + 10 * sqrt(3))) ≈ Point2d(9, 2 + sqrt(3))
+        @test Makie.leader_start_point(rect, Point2d(5, 2)) == Point2d(5, 2)
+
+        @test Makie.rect_point_distance(rect, Point2d(13, 8)) == 5
+        @test Makie.rect_point_distance(rect, Point2d(5, 2)) == 0
+        @test Makie.segment_point_distance(Point2d(0, 0), Point2d(10, 0), Point2d(5, 3)) == 3
+        @test Makie.segment_point_distance(Point2d(0, 0), Point2d(10, 0), Point2d(14, 3)) == 5
+
+        @test Makie.segments_cross(Point2d(0, 0), Point2d(2, 2), Point2d(0, 2), Point2d(2, 0))
+        @test !Makie.segments_cross(Point2d(0, 0), Point2d(2, 2), Point2d(3, 0), Point2d(3, 5))
+        @test Makie.segment_intersects_rect(Point2d(-5, 2), Point2d(15, 2), rect)
+        @test Makie.segment_intersects_rect(Point2d(5, 2), Point2d(15, 20), rect)
+        @test !Makie.segment_intersects_rect(Point2d(-5, 5), Point2d(15, 5), rect)
+        near = Makie.LabelCandidate(Vec2d(0, 0), Rect2d(5, 2, 10, 10), Point2d(8, 5), Point2d(8, 5), 0.0, 0)
+        far = Makie.LabelCandidate(Vec2d(0, 0), Rect2d(11, 0, 10, 10), Point2d(15, 5), Point2d(15, 5), 0.0, 0)
+        own = Makie.LabelCandidate(Vec2d(0, 0), rect, Point2d(5, 2), Point2d(5, 2), 0.0, 0)
+        @test !Makie.extents_disjoint(own, near)
+        @test Makie.extents_disjoint(own, far)
+        candidate = Makie.LabelCandidate(Vec2d(0, 0), rect, Point2d(-5, 20), Point2d(0, 2), 0.0, 0)
+        @test (candidate.extent_min, candidate.extent_max) == (Vec2d(-5, 0), Vec2d(10, 20))
+        @test Makie.segment_intersects_rect(Point2d(-5, -5), Point2d(15, 9), rect)
+        @test Makie.segment_intersects_rect(Point2d(2, 1), Point2d(30, 30), rect)
+        @test !Makie.segment_intersects_rect(Point2d(-5, 5), Point2d(5, 15), rect)
+        @test !Makie.segment_intersects_rect(Point2d(0, 4), Point2d(10, 4), rect)
+        @test Makie.overlap_area(rect, Rect2d(5, 2, 10, 10)) == 10
+        @test Makie.pad_rect(rect, Vec2d(1, 2)) == Rect2d(-1, -2, 12, 8)
+        @test Makie.slide_inside(Rect2d(-3, 8, 10, 4), rect) == Rect2d(0, 0, 10, 4)
+        @test Makie.slide_inside(Rect2d(-3, 0, 20, 4), rect) == Rect2d(-3, 0, 20, 4)
     end
 end
