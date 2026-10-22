@@ -678,7 +678,7 @@ function locked_mark_dirty!(x::Computed, obs_to_update = x.parent.graph.obs_to_u
     # if a node is dirty its parents dependents should be marked dirty
     x.dirty = true
     for dep in x.parent.dependents
-        mark_input_dirty!(x.parent, dep)
+        isdirty(x.parent) || mark_input_dirty!(x.parent, dep)
         locked_mark_dirty!(dep, obs_to_update)
     end
     x.dirty = false
@@ -1426,19 +1426,18 @@ end
 
 function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
-    if haskey(attr.inputs, key) || haskey(attr.outputs, key)
+    if haskey(attr.inputs, key) || _is_invalid_output_target(attr, key)
         # If this is a nested key we should not clean it up because it belongs
         # to something else
         error("Cannot attach input with name $key - already exists!")
     end
 
-    output = Computed(key)
+    output = get!(attr.outputs, key, Computed(key))
     input = Input(attr, key, value, func, output)
+    _maybe_transfer_dependents!(input, output)
     output.parent = input
     output.parent_idx = 1
-    # Needs to be Any, since input can change type
     attr.inputs[key] = input
-    attr.outputs[key] = output
     return attr
 end
 
@@ -1453,6 +1452,26 @@ compute_identity(inputs::NamedTuple, ::NamedTuple, @nospecialize(cached)) = valu
 compute_identity(arg) = arg
 compute_identity(args...) = args
 
+function _recreate_typed_edge(te::TypedEdge{IT, OT, F}, inputs) where {IT, OT, F}
+    N = length(inputs)
+    values = ntuple(i -> inputs[i].value, N)
+    return TypedEdge{IT, OT, F}(
+        te.callback,
+        IT(values),
+        te.inputs_dirty,
+        te.outputs,
+        te.output_nodes
+    )
+end
+
+function _update_refs_in_dependents!(edge::ComputeEdge)
+    for dep in edge.dependents
+        if isdefined(dep, :typed_edge) && isassigned(dep.typed_edge)
+            dep.typed_edge[] = _recreate_typed_edge(dep.typed_edge[], dep.inputs)
+        end
+    end
+end
+
 function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
     if length(inputs) != length(edge.outputs)
         error("A `compute_identity` callback requires the length of inputs and outputs to match.")
@@ -1463,6 +1482,11 @@ function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
         edge.outputs[i].value = inputs[i]
         edge.outputs[i].dirty = true
     end
+
+    # If the outputs of this egde were previously orphaned by delete! or by being
+    # created with add_node! they may have added dependents that were already
+    # resolved with the old ref's. Fix them.
+    _update_refs_in_dependents!(edge)
 
     return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs)
 end
@@ -1487,7 +1511,7 @@ This does not create a settable input, meaning you cannot use
 connected node.
 """
 function add_input!(attr::ComputeGraph, key::Symbol, value::Computed)
-    if haskey(attr.outputs, key)
+    if _is_invalid_output_target(attr, key)
         error("Cannot attach throughput with name $key - already exists!")
     end
     register_computation!(compute_identity, attr, [value], [key])
@@ -1797,11 +1821,41 @@ function assert_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, o
     return
 end
 
+function _is_invalid_output_target(graph, name)
+    # Node is valid if:
+    # - it doesn't exist (we can create it as new output)
+    # - it does not have a parent edge (we can set it with no loss)
+    # - it has an invalid parent edge (can be overwritten with care)
+    return haskey(graph.outputs, name) && hasparent(graph.outputs[name]) && (
+        (graph.outputs[name].parent isa Input) ||
+        (graph.outputs[name].parent.callback !== invalid_callback)
+    )
+end
+
+function _maybe_transfer_dependents!(to::AbstractEdge, from::Computed)
+    # `add_node!` and `delete!(edge)` produce nodes with parent where the
+    # parent may track some dependents (and nothing more). These need to be
+    # added to the new edge.
+    new_dependents = to.dependents
+    if hasparent(from)
+        # Don't trigger obs resolve here (don't use mark_dirty!)
+        @lock GLOBAL_LOCK locked_mark_dirty!(from)
+        for dep in (from.parent::ComputeEdge{ComputeGraph}).dependents
+            if !in(dep, new_dependents)
+                push!(new_dependents, dep)
+            end
+        end
+    end
+    return
+end
+
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
     @ifelse_enabled(check_boxed_values(f))
 
     if any(k -> haskey(attr.outputs, k), outputs)
-        N_existing = count(k -> haskey(attr.outputs, k) && hasparent(attr.outputs[k]), outputs)
+        # Allow nodes freed by `delete!` or created via `add_node!`. These have a
+        # parent edge only to track dependents. Exclude them here.
+        N_existing = count(name -> _is_invalid_output_target(attr, name), outputs)
         if N_existing == 0
             # fine, we won't be overwriting an edge
         elseif N_existing != length(outputs)
@@ -1830,13 +1884,16 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
 
     # use order of namedtuple, which should not change!
     for (i, symbol) in enumerate(outputs)
-        # create an uninitialized Ref, which gets replaced by the correctly strictly typed Ref on first resolve
-        value = get!(attr.outputs, symbol, Computed(symbol))
-        value.parent = new_edge
-        value.parent_idx = i
-        value.dirty = true
-        push!(new_edge.outputs, value)
+        # Either grab the existing node or create a new uinitialized node
+        output = get!(attr.outputs, symbol, Computed(symbol))
+        _maybe_transfer_dependents!(new_edge, output)
+        output.parent = new_edge
+        output.parent_idx = i
+        output.dirty = true
+        push!(new_edge.outputs, output)
     end
+
+    update_observables!(attr)
 
     return
 end

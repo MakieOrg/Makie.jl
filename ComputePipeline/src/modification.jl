@@ -300,9 +300,6 @@ function maybe_set_type!(node::Computed, T)
     return
 end
 
-################################################################################
-# TODO: test all of this:
-
 function is_part_of_loop(node::Computed, visited = Dict{UInt64, Vector{Bool}}())
     return is_part_of_loop(node.parent, node, visited)
 end
@@ -392,26 +389,6 @@ function _replace_edge!(edge, new_edge)
     return
 end
 
-function _recreate_typed_edge(te::TypedEdge{IT, OT, F}, inputs) where {IT, OT, F}
-    N = length(inputs)
-    values = ntuple(i -> inputs[i].value, N)
-    return TypedEdge{IT, OT, F}(
-        te.callback,
-        IT(values),
-        te.inputs_dirty,
-        te.outputs,
-        te.output_nodes
-    )
-end
-
-function _update_refs_in_dependents!(edge::ComputeEdge)
-    for dep in edge.dependents
-        if isdefined(dep, :typed_edge) && isassigned(dep.typed_edge)
-            dep.typed_edge[] = _recreate_typed_edge(dep.typed_edge[], dep.inputs)
-        end
-    end
-end
-
 """
     modify_edge!(edge::ComputeEdge[; callback, inputs, outputs])
 
@@ -493,16 +470,6 @@ function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
         inputs, inputs_dirty, outputs,
         Ref(true), edge.dependents, Ref{TypedEdge}()
     )
-
-    # If we target a compute_identity output refs must (again) be === input refs.
-    # Note that if `outputs` changed (given in kwargs) this may be a different
-    # set of outputs that we ahd originally, if we started with `compute_identity`
-    if callback === compute_identity
-        for (in, out) in zip(new_edge.inputs, new_edge.outputs)
-            out.value = in.value
-        end
-        _update_refs_in_dependents!(new_edge)
-    end
 
     @lock GLOBAL_LOCK begin
         # remove all references to `edge` that exist via edge.inputs
@@ -610,40 +577,33 @@ function modify_edge!(edge::Input; kwargs...)
     return
 end
 
-# TODO Way to replace ::Input? Or what was this meant to be?
-# function replace_input!(_callback, new_sources, output::Computed)
-#     input = output.parent::Input
-#     graph = output.parent.graph
-
-#     # Build new edge
-#     inputs = convert_to_nodes(graph, new_sources)
-#     output.parent = ComputeEdge(
-#         graph, MapFunctionWrapper(_callback),
-#         inputs, fill(true, length(inputs)), [output],
-#         Ref(false), input.dependents, Ref{TypedEdge}()
-#     )
-#     output.parent_idx = 1
-#     for input in inputs
-#         push!(input.parent.dependents, output.parent)
-#     end
-
-#     # Remove Input/make it GC-able
-#     delete!(graph.inputs, output.name)
-#     return
-# end
-
 """
     add_node!(graph, name[, init])
 
-Creates a compute node with an invalid parent edge. If an initial value is given
-with `init`, the node will be set up as "resolved" and hold that value. Otherwise
-resolving the node will cause an error.
+Creates a compute node that doesn't depend on any parent nodes yet.
 
-This node can be created ahead of time to later be connected with `modify_edge!`.
-Any downstream dependency will be kept.
-It can not be used as target for `map!` and `register_computation!`.
+This node can be used as a parent for other nodes, i.e. it can be an input in
+`map!`, `register_computation!`, `modify_edge!` or similar. Note that if `init`
+is **not** given, the node has no value and no way to derive it, so it will
+error when it (or any dependent node or Observable) is resolved. To attach a
+parent, the node needs to be used as an output in `map`, `register_computation!`,
+`modify_edge!` etc., or a graph input with the same name needs to be defined by
+`add_input!`.
+
+## Example
+
+```
+graph = ComputeGraph()
+add_input!(graph, :input, 1)
+ComputePipeline.add_node!(graph, :middle)
+map!(identity, :middle, :output) # middle as input
+map!(identity, :input, :middle) # middle as output, now resolvable
+```
 """
 function add_node!(graph, name)
+    if haskey(graph.outputs, name)
+        error("Cannot create node :$name because it already exists.")
+    end
     register_computation!(invalid_callback, graph, Symbol[], Symbol[name])
     return graph[name]
 end

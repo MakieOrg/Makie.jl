@@ -850,6 +850,100 @@ end
     end
 end
 
+@testset "Orphaned node integration" begin
+    graph = ComputeGraph()
+    add_input!(graph, :input, 1)
+
+    # simplest case, no dependents, no mixture of outputs
+    ComputePipeline.add_node!(graph, :a1)
+    ComputePipeline.add_node!(graph, :b1, 0)
+    map!(identity, graph, :input, :a1)
+    map!(identity, graph, :input, :b1)
+    @test graph.a1[] == 1
+    @test graph.b1[] == 1
+
+    # This should error (no overwriting existing nodes)
+    @test_throws ErrorException ComputePipeline.add_node!(graph, :a1)
+    @test_throws ErrorException ComputePipeline.add_node!(graph, :b1, -1)
+
+    # adding dependents works
+    map!(identity, graph, :a1, :out1)
+    map!(+, graph, [:a1, :b1], :out12)
+    @test graph.out1[] == 1
+    @test graph.out12[] == 2
+
+    # Disconnect and validate state (graph.input can't propagate here)
+    e = graph.a1.parent
+    delete!(e)
+    test_disconnected_edge(graph.a1.parent, e)
+    e = graph.b1.parent
+    delete!(e)
+    test_disconnected_edge(graph.b1.parent, e)
+    graph.input = 2
+    @test !ComputePipeline.isdirty(graph.a1)
+    @test !ComputePipeline.isdirty(graph.b1)
+    @test !ComputePipeline.isdirty(graph.out1)
+    @test !ComputePipeline.isdirty(graph.out12)
+
+    # map! should capture dependents and mark outputs dirty
+    map!(x -> (x, x), graph, :input, [:a1, :b1])
+    @test graph.a1.parent.dependents == [graph.out1.parent, graph.out12.parent]
+    @test ComputePipeline.isdirty(graph.a1)
+    @test ComputePipeline.isdirty(graph.b1)
+    @test ComputePipeline.isdirty(graph.out1)
+    @test ComputePipeline.isdirty(graph.out12)
+    @test graph.a1[] == 2
+    @test graph.b1[] == 2
+    @test graph.out1[] == 2
+    @test graph.out12[] == 4
+
+    # map! with un-parented nodes or non-existing nodes mixed in should also work
+    e = graph.a1.parent
+    delete!(e)
+    test_disconnected_edge(graph.a1.parent, e)
+    e = graph.b1.parent
+    delete!(e)
+    test_disconnected_edge(graph.b1.parent, e)
+    graph.input = 5
+
+    graph.outputs[:a2] = ComputePipeline.Computed(:a2)
+    map!(x -> (x, x), graph, :input, [:a1, :a2])
+    map!(x -> (x, x), graph, :input, [:b1, :b2])
+    @test graph.out1[] == 5
+    @test graph.out12[] == 10
+    @test graph.a2[] == 5
+    @test graph.b2[] == 5
+
+    # register_computation! and alias! should also work
+    e = graph.a1.parent
+    delete!(e)
+    test_disconnected_edge(graph.a1.parent, e)
+    test_disconnected_edge(graph.a2.parent, e, dependents = [])
+    e = graph.b1.parent
+    delete!(e)
+    test_disconnected_edge(graph.b1.parent, e)
+    test_disconnected_edge(graph.b2.parent, e, dependents = [])
+
+    graph.input = 1
+    register_computation!(graph, [:input], [:a1]) do (x,), changed, cached
+        return (x,)
+    end
+    ComputePipeline.alias!(graph, :input, :b1)
+    @test graph.out1[] == 1
+    @test graph.out12[] == 2
+    @test graph.a2[] == 5 # orphaned
+    @test graph.b2[] == 5 # orphaned
+
+    # And add_input! should work too, including cross-graph
+    add_input!(graph, :a2, 17)
+    @test graph.a2[] == 17
+
+    parent = ComputeGraph()
+    add_input!(parent, :in, 7)
+    add_input!(graph, :b2, parent.in)
+    @test graph.b2[] == 7
+end
+
 @testset "move!" begin
     graph = ComputeGraph()
     add_input!(graph, :a, 1)
