@@ -942,6 +942,20 @@ end
     add_input!(parent, :in, 7)
     add_input!(graph, :b2, parent.in)
     @test graph.b2[] == 7
+
+    # loops should be detected and error
+    delete!(parent.in.parent)
+    @test_throws ErrorException add_input!(parent, :in, graph.b2)
+
+    delete!(graph.a1.parent)
+    # all outputs loop (branching: all exist, all orphans)
+    @test_throws ErrorException map!(identity, graph, :out1, :a1)
+    # 1 of 2 outputs loop (branching: some exist)
+    @test_throws ErrorException map!(x -> (x, x), graph, :out1, [:a1, :a3])
+    delete!(graph.a2.parent)
+    map!(identity, graph, :input, :a2)
+    # looping orphan + missmatch  (branching: all exist, collecting problems)
+    @test_throws ErrorException map!(x -> (x, x), graph, :out1, [:a1, :a2])
 end
 
 @testset "move!" begin

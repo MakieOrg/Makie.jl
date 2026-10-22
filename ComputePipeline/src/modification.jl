@@ -328,7 +328,21 @@ function is_part_of_loop(edge::ComputeEdge, output, visited = Dict{UInt64, Vecto
     return false
 end
 
-is_child_of(child::Computed, parent::Computed) = _is_child_of(child, parent.parent)
+"""
+    is_child_of(child, parent)
+
+Returns true if there is a path from `parent` down to `child`.
+
+If this connection exists, `mark_dirty!(parent)` will cause `child` to be marked
+dirty and `resolve!(child)` will cause `parent` to be resolved.
+
+This can be used for detecting loops ahead of time. If a connection `a -> b` is
+considered it will create a loop if `b -> ... -> a` already exists, i.e. if
+`is_child_of(a, b)`.
+"""
+function is_child_of(child::Computed, parent::Computed)
+    return hasparent(parent) && _is_child_of(child, parent.parent)
+end
 function _is_child_of(child::Computed, edge::AbstractEdge)
     for dep in edge.dependents::Vector{ComputeEdge{ComputeGraph}}
         if is_child_of(child, dep)

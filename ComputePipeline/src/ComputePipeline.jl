@@ -1426,7 +1426,7 @@ end
 
 function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
-    if haskey(attr.inputs, key) || _is_invalid_output_target(attr, key)
+    if haskey(attr.inputs, key) || _is_invalid_output_target(attr, key, Computed[])
         # If this is a nested key we should not clean it up because it belongs
         # to something else
         error("Cannot attach input with name $key - already exists!")
@@ -1511,8 +1511,12 @@ This does not create a settable input, meaning you cannot use
 connected node.
 """
 function add_input!(attr::ComputeGraph, key::Symbol, value::Computed)
-    if _is_invalid_output_target(attr, key)
-        error("Cannot attach throughput with name $key - already exists!")
+    if _is_invalid_output_target(attr, key, (value,))
+        if is_child_of(value, attr.outputs[key])
+            error("Cannot attach throughput with name :$key as this would create a loop!")
+        else
+            error("Cannot attach throughput with name :$key - already exists!")
+        end
     end
     register_computation!(compute_identity, attr, [value], [key])
     return attr
@@ -1788,48 +1792,81 @@ function assert_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, o
         error("One or multiple edge outputs already exist as graph inputs: $input_nodes")
     end
 
-    e = attr.outputs[outputs[1]].parent::ComputeEdge
+    idx = findfirst(name -> attr.outputs[name].parent.callback !== invalid_callback, outputs)
 
-    # Check that the edge is shared
-    if any(k -> attr.outputs[k].parent::ComputeEdge !== e, outputs)
-        # bad_keys = join([k for k in outputs if attr.outputs[k].parent != e], ", ")
-        error("Cannot register computation: $outputs already have multiple different parent compute edges.")
-    end
+    if isnothing(idx)
+        # All outputs are orphaned. We previously only counted orphans if they
+        # create loops, so this case means that all outputs loop.
+        input_names = [input.name for input in inputs]
+        error("Cannot register computation: All outputs $outputs feed into one or more of the given inputs $input_names, creating loops.")
+    else
+        # Maybe some orphans, maybe not
 
-    # Check that the requested inputs are the inputs of the new edge
-    if length(e.inputs) != length(inputs) || e.inputs != inputs
-        error(
-            "Cannot register computation: Outputs already have a parent compute edge with different inputs.\n" *
-                "   New: (" * join([n.name for n in inputs], ", ") * ") -> (" * join(outputs, ", ") * ")\n" *
-                "   Old: (" * join([n.name for n in e.inputs], ", ") * ") -> (" * join([n.name for n in e.outputs], ", ") * ")"
-        )
-    end
+        e = attr.outputs[outputs[idx]].parent::ComputeEdge
 
-    # Check that the same callback is used
-    # TODO: === is much faster, but why?
-    if @ifelse_enabled(e.callback != f, e.callback !== f)
-        # We should only care about input arg types...
-        func1, loc1 = edge_callback_to_string(f, (NamedTuple, NamedTuple, Nothing))
-        func2, loc2 = edge_callback_to_string(e)
-        error(
-            "Cannot register computation: The outputs already have a parent compute edge using " *
-                "a different callback function.\n  Given: $func1 $loc1\n  Found: $func2 $loc2\n  $(methods(f))"
-        )
+        # Check that the edge is shared
+        if any(k -> attr.outputs[k].parent::ComputeEdge !== e, outputs)
+
+            # Otherwise collect problems (looping orphans, edge msismatches)
+            problems = String["Cannot register computation:"]
+            for name in outputs
+                node = attr.outputs[name]
+                edge = node.parent::ComputeEdge
+                if edge.callback === invalid_callback
+                    for input in inputs
+                        if is_child_of(input, node)
+                            push!(problems, "    Output $name feeds into input $(input.name), creating a loop.")
+                        end
+                    end
+                elseif edge !== e
+                    push!(problems, "    Parent edge of $name is not the same as $(outputs[idx]).")
+                end
+            end
+
+            error(join(problems, '\n'))
+        end
+
+        # Check that the requested inputs are the inputs of the new edge
+        if length(e.inputs) != length(inputs) || e.inputs != inputs
+            error(
+                "Cannot register computation: Outputs already have a parent compute edge with different inputs.\n" *
+                    "   New: (" * join([n.name for n in inputs], ", ") * ") -> (" * join(outputs, ", ") * ")\n" *
+                    "   Old: (" * join([n.name for n in e.inputs], ", ") * ") -> (" * join([n.name for n in e.outputs], ", ") * ")"
+            )
+        end
+
+        # Check that the same callback is used
+        # TODO: === is much faster, but why?
+        if @ifelse_enabled(e.callback != f, e.callback !== f)
+            # We should only care about input arg types...
+            func1, loc1 = edge_callback_to_string(f, (NamedTuple, NamedTuple, Nothing))
+            func2, loc2 = edge_callback_to_string(e)
+            error(
+                "Cannot register computation: The outputs already have a parent compute edge using " *
+                    "a different callback function.\n  Given: $func1 $loc1\n  Found: $func2 $loc2\n  $(methods(f))"
+            )
+        end
     end
 
     # edge already exists so we can
     return
 end
 
-function _is_invalid_output_target(graph, name)
-    # Node is valid if:
-    # - it doesn't exist (we can create it as new output)
-    # - it does not have a parent edge (we can set it with no loss)
-    # - it has an invalid parent edge (can be overwritten with care)
-    return haskey(graph.outputs, name) && hasparent(graph.outputs[name]) && (
-        (graph.outputs[name].parent isa Input) ||
-        (graph.outputs[name].parent.callback !== invalid_callback)
-    )
+function _is_invalid_output_target(graph, name, inputs)
+    if haskey(graph.outputs, name) && hasparent(graph.outputs[name])
+        edge = graph.outputs[name].parent
+        # Input and normal ComputeEdges are invalid
+        if edge isa Input || edge.callback !== invalid_callback
+            return true
+        else
+            # ComputeEdge with invalid_callback is valid if it does not create loops
+            # i.e. if none of the inputs are a child of graph[name]
+            return any(input -> is_child_of(input, graph.outputs[name]), inputs)
+        end
+    else
+        # doesn't exist or no parent edge - valid
+        return false
+    end
 end
 
 function _maybe_transfer_dependents!(to::AbstractEdge, from::Computed)
@@ -1855,17 +1892,24 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
     if any(k -> haskey(attr.outputs, k), outputs)
         # Allow nodes freed by `delete!` or created via `add_node!`. These have a
         # parent edge only to track dependents. Exclude them here.
-        N_existing = count(name -> _is_invalid_output_target(attr, name), outputs)
+        N_existing = count(name -> _is_invalid_output_target(attr, name, inputs), outputs)
         if N_existing == 0
             # fine, we won't be overwriting an edge
-        elseif N_existing != length(outputs)
-            existing = [k for k in outputs if haskey(attr.outputs, k) && hasparent(attr.outputs[k])]
-            combined = join(existing, ", ")
-            error("Cannot register computation: Some outputs already have parent compute edges: $combined")
-        else
+        elseif N_existing == length(outputs)
+            # TODO: Maybe differentiate orphan edges from collisions here?
             assert_same_computation(f, attr, inputs, outputs)
             # edge already exists so we can return
             return
+        else
+            existing = [k for k in outputs if haskey(attr.outputs, k) && hasparent(attr.outputs[k])]
+            looping = [k for k in existing if any(input -> is_child_of(input, attr.outputs[k]), inputs)]
+            if isempty(looping)
+                combined = join(existing, ", ")
+                error("Cannot register computation: Some outputs already have parent compute edges: $combined")
+            else
+                combined = join(looping, ", ")
+                error("Cannot register computation: Some outputs feed into the given inputs, creating loops: $combined")
+            end
         end
     end
 
