@@ -132,6 +132,7 @@ const TEST_FILES = [
     "test_colour_encoding.jl",
     "test_sample_budget.jl",
     "test_preview_density.jl",
+    "test_guide_grid.jl",
     "test_poll_failure.jl",
     "picking.jl",
     "test_lava_meshscatter_pervec.jl",
