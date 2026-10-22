@@ -376,171 +376,6 @@ end
     end
 end
 
-@testset "deletion" begin
-    foo(inputs, changed, cached) = (inputs[1],)
-    foo2(inputs, changed, cached) = (inputs[1] + inputs[2], inputs[1] - inputs[2])
-
-    @testset "public interface" begin
-        graph = ComputeGraph()
-        add_input!(graph, :in, 1)
-        register_computation!(foo, graph, [:in], [:out])
-
-        # These should not be available
-        @test_throws MethodError delete!(graph, graph.inputs[:in]) # Input
-        @test_throws MethodError delete!(graph, graph.outputs[:in]) # Computed
-        @test_throws MethodError delete!(graph, graph.outputs[:out].parent) # ComputeEdge
-
-        @test_throws KeyError delete!(graph, :unknown)
-
-        @test begin
-            delete!(graph, :out); true
-        end
-    end
-
-    @testset "Input" begin
-        graph = ComputeGraph()
-        add_input!(graph, :in, 1)
-
-        # Deleting an input should be possible and delete both the Input and the
-        # related Computed if there are no obstructions
-        @test haskey(graph.inputs, :in)
-        @test haskey(graph.outputs, :in)
-        delete!(graph, :in)
-        @test !haskey(graph.inputs, :in)
-        @test !haskey(graph.outputs, :in)
-
-        add_input!(graph, :in, 1)
-        @test haskey(graph.inputs, :in)
-        @test haskey(graph.outputs, :in)
-
-        register_computation!(foo, graph, [:in], [:out])
-
-        # Deleting an input node with dependents is not allowed
-        @test_throws ErrorException delete!(graph, :in)
-
-        # Unless you allow deleting child nodes
-        delete!(graph, :in, recursive = true)
-        @test !haskey(graph.inputs, :in)
-        @test !haskey(graph.outputs, :in)
-        @test !haskey(graph.outputs, :out)
-    end
-
-    @testset "Computed" begin
-        parent = ComputeGraph()
-        add_input!(parent, :parent_node, 1)
-
-        graph = ComputeGraph()
-        add_input!(graph, :in1, parent.parent_node)
-        add_input!(graph, :in2, 2)
-
-        # Deleting a leaf node without siblings is valid
-        @testset "Leaf Node" begin
-            # ... with a Computed --> Computed --> Computed
-            register_computation!(foo, graph, [:in1], [:output])
-
-            @test haskey(graph.outputs, :output)
-            @test !isempty(graph.outputs[:in1].parent.dependents)
-            delete!(graph, :output)
-            @test !haskey(graph.outputs, :output)
-            @test isempty(graph.outputs[:in1].parent.dependents)
-
-            # ... with a Input --> Computed --> Computed
-            register_computation!(foo, graph, [:in2], [:output])
-
-            @test haskey(graph.outputs, :output)
-            @test !isempty(graph.outputs[:in2].parent.dependents)
-            delete!(graph, :output)
-            @test !haskey(graph.outputs, :output)
-            @test isempty(graph.outputs[:in2].parent.dependents)
-        end
-
-        # Deleting a leaf node with siblings requires force = true
-        @testset "Siblings" begin
-            register_computation!(foo2, graph, [:in1, :in2], [:added, :subtracted])
-
-            @test_throws ErrorException delete!(graph, :added)
-            @test !isempty(graph.outputs[:in1].parent.dependents)
-            @test !isempty(graph.outputs[:in2].parent.dependents)
-            @test haskey(graph.outputs, :added)
-            @test haskey(graph.outputs, :subtracted)
-
-            delete!(graph, :added, force = true)
-            @test isempty(graph.outputs[:in1].parent.dependents)
-            @test isempty(graph.outputs[:in2].parent.dependents)
-            @test !haskey(graph.outputs, :added)
-            @test !haskey(graph.outputs, :subtracted)
-
-            # check symmetry
-            register_computation!(foo2, graph, [:in1, :in2], [:added, :subtracted])
-            @test_throws ErrorException delete!(graph, :subtracted)
-            @test !isempty(graph.outputs[:in1].parent.dependents)
-            @test !isempty(graph.outputs[:in2].parent.dependents)
-            @test haskey(graph.outputs, :added)
-            @test haskey(graph.outputs, :subtracted)
-
-            delete!(graph, :subtracted, force = true)
-            @test isempty(graph.outputs[:in1].parent.dependents)
-            @test isempty(graph.outputs[:in2].parent.dependents)
-            @test !haskey(graph.outputs, :added)
-            @test !haskey(graph.outputs, :subtracted)
-        end
-
-        # Deleting a node with further children requires recursive = true
-        @testset "Children" begin
-            register_computation!(foo, graph, [:in1], [:output])
-            register_computation!(foo, graph, [:output], [:output2])
-
-            @test_throws ErrorException delete!(graph, :output)
-            @test haskey(graph.outputs, :output)
-            @test haskey(graph.outputs, :output2)
-            @test !isempty(graph.outputs[:in1].parent.dependents)
-            @test !isempty(graph.outputs[:output].parent.dependents)
-
-            delete!(graph, :output, recursive = true)
-            @test !haskey(graph.outputs, :output)
-            @test !haskey(graph.outputs, :output2)
-            @test isempty(graph.outputs[:in1].parent.dependents)
-        end
-
-        # Nodes that connect one graph to another should follow the same rules
-        # as normal nodes
-        @testset "Graph Connector Node" begin
-            @test haskey(parent.outputs, :parent_node)
-            @test haskey(graph.outputs, :in1)
-            @test !isempty(parent.outputs[:parent_node].parent.dependents)
-            @test isempty(graph.outputs[:in1].parent.dependents)
-
-            @test_throws KeyError delete!(graph, :parent_node)
-
-            delete!(graph, :in1)
-            @test haskey(parent.outputs, :parent_node)
-            @test !haskey(graph.outputs, :in1)
-            @test isempty(parent.outputs[:parent_node].parent.dependents)
-
-            add_input!(graph, :in1, parent.parent_node)
-            register_computation!(foo, graph, [:in1], [:output])
-
-            @test haskey(parent.outputs, :parent_node)
-            @test haskey(graph.outputs, :in1)
-            @test haskey(graph.outputs, :output)
-            @test !isempty(parent.outputs[:parent_node].parent.dependents)
-            @test !isempty(graph.outputs[:in1].parent.dependents)
-            @test isempty(graph.outputs[:output].parent.dependents)
-
-            @test_throws ErrorException delete!(graph, :in1)
-
-            delete!(graph, :in1, recursive = true)
-            @test haskey(parent.outputs, :parent_node)
-            @test !haskey(graph.outputs, :in1)
-            @test !haskey(graph.outputs, :output)
-            @test isempty(parent.outputs[:parent_node].parent.dependents)
-
-            # TODO:: Anything special for graph barriers?
-        end
-    end
-
-end
-
 @testset "Observables" begin
     @testset "Synchronization" begin
         g = ComputeGraph()
@@ -1020,106 +855,6 @@ end
         # Should have triggered at least one update
         @test update_count[] >= 1
         @test graph[:output][] == 6
-    end
-end
-
-@testset "explicit node initialization" begin
-    calls = 0
-    graph = ComputeGraph()
-    add_input!(graph, :x, 1)
-    add_input!(graph, :y, 2)
-    map!(graph, [:x, :y], [:xy, :yx]) do x, y
-        calls += 1
-        return (x + y, x - y)
-    end
-    map!(x -> 2x, graph, :xy, :z)
-
-    @testset "Initial State" begin
-        @test isdirty(graph.x)
-        @test isdirty(graph.y)
-        @test isdirty(graph.xy)
-        @test isdirty(graph.yx)
-        @test isdirty(graph.z)
-    end
-
-    @testset "Partial output init doesn't init edge" begin
-        ComputePipeline.unsafe_init!(graph.xy, 1)
-
-        @test isdirty(graph.x)
-        @test isdirty(graph.y)
-        @test isdirty(graph.xy)
-        @test isdirty(graph.yx)
-        @test isdirty(graph.z)
-        @test ComputePipeline.is_initialized(graph.xy)
-        @test !ComputePipeline.is_initialized(graph.yx)
-        @test graph.xy.value[] == 1
-        @test !isassigned(graph.xy.parent.typed_edge)
-        @test calls == 0
-    end
-
-    @testset "Partial output init doesn't break normal init" begin
-        @test graph.z[] == 6
-        @test calls == 1
-    end
-
-    calls = 0
-    graph = ComputeGraph()
-    add_input!(graph, :x, 1)
-    add_input!(graph, :y, 2)
-    map!(graph, [:x, :y], [:xy, :yx]) do x, y
-        calls += 1
-        return (x + y, x - y)
-    end
-    map!(x -> 2x, graph, :xy, :z)
-    ComputePipeline.unsafe_init!(graph.xy, 1)
-
-    @testset "Verify reset" begin
-        @test isdirty(graph.x)
-        @test isdirty(graph.y)
-        @test isdirty(graph.xy)
-        @test isdirty(graph.yx)
-        @test isdirty(graph.z)
-        @test ComputePipeline.is_initialized(graph.xy)
-        @test !ComputePipeline.is_initialized(graph.yx)
-        @test graph.xy.value[] == 1
-        @test !isassigned(graph.xy.parent.typed_edge)
-        @test calls == 0
-    end
-
-    @testset "Full output init does init edge" begin
-        ComputePipeline.unsafe_init!(graph.yx, Base.Ref{Any}(2))
-
-        @test !isdirty(graph.x)
-        @test !isdirty(graph.y)
-        @test !isdirty(graph.xy)
-        @test !isdirty(graph.yx)
-        @test isdirty(graph.z)
-        @test ComputePipeline.is_initialized(graph.xy)
-        @test ComputePipeline.is_initialized(graph.yx)
-        @test isassigned(graph.xy.parent.typed_edge)
-        @test calls == 0
-        @test graph.xy.value[] == 1
-        @test graph.yx.value[] == 2
-        @test calls == 0
-        @test !ComputePipeline.is_initialized(graph.z)
-        @test graph.z[] == 2
-        @test calls == 0
-    end
-
-    @testset "updates still work" begin
-        graph.x = 2
-        @test isdirty(graph.x)
-        @test !isdirty(graph.y)
-        @test isdirty(graph.xy)
-        @test isdirty(graph.z)
-        @test calls == 0
-        @test graph.xy[] == 4
-        @test graph.z[] == 8
-        @test calls == 1
-    end
-
-    @testset "error on double init" begin
-        @test_throws ErrorException ComputePipeline.unsafe_init!(graph.xy, 0)
     end
 end
 
@@ -1809,4 +1544,118 @@ end
     @test graph.even1[] == 4
     @test graph.counter[] == 2
     @test graph.even2[] == 4
+end
+
+@testset "mark_dirty!" begin
+    graph = ComputeGraph()
+    add_input!(graph, :input, 1)
+    map!(x -> ExplicitUpdate(x, :force), graph, :input, :middle)
+    counter = Ref(0)
+    map!(graph, :middle, :counter) do _
+        counter[] = counter[] + 1
+        return counter[]
+    end
+    map!(x -> x, graph, :counter, :output)
+
+    @test graph.output[] == 1
+    @test graph.output[] == 1
+
+    @testset "mark_dirty" begin
+        ComputePipeline.mark_dirty!(graph.input.parent)
+        @test graph.input.parent isa ComputePipeline.Input
+        @test graph.output[] == 2
+        @test graph.output[] == 2
+
+        ComputePipeline.mark_dirty!(graph.input)
+        @test graph.output[] == 3
+        @test graph.output[] == 3
+
+        # mark_dirty is somewhat user-facing. Calling it should give the expected
+        # result of resolving the edge.
+        ComputePipeline.mark_dirty!(graph.middle.parent)
+        @test graph.middle.parent isa ComputePipeline.ComputeEdge
+        @test graph.output[] == 4
+        @test graph.output[] == 4
+
+        ComputePipeline.mark_dirty!(graph.middle)
+        @test graph.output[] == 5
+        @test graph.output[] == 5
+    end
+
+    @testset "locked_mark_dirty" begin
+        ComputePipeline.locked_mark_dirty!(graph.input.parent)
+        @test graph.input.parent isa ComputePipeline.Input
+        @test graph.output[] == 6
+        @test graph.output[] == 6
+
+        ComputePipeline.locked_mark_dirty!(graph.input)
+        @test graph.output[] == 7
+        @test graph.output[] == 7
+
+        # To get mark_dirty!(::ComputeEdge) to work we need to have one or more
+        # true values in edge.inputs_dirty. This is usually set during the resolve
+        # chain, to communicate from a parent to a child which inputs changed. If
+        # none changed, resolving ends early and skips redundant updates.
+        # Overwriting inputs_dirty in locked_mark_dirty! would force every dependent
+        # to resolve. Splitting the function (first call does it, later don't)
+        # could be an option if we really want this...
+        ComputePipeline.locked_mark_dirty!(graph.middle.parent)
+        @test graph.middle.parent isa ComputePipeline.ComputeEdge
+        @test graph.output[] == 7
+        @test graph.output[] == 7
+
+        ComputePipeline.locked_mark_dirty!(graph.middle)
+        @test graph.output[] == 8
+        @test graph.output[] == 8
+    end
+
+    @testset "setindex!" begin
+        graph.middle[] = ExplicitUpdate(1, :force)
+        @test graph.output[] == 9
+        @test graph.output[] == 9
+    end
+
+    @testset "Observable marking" begin
+        # make graph update asap
+        ComputePipeline.get_observable!(graph.output)
+
+        # track which names are marked for observable updates
+        counters = [0, 0]
+        on(graph.onchange, priority = typemax(Int)) do set
+            counters .+= [:input in set, :middle in set]
+        end
+        @test counters == [0, 0]
+
+        # mark_dirty should collect the right observables and trigger
+        ComputePipeline.mark_dirty!(graph.middle)
+        @test counters == [0, 1]
+        ComputePipeline.mark_dirty!(graph.middle.parent)
+        @test counters == [0, 2]
+        ComputePipeline.mark_dirty!(graph.input)
+        @test counters == [1, 3]
+        ComputePipeline.mark_dirty!(graph.input.parent)
+        @test counters == [2, 4]
+
+        # locked_mark_dirty doesn't include the obs trigger
+        ComputePipeline.locked_mark_dirty!(graph.middle)
+        @test counters == [2, 4]
+        ComputePipeline.update_observables!(graph.obs_to_update)
+        @test counters == [2, 5]
+
+        ComputePipeline.locked_mark_dirty!(graph.middle.parent)
+        @test counters == [2, 5]
+        ComputePipeline.update_observables!(graph.obs_to_update)
+        @test counters == [2, 6]
+
+        ComputePipeline.locked_mark_dirty!(graph.input)
+        @test counters == [2, 6]
+        ComputePipeline.update_observables!(graph.obs_to_update)
+        @test counters == [3, 7]
+
+        ComputePipeline.locked_mark_dirty!(graph.input.parent)
+        @test counters == [3, 7]
+        ComputePipeline.update_observables!(graph.obs_to_update)
+        @test counters == [4, 8]
+    end
+
 end

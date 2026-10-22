@@ -594,7 +594,7 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
     # Remove references to the plot compute graph from any parent compute graph.
     # (E.g. the scene compute graph)
     # This is meant to make the plot graph GC-able.
-    ComputePipeline.unsafe_disconnect_from_parents!(plot.attributes)
+    ComputePipeline.disconnect!(plot.attributes)
 
     # TODO, if we want to delete a subplot of a plot,
     # It won't be in scene.plots directly, but will still be deleted
@@ -636,7 +636,7 @@ function move_to!(plot::Plot, scene::Scene)
 
     # TODO: This requires surgery, disconnecting the plot from the old scene
     # compute graph and connecting it to the new scene compute graph.
-    # unsafe_disconnect_from_parents!() + register_computation!() is not enough
+    # disoconnect!() + register_computation!() is not enough
 
     if is_space_compatible(plot, scene)
         obsfunc = connect!(transformation(scene), transformation(plot))
