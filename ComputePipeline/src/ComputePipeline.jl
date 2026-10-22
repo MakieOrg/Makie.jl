@@ -106,7 +106,7 @@ function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
 end
 
 function _get_named_change(::NamedTuple{Names}, dirty) where {Names}
-    values = ntuple(i -> dirty[i], length(Names))
+    values = ntuple(i -> dirty[i], Val(length(Names)))
     return NamedTuple{Names, NTuple{length(Names), Bool}}(values)
 end
 
@@ -140,7 +140,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
             error("Result needs to have same length. Found: $(result), for func $(line)")
         end
 
-        outputs = ntuple(length(result)) do i
+        outputs = ntuple(Val(length(result))) do i
             v = result[i] isa RefValue ? result[i] : RefValue(result[i])
             edge.outputs[i].value = v # initialize to fully typed RefValue
             return v
@@ -626,7 +626,7 @@ function resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
-        names = ntuple(length(vals)) do i
+        names = ntuple(Val(length(vals))) do i
             edge.output_nodes[i].name
         end
         last = NamedTuple{names}(vals)
