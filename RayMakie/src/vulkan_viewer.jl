@@ -147,24 +147,39 @@ end
 """
     wait_viewer(screen::Screen)
 
-Block until the viewer window is closed. Polls GLFW events on the main thread
-(required by GLFW — event processing must happen on the main thread).
-Use this instead of `wait(screen)` for interactive windows.
+Block until the viewer window is closed, for a script, which has no idle REPL to run the
+render and input loops in. Use this instead of `wait(screen)` for interactive windows.
 """
 function wait_viewer(screen::Screen)
-    win = screen.window
-    (win === nothing || !renderloop_running(screen)) && return
-    root_scene = screen.scene
-    frame_count = 0
-    last_time = time()
-    while renderloop_running(screen)
-        GLFW.PollEvents()
-        if !isopen(win)
+    task = screen.rendertask
+    (screen.window === nothing || task === nothing) && return
+    wait(task)
+end
+
+"""
+    start_input_loop!(screen, root_scene, win) -> Task
+
+Window events and the Makie tick at 120 Hz, on a task of their own beside the render loop.
+The render loop yields to it whenever it waits for the GPU, so input does not wait for
+frames: a camera moved from the keyboard moves by the time since the last tick, and with
+ticks once a frame a short tap fell between two of them and a held key jumped by a whole
+frame's time.
+"""
+function start_input_loop!(screen::Screen, root_scene, win)
+    return @async begin
+        tick = 0
+        last_time = time()
+        try
+            while !screen.stop_renderloop[]
+                GLFW.PollEvents()
+                isopen(win) || break
+                tick += 1
+                last_time = poll_glfw_events!(screen, root_scene, win.handle, tick, last_time)
+                sleep(1 / 120)
+            end
+        catch e
+            @error "RayMakie: input loop" exception = (e, catch_backtrace())
             screen.stop_renderloop[] = true
-            break
         end
-        frame_count += 1
-        last_time = poll_glfw_events!(screen, root_scene, win.handle, frame_count, last_time)
-        sleep(1/120)
     end
 end
