@@ -9,7 +9,8 @@ function test_disconnected_edge(new, prev; dependents = prev.dependents)
     @test new.dependents == dependents
     @test !isassigned(new.typed_edge)
     if prev isa ComputePipeline.ComputeEdge
-        @test new.outputs == prev.outputs
+        @test only(new.outputs) in prev.outputs
+        @test only(new.outputs).parent_idx == 1
         for input in prev.inputs
             @test !in(new, input.parent.dependents)
             @test !in(prev, input.parent.dependents)
@@ -188,7 +189,8 @@ end
     @testset "Edge" begin
         graph = ComputeGraph()
         add_input!(graph, :input, 1)
-        map!(x -> (x, x), graph, :input, [:a, :b])
+        to_tuple(x) = (x, x)
+        map!(to_tuple, graph, :input, [:a, :b])
         map!(identity, graph, :a, :out1)
         map!(identity, graph, :b, :out2)
         map!(+, graph, [:out1, :out2], :final)
@@ -206,6 +208,7 @@ end
         @test isassigned(e.typed_edge)
         @test graph.a.parent.dependents == [e, graph.out2.parent]
         @test graph.out1.parent === e
+        @test graph.out1.parent_idx == 1
 
         delete!(e)
         @test graph.out1[] == 1 # no error
@@ -266,7 +269,7 @@ end
             test_disconnected_edge(new, e)
         end
 
-        # Test with multiple outputs
+        # Test with multiple inputs
         e = graph.final.parent
         @test e.graph == graph
         @test e.callback == ComputePipeline.MapFunctionWrapper(+)
@@ -279,6 +282,7 @@ end
         @test graph.out1.parent.dependents == [e]
         @test graph.out2.parent.dependents == [e]
         @test graph.final.parent === e
+        @test graph.final.parent_idx == 1
 
         delete!(e)
         @test graph.final[] == 3
@@ -286,6 +290,31 @@ end
         @test graph.final.parent !== e
         new = graph.final.parent
         test_disconnected_edge(new, e)
+
+        # And multiple outputs
+        e = graph.a.parent
+        @test e.graph == graph
+        @test e.callback == ComputePipeline.MapFunctionWrapper(to_tuple, false)
+        @test e.inputs == [graph.input]
+        @test e.inputs_dirty == [false]
+        @test e.outputs == [graph.a, graph.b]
+        @test e.got_resolved[] == true
+        @test isempty(e.dependents)
+        @test isassigned(e.typed_edge)
+        @test graph.out1.parent.dependents == []
+        @test graph.out2.parent.dependents == []
+        @test graph.a.parent === e
+        @test graph.a.parent_idx == 1
+        @test graph.b.parent === e
+        @test graph.b.parent_idx == 2
+
+        delete!(e)
+        @test graph.final[] == 3
+
+        @test graph.a.parent !== e
+        test_disconnected_edge(graph.a.parent, e)
+        @test graph.b.parent !== e
+        test_disconnected_edge(graph.b.parent, e)
     end
 
     @testset "Input edge" begin
