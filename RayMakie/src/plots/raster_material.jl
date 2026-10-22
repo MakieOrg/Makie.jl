@@ -255,23 +255,21 @@ function emission_of(e::Hikari.Emissive)
 end
 
 """
-    raster_emitter(plot) -> RasterEmitter or nothing
+    raster_emitter(positions, faces, material) -> Vector{RasterEmitter}
 
-The area light a mesh plot is, in the space the raster path draws in (the
-plot's model matrix applied to its transformed, Float32-converted positions):
-its largest face fixes the normal, and the faces turned the same way give the
-area and the centre. For a thin box (a softbox) that is one side, which is the
-side that shines; the other is behind it. The in-plane extent of those faces'
-corners gives the rectangle (`patch_extent`).
+The area light a mesh is, in its own space (its transformed, Float32-converted
+positions, before the model matrix): its largest face fixes the normal, and the
+faces turned the same way give the area and the centre. For a thin box (a
+softbox) that is one side, which is the side that shines; the other is behind
+it. The in-plane extent of those faces' corners gives the rectangle
+(`patch_extent`). Empty when the material does not glow. A vector, so the
+compute node holding it (`:raster_emitter_local`) keeps one type whether or not
+the mesh glows.
 """
-function raster_emitter(plot)
-    e = emission_of(overlay_material(plot))
-    e === nothing && return nothing
-    model = Mat4f(plot.model_f32c[])
-    world(p) = (h = model * Vec4f(p[1], p[2], p[3], 1f0); Vec3f(h[1], h[2], h[3]) / h[4])
-    P = world.(plot.positions_transformed_f32c[])
-    faces = plot.faces[]
-    isempty(faces) && return nothing
+function raster_emitter(positions::AbstractVector, faces::AbstractVector, material)
+    e = emission_of(material)
+    (e === nothing || isempty(faces)) && return RasterEmitter[]
+    P = map(Vec3f, positions)
     tris = map(faces) do f
         a, b, c = P[f[1]], P[f[2]], P[f[3]]
         n = cross(b - a, c - a)
@@ -294,7 +292,44 @@ function raster_emitter(plot)
     # its ends twice turned a 24×5 softbox's axis towards that diagonal and
     # shrank its rectangle to 21×6.
     axis, half = patch_extent(unique!(corners), centre, ref, area)
-    return RasterEmitter(centre, ref, area, e.two_sided, e.L, axis, half)
+    return [RasterEmitter(centre, ref, area, e.two_sided, e.L, axis, half)]
+end
+
+"""
+    placed(emitter, model) -> RasterEmitter
+
+`emitter`, found in a mesh's own space, where the raster path draws it: moved by
+the plot's `model` matrix. The centre and the rectangle's axes go through the
+matrix, the normal through its inverse transpose, and the area by how the
+matrix stretches the patch's plane. The light's shape is the one found in the
+mesh's own space, which for a rotation, translation or uniform scale (a turning
+globe) is exactly the shape found after it.
+"""
+function placed(e::RasterEmitter, model::Mat4f)
+    L = Mat3f(model[1, 1], model[2, 1], model[3, 1], model[1, 2], model[2, 2], model[3, 2],
+              model[1, 3], model[2, 3], model[3, 3])
+    h = model * Vec4f(e.centre[1], e.centre[2], e.centre[3], 1f0)
+    m = transpose(inv(L)) * e.normal
+    axis = L * e.axis
+    across = L * cross(e.normal, e.axis)
+    return RasterEmitter(Vec3f(h[1], h[2], h[3]) / h[4], normalize(m), e.area * abs(det(L)) * norm(m),
+                         e.two_sided, e.L, normalize(axis), Vec2f(e.half[1] * norm(axis), e.half[2] * norm(across)))
+end
+
+"""
+    raster_emitter_node!(plot) -> plot
+
+Give a mesh plot its `:raster_emitter_local` node: `raster_emitter` of its
+positions, faces and material, recomputed only when one of them changes. Walking
+a 130k-face globe and averaging its 3.6-megapixel city-light texture per frame
+held a scene with it to 3 fps.
+"""
+function raster_emitter_node!(plot)
+    attr = plot.attributes
+    haskey(attr, :raster_emitter_local) && return plot
+    Makie.ComputePipeline.map!(raster_emitter, attr,
+        [:positions_transformed_f32c, :faces, :material], :raster_emitter_local)
+    return plot
 end
 
 """
@@ -335,9 +370,12 @@ function sync_raster_emitters!(scene::Makie.Scene)
     emitters = RasterEmitter[]
     for p in scene.plots
         Makie.for_each_atomic_plot(p) do ap
-            (ap isa Makie.Mesh && ap.visible[]) || return nothing
-            e = raster_emitter(ap)
-            e === nothing || push!(emitters, e)
+            (ap isa Makie.Mesh && ap.visible[] && haskey(ap.attributes, :material)) || return nothing
+            raster_emitter_node!(ap)
+            model = Mat4f(ap.model_f32c[])
+            for e in ap.raster_emitter_local[]
+                push!(emitters, placed(e, model))
+            end
             return nothing
         end
     end
