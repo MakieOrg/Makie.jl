@@ -88,7 +88,7 @@ function draw_atomic_scatter(ctx, attr::NamedTuple)
         origin = position .+ size_model * to_ndim(Vec3d, marker_offset, 0)
 
         proj_pos, mat, jl_mat = project_marker(
-            cam, markerspace, origin, markersize, rotation, size_model, billboard
+            cam, markerspace, origin, markersize, normalize(rotation), size_model, billboard
         )
 
         # mat and jl_mat are the same matrix, once as a CairoMatrix, once as a Mat2f
@@ -183,8 +183,10 @@ function draw_text(ctx, attr::NamedTuple)
                 gp3 = glyph_pos .+ size_model * marker_offset[glyph_idx]
                 any(isnan, gp3) && continue
                 scale = Makie.sv_getindex(text_scales, glyph_idx)
-                rotation = Makie.sv_getindex(text_rotation, glyph_idx)
-                pos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
+                rotation = normalize(Makie.sv_getindex(text_rotation, glyph_idx))
+                pos, mat, _ = project_marker(
+                    cam, markerspace, Point3d(gp3), scale, rotation, size_model
+                )
                 cairoface = set_ft_font(ctx, font_per_char[glyph_idx])
                 set_font_matrix(ctx, mat)
                 glyph_path(ctx, glyph, pos...)
@@ -211,7 +213,7 @@ function draw_text(ctx, attr::NamedTuple)
 
             offset = marker_offset[glyph_idx]
             font = font_per_char[glyph_idx]
-            rotation = Makie.sv_getindex(text_rotation, glyph_idx)
+            rotation = normalize(Makie.sv_getindex(text_rotation, glyph_idx))
             color = Makie.sv_getindex(text_color, glyph_idx)
             strokewidth = Makie.sv_getindex(text_strokewidth, glyph_idx)
             strokecolor = Makie.sv_getindex(text_strokecolor, glyph_idx)
