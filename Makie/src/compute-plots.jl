@@ -70,8 +70,10 @@ function add_depth_estimate!(@nospecialize(scene::Scene), @nospecialize(plot::Pr
 
     # Cheap estimate based on what's relevant in 2D
     # TODO: Should maybe skip data_limits for just z limits?
+    # TODO: add space_to_clip explicitly rather than implicitly through register_projected_positions
+    matrixname = haskey(plot, :markerspace) ? :space_to_clip : :projectionview
     map!(
-        plot, [:data_limits, :model, :projectionview, :depth_shift], :depth_estimate2D
+        plot, [:data_limits, :model, matrixname, :depth_shift], :depth_estimate2D
     ) do lims, model, pv, depth_shift
         # We can still have z values and they can still spread, so consider widths
         z = minimum(lims)[3] + 0.5 * widths(lims)[3]
