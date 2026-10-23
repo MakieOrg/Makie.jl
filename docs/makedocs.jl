@@ -144,6 +144,7 @@ pages = [
                 "recipes.md",
                 "scenes.md",
                 "specapi.md",
+                "render_order.md",
             ]
         )...,
         "Theming" => joinpath.(

@@ -396,18 +396,18 @@ function apply_transform(f::Observable, data::Observable, space::Observable)
     return lift(apply_transform, f, data, space)
 end
 
-function apply_transform(f::PointTrans{N}, point::Point{N}) where {N}
-    return f.f(point)
-end
-
-function apply_transform(f::PointTrans{N1}, point::Point{N2, T}) where {N1, N2, T}
-    p_dim = to_ndim(Point{N1, T}, point, 0.0)
-    p_trans = f.f(p_dim)
-    if N1 < N2
-        p_large = ntuple(i -> i <= N1 ? p_trans[i] : point[i], N2)
-        return Point{N2, T}(p_large)
+function apply_transform(f::PointTrans{N1}, point::VT) where {N1, N2, T, VT <: VecTypes{N2, T}}
+    if N1 === N2
+        return f.f(point)
     else
-        return to_ndim(Point{N2, T}, p_trans, 0.0)
+        p_dim = to_ndim(Point{N1, T}, point, 0.0)
+        p_trans = f.f(p_dim)
+        if N1 < N2
+            p_large = ntuple(i -> i <= N1 ? p_trans[i] : point[i], N2)
+            return VT(p_large)
+        else
+            return to_ndim(VT, p_trans, 0.0)
+        end
     end
 end
 
@@ -718,13 +718,3 @@ function inverse_transform(trans::Polar)
         end
     end
 end
-
-
-# this is a simplification which will only really work with non-rotated or
-# scaled scene transformations, but for 2D scenes this should work well enough.
-# and this way we can use the z-value as a means to shift the drawing order
-# by translating e.g. the axis spines forward so they are not obscured halfway
-# by heatmaps or images
-# zvalue2d(x)::Float32 = Float32(Makie.translation(x)[][3] + zvalue2d(x.parent))
-@inline zvalue2d(x)::Float32 = Float32(transformationmatrix(x)[][3, 4])
-@inline zvalue2d(::Nothing)::Float32 = 0.0f0

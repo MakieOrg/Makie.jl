@@ -672,36 +672,41 @@ using Makie: generate_buffers, default_pipeline
 
         # These directly check what the call should construct. (This indirectly
         # also checks that connect!() works for pipelines)
-        @test length(pipeline.stages) == 7
+        @test length(pipeline.stages) == 8
         @test pipeline.stages[1] == RenderStage(:ZSort)
         @test pipeline.stages[2] == RenderStage(
+            :SceneClear, Dict{Symbol, Int}(), BufferFormat[],
+            Dict(:color => 1, :depth => 2),
+            [BufferFormat(4, N0f8), BufferFormat(1, BFT.depth24)],
+        )
+        @test pipeline.stages[3] == RenderStage(
             :Render, Dict{Symbol, Int}(), BufferFormat[],
             Dict(:depth => 1, :color => 2, :objectid => 3),
             [BufferFormat(1, BFT.depth24), BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
             transparency = false
         )
-        @test pipeline.stages[3] == RenderStage(
+        @test pipeline.stages[4] == RenderStage(
             Symbol("OIT Render"), Dict{Symbol, Int}(), BufferFormat[],
             Dict(:depth => 1, :color_sum => 2, :objectid => 3, :transmittance => 4),
             [BufferFormat(1, BFT.depth24), BufferFormat(4, Float16), BufferFormat(2, UInt32), BufferFormat(1, N0f8)],
             oit = true
         )
-        @test pipeline.stages[4] == RenderStage(
+        @test pipeline.stages[5] == RenderStage(
             :OIT,
             Dict(:color_sum => 1, :transmittance => 2), [BufferFormat(4, Float16), BufferFormat(1, N0f8)],
             Dict(:color => 1), [BufferFormat(4, N0f8)]
         )
-        @test pipeline.stages[5] == RenderStage(
+        @test pipeline.stages[6] == RenderStage(
             :FXAA1,
             Dict(:color => 1, :objectid => 2), [BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
             Dict(:color_luma => 1), [BufferFormat(4, N0f8)], filter_in_shader = true
         )
-        @test pipeline.stages[6] == RenderStage(
+        @test pipeline.stages[7] == RenderStage(
             :FXAA2,
             Dict(:color_luma => 1), [BufferFormat(4, N0f8, minfilter = :linear)],
             Dict(:color => 1), [BufferFormat(4, N0f8)], filter_in_shader = true
         )
-        @test pipeline.stages[7] == RenderStage(
+        @test pipeline.stages[8] == RenderStage(
             :Display,
             Dict(:depth => 1, :color => 2, :objectid => 3),
             [BufferFormat(1, BFT.depth24), BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
@@ -711,25 +716,27 @@ using Makie: generate_buffers, default_pipeline
         # Note: Order technically irrelevant but it's easier to test with order
         # Same for inputs and outputs here
         @test length(pipeline.formats) == 7
-        @test length(pipeline.stageio2idx) == 18
-        @test pipeline.formats[pipeline.stageio2idx[(5, 1)]] == BufferFormat(4, N0f8, minfilter = :linear)
-        @test pipeline.formats[pipeline.stageio2idx[(6, -1)]] == BufferFormat(4, N0f8, minfilter = :linear)
-        @test pipeline.formats[pipeline.stageio2idx[(3, 2)]] == BufferFormat(4, Float16)
-        @test pipeline.formats[pipeline.stageio2idx[(4, -1)]] == BufferFormat(4, Float16)
-        @test pipeline.formats[pipeline.stageio2idx[(3, 4)]] == BufferFormat(1, N0f8)
-        @test pipeline.formats[pipeline.stageio2idx[(4, -2)]] == BufferFormat(1, N0f8)
-        @test pipeline.formats[pipeline.stageio2idx[(4, 1)]] == BufferFormat(4, N0f8)
-        @test pipeline.formats[pipeline.stageio2idx[(2, 2)]] == BufferFormat(4, N0f8)
-        @test pipeline.formats[pipeline.stageio2idx[(5, -1)]] == BufferFormat(4, N0f8)
+        @test length(pipeline.stageio2idx) == 20
+        @test pipeline.formats[pipeline.stageio2idx[(6, 1)]] == BufferFormat(4, N0f8, minfilter = :linear)
+        @test pipeline.formats[pipeline.stageio2idx[(7, -1)]] == BufferFormat(4, N0f8, minfilter = :linear)
+        @test pipeline.formats[pipeline.stageio2idx[(4, 2)]] == BufferFormat(4, Float16)
+        @test pipeline.formats[pipeline.stageio2idx[(5, -1)]] == BufferFormat(4, Float16)
+        @test pipeline.formats[pipeline.stageio2idx[(4, 4)]] == BufferFormat(1, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(5, -2)]] == BufferFormat(1, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(2, 1)]] == BufferFormat(4, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(5, 1)]] == BufferFormat(4, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(3, 2)]] == BufferFormat(4, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(6, -1)]] == BufferFormat(4, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(4, 3)]] == BufferFormat(2, UInt32)
         @test pipeline.formats[pipeline.stageio2idx[(3, 3)]] == BufferFormat(2, UInt32)
-        @test pipeline.formats[pipeline.stageio2idx[(2, 3)]] == BufferFormat(2, UInt32)
-        @test pipeline.formats[pipeline.stageio2idx[(7, -3)]] == BufferFormat(2, UInt32)
-        @test pipeline.formats[pipeline.stageio2idx[(5, -2)]] == BufferFormat(2, UInt32)
-        @test pipeline.formats[pipeline.stageio2idx[(6, 1)]] == BufferFormat(4, N0f8)
-        @test pipeline.formats[pipeline.stageio2idx[(7, -2)]] == BufferFormat(4, N0f8)
-        @test pipeline.formats[pipeline.stageio2idx[(2, 1)]] == BufferFormat(1, BFT.depth24)
+        @test pipeline.formats[pipeline.stageio2idx[(8, -3)]] == BufferFormat(2, UInt32)
+        @test pipeline.formats[pipeline.stageio2idx[(6, -2)]] == BufferFormat(2, UInt32)
+        @test pipeline.formats[pipeline.stageio2idx[(7, 1)]] == BufferFormat(4, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(8, -2)]] == BufferFormat(4, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(2, 2)]] == BufferFormat(1, BFT.depth24)
         @test pipeline.formats[pipeline.stageio2idx[(3, 1)]] == BufferFormat(1, BFT.depth24)
-        @test pipeline.formats[pipeline.stageio2idx[(7, -1)]] == BufferFormat(1, BFT.depth24)
+        @test pipeline.formats[pipeline.stageio2idx[(4, 1)]] == BufferFormat(1, BFT.depth24)
+        @test pipeline.formats[pipeline.stageio2idx[(8, -1)]] == BufferFormat(1, BFT.depth24)
 
         # Verify buffer generation with this more complex example
         buffers, remap = generate_buffers(pipeline)
@@ -742,24 +749,26 @@ using Makie: generate_buffers, default_pipeline
         @test length(buffers) == 5
         @test length(remap) == 7
 
-        @test buffers[remap[pipeline.stageio2idx[(5, 1)]]] == BufferFormat(4, Float16, minfilter = :linear)
-        @test buffers[remap[pipeline.stageio2idx[(6, -1)]]] == BufferFormat(4, Float16, minfilter = :linear)
-        @test buffers[remap[pipeline.stageio2idx[(3, 2)]]] == BufferFormat(4, Float16, minfilter = :linear)
-        @test buffers[remap[pipeline.stageio2idx[(4, -1)]]] == BufferFormat(4, Float16, minfilter = :linear)
-        @test buffers[remap[pipeline.stageio2idx[(3, 4)]]] == BufferFormat(1, N0f8)
-        @test buffers[remap[pipeline.stageio2idx[(4, -2)]]] == BufferFormat(1, N0f8)
-        @test buffers[remap[pipeline.stageio2idx[(4, 1)]]] == BufferFormat(4, N0f8)
-        @test buffers[remap[pipeline.stageio2idx[(2, 2)]]] == BufferFormat(4, N0f8)
-        @test buffers[remap[pipeline.stageio2idx[(5, -1)]]] == BufferFormat(4, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(6, 1)]]] == BufferFormat(4, Float16, minfilter = :linear)
+        @test buffers[remap[pipeline.stageio2idx[(7, -1)]]] == BufferFormat(4, Float16, minfilter = :linear)
+        @test buffers[remap[pipeline.stageio2idx[(4, 2)]]] == BufferFormat(4, Float16, minfilter = :linear)
+        @test buffers[remap[pipeline.stageio2idx[(5, -1)]]] == BufferFormat(4, Float16, minfilter = :linear)
+        @test buffers[remap[pipeline.stageio2idx[(4, 4)]]] == BufferFormat(1, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(5, -2)]]] == BufferFormat(1, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(2, 1)]]] == BufferFormat(4, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(5, 1)]]] == BufferFormat(4, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(3, 2)]]] == BufferFormat(4, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(6, -1)]]] == BufferFormat(4, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(4, 3)]]] == BufferFormat(2, UInt32)
         @test buffers[remap[pipeline.stageio2idx[(3, 3)]]] == BufferFormat(2, UInt32)
-        @test buffers[remap[pipeline.stageio2idx[(2, 3)]]] == BufferFormat(2, UInt32)
-        @test buffers[remap[pipeline.stageio2idx[(7, -3)]]] == BufferFormat(2, UInt32)
-        @test buffers[remap[pipeline.stageio2idx[(5, -2)]]] == BufferFormat(2, UInt32)
-        @test buffers[remap[pipeline.stageio2idx[(6, 1)]]] == BufferFormat(4, N0f8)
-        @test buffers[remap[pipeline.stageio2idx[(7, -2)]]] == BufferFormat(4, N0f8)
-        @test buffers[remap[pipeline.stageio2idx[(2, 1)]]] == BufferFormat(1, BFT.depth24)
+        @test buffers[remap[pipeline.stageio2idx[(8, -3)]]] == BufferFormat(2, UInt32)
+        @test buffers[remap[pipeline.stageio2idx[(6, -2)]]] == BufferFormat(2, UInt32)
+        @test buffers[remap[pipeline.stageio2idx[(7, 1)]]] == BufferFormat(4, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(8, -2)]]] == BufferFormat(4, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(2, 2)]]] == BufferFormat(1, BFT.depth24)
         @test buffers[remap[pipeline.stageio2idx[(3, 1)]]] == BufferFormat(1, BFT.depth24)
-        @test buffers[remap[pipeline.stageio2idx[(7, -1)]]] == BufferFormat(1, BFT.depth24)
+        @test buffers[remap[pipeline.stageio2idx[(4, 1)]]] == BufferFormat(1, BFT.depth24)
+        @test buffers[remap[pipeline.stageio2idx[(8, -1)]]] == BufferFormat(1, BFT.depth24)
 
         check_lowered_representation(pipeline, buffers, remap)
     end

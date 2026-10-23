@@ -50,7 +50,7 @@ end
     e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
     e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
 
-    optiontexts = m.blockscene.children[1].plots[2]::Makie.Text
+    optiontexts = m.menuscene.plots[2]::Makie.Text
     e.unicode_input[] = 'p'
     @test optiontexts.text[] == ["Apple", "Apricot"]
     @test length(optiontexts.color[]) == 2
@@ -83,7 +83,7 @@ end
     e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
     e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
 
-    menuscene = m.blockscene.children[1]
+    menuscene = m.menuscene
     optionpolys = menuscene.plots[1]::Poly
     optiontexts = menuscene.plots[2]::Makie.Text
     @test optiontexts.color[] == to_color.([:black, :white, :black])
@@ -112,9 +112,8 @@ end
     @test m.is_open[]
     @test to_color(selectionpoly.color[]) == to_color(:red)
 
-    menuscene = m.blockscene.children[1]
-    option = menuscene.plots[1].converted[][1][2]
-    e.mouseposition[] = Tuple(Point2d(Makie.origin(option) .+ widths(option) ./ 2 .+ Makie.origin(viewport(menuscene)[])))
+    option = m.menuscene.plots[1].converted[][1][2]
+    e.mouseposition[] = Tuple(Point2d(Makie.origin(option) .+ widths(option) ./ 2 .+ Makie.origin(viewport(m.menuscene)[])))
     @test to_color(selectionpoly.color[]) == to_color(:red)
 
     click()

@@ -104,7 +104,6 @@ Makie.@noconstprop function generate_framebuffer(manager::FramebufferManager, na
     return fb
 end
 
-
 struct MonitorProperties
     name::String
     isprimary::Bool
