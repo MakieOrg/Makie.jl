@@ -1527,10 +1527,9 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
     # composite while the next was drawn — a scheduling decision, made here,
     # about a backend it is not allowed to name.
 
+    start_input_loop!(screen, root_scene, win)
     screen.rendertask = @async begin
         yield()
-        frame_count = 0
-        last_time = time()
         # Why the loop ended. A render loop that stops leaves the OS window up,
         # frozen on its last frame, which is indistinguishable from a hang by
         # looking at it — so the reason is recorded here and reported by the
@@ -1545,11 +1544,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             Threads.atomic_add!(screen.frames_presented, 1)
 
             while !screen.stop_renderloop[]
-                GLFW.PollEvents()
-                screen.stop_renderloop[] && break
                 !isopen(win) && (exit_reason = :window_closed; break)
-                frame_count += 1
-                last_time = poll_glfw_events!(screen, root_scene, win.handle, frame_count, last_time)
 
                 cur_w, cur_h = size(win)
                 if (cur_w, cur_h) != (w, h)

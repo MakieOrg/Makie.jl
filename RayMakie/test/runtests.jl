@@ -204,6 +204,7 @@ const GRAPHICS_TEST_FILES = [
     "test_surface_paths.jl",
     "test_window_frame.jl",
     "test_window_blit.jl",
+    "test_window_input.jl",
     "test_empty_plot_fills_later.jl",
     "test_empty_figure.jl",
     "test_device_arrays.jl",
