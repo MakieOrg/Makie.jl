@@ -120,25 +120,30 @@ function TypedEdge(edge::ComputeEdge)
     return Base.invokelatest(TypedEdge, edge, edge.callback, inputs)
 end
 
+Base.@nospecializeinfer @noinline function throw_invalid_result_types(edge::ComputeEdge, @nospecialize(result::Tuple))
+    invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
+    strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
+    str = join(strings, ", ")
+    error("Edge callback returned invalid types for outputs: [$str]")
+end
+
+Base.@nospecializeinfer @noinline function throw_length_mismatch(edge::ComputeEdge, @nospecialize(result::Tuple))
+    m = first(methods(edge.callback))
+    line = string(m.file, ":", m.line)
+    error("Result needs to have same length. Found: $(result), for func $(line)")
+end
+
+Base.@nospecializeinfer @noinline throw_invalid_result(@nospecialize(result::Any)) =
+    error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+
 function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
 
     result = f(map(getindex, inputs), dirty, nothing)
 
     if result isa Tuple
-
-        if !all(is_node_value_valid, result)
-            invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
-            strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
-            str = join(strings, ", ")
-            error("Edge callback returned invalid types for outputs: [$str]")
-        end
-
-        if length(result) != length(edge.outputs)
-            m = first(methods(edge.callback))
-            line = string(m.file, ":", m.line)
-            error("Result needs to have same length. Found: $(result), for func $(line)")
-        end
+        all(is_node_value_valid, result) || throw_invalid_result_types(edge, result)
+        length(result) == length(edge.outputs) || throw_length_mismatch(edge, result)
 
         outputs = ntuple(Val(length(result))) do i
             v = result[i] isa RefValue ? result[i] : RefValue(result[i])
@@ -157,7 +162,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         foreach(node -> node.dirty = false, edge.outputs)
 
     else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+        throw_invalid_result(result)
     end
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
@@ -632,14 +637,12 @@ function resolve!(edge::TypedEdge)
         last = NamedTuple{names}(vals)
         result = edge.callback(map(getindex, edge.inputs), dirty, last)
         if result isa Tuple
-            if length(result) != length(edge.outputs)
-                error("Did not return correct length: $(result), $(edge.callback)")
-            end
+            length(result) == length(edge.outputs) || throw_length_mismatch(edge, result)
             set_result!(edge, result)
         elseif isnothing(result)
             foreach(x -> x.dirty = false, edge.output_nodes)
         else
-            error("Needs to return a Tuple with one element per output, or nothing")
+            throw_invalid_result(result)
         end
     end
     return
