@@ -48,7 +48,7 @@ export function delete_scene(scene_id) {
 
     Object.entries(scene_cache).forEach(([id, parent]) => {
         const idx = parent.scene_children.findIndex(child => child.uuid === scene.uuid);
-        if (idx)
+        if (idx !== -1)
             parent.scene_children.splice(idx, 1);
     })
 }
