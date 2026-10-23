@@ -190,6 +190,7 @@ export function deserialize_scene_recursive(data, screen) {
     scene.backgroundcolor = data.backgroundcolor;
     scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
     scene.clearscene = data.clearscene;
+    scene.cleardepth = data.cleardepth;
     scene.visible = data.visible;
 
     const camera = new Camera.MakieCamera();

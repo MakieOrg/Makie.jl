@@ -122,6 +122,8 @@ export function render_scene(scene, picking = false) {
             const alpha = scene.backgroundcolor_alpha.value;
             renderer.setClearColor(scene.backgroundcolor.value, alpha);
         }
+        if (scene.cleardepth.value && !scene.clearscene.value)
+            renderer.clearDepth();
         renderer.render(scene, camera);
     }
     return scene.scene_children.every((x) => render_scene(x, picking));

@@ -22997,6 +22997,7 @@ function deserialize_scene_recursive(data, screen) {
     scene.backgroundcolor = data.backgroundcolor;
     scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
     scene.clearscene = data.clearscene;
+    scene.cleardepth = data.cleardepth;
     scene.visible = data.visible;
     const camera = new MakieCamera();
     scene.wgl_camera = camera;
@@ -24673,6 +24674,7 @@ function render_scene(scene, picking = false) {
             const alpha = scene.backgroundcolor_alpha.value;
             renderer.setClearColor(scene.backgroundcolor.value, alpha);
         }
+        if (scene.cleardepth.value && !scene.clearscene.value) renderer.clearDepth();
         renderer.render(scene, camera);
     }
     return scene.scene_children.every((x1)=>render_scene(x1, picking));

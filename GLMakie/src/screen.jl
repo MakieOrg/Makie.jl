@@ -638,7 +638,7 @@ function Base.empty!(screen::Screen)
     end
 
     # disconnected scene -> requires_update callbacks
-    # removes all scenes, scene groups, renderobjects (redundant) from render context
+    # removes all scenes and renderobjects (redundant) from render context
     unsafe_empty!(screen.render_context)
 
     # Detaches root scene from screen

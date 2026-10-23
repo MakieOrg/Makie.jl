@@ -170,7 +170,7 @@ function initialize_block!(po::PolarAxis; palette = nothing)
     protrusions = map(
         po.blockscene, po.title, po.titlegap, po.titlesize
     ) do title, gap, size
-        titlespace = po.title[] == "" ? 0.0f0 : Float32(2gap + size)
+        titlespace = title == "" ? 0.0f0 : Float32(2gap + size)
         return GridLayoutBase.RectSides(0.0f0, 0.0f0, 0.0f0, titlespace)
     end
 
