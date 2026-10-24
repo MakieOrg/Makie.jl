@@ -244,7 +244,7 @@ function DataInspector(scene::Scene; priority = 100, blocking = false, kwargs...
     end
     @assert origin(viewport(parent)[]) == Vec2f(0)
 
-    attrib_dict = Dict(kwargs)
+    attrib_dict = to_dict(kwargs)
     base_attrib = Attributes(
         # General DataInspector settings
         range = pop!(attrib_dict, :range, 10),

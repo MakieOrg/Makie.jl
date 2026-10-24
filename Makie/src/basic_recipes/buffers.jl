@@ -100,7 +100,7 @@ end
 function append!(tb::Makie.Text, text_positions::Vector{Tuple{String, Point{N, Float32}}}; kw_args...) where {N}
     attr = tb.attributes
     append!(attr.inputs[:arg1].value, text_positions)
-    kw = Dict(kw_args)
+    kw = to_dict(kw_args)
     for key in (:color, :rotation, :fontsize, :font, :align)
         val = get(kw, key) do
             isempty(attr.inputs[key].value) && error("please provide default for $key")
