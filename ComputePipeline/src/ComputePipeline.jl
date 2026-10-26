@@ -1,5 +1,10 @@
 module ComputePipeline
 
+if isdefined(Base, :Experimental)
+    isdefined(Base.Experimental, Symbol("@optlevel")) && Base.Experimental.@optlevel 1
+    isdefined(Base.Experimental, Symbol("@max_methods")) && Base.Experimental.@max_methods 1
+end
+
 using Preferences
 
 const ENABLE_COMPUTE_CHECKS = @load_preference("ENABLE_COMPUTE_CHECKS", false)
