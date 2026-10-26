@@ -219,11 +219,11 @@ end
     )
     for i in -2:2
         scatter!(
-            scene, [Point3f(x, 0.4 * i, 0.4*i) for x in range(-1, 1, 21)],
+            scene, [Point3f(x, 0.4 * i, 0.4 * i) for x in range(-1, 1, 21)],
             marker = FastPixel(), markersize = 16, color = :black,
         )
         scatter!(
-            scene, [Point3f(x, 0.4 * i, 0.4*i) for x in range(-1, 1, 21)],
+            scene, [Point3f(x, 0.4 * i, 0.4 * i) for x in range(-1, 1, 21)],
             marker = Rect, markersize = 16, color = :transparent,
             strokecolor = :white, strokewidth = 1
         )
