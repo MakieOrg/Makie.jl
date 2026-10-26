@@ -527,7 +527,8 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     # sorted, so that colors, draw order and legend entries don't depend on the
     # hash order of the category dict
     category_names = sort!(collect(keys(categories)))
-    colors = Dict(k => Makie.wong_colors()[i] for (i, k) in enumerate(category_names))
+    palette = categorical_colors(Makie.wong_colors(), length(category_names), true)
+    colors = Dict(zip(category_names, palette))
     p._categories = [k => colors[k] for k in category_names]
     op = lift(total -> (x -> log10(x + 1) / log10(total + 1)), p, p.total_value)
 
