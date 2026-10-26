@@ -887,7 +887,7 @@ end
 
 See also: [`add_input!`](@ref), [`map!`](@ref)
 """
-function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(@nospecialize(f::Base.Callable), attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
     if !all(k -> haskey(attr.outputs, k), inputs)
         missing_keys = filter(k -> !haskey(attr.outputs, k), inputs)
         error("Could not register computation: Inputs $missing_keys not found.")
@@ -898,7 +898,7 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
 end
 
 # [computed, symbol] is an Any Vector so no eltype here
-function register_computation!(f, attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(@nospecialize(f::Base.Callable), attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol})
     _inputs = Computed[k isa Symbol ? attr.outputs[k] : k for k in inputs]
     register_computation!(f, attr, _inputs, outputs)
     return
@@ -965,7 +965,7 @@ function assert_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, o
     return
 end
 
-function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(@nospecialize(f::Function), attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
     @ifelse_enabled(check_boxed_values(f))
 
     if any(k -> haskey(attr.outputs, k), outputs)
