@@ -681,33 +681,32 @@ function Resampler(
 end
 
 const HeatmapShader = Heatmap{<:Tuple{EndPoints{Float32}, EndPoints{Float32}, <:Resampler}}
+const ImageShader = Image{<:Tuple{EndPoints{Float32}, EndPoints{Float32}, <:Resampler}}
 
 # The things we need to do, to allow the atomic Heatmap plot type to be overloaded as a recipe
 struct HeatmapShaderConversion <: ConversionTrait end
 
-function conversion_trait(::Type{<:Heatmap}, x, y, ::Resampler)
-    return HeatmapShaderConversion()
-end
-function conversion_trait(::Type{<:Heatmap}, ::Resampler)
-    return HeatmapShaderConversion()
-end
+conversion_trait(::Type{<:Image}, x, y, ::Resampler) = HeatmapShaderConversion()
+conversion_trait(::Type{<:Heatmap}, x, y, ::Resampler) = HeatmapShaderConversion()
+conversion_trait(::Type{<:Image}, ::Resampler) = HeatmapShaderConversion()
+conversion_trait(::Type{<:Heatmap}, ::Resampler) = HeatmapShaderConversion()
 
-function types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderConversion)
+function types_for_plot_arguments(::Type{<:Union{Image, Heatmap}}, ::HeatmapShaderConversion)
     return Tuple{EndPoints{Float32}, EndPoints{Float32}, <:Resampler}
 end
 
-function data_limits(p::HeatmapShader)
+function data_limits(p::Union{HeatmapShader, ImageShader})
     return Rect3d(p.data_limits[])
 end
 
-function boundingbox(p::HeatmapShader, space::Symbol = :data)
+function boundingbox(p::Union{HeatmapShader, ImageShader}, space::Symbol = :data)
     return apply_transform_and_model(p, data_limits(p))
 end
 
-function calculated_attributes!(::Type{Heatmap}, plot::HeatmapShader)
-    return
-end
+calculated_attributes!(::Type{Image}, ::ImageShader) = nothing
+calculated_attributes!(::Type{Heatmap}, ::HeatmapShader) = nothing
 
+extract_colormap_recursive(plot::ImageShader) = extract_colormap_recursive(plot.plots[1])
 extract_colormap_recursive(plot::HeatmapShader) = extract_colormap_recursive(plot.plots[1])
 
 
@@ -745,14 +744,16 @@ function resample_image(x, y, image, max_resolution, limits)
 end
 
 
-function convert_arguments(::Type{Heatmap}, image::Resampler)
+function convert_arguments(::Type{<:Union{Image, Heatmap}}, image::Resampler)
     x, y, _ = convert_arguments(Heatmap, image.data)
     return (x, y, image)
 end
 
-function convert_arguments(::Type{Heatmap}, x, y, image::Resampler)
+function convert_arguments(::Type{<:Union{Image, Heatmap}}, x, y, image::Resampler)
     x, y, _ = convert_arguments(Heatmap, x, y, image.data)
-    return (EndPoints{Float32}(x...), EndPoints{Float32}(y...), image)
+    x = to_endpoints_with_range(x, "x", HeatmapShaderConversion)
+    y = to_endpoints_with_range(y, "y", HeatmapShaderConversion)
+    return (EndPoints{Float32}(x.data...), EndPoints{Float32}(y.data...), image)
 end
 
 function empty_channel!(channel::Channel)
@@ -776,7 +777,7 @@ function calculate_colorrange(img, crange)
     end
 end
 
-function Makie.plot!(p::HeatmapShader)
+function Makie.plot!(p::Union{HeatmapShader, ImageShader})
     scene = Makie.parent_scene(p)
     events = scene.events
     add_axis_limits!(p)
@@ -830,17 +831,21 @@ function Makie.plot!(p::HeatmapShader)
         return (xe_ye_oimg..., true)
     end
 
-    gpa = generic_plot_attributes(p)
-    cpa = colormap_attributes(p)
-
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer
-    lp = image!(p, p.x, p.y, p.overview_image; gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange)
+    lp = image!(
+        p, p.attributes,
+        p.x, p.y, p.overview_image;
+        interpolate = p.interpolate, colorrange = p.computed_colorrange,
+        visible = p.background_visible, fxaa = false
+    )
     translate!(lp, 0, 0, -1)
 
     image!(
-        p, p.lx_endpoints, p.ly_endpoints, p.limit_image;
-        gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange, visible = p.l_visible,
+        p, p.attributes,
+        p.lx_endpoints, p.ly_endpoints, p.limit_image;
+        interpolate = p.interpolate, colorrange = p.computed_colorrange,
+        visible = p.l_visible, fxaa = false
     )
 
     return p
