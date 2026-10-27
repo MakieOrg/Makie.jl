@@ -130,7 +130,13 @@ function create_wgl_renderobject(callback, attr, inputs)
             return nothing
         end
     end
-    return attr[:wgl_renderobject][]
+    try
+        return attr[:wgl_renderobject][]
+    catch e
+        delete!(attr, :wgl_renderobject, force = true)
+        rethrow(e)
+        return nothing
+    end
 end
 
 function handle_color_getter!(uniform_dict)
