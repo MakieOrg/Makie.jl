@@ -7,6 +7,7 @@ using Makie, Test
     @test_nowarn BezierPath("M 100,100 C 100,200 200,100 200,200 z")
     @test_nowarn BezierPath("M 100,100 Q 50,150,100,100 z") isa BezierPath
     @test_broken BezierPath("M 3.0 10.0 A 10.0 7.5 0.0 0.0 0.0 20.0 15.0 z") isa BezierPath
+    @test_nowarn BezierPath([EllipticalArc([0.0, 0.0], 1.2, 0.5, 0.3, 0, 2pi)])
 end
 
 @testset "Parsing Q/q" begin
