@@ -155,7 +155,7 @@ function apply_clipping_planes(planes::Vector{<:Plane3}, rect::Rect3{T}) where {
     temp = sizehint!(Point3{T}[], length(edges))
 
     for plane in planes
-        ps = corners(bb)
+        ps = coordinates(bb)
         distances = distance.((plane,), ps)
 
         if (all(distances .<= 0.0))

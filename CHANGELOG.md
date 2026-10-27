@@ -148,6 +148,7 @@
 - Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
 - Fixed cycling not working in `PlotList`s [#5541](https://github.com/MakieOrg/Makie.jl/pull/5541)
 - Moved decoration plots in `Axis3` to `ax.blockscene` so they no longer show up as user plots in the Axis3 [#5463](https://github.com/MakieOrg/Makie.jl/pull/5463)
+
 - Fixed issue with `transformation` being applied multiple times when set by a user in a recipe that passes applicable attributes to child plots [#5464](https://github.com/MakieOrg/Makie.jl/pull/5464)
 - Reduced file size of PDF and SVG files from CairoMakie containing mesh-based plots [#5446](https://github.com/MakieOrg/Makie.jl/pull/5446)
 - Fixed `arrows2d[!]` plot elements causing CairoMakie SVGs to be rasterized. [#5459](https://github.com/MakieOrg/Makie.jl/pull/#5459)
@@ -180,6 +181,7 @@
 - Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
 - Added docstrings for undocumented plot attributes. Also fixed some missing attribute passthrough and expanded on the available attributes for recipes [#5294](https://github.com/MakieOrg/Makie.jl/pull/5294)
 - Added support for plotting units with DynamicQuantities.jl [#5280](https://github.com/MakieOrg/Makie.jl/pull/5280)
+- Refactored rendering in GLMakie to go through a series of steps abstracted by a render pipeline. This allows rendering to be adjusted from outside and should simplify introducing more post-processing options in the future. [#4689](https://github.com/MakieOrg/Makie.jl/pull/4689)
 - Adjusted compute nodes to keep unspecialized types when transitioning from one graph to another [#5302](https://github.com/MakieOrg/Makie.jl/pull/5302)
 - Added a section to the `CONTRIBUTING.md` about code formatting [#5337](https://github.com/MakieOrg/Makie.jl/pull/5337)
 - Fixed `depthsorting = true` in GLMakie `scatter` plots not sorting correctly depending on camera rotation [#5344](https://github.com/MakieOrg/Makie.jl/pull/5344)

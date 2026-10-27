@@ -599,3 +599,13 @@ function transform_and_project(
         return target_type(p4d[Vec(1, 2, 3)] / p4d[4])
     end
 end
+
+@deprecate shift_project(scene, plot, pos) shift_project(scene, pos) false
+
+function shift_project(scene, pos)
+    return project(
+        camera(scene).projectionview[],
+        Vec2f(size(scene)),
+        f32_convert(scene, pos),
+    ) .+ Vec2f(origin(viewport(scene)[]))
+end

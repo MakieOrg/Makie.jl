@@ -1,9 +1,11 @@
 {{GLSL_VERSION}}
 
+{{FILTER_IN_SHADER}}
+
 in vec2 frag_uv;
 
-uniform sampler2D color_texture;
-uniform usampler2D object_ids;
+uniform sampler2D color_buffer;
+uniform usampler2D objectid_buffer;
 
 layout(location=0) out vec4 fragment_color;
 
@@ -21,15 +23,17 @@ bool unpack_bool(uint id) {
 
 void main(void)
 {
-    vec4 color = texture(color_texture, frag_uv).rgba;
+    vec4 color = texture(color_buffer, frag_uv).rgba;
     if(color.a <= 0){
         discard;
     }
 
-    uint id = texture(object_ids, frag_uv).x;
+    uint id = texture(objectid_buffer, frag_uv).x;
     // do tonemappings
     //opaque = linear_tone_mapping(color.rgb, 1.8);  // linear color output
     fragment_color.rgb = color.rgb;
+
+#ifdef FILTER_IN_SHADER
     // we store fxaa = true/false in highbit of the object id
     if (unpack_bool(id)) {
         fragment_color.a = dot(color.rgb, vec3(0.299, 0.587, 0.114)); // compute luma
@@ -37,4 +41,7 @@ void main(void)
         // we disable fxaa by setting luma to 1
         fragment_color.a = 1.0;
     }
+#else
+    fragment_color.a = dot(color.rgb, vec3(0.299, 0.587, 0.114)); // compute luma
+#endif
 }

@@ -77,7 +77,7 @@ function initialize_block!(b::Button)
         return Consume(true)
     end
 
-    notify(b.label)
+    notify(ComputePipeline.get_observable!(b.label))
     # trigger bbox
     notify(b.layoutobservables.suggestedbbox)
 

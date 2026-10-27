@@ -206,19 +206,29 @@ export function collectCheckedFiles() {
     return { uploadFiles, deleteFiles };
 }
 
+
+// I don't know why but these toggle-all buttons trigger twice with "true"
+// and I'm too annoyed to figure out why so I'm just gonna throw away every
+// other trigger
+var trigger_counter = 0;
+
 export function toggleFiles(grid) {
-    const cards = Array.from(grid.children).filter(c => c.classList.contains('ref-card'));
+    trigger_counter = trigger_counter + 1;
+    console.log("triggered", trigger_counter, grid);
+    if (trigger_counter % 2 == 0)
+    {
+        const cards = Array.from(grid.children).filter(c => c.classList.contains('ref-card'));
 
-    cards.forEach(card => {
-        const checkbox = card.querySelector('.checkbox-input');
-        if (checkbox && card.dataset.hidden == 'false')
-        {
-            checkbox.checked = !checkbox.checked;
-        }
-    });
+        cards.forEach(card => {
+            const checkbox = card.querySelector('.checkbox-input');
+            if (checkbox && card.dataset.hidden == 'false')
+            {
+                checkbox.checked = !checkbox.checked;
+            }
+        });
 
-    updateSelectionCounts();
-
+        updateSelectionCounts();
+    }
     return;
 }
 
