@@ -277,9 +277,14 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                         @test apply_conversion(CT, xs, ys, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         @test apply_conversion(CT, xs, r, m) isa Tuple{Vector{T_out}, RT, Matrix{Float32}}
                         @test apply_conversion(CT, r, ys, +) isa Tuple{RT, Vector{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, r, m) isa Tuple{RT, RT, Matrix{Float32}}
                         @test apply_conversion(CT, i, i, m) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, r, i, m) isa Tuple{RT, RT, Matrix{Float32}}
+                        if CT === CellGrid()
+                            @test apply_conversion(CT, i, r, m) isa Tuple{RT, typeof(r), typeof(m)}
+                            @test apply_conversion(CT, r, i, m) isa Tuple{typeof(r), RT, typeof(m)}
+                        else
+                            @test apply_conversion(CT, i, r, m) isa Tuple{RT, RT, Matrix{Float32}}
+                            @test apply_conversion(CT, r, i, m) isa Tuple{RT, RT, Matrix{Float32}}
+                        end
                         @test apply_conversion(CT, xgridvec, ygridvec, xgridvec) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         # TODO OffsetArray
                     end
