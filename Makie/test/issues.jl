@@ -119,7 +119,7 @@
     end
 
     @testset "#5858 x/y/zlims! with dim convert values, #5859 DateTime in Axis3 lims!" begin
-        x = DateTime(2026,1,1):Day(1):DateTime(2026,1,10)
+        x = DateTime(2026, 1, 1):Day(1):DateTime(2026, 1, 10)
         f, a, p = lines(x, x)
         # shouldn't error
         xlims!(first(x), last(x))
