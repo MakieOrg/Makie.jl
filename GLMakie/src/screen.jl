@@ -258,6 +258,30 @@ Makie.@noconstprop function empty_screen(debugging::Bool; reuse = true, window =
     return empty_screen(debugging, reuse, window)
 end
 
+# Shown when GLFW fails to create a window. Without a display server, GLFW.jl >= 4.0
+# initializes its NULL platform instead of erroring at load time, so a headless
+# machine fails here and needs a different explanation than a missing OpenGL driver.
+function window_creation_hint()
+    if GLFW.GetPlatform() == GLFW.PLATFORM_NULL
+        return """
+            GLFW couldn't create an OpenGL window because no display server is available.
+            Neither an X11 nor a Wayland display was found when GLMakie was loaded, so GLFW
+            is running on its NULL platform, which cannot create or show windows.
+            On a headless machine, run Julia under a virtual display (e.g. `xvfb-run julia`,
+            see https://github.com/MakieOrg/Makie.jl/blob/master/.github/workflows/reference_tests.yml),
+            or use CairoMakie or WGLMakie instead.
+        """
+    else
+        return """
+            GLFW couldn't create an OpenGL window.
+            This likely means, you don't have an OpenGL capable Graphic Card,
+            or you don't have an OpenGL 3.3 capable video driver installed.
+            Have a look at the troubleshooting section in the GLMakie readme:
+            https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
+        """
+    end
+end
+
 Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     owns_glscreen = isnothing(window)
     initial_resolution = (10, 10)
@@ -290,15 +314,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
                 debugging = debugging,
             )
         catch e
-            @warn(
-                """
-                    GLFW couldn't create an OpenGL window.
-                    This likely means, you don't have an OpenGL capable Graphic Card,
-                    or you don't have an OpenGL 3.3 capable video driver installed.
-                    Have a look at the troubleshooting section in the GLMakie readme:
-                    https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
-                """
-            )
+            @warn window_creation_hint()
             rethrow(e)
         end
 
