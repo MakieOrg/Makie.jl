@@ -98,8 +98,7 @@ function connect_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window,
     end)
 end
 
-function poll_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window,
-                          frame_count::Int, last_time::Float64)
+function poll_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window)
     events = scene.events
 
     # Both in UNITS, which is what Makie lays a figure out in. GLFW reports the
@@ -122,11 +121,7 @@ function poll_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window,
     x, y = GLFW.GetCursorPos(window)
     mp = (Float64(x) * s, uh - Float64(y) * s)
     mp != events.mouseposition[] && (events.mouseposition[] = mp)
-
-    # Frame tick
-    now = time()
-    events.tick[] = Makie.Tick(Makie.RegularRenderTick, frame_count, now, Float64(now - last_time))
-    return now
+    return nothing
 end
 
 """
@@ -159,22 +154,21 @@ end
 """
     start_input_loop!(screen, root_scene, win) -> Task
 
-Window events and the Makie tick at 120 Hz, on a task of their own beside the render loop.
-The render loop yields to it whenever it waits for the GPU, so input does not wait for
-frames: a camera moved from the keyboard moves by the time since the last tick, and with
-ticks once a frame a short tap fell between two of them and a held key jumped by a whole
-frame's time.
+Window events at 120 Hz, on a task of their own beside the render loop, which yields to it
+whenever it waits for the GPU. Input does not wait for frames: a key or a click reaches
+its listeners while a frame renders, not after it.
+
+The tick is the render loop's, once a frame: a tick is a frame Makie can draw into, so
+whatever an animation computes on it is drawn. Ticked from here, at the input rate, it
+was 120 frames a second that were never drawn.
 """
 function start_input_loop!(screen::Screen, root_scene, win)
     return @async begin
-        tick = 0
-        last_time = time()
         try
             while !screen.stop_renderloop[]
                 GLFW.PollEvents()
                 isopen(win) || break
-                tick += 1
-                last_time = poll_glfw_events!(screen, root_scene, win.handle, tick, last_time)
+                poll_glfw_events!(screen, root_scene, win.handle)
                 sleep(1 / 120)
             end
         catch e

@@ -279,7 +279,7 @@ end
 
 function create_material_with_color(color::Colorant, template::Hikari.Conductor)
     Hikari.Conductor(
-        template.eta, template.k, template.roughness,
+        template.eta, template.k, template.u_roughness, template.v_roughness,
         Hikari.ConstTexture(to_spectrum(color)),
         template.remap_roughness, template.displacement
     )

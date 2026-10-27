@@ -44,7 +44,7 @@ let
     update_cam!(ax, cam)
 
     RayMakie.activate!(
-        device=Mantle.backend(Mantle.Device("lavapipe")),
+        device=Mantle.Device("lavapipe"),
         exposure=1f0,
         tonemap=nothing,
         gamma=2.2f0,

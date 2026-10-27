@@ -240,13 +240,18 @@ scalar memory location, and three of them per corner is the whole trick.
     end)
 end
 
-"""Add one face's normal into each vertex it touches."""
+"""Add one face's normal into each vertex it touches.
+
+`:monotonic`: the sums are read after the kernel, which orders them, so no add
+needs an order against the others. The macro's default is sequentially
+consistent, which Vulkan's memory model has no ordering for and Lava refuses, so
+`mesh!` with device vertices failed to compile on Vulkan."""
 @inline function scatternormal!(normals, face::GeometryBasics.NgonFace{N}, n) where {N}
     ntuple(Val(N)) do k
         base = 3 * (Base.to_index(face[k]) - 1)
-        Atomix.@atomic normals[base + 1] += n[1]
-        Atomix.@atomic normals[base + 2] += n[2]
-        Atomix.@atomic normals[base + 3] += n[3]
+        Atomix.@atomic :monotonic normals[base + 1] += n[1]
+        Atomix.@atomic :monotonic normals[base + 2] += n[2]
+        Atomix.@atomic :monotonic normals[base + 3] += n[3]
         nothing
     end
     return nothing

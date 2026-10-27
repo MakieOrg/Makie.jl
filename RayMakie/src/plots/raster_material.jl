@@ -434,6 +434,8 @@ end
 handle_float(h::Hikari.TexHandle, fallback) = h.kind in (Hikari.TexKind.CONST_FLOAT, Hikari.TexKind.CONST_SPECTRUM) ?
                                               Hikari.const_float(h) : Float32(fallback)
 handle_float(x::Real, fallback) = Float32(x)
+# An IOR that is a spectrum, at the sodium D line, where an index of refraction is quoted.
+handle_float(s::Hikari.PiecewiseLinearSpectrum, fallback) = Hikari.sample(s, 589.3f0)
 handle_float(::Any, fallback) = Float32(fallback)
 
 """The GGX α a material's roughness pair stands for, as pbrt remaps it; a sampled roughness reads as 0.5."""
@@ -446,6 +448,19 @@ end
 spectral(s::Hikari.PiecewiseLinearSpectrum, λ, i) = Hikari.sample(s, λ)
 spectral(h::Hikari.TexHandle, λ, i) = h.rgb.c[i]
 rgb_of(s) = Vec3f(spectral(s, 630f0, 1), spectral(s, 532f0, 2), spectral(s, 465f0, 3))
+
+"""
+A conductor's `(η, k)` at red, green and blue, as `Hikari.conductor_ior` makes them: its own, or
+pbrt-v4's of the reflectance it was given instead. A sampled reflectance reads as mid grey.
+"""
+conductor_rgb(eta, k, reflectance::Hikari.TexHandle) =
+    Hikari.is_none(reflectance) ? (rgb_of(eta), rgb_of(k)) : reflectance_rgb(handle_rgb(reflectance, GREY))
+conductor_rgb(eta, k, reflectance) = reflectance_rgb(handle_rgb(reflectance, GREY))
+function reflectance_rgb(c::Hikari.RGBSpectrum)
+    r = clamp.(Vec3f(c.c[1], c.c[2], c.c[3]), 0f0, 0.9999f0)
+    return Vec3f(1), 2f0 .* sqrt.(r) ./ sqrt.(1f0 .- r)
+end
+const GREY = Hikari.RGBSpectrum(0.5f0)
 
 """
 The hemispherical averages of a coat of index η: F̄ₑ, of the Fresnel
@@ -481,25 +496,24 @@ end
 
 function raster_material(m::Hikari.CoatedDiffuse)
     α = material_alpha(m.u_roughness, m.v_roughness, m.remap_roughness)
-    fe, fi = coat_averages(m.eta)
-    return RasterMaterial(Vec4f(MAT_COATED_DIFFUSE, α, m.eta, handle_float(m.thickness, 0.01f0)),
+    η = handle_float(m.eta, 1.5f0)
+    fe, fi = coat_averages(η)
+    return RasterMaterial(Vec4f(MAT_COATED_DIFFUSE, α, η, handle_float(m.thickness, 0.01f0)),
                           Vec4f(0), Vec4f(0, 0, 0, fe), Vec4f(0, 0, 0, fi))
 end
 
 function raster_material(m::Hikari.Conductor)
-    α = material_alpha(m.roughness, m.roughness, m.remap_roughness)
-    η, k = rgb_of(m.eta), rgb_of(m.k)
-    tint = handle_rgb(m.reflectance, WHITE)
-    return RasterMaterial(Vec4f(MAT_CONDUCTOR, α, 1, 0), Vec4f(η..., 0), Vec4f(k..., 0),
-                          Vec4f(tint.c[1], tint.c[2], tint.c[3], 0))
+    α = material_alpha(m.u_roughness, m.v_roughness, m.remap_roughness)
+    η, k = conductor_rgb(m.eta, m.k, m.reflectance)
+    return RasterMaterial(Vec4f(MAT_CONDUCTOR, α, 1, 0), Vec4f(η..., 0), Vec4f(k..., 0), Vec4f(1, 1, 1, 0))
 end
 
 function raster_material(m::Hikari.CoatedConductor)
     α = material_alpha(m.interface_u_roughness, m.interface_v_roughness, m.remap_roughness)
     αc = material_alpha(m.conductor_u_roughness, m.conductor_v_roughness, m.remap_roughness)
-    ηi = m.interface_eta
+    ηi = handle_float(m.interface_eta, 1.5f0)
     # pbrt divides the conductor's η and k by the coat's index
-    η, k = rgb_of(m.conductor_eta) / ηi, rgb_of(m.conductor_k) / ηi
+    η, k = conductor_rgb(m.conductor_eta, m.conductor_k, m.conductor_reflectance) ./ ηi
     fe, fi = coat_averages(ηi)
     return RasterMaterial(Vec4f(MAT_COATED_CONDUCTOR, α, ηi, handle_float(m.thickness, 0.01f0)),
                           Vec4f(η..., αc), Vec4f(k..., fe), Vec4f(1, 1, 1, fi))

@@ -14,6 +14,7 @@
 
 using Test, Makie, RayMakie, Mantle, GeometryBasics, Colors
 using Makie: Scene, cam3d!, mesh!, cameracontrols, update_cam!, AmbientLight, RGBf, Vec3f, Point3f
+using Statistics: mean
 
 function ce_quad_scene(color)
     sc = Scene(size = (48, 48), lights = [AmbientLight(RGBf(1, 1, 1))])
@@ -40,9 +41,12 @@ end
         sc = ce_quad_scene(vertex ? fill(c, 4) : c)
         img = Makie.colorbuffer(sc; backend = RayMakie, samples = 4, max_depth = 2,
                                 tonemap = nothing, rasterize)
-        px = img[24, 24]
-        @test isapprox(red(px), red(c); atol = 0.02)
-        @test isapprox(green(px), green(c); atol = 0.02)
-        @test isapprox(blue(px), blue(c); atol = 0.02)
+        # The colour of the quad's middle, every pixel of which is the quad: a traced
+        # pixel at four samples is off by its spectral noise, 0.03 to 0.06 in a channel,
+        # which a single pixel read as the colour.
+        px = img[17:32, 17:32]
+        @test isapprox(mean(red, px), red(c); atol = 0.02)
+        @test isapprox(mean(green, px), green(c); atol = 0.02)
+        @test isapprox(mean(blue, px), blue(c); atol = 0.02)
     end
 end

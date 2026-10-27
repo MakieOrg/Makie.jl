@@ -1543,8 +1543,16 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             present_composited!(screen, win)
             Threads.atomic_add!(screen.frames_presented, 1)
 
+            # Makie's tick, once a frame and before it is drawn, so what an animation
+            # changes on it is in the frame. Every iteration draws a new image, which
+            # is what a `RegularRenderTick` says; the frame before the first one is
+            # the background above. Makie's own callback keeps `time` as the time
+            # since the first tick, where the hand-made tick this replaced had
+            # `time()`, the seconds since 1970.
+            tick = Makie.TickCallback(root_scene)
             while !screen.stop_renderloop[]
                 !isopen(win) && (exit_reason = :window_closed; break)
+                tick(Makie.RegularRenderTick)
 
                 cur_w, cur_h = size(win)
                 if (cur_w, cur_h) != (w, h)
