@@ -910,7 +910,6 @@ function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax
         v = tickvalues[end] + stepsize
         append!(vals, v:stepsize:vmax)
     end
-    @info vals
     return vals
 end
 
