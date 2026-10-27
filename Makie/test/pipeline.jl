@@ -114,7 +114,7 @@ end
 @testset "Cycled" begin
     # Test for https://github.com/MakieOrg/Makie.jl/issues/3266
     f, ax, pl = lines(1:4; color = Cycled(2))
-    cpalette = ax.scene.theme.palette[:color][]
+    cpalette = ax.scene.theme.palette[:color]
     @test pl.scaled_color[] == cpalette[2]
     pl2 = lines!(ax, 1:4; color = Cycled(1))
     @test pl2.scaled_color[] == cpalette[1]
