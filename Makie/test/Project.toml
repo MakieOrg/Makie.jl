@@ -1,5 +1,6 @@
 [deps]
 CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
+Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 ComputePipeline = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
@@ -19,3 +20,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 DelaunayTriangulation = "927a84f5-c5f4-47a5-9785-b46e178433df"
+DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
+
+[compat]
+Compat = "4.13"
