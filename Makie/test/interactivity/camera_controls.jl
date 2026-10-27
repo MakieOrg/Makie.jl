@@ -121,6 +121,63 @@ end
     @test p.attributes[:projection][] == Mat4f(scene.compute[projname][])
 end
 
+# Keyboard movement is how long a key was held, integrated over the key events. It was
+# sampled once a tick, and ticks come once a frame: at a frame a second, a tap between two
+# frames moved the camera not at all, and how far a held key zoomed depended on how long
+# the frames took.
+@testset "cam3d! keyboard movement integrates how long a key was held" begin
+    function keyboard_cam()
+        scene = Scene(size = (800, 600))
+        cam3d!(scene)
+        return events(scene), cameracontrols(scene)
+    end
+    frame!(e, t, dt) = e.tick[] = Makie.Tick(Makie.OneTimeRenderTick, 0, t, dt)
+    # `keyboard_translationspeed` times the distance from the eye to `lookat`, per second
+    speed = 0.5 * norm(Vec3d(3))
+
+    @testset "a tap between two frames of a window" begin
+        e, cc = keyboard_cam()
+        e.tick[] = Makie.Tick(Makie.RegularRenderTick, 1, 1.0, 1.0)
+        t0 = time()
+        e.keyboardbutton[] = KeyEvent(Keyboard.w, Keyboard.press)
+        t1 = time()
+        sleep(0.05)
+        t2 = time()
+        e.keyboardbutton[] = KeyEvent(Keyboard.w, Keyboard.release)
+        t3 = time()
+        e.tick[] = Makie.Tick(Makie.RegularRenderTick, 2, 2.0, 1.0)
+        # As far as the key was down: at least from after the press to before the
+        # release, at most from before the one to after the other.
+        @test speed * (t2 - t1) <= norm(cc.lookat[]) <= speed * (t3 - t0)
+    end
+
+    @testset "a recording, by its frames" begin
+        e, cc = keyboard_cam()
+        frame!(e, 0.0, 0.0)
+        e.keyboardbutton[] = KeyEvent(Keyboard.w, Keyboard.press)
+        frame!(e, 0.1, 0.1)
+        frame!(e, 0.2, 0.1)
+        frame!(e, 0.3, 0.1)
+        e.keyboardbutton[] = KeyEvent(Keyboard.w, Keyboard.release)
+        frame!(e, 0.4, 0.1)
+        @test norm(cc.lookat[]) ≈ speed * 0.3
+    end
+
+    @testset "one long frame zooms as far as many short ones" begin
+        function zoomed(steps)
+            e, cc = keyboard_cam()
+            frame!(e, 0.0, 0.0)
+            e.keyboardbutton[] = KeyEvent(Keyboard.o, Keyboard.press)
+            t = 0.0
+            for dt in steps
+                frame!(e, t += dt, dt)
+            end
+            return cc.eyeposition[]
+        end
+        @test zoomed([1.0]) ≈ zoomed(fill(0.1, 10))
+    end
+end
+
 @testset "stage_cam!" begin
     function ndc(scene, p)
         q = scene.camera.projectionview[] * Point4d(p[1], p[2], p[3], 1)
@@ -220,6 +277,39 @@ end
 
         @test all(isfinite, scene.camera.projectionview[])
         @test scene.camera.upvector[] ≈ Vec3f(-1, 0, 0) atol = 1.0f-2
+    end
+
+    @testset "keyboard movement integrates how long a key was held" begin
+        scene = Scene(size = (400, 400))
+        e = events(scene)
+        cam = stage_cam!(scene, stage_size = 2.0, fov = 90.0)
+        e.tick[] = Makie.Tick(Makie.RegularRenderTick, 1, 1.0, 1.0)
+        t0 = time()
+        e.keyboardbutton[] = KeyEvent(Keyboard.w, Keyboard.press)
+        t1 = time()
+        sleep(0.05)
+        t2 = time()
+        e.keyboardbutton[] = KeyEvent(Keyboard.w, Keyboard.release)
+        t3 = time()
+        e.tick[] = Makie.Tick(Makie.RegularRenderTick, 2, 2.0, 1.0)
+        # `keyboard_translationspeed` times `stage_size`, per second
+        @test 0.5 * 2.0 * (t2 - t1) <= norm(cam.lookat[]) <= 0.5 * 2.0 * (t3 - t0)
+
+        # The arrows offset the view while `offset_mod` is held, and orbit otherwise.
+        frame!(t) = e.tick[] = Makie.Tick(Makie.OneTimeRenderTick, 0, t, 0.1)
+        azimuth = cam.azimuth[]
+        frame!(0.0)
+        e.keyboardbutton[] = KeyEvent(Keyboard.left_shift, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.left, Keyboard.press)
+        frame!(0.1)
+        @test cam.relative_offset[] ≈ Vec2d(-1.125 * 0.1, 0)
+        @test cam.azimuth[] ≈ azimuth
+        e.keyboardbutton[] = KeyEvent(Keyboard.left_shift, Keyboard.release)
+        frame!(0.2)
+        e.keyboardbutton[] = KeyEvent(Keyboard.left, Keyboard.release)
+        frame!(0.3)
+        @test cam.relative_offset[] ≈ Vec2d(-1.125 * 0.1, 0)
+        @test cam.azimuth[] ≈ azimuth - 60 * 0.1
     end
 
     @testset "mouse controls" begin

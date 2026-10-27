@@ -1004,11 +1004,11 @@ end
 
     # changing active triggers animation
     e = events(f)
-    @test length(e.tick.listeners) == 0
+    n = length(e.tick.listeners)    # what `Events` keeps itself
     t.active[] = true
-    @test length(e.tick.listeners) == 1
+    @test length(e.tick.listeners) == n + 1
     e.tick[] = Makie.Tick(Makie.RegularRenderTick, 1, 1.0, 1.0)
-    @test length(e.tick.listeners) == 0
+    @test length(e.tick.listeners) == n
 end
 
 @testset "Textbox set! & unsafe_set!" begin

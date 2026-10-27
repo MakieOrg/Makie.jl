@@ -261,10 +261,11 @@ function StageCamera(
         return Consume(false)
     end
 
+    # Keyboard controls: each tick moves by how long each key was held since the last one.
+    held = HeldTime(camera(scene), scene, () -> pulse_buttons(cam))
     on(camera(scene), events(scene).tick) do tick
-        if cam.selected[]
-            on_pulse(scene, cam, tick.delta_time)
-        end
+        held_for = take!(held, scene, tick.time)
+        cam.selected[] && on_pulse(scene, cam, held_for)
     end
 
     add_mouse_controls!(scene, cam)
@@ -530,7 +531,7 @@ function add_mouse_controls!(scene, cam::StageCamera)
     end
 end
 
-function on_pulse(scene, cam::StageCamera, timestep)
+function pulse_buttons(cam::StageCamera)
     @extractvalue cam.controls (
         forward_key, backward_key, left_key, right_key, up_key, down_key,
         azimuth_left_key, azimuth_right_key, elevation_up_key, elevation_down_key,
@@ -538,28 +539,37 @@ function on_pulse(scene, cam::StageCamera, timestep)
         increase_stage_size_key, decrease_stage_size_key,
         offset_mod,
     )
+    # The arrows orbit, and offset the view instead while `offset_mod` is held.
+    return (;
+        forward_key, backward_key, left_key, right_key, up_key, down_key,
+        orbit_left = And(azimuth_left_key, Not(offset_mod)),
+        orbit_right = And(azimuth_right_key, Not(offset_mod)),
+        orbit_up = And(elevation_up_key, Not(offset_mod)),
+        orbit_down = And(elevation_down_key, Not(offset_mod)),
+        offset_left = And(azimuth_left_key, offset_mod),
+        offset_right = And(azimuth_right_key, offset_mod),
+        offset_up = And(elevation_up_key, offset_mod),
+        offset_down = And(elevation_down_key, offset_mod),
+        increase_fov_key, decrease_fov_key,
+        increase_stage_size_key, decrease_stage_size_key,
+    )
+end
 
-    if !ispressed(
-            scene, forward_key | backward_key | left_key | right_key | up_key | down_key |
-                azimuth_left_key | azimuth_right_key | elevation_up_key | elevation_down_key |
-                increase_fov_key | decrease_fov_key |
-                increase_stage_size_key | decrease_stage_size_key
-        )
-        return
-    end
+# `held`: the seconds each of `pulse_buttons(cam)` was held since the last tick. Focal
+# length and stage size scale by `exp`, the limit of compounding `1 + speed * dt` once a
+# tick, so one long tick goes as far as many short ones.
+function on_pulse(scene, cam::StageCamera, held::NamedTuple)
+    any(>(0), held) || return
 
     @extractvalue cam.settings (
         keyboard_translationspeed, keyboard_rotationspeed, keyboard_zoomspeed,
         keyboard_stagesizespeed, keyboard_offsetspeed,
     )
 
-    forward = ispressed(scene, forward_key)
-    backward = ispressed(scene, backward_key)
-    left = ispressed(scene, left_key)
-    right = ispressed(scene, right_key)
-    up = ispressed(scene, up_key)
-    down = ispressed(scene, down_key)
-    translating = forward || backward || left || right || up || down
+    forward, backward = held.forward_key, held.backward_key
+    left, right = held.left_key, held.right_key
+    up, down = held.up_key, held.down_key
+    translating = any(>(0), (forward, backward, left, right, up, down))
 
     if translating
         azimuth = cam.azimuth[]
@@ -569,7 +579,7 @@ function on_pulse(scene, cam::StageCamera, timestep)
         cam_forward = normalize(horizontal_forward - dot(horizontal_forward, upvector) * upvector)
         cam_right = normalize(cross(cam_forward, upvector))
 
-        speed = keyboard_translationspeed * timestep * cam.stage_size[]
+        speed = keyboard_translationspeed * cam.stage_size[]
 
         translation = speed * (
             (backward - forward) * cam_forward +
@@ -580,39 +590,35 @@ function on_pulse(scene, cam::StageCamera, timestep)
         cam.lookat[] = cam.lookat[] + translation
     end
 
-    arrow_left = ispressed(scene, azimuth_left_key)
-    arrow_right = ispressed(scene, azimuth_right_key)
-    arrow_up = ispressed(scene, elevation_up_key)
-    arrow_down = ispressed(scene, elevation_down_key)
-    arrows = arrow_left || arrow_right || arrow_up || arrow_down
-    offsetting = arrows && ispressed(scene, offset_mod)
-    rotating = arrows && !offsetting
+    orbit = (held.orbit_left, held.orbit_right, held.orbit_up, held.orbit_down)
+    rotating = any(>(0), orbit)
 
     if rotating
-        rotation_speed = keyboard_rotationspeed * timestep * 60.0
-        orbit_cam!(cam, (arrow_right - arrow_left) * rotation_speed, (arrow_up - arrow_down) * rotation_speed)
+        orbit_left, orbit_right, orbit_up, orbit_down = orbit
+        rotation_speed = keyboard_rotationspeed * 60.0
+        orbit_cam!(cam, (orbit_right - orbit_left) * rotation_speed, (orbit_up - orbit_down) * rotation_speed)
     end
+
+    offset = (held.offset_left, held.offset_right, held.offset_up, held.offset_down)
+    offsetting = any(>(0), offset)
 
     if offsetting
-        speed = keyboard_offsetspeed * timestep
-        offset_cam!(cam, speed * Vec2d(arrow_right - arrow_left, arrow_up - arrow_down))
+        offset_left, offset_right, offset_up, offset_down = offset
+        offset_cam!(cam, keyboard_offsetspeed * Vec2d(offset_right - offset_left, offset_up - offset_down))
     end
 
-    fov_inc = ispressed(scene, increase_fov_key)
-    fov_dec = ispressed(scene, decrease_fov_key)
-    fov_adjustment = fov_inc || fov_dec
+    fov_inc, fov_dec = held.increase_fov_key, held.decrease_fov_key
+    fov_adjustment = fov_inc > 0 || fov_dec > 0
 
     if fov_adjustment
-        scale_focal_length!(cam, (1 + keyboard_zoomspeed * timestep)^(fov_dec - fov_inc))
+        scale_focal_length!(cam, exp(keyboard_zoomspeed * (fov_dec - fov_inc)))
     end
 
-    stage_inc = ispressed(scene, increase_stage_size_key)
-    stage_dec = ispressed(scene, decrease_stage_size_key)
-    stage_adjustment = stage_inc || stage_dec
+    stage_inc, stage_dec = held.increase_stage_size_key, held.decrease_stage_size_key
+    stage_adjustment = stage_inc > 0 || stage_dec > 0
 
     if stage_adjustment
-        step = (1 + keyboard_stagesizespeed * timestep)^(stage_inc - stage_dec)
-        cam.stage_size[] = cam.stage_size[] * step
+        cam.stage_size[] = cam.stage_size[] * exp(keyboard_stagesizespeed * (stage_inc - stage_dec))
     end
 
     return translating || rotating || offsetting || fov_adjustment || stage_adjustment

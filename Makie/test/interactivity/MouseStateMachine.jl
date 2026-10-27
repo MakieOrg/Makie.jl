@@ -190,3 +190,35 @@ end
         MouseEventTypes.leftdown, MouseEventTypes.leftclick, MouseEventTypes.leftup,
     ]
 end
+
+# In a window, between two frames, a click is timed when it happens. Timed by the last
+# tick, which comes once a frame, two clicks within one frame were at the same time: at a
+# frame a second, two clicks 0.3 s apart were a double click.
+@testset "double clicks between two frames of a window" begin
+    scene = Scene(size = (800, 600))
+    e = events(scene)
+    msm = addmouseevents!(scene, Observable(Rect2(200, 200, 400, 300)), priority = typemax(Int))
+    e.mouseposition[] = (300, 300)
+    eventtypes = MouseEventTypes.MouseEventType[]
+    on(msm.obs) do event
+        push!(eventtypes, event.type)
+        return false
+    end
+    function click()
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        return e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+    end
+
+    e.tick[] = Makie.Tick(Makie.RegularRenderTick, 1, 1.0, 1.0)
+    click()
+    sleep(0.3)
+    click()
+    @test count(==(MouseEventTypes.leftdoubleclick), eventtypes) == 0
+
+    e.tick[] = Makie.Tick(Makie.RegularRenderTick, 2, 2.0, 1.0)
+    empty!(eventtypes)
+    click()
+    sleep(0.05)
+    click()
+    @test count(==(MouseEventTypes.leftdoubleclick), eventtypes) == 1
+end

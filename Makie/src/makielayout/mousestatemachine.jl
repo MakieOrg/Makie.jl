@@ -376,9 +376,9 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, to_px, priority)
                     end
                 else
                     if mouse_was_inside[]
-                        tick_time = events(scene).tick[].time
-                        dt_last_click = tick_time - t_last_click[]
-                        t_last_click[] = tick_time
+                        click_time = interaction_time(events(scene))
+                        dt_last_click = click_time - t_last_click[]
+                        t_last_click[] = click_time
 
                         # guard against mouse coming in from outside, then mouse upping
                         if mouse_downed_inside[]
