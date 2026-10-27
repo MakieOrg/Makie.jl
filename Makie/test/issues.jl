@@ -117,4 +117,16 @@
         f, a, p = plotlist(S.Lines(rand(10), linestyle = :dash))
         @test_logs p.plots[1].linestyle[]
     end
+
+    @testset "#5858 x/y/zlims! with dim convert values, #5859 DateTime in Axis3 lims!" begin
+        x = DateTime(2026,1,1):Day(1):DateTime(2026,1,10)
+        f, a, p = lines(x, x)
+        # shouldn't error
+        xlims!(first(x), last(x))
+        ylims!(first(x), last(x))
+        lines!(Axis3(f[1, 2]), x, x, x)
+        xlims!(first(x), last(x))
+        ylims!(first(x), last(x))
+        zlims!(first(x), last(x))
+    end
 end
