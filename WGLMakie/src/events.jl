@@ -102,6 +102,12 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
                     e.unicode_input[] = keydown[2][1]
                 end
             end
+            @handle msg.paste begin
+                # text pasted in the browser is typed, so it goes to whatever has focus
+                for c in replace(paste, "\r\n" => "\n")
+                    e.unicode_input[] = c
+                end
+            end
             @handle msg.keyup begin
                 if keyup == "delete_keys"
                     # this works fine
