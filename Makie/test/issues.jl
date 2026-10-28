@@ -129,4 +129,22 @@
         ylims!(first(x), last(x))
         zlims!(first(x), last(x))
     end
+
+    @testset "#5349, no type pinning of cycle-able attributes passed to recipes" begin
+        color = Observable{Any}(:red)
+        f, a, p = textlabel(0, 0, text = "Abc", background_color = color)
+        @test p.plots[2].plots[1].scaled_color[] == to_color(:red)
+        # type-pinning would error with this because we change Symbol -> Tuple
+        color[] = (:blue, 0.5)
+        @test p.plots[2].plots[1].scaled_color[] == to_color((:blue, 0.5))
+    end
+
+    @testset "#5499 reactive scene backgroundcolor" begin
+        bgcol = Observable(colorant"green")
+        fig = Figure(backgroundcolor = bgcol)
+        @test fig.scene.backgroundcolor[] == to_color(bgcol[])
+        bgcol[] = colorant"red"
+        @test fig.scene.backgroundcolor[] == to_color(bgcol[])
+        @assert !haskey(fig.scene.compute, :backgroundcolor) "May need to update test?"
+    end
 end
