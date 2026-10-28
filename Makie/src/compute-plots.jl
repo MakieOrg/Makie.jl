@@ -668,7 +668,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
                         if is_primitive
                             return convert_attribute(value, Key{key}(), Key{name}())
                         else
-                            return value
+                            return to_recipe_attribute(key, value)
                         end
                     end
                     pos = attr.cycle_index[]
