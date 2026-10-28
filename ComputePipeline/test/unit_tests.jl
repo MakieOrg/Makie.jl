@@ -1697,3 +1697,65 @@ end
     @assert pointer(v) == pointer(graph.vec[]) "this is expected to be memory aliased, but isn't"
     @test graph.vecf[] == [1, 1, 1, 1]
 end
+
+# A struct input's fields are set one at a time, and a computation reading the input
+# with its field versions learns which of them changed. Comparing the values cannot
+# tell that for a field holding an array: setting another field rebuilds the struct
+# with the same array in it, which `is_same` takes as possibly changed.
+struct Look{C, R}
+    color::C
+    roughness::R
+end
+
+@testset "Fields of an input" begin
+    image = rand(Float32, 4, 4)
+    graph = ComputeGraph()
+    add_input!(graph, :look, Look(image, 0.5))
+    track_fields!(graph, :look)
+    seen = Dict{Symbol, Int}()
+    changed_fields = Symbol[]
+    register_computation!(graph, [:look, :look_fields], [:uploads]) do inputs, changed, last
+        empty!(changed_fields)
+        for (f, v) in inputs.look_fields
+            get(seen, f, 0) == v || push!(changed_fields, f)
+            seen[f] = v
+        end
+        return (copy(changed_fields),)
+    end
+    @test Set(graph.uploads[]) == Set([:color, :roughness])
+
+    graph.look.roughness = 0.25
+    @test graph.look[] === Look(image, 0.25)
+    @test graph.uploads[] == [:roughness]
+
+    # The same array assigned to its field again is set: it may have changed in place.
+    image .= 1
+    graph.look.color = image
+    @test graph.uploads[] == [:color]
+
+    # A value assigned whole sets all its fields, and one of another type all of its own.
+    graph.look = Look(rand(Float32, 2, 2), 0.1)
+    @test Set(graph.uploads[]) == Set([:color, :roughness])
+    update!(graph, look = (color = 1, roughness = 2, extra = 3))
+    @test Set(graph.uploads[]) == Set([:color, :roughness, :extra])
+
+    @test_throws ErrorException graph.look.missing = 1
+    map!(x -> x, graph, :look, :copied)
+    @test_throws ErrorException graph.copied.color = 2
+end
+
+@testset "Concurrent field assignments preserve both fields" begin
+    graph = ComputeGraph()
+    add_input!(graph, :look, Look(:red, 0.5))
+    track_fields!(graph, :look)
+    setter = lock(ComputePipeline.GLOBAL_LOCK) do
+        task = @async graph.look.roughness = 0.25
+        yield()
+        @test !istaskdone(task)
+        graph.look.color = :blue
+        task
+    end
+    fetch(setter)
+    @test graph.look[] === Look(:blue, 0.25)
+    @test graph.look_fields[] == Dict(:color => 2, :roughness => 2)
+end

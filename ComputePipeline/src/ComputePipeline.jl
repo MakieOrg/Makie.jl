@@ -589,6 +589,8 @@ function _setindex!(input::Input, value, force_update = false)
     @lock GLOBAL_LOCK begin
         input.value = value
         mark_dirty!(input)
+        tracks_fields(input.graph, input.name) &&
+            store_versions!(input.graph, input.name, set_all(input.graph.inputs[fields_key(input.name)].value, value))
     end
     update_observables!(input)
     return value
@@ -606,7 +608,78 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
         # multiple times for a synchronized update (would cause desync)
         input.value = value
         mark_dirty!(input)
+        # A value assigned whole sets every field of it.
+        tracks_fields(attr, key) && store_versions!(attr, key, set_all(attr.inputs[fields_key(key)].value, value))
     end
+    return value
+end
+
+# ── Fields of an input ──────────────────────────────────────────────────────
+
+"""
+    track_fields!(graph, key)
+
+Track which fields of the struct input `key` holds are set: the input `Symbol(key, :_fields)`
+holds, for each field, how often it was set. `node.field = value` sets one field, and a value
+assigned whole sets all of its fields. A computation reading both learns which fields changed since
+it last ran, which comparing the values cannot tell for a field holding an array: the same array
+may have been changed in place, and an unchanged one must not be taken for a new one.
+"""
+function track_fields!(graph::ComputeGraph, key::Symbol)
+    tracks_fields(graph, key) && return graph
+    add_input!(graph, fields_key(key), set_all(Dict{Symbol, Int}(), graph.inputs[key].value))
+    return graph
+end
+
+"""The input holding how often each field of input `key` was set (`track_fields!`)."""
+fields_key(key::Symbol) = Symbol(key, :_fields)
+tracks_fields(graph::ComputeGraph, key::Symbol) = haskey(graph.inputs, fields_key(key))
+
+"""`versions` with every field of `value` set once more."""
+set_all(versions::Dict{Symbol, Int}, value) =
+    Dict{Symbol, Int}(f => get(versions, f, 0) + 1 for f in fieldnames(typeof(value)))
+
+function store_versions!(graph::ComputeGraph, key::Symbol, versions::Dict{Symbol, Int})
+    input = graph.inputs[fields_key(key)]
+    input.value = versions
+    mark_dirty!(input)
+    return
+end
+
+"""
+    with_field(x, field, value)
+
+`x` with `field` set to `value` and every other field as it was, rebuilt through its type's name,
+so a parametric type takes the type of `value`. Overload it for a type whose constructor does not
+take its fields positionally.
+"""
+with_field(x, field::Symbol, value) =
+    Base.typename(typeof(x)).wrapper(map(f -> f === field ? value : getfield(x, f), fieldnames(typeof(x)))...)
+
+"""
+    node.field = value
+
+Set one field of the struct an input holds, the input `node` is the output of: the input is
+updated to the struct with that field changed (`with_field`), and where its fields are tracked
+(`track_fields!`) that field alone counts as set.
+"""
+function Base.setproperty!(node::Computed, field::Symbol, value)
+    hasfield(Computed, field) && return setfield!(node, field, convert(fieldtype(Computed, field), value))
+    input = getparent(node)
+    input isa Input || error("Only the fields of an input can be set; $(node.name) is computed.")
+    graph = input.graph
+    @lock GLOBAL_LOCK begin
+        old = input.value
+        hasfield(typeof(old), field) || error("$(node.name) holds a $(typeof(old)), which has no field `$field`.")
+        input.value = with_field(old, field, value)
+        mark_dirty!(input)
+        if tracks_fields(graph, input.name)
+            versions = copy(graph.inputs[fields_key(input.name)].value)
+            versions[field] = get(versions, field, 0) + 1
+            store_versions!(graph, input.name, versions)
+        end
+    end
+    update_observables!(graph)
     return value
 end
 
@@ -2175,5 +2248,6 @@ export ComputeGraph
 export register_computation!, map_latest!
 export add_input!, add_inputs!, add_constant!, add_constants!
 export update!
+export track_fields!
 
 end
