@@ -472,7 +472,7 @@ function update_observables!(obs_to_update::Vector{Observable})
     return
 end
 
-function Base.setindex!(computed::Computed, value)
+function Base.setindex!(computed::Computed, @nospecialize(value))
     if computed.parent isa Input
         return setindex!(computed.parent, value)
     else
@@ -483,7 +483,7 @@ function Base.setindex!(computed::Computed, value)
     end
 end
 
-function Base.setindex!(input::Input, value)
+function Base.setindex!(input::Input, @nospecialize(value))
     if is_same(input.value, value)
         # Skip if the value is the same as before
         return value
@@ -494,7 +494,7 @@ function Base.setindex!(input::Input, value)
     return value
 end
 
-function _setproperty!(attr::ComputeGraph, key::Symbol, value)
+function _setproperty!(attr::ComputeGraph, key::Symbol, @nospecialize(value))
     input = attr.inputs[key]
     # Skip if the value is the same as before
     is_same(input.value, value) && return value
@@ -505,7 +505,7 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
     return value
 end
 
-function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
+function Base.setproperty!(attr::ComputeGraph, key::Symbol, @nospecialize(value))
     return lock(attr.lock) do
         _setproperty!(attr, key, value)
         foreach(notify, attr.obs_to_update)
