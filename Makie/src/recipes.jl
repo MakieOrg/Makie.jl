@@ -51,7 +51,7 @@ function _create_plot! end
 
 
 Base.@nospecializeinfer function to_dict(@nospecialize(nt::NamedTuple))
-    d = Dict{Symbol,Any}()
+    d = Dict{Symbol, Any}()
     for i in 1:nfields(nt)
         d[fieldname(typeof(nt), i)] = getfield(nt, i)
     end
