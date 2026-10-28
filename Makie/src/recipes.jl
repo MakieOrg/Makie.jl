@@ -57,7 +57,7 @@ Base.@nospecializeinfer function to_dict(@nospecialize(nt::NamedTuple))
     end
     return d
 end
-to_dict(@nospecialize(kws::Base.Pairs{Symbol, <:Any, Nothing, <:NamedTuple})) = to_dict(values(kws))
+to_dict(@nospecialize(kws::Base.Pairs{Symbol, <:Any, <:Any, <:NamedTuple})) = to_dict(values(kws))
 to_dict(dict::Dict) = convert(Dict{Symbol, Any}, dict)
 to_dict(attr::Attributes) = attributes(attr)
 
