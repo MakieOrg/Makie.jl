@@ -244,9 +244,11 @@ end
 @inline function scatternormal!(normals, face::GeometryBasics.NgonFace{N}, n) where {N}
     ntuple(Val(N)) do k
         base = 3 * (Base.to_index(face[k]) - 1)
-        Atomix.@atomic normals[base + 1] += n[1]
-        Atomix.@atomic normals[base + 2] += n[2]
-        Atomix.@atomic normals[base + 3] += n[3]
+        # These sums are consumed by the next kernel, after this dispatch.
+        # They do not publish other memory between lanes.
+        Atomix.@atomic :monotonic normals[base + 1] += n[1]
+        Atomix.@atomic :monotonic normals[base + 2] += n[2]
+        Atomix.@atomic :monotonic normals[base + 3] += n[3]
         nothing
     end
     return nothing
