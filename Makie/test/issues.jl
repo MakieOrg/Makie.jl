@@ -138,4 +138,13 @@
         color[] = (:blue, 0.5)
         @test p.plots[2].plots[1].scaled_color[] == to_color((:blue, 0.5))
     end
+
+    @testset "#5499 reactive scene backgroundcolor" begin
+        bgcol = Observable(colorant"green")
+        fig = Figure(backgroundcolor = bgcol)
+        @test fig.scene.backgroundcolor[] == to_color(bgcol[])
+        bgcol[] = colorant"red"
+        @test fig.scene.backgroundcolor[] == to_color(bgcol[])
+        @assert !haskey(fig.scene.compute, :backgroundcolor) "May need to update test?"
+    end
 end
