@@ -194,9 +194,9 @@ end
 Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of an ::Input to an Observable is not allowed")
 Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
-function Input(graph, name, @nospecialize(value), @nospecialize(f), output)
+function Input(graph, name, @nospecialize(value), @nospecialize(f::Function), output)
     validate_node_value(value)
-    return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[])
+    return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge{ComputeGraph}[])
 end
 
 
