@@ -201,6 +201,39 @@ end
     end
 end
 
+@testset "mesh — nested scalar edits reuse compiled kernels and material slots" begin
+    image = Hikari.Texture(fill(Hikari.RGBSpectrum(0.3f0), 4, 4))
+    material = Hikari.Mix(Hikari.Principled(base_color = image, roughness = 0.3), Hikari.Glass(); factor = 0.4)
+    scene, plt, screen, st = trace_fixture(s -> mesh!(s, cube_mesh(); material))
+    dev = Hikari.mantle_device(st.hikari_scene.materials.backend)
+    handle = robj_of(plt).handle
+    before = counters(st)
+    try
+        colorbuffer(screen)
+        # Warm every update and render path before counting compilation.
+        for i in 1:3
+            plt.material.a.roughness = 0.2 + 0.01 * i
+            RayMakie.poll_all_plots(screen, scene)
+            colorbuffer(screen)
+        end
+        arrays, layout = length(st.hikari_scene.materials.texture_gpu_arrays), st.hikari_scene.materials.layout
+        slot = robj_of(plt).owned[(:a, :base_color)]
+        Mantle.resetkernelcompiles!(dev)
+        for i in 1:12
+            plt.material.a.roughness = 0.2 + 0.01 * i
+            RayMakie.poll_all_plots(screen, scene)
+            colorbuffer(screen)
+        end
+        @test Mantle.kernelcompiles(dev).misses == 0
+        @test (length(st.hikari_scene.materials.texture_gpu_arrays), st.hikari_scene.materials.layout) == (arrays, layout)
+        @test robj_of(plt).owned[(:a, :base_color)] === slot
+        @test robj_of(plt).handle === handle
+        @test counters(st) == before
+    finally
+        close(screen)
+    end
+end
+
 @testset "mesh — transform updates in place" begin
     scene, plt, screen, st = trace_fixture(s -> mesh!(s, cube_mesh(); color = :red))
     before = counters(st)
