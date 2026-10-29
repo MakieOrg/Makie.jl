@@ -118,7 +118,7 @@ All other keyword arguments such as `size` and `backgroundcolor` are forwarded t
 """
 function Figure(; kwargs...)
 
-    kwargs_dict = Dict(kwargs)
+    kwargs_dict = to_dict(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera = campixel!, clear = true, kwargs_dict...)
     padding = convert(Observable{Any}, padding)

@@ -25,15 +25,27 @@ function node_any(@nospecialize(obj))
     return Observable{Any}(obj)
 end
 
-node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_convert(pair[2])))
-node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
+Base.@nospecializeinfer function node_pairs(@nospecialize(nt::NamedTuple))
+    d = Dict{Symbol, Any}()
+    for i in 1:nfields(nt)
+        d[fieldname(typeof(nt), i)] = node_any(value_convert(getfield(nt, i)))
+    end
+    return d
+end
+Base.@nospecializeinfer function node_pairs(@nospecialize(pairs))
+    d = Dict{Symbol, Any}()
+    for (k, v) in pairs
+        d[k] = node_any(value_convert(v))
+    end
+    return d
+end
 
-Attributes(; kw_args...) = Attributes(Dict{Symbol, Any}(node_pairs(kw_args)))
-Attributes(pairs::Dict) = Attributes(Dict{Symbol, Any}(node_pairs(pairs)))
-Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Any}(node_pairs(pairs)))
-Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Any}(node_pairs.(pairs)))
+Attributes(; kw_args...) = Attributes(node_pairs(values(kw_args)))
+Attributes(pairs::Dict) = Attributes(node_pairs(pairs))
+Attributes(pairs::Pair...) = Attributes(node_pairs(pairs))
+Attributes(pairs::AbstractVector) = Attributes(node_pairs(pairs))
 Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
-Attributes(nt::NamedTuple) = Attributes(; nt...)
+Attributes(nt::NamedTuple) = Attributes(node_pairs(nt))
 attributes(x::Attributes) = getfield(x, :attributes)
 attributes(x::AbstractPlot) = getfield(x, :attributes)
 Base.keys(x::Attributes) = keys(x.attributes)

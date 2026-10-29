@@ -180,8 +180,8 @@ arrow `position::Point`.
 Note that direction can also be interpreted as end points with `argmode = :endpoint`.
 """
 
-arrows(args...; kwargs...) = resolve_arrows_deprecation(false, args, Dict{Symbol, Any}(kwargs))
-arrows!(args...; kwargs...) = resolve_arrows_deprecation(true, args, Dict{Symbol, Any}(kwargs))
+arrows(args...; kwargs...) = resolve_arrows_deprecation(false, args, to_dict(kwargs))
+arrows!(args...; kwargs...) = resolve_arrows_deprecation(true, args, to_dict(kwargs))
 
 # For the matlab/matplotlib users
 const quiver = arrows
