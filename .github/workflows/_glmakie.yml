@@ -4,9 +4,10 @@ on:
 
 jobs:
   test:
-    name: GLMakie Julia ${{ matrix.version }}
+    name: GLMakie Julia ${{ matrix.version }} (GLFW ${{ matrix.glfw }})
     env:
       MODERNGL_DEBUGGING: "true"
+      GLMAKIE_TEST_GLFW_VERSION: ${{ matrix.glfw }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -18,6 +19,11 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
+        include:
+          - version: '1.10'
+            glfw: '3'
+          - version: '1'
+            glfw: '4'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -28,6 +34,8 @@ jobs:
       - uses: julia-actions/cache@v3
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 libegl1 libegl-mesa0 libgl1-mesa-dri freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Install Julia dependencies
+        env:
+          JULIA_PKG_PRECOMPILE_AUTO: "0"
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
@@ -35,6 +43,7 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./GLMakie ./ReferenceTests ./ComputePipeline"
+          Pkg.add(PackageSpec(name = "GLFW", version = "${{ matrix.glfw }}"))
       - name: Run the tests
         id: referencetests
         continue-on-error: true

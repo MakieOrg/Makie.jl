@@ -1,4 +1,4 @@
-using Test, GLMakie, FileIO
+using Test, GLMakie, FileIO, Logging
 const GLFW = GLMakie.GLFW
 
 @testset "headless GLMakie" begin
@@ -22,6 +22,19 @@ const GLFW = GLMakie.GLFW
         @test occursin("EGL and OSMesa", err.description)
         @test occursin("Install", err.description)
         @test isempty(GLMakie.ALL_SCREENS)
+        @test isnothing(GLMakie.precompile_screen())
+        # Programming errors must not be mistaken for unavailable drivers.
+        GLFW.WindowHint(GLFW.CONTEXT_CREATION_API, -1)
+        err = @test_logs begin
+            try
+                GLMakie.precompile_screen()
+            catch err
+                err
+            end
+        end
+        @test err isa GLFW.GLFWError
+        @test err.code == GLFW.INVALID_ENUM
+        GLFW.DefaultWindowHints()
         GLFW.WindowHint(GLFW.CLIENT_API, GLFW.NO_API)
         window = GLFW.CreateWindow(16, 16, "Vulkan needs no OpenGL")
         GLFW.DestroyWindow(window)
@@ -58,6 +71,14 @@ const GLFW = GLMakie.GLFW
                     @test size(colorbuffer(screen)) == (60 + i, 80 + i)
                     @test_throws "without a display server" GLMakie.set_screen_visibility!(screen, true)
                     @test isopen(screen)
+                    # Configuration failure must precede starting a renderloop
+                    # or modifying the existing screen configuration.
+                    old_config = screen.config
+                    old_task = screen.rendertask
+                    config = Makie.merge_screen_config(GLMakie.ScreenConfig, Dict{Symbol, Any}(:visible => true))
+                    @test_throws "without a display server" GLMakie.apply_config!(screen, config)
+                    @test screen.config === old_config
+                    @test screen.rendertask === old_task
                 finally
                     GLMakie.destroy!(screen)
                 end
@@ -75,4 +96,24 @@ const GLFW = GLMakie.GLFW
     @test isempty(GLMakie.SINGLETON_SCREEN)
     @test isempty(GLFW._window_callbacks)
     GLFW.Terminate()
+end
+
+@testset "initialization diagnostics" begin
+    # The failure reporter must not retry initialization or replace the error.
+    unavailable = Sys.iswindows() ? "cocoa" : "win32"
+    withenv("JULIA_GLFW_PLATFORM" => unavailable) do
+        logger = Test.TestLogger()
+        err = with_logger(logger) do
+            try
+                GLMakie.empty_screen(false)
+            catch err
+                err
+            end
+        end
+        @test err isa GLFW.GLFWError
+        @test err.code == GLFW.NOT_INITIALIZED
+        @test !GLFW.is_initialized()
+        @test count(log -> log.message isa GLFW.GLFWError, logger.logs) == 1
+        @test count(log -> log.level == Logging.Warn, logger.logs) == 2
+    end
 end

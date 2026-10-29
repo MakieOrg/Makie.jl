@@ -11,19 +11,23 @@ macro compile(block)
     end
 end
 
+function precompile_screen()
+    try
+        return singleton_screen(false)
+    catch err
+        is_context_unavailable(err) || rethrow()
+        @info "Skipping GLMakie's OpenGL precompile workload because no usable context is available." exception = err
+        return nothing
+    end
+end
+
 let
     @setup_workload begin
         x = rand(5)
         @compile_workload begin
             # NULL can render with EGL or OSMesa. Only skip the workload when
             # context creation actually fails, so imports also work without drivers.
-            screen = try
-                GLMakie.singleton_screen(false)
-            catch err
-                err isa GLFW.GLFWError || rethrow()
-                @info "Skipping GLMakie's OpenGL precompile workload because no usable context is available." exception = err
-                nothing
-            end
+            screen = precompile_screen()
             if !isnothing(screen)
                 GLMakie.activate!(visible = false)
                 close(screen)

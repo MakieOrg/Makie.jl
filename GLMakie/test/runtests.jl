@@ -3,10 +3,15 @@ ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Makie
 using GLMakie, Test
 using FileIO
+using Libdl
 using GeometryBasics
 using GeometryBasics: origin
 using Random
 using ReferenceTests
+
+if haskey(ENV, "GLMAKIE_TEST_GLFW_VERSION")
+    @test Base.pkgversion(GLMakie.GLFW).major == parse(Int, ENV["GLMAKIE_TEST_GLFW_VERSION"])
+end
 
 if Sys.islinux() && Base.pkgversion(GLMakie.GLFW) >= v"4"
     @testset "headless subprocess" begin
@@ -18,7 +23,7 @@ if Sys.islinux() && Base.pkgversion(GLMakie.GLFW) >= v"4"
             env["XDG_RUNTIME_DIR"] = runtime_dir
             env["JULIA_GLFW_PLATFORM"] = "null"
             @test success(pipeline(setenv(cmd, env); stdout = stdout, stderr = stderr))
-            if isempty(GLMakie.GLFW.Libdl.find_library(["libOSMesa.so.8", "libOSMesa.so.6", "libOSMesa.so"]))
+            if isempty(Libdl.find_library(["libOSMesa.so.8", "libOSMesa.so.6", "libOSMesa.so"]))
                 # With no OSMesa fallback installed, disabling EGL vendors
                 # exercises loading and error reporting without any driver.
                 env["__EGL_VENDOR_LIBRARY_FILENAMES"] = joinpath(runtime_dir, "no-vendor.json")
