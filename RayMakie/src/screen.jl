@@ -1444,8 +1444,8 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
         @info "RayMakie: pipeline ready ($(round(time() - t0, digits=1))s) — opening window"
     end
 
-    # `pw, ph` — the DRAWABLE, in pixels. Mantle divides by the content scale to
-    # size the GLFW window, so the window comes out `w x h` points.
+    # `pw, ph` — the DRAWABLE, in pixels. Mantle sizes the GLFW window so its
+    # framebuffer comes out `pw x ph`, by the framebuffer's ratio to the window.
     win = Mantle.Window(screen.config.device, pw, ph; title=screen.config.title, vsync=screen.config.vsync,
                             color_format=COMPOSITE_FORMAT)
     screen.window = win
@@ -1481,9 +1481,8 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
     # pixels and a 3144x1992 target needs 6262848` that killed the render loop on
     # frame one: `3144 = 2172 * 1.4475`, the content scale applied a second time
     # because the platform had already applied it once. Whether it does is a
-    # platform question with three answers (macOS scales the drawable, X11 with a
-    # scaled desktop does not, and Mantle may divide by the scale when it creates
-    # the window), and none of them has to be answered if the size is READ.
+    # platform question with two answers (macOS scales the drawable, X11 with a
+    # scaled desktop does not), and neither has to be answered if the size is READ.
     w, h = size(win)
     resize!(screen, w, h)
 

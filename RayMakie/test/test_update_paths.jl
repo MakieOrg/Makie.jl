@@ -55,16 +55,83 @@ end
 
 @testset "mesh — material swap updates in place" begin
     scene, plt, screen, st = trace_fixture(
-        s -> mesh!(s, cube_mesh(); material = Hikari.Diffuse(Kd = Hikari.RGBSpectrum(0.5f0))))
+        s -> mesh!(s, cube_mesh(); material = Hikari.Diffuse(color = Hikari.RGBSpectrum(0.5f0)))
+    )
     before = counters(st)
     handle_before = robj_of(plt).handle
 
-    plt.material = Hikari.Diffuse(Kd = Hikari.RGBSpectrum(0.1f0, 0.9f0, 0.1f0, 1.0f0))
+    plt.material = Hikari.Diffuse(color = Hikari.RGBSpectrum(0.1f0, 0.9f0, 0.1f0, 1.0f0))
     RayMakie.poll_all_plots(screen, scene)
 
     @test counters(st) == before
     @test robj_of(plt).handle === handle_before
     close(screen)
+end
+
+# A material of another kind, or a node set into one field of a shader, is another
+# stored type. It takes a slot of its type and the mesh's interface is pointed at it;
+# the geometry stays. `Hikari.update_material!` threw before ("push it as a new
+# material"), so neither edit could reach the traced view.
+@testset "mesh — a material of another type updates in place" begin
+    scene, plt, screen, st = trace_fixture(
+        s -> mesh!(s, cube_mesh(); material = Hikari.Principled(base_color = (0.8, 0.2, 0.1), roughness = 0.3))
+    )
+    before = counters(st)
+    handle = robj_of(plt).handle
+    stored() = (Raycore.@allowscalar st.hikari_scene.media_interfaces[handle.interface]).material
+    keys = [stored()]
+    mean_colour() = (img = colorbuffer(screen); sum(p -> Float64(p.r) + Float64(p.g) + Float64(p.b), img) / length(img))
+    colours = [mean_colour()]
+
+    plt.material.base_color = Hikari.TextureNodes.noise(Hikari.TextureNodes.xyz()).color
+    RayMakie.poll_all_plots(screen, scene)
+    push!(keys, stored()); push!(colours, mean_colour())
+    plt.material = Hikari.Glass(ior = 1.5)
+    RayMakie.poll_all_plots(screen, scene)
+    push!(keys, stored()); push!(colours, mean_colour())
+
+    @test allunique(k.type_idx for k in keys)
+    @test counters(st) == before
+    @test robj_of(plt).handle === handle
+    @test allunique(colours)
+    close(screen)
+end
+
+# Setting one field of a material stores again only the images of that field. A
+# roughness moved by a slider recompiled the material and copied its base colour
+# image to the GPU each time, a 4096² texture among them. The image the plot keeps
+# a slot for is copied when its field is set, even to the same array changed in
+# place, and only then.
+@testset "mesh — a material field set alone moves no image" begin
+    for material in (
+            Hikari.Diffuse(color = Hikari.Texture(fill(Hikari.RGBSpectrum(0.2f0), 8, 8))),
+            Hikari.Principled(base_color = Hikari.Texture(fill(Hikari.RGBSpectrum(0.2f0), 8, 8))),
+        )
+        field = material isa Hikari.Diffuse ? :color : :base_color
+        scene, plt, screen, st = trace_fixture(s -> mesh!(s, cube_mesh(); material))
+        handle_before = robj_of(plt).handle
+        gpu_image() = Array(
+            Hikari.stored_array(
+                st.hikari_scene.materials,
+                Int.((robj_of(plt).owned[(field,)].slot, robj_of(plt).owned[(field,)].idx))
+            )
+        )
+        @test all(==(Hikari.RGBSpectrum(0.2f0)), gpu_image())
+        image = getfield(plt.material[], field)
+        fill!(image.data, Hikari.RGBSpectrum(0.7f0))   # changed in place, not set
+
+        plt.material.roughness = 0.6
+        RayMakie.poll_all_plots(screen, scene)
+        @test plt.material[].roughness == 0.6
+        @test all(==(Hikari.RGBSpectrum(0.2f0)), gpu_image())
+        @test robj_of(plt).handle === handle_before
+
+        setproperty!(plt.material, field, image)       # set: copied into its slot
+        RayMakie.poll_all_plots(screen, scene)
+        @test all(==(Hikari.RGBSpectrum(0.7f0)), gpu_image())
+        @test robj_of(plt).handle === handle_before
+        close(screen)
+    end
 end
 
 @testset "mesh — transform updates in place" begin
@@ -158,10 +225,12 @@ end
     pos = [Point3f(i, 0, 0) for i in 1:6]
     scene, plt, screen, st = trace_fixture(
         s -> meshscatter!(s, pos; marker = cube_mesh(), markersize = 0.3f0,
-                          material = Hikari.Diffuse(Kd = Hikari.RGBSpectrum(0.5f0))))
+            material = Hikari.Diffuse(color = Hikari.RGBSpectrum(0.5f0))
+        )
+    )
     handles_before = robj_of(plt).handles
 
-    plt.material = Hikari.Diffuse(Kd = Hikari.RGBSpectrum(0.9f0, 0.1f0, 0.1f0, 1.0f0))
+    plt.material = Hikari.Diffuse(color = Hikari.RGBSpectrum(0.9f0, 0.1f0, 0.1f0, 1.0f0))
     RayMakie.poll_all_plots(screen, scene)
 
     @test robj_of(plt).handles === handles_before
@@ -174,7 +243,8 @@ end
     # `const_spectrum`, not `constant_value`.
     mats = robj_of(plt).materials
     @test !isempty(mats)
-    @test all(m -> Hikari.const_spectrum(m.Kd) ==
+    @test all(
+        m -> Hikari.const_spectrum(Hikari.TexHandle(m.color)) ==
                    Hikari.RGBSpectrum(0.9f0, 0.1f0, 0.1f0, 1.0f0), mats)
     close(screen)
 end
@@ -188,11 +258,13 @@ end
     red = Hikari.RGBSpectrum(0.8f0, 0.2f0, 0.2f0, 1.0f0)
     scene, plt, screen, st = trace_fixture(
         s -> meshscatter!(s, pos; marker = cube_mesh(), markersize = 0.3f0,
-                          material = Hikari.Diffuse(Kd = red)))
+            material = Hikari.Diffuse(color = red)
+        )
+    )
 
     mats = robj_of(plt).materials
     @test length(mats) == length(pos)
-    @test all(m -> Hikari.const_spectrum(m.Kd) == red, mats)
+    @test all(m -> Hikari.const_spectrum(Hikari.TexHandle(m.color)) == red, mats)
     close(screen)
 end
 

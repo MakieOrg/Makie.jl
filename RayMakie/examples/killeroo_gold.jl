@@ -201,7 +201,7 @@ function create_killeroo_gold_scene(; resolution=(1368, 1026), subdivision_level
     mesh!(scene, killeroo_mesh; material=gold_material)
 
     # Ground planes (pbrt: diffuse reflectance 0.5, translated z=-140)
-    ground_material = Hikari.Diffuse(Kd=(0.5f0, 0.5f0, 0.5f0))
+    ground_material = Hikari.Diffuse(color = (0.5f0, 0.5f0, 0.5f0))
     ground_z = -140f0
     ground_size = 400f0
 

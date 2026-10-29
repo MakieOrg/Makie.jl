@@ -22,13 +22,13 @@ let
     # Smoke sphere (no glass shell - pure volume)
     smoke_medium = Hikari.Smoke(density=2.0, albedo=0.95, g=0.5)
     smoke_vol = Hikari.MediumInterface(
-        Hikari.Dielectric(Kt=(1, 1, 1), index=1.0);
+        Hikari.Glass(ior = 1.0);
         inside=smoke_medium,
         outside=nothing
     )
 
     # Floor
-    floor_material = Hikari.Diffuse(Kd=(0.8, 0.8, 0.8))
+    floor_material = Hikari.Diffuse(color = (0.8, 0.8, 0.8))
     floor_mesh = Rect3f(Vec3f(-10, -10, -0.001), Vec3f(20, 20, 0.001))
     mesh!(ax, floor_mesh; color=:white, material=floor_material)
 

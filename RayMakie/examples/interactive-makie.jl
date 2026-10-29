@@ -1,14 +1,7 @@
 using Hikari, RayMakie, FileIO, GLMakie
 begin
     model = load(joinpath(dirname(pathof(Hikari)), "..", "docs", "src", "assets", "models", "caustic-glass.ply"))
-    glass = Hikari.Dielectric(
-        Hikari.ConstantTexture(Hikari.RGBSpectrum(0.9f0)),
-        Hikari.ConstantTexture(Hikari.RGBSpectrum(0.88f0)),
-        Hikari.ConstantTexture(0.0f0),
-        Hikari.ConstantTexture(0.0f0),
-        Hikari.ConstantTexture(1.4f0),
-        true,
-    )
+    glass = Hikari.Glass()
     plastic = Hikari.Plastic(
         color=(0.64, 0.64, 0.54),
         roughness=0.01,

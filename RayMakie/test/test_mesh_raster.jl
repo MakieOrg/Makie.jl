@@ -256,10 +256,11 @@ end
 function glow_over_grey()
     sc = Scene(; size = (64, 64), backgroundcolor = RGBf(0, 0, 0), lights = [AmbientLight(RGBf(0.3, 0.3, 0.3))])
     cam3d!(sc; center = false)
-    mesh!(sc, quad(0f0); material = Hikari.Diffuse(Kd = (0.5, 0.5, 0.5)))
+    mesh!(sc, quad(0.0f0); material = Hikari.Diffuse(color = (0.5, 0.5, 0.5)))
     tint = [Hikari.RGBSpectrum(0.15f0, 0.45f0, 0.22f0, 1f0) for _ in 1:4, _ in 1:4]
     glow = Hikari.MediumInterface(Hikari.NullMaterial();
-        emission = Hikari.Emissive(Le = Hikari.Texture(tint), scale = 2f0, two_sided = true))
+        emission = Hikari.Emission(color = Hikari.Texture(tint), strength = 2.0f0, two_sided = true)
+    )
     mesh!(sc, quad(0.01f0); material = glow)
     update_cam!(sc, cameracontrols(sc), Vec3f(0, 0, 3), Vec3f(0), Vec3f(0, 1, 0))
     return sc
@@ -287,7 +288,8 @@ function slanted_line_glow(; n = 256, px = 64)
     off, on = Hikari.RGBSpectrum(0f0, 0f0, 0f0, 1f0), Hikari.RGBSpectrum(0f0, 1f0, 0f0, 1f0)
     img = [j == round(Int, 0.61 * i) + 40 ? on : off for i in 1:n, j in 1:n]
     glow = Hikari.MediumInterface(Hikari.NullMaterial();
-        emission = Hikari.Emissive(Le = Hikari.Texture(img), scale = 4f0, two_sided = true))
+        emission = Hikari.Emission(color = Hikari.Texture(img), strength = 4.0f0, two_sided = true)
+    )
     mesh!(sc, quad(0f0); material = glow)
     cam = cameracontrols(sc)
     cam.fov[] = 45
@@ -304,7 +306,7 @@ end
 
 # A material that samples images: its texture, as the tracer samples it at the
 # same uv, and an image it glows with over that surface. Before, the raster path
-# read a sampled reflectance as white and a `MixMaterialSpec` not at all (the
+# read a sampled reflectance as white and a `Mix` not at all (the
 # plot's palette colour), and an image an opaque surface emitted replaced the
 # surface: the film's Earth was a plain blue ball.
 corner(a, b) = [i <= 8 && j <= 8 ? a : b for i in 1:16, j in 1:16]
@@ -322,16 +324,21 @@ end
 const TEX_RED = Hikari.RGBSpectrum(0.8f0, 0.1f0, 0.1f0, 1f0)
 const TEX_BLUE = Hikari.RGBSpectrum(0.1f0, 0.1f0, 0.6f0, 1f0)
 
-textured_diffuse() = Hikari.Diffuse(Kd = Hikari.Texture(corner(TEX_RED, TEX_BLUE)))
+textured_diffuse() = Hikari.Diffuse(color = Hikari.Texture(corner(TEX_RED, TEX_BLUE)))
 
 # Matte and glossy blue mixed by a mask that picks the matte one over most of the
 # quad, glowing warm white in the image's first quadrant.
 glowing_mix() = Hikari.MediumInterface(
-    Hikari.MixMaterialSpec(Hikari.Diffuse(Kd = Hikari.Texture(fill(TEX_BLUE, 16, 16))),
+    Hikari.Mix(
+        Hikari.Diffuse(color = Hikari.Texture(fill(TEX_BLUE, 16, 16))),
                            Hikari.CoatedDiffuse(reflectance = Hikari.Texture(fill(TEX_BLUE, 16, 16)),
-                                                roughness = 0.06f0, eta = 1.33f0),
+            roughness = 0.06f0, ior = 1.33f0
+        ),
                            Hikari.Texture(fill(0.2f0, 16, 16)));
-    emission = Hikari.Emissive(Le = Hikari.Texture(corner(Hikari.RGBSpectrum(1f0, 0.75f0, 0.45f0, 1f0),
+    emission = Hikari.Emission(
+        color = Hikari.Texture(
+            corner(
+                Hikari.RGBSpectrum(1.0f0, 0.75f0, 0.45f0, 1.0f0),
                                                           Hikari.RGBSpectrum(0f0, 0f0, 0f0, 1f0)))))
 
 # The image's first quadrant lands top left (dim 1 is 1 - v, dim 2 is u).

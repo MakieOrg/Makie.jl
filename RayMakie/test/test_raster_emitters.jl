@@ -8,7 +8,7 @@ using RayMakie: raster_emitter, placed, raster_emitter_node!, RasterEmitter
 # mesh's own space and only moved per frame: a turning globe with city lights
 # otherwise held its scene to 3 fps.
 
-const GLOW = Hikari.MediumInterface(Hikari.Diffuse(); emission = Hikari.Emissive(Le = Hikari.RGBSpectrum(2f0)))
+const GLOW = Hikari.MediumInterface(Hikari.Diffuse(); emission = Hikari.Emission(color = Hikari.RGBSpectrum(2.0f0)))
 
 softbox() = normal_mesh(Rect3f(Point3f(-12, -2.5, 0), Vec3f(24, 5, 0.2)))
 
@@ -48,7 +48,7 @@ end
         first_found = plot.raster_emitter_local[]
         Makie.rotate!(plot, Vec3f(0, 0, 1), 0.4f0)
         @test plot.raster_emitter_local[] === first_found
-        plot.material = Hikari.MediumInterface(Hikari.Diffuse(); emission = Hikari.Emissive(Le = Hikari.RGBSpectrum(5f0)))
+        plot.material = Hikari.MediumInterface(Hikari.Diffuse(); emission = Hikari.Emission(color = Hikari.RGBSpectrum(5.0f0)))
         @test plot.raster_emitter_local[] !== first_found
         @test only(plot.raster_emitter_local[]).L ≈ 2.5f0 * only(first_found).L
     end

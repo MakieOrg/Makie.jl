@@ -44,10 +44,19 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
     # Separate slots also mean flipping back and forth costs nothing: neither
     # renderer's object is torn down when the other is showing.
 
+    # Which fields of the material were set, so an update stores again only the images of those
+    # (`stored_fields!`). A material that is not this plot's own input (a recipe's) has no
+    # versions, and every update stores all of its images.
+    if haskey(attr.inputs, :material)
+        Makie.ComputePipeline.track_fields!(attr, :material)
+    else
+        haskey(attr, :material_fields) || add_input!(attr, :material_fields, nothing)
+    end
     register_computation!(attr,
         [:mesh, :positions_transformed_f32c, :faces, :normals,
-         :texturecoordinates, :uv_transform, :trace_color_tex, :model_f32c, :material, :raster_path,
-         :visible],
+            :texturecoordinates, :uv_transform, :trace_color_tex, :model_f32c, :material, :material_fields,
+            :raster_path, :visible,
+        ],
         [:trace_renderobject]) do args, changed, last
         # `nothing` when this plot is not being traced — the slot still exists,
         # so its type never changes, and the collectors skip a `nothing`.
@@ -107,19 +116,14 @@ function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, la
             Hikari.get_emission_info(args.material) !== nothing
     end
 
-    # A colour change is a material swap, with one catch: `MultiTypeSet.update!`
-    # replaces in place and so requires the same CONCRETE type. Recolouring can
-    # change it — a scalar `Kd` gives `Diffuse{RGBSpectrum}` where a texture
-    # gives `Diffuse{Texture{...}}` — and that case still needs the re-push.
-    # Decided here rather than in `mesh_trace_update!` because only this function
-    # can fall back to a rebuild.
+    # A colour change is a material swap, of another stored type too (a scalar
+    # colour after an image): `Hikari.update_material!` moves such a material to
+    # a slot of its type and points the mesh's interface at it. Only a colour
+    # `trace_material_for_color` cannot build without the mesh is a rebuild.
     recolor_material = nothing
     if !needs_rebuild && changed.trace_color_tex
         recolor_material = trace_material_for_color(plot, args)
-        if recolor_material === nothing ||
-                typeof(recolor_material) !== typeof(last_robj.material)
-            needs_rebuild = true
-        end
+        needs_rebuild = recolor_material === nothing
     end
     # A multi-material mesh keeps no material to give its lights back when it
     # is shown again, so it is built again instead.
@@ -163,7 +167,14 @@ function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, la
         retained_material = keep_material ? last_robj.material : nothing
         area_lights = is_trace_robj(last_robj) && last_robj.handle isa Hikari.SceneHandle ?
             last_robj.handle.area_lights : Hikari.SetKey[]
-        robj = mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx, retained_material; area_lights)
+        # The images kept in the material slot this rebuild reuses stay where they are.
+        owned = reuse_mat_idx !== nothing && hasproperty(last_robj, :owned) ? last_robj.owned : StoredFields()
+        is_set = changed.trace_color_tex || !hasproperty(last_robj, :fields) ? Returns(true) :
+            fields_set(args.material_fields, last_robj.fields)
+        robj = mesh_trace_create!(
+            hikari_scene, state, plot, args, reuse_mat_idx, retained_material;
+            area_lights, owned, is_set
+        )
         return trace_visibility!(hikari_scene, state, robj, args, changed, true)
     end
 
@@ -218,45 +229,50 @@ traced_uvs(mesh::GeometryBasics.MetaMesh, t::Mat{2, 3}) = GeometryBasics.MetaMes
 traced_uvs(mesh, t) = mesh
 
 function mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx, retained_material = nothing;
-                            area_lights=Hikari.SetKey[])
+        area_lights = Hikari.SetKey[], owned = StoredFields(), is_set = Returns(true)
+    )
     transform = Mat4f(args.model_f32c)
     if retained_material !== nothing || !isempty(area_lights)
         robj = push_to_scene_simple(traced_uvs(args.mesh, args.uv_transform), hikari_scene,
             plot, args.trace_color_tex, transform, reuse_mat_idx;
             positions = args.positions_transformed_f32c, faces = args.faces,
-            normals = args.normals, uv = args.texturecoordinates, retained_material, area_lights)
+            normals = args.normals, uv = args.texturecoordinates, retained_material, area_lights, owned, is_set
+        )
         state.needs_film_clear = true
-        return robj
+        return with_fields(robj, args.material_fields)
     end
     robj = push_to_scene(traced_uvs(args.mesh, args.uv_transform), hikari_scene, plot, args.trace_color_tex,
                          args.positions_transformed_f32c, args.faces,
                          args.normals, args.texturecoordinates, transform,
-                         reuse_mat_idx)
+        reuse_mat_idx; owned, is_set
+    )
     state.needs_film_clear = true
-    return robj
+    return with_fields(robj, args.material_fields)
 end
+
+"""A traced object with the field versions of the material it holds, for the next update to compare."""
+with_fields(robj::NamedTuple, versions) = hasproperty(robj, :material) ? merge(robj, (fields = versions,)) : robj
 
 function mesh_trace_update!(hikari_scene, state, robj, args, changed, recolor_material = nothing)
     if changed.model_f32c
         update_trace_transform!(hikari_scene, state, robj, Mat4f(args.model_f32c))
     end
     if recolor_material !== nothing
-        # Type-checked against the stored material by the caller, so this is the
-        # in-place `MultiTypeSet.update!` and the BLAS is untouched. The robj
-        # carries the material forward so the next colour change compares
-        # against what is actually stored.
-        update_trace_material!(hikari_scene, state, robj, recolor_material)
+        # A material update, so the BLAS is untouched. The robj carries the
+        # material forward so the next update compares against what is stored.
+        update_trace_material!(hikari_scene, state, robj, recolor_material, Returns(true))
         robj = merge(robj, (material = recolor_material,))
     end
     if changed.material
         # Pass args.material raw (NOT through extract_material again).
-        # extract_material can wrap Kr/Kt/index into `Texture{...}` when
+        # extract_material can wrap a colour into `Texture{...}` when
         # Makie has since populated plot.color with a default, but the
-        # initial push stored the material unwrapped.  MultiTypeSet.update!
-        # requires matching concrete types, so we must preserve whatever
-        # structure the user passed.
-        update_trace_material!(hikari_scene, state, robj, args.material)
-        robj = merge(robj, (material = args.material,))
+        # initial push stored the material unwrapped: another stored type,
+        # which takes a new slot instead of updating the one the plot has.
+        # Only the fields set since the last update store their images again.
+        is_set = hasproperty(robj, :fields) ? fields_set(args.material_fields, robj.fields) : Returns(true)
+        update_trace_material!(hikari_scene, state, robj, args.material, is_set)
+        robj = merge(robj, (material = args.material, fields = args.material_fields))
     end
     return robj
 end
@@ -916,14 +932,20 @@ rebuild.  A `MediumInterface` goes to Hikari whole, which refreshes its
 surface material and both media: `outside` matters for nested media, e.g. a
 box of finer medium inside another, or glass inside a cloud.
 """
-function update_trace_material!(hikari_scene, state, robj, new_material)
+function update_trace_material!(hikari_scene, state, robj, new_material, is_set)
     hikari_scene === nothing && return
     robj === nothing && return
     h = hasproperty(robj, :handle) ? robj.handle : return
     interface_idx = h isa Hikari.SceneHandle ? h.interface :
                     hasproperty(robj, :mat_idx) ? robj.mat_idx : return
     if new_material isa Hikari.Material
-        Hikari.update_material!(hikari_scene, h isa Hikari.SceneHandle ? h : interface_idx, new_material)
+        owned = hasproperty(robj, :owned) ? robj.owned : StoredFields()
+        stored = stored_fields!(hikari_scene.materials, new_material, owned, is_set)
+        if h isa Hikari.SceneHandle
+            Hikari.update_material!(hikari_scene, h, stored; opaque = Hikari.opaque(new_material))
+        else
+            Hikari.update_material!(hikari_scene, interface_idx, stored)
+        end
     end
     state.needs_film_clear = true
     return nothing
@@ -961,11 +983,13 @@ end
 # `reuse_mat_idx` argument is ignored — the normal push path runs.
 function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, color_tex,
                        positions, faces, normals, uv, transform,
-                       reuse_mat_idx::Union{Nothing, UInt32})
+        reuse_mat_idx::Union{Nothing, UInt32}; owned = StoredFields(), is_set = Returns(true)
+    )
     has_embedded = haskey(mesh_val, :material_names) && haskey(mesh_val, :materials)
     if !has_embedded
         return push_to_scene_simple(mesh_val.mesh, hikari_scene, plot, color_tex, transform,
-                                     reuse_mat_idx)
+            reuse_mat_idx; owned, is_set
+        )
     end
 
     user_material = haskey(plot, :material) && !isnothing(to_value(plot.material)) ?
@@ -1020,10 +1044,12 @@ end
 # Plain mesh: single material
 function push_to_scene(mesh_val, hikari_scene, plot, color_tex,
                        positions, faces, normals_arg, uv, transform,
-                       reuse_mat_idx::Union{Nothing, UInt32})
+        reuse_mat_idx::Union{Nothing, UInt32}; owned = StoredFields(), is_set = Returns(true)
+    )
     push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform,
                           reuse_mat_idx;
-                          positions=positions, faces=faces, normals=normals_arg, uv=uv)
+        positions = positions, faces = faces, normals = normals_arg, uv = uv, owned, is_set
+    )
 end
 
 # Internal: build GB.Mesh from decomposed data and push with single material.
@@ -1035,7 +1061,9 @@ end
 function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform,
                                reuse_mat_idx::Union{Nothing, UInt32};
                                positions=nothing, faces=nothing, normals=nothing, uv=nothing,
-                               retained_material = nothing, area_lights=Hikari.SetKey[])
+        retained_material = nothing, area_lights = Hikari.SetKey[],
+        owned = StoredFields(), is_set = Returns(true)
+    )
     gb_mesh = if mesh_val isa GeometryBasics.Mesh
         mesh_val
     else
@@ -1051,14 +1079,17 @@ function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform
     end
 
     mat = retained_material === nothing ? extract_material(plot, color_tex) : retained_material
+    # The material as Hikari stores it: its images in the slots this plot keeps for them.
+    stored = stored_fields!(hikari_scene.materials, mat, owned, retained_material === nothing ? is_set : Returns(false))
+    opaque = Hikari.opaque(mat)
     handle = if reuse_mat_idx === nothing
-        push!(hikari_scene, gb_mesh, mat; transform=transform)
+        push!(hikari_scene, gb_mesh, stored; transform, opaque)
     else
-        retained_material === nothing && Hikari.update_material!(hikari_scene, reuse_mat_idx, mat)
-        push!(hikari_scene, gb_mesh, reuse_mat_idx, mat; transform=transform, area_lights)
+        retained_material === nothing && Hikari.update_material!(hikari_scene, reuse_mat_idx, stored)
+        push!(hikari_scene, gb_mesh, reuse_mat_idx, stored; transform, area_lights, opaque)
     end
     state_instance_idx = Raycore.n_instances(hikari_scene.accel)
-    return (handle=handle, mat_idx=handle.interface, material=mat, instance_idx=state_instance_idx)
+    return (handle = handle, mat_idx = handle.interface, material = mat, owned = owned, instance_idx = state_instance_idx)
 end
 
 # =============================================================================

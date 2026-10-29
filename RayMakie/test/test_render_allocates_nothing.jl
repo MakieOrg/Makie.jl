@@ -30,9 +30,9 @@ using GeometryBasics: Point3f, Vec3f, Rect3f, Sphere
 function allocfree_scene()
     scene = Scene(size = (64, 48), lights = [PointLight(RGBf(30, 30, 30), Vec3f(4, 5, 6))])
     cam3d!(scene)
-    mesh!(scene, Rect3f(Vec3f(-4, -4, -0.01), Vec3f(8, 8, 0.01)); material = Hikari.Diffuse(Kd = (0.7, 0.7, 0.7)))
+    mesh!(scene, Rect3f(Vec3f(-4, -4, -0.01), Vec3f(8, 8, 0.01)); material = Hikari.Diffuse(color = (0.7, 0.7, 0.7)))
     plt = mesh!(scene, Sphere(Point3f(0, 0, 0.5), 0.5f0); color = :red)
-    mesh!(scene, Sphere(Point3f(1.2, 0, 0.4), 0.4f0); material = Hikari.Dielectric(index = 1.5))
+    mesh!(scene, Sphere(Point3f(1.2, 0, 0.4), 0.4f0); material = Hikari.Glass(ior = 1.5))
     mesh!(scene, Sphere(Point3f(-1.2, 0, 0.4), 0.4f0); material = Hikari.Conductor())
     return scene, plt
 end

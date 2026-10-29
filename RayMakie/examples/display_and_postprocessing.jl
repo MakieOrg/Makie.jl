@@ -17,11 +17,13 @@ function demo_scene()
     cam3d!(scene)
 
     mesh!(scene, Rect3f(Vec3f(-5, -5, -0.01), Vec3f(10, 10, 0.01));
-          material=Hikari.Diffuse(Kd=(0.7, 0.7, 0.7)))
+        material = Hikari.Diffuse(color = (0.7, 0.7, 0.7))
+    )
     mesh!(scene, Sphere(Point3f(-1.0, 0, 0.5), 0.5f0);
           material=Hikari.Gold(roughness=0.05))
     mesh!(scene, Sphere(Point3f(0.5, 0, 0.5), 0.5f0);
-          material=Hikari.Dielectric(Kt=(1, 1, 1), index=1.5))
+        material = Hikari.Glass(ior = 1.5)
+    )
     mesh!(scene, Sphere(Point3f(2.0, 0, 0.5), 0.5f0);
           material=Hikari.Plastic(color=(0.2, 0.4, 0.8), roughness=0.1))
 

@@ -138,12 +138,12 @@ function create_hikari_material(params::Dict, all_materials::Dict)
         else
             r = get(params, "roughness", 0.01f0)  # pbrt default for coated: smooth
         end
-        return Hikari.CoatedDiffuse(reflectance=refl, roughness=r, eta=1.5f0)
+        return Hikari.CoatedDiffuse(reflectance = refl, roughness = r, ior = 1.5f0)
     elseif t == "dielectric"
-        return Hikari.Dielectric(index=get(params, "eta", 1.5f0))
+        return Hikari.Dielectric(ior = get(params, "eta", 1.5f0))
     elseif t == "diffuse"
         kd = get(params, "reflectance", (0.5f0, 0.5f0, 0.5f0))
-        return Hikari.Diffuse(Kd=Hikari.RGBSpectrum(kd[1], kd[2], kd[3]))
+        return Hikari.Diffuse(color = Hikari.RGBSpectrum(kd[1], kd[2], kd[3]))
     elseif t == "mix"
         # Mix materials: use stochastic mix at 50% (no texture support yet)
         mix_names = get(params, "mix_materials", nothing)
@@ -163,9 +163,9 @@ function create_hikari_material(params::Dict, all_materials::Dict)
                 return m1  # Fallback to first material
             end
         end
-        return Hikari.Diffuse(Kd=Hikari.RGBSpectrum(0.5f0))
+        return Hikari.Diffuse(color = Hikari.RGBSpectrum(0.5f0))
     else
-        return Hikari.Diffuse(Kd=Hikari.RGBSpectrum(0.5f0))
+        return Hikari.Diffuse(color = Hikari.RGBSpectrum(0.5f0))
     end
 end
 
@@ -243,8 +243,8 @@ function create_crown_scene(; resolution=(500, 700))
     # Add area lights as emissive meshes (5500K blackbody, scale=10)
     # Hikari automatically creates per-triangle DiffuseAreaLight from Emissive material
     for al in area_lights
-        Le = blackbody_rgb(al.temperature)
-        emissive_mat = Hikari.Emissive(Le=Le, scale=al.scale, two_sided=true)
+        color = blackbody_rgb(al.temperature)
+        emissive_mat = Hikari.Emission(color = Le, strength = al.scale, two_sided = true)
         m = quad_mesh(al.vertices, al.indices)
         mesh!(scene, m; material=emissive_mat)
     end
@@ -252,7 +252,7 @@ function create_crown_scene(; resolution=(500, 700))
 
     # Environment sphere — large radius, low tessellation to test
     env_sphere_mesh = GeometryBasics.normal_mesh(Tesselation(Sphere(Point3f(0), 100f0), 64))
-    env_mat = Hikari.Diffuse(Kd=Hikari.RGBSpectrum(0.2f0, 0.2f0, 0.2f0))
+    env_mat = Hikari.Diffuse(color = Hikari.RGBSpectrum(0.2f0, 0.2f0, 0.2f0))
     mesh!(scene, env_sphere_mesh; material=env_mat)
     println("  Added environment sphere (radius=100, tess=8)")
 

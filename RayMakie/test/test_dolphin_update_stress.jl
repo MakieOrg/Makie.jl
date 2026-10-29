@@ -20,7 +20,7 @@ using Test, Makie, RayMakie, Lava, Hikari, Raycore
 using GeometryBasics
 using GeometryBasics: Point3f, Vec3f, Rect3f, Sphere
 
-ctx = Mantle.vk_context()
+ctx = Mantle.Device()
 const HW_AVAILABLE = ctx.ray_query_available
 
 # Two interchangeable mesh shapes — same mesh-recipe schema, different
@@ -37,7 +37,7 @@ the `material=` update path actually flips the underlying GPU arrays.
 function fresh_medium(; nx::Int=8, scale::Float32=1.0f0)
     σ_a = fill(Hikari.RGBSpectrum(0.05f0, 0.05f0, 0.05f0), nx, nx, nx)
     σ_s = fill(Hikari.RGBSpectrum(scale * 0.3f0, scale * 0.3f0, scale * 0.3f0), nx, nx, nx)
-    Le  = fill(Hikari.RGBSpectrum(scale * 1.0f0, scale * 0.6f0, scale * 0.2f0), nx, nx, nx)
+    color = fill(Hikari.RGBSpectrum(scale * 1.0f0, scale * 0.6f0, scale * 0.2f0), nx, nx, nx)
     bounds = Raycore.Bounds3(Point3f(-2, -2, -2), Point3f(2, 2, 2))
     Hikari.RGBGridMedium(σ_a_grid=σ_a, σ_s_grid=σ_s, Le_grid=Le,
         sigma_scale=0.05f0, Le_scale=0.5f0, g=0.6f0,
@@ -45,7 +45,8 @@ function fresh_medium(; nx::Int=8, scale::Float32=1.0f0)
 end
 
 fresh_glass_with_medium(scale::Float32) = Hikari.MediumInterface(
-    Hikari.Dielectric(index=1.0f0, roughness=0.0f0); inside=fresh_medium(; scale))
+    Hikari.Glass(ior = 1.0f0); inside = fresh_medium(; scale)
+)
 
 """
 Run `n_frames` of (mesh-swap + medium-swap), measuring buffer delta + GPU
@@ -64,7 +65,9 @@ function dolphin_like_loop(; hw_accel::Bool, n_frames::Int=10, samples::Int=1)
     update_cam!(scene, Vec3f(6, -6, 4), Vec3f(0,0,0), Vec3f(0,0,1))
 
     dolphin_plt = mesh!(scene, SPHERE; material=Hikari.CoatedDiffuse(
-        reflectance=(0.30f0, 0.32f0, 0.38f0), roughness=0.05f0, eta=1.5f0))
+            reflectance = (0.3f0, 0.32f0, 0.38f0), roughness = 0.05f0, ior = 1.5f0
+        )
+    )
     cube = GeometryBasics.normal_mesh(Rect3f(Vec3f(-2), Vec3f(4)))
     medium_plt = mesh!(scene, cube; material=fresh_glass_with_medium(1f0))
 

@@ -97,7 +97,7 @@ function extract_material(plot::Plot, tex::Union{Hikari.Texture, Hikari.VertexCo
     if material isa Hikari.Material && !isnothing(tex)
         # MediumInterface with emission: merge the color into the base material.
         # This lets users combine colormap/color with emissive overlays, e.g.
-        # surface!(...; colormap=..., material=MediumInterface(Diffuse(); emission=Emissive(...)))
+        # surface!(...; colormap=..., material=MediumInterface(Diffuse(); emission=Emission(...)))
         # The cycler's palette colour is no colour (see below): with it the material
         # keeps its own surface. Merging it painted a textured emissive mix, an Earth
         # with city lights, in the palette's blue.
@@ -116,7 +116,7 @@ function extract_material(plot::Plot, tex::Union{Hikari.Texture, Hikari.VertexCo
         # "Not set" is `:cycled`, not `nothing`: Makie's `resolve_cycled!` writes
         # that symbol into every cycled attribute the user did NOT assign, so a
         # `!== nothing` test calls an unset colour explicit and merges the palette
-        # colour over the material. That made `material = Diffuse(Kd = green)`
+        # colour over the material. That made `material = Diffuse(color = green)`
         # silently render in the cycler's blue — the material was accepted,
         # converted, uploaded, and then overwritten.
         color_explicitly_set = color_was_set(plot)
@@ -125,7 +125,7 @@ function extract_material(plot::Plot, tex::Union{Hikari.Texture, Hikari.VertexCo
     elseif material isa Hikari.Material
         return material
     elseif !isnothing(tex)
-        return Hikari.Diffuse(Kd = tex, σ = Hikari.ConstTexture(0.0f0))
+        return Hikari.Diffuse(color = tex, roughness = 0.0f0)
     else
         error("Neither color nor material are defined for plot: $plot")
     end
@@ -189,144 +189,112 @@ function extract_material(plot::Plot, color_obs::Union{Makie.Computed, Observabl
 end
 
 # =============================================================================
-# GLB material conversion
+# glTF material conversion
 # =============================================================================
 
-function has_nonzero_emissive(mat_dict::Dict{String, Any})
-    if haskey(mat_dict, "emissive")
-        e = mat_dict["emissive"]
-        return any(x -> x > 0, e)
-    end
-    return false
-end
+"""A glTF material's image as Hikari samples it: colour textures decoded from sRGB, data textures as they are."""
+gltf_image(::Nothing; srgb::Bool) = nothing
+gltf_image(entry; srgb::Bool) = srgb ? Hikari.Texture(to_spectrum(entry["image"])) : Hikari.to_texture(entry["image"])
+gltf_image(mat_dict, key; srgb::Bool) = gltf_image(get(mat_dict, key, nothing); srgb)
 
 """
-    build_emission_info(mat_dict) -> NamedTuple or nothing
+    glb_material_to_hikari(mat_dict) -> (material, emission)
 
-Extract emission info (Le texture, scale, two_sided) from a GLTF material dict.
-Used later for DiffuseAreaLight registration during mesh push.
-"""
-function build_emission_info(mat_dict::Dict{String, Any})
-    has_emissive_map = haskey(mat_dict, "emissive map")
-    if has_emissive_map
-        emissive_map = mat_dict["emissive map"]
-        if haskey(emissive_map, "image")
-            Le_tex = Hikari.Texture(to_spectrum(emissive_map["image"]))
-            emissive_factor = get(mat_dict, "emissive", [1.0, 1.0, 1.0])
-            scale = max(emissive_factor[1], emissive_factor[2], emissive_factor[3])
-            return (Le=Le_tex, scale=Float32(max(scale, 1f0)), two_sided=true)
-        end
-    end
-    if haskey(mat_dict, "emissive")
-        e = mat_dict["emissive"]
-        Le = Hikari.RGBSpectrum(Float32(e[1]), Float32(e[2]), Float32(e[3]))
-        return (Le=Le, scale=1f0, two_sided=true)
-    end
-    return nothing
-end
-
-function build_diffuse_material(mat_dict::Dict{String, Any})
-    roughness = Float32(get(mat_dict, "roughness", 0.5f0))
-
-    if haskey(mat_dict, "diffuse map")
-        diffuse_map = mat_dict["diffuse map"]
-        if haskey(diffuse_map, "image")
-            img = diffuse_map["image"]
-            tex = Hikari.Texture(to_spectrum(img))
-            # Textured materials use Diffuse (supports stochastic alpha pass-through)
-            return Hikari.Diffuse(Kd = tex, σ = Hikari.ConstTexture(roughness * 90f0))
-        end
-    end
-
-    # Constant color: use explicit diffuse or GLTF default white (1,1,1)
-    tex = Hikari.ConstTexture(linear_spectrum(get(mat_dict, "diffuse", Vec3f(1, 1, 1))))
-
-    # CoatedDiffuse gives proper GLTF PBR appearance (Fresnel specular + diffuse)
-    return Hikari.CoatedDiffuse(reflectance=tex, roughness=roughness)
-end
-
-"""
-    glb_material_to_hikari(mat_dict) -> (material, emission_info)
-
-Convert a GLTF material dict to a Hikari BSDF material and optional emission info.
-Returns a tuple: (material::Material, emission::NamedTuple or nothing).
-Emission info is used later during mesh push to create DiffuseAreaLights.
+A glTF material dict (MeshIO's) as Hikari's `GLTF` material, which renders as Blender's glTF
+importer makes it, and its emission as an `Emission`, or `nothing`. The emission is left out of the
+`GLTF` and goes to the mesh as area lights instead, which light the scene directly. An emissive
+colour of one is one nit, as Hikari normalizes every emitter.
 """
 function glb_material_to_hikari(mat_dict::Dict{String, Any})
-    diffuse_mat = build_diffuse_material(mat_dict)
-    has_emissive = has_nonzero_emissive(mat_dict) || haskey(mat_dict, "emissive map")
-    emission_info = has_emissive ? build_emission_info(mat_dict) : nothing
-    return (material=diffuse_mat, emission=emission_info)
+    diffuse = get(mat_dict, "diffuse", Vec3f(1, 1, 1))
+    material = Hikari.GLTF(;
+        base_color_factor = (diffuse[1], diffuse[2], diffuse[3], get(mat_dict, "alpha", 1.0f0)),
+        base_color_texture = gltf_image(mat_dict, "diffuse map"; srgb = true),
+        metallic_factor = get(mat_dict, "metallic", 1.0f0),
+        roughness_factor = get(mat_dict, "roughness", 1.0f0),
+        metallic_roughness_texture = gltf_image(mat_dict, "metallic roughness map"; srgb = false),
+        normal_texture = gltf_image(mat_dict, "normal map"; srgb = false),
+        alpha_mode = Symbol(lowercase(get(mat_dict, "alpha mode", "OPAQUE"))),
+        alpha_cutoff = get(mat_dict, "alpha cutoff", 0.5f0)
+    )
+    emissive = get(mat_dict, "emissive", Vec3f(0))
+    image = gltf_image(mat_dict, "emissive map"; srgb = true)
+    emission = if !isnothing(image)
+        Hikari.Emission(color = image, strength = max(maximum(emissive), 1.0f0), two_sided = true)
+    elseif any(>(0), emissive)
+        Hikari.Emission(color = Hikari.RGBSpectrum(emissive[1], emissive[2], emissive[3]), two_sided = true)
+    end
+    return (material = material, emission = emission)
+end
+
+# =============================================================================
+# A material's images in slots the plot keeps
+# =============================================================================
+#
+# A plot's material reaches Hikari with each image it holds (a field holding a texture, at any
+# depth of the materials it nests) replaced by the handle of a slot the plot keeps for that field.
+# An image is stored once, and copied into its slot again only when its field was set: setting
+# `plot.material.roughness` recompiles the material and moves no image. Which fields were set the
+# plot's `material_fields` versions say (`Makie.ComputePipeline.track_fields!`): the same array
+# set again counts, as it may have been changed in place.
+
+"""The slots a plot keeps for its material's images, by field path."""
+const StoredFields = Dict{Tuple, Hikari.TexHandle}
+
+"""Whether a material field holds an image a plot keeps a slot for."""
+owns_slot(t::Hikari.Texture{<:Any, 2}) = true
+owns_slot(::AbstractMatrix{<:Colorant}) = true
+owns_slot(::Hikari.VertexColorTexture) = true
+owns_slot(::Any) = false
+
+"""Which top-level fields of a material were set since the versions `last`: `versions` says, and without them all."""
+fields_set(versions::Dict{Symbol, Int}, last::Dict{Symbol, Int}) = f -> get(versions, f, 0) != get(last, f, -1)
+fields_set(versions, last) = Returns(true)
+
+"""
+    stored_fields!(set, material, owned, is_set) -> material
+
+`material` with each image in it replaced by the handle of the slot `owned` keeps for its field
+path in `set`, the scene's materials: stored where there is none yet, copied into it where
+`is_set` says its top-level field was set, and as it is otherwise. An emitter's images are the
+lights' and stay images.
+"""
+stored_fields!(set, material::Hikari.Material, owned::StoredFields, is_set) = stored_fields!(set, material, owned, is_set, ())
+stored_fields!(set, m::Union{Hikari.Emission, Hikari.GeneratedGeometry}, owned::StoredFields, is_set, path) = m
+function stored_fields!(set, m::Hikari.Material, owned::StoredFields, is_set, path)
+    for f in fieldnames(typeof(m))
+        value = getfield(m, f)
+        stored = stored_field!(set, value, owned, is_set, (path..., f))
+        stored === value || (m = Hikari.with_field(m, f, stored))
+    end
+    return m
+end
+stored_field!(set, value::Hikari.Material, owned, is_set, path) = stored_fields!(set, value, owned, is_set, path)
+function stored_field!(set, value, owned, is_set, path)
+    owns_slot(value) || return value
+    old = get(owned, path, nothing)
+    owned[path] = old === nothing ? Hikari.device_param(set, value) :
+        is_set(first(path)) ? Raycore.update_item(set, old, value) : old
+    return owned[path]
 end
 
 # =============================================================================
 # Per-instance material creation (for meshscatter)
 # =============================================================================
 
-# Keyword constructors where there is no template, positional-plus-`displacement`
-# where there is. Every one of these built a material by listing its fields, so
-# `displacement` being added to all of them turned each into a `MethodError` —
-# which reaches the user as "failed to resolve trace_renderobject", naming a
-# compute edge rather than the call.
-function create_material_with_color(color::Colorant, template::Nothing)
-    Hikari.Diffuse(Kd = Hikari.ConstTexture(to_spectrum(color)),
-                   σ = Hikari.ConstTexture(0.0f0))
-end
-
-function create_material_with_color(color::Colorant, template::Hikari.Diffuse)
-    Hikari.Diffuse(Hikari.ConstTexture(to_spectrum(color)), template.σ, template.displacement)
-end
-
-function create_material_with_color(color::Colorant, template::Hikari.Conductor)
-    Hikari.Conductor(
-        template.eta, template.k, template.u_roughness, template.v_roughness,
-        Hikari.ConstTexture(to_spectrum(color)),
-        template.remap_roughness, template.displacement
-    )
-end
-
-# Dielectric: per-instance color modulates transmittance (Kt)
-function create_material_with_color(color::Colorant, template::Hikari.Dielectric)
-    Hikari.Dielectric(
-        template.Kr,
-        Hikari.ConstTexture(to_spectrum(color)),
-        template.u_roughness, template.v_roughness,
-        template.index, template.remap_roughness, template.displacement
-    )
-end
-
-# CoatedDiffuse (also covers Plastic): per-instance color modulates reflectance
-function create_material_with_color(color::Colorant, template::Hikari.CoatedDiffuse)
-    Hikari.CoatedDiffuse(
-        Hikari.ConstTexture(to_spectrum(color)),
-        template.u_roughness, template.v_roughness,
-        template.thickness, template.eta, template.albedo,
-        template.g, template.max_depth, template.n_samples,
-        template.remap_roughness, template.displacement
-    )
-end
-
-# Mirror: per-instance color modulates reflectance (Kr)
-function create_material_with_color(color::Colorant, template::Hikari.Mirror)
-    Hikari.Mirror(Hikari.ConstTexture(to_spectrum(color)), template.displacement)
-end
-
+# A plot colour per instance, on the material the plot was given: Hikari's own colour merge, which
+# knows which field of each material is its colour.
+create_material_with_color(color::Colorant, ::Nothing) = Hikari.Diffuse(color = Hikari.ConstTexture(to_spectrum(color)))
+create_material_with_color(color::Colorant, template::Hikari.Material) =
+    Hikari.merge_color_with_material(Hikari.ConstTexture(to_spectrum(color)), template)
 # MediumInterface: return as-is (emission/medium properties don't map to colors)
-function create_material_with_color(::Colorant, template::Hikari.MediumInterface)
-    return template
-end
-
-function create_material_with_color(color::Colorant, template::Hikari.Material)
-    @warn "Unsupported material type $(typeof(template)) for per-instance colors, using Diffuse" maxlog=1
-    Hikari.Diffuse(Kd = Hikari.ConstTexture(to_spectrum(color)),
-                   σ = Hikari.ConstTexture(0.0f0))
-end
+create_material_with_color(::Colorant, template::Hikari.MediumInterface) = template
 
 # =============================================================================
 # Material texture extraction (for in-place color updates)
 # =============================================================================
 
-get_material_texture(mat::Hikari.Diffuse) = mat.Kd isa Hikari.Texture ? mat.Kd : nothing
+get_material_texture(mat::Hikari.Diffuse) = mat.color isa Hikari.Texture ? mat.color : nothing
 get_material_texture(mat::Hikari.Conductor) = mat.reflectance isa Hikari.Texture ? mat.reflectance : nothing
 get_material_texture(mat::Hikari.Material) = nothing
 

@@ -11,7 +11,7 @@ function capturescene()
     sub = Scene(root; viewport = Rect2i(20, 8, 64, 48), backgroundcolor = RGBAf(0.1, 0.1, 0.1, 0.0),
                 lights = [PointLight(RGBf(30, 30, 30), Vec3f(2, -3, 3)), AmbientLight(RGBf(0.1, 0.1, 0.1))])
     cam3d!(sub; center = false)
-    mesh!(sub, Sphere(Point3f(0), 1f0); material = Hikari.Diffuse(Kd = (0.8, 0.2, 0.2)))
+    mesh!(sub, Sphere(Point3f(0), 1.0f0); material = Hikari.Diffuse(color = (0.8, 0.2, 0.2)))
     update_cam!(sub, cameracontrols(sub), Vec3f(0, -4, 1), Vec3f(0), Vec3f(0, 0, 1))
     lines!(root, Point2f[(4, 4), (90, 60)]; color = :yellow, linewidth = 3)
     return root

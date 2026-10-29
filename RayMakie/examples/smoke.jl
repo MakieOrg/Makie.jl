@@ -42,7 +42,7 @@ function create_smoke_scene(; resolution=(800, 800), cloud_resolution=128)
     )
 
     # Transparent boundary (no refraction)
-    cloud_boundary = Hikari.Dielectric(Kt=(1, 1, 1), index=1.0)
+    cloud_boundary = Hikari.Glass(ior = 1.0)
     cloud_material = Hikari.MediumInterface(cloud_boundary; inside=cloud_medium, outside=nothing)
 
     # Cloud sphere mesh
@@ -50,7 +50,7 @@ function create_smoke_scene(; resolution=(800, 800), cloud_resolution=128)
     mesh!(ax, cloud_mesh; material=cloud_material)
 
     # Ground plane
-    ground_material = Hikari.Diffuse(Kd=(0.4, 0.4, 0.45))
+    ground_material = Hikari.Diffuse(color = (0.4, 0.4, 0.45))
     ground_mesh = Rect3f(Vec3f(-10, -10, -sphere_radius - 0.01), Vec3f(20, 20, 0.01))
     mesh!(ax, ground_mesh; color=:white, material=ground_material)
 

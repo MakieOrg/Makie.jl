@@ -42,6 +42,9 @@ linear_rgba(c::Hikari.RGBSpectrum) = RGBAf(c.c[1], c.c[2], c.c[3], 1f0)
 handle_rgb(h::Hikari.TexHandle, fallback) =
     h.kind in (Hikari.TexKind.CONST_SPECTRUM, Hikari.TexKind.CONST_FLOAT) ? Hikari.const_spectrum(h) : fallback
 handle_rgb(t::Hikari.Texture{<:Hikari.RGBSpectrum, 0}, fallback) = Hikari.constant_value(t)
+# A material keeps a constant as it was given: a number, a tuple, a colour.
+handle_rgb(x::Union{Real, Tuple{Real, Real, Real}, Colorant, Hikari.RGBSpectrum}, fallback) =
+    Hikari.const_spectrum(Hikari.TexHandle(x))
 handle_rgb(::Any, fallback) = fallback
 
 const WHITE = Hikari.RGBSpectrum(1f0)
@@ -73,35 +76,47 @@ base_color(p) = is_sampled(p) ? raster_image(c -> RGBA{N0f8}(srgb(c)), p) : srgb
 plot's own colour, as before.
 """
 raster_look(::Any) = nothing
-raster_look(m::Hikari.Diffuse) = RasterLook(base_color(m.Kd), NO_EMISSION)
+raster_look(m::Hikari.Diffuse) = RasterLook(base_color(m.color), NO_EMISSION)
+raster_look(m::Union{Hikari.Glossy, Hikari.Translucent, Hikari.Sheen}) = RasterLook(base_color(m.color), NO_EMISSION)
+raster_look(m::Hikari.Principled) = RasterLook(base_color(m.base_color), NO_EMISSION)
+# The base is unused: `raster_material` gives the shader the metal's reflectance.
+raster_look(::Hikari.Metallic) = RasterLook(RGBAf(1, 1, 1, 1), NO_EMISSION)
+raster_look(m::Hikari.Glass) = RasterLook(srgb(handle_rgb(m.color, WHITE)), NO_EMISSION)
+raster_look(m::Hikari.OpenPBR) = raster_look(Hikari.Principled(m))
+# glTF's base colour texture is its colour; its factor, usually one, is what an untextured one has.
+raster_look(m::Hikari.GLTF) =
+    RasterLook(
+    isnothing(m.base_color_texture) ? srgb(handle_rgb(Hikari.rgb(m.base_color_factor), WHITE)) :
+        base_color(m.base_color_texture), NO_EMISSION
+)
 raster_look(m::Hikari.CoatedDiffuse) = RasterLook(base_color(m.reflectance), NO_EMISSION)
 # The base is unused: `raster_conductor` gives the shader its reflectance.
 raster_look(::Hikari.Conductor) = RasterLook(RGBAf(1, 1, 1, 1), NO_EMISSION)
 # Glass's colour is its transmittance; how see-through it is at each angle is
 # its Fresnel term, worked out by the shader (`glass_transmittance`).
-raster_look(m::Hikari.Dielectric) = RasterLook(srgb(handle_rgb(m.Kt, WHITE)), NO_EMISSION)
-raster_look(::Hikari.ThinDielectric) = RasterLook(RGBAf(1, 1, 1, 1), NO_EMISSION)
+raster_look(::Union{Hikari.Dielectric, Hikari.ThinDielectric}) = RasterLook(RGBAf(1, 1, 1, 1), NO_EMISSION)
 raster_look(m::Hikari.CoatedConductor) = RasterLook(RGBAf(1, 1, 1, 1), NO_EMISSION)
 raster_look(m::Hikari.DiffuseTransmission) = RasterLook(base_color(m.reflectance), NO_EMISSION)
 raster_look(::Hikari.NullMaterial) = RasterLook(RGBAf(0, 0, 0, 0), NO_EMISSION)
 # A pure emitter reflects nothing; an image it emits is all there is of it.
-raster_look(m::Hikari.Emissive) =
-    is_sampled(m.Le) ? emitted_image(m) : with_emission(RasterLook(RGBAf(0, 0, 0, 1), NO_EMISSION), m)
+raster_look(m::Hikari.Emission) =
+    is_sampled(m.color) ? emitted_image(m) : with_emission(RasterLook(RGBAf(0, 0, 0, 1), NO_EMISSION), m)
 
 """
     mixed(mix) -> Material
 
-The material of a `MixMaterialSpec` the raster path draws. The tracer picks one
-of the two per hit by `amount` (the share of `material2`); the raster path has
-one material per mesh, so it takes the one picked over more of it. The film's
-Earth mixes matte land and glossy water by a water mask: 49 % water once the
-clouds are on it, so the raster Earth is matte.
+The material of a `Mix` the raster path draws. The tracer mixes the two by
+`factor` (the share of `b`); the raster path has one material per mesh, so it
+takes the one with more of it. The film's Earth mixes matte land and glossy
+water by a water mask: 49 % water once the clouds are on it, so the raster
+Earth is matte. A sum draws its first.
 """
-mixed(m::Hikari.MixMaterialSpec) = mean_amount(m.amount) > 0.5f0 ? m.material2 : m.material1
+mixed(m::Hikari.Mix) = mean_amount(m.factor) > 0.5f0 ? m.b : m.a
+mixed(m::Hikari.Add) = m.a
 mean_amount(t::Hikari.Texture{<:Any, 2}) = Float32(sum(t.data) / length(t.data))
 mean_amount(t::Hikari.Texture{<:Any, 0}) = Float32(Hikari.constant_value(t))
 mean_amount(x) = handle_float(x, 0.5f0)
-raster_look(m::Hikari.MixMaterialSpec) = raster_look(mixed(m))
+raster_look(m::Union{Hikari.Mix, Hikari.Add}) = raster_look(mixed(m))
 
 """
 Clear water and the like: a dielectric over a scattering medium. The tracer sees
@@ -118,7 +133,7 @@ function deep_reflectance(medium::Hikari.HomogeneousMedium)
     return Hikari.RGBSpectrum(r(1), r(2), r(3))
 end
 
-raster_look(m::Hikari.MediumInterface{<:Hikari.Dielectric, <:Hikari.HomogeneousMedium}) =
+raster_look(m::Hikari.MediumInterface{<:Union{Hikari.Dielectric, Hikari.Glass}, <:Hikari.HomogeneousMedium}) =
     m.emission === nothing ? RasterLook(srgb(deep_reflectance(m.inside)), NO_EMISSION) :
                              with_emission(RasterLook(srgb(deep_reflectance(m.inside)), NO_EMISSION), m.emission)
 
@@ -129,11 +144,11 @@ function raster_look(m::Hikari.MediumInterface)
 end
 
 """
-The radiance an `Emissive` sends out, linear RGB: its `Le` times its scale,
+The radiance an `Emission` sends out, linear RGB: its colour times its strength,
 without the photometric normalisation the tracer applies to the spectrum it
-uplifts that RGB to (and so takes back out).
+uplifts that RGB to.
 """
-emitted_scale(e::Hikari.Emissive) = e.scale * Hikari.D65_PHOTOMETRIC
+emitted_scale(e::Hikari.Emission) = Float32(e.strength)
 
 """
     with_emission(look, emissive) -> RasterLook
@@ -142,26 +157,26 @@ The surface `look` glowing with `emissive`'s radiance: mode 1 for one radiance,
 mode 3 for an image over a surface, mode 2 for an image with no surface under it
 (a `NullMaterial`).
 """
-function with_emission(look::RasterLook, e::Hikari.Emissive)
-    is_sampled(e.Le) && return glowing(look, e)
-    c = handle_rgb(e.Le, Hikari.RGBSpectrum(0f0))
+function with_emission(look::RasterLook, e::Hikari.Emission)
+    is_sampled(e.color) && return glowing(look, e)
+    c = handle_rgb(e.color, Hikari.RGBSpectrum(0.0f0))
     s = emitted_scale(e)
     return RasterLook(look.color, Vec4f(c.c[1] * s, c.c[2] * s, c.c[3] * s, 1))
 end
 
 """Mode 2: the image is the emission, the surface is gone."""
-emitted_image(e::Hikari.Emissive) = RasterLook(raster_image(linear_rgba, e.Le), Vec4f(emitted_scale(e), 0, 0, 2))
+emitted_image(e::Hikari.Emission) = RasterLook(raster_image(linear_rgba, e.color), Vec4f(emitted_scale(e), 0, 0, 2))
 
 # Mode 3 samples the surface's colour as an image too: one colour is an image of
 # one texel. The Earth's city lights over its day colours are the case. The glow
 # is 8-bit sRGB of the radiance over its peak, the peak going into the scale: a
 # texture table takes one texel type, and the surface's is 8 bits.
-glowing(look::RasterLook{<:Colorant}, e::Hikari.Emissive) =
+glowing(look::RasterLook{<:Colorant}, e::Hikari.Emission) =
     alpha(look.color) == 0f0 ? emitted_image(e) :
     glowing(RasterLook(fill(RGBA{N0f8}(look.color), 1, 1), look.emission), e)
-function glowing(look::RasterLook{<:AbstractMatrix}, e::Hikari.Emissive)
-    peak = max(maximum(c -> max(c.c[1], c.c[2], c.c[3]), e.Le.data), floatmin(Float32))
-    img = raster_image(c -> RGBA{N0f8}(srgb(Hikari.RGBSpectrum(c.c[1] / peak, c.c[2] / peak, c.c[3] / peak))), e.Le)
+function glowing(look::RasterLook{<:AbstractMatrix}, e::Hikari.Emission)
+    peak = max(maximum(c -> max(c.c[1], c.c[2], c.c[3]), e.color.data), floatmin(Float32))
+    img = raster_image(c -> RGBA{N0f8}(srgb(Hikari.RGBSpectrum(c.c[1] / peak, c.c[2] / peak, c.c[3] / peak))), e.color)
     return RasterLook(look.color, Vec4f(emitted_scale(e) * peak, 0, 0, 3), img)
 end
 
@@ -245,8 +260,8 @@ end
 """The radiance a material emits and whether both sides do, or `nothing`."""
 emission_of(::Any) = nothing
 emission_of(m::Hikari.MediumInterface) = m.emission === nothing ? emission_of(m.material) : emission_of(m.emission)
-function emission_of(e::Hikari.Emissive)
-    Le = e.Le
+function emission_of(e::Hikari.Emission)
+    Le = e.color
     # An image emits its mean as far as lighting goes.
     c = Le isa Hikari.Texture && !Le.isconst ?
         Vec3f(sum(x -> Vec3f(x.c[1], x.c[2], x.c[3]), Le.data) / length(Le.data)) :
@@ -434,6 +449,7 @@ end
 handle_float(h::Hikari.TexHandle, fallback) = h.kind in (Hikari.TexKind.CONST_FLOAT, Hikari.TexKind.CONST_SPECTRUM) ?
                                               Hikari.const_float(h) : Float32(fallback)
 handle_float(x::Real, fallback) = Float32(x)
+handle_float(x::Union{Tuple{Real, Real, Real}, Colorant, Hikari.RGBSpectrum}, fallback) = handle_rgb(x, fallback).c[1]
 # An IOR that is a spectrum, at the sodium D line, where an index of refraction is quoted.
 handle_float(s::Hikari.PiecewiseLinearSpectrum, fallback) = Hikari.sample(s, 589.3f0)
 handle_float(::Any, fallback) = Float32(fallback)
@@ -447,6 +463,7 @@ end
 # A spectrum at the red, green and blue wavelengths the raster shader stands in for.
 spectral(s::Hikari.PiecewiseLinearSpectrum, λ, i) = Hikari.sample(s, λ)
 spectral(h::Hikari.TexHandle, λ, i) = h.rgb.c[i]
+spectral(x, λ, i) = handle_rgb(x, GREY).c[i]
 rgb_of(s) = Vec3f(spectral(s, 630f0, 1), spectral(s, 532f0, 2), spectral(s, 465f0, 3))
 
 """
@@ -455,6 +472,7 @@ pbrt-v4's of the reflectance it was given instead. A sampled reflectance reads a
 """
 conductor_rgb(eta, k, reflectance::Hikari.TexHandle) =
     Hikari.is_none(reflectance) ? (rgb_of(eta), rgb_of(k)) : reflectance_rgb(handle_rgb(reflectance, GREY))
+conductor_rgb(eta, k, ::Nothing) = (rgb_of(eta), rgb_of(k))
 conductor_rgb(eta, k, reflectance) = reflectance_rgb(handle_rgb(reflectance, GREY))
 function reflectance_rgb(c::Hikari.RGBSpectrum)
     r = clamp.(Vec3f(c.c[1], c.c[2], c.c[3]), 0f0, 0.9999f0)
@@ -483,20 +501,18 @@ Lambert in the plot's colour.
 """
 raster_material(::Any) = LAMBERT
 raster_material(m::Hikari.MediumInterface) = raster_material(m.material)
-raster_material(m::Hikari.MixMaterialSpec) = raster_material(mixed(m))
+raster_material(m::Union{Hikari.Mix, Hikari.Add}) = raster_material(mixed(m))
 
 "A dielectric over a scattering medium, as a coat over its deep reflectance; see `deep_reflectance`."
-function raster_material(m::Hikari.MediumInterface{<:Hikari.Dielectric, <:Hikari.HomogeneousMedium})
-    d = m.material
-    α = material_alpha(d.u_roughness, d.v_roughness, d.remap_roughness)
-    η = handle_float(d.index, 1.5f0)
+function raster_material(m::Hikari.MediumInterface{<:Union{Hikari.Dielectric, Hikari.Glass}, <:Hikari.HomogeneousMedium})
+    α, η = glass_alpha_ior(m.material)
     fe, fi = coat_averages(η)
     return RasterMaterial(Vec4f(MAT_COATED_DIFFUSE, α, η, 0.01f0), Vec4f(0), Vec4f(0, 0, 0, fe), Vec4f(0, 0, 0, fi))
 end
 
 function raster_material(m::Hikari.CoatedDiffuse)
     α = material_alpha(m.u_roughness, m.v_roughness, m.remap_roughness)
-    η = handle_float(m.eta, 1.5f0)
+    η = handle_float(m.ior, 1.5f0)
     fe, fi = coat_averages(η)
     return RasterMaterial(Vec4f(MAT_COATED_DIFFUSE, α, η, handle_float(m.thickness, 0.01f0)),
                           Vec4f(0), Vec4f(0, 0, 0, fe), Vec4f(0, 0, 0, fi))
@@ -504,30 +520,53 @@ end
 
 function raster_material(m::Hikari.Conductor)
     α = material_alpha(m.u_roughness, m.v_roughness, m.remap_roughness)
-    η, k = conductor_rgb(m.eta, m.k, m.reflectance)
+    η, k = conductor_rgb(m.ior, m.extinction, m.reflectance)
     return RasterMaterial(Vec4f(MAT_CONDUCTOR, α, 1, 0), Vec4f(η..., 0), Vec4f(k..., 0), Vec4f(1, 1, 1, 0))
 end
 
 function raster_material(m::Hikari.CoatedConductor)
     α = material_alpha(m.interface_u_roughness, m.interface_v_roughness, m.remap_roughness)
     αc = material_alpha(m.conductor_u_roughness, m.conductor_v_roughness, m.remap_roughness)
-    ηi = handle_float(m.interface_eta, 1.5f0)
+    ηi = handle_float(m.interface_ior, 1.5f0)
     # pbrt divides the conductor's η and k by the coat's index
-    η, k = conductor_rgb(m.conductor_eta, m.conductor_k, m.conductor_reflectance) ./ ηi
+    η, k = conductor_rgb(m.conductor_ior, m.conductor_extinction, m.conductor_reflectance) ./ ηi
     fe, fi = coat_averages(ηi)
     return RasterMaterial(Vec4f(MAT_COATED_CONDUCTOR, α, ηi, handle_float(m.thickness, 0.01f0)),
                           Vec4f(η..., αc), Vec4f(k..., fe), Vec4f(1, 1, 1, fi))
 end
 
-function raster_material(m::Hikari.Dielectric)
-    α = material_alpha(m.u_roughness, m.v_roughness, m.remap_roughness)
-    kr = handle_rgb(m.Kr, WHITE)
-    return RasterMaterial(Vec4f(MAT_DIELECTRIC, α, handle_float(m.index, 1.5f0), 0), Vec4f(0), Vec4f(0),
-                          Vec4f(kr.c[1], kr.c[2], kr.c[3], 0))
+"""A glass's GGX α and IOR: pbrt's remapped roughness, or Blender's roughness squared."""
+glass_alpha_ior(d::Hikari.Dielectric) = (material_alpha(d.u_roughness, d.v_roughness, d.remap_roughness), handle_float(d.ior, 1.5f0))
+glass_alpha_ior(g::Hikari.Glass) = (handle_float(g.roughness, 0.5f0)^2, handle_float(g.ior, 1.5f0))
+
+function raster_material(m::Union{Hikari.Dielectric, Hikari.Glass})
+    α, η = glass_alpha_ior(m)
+    return RasterMaterial(Vec4f(MAT_DIELECTRIC, α, η, 0), Vec4f(0), Vec4f(0), Vec4f(1, 1, 1, 0))
 end
 
 raster_material(m::Hikari.ThinDielectric) =
-    RasterMaterial(Vec4f(MAT_THIN_DIELECTRIC, 0, handle_float(m.eta, 1.5f0), 0), Vec4f(0), Vec4f(0), Vec4f(0))
+    RasterMaterial(Vec4f(MAT_THIN_DIELECTRIC, 0, handle_float(m.ior, 1.5f0), 0), Vec4f(0), Vec4f(0), Vec4f(0))
+
+# Blender's BSDFs, as the nearest pbrt material the raster shader has: a metal of the reflectance at
+# normal incidence, a glossy reflection as a metal reflecting all of it, tinted, and the Principled
+# BSDF as its glass, its metal, or its specular layer over the diffuse base, by its weights.
+"""A metal reflecting `color` at normal incidence, of GGX α `α`, tinted by `tint`."""
+function reflecting(color, α, tint = WHITE)
+    η, k = reflectance_rgb(handle_rgb(color, GREY))
+    return RasterMaterial(Vec4f(MAT_CONDUCTOR, α, 1, 0), Vec4f(η..., 0), Vec4f(k..., 0), Vec4f(tint.c[1], tint.c[2], tint.c[3], 0))
+end
+raster_material(m::Hikari.Metallic) = reflecting(m.base_color, handle_float(m.roughness, 0.5f0)^2)
+raster_material(m::Hikari.Glossy) = reflecting(1, handle_float(m.roughness, 0.5f0)^2, handle_rgb(m.color, WHITE))
+raster_material(m::Union{Hikari.GLTF, Hikari.OpenPBR}) = raster_material(Hikari.Principled(m))
+function raster_material(m::Hikari.Principled)
+    α = handle_float(m.roughness, 0.5f0)^2
+    η = handle_float(m.ior, 1.5f0)
+    handle_float(m.transmission_weight, 0.0f0) >= 0.5f0 &&
+        return RasterMaterial(Vec4f(MAT_DIELECTRIC, α, η, 0), Vec4f(0), Vec4f(0), Vec4f(1, 1, 1, 0))
+    handle_float(m.metallic, 0.0f0) >= 0.5f0 && return reflecting(m.base_color, α)
+    fe, fi = coat_averages(η)
+    return RasterMaterial(Vec4f(MAT_COATED_DIFFUSE, α, η, 0.0f0), Vec4f(0), Vec4f(0, 0, 0, fe), Vec4f(0, 0, 0, fi))
+end
 
 function raster_material(m::Hikari.DiffuseTransmission)
     t = handle_rgb(m.transmittance, WHITE)

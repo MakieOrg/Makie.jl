@@ -51,7 +51,7 @@ function rt_scene(; size = (96, 96), background = :white, lights = copy(SPHERE_L
     sc = Scene(; size, lights = lights, ambient = RGBf(0.15, 0.15, 0.15),
                backgroundcolor = background)
     cam3d!(sc)
-    mesh!(sc, Sphere(Point3f(0), 1.0f0); material = Hikari.Diffuse(Kd = (0.8, 0.2, 0.2)))
+    mesh!(sc, Sphere(Point3f(0), 1.0f0); material = Hikari.Diffuse(color = (0.8, 0.2, 0.2)))
     cam = cameracontrols(sc)
     cam.eyeposition[] = Vec3f(0, -6, 3)
     cam.lookat[] = Vec3f(0, 0, 0)
