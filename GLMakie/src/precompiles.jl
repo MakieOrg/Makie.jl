@@ -15,22 +15,24 @@ let
     @setup_workload begin
         x = rand(5)
         @compile_workload begin
-            # Without a display server GLFW.jl >= 4.0 falls back to its NULL platform, which
-            # cannot create windows. Skip the OpenGL workload there so GLMakie still
-            # precompiles on headless machines; empty_screen explains the situation on use.
-            if GLFW.GetPlatform() != GLFW.PLATFORM_NULL
-                GLMakie.activate!()
-                screen = GLMakie.singleton_screen(false)
+            # NULL can render with EGL or OSMesa. Only skip the workload when
+            # context creation actually fails, so imports also work without drivers.
+            screen = try
+                GLMakie.singleton_screen(false)
+            catch err
+                err isa GLFW.GLFWError || rethrow()
+                @info "Skipping GLMakie's OpenGL precompile workload because no usable context is available." exception = err
+                nothing
+            end
+            if !isnothing(screen)
+                GLMakie.activate!(visible = false)
                 close(screen)
                 destroy!(screen)
 
                 include(Makie.SHARED_PRECOMPILE_PATH)
-                try
-                    display(plot(x); visible = false)
-                catch
-                end
+                display(plot(x); visible = false)
 
-                screen = Screen(Scene())
+                screen = Screen(Scene(); visible = false)
                 refresh_func = refreshwindowcb(screen)
                 refresh_func(to_native(screen))
                 close(screen)

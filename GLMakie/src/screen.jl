@@ -259,17 +259,17 @@ Makie.@noconstprop function empty_screen(debugging::Bool; reuse = true, window =
 end
 
 # Shown when GLFW fails to create a window. Without a display server, GLFW.jl >= 4.0
-# initializes its NULL platform instead of erroring at load time, so a headless
+# initializes its NULL platform on first use, so a headless
 # machine fails here and needs a different explanation than a missing OpenGL driver.
 function window_creation_hint()
     if GLFW.GetPlatform() == GLFW.PLATFORM_NULL
         return """
-            GLFW couldn't create an OpenGL window because no display server is available.
-            Neither an X11 nor a Wayland display was found when GLMakie was loaded, so GLFW
-            is running on its NULL platform, which cannot create or show windows.
-            On a headless machine, run Julia under a virtual display (e.g. `xvfb-run julia`,
-            see https://github.com/MakieOrg/Makie.jl/blob/master/.github/workflows/reference_tests.yml),
-            or use CairoMakie or WGLMakie instead.
+            GLFW couldn't create an OpenGL window on its NULL platform.
+            This platform has no display server, and no usable offscreen OpenGL context
+            was found with the installed libraries.
+            Install an OpenGL 3.3 implementation with EGL support (a GPU driver or Mesa),
+            or libOSMesa. The error below includes the context creation failures.
+            A virtual display (`xvfb-run julia`), CairoMakie, or WGLMakie are other options.
         """
     else
         return """
@@ -422,6 +422,7 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     glw = screen.glscreen
 
     if screen.owns_glscreen
+        check_window_visibility(config.visible)
         gl_switch_context!(glw)
         GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
         GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
@@ -475,6 +476,7 @@ function Screen(;
     )
     # Screen config is managed by the current active theme, so managed by Makie
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
+    isnothing(window) && check_window_visibility(config.visible)
     screen = screen_from_pool(config.debugging; window)
     apply_config!(screen, config; start_renderloop = start_renderloop)
     if !isnothing(resolution)
@@ -508,8 +510,16 @@ function set_screen_visibility!(screen::Screen, visible::Bool)
     return
 end
 
+function check_window_visibility(visible::Bool)
+    if visible && GLFW.GetPlatform() == GLFW.PLATFORM_NULL
+        error("GLMakie cannot show a window without a display server. Use `visible = false`, `colorbuffer`, or `save` for headless rendering.")
+    end
+    return nothing
+end
+
 function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
     @assert nw.handle !== C_NULL
+    check_window_visibility(visible)
     return GLFW.set_visibility!(nw, visible)
 end
 
@@ -550,8 +560,9 @@ Makie.@noconstprop function Screen(
         scene::Scene, config::ScreenConfig; visible = nothing,
         start_renderloop = true
     )
-    screen = singleton_screen(config.debugging)
     !isnothing(visible) && (config.visible = visible)
+    check_window_visibility(config.visible)
+    screen = singleton_screen(config.debugging)
     apply_config!(screen, config; start_renderloop = start_renderloop)
     display_scene!(screen, scene)
     return screen
@@ -562,8 +573,9 @@ Makie.@noconstprop function Screen(
         scene::Scene, config::ScreenConfig, io::Union{Nothing, String, IO},
         typ::MIME; visible = nothing, start_renderloop = false
     )
-    screen = singleton_screen(config.debugging)
     !isnothing(visible) && (config.visible = visible)
+    check_window_visibility(config.visible)
+    screen = singleton_screen(config.debugging)
     apply_config!(screen, config; start_renderloop = start_renderloop)
     display_scene!(screen, scene)
     return screen
