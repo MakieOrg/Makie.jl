@@ -194,7 +194,7 @@ end
 Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of an ::Input to an Observable is not allowed")
 Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
-function Input(graph, name, @nospecialize(value), @nospecialize(f::Function), output)
+function Input(graph, name, value, f::Function, output)
     validate_node_value(value)
     return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge{ComputeGraph}[])
 end
@@ -707,7 +707,7 @@ add_input!(graph, :first_node, 1)
 add_input!((k, v) -> Float32(v), graph, :second_node, 2)
 ```
 """
-Base.@nospecializeinfer add_input!(attr::ComputeGraph, key::Symbol, @nospecialize(value)) = _add_input!(identity, attr, key, value)
+Base.@nospecializeinfer add_input!(attr::ComputeGraph, key::Symbol, value) = _add_input!(identity, attr, key, value)
 
 # For cleaner printing and error tracking we do not use an anonymous function
 #   value -> conversion_function(key, value)
@@ -721,11 +721,11 @@ end
 (x::InputFunctionWrapper)(v) = x.user_func(x.key, v)
 (x::InputFunctionWrapper)(inputs, changed, cached) = (x.user_func(x.key, inputs[1]),)
 
-function add_input!(@nospecialize(conversion_func), attr::ComputeGraph, key::Symbol, @nospecialize(value))
+function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
     return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, value)
 end
 
-Base.@nospecializeinfer function _add_input!(@nospecialize(func::Function), attr::ComputeGraph, key::Symbol, @nospecialize(value))
+Base.@nospecializeinfer function _add_input!(func::Function, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
     if haskey(attr.inputs, key) || haskey(attr.outputs, key)
         error("Cannot attach input with name $key - already exists!")
