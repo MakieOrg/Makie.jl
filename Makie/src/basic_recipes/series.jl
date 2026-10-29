@@ -163,7 +163,7 @@ function plot!(plot::Series)
         plot,
         [
             :curves, :nseries, :plottype,
-            :labels, :series_color, :space, :visible,
+            :series_labels, :series_color, :space, :visible,
             :series_markercolor, :marker, :markersize, :strokecolor, :strokewidth,
             :linewidth, :linecap, :joinstyle, :miter_limit, :linestyle,
         ],

@@ -106,14 +106,14 @@ Makie.@noconstprop function Texture(
     set_packing_alignment(data)
 
     if texparams.samples > 1
-        glTexImage2DMultisample(texturetype, texparams.samples, internalformat, dims..., GL_TRUE)
+        glTexImage2DMultisample(texturetype, texparams.samples, internalformat, max.(1, dims)..., GL_TRUE)
         texture = Texture{T, NDim}(
             context, id, texturetype, numbertype, internalformat, format,
             texparams,
             dims
         )
     else
-        glTexImage(texturetype, 0, internalformat, dims..., 0, format, numbertype, data)
+        glTexImage(texturetype, 0, internalformat, max.(1, dims)..., 0, format, numbertype, data)
         mipmap && glGenerateMipmap(texturetype)
         texture = Texture{T, NDim}(
             context, id, texturetype, numbertype, internalformat, format,

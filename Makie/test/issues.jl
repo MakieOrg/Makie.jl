@@ -160,4 +160,40 @@
         f, a, p = plotlist(S.Lines(rand(10), linestyle = :dash))
         @test_logs p.plots[1].linestyle[]
     end
+
+    @testset "#5858 x/y/zlims! with dim convert values, #5859 DateTime in Axis3 lims!" begin
+        x = DateTime(2026, 1, 1):Day(1):DateTime(2026, 1, 10)
+        f, a, p = lines(x, x)
+        # shouldn't error
+        xlims!(first(x), last(x))
+        ylims!(first(x), last(x))
+        lines!(Axis3(f[1, 2]), x, x, x)
+        xlims!(first(x), last(x))
+        ylims!(first(x), last(x))
+        zlims!(first(x), last(x))
+    end
+
+    @testset "#5349, no type pinning of cycle-able attributes passed to recipes" begin
+        color = Observable{Any}(:red)
+        f, a, p = textlabel(0, 0, text = "Abc", background_color = color)
+        @test p.plots[2].plots[1].scaled_color[] == to_color(:red)
+        # type-pinning would error with this because we change Symbol -> Tuple
+        color[] = (:blue, 0.5)
+        @test p.plots[2].plots[1].scaled_color[] == to_color((:blue, 0.5))
+    end
+
+    @testset "#5499 reactive scene backgroundcolor" begin
+        bgcol = Observable(colorant"green")
+        fig = Figure(backgroundcolor = bgcol)
+        @test fig.scene.backgroundcolor[] == to_color(bgcol[])
+        bgcol[] = colorant"red"
+        @test fig.scene.backgroundcolor[] == to_color(bgcol[])
+        @assert !haskey(fig.scene.compute, :backgroundcolor) "May need to update test?"
+        graph = Makie.ComputeGraph()
+        Makie.add_input!(graph, :background, :green)
+        scene = Scene(backgroundcolor = graph.background)
+        @test scene.backgroundcolor[] == to_color(:green)
+        Makie.update!(graph; background = :red)
+        @test scene.backgroundcolor[] == to_color(:red)
+    end
 end
