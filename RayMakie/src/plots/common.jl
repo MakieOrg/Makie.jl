@@ -234,7 +234,7 @@ end
 # A plot's material reaches Hikari with each image it holds (a field holding a texture, at any
 # depth of the materials it nests) replaced by the handle of a slot the plot keeps for that field.
 # An image is stored once, and copied into its slot again only when its field was set: setting
-# `plot.material.roughness` recompiles the material and moves no image. Which fields were set the
+# `plot.material.roughness` updates material parameters and moves no image. Which fields were set the
 # plot's `material_fields` versions say (`Makie.ComputePipeline.track_fields!`): the same array
 # set again counts, as it may have been changed in place.
 
