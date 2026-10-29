@@ -243,12 +243,13 @@ const StoredFields = Dict{Tuple, Hikari.TexHandle}
 
 """Whether a material field holds an image a plot keeps a slot for."""
 owns_slot(t::Hikari.Texture{<:Any, 2}) = true
-owns_slot(::AbstractMatrix{<:Colorant}) = true
+owns_slot(::AbstractMatrix{<:Union{Colorant, Real, Hikari.RGBSpectrum}}) = true
 owns_slot(::Hikari.VertexColorTexture) = true
 owns_slot(::Any) = false
 
-"""Which top-level fields of a material were set since the versions `last`: `versions` says, and without them all."""
-fields_set(versions::Dict{Symbol, Int}, last::Dict{Symbol, Int}) = f -> get(versions, f, 0) != get(last, f, -1)
+"""Which material field paths were set since `last`, including replacement of an ancestor."""
+fields_set(versions::Makie.ComputePipeline.FieldVersions, last::Makie.ComputePipeline.FieldVersions) =
+    path -> Makie.ComputePipeline.field_was_set(versions, last, path)
 fields_set(versions, last) = Returns(true)
 
 """
@@ -256,7 +257,7 @@ fields_set(versions, last) = Returns(true)
 
 `material` with each image in it replaced by the handle of the slot `owned` keeps for its field
 path in `set`, the scene's materials: stored where there is none yet, copied into it where
-`is_set` says its top-level field was set, and as it is otherwise. An emitter's images are the
+`is_set` says that field or an ancestor was set, and as it is otherwise. An emitter's images are the
 lights' and stay images.
 """
 stored_fields!(set, material::Hikari.Material, owned::StoredFields, is_set) = stored_fields!(set, material, owned, is_set, ())
@@ -274,7 +275,7 @@ function stored_field!(set, value, owned, is_set, path)
     owns_slot(value) || return value
     old = get(owned, path, nothing)
     owned[path] = old === nothing ? Hikari.device_param(set, value) :
-        is_set(first(path)) ? Raycore.update_item(set, old, value) : old
+        is_set(path) ? Raycore.update_item(set, old, value) : old
     return owned[path]
 end
 

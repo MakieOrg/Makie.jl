@@ -616,18 +616,31 @@ end
 
 # ── Fields of an input ──────────────────────────────────────────────────────
 
+struct FieldVersions <: AbstractDict{Symbol, Int}
+    roots::Dict{Symbol, Int}
+    paths::Dict{Tuple, Int}
+end
+Base.length(v::FieldVersions) = length(v.roots)
+Base.iterate(v::FieldVersions, state...) = iterate(v.roots, state...)
+Base.getindex(v::FieldVersions, key::Symbol) = v.roots[key]
+Base.get(v::FieldVersions, key::Symbol, default) = get(v.roots, key, default)
+Base.copy(v::FieldVersions) = FieldVersions(copy(v.roots), copy(v.paths))
+
 """
     track_fields!(graph, key)
 
-Track which fields of the struct input `key` holds are set: the input `Symbol(key, :_fields)`
-holds, for each field, how often it was set. `node.field = value` sets one field, and a value
-assigned whole sets all of its fields. A computation reading both learns which fields changed since
-it last ran, which comparing the values cannot tell for a field holding an array: the same array
-may have been changed in place, and an unchanged one must not be taken for a new one.
+Track assignments to fields of the struct input `key` holds, including nested fields such as
+`graph.material.a.roughness = value`. The input `Symbol(key, :_fields)` counts assignments per
+top-level field; `field_was_set(current, previous, path)` distinguishes nested assignments from
+replacement of a whole ancestor. A value assigned whole sets all its fields.
+
+This also detects arrays changed in place and assigned again, while leaving unrelated images
+untouched. A nested field's value can be read or assigned through `graph.material.a.color[]`.
 """
 function track_fields!(graph::ComputeGraph, key::Symbol)
     tracks_fields(graph, key) && return graph
-    add_input!(graph, fields_key(key), set_all(Dict{Symbol, Int}(), graph.inputs[key].value))
+    versions = FieldVersions(Dict{Symbol, Int}(), Dict{Tuple, Int}())
+    add_input!(graph, fields_key(key), set_all(versions, graph.inputs[key].value))
     return graph
 end
 
@@ -636,10 +649,37 @@ fields_key(key::Symbol) = Symbol(key, :_fields)
 tracks_fields(graph::ComputeGraph, key::Symbol) = haskey(graph.inputs, fields_key(key))
 
 """`versions` with every field of `value` set once more."""
-set_all(versions::Dict{Symbol, Int}, value) =
-    Dict{Symbol, Int}(f => get(versions, f, 0) + 1 for f in fieldnames(typeof(value)))
+function set_all(versions::FieldVersions, value)
+    roots = copy(versions.roots)
+    # Retain counters of fields absent in a replacement type: restoring that type
+    # must not reset its versions to values a consumer has already seen.
+    for field in union(keys(roots), fieldnames(typeof(value)))
+        roots[field] = get(roots, field, 0) + 1
+    end
+    paths = copy(versions.paths)
+    paths[()] = get(paths, (), 0) + 1
+    return FieldVersions(roots, paths)
+end
 
-function store_versions!(graph::ComputeGraph, key::Symbol, versions::Dict{Symbol, Int})
+function set_field(versions::FieldVersions, path::Tuple)
+    roots = copy(versions.roots)
+    roots[first(path)] = get(roots, first(path), 0) + 1
+    paths = copy(versions.paths)
+    paths[path] = get(paths, path, 0) + 1
+    return FieldVersions(roots, paths)
+end
+
+"""Whether `path`, or an ancestor assigned as a whole, was set since `previous`."""
+field_was_set(current::FieldVersions, previous::FieldVersions, field::Symbol) =
+    field_was_set(current, previous, (field,))
+function field_was_set(current::FieldVersions, previous::FieldVersions, path::Tuple)
+    return any(0:length(path)) do n
+        prefix = path[1:n]
+        get(current.paths, prefix, 0) != get(previous.paths, prefix, 0)
+    end
+end
+
+function store_versions!(graph::ComputeGraph, key::Symbol, versions::FieldVersions)
     input = graph.inputs[fields_key(key)]
     input.value = versions
     mark_dirty!(input)
@@ -655,6 +695,44 @@ take its fields positionally.
 """
 with_field(x, field::Symbol, value) =
     Base.typename(typeof(x)).wrapper(map(f -> f === field ? value : getfield(x, f), fieldnames(typeof(x)))...)
+with_field(x::NamedTuple, field::Symbol, value) = merge(x, NamedTuple{(field,)}((value,)))
+
+struct InputField{Path}
+    node::Computed
+end
+
+field_value(value, path::Tuple{}) = value
+field_value(value, path::Tuple) = field_value(getfield(value, first(path)), Base.tail(path))
+Base.getindex(field::InputField{Path}) where {Path} = field_value(getfield(field, :node)[], Path)
+Observables.to_value(field::InputField) = field[]
+Base.setindex!(field::InputField{Path}, value) where {Path} =
+    set_input_field!(getfield(field, :node), Path, value)
+Base.propertynames(field::InputField) = fieldnames(typeof(field[]))
+Base.show(io::IO, field::InputField{Path}) where {Path} =
+    print(io, "Computed field ", getfield(field, :node).name, '.', join(Path, '.'))
+
+function input_field(node::Computed, path::Tuple)
+    input = getparent(node)
+    value = input isa Input ? input.value : node[]
+    field_value(value, path) # Refuse a missing field at the access that names it.
+    return InputField{path}(node)
+end
+
+@inline function Base.getproperty(node::Computed, field::Symbol)
+    hasfield(Computed, field) && return getfield(node, field)
+    return input_field(node, (field,))
+end
+Base.getproperty(field::InputField{Path}, name::Symbol) where {Path} =
+    input_field(getfield(field, :node), (Path..., name))
+Base.setproperty!(field::InputField{Path}, name::Symbol, value) where {Path} =
+    set_input_field!(getfield(field, :node), (Path..., name), value)
+
+with_field_path(x, ::Tuple{}, value) = value
+function with_field_path(x, path::Tuple, value)
+    field = first(path)
+    hasfield(typeof(x), field) || error("$(typeof(x)) has no field `$field`.")
+    return with_field(x, field, with_field_path(getfield(x, field), Base.tail(path), value))
+end
 
 """
     node.field = value
@@ -665,17 +743,18 @@ updated to the struct with that field changed (`with_field`), and where its fiel
 """
 function Base.setproperty!(node::Computed, field::Symbol, value)
     hasfield(Computed, field) && return setfield!(node, field, convert(fieldtype(Computed, field), value))
+    return set_input_field!(node, (field,), value)
+end
+
+function set_input_field!(node::Computed, path::Tuple, value)
     input = getparent(node)
     input isa Input || error("Only the fields of an input can be set; $(node.name) is computed.")
     graph = input.graph
     @lock GLOBAL_LOCK begin
-        old = input.value
-        hasfield(typeof(old), field) || error("$(node.name) holds a $(typeof(old)), which has no field `$field`.")
-        input.value = with_field(old, field, value)
+        input.value = with_field_path(input.value, path, value)
         mark_dirty!(input)
         if tracks_fields(graph, input.name)
-            versions = copy(graph.inputs[fields_key(input.name)].value)
-            versions[field] = get(versions, field, 0) + 1
+            versions = set_field(graph.inputs[fields_key(input.name)].value, path)
             store_versions!(graph, input.name, versions)
         end
     end

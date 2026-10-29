@@ -1759,3 +1759,66 @@ end
     @test graph.look[] === Look(:blue, 0.25)
     @test graph.look_fields[] == Dict(:color => 2, :roughness => 2)
 end
+
+@testset "Nested input fields preserve siblings and track exact assignments" begin
+    image = rand(Float32, 4, 4)
+    graph = ComputeGraph()
+    add_input!(graph, :look, Look(Look(image, 0.5), 0.8))
+    track_fields!(graph, :look)
+    before = graph.look_fields[]
+    roughness = graph.look.color.roughness
+    @test roughness[] == 0.5
+    @test ComputePipeline.Observables.to_value(graph.look.color.color) === image
+
+    graph.look.color.roughness = 0.25
+    after = graph.look_fields[]
+    @test graph.look[] === Look(Look(image, 0.25), 0.8)
+    @test after[:color] == before[:color] + 1
+    @test ComputePipeline.field_was_set(after, before, (:color, :roughness))
+    @test ComputePipeline.field_was_set(after, copy(before), (:color, :roughness))
+    @test !ComputePipeline.field_was_set(after, before, (:color, :color))
+    @test !ComputePipeline.field_was_set(after, before, (:roughness,))
+
+    image .= 0.6
+    graph.look.color.color[] = image
+    uploaded = graph.look_fields[]
+    @test ComputePipeline.field_was_set(uploaded, after, (:color, :color))
+    @test !ComputePipeline.field_was_set(uploaded, after, (:color, :roughness))
+
+    graph.look.color = Look(image, 0.7)
+    replaced = graph.look_fields[]
+    @test ComputePipeline.field_was_set(replaced, uploaded, (:color, :color))
+    @test ComputePipeline.field_was_set(replaced, uploaded, (:color, :roughness))
+    @test roughness[] == 0.7 # The field reference follows the current input.
+
+    # A NamedTuple and then the original type again: histories never reset.
+    graph.look = (roughness = 0.1,)
+    graph.look = Look(Look(image, 0.9), 0.4)
+    @test graph.look_fields[][:color] > replaced[:color]
+    @test ComputePipeline.field_was_set(graph.look_fields[], replaced, (:color, :color))
+    roughness[] = 0.3f0
+    @test graph.look[].color.roughness === 0.3f0
+    graph.look = (color = (color = image, roughness = 0.6), roughness = 0.2)
+    graph.look.color.roughness = 0.4
+    @test graph.look[].color == (color = image, roughness = 0.4)
+
+    map!(identity, graph, :look, :copied)
+    @test graph.copied.color.roughness[] == 0.4
+    @test_throws ErrorException graph.copied.color.roughness = 0.8
+    @test_throws ErrorException graph.look.color.missing = 1
+end
+
+@testset "Concurrent nested field assignments preserve both fields" begin
+    graph = ComputeGraph()
+    add_input!(graph, :look, Look(Look(:red, 0.5), 0.8))
+    track_fields!(graph, :look)
+    setter = lock(ComputePipeline.GLOBAL_LOCK) do
+        task = @async graph.look.color.roughness = 0.25
+        yield()
+        @test !istaskdone(task)
+        graph.look.color.color = :blue
+        task
+    end
+    fetch(setter)
+    @test graph.look[] === Look(Look(:blue, 0.25), 0.8)
+end
