@@ -16,7 +16,7 @@
 # Vulkan loader — which is not there on every machine this suite runs on, so
 # the whole file errored before its first test rather than running on the
 # backend `runtests.jl` already found and activated.
-using Test, Makie, RayMakie, Hikari, GeometryBasics, Raycore
+using Test, Makie, RayMakie, Hikari, GeometryBasics, Raycore, Mantle
 using GeometryBasics: Point3f, Vec2f, Vec3f, Rect3f, Sphere
 
 robj_of(plt) = to_value(plt.attributes[:trace_renderobject])
@@ -310,7 +310,8 @@ end
 @testset "instances — recolour updates in place" begin
     pos = [Point3f(i, 0, 0) for i in 1:6]
     scene, plt, screen, st = trace_fixture(
-        s -> meshscatter!(s, pos; marker = cube_mesh(), markersize = 0.3f0, color = :red))
+        s -> meshscatter!(s, pos; marker = cube_mesh(), markersize = 0.3f0, color = :red)
+    )
     handles_before = robj_of(plt).handles
 
     plt.color = :blue
@@ -324,7 +325,8 @@ end
 @testset "instances — material swap updates in place" begin
     pos = [Point3f(i, 0, 0) for i in 1:6]
     scene, plt, screen, st = trace_fixture(
-        s -> meshscatter!(s, pos; marker = cube_mesh(), markersize = 0.3f0,
+        s -> meshscatter!(
+            s, pos; marker = cube_mesh(), markersize = 0.3f0,
             material = Hikari.Diffuse(color = Hikari.RGBSpectrum(0.5f0))
         )
     )
@@ -345,7 +347,8 @@ end
     @test !isempty(mats)
     @test all(
         m -> Hikari.const_spectrum(Hikari.TexHandle(m.color)) ==
-                   Hikari.RGBSpectrum(0.9f0, 0.1f0, 0.1f0, 1.0f0), mats)
+            Hikari.RGBSpectrum(0.9f0, 0.1f0, 0.1f0, 1.0f0), mats
+    )
     close(screen)
 end
 
@@ -357,7 +360,8 @@ end
     pos = [Point3f(i, 0, 0) for i in 1:4]
     red = Hikari.RGBSpectrum(0.8f0, 0.2f0, 0.2f0, 1.0f0)
     scene, plt, screen, st = trace_fixture(
-        s -> meshscatter!(s, pos; marker = cube_mesh(), markersize = 0.3f0,
+        s -> meshscatter!(
+            s, pos; marker = cube_mesh(), markersize = 0.3f0,
             material = Hikari.Diffuse(color = red)
         )
     )
@@ -371,7 +375,8 @@ end
 @testset "instances — moving positions keeps the batch" begin
     pos = Observable([Point3f(i, 0, 0) for i in 1:6])
     scene, plt, screen, st = trace_fixture(
-        s -> meshscatter!(s, pos; marker = cube_mesh(), markersize = 0.3f0, color = :red))
+        s -> meshscatter!(s, pos; marker = cube_mesh(), markersize = 0.3f0, color = :red)
+    )
     handles_before = robj_of(plt).handles
 
     for f in 1:5
@@ -387,7 +392,8 @@ end
 @testset "instances — resize rebuilds the batch and stays consistent" begin
     pos = Observable([Point3f(i, 0, 0) for i in 1:6])
     scene, plt, screen, st = trace_fixture(
-        s -> meshscatter!(s, pos; marker = cube_mesh(), markersize = 0.3f0, color = :red))
+        s -> meshscatter!(s, pos; marker = cube_mesh(), markersize = 0.3f0, color = :red)
+    )
 
     for n in (12, 3, 9)
         pos[] = [Point3f(i, 0, 0) for i in 1:n]
@@ -404,7 +410,8 @@ end
     pos = [Point3f(i, 0, 0) for i in 1:4]
     marker = Observable{Any}(cube_mesh())
     scene, plt, screen, st = trace_fixture(
-        s -> meshscatter!(s, pos; marker = marker, markersize = 0.3f0, color = :red))
+        s -> meshscatter!(s, pos; marker = marker, markersize = 0.3f0, color = :red)
+    )
 
     marker[] = GeometryBasics.normal_mesh(GeometryBasics.Tesselation(Sphere(Point3f(0), 1.0f0), 12))
     RayMakie.poll_all_plots(screen, scene)
@@ -412,4 +419,57 @@ end
     @test robj_of(plt) !== nothing
     @test Raycore.n_instances(st.hikari_scene.accel) == length(pos)
     close(screen)
+end
+
+@testset "mesh — native roughness pairs retain image slots" begin
+    u = fill(0.2f0, 8, 8)
+    v = fill(0.4f0, 8, 8)
+    material = Hikari.Conductor(roughness = (u, v), reflectance = (0.3, 0.5, 0.7))
+    scene, plt, screen, st = trace_fixture(s -> mesh!(s, cube_mesh(); material))
+    handle = robj_of(plt).handle
+    slots = copy(robj_of(plt).owned)
+    layout = st.hikari_scene.materials.layout
+    arrays = length(st.hikari_scene.materials.texture_gpu_arrays)
+    before = counters(st)
+    function image(path)
+        h = robj_of(plt).owned[path]
+        return Array(Hikari.stored_array(st.hikari_scene.materials, (Int(h.slot), Int(h.idx))))
+    end
+    try
+        @test haskey(slots, (:roughness, 1)) && haskey(slots, (:roughness, 2))
+        fill!(u, 0.6f0)
+        fill!(v, 0.8f0)
+        plt.material.reflectance = (0.2, 0.4, 0.6)
+        RayMakie.poll_all_plots(screen, scene)
+        @test all(==(0.2f0), image((:roughness, 1)))
+        @test all(==(0.4f0), image((:roughness, 2)))
+        plt.material.roughness = (u, v)
+        RayMakie.poll_all_plots(screen, scene)
+        @test all(==(0.6f0), image((:roughness, 1)))
+        @test all(==(0.8f0), image((:roughness, 2)))
+        @test robj_of(plt).owned == slots
+        @test robj_of(plt).handle === handle
+        @test counters(st) == before
+        @test st.hikari_scene.materials.layout == layout
+        @test length(st.hikari_scene.materials.texture_gpu_arrays) == arrays
+    finally
+        close(screen)
+    end
+end
+
+@testset "raster material parameters use canonical native fields" begin
+    for model in (Hikari.Conductor, Hikari.CoatedDiffuse)
+        material = model(roughness = (0.1f0, 0.3f0))
+        @test RayMakie.raster_material(material).a[2] ≈ Hikari.roughness_to_α(0.2f0)
+        @test RayMakie.raster_material(model(roughness = (0.1f0, 0.3f0), remap_roughness = false)).a[2] ≈ 0.2f0
+    end
+    @test first(RayMakie.glass_alpha_ior(Hikari.Dielectric(roughness = (0.1f0, 0.3f0)))) ≈ Hikari.roughness_to_α(0.2f0)
+    material = Hikari.CoatedConductor(
+        interface_roughness = (0.1f0, 0.3f0),
+        conductor_roughness = (0.2f0, 0.4f0), reflectance = (0.3, 0.5, 0.7)
+    )
+    raster = RayMakie.raster_material(material)
+    @test raster.a[2] ≈ Hikari.roughness_to_α(0.2f0)
+    @test raster.b[4] ≈ Hikari.roughness_to_α(0.3f0)
+    @test RayMakie.raster_material(Hikari.with_field(material, :reflectance, (0.1, 0.2, 0.3))).c != raster.c
 end

@@ -28,6 +28,13 @@ place. After changing an image array in place, assign it to its field again
 (for example, `plot.material.a.base_color[] = image`) to upload that image.
 Replacing a nested material also updates the images beneath that field.
 
+The pbrt models use the same graph and update mechanism. Their `roughness`
+field accepts a scalar or `(u, v)` pair, including two images. Assigning
+`plot.material.roughness = (u_image, v_image)` uploads both images into their
+existing slots. Editing another field leaves those images in place.
+`CoatedConductor` exposes `interface_roughness`, `conductor_roughness`, and
+`reflectance` under the same names as its constructor.
+
 The RPRMakie Lego example run with FastWavefront (~14s render time on GPU):
 
 https://github.com/user-attachments/assets/63e9205e-d5dd-4d5e-8c6e-330b99b6faf0

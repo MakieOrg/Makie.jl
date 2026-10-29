@@ -15,8 +15,10 @@
 # from a photo rendered pale. Alpha is coverage, not light, and is not encoded.
 function to_spectrum(data::Colorant)
     rgb = RGBf(data)
-    Hikari.RGBSpectrum(Hikari.srgb_gamma_to_linear(rgb.r), Hikari.srgb_gamma_to_linear(rgb.g),
-                       Hikari.srgb_gamma_to_linear(rgb.b), Float32(Colors.alpha(data)))
+    return Hikari.RGBSpectrum(
+        Hikari.srgb_gamma_to_linear(rgb.r), Hikari.srgb_gamma_to_linear(rgb.g),
+        Hikari.srgb_gamma_to_linear(rgb.b), Float32(Colors.alpha(data))
+    )
 end
 to_spectrum(data::AbstractMatrix{<:Colorant}) = map(to_spectrum, data)
 
@@ -36,7 +38,7 @@ end
 
 # A colour that is linear already: glTF's `baseColorFactor` is, by the spec,
 # where its `baseColorTexture` is sRGB.
-linear_spectrum(c) = Hikari.RGBSpectrum(Float32(c[1]), Float32(c[2]), Float32(c[3]), 1f0)
+linear_spectrum(c) = Hikari.RGBSpectrum(Float32(c[1]), Float32(c[2]), Float32(c[3]), 1.0f0)
 
 # =============================================================================
 # Per-vertex color → VertexColorTexture
@@ -133,7 +135,7 @@ end
 
 # Convert color values to Hikari textures via multiple dispatch
 color_to_texture(color::AbstractMatrix{<:Number}, plot) = Hikari.Texture(to_spectrum(Makie.compute_colors(plot.attributes)))
-color_to_texture(color::AbstractMatrix{<:Colorant}, ::Any) = color isa Makie.LinePattern ? Hikari.ConstTexture(to_spectrum(RGBf(1,1,1))) : Hikari.Texture(to_spectrum(color))
+color_to_texture(color::AbstractMatrix{<:Colorant}, ::Any) = color isa Makie.LinePattern ? Hikari.ConstTexture(to_spectrum(RGBf(1, 1, 1))) : Hikari.Texture(to_spectrum(color))
 color_to_texture(color::AbstractVector{<:Colorant}, ::Any) = color  # handled in mesh.jl via build_vertex_color_texture
 function color_to_texture(color::AbstractVector{<:Number}, plot)
     # Map scalar per-vertex values through the colormap to produce per-vertex Colorant colors.
@@ -148,15 +150,15 @@ function color_to_texture(color::AbstractVector{<:Number}, plot)
         Float32(crange[1]), Float32(crange[2])
     end
     n = length(cmap)
-    scale = hi == lo ? 0f0 : 1f0 / (hi - lo)
+    scale = hi == lo ? 0.0f0 : 1.0f0 / (hi - lo)
     return map(color) do val
-        t = clamp((val - lo) * scale, 0f0, 1f0)
+        t = clamp((val - lo) * scale, 0.0f0, 1.0f0)
         idx = clamp(round(Int, t * (n - 1)) + 1, 1, n)
         cmap[idx]
     end
 end
 color_to_texture(color::Colorant, ::Any) = Hikari.ConstTexture(to_spectrum(to_color(color)))
-color_to_texture(color::Union{String,Symbol}, ::Any) = Hikari.ConstTexture(to_spectrum(to_color(color)))
+color_to_texture(color::Union{String, Symbol}, ::Any) = Hikari.ConstTexture(to_spectrum(to_color(color)))
 function color_to_texture(::Nothing, plot)
     # color=nothing means use colormapping pipeline (e.g. surface z-values)
     computed = Makie.compute_colors(plot.attributes)
@@ -271,6 +273,11 @@ function stored_fields!(set, m::Hikari.Material, owned::StoredFields, is_set, pa
     return m
 end
 stored_field!(set, value::Hikari.Material, owned, is_set, path) = stored_fields!(set, value, owned, is_set, path)
+function stored_field!(set, value::Tuple, owned, is_set, path)
+    return map(value, ntuple(identity, length(value))) do item, index
+        stored_field!(set, item, owned, is_set, (path..., index))
+    end
+end
 function stored_field!(set, value, owned, is_set, path)
     owns_slot(value) || return value
     old = get(owned, path, nothing)
