@@ -548,7 +548,7 @@ function process_interaction(lr::LimitReset, event::MouseEvent, ax::Axis3)
 end
 
 function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}, ax::Axis3)
-    if ispressed(ax, ax.cursorfocuskey[]) && is_mouseinside(ax.scene) && (time_ns() > focus.last_time + 1e9 * focus.timeout)
+    if ispressed(ax, ax.cursorfocuskey[]) && is_mouseinside(ax.scene) && (time_ns() > focus.last_time + 1.0e9 * focus.timeout)
         xy = events(ax.scene).mouseposition[]
         plot, idx = pick(ax.scene, xy)
         if isnothing(plot) || (parent_scene(plot) !== ax.scene) || is_data_space(plot) ||

@@ -58,7 +58,7 @@ macro reference_test(name, code)
                     $(esc(code))
                 end
                 @test save_result(joinpath(RECORDING_DIR[], $title), result)
-                elapsed = round(1e9 * (time_ns() - t1); digits = 5)
+                elapsed = round(1.0e9 * (time_ns() - t1); digits = 5)
                 total = Sys.total_memory()
                 mem = round((total - Sys.free_memory()) / 10^9; digits = 3)
                 # TODO, write to file and create an overview in the end, similar to the benchmark results!

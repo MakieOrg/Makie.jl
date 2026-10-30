@@ -1192,7 +1192,7 @@ function render_asap(f::Function, screen::Screen, N::Integer)
         render_frame(screen)
         GLFW.SwapBuffers(to_native(screen))
         GC.safepoint()
-        ts[i] = 1e-9 * (time_ns() - t)
+        ts[i] = 1.0e-9 * (time_ns() - t)
     end
 
     screen.close_after_renderloop = true

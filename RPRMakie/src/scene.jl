@@ -207,7 +207,7 @@ function replace_scene_rpr!(scene::Makie.Scene, screen = Screen(scene); refresh 
         end
         data = RPR.get_data(framebuffer2)
         im[1] = reverse(reshape(data, screen.fb_size); dims = 2)
-        tframe = 1e9 * (time_ns() - t)
+        tframe = 1.0e9 * (time_ns() - t)
         to_sleep = (1 / 10) - tframe
         if to_sleep < 0.0
             yield()

@@ -27,7 +27,7 @@ end
     documented_attributes(Lines)...
 end
 
-signal2point(signal::Number, start) = Point2f(1e-9 * (time_ns() - start), signal)
+signal2point(signal::Number, start) = Point2f(1.0e-9 * (time_ns() - start), signal)
 signal2point(signal::Point2, start) = signal
 signal2point(signal, start) = error(
     """ Signal needs to be of type Number or Point.

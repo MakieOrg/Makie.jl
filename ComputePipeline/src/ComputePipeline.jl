@@ -1174,7 +1174,7 @@ result = graph[:filtered_image][]
 function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn = false, init = nothing)
     update_key = Symbol(:_update_trigger_, string(hash((inputs, outputs))))
     add_input!(attr, update_key, 0)
-    input_node = attr[update_key]
+    input_node = attr.inputs[update_key]
     # TODO, should both channels be size 1?
     # Channel for input requests
     input_channel = Channel{Any}(2)
