@@ -114,36 +114,50 @@ ray from the centroid crosses once, this is the angle of that ray, so labels of
 nested loops line up. The result does not depend on the start point or direction
 of the line.
 """
-function label_anchor(pixel_line, labelposition, label_width = 0.0)
-    is_closed_line(pixel_line) || return open_line_anchor(pixel_line, collect(eachindex(pixel_line)), labelposition, label_width)
+label_anchor(pixel_line, labelposition, label_width = 0.0) = label_anchor(line_geometry(pixel_line), pixel_line, labelposition, label_width)
+
+struct OpenContourLine
+    longest_pieces::Vector{Vector{Int}}
+    line_length::Float64
+end
+
+struct ContourLoop
+    center::Point2d
+    walk::Vector{Tuple{Tuple{Int, Int}, Float64, Float64}}
+    sweeps::Vector{Float64}
+    total_sweep::Float64
+    line_length::Float64
+end
+
+const ContourLineGeometry = Union{Nothing, OpenContourLine, ContourLoop}
+
+"""
+    line_geometry(pixel_line)
+
+The parts of finding a label anchor on `pixel_line` that do not depend on the label,
+so they are only recomputed when the projected line changes.
+"""
+function line_geometry(pixel_line)::ContourLineGeometry
+    is_closed_line(pixel_line) || return open_line_geometry(pixel_line, collect(eachindex(pixel_line)))
     cycle = collect(firstindex(pixel_line):(lastindex(pixel_line) - 1))
     gap = findfirst(i -> !is_finite_point(pixel_line[i]), cycle)
-    gap === nothing && return loop_anchor(pixel_line, cycle, labelposition)
-    return open_line_anchor(pixel_line, rotate_cycle(cycle, gap), labelposition, label_width)
+    gap === nothing && return loop_geometry(pixel_line, cycle)
+    return open_line_geometry(pixel_line, rotate_cycle(cycle, gap))
 end
 
 is_finite_point(p) = all(isfinite, p)
 
 is_closed_line(vertices) = length(vertices) > 2 && first(vertices) == last(vertices)
 
-function open_line_anchor(pixel_line, path, labelposition, label_width)
-    pieces = [path[run] for run in finite_runs(view(pixel_line, path))]
-    filter!(piece -> path_length(pixel_line, piece) > 0, pieces)
-    isempty(pieces) && return nothing
-    anchors = map(pieces) do piece
-        rightward = left_to_right(pixel_line, piece)
-        piece_length = path_length(pixel_line, piece)
-        center_range = max(piece_length - label_width, 0.0)
-        distance = (piece_length - center_range) / 2 + (1 + labelposition) / 2 * center_range
-        return with_line_length(anchor_at_distance(pixel_line, rightward, distance), piece_length)
-    end
-    longest = argmin(eachindex(pieces)) do i
-        return (-anchors[i].line_length, Tuple(anchor_point(pixel_line, anchors[i])))
-    end
-    return anchors[longest]
+function open_line_geometry(pixel_line, path)
+    pieces = [left_to_right(pixel_line, path[run]) for run in finite_runs(view(pixel_line, path))]
+    piece_lengths = [path_length(pixel_line, piece) for piece in pieces]
+    longest_length = maximum(piece_lengths; init = 0.0)
+    longest_length > 0 || return nothing
+    return OpenContourLine(pieces[piece_lengths .== longest_length], longest_length)
 end
 
-function loop_anchor(pixel_line, cycle, labelposition)
+function loop_geometry(pixel_line, cycle)
     clockwise = is_counterclockwise(pixel_line, cycle) ? reverse(cycle) : cycle
     n = length(clockwise)
     segments = [(clockwise[j], clockwise[mod1(j + 1, n)]) for j in 1:n]
@@ -156,18 +170,31 @@ function loop_anchor(pixel_line, cycle, labelposition)
     sweeps = [swept_angle(pixel_line, center, segment, t_start, t_stop) for (segment, t_start, t_stop) in walk]
     total_sweep = sum(sweeps)
     total_sweep > 0 || return nothing
-    loop_length = path_length(pixel_line, [clockwise; first(clockwise)])
+    return ContourLoop(center, walk, sweeps, total_sweep, path_length(pixel_line, [clockwise; first(clockwise)]))
+end
 
-    target = mod(labelposition, 2) / 2 * total_sweep
+label_anchor(::Nothing, pixel_line, labelposition, label_width) = nothing
+
+function label_anchor(line::OpenContourLine, pixel_line, labelposition, label_width)
+    center_range = max(line.line_length - label_width, 0.0)
+    distance = (line.line_length - center_range) / 2 + (1 + labelposition) / 2 * center_range
+    anchors = [anchor_at_distance(pixel_line, piece, distance) for piece in line.longest_pieces]
+    leftmost = argmin(anchor -> Tuple(anchor_point(pixel_line, anchor)), anchors)
+    return with_line_length(leftmost, line.line_length)
+end
+
+function label_anchor(loop::ContourLoop, pixel_line, labelposition, label_width)
+    target = mod(labelposition, 2) / 2 * loop.total_sweep
     covered = 0.0
-    for ((segment, t_start, _), sweep) in zip(walk, sweeps)
+    for ((segment, t_start, _), sweep) in zip(loop.walk, loop.sweeps)
         if sweep > 0 && covered + sweep >= target
-            t = t_at_swept_angle(pixel_line, center, segment, t_start, target - covered)
-            return with_line_length(segment_anchor(pixel_line, segment, t), loop_length)
+            t = t_at_swept_angle(pixel_line, loop.center, segment, t_start, target - covered)
+            return with_line_length(segment_anchor(pixel_line, segment, t), loop.line_length)
         end
         covered += sweep
     end
-    return with_line_length(segment_anchor(pixel_line, segments[j0], t0), loop_length)
+    segment, t_start, _ = first(loop.walk)
+    return with_line_length(segment_anchor(pixel_line, segment, t_start), loop.line_length)
 end
 
 with_line_length(anchor, line_length) = merge(anchor, (; line_length))
@@ -429,6 +456,8 @@ function has_changed(old_args, new_args)
     return false
 end
 
+without_separator(line_range) = line_range[begin:(end - 1)]
+
 function line_ranges(elements_per_segment)
     counts = Int.(last.(elements_per_segment))
     return [(level, (stop - count + 1):stop) for ((level, _), count, stop) in zip(elements_per_segment, counts, cumsum(counts))]
@@ -609,10 +638,20 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     map!(boxes -> Rect2d.(boxes), plot, :label_string_boxes, :label_frame_boxes)
 
     map!(
+        plot, [:labels, :pixel_contour_points, :elements_per_segment], :label_line_geometries
+    ) do use_labels, pixel_points, elements_per_segment
+        use_labels || return ContourLineGeometry[]
+        return ContourLineGeometry[
+            line_geometry(view(pixel_points, without_separator(line_range)))
+                for (_, line_range) in line_ranges(elements_per_segment)
+        ]
+    end
+
+    map!(
         plot,
-        [:labels, :labelposition, :zlevels, :label_frame_boxes, :contour_points, :pixel_contour_points, :elements_per_segment],
+        [:labels, :labelposition, :zlevels, :label_frame_boxes, :label_line_geometries, :contour_points, :pixel_contour_points, :elements_per_segment],
         [:label_anchor_positions, :text_rotation, :label_pixel_positions, :label_line_lengths]
-    ) do use_labels, labelposition, levels, boxes, points, pixel_points, elements_per_segment
+    ) do use_labels, labelposition, levels, boxes, geometries, points, pixel_points, elements_per_segment
         positions = eltype(points)[]
         rotations = Float32[]
         pixel_positions = Point2f[]
@@ -620,10 +659,10 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         use_labels || return positions, rotations, pixel_positions, line_lengths
 
         line_positions = labelposition_per_line(labelposition, first.(elements_per_segment), levels)
-        for ((_, line_range), line_position, box) in zip(line_ranges(elements_per_segment), line_positions, boxes)
-            line_without_separator = line_range[begin:(end - 1)]
+        for ((_, line_range), line_position, box, geometry) in zip(line_ranges(elements_per_segment), line_positions, boxes, geometries)
+            line_without_separator = without_separator(line_range)
             pixel_line = view(pixel_points, line_without_separator)
-            anchor = line_position === nothing ? nothing : label_anchor(pixel_line, line_position, widths(box)[1])
+            anchor = line_position === nothing ? nothing : label_anchor(geometry, pixel_line, line_position, widths(box)[1])
             if anchor === nothing
                 push!(positions, eltype(points)(NaN))
                 push!(rotations, 0.0f0)
