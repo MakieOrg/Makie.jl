@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.24.17] - 2026-10-30
+
+- Fixed a camera synchronization issue that may cause plots to not update their position on windows. [#5875](https://github.com/MakieOrg/Makie.jl/pull/5875)
+- Fixed types getting pinned when passing a cycled attributes from one recipe to another. This fixes, for example, `background_color` not being able to update to a new type in `textlabel` because it is pinned to its initial type in `poly`. [#5868](https://github.com/MakieOrg/Makie.jl/pull/5868)
+- Fixed `backgroundcolor` in `Scene` (and `Figure`) not connecting to an Observable input. [#5868](https://github.com/MakieOrg/Makie.jl/pull/5868)
+- Improved Makie.jl precompile time and package image size. [#5867](https://github.com/MakieOrg/Makie.jl/pull/5867)
+- Fixed `BezierPath` erroring when it starts with an `EllipticalArc`. [#5865](https://github.com/MakieOrg/Makie.jl/pull/5865)
+- Fixed `x/y/zlims!` not accepting dim convertible values (Dates, Units, etc.) [#5864](https://github.com/MakieOrg/Makie.jl/pull/5864)
+- Fixed `datashader` erroring with more than seven categories. Colors now cycle through the palette. [#5863](https://github.com/MakieOrg/Makie.jl/pull/5863)
+- Capped FreeType2_jll below 2.15 in CairoMakie to avoid wrongly rendered `Char` markers with 3D rotations. [#5861](https://github.com/MakieOrg/Makie.jl/pull/5861)
+- Fixed `FastPixel` scatter markers not rendering in GLMakie with recent Mesa drivers. [#5861](https://github.com/MakieOrg/Makie.jl/pull/5861)
+- Allowed DocStringExtensions 0.10. [#5849](https://github.com/MakieOrg/Makie.jl/pull/5849)
+- Fixed minimum/maximum minor tick sometimes being cut off in `Axis`. [#5845](https://github.com/MakieOrg/Makie.jl/pull/5845)
+- Fixed empty heatmaps erroring in CairoMakie and GLMakie. (WGLMakie still errors.) [#5845](https://github.com/MakieOrg/Makie.jl/pull/5845)
+- Fixed automatic `series` labels not working anymore. [#5845](https://github.com/MakieOrg/Makie.jl/pull/5845)
+- Added support for `Resampler` in `image` and added `background_visible` attribute to image and heatmap. [#5842](https://github.com/MakieOrg/Makie.jl/pull/5842)
+- Contour labels are now placed at the middle of the visible line or the top of closed loops on screen, with a constant gap around them, and are hidden on lines too short to fit them. Added `labelposition` and `labelpadding` to adjust them. [#5831](https://github.com/MakieOrg/Makie.jl/pull/5831)
+
 ## [0.24.16] - 2026-10-12
 
 - Added arrow visualization for `arrows2d` to legends [#5832](https://github.com/MakieOrg/Makie.jl/pull/5832).
@@ -1131,7 +1149,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.16...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.17...HEAD
+[0.24.17]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.16...v0.24.17
 [0.24.16]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.15...v0.24.16
 [0.24.15]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.14...v0.24.15
 [0.24.14]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.13...v0.24.14
