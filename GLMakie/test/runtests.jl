@@ -9,10 +9,6 @@ using GeometryBasics: origin
 using Random
 using ReferenceTests
 
-if haskey(ENV, "GLMAKIE_TEST_GLFW_VERSION")
-    @test Base.pkgversion(GLMakie.GLFW).major == parse(Int, ENV["GLMAKIE_TEST_GLFW_VERSION"])
-end
-
 if Sys.islinux() && Base.pkgversion(GLMakie.GLFW) >= v"4"
     @testset "headless subprocess" begin
         mktempdir() do runtime_dir

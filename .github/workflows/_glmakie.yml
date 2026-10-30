@@ -4,10 +4,9 @@ on:
 
 jobs:
   test:
-    name: GLMakie Julia ${{ matrix.version }} (GLFW ${{ matrix.glfw }})
+    name: GLMakie Julia ${{ matrix.version }}
     env:
       MODERNGL_DEBUGGING: "true"
-      GLMAKIE_TEST_GLFW_VERSION: ${{ matrix.glfw }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -19,11 +18,6 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
-        include:
-          - version: '1.10'
-            glfw: '3'
-          - version: '1'
-            glfw: '4'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -43,7 +37,6 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./GLMakie ./ReferenceTests ./ComputePipeline"
-          Pkg.add(PackageSpec(name = "GLFW", version = "${{ matrix.glfw }}"))
       - name: Run the tests
         id: referencetests
         continue-on-error: true
