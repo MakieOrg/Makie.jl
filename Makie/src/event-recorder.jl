@@ -12,7 +12,7 @@ function record_events(f, scene::Scene, path::String)
         (field === :mousebuttonstate || field === :keyboardstate) && continue
         on(getfield(scene.events, field); priority = typemax(Int)) do value
             value = isa(value, Set) ? copy(value) : value
-            push!(result, time() => (field => value))
+            push!(result, 1e-9 * time_ns() => (field => value))
             return Consume(false)
         end
     end

@@ -25,10 +25,10 @@ end
 
 function _run_f(f, current_value, observable, throttle, has_changed)
     while true
-        t1 = time()
+        t1 = time_ns()
         try
             f(current_value)
-            tdiff = time() - t1
+            tdiff = 1e-9 * (time_ns() - t1)
             if throttle > 0.0 && tdiff < throttle
                 sleep(throttle - tdiff)
             end

@@ -1185,14 +1185,14 @@ function render_asap(f::Function, screen::Screen, N::Integer)
     ts = Vector{Float64}(undef, N)
 
     for i in 1:N
-        t = time()
+        t = time_ns()
         pollevents(screen, Makie.RegularRenderTick)
         f()
         poll_updates(screen)
         render_frame(screen)
         GLFW.SwapBuffers(to_native(screen))
         GC.safepoint()
-        ts[i] = time() - t
+        ts[i] = 1e-9 * (time_ns() - t)
     end
 
     screen.close_after_renderloop = true

@@ -251,7 +251,7 @@ mutable struct FocusOnCursor
     timeout::Float64
     skip::Int64
 end
-FocusOnCursor(skip, timeout = 0.1) = FocusOnCursor(time(), timeout, skip)
+FocusOnCursor(skip, timeout = 0.1) = FocusOnCursor(1e-9 * time_ns(), timeout, skip)
 
 struct ScrollEvent
     x::Float32

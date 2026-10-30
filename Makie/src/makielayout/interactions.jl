@@ -548,7 +548,7 @@ function process_interaction(lr::LimitReset, event::MouseEvent, ax::Axis3)
 end
 
 function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}, ax::Axis3)
-    if ispressed(ax, ax.cursorfocuskey[]) && is_mouseinside(ax.scene) && (time() > focus.last_time + focus.timeout)
+    if ispressed(ax, ax.cursorfocuskey[]) && is_mouseinside(ax.scene) && (time_ns() > focus.last_time + 1e9 * focus.timeout)
         xy = events(ax.scene).mouseposition[]
         plot, idx = pick(ax.scene, xy)
         if isnothing(plot) || (parent_scene(plot) !== ax.scene) || is_data_space(plot) ||
@@ -562,7 +562,7 @@ function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}
             tlimits = ax.targetlimits
             ws = widths(tlimits[])
             tlimits[] = Rect3f(p3d - 0.5 * ws, ws)
-            focus.last_time = time() # to avoid double triggers
+            focus.last_time = time_ns() # to avoid double triggers
             return Consume(true)
         end
     end
