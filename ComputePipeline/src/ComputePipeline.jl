@@ -1173,7 +1173,8 @@ result = graph[:filtered_image][]
 """
 function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn = false, init = nothing)
     update_key = Symbol(:_update_trigger_, string(hash((inputs, outputs))))
-    add_input!(attr, update_key, time())
+    add_input!(attr, update_key, 0)
+    input_node = attr.inputs[update_key]
     # TODO, should both channels be size 1?
     # Channel for input requests
     input_channel = Channel{Any}(2)
@@ -1188,7 +1189,7 @@ function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vec
                 # Put result in the result channel
                 put!(result_channel, result)
                 # Notify that we got a new value, for the below computation to run
-                update!(attr, update_key => time())
+                update!(attr, update_key => input_node.value::Int + 1)
             catch e
                 @error "Error in background computation task" exception = (e, catch_backtrace())
             end
