@@ -176,7 +176,7 @@ cross2(u, v) = u[1] * v[2] - u[2] * v[1]
 
 angle_between(u, v) = atan(cross2(u, v), u[1] * v[1] + u[2] * v[2])
 
-point_on_segment(pixel_line, (from, to), t) = lerp_points(Point2d(pixel_line[from]), Point2d(pixel_line[to]), t)
+point_on_segment(pixel_line, (from, to), t) = lerp(Point2d(pixel_line[from]), Point2d(pixel_line[to]), t)
 
 segment_anchor(pixel_line, (from, to), t) = (; from, to, t, direction = Vec2d(pixel_line[to] - pixel_line[from]))
 
@@ -265,9 +265,7 @@ function vertex_anchor(pixel_line, path, j)
     return (; from = path[j], to = path[j], t = 0.0, direction = Vec2d(pixel_line[after] - pixel_line[before]))
 end
 
-anchor_point(line, anchor) = lerp_points(line[anchor.from], line[anchor.to], anchor.t)
-
-lerp_points(a, b, t) = a + t * (b - a)
+anchor_point(line, anchor) = lerp(line[anchor.from], line[anchor.to], anchor.t)
 
 anchor_angle(anchor) = to_upright_angle(atan(anchor.direction[2], anchor.direction[1]))
 
@@ -474,30 +472,6 @@ function repeat_level_data_per_vertex(counts, x::AbstractVector{T}) where {T}
 end
 
 """
-    register_label_frame_boxes!(texts::Text)
-
-Register `:label_frame_boxes`, the unrotated bounding box of each string relative
-to its position, i.e. in the frame of a rotated label.
-"""
-function register_label_frame_boxes!(texts)
-    register_raw_glyph_boundingboxes!(texts)
-    map!(
-        texts.attributes,
-        [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation],
-        :label_frame_boxes
-    ) do blocks, glyph_boxes, origins, rotations
-        return map(blocks) do glyph_indices
-            isempty(glyph_indices) && return Rect2d(Point2d(NaN), Vec2d(0))
-            return mapreduce(union, glyph_indices) do i
-                unrotated_origin = inv(rotations[i]) * to_ndim(Vec3d, origins[i], 0)
-                return Rect2d(glyph_boxes[i]) + Point2d(unrotated_origin[1], unrotated_origin[2])
-            end
-        end
-    end
-    return texts.label_frame_boxes
-end
-
-"""
     label_fits_line(line_length, box, padding)
 
 Whether a label with the unrotated bounding `box` is drawn on a visible line piece
@@ -629,8 +603,10 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         visible = false,
         inspectable = false,
     )
-    register_label_frame_boxes!(label_measurements)
-    add_input!(plot.attributes, :label_frame_boxes, label_measurements.label_frame_boxes)
+    # TODO: Compute the label boxes without a hidden text plot once the text rework or #5852 allows it
+    register_raw_string_boundingboxes!(label_measurements)
+    add_input!(plot.attributes, :label_string_boxes, label_measurements.raw_string_boundingboxes)
+    map!(boxes -> Rect2d.(boxes), plot, :label_string_boxes, :label_frame_boxes)
 
     map!(
         plot,
