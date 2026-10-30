@@ -13,16 +13,18 @@ const GLFW = GLMakie.GLFW
     if get(ENV, "GLMAKIE_TEST_NO_DRIVER", "false") == "true"
         # Import and Vulkan-style windows work even with every EGL vendor
         # disabled and OSMesa absent; OpenGL reports what must be installed.
-        err = try
-            GLMakie.Screen(visible = false, start_renderloop = false)
-        catch err
-            err
+        err = @test_logs begin
+            try
+                GLMakie.Screen(visible = false, start_renderloop = false)
+            catch err
+                err
+            end
         end
         @test err isa GLFW.GLFWError
         @test occursin("EGL and OSMesa", err.description)
         @test occursin("Install", err.description)
         @test isempty(GLMakie.ALL_SCREENS)
-        @test isnothing(GLMakie.precompile_screen())
+        @test isnothing(@test_logs (:info, r"Skipping GLMakie's OpenGL precompile workload") GLMakie.precompile_screen())
         # Programming errors must not be mistaken for unavailable drivers.
         GLFW.WindowHint(GLFW.CONTEXT_CREATION_API, -1)
         err = @test_logs begin
@@ -114,6 +116,6 @@ end
         @test err.code == GLFW.NOT_INITIALIZED
         @test !GLFW.is_initialized()
         @test count(log -> log.message isa GLFW.GLFWError, logger.logs) == 1
-        @test count(log -> log.level == Logging.Warn, logger.logs) == 2
+        @test count(log -> log.level == Logging.Warn, logger.logs) == 1
     end
 end

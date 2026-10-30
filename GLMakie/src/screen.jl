@@ -258,37 +258,6 @@ Makie.@noconstprop function empty_screen(debugging::Bool; reuse = true, window =
     return empty_screen(debugging, reuse, window)
 end
 
-function is_context_unavailable(err)
-    return err isa GLFW.GLFWError && err.code in (
-        GLFW.NOT_INITIALIZED, GLFW.API_UNAVAILABLE, GLFW.VERSION_UNAVAILABLE,
-        GLFW.PLATFORM_ERROR, GLFW.FORMAT_UNAVAILABLE,
-    )
-end
-
-# Report the failed operation without attempting initialization again.
-function window_creation_hint()
-    if !GLFW.is_initialized()
-        return "GLFW could not initialize. Check the requested platform and display settings; the original error follows."
-    elseif GLFW.GetPlatform() == GLFW.PLATFORM_NULL
-        return """
-            GLFW couldn't create an OpenGL window on its NULL platform.
-            This platform has no display server, and no usable offscreen OpenGL context
-            was found with the installed libraries.
-            Install an OpenGL 3.3 implementation with EGL support (a GPU driver or Mesa),
-            or libOSMesa. The error below includes the context creation failures.
-            A virtual display (`xvfb-run julia`), CairoMakie, or WGLMakie are other options.
-        """
-    else
-        return """
-            GLFW couldn't create an OpenGL window.
-            This likely means, you don't have an OpenGL capable Graphic Card,
-            or you don't have an OpenGL 3.3 capable video driver installed.
-            Have a look at the troubleshooting section in the GLMakie readme:
-            https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
-        """
-    end
-end
-
 Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     owns_glscreen = isnothing(window)
     initial_resolution = (10, 10)
@@ -311,19 +280,14 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
             (GLFW.SCALE_TO_MONITOR, true),  # Windows & X11
             (GLFW.SCALE_FRAMEBUFFER, true), # OSX & Wayland
         ]
-        window = try
-            GLFW.Window(
-                resolution = initial_resolution,
-                windowhints = windowhints,
-                visible = false,
-                focus = false,
-                fullscreen = false,
-                debugging = debugging,
-            )
-        catch err
-            is_context_unavailable(err) && @warn window_creation_hint()
-            rethrow()
-        end
+        window = GLFW.Window(
+            resolution = initial_resolution,
+            windowhints = windowhints,
+            visible = false,
+            focus = false,
+            fullscreen = false,
+            debugging = debugging,
+        )
 
         # GLFW doesn't support setting the icon on OSX
         GLFW.SetWindowIcon(window, Makie.icon())

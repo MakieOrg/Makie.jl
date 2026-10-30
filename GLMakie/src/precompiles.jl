@@ -11,6 +11,13 @@ macro compile(block)
     end
 end
 
+function is_context_unavailable(err)
+    return err isa GLFW.GLFWError && err.code in (
+        GLFW.NOT_INITIALIZED, GLFW.API_UNAVAILABLE, GLFW.VERSION_UNAVAILABLE,
+        GLFW.PLATFORM_ERROR, GLFW.FORMAT_UNAVAILABLE,
+    )
+end
+
 function precompile_screen()
     try
         return singleton_screen(false)
