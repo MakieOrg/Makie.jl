@@ -17,6 +17,8 @@ Examples:
     julia bump_versions_ci.jl major "" false
 """
 
+using Dates
+
 include("bump_versions.jl")
 
 function run_git_command(cmd::Cmd; capture_output::Bool = false, allow_failure::Bool = false)
