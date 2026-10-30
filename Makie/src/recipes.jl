@@ -50,8 +50,19 @@ function _create_plot end
 function _create_plot! end
 
 
-plot(args...; kw...) = _create_plot(plot, Dict{Symbol, Any}(kw), args...)
-plot!(args...; kw...) = _create_plot!(plot, Dict{Symbol, Any}(kw), args...)
+Base.@nospecializeinfer function to_dict(@nospecialize(nt::NamedTuple))
+    d = Dict{Symbol, Any}()
+    for i in 1:nfields(nt)
+        d[fieldname(typeof(nt), i)] = getfield(nt, i)
+    end
+    return d
+end
+to_dict(@nospecialize(kws::Base.Pairs{Symbol, <:Any, <:Any, <:NamedTuple})) = to_dict(values(kws))
+to_dict(dict::Dict) = convert(Dict{Symbol, Any}, dict)
+to_dict(attr::Attributes) = attributes(attr)
+
+plot(args...; kw...) = _create_plot(plot, to_dict(kw), args...)
+plot!(args...; kw...) = _create_plot!(plot, to_dict(kw), args...)
 
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
@@ -186,8 +197,8 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname, $(esc(:ArgType))}
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
-        Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
-        ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
+        Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, to_dict(kw), args...)
+        ($funcname!)(args...; kw...) = _create_plot!($funcname, to_dict(kw), args...)
         $(Makie).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
@@ -368,11 +379,21 @@ function is_attribute(T::Type{<:Plot}, sym::Symbol)
 end
 
 function attribute_default_expressions(T::Type{<:Plot})
-    return Dict(k => v.default_expr for (k, v) in documented_attributes(T).d)
+    @nospecialize
+    d = Dict{Symbol, Any}()
+    for (k, v) in documented_attributes(T).d
+        d[k] = v.default_expr
+    end
+    return d
 end
 
 function _attribute_docs(T::Type{<:Plot})
-    return Dict(k => v.docstring for (k, v) in documented_attributes(T).d)
+    @nospecialize
+    d = Dict{Symbol, Any}()
+    for (k, v) in documented_attributes(T).d
+        d[k] = v.docstring
+    end
+    return d
 end
 
 
@@ -542,11 +563,11 @@ function create_recipe_expr(Tsym, args, attrblock; export_recipe::Bool = true)
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
 
         function ($funcname)(args...; kw...)
-            kwdict = Dict{Symbol, Any}(kw)
+            kwdict = to_dict(kw)
             return _create_plot($funcname, kwdict, args...)
         end
         function ($funcname!)(args...; kw...)
-            kwdict = Dict{Symbol, Any}(kw)
+            kwdict = to_dict(kw)
             return _create_plot!($funcname, kwdict, args...)
         end
 

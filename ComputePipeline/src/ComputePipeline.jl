@@ -1,5 +1,10 @@
 module ComputePipeline
 
+if isdefined(Base, :Experimental)
+    isdefined(Base.Experimental, Symbol("@optlevel")) && Base.Experimental.@optlevel 1
+    isdefined(Base.Experimental, Symbol("@max_methods")) && Base.Experimental.@max_methods 1
+end
+
 using Preferences
 
 const ENABLE_COMPUTE_CHECKS = @load_preference("ENABLE_COMPUTE_CHECKS", false)
@@ -106,7 +111,7 @@ function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
 end
 
 function _get_named_change(::NamedTuple{Names}, dirty) where {Names}
-    values = ntuple(i -> dirty[i], length(Names))
+    values = ntuple(i -> dirty[i], Val(length(Names)))
     return NamedTuple{Names, NTuple{length(Names), Bool}}(values)
 end
 
@@ -120,27 +125,32 @@ function TypedEdge(edge::ComputeEdge)
     return Base.invokelatest(TypedEdge, edge, edge.callback, inputs)
 end
 
+Base.@nospecializeinfer @noinline function throw_invalid_result_types(edge::ComputeEdge, @nospecialize(result::Tuple))
+    invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
+    strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
+    str = join(strings, ", ")
+    error("Edge callback returned invalid types for outputs: [$str]")
+end
+
+Base.@nospecializeinfer @noinline function throw_length_mismatch(edge::ComputeEdge, @nospecialize(result::Tuple))
+    m = first(methods(edge.callback))
+    line = string(m.file, ":", m.line)
+    error("Result needs to have same length. Found: $(result), for func $(line)")
+end
+
+Base.@nospecializeinfer @noinline throw_invalid_result(@nospecialize(result::Any)) =
+    error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+
 function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
 
     result = f(map(getindex, inputs), dirty, nothing)
 
     if result isa Tuple
+        all(is_node_value_valid, result) || throw_invalid_result_types(edge, result)
+        length(result) == length(edge.outputs) || throw_length_mismatch(edge, result)
 
-        if !all(is_node_value_valid, result)
-            invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
-            strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
-            str = join(strings, ", ")
-            error("Edge callback returned invalid types for outputs: [$str]")
-        end
-
-        if length(result) != length(edge.outputs)
-            m = first(methods(edge.callback))
-            line = string(m.file, ":", m.line)
-            error("Result needs to have same length. Found: $(result), for func $(line)")
-        end
-
-        outputs = ntuple(length(result)) do i
+        outputs = ntuple(Val(length(result))) do i
             v = result[i] isa RefValue ? result[i] : RefValue(result[i])
             edge.outputs[i].value = v # initialize to fully typed RefValue
             return v
@@ -157,7 +167,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         foreach(node -> node.dirty = false, edge.outputs)
 
     else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+        throw_invalid_result(result)
     end
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
@@ -184,9 +194,9 @@ end
 Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of an ::Input to an Observable is not allowed")
 Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
-function Input(graph, name, value, f, output)
+function Input(graph, name, value, f::Function, output)
     validate_node_value(value)
-    return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[])
+    return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge{ComputeGraph}[])
 end
 
 
@@ -462,7 +472,7 @@ function update_observables!(obs_to_update::Vector{Observable})
     return
 end
 
-function Base.setindex!(computed::Computed, value)
+function Base.setindex!(computed::Computed, @nospecialize(value))
     if computed.parent isa Input
         return setindex!(computed.parent, value)
     else
@@ -473,7 +483,7 @@ function Base.setindex!(computed::Computed, value)
     end
 end
 
-function Base.setindex!(input::Input, value)
+function Base.setindex!(input::Input, @nospecialize(value))
     if is_same(input.value, value)
         # Skip if the value is the same as before
         return value
@@ -484,7 +494,7 @@ function Base.setindex!(input::Input, value)
     return value
 end
 
-function _setproperty!(attr::ComputeGraph, key::Symbol, value)
+function _setproperty!(attr::ComputeGraph, key::Symbol, @nospecialize(value))
     input = attr.inputs[key]
     # Skip if the value is the same as before
     is_same(input.value, value) && return value
@@ -495,7 +505,7 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
     return value
 end
 
-function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
+function Base.setproperty!(attr::ComputeGraph, key::Symbol, @nospecialize(value))
     return lock(attr.lock) do
         _setproperty!(attr, key, value)
         foreach(notify, attr.obs_to_update)
@@ -626,20 +636,18 @@ function resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
-        names = ntuple(length(vals)) do i
+        names = ntuple(Val(length(vals))) do i
             edge.output_nodes[i].name
         end
         last = NamedTuple{names}(vals)
         result = edge.callback(map(getindex, edge.inputs), dirty, last)
         if result isa Tuple
-            if length(result) != length(edge.outputs)
-                error("Did not return correct length: $(result), $(edge.callback)")
-            end
+            length(result) == length(edge.outputs) || throw_length_mismatch(edge, result)
             set_result!(edge, result)
         elseif isnothing(result)
             foreach(x -> x.dirty = false, edge.output_nodes)
         else
-            error("Needs to return a Tuple with one element per output, or nothing")
+            throw_invalid_result(result)
         end
     end
     return
@@ -717,7 +725,7 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
     return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, value)
 end
 
-function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
+function _add_input!(func::Function, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
     if haskey(attr.inputs, key) || haskey(attr.outputs, key)
         error("Cannot attach input with name $key - already exists!")
@@ -884,7 +892,7 @@ end
 
 See also: [`add_input!`](@ref), [`map!`](@ref)
 """
-function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(@nospecialize(f::Base.Callable), attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
     if !all(k -> haskey(attr.outputs, k), inputs)
         missing_keys = filter(k -> !haskey(attr.outputs, k), inputs)
         error("Could not register computation: Inputs $missing_keys not found.")
@@ -895,7 +903,7 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
 end
 
 # [computed, symbol] is an Any Vector so no eltype here
-function register_computation!(f, attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(@nospecialize(f::Base.Callable), attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol})
     _inputs = Computed[k isa Symbol ? attr.outputs[k] : k for k in inputs]
     register_computation!(f, attr, _inputs, outputs)
     return
@@ -962,7 +970,7 @@ function assert_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, o
     return
 end
 
-function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(@nospecialize(f::Function), attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
     @ifelse_enabled(check_boxed_values(f))
 
     if any(k -> haskey(attr.outputs, k), outputs)
