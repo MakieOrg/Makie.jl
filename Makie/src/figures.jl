@@ -176,7 +176,7 @@ function get_gui_options(kwargs_dict::Dict{Symbol, Any}, figure_theme::Attribute
 end
 
 function Figure(; kwargs...)
-    kwargs_dict = Dict{Symbol, Any}(kwargs)
+    kwargs_dict = to_dict(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
 
     # Check Figure theme for GUI options (set_theme!(Figure=(; gui=true, ...)))

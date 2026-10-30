@@ -71,7 +71,7 @@ struct BlockSpec
     then_observers::Set{ObserverFunction}
 
     function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec} = PlotSpec[], kw...)
-        attr = Dict{Symbol, Any}(kw)
+        attr = to_dict(kw)
         if typ == :Colorbar && !isempty(args)
             if length(args) == 1 && args[1] isa PlotSpec
                 attr[:plotspec] = args[1]
@@ -109,7 +109,7 @@ struct SceneSpec
     kwargs::Dict{Symbol, Any}
     plots::Vector{PlotSpec}
     function SceneSpec(; plots::Vector{PlotSpec} = PlotSpec[], kw...)
-        return new(Dict{Symbol, Any}(kw), plots)
+        return new(to_dict(kw), plots)
     end
 end
 

@@ -1822,3 +1822,40 @@ end
     fetch(setter)
     @test graph.look[] === Look(Look(:blue, 0.25), 0.8)
 end
+
+
+struct CallableInputConversion
+    scale::Float64
+end
+(f::CallableInputConversion)(x) = f.scale * x
+
+@testset "Callable input conversions" begin
+    graph = ComputeGraph()
+    add_input!(Float32, graph, :typed, 1)
+    add_input!(CallableInputConversion(0.5), graph, :scaled, 4)
+    register_computation!(graph, [:scaled], [:doubled]) do inputs, changed, cached
+        return (2 * only(inputs),)
+    end
+    @test graph.typed[] === 1.0f0
+    @test graph.doubled[] == 4.0
+    graph.scaled = 8
+    @test graph.doubled[] == 8.0
+end
+
+@testset "Wrong result length reports the callback on updates" begin
+    graph = ComputeGraph()
+    add_input!(graph, :valid, true)
+    register_computation!(graph, [:valid], [:result]) do inputs, changed, cached
+        return inputs.valid ? (1,) : (1, 2)
+    end
+    @test graph.result[] == 1
+    graph.valid = false
+    err = try
+        graph.result[]
+    catch exception
+        exception
+    end
+    @test err isa ResolveException
+    @test err.error isa ErrorException
+    @test occursin("Result needs to have same length", sprint(showerror, err.error))
+end

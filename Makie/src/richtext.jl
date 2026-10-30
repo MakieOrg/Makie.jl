@@ -4,7 +4,7 @@ struct RichText
     attributes::Dict{Symbol, Any}
     function RichText(type::Symbol, children...; kwargs...)
         cs = Union{RichText, String}[children...]
-        return new(type, cs, Dict(kwargs))
+        return new(type, cs, to_dict(kwargs))
     end
 end
 
