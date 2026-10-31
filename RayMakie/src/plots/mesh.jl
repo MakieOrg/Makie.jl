@@ -585,7 +585,9 @@ end
 
 """
 Swap the material of an existing mesh scene handle in place — no BLAS/HWTLAS
-rebuild.  For a `MediumInterface`, unpack to surface + inside updates.
+rebuild.  A `MediumInterface` goes to Hikari whole, which refreshes its
+surface material and both media: `outside` matters for nested media, e.g. a
+box of finer medium inside another, or glass inside a cloud.
 """
 function update_trace_material!(hikari_scene, state, robj, new_material)
     hikari_scene === nothing && return
@@ -593,13 +595,7 @@ function update_trace_material!(hikari_scene, state, robj, new_material)
     h = hasproperty(robj, :handle) ? robj.handle : return
     interface_idx = h isa Hikari.SceneHandle ? h.interface :
                     hasproperty(robj, :mat_idx) ? robj.mat_idx : return
-    if new_material isa Hikari.MediumInterface
-        Hikari.update_material!(hikari_scene, interface_idx, new_material.material)
-        new_material.inside !== nothing &&
-            Hikari.update_material!(hikari_scene, interface_idx, new_material.inside)
-    elseif new_material isa Hikari.Material
-        Hikari.update_material!(hikari_scene, interface_idx, new_material)
-    end
+    new_material isa Hikari.Material && Hikari.update_material!(hikari_scene, interface_idx, new_material)
     state.needs_film_clear = true
     return nothing
 end
@@ -647,11 +643,15 @@ function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, co
         to_value(plot.material) : nothing
 
     inner = mesh_val.mesh
-    views = inner.views
     mat_names = mesh_val[:material_names]
     materials_dict = mesh_val[:materials]
     gb_faces = GeometryBasics.faces(inner)
     n_faces = length(gb_faces)
+    # GeometryBasics: empty `views` means the mesh is not split, one submesh over
+    # all faces. `material_names` names one material per submesh.
+    views = isempty(inner.views) ? [1:n_faces] : inner.views
+    length(views) == length(mat_names) || throw(ArgumentError(
+        "MetaMesh has $(length(views)) submesh(es) but $(length(mat_names)) material names"))
 
     per_face_materials = Vector{Hikari.Material}(undef, n_faces)
     mat_cache = Dict{String, Hikari.Material}()
@@ -680,6 +680,9 @@ function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, co
             per_face_materials[fi] = mat
         end
     end
+    uncovered = count(i -> !isassigned(per_face_materials, i), 1:n_faces)
+    uncovered == 0 || throw(ArgumentError(
+        "MetaMesh views leave $uncovered of $n_faces faces without a material"))
 
     handle = push!(hikari_scene, inner, per_face_materials; transform=transform)
     return (handle=handle, instance_idx=Raycore.n_instances(hikari_scene.accel))
