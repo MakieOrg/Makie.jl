@@ -8,7 +8,7 @@ Plots `scatter` markers with `lines` between them.
             :color, :colormap, :colorrange, :colorscale, :lowclip, :highclip, :alpha,
             :nan_color,
             :fxaa, :visible, :transparency, :space, :clip_planes, :ssao, :overdraw,
-            :cycle, :transformation, :model, :depth_shift,
+            :cycle, :transformation, :model, :depth_shift, :name,
             :inspector_label, :inspectable,
         )
     )...
