@@ -18,8 +18,30 @@ If you're using an AMD or Intel gpu on linux, you may run into [GLFW#198](https:
 delete `libstdc++.so.6`. An example path to this file on a system using `juliaup` and version `1.8.2` is `/home/username/.julia/juliaup/julia-1.8.2+0.x64/lib/julia/libstdc++.so.6`.
 
 
-If you're on a headless server, you still need to install x-server and
-proper graphics drivers.
+With GLFW.jl 4, GLMakie can render headlessly without an X server. GLFW selects
+its NULL platform when no display is available, then tries EGL and OSMesa for
+the OpenGL context. EGL supports GPU drivers and Mesa software rendering.
+An OpenGL 3.3 implementation is still required; GLFW does not install a driver.
+
+```julia
+using GLMakie
+fig = lines(1:10)
+save("plot.png", fig)
+image = colorbuffer(fig)
+```
+
+For an explicit screen, use `GLMakie.Screen(visible = false)`. Requesting a visible
+window without a display produces an error pointing to offscreen rendering.
+For headless workers, `JULIA_GLFW_PLATFORM=null` avoids display probing; it is
+optional because GLFW also falls back automatically.
+
+If the installed EGL or OSMesa implementation cannot supply a context, the error
+contains the driver failures. GLMakie can still load and skips its OpenGL
+precompile workload. Older environments with a bundled Wayland library can
+prevent a newer system Mesa vendor from loading; update those graphics
+dependencies together if a load error mentions missing Wayland symbols.
+
+A virtual X server remains another option:
 
 You can find instructions to set that up in:
 

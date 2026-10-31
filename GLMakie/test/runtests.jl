@@ -3,10 +3,32 @@ ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Makie
 using GLMakie, Test
 using FileIO
+using Libdl
 using GeometryBasics
 using GeometryBasics: origin
 using Random
 using ReferenceTests
+
+if Sys.islinux() && Base.pkgversion(GLMakie.GLFW) >= v"4"
+    @testset "headless subprocess" begin
+        mktempdir() do runtime_dir
+            cmd = `$(Base.julia_cmd()) --startup-file=no --project=$(dirname(Base.active_project())) $(joinpath(@__DIR__, "headless.jl"))`
+            env = copy(ENV)
+            delete!(env, "DISPLAY")
+            delete!(env, "WAYLAND_DISPLAY")
+            env["XDG_RUNTIME_DIR"] = runtime_dir
+            env["JULIA_GLFW_PLATFORM"] = "null"
+            @test success(pipeline(setenv(cmd, env); stdout = stdout, stderr = stderr))
+            if isempty(Libdl.find_library(["libOSMesa.so.8", "libOSMesa.so.6", "libOSMesa.so"]))
+                # With no OSMesa fallback installed, disabling EGL vendors
+                # exercises loading and error reporting without any driver.
+                env["__EGL_VENDOR_LIBRARY_FILENAMES"] = joinpath(runtime_dir, "no-vendor.json")
+                env["GLMAKIE_TEST_NO_DRIVER"] = "true"
+                @test success(pipeline(setenv(cmd, env); stdout = stdout, stderr = stderr))
+            end
+        end
+    end
+end
 
 # verify OpenGL object cleanup
 GLMakie.DEBUG[] = true
