@@ -22913,6 +22913,7 @@ function add_plot(scene, plot_data) {
     const p = create_plot(scene, plot_data);
     plot_cache[p.uuid] = p.mesh;
     scene.add(p.mesh);
+    scene.screen.request_render?.();
     const next_insert = new Set(ON_NEXT_INSERT);
     next_insert.forEach((f)=>f());
 }
@@ -23021,6 +23022,15 @@ function deserialize_scene(data, screen) {
 function deserialize_scene_recursive(data, screen) {
     const scene = new mod.Scene();
     scene.screen = screen;
+    scene.deregister_callbacks = [];
+    function on(observable, callback = ()=>{}) {
+        const update = (value)=>{
+            callback(value);
+            screen.request_render?.();
+        };
+        observable.on(update);
+        scene.deregister_callbacks.push(()=>observable.off(update));
+    }
     const { canvas  } = screen;
     add_scene(data.uuid, scene);
     scene.scene_uuid = data.uuid;
@@ -23046,28 +23056,37 @@ function deserialize_scene_recursive(data, screen) {
         attach_3d_camera(canvas, camera, data.cam3d_state, data.light_direction, scene);
     }
     update_cam(data.camera.value, true);
-    data.camera.on(update_cam);
+    on(data.camera, update_cam);
+    for (const observable of [
+        data.viewport,
+        data.backgroundcolor,
+        data.backgroundcolor_alpha,
+        data.clearscene,
+        data.visible
+    ]){
+        on(observable);
+    }
     if (data.camera_relative_light.value) {
         camera.update_light_dir(data.light_direction.value);
         scene.light_direction = camera.light_direction;
-        data.light_direction.on((value)=>{
+        on(data.light_direction, (value)=>{
             camera.update_light_dir(value);
         });
     } else {
         const light_dir = new mod.Vector3().fromArray(data.light_direction.value);
         scene.light_direction = new mod.Uniform(light_dir);
-        data.light_direction.on((value)=>{
+        on(data.light_direction, (value)=>{
             scene.light_direction.value.fromArray(value);
         });
     }
     const ambient = new mod.Vector3().fromArray(data.ambient.value);
     scene.ambient = new mod.Uniform(ambient);
-    data.ambient.on((value)=>{
+    on(data.ambient, (value)=>{
         scene.ambient.value.fromArray(value);
     });
     const light_color = new mod.Vector3().fromArray(data.light_color.value);
     scene.light_color = new mod.Uniform(light_color);
-    data.light_color.on((value)=>{
+    on(data.light_color, (value)=>{
         scene.light_color.value.fromArray(value);
     });
     data.plots.forEach((plot_data)=>{
@@ -23080,9 +23099,14 @@ function deserialize_scene_recursive(data, screen) {
     return scene;
 }
 function delete_plot(plot) {
+    const screen = plot.plot_object.parent?.screen;
     plot.plot_object.dispose();
+    screen?.request_render?.();
 }
 function delete_three_scene(scene) {
+    scene.disposed = true;
+    scene.deregister_callbacks.forEach((off)=>off());
+    scene.orbitcontrols?.dispose();
     delete scene_cache[scene.scene_uuid];
     scene.scene_children.forEach(delete_three_scene);
     while(scene.children.length > 0){
@@ -23123,9 +23147,9 @@ class Plot {
         this.name = data.name;
         this.uuid = data.uuid;
         this.parent = scene;
-        data.updater.on((data)=>{
-            this.update(data);
-        });
+        this.update_observable = data.updater;
+        this.update_callback = (data)=>this.update(data);
+        this.update_observable.on(this.update_callback);
     }
     init_mesh() {
         this.mesh.plot_uuid = this.plot_data.uuid;
@@ -23136,6 +23160,7 @@ class Plot {
         this.mesh.visible = this.plot_data.visible;
     }
     dispose() {
+        this.update_observable.off(this.update_callback);
         delete plot_cache[this.uuid];
         this.parent.remove(this.mesh);
         this.mesh.geometry.dispose();
@@ -23154,6 +23179,7 @@ class Plot {
         connect_plot(scene, this);
         scene.add(this.mesh);
         this.parent = scene;
+        scene.screen.request_render?.();
         return;
     }
     update(data) {
@@ -24556,8 +24582,7 @@ class Scatter extends Plot {
                     ]
                 ]);
             }
-            const screen = this.parent?.screen;
-            if (screen) screen.requires_update = true;
+            this.parent?.screen?.request_render?.();
         });
     }
     update(data_key_value_array) {
@@ -24645,6 +24670,7 @@ function dispose_screen(screen, notify_close = true) {
         return;
     }
     const { renderer , picking_target , root_scene , comm  } = screen;
+    screen.request_render = undefined;
     if (notify_close) {
         comm.notify({
             window_open: false

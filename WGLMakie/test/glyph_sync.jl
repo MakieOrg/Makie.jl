@@ -49,7 +49,7 @@ end
         @test run(
             edisplay.window, """
             (() => {
-                const plots = Object.values(WGL.plot_cache).filter(p => p.glyph_info?.scales);
+                const plots = Object.values(WGL.plot_cache).map(mesh => mesh.plot_object).filter(p => p.glyph_info?.scales);
                 const atlas = WGL.get_texture_atlas();
                 return plots.length > 0 && plots.every(p =>
                     Array.from(p.glyph_info.glyph_hashes).every(h => atlas.glyph_data.has(String(h))));
@@ -60,7 +60,7 @@ end
         @test run(
             edisplay.window, """
             (() => {
-                const plot = Object.values(WGL.plot_cache).find(p => p.glyph_info?.scales);
+                const plot = Object.values(WGL.plot_cache).map(mesh => mesh.plot_object).find(p => p.glyph_info?.scales);
                 const heal = Object.getPrototypeOf(plot).heal_missing_glyphs;
                 let reply;
                 let updates = 0;
@@ -86,7 +86,7 @@ end
             edisplay.window, """
             (() => {
                 const atlas = WGL.get_texture_atlas();
-                const hashes = [...new Set(Object.values(WGL.plot_cache)
+                const hashes = [...new Set(Object.values(WGL.plot_cache).map(mesh => mesh.plot_object)
                     .flatMap(p => Array.from(p.glyph_info?.glyph_hashes ?? [])))];
                 hashes.forEach(h => atlas.glyph_data.delete(String(h)));
                 atlas.test_glyph_ready = 0;

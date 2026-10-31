@@ -52,7 +52,6 @@ makie_dir = @__DIR__
 # Add packages from branch, to make it easier to move the code later (e.g. when running this locally)
 # Since, package dir is much easier to move then the active project (on windows at least).
 paths = ["Makie", "ComputePipeline", BACKEND]
-Pkg.develop(map(x -> (; path = joinpath(makie_dir, x)), paths))
 
 if BACKEND == "WGLMakie"
     # Match the Bonito and ElectronCall versions exercised by WGLMakie CI.
@@ -63,6 +62,8 @@ if BACKEND == "WGLMakie"
         ]
     )
 end
+
+Pkg.develop(map(x -> (; path = joinpath(makie_dir, x)), paths))
 
 open("MakieApp/src/MakieApp.jl", "w") do io
     print(io, module_src)

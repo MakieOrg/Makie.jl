@@ -88,6 +88,7 @@ end
     end
 
 
+    include("scene_updates.jl")
     include("glyph_sync.jl")
 
     @testset "window open/closed" begin

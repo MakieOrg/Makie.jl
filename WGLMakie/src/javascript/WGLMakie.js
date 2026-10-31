@@ -33,6 +33,7 @@ export function dispose_screen(screen, notify_close = true) {
         return;
     }
     const { renderer, picking_target, root_scene, comm } = screen;
+    screen.request_render = undefined;
     if (notify_close) {
         // this usually doesn't get through, since the session may already be closed
         // in that case, window_open gets set from session.on_close

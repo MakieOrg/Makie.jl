@@ -108,9 +108,9 @@ export class Plot {
         this.name = data.name;
         this.uuid = data.uuid;
         this.parent = scene;
-        data.updater.on((data) => {
-            this.update(data);
-        });
+        this.update_observable = data.updater;
+        this.update_callback = data => this.update(data);
+        this.update_observable.on(this.update_callback);
     }
 
     init_mesh() {
@@ -124,6 +124,7 @@ export class Plot {
     }
 
     dispose() {
+        this.update_observable.off(this.update_callback);
         delete plot_cache[this.uuid];
         this.parent.remove(this.mesh);
         this.mesh.geometry.dispose();
@@ -145,17 +146,14 @@ export class Plot {
         connect_plot(scene, this);
         scene.add(this.mesh);
         this.parent = scene;
+        scene.screen.request_render?.();
         return;
     }
 
     update(data) {
         const { mesh } = this;
         if (!mesh) {
-            // The plot was disposed (`dispose()` sets `mesh = undefined`) but a
-            // late update still arrived on `data.updater` — `dispose()` does not
-            // unregister that listener (registered in the constructor). The plot
-            // is gone, so the update is moot; skip it instead of crashing on
-            // `mesh.geometry`.
+            // Ignore an update already in flight when the plot was disposed.
             return;
         }
         const { geometry } = mesh;
@@ -402,8 +400,7 @@ export class Scatter extends Plot {
             if (info.scales) {
                 this.update([["glyph_data", info]]);
             }
-            const screen = this.parent?.screen;
-            if (screen) screen.requires_update = true;
+            this.parent?.screen?.request_render?.();
         });
     }
 
