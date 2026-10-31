@@ -31,11 +31,13 @@ using Electron, WGLMakie, Bonito, Test
         "{type: 'char', keyCode: '$key', modifiers: $modifiers}",
         "{type: 'keyUp', keyCode: '$key', modifiers: $modifiers}",
     )
-    function ctrl(key)
+    function shortcut(key)
+        modifier_key = Sys.isapple() ? "Meta" : "Control"
+        modifier = Sys.isapple() ? "meta" : "control"
         return (
-            "{type: 'keyDown', keyCode: 'Control'}",
-            press(key; modifiers = "['control']")...,
-            "{type: 'keyUp', keyCode: 'Control'}",
+            "{type: 'keyDown', keyCode: '$modifier_key'}",
+            press(key; modifiers = "['$modifier']")...,
+            "{type: 'keyUp', keyCode: '$modifier_key'}",
         )
     end
     function wait_for_text(text)
@@ -50,14 +52,14 @@ using Electron, WGLMakie, Bonito, Test
 
     @testset "paste uses the browser's clipboard" begin
         run(edisplay.window.app, """require("electron").clipboard.writeText("xyz"); true""")
-        send_input(ctrl("V")...)
+        send_input(shortcut("V")...)
         # no stray "v" from the shortcut
         @test wait_for_text("1xyzabc") == "1xyzabc"
     end
 
     @testset "shortcuts don't type their character" begin
-        # the "2" shows that Ctrl+B has been handled
-        send_input(ctrl("B")..., press("2")...)
+        # the "2" shows that Cmd/Ctrl+B has been handled
+        send_input(shortcut("B")..., press("2")...)
         @test wait_for_text("1xyz2abc") == "1xyz2abc"
     end
 
@@ -79,7 +81,7 @@ using Electron, WGLMakie, Bonito, Test
         on(char -> push!(characters, char), events(fig).unicode_input; priority = 100)
         content = repeat("x", 3000)
         run(edisplay.window.app, """require("electron").clipboard.writeText("$content"); true""")
-        send_input(ctrl("V")...)
+        send_input(shortcut("V")...)
         expected = "1xyz2@" * content * "abc"
         @test wait_for_text(expected) == expected
         Bonito.wait_for(() -> !isempty(edits); timeout = 10)
@@ -88,7 +90,7 @@ using Electron, WGLMakie, Bonito, Test
 
         # Pasting with only the canvas focused must not trigger character hotkeys.
         textbox.focused[] = false
-        send_input(ctrl("V")...)
+        send_input(shortcut("V")...)
         send_input(press("3")...)
         Bonito.wait_for(() -> !isempty(characters); timeout = 10)
         @test characters == ['3']
