@@ -19,7 +19,8 @@ shadow_vertex(positions, faces, model::Mat4f, light_space::Mat4f) =
     shadow_vertex(VertexIndex(vertex_index()), positions, faces, model, light_space)
 
 function shadow_vertex(vertexid::VertexIndex, positions, faces, model::Mat4f, light_space::Mat4f)
-    @inbounds vi = Int32(faces[vertexid.value])
+    # 0-based, as `GLTriangleFace` stores it (see `raster_faces`).
+    @inbounds vi = Int32(faces[vertexid.value]) + Int32(1)
     @inbounds p = positions[vi]
     return (position = gl_to_clip_depth(light_space * (model * Vec4f(p[1], p[2], p[3], 1f0))),)
 end

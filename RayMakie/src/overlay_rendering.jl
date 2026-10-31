@@ -129,7 +129,12 @@ function collect_overlay_robjs(state::RayMakieState, root_scene::Makie.Scene, ra
                            plot = typeof(ap), exception = (e, catch_backtrace()), maxlog = 1)
                     return nothing
                 end
-                robj isa RenderObject && robj.visible && push!(robjs, (robj, vp_rect))
+                if robj isa RenderObject && robj.visible
+                    # Compact IDs are private to this screen. `pick` resolves
+                    # them back to plots; editor object identities stay separate.
+                    robj.uniforms[:pick_plot] = ap
+                    push!(robjs, (robj, vp_rect))
+                end
                 return nothing
             end
         end
@@ -338,6 +343,13 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
         rebind_shadow_cells!(shadowcells, dev, jobs)
         return cached[2], cached[3]
     end
+    if cached !== nothing
+        if screen.fb_readback_buf !== nothing && screen.fb_readback_buf.frame.pixels === cached[3].pixels
+            screen.fb_readback_buf = nothing
+        end
+        Mantle.free!(cached[2])
+        Mantle.free!(cached[3].pixels)
+    end
 
     cells = [overlay_binding(robj, dev) for (robj, _) in robjs]
     shadowcells = shadow_cells(dev, jobs)
@@ -366,38 +378,47 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
     #
     # Every stage writes a second attachment, its plot's `fxaa` flag, cleared to 0
     # as GLMakie clears its object ids.
-    noflag = Mantle.Clear((0f0, 0f0, 0f0, 0f0))
-    if fxaa
+    noflag = Mantle.Clear((UInt32(0), UInt32(0), UInt32(0), UInt32(0)))
+    # Persistent metadata is the last displayed frame, not an arena transient
+    # that another pass may alias. FXAA and small picking reads share these bytes.
+    flag_px = Mantle.Buffer(dev, RASTER_METADATA, w * h)
+    if fxaa || key === :window
         # The frame goes to images of its own and FXAA writes the target. FIXED at
         # `(w, h)`, not following the target: `copy!` moves them into buffers of
         # `w * h` pixels, and a window resized inside the frame would otherwise
         # copy a larger image into them. `Discard`, because the blit is the first
         # draw and covers every pixel.
         colour = Mantle.Transient.Image(g, COMPOSITE_FORMAT, (w, h))
-        flag = Mantle.Transient.Image(g, RGBA{N0f8}, (w, h))
+        flag = Mantle.Transient.Image(g, RASTER_METADATA, (w, h))
         depth = Mantle.Transient.Image(g, Float32, (w, h))
         Mantle.render!(g, "frame", colour => Mantle.Discard, flag => noflag,
                        depth => Mantle.Clear(1f0)) do p
             frame_draws!(p, screen, source, cells, robjs, w, h)
         end
         colour_px = Mantle.Transient.Buffer(g, COMPOSITE_FORMAT, w * h)
-        flag_px = Mantle.Transient.Buffer(g, RGBA{N0f8}, w * h)
         Mantle.copy!(g, "read colour", colour_px, colour)
         Mantle.copy!(g, "read fxaa", flag_px, flag)
-        Mantle.render!(g, "fxaa", target => Mantle.Discard) do p
-            Mantle.draw!(p, get_fxaa_pipeline!(screen), (), 3;
-                         frag_args = (colour_px, flag_px, Int32(w), Int32(h)),
+        Mantle.render!(g, fxaa ? "fxaa" : "present", target => Mantle.Discard) do p
+            pipeline = fxaa ? get_fxaa_pipeline!(screen) : get!(screen.gfx_pipelines, :plain_blit) do
+                GraphicsPipeline(;vertex=VertexShader(Mantle.blit_vertex),
+                    fragment=FragmentShader(Mantle.blit_fragment),blend=Opaque(),cull=NoCull(),depth=DepthOff())
+            end
+            args = fxaa ? (colour_px, flag_px, Int32(w), Int32(h)) : (colour_px,Int32(w),Int32(h))
+            Mantle.draw!(p, pipeline, (), 3;
+                         frag_args = args,
                          viewport = (0f0, 0f0, Float32(w), Float32(h)))
         end
     else
-        flag = Mantle.Transient.Image(g, RGBA{N0f8}, target)
+        flag = Mantle.Transient.Image(g, RASTER_METADATA, target)
         depth = Mantle.Transient.Image(g, Float32, target)
         Mantle.render!(g, "frame", target => clear, flag => noflag,
                        depth => Mantle.Clear(1f0)) do p
             frame_draws!(p, screen, source, cells, robjs, w, h)
         end
     end
-    extra = finish(g, target)
+    (fxaa || key === :window) || Mantle.copy!(g, "read metadata", flag_px, flag)
+    extra = (; result = finish(g, target), pixels = flag_px, size = (w,h), ppu = screen.px_per_unit,
+              plots = [get(robj.uniforms, :pick_plot, nothing) for (robj, _) in robjs])
     # NOT `record!`: a windowed plan draws to a different swapchain image every
     # frame and core refuses to record one. An unrecorded plan re-emits per
     # frame, which is also what lets a rebound cell be seen — a recording packs
@@ -425,6 +446,11 @@ function overlay_robjs(screen; scenes = nothing)
     # See-through meshes after the opaque ones, in their order otherwise: they
     # write no depth, so whatever they cover has to be drawn first.
     sort!(robjs; by = ((robj, _),) -> get(robj.uniforms, :see_through, false)::Bool, alg = Base.Sort.DEFAULT_STABLE)
+    for (i, (robj, _)) in enumerate(robjs)
+        i <= typemax(Int32) || error("too many raster objects for picking")
+        robj.uniforms[:fxaa] = reinterpret(Int32, (UInt32(i) << 1) |
+            (reinterpret(UInt32, robj.uniforms[:fxaa]) & UInt32(1)))
+    end
     # Every pipeline checked BEFORE the graph is built, so one this backend
     # cannot run is a named error rather than a half-composited frame.
     for (robj, _) in robjs
