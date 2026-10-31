@@ -132,6 +132,11 @@ struct Events
     """
     unicode_input::Observable{Char}
     """
+    Contains the last pasted text, delivered as a single insertion.
+    Currently emitted by WGLMakie.
+    """
+    paste::Observable{String}
+    """
     Contains a list of filepaths to files dragged into the scene.
     """
     dropped_files::Observable{Vector{String}}
@@ -181,6 +186,7 @@ function Events()
         Observable(KeyEvent(Keyboard.unknown, Keyboard.release)),
         Set{Keyboard.Button}(),
         Observable('\0'),
+        Observable(""),
         Observable(String[]),
         Observable(false),
         Observable(false),

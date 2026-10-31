@@ -57,6 +57,7 @@ Events from the backend are stored in Observables within the `Events` struct. Yo
 - `keyboardbutton::Observable{KeyEvent}`: Contains the most recent `KeyEvent` which holds the relevant `key::Keyboard.Button` and `action::Keyboard.Action`.
 - `keyboardstate::Observable{Keyboard.Button}`: Contains all currently pressed keys.
 - `unicode_input::Observable{Char}`: Contains the most recently typed character.
+- `paste::Observable{String}`: Contains the most recently pasted text as a single string. Currently emitted by WGLMakie.
 - `dropped_files::Observable{Vector{String}}`: Contains a list of filepaths to a collection of files dragged into the window.
 - `tick::Observable{Makie.Tick}`: Contains the most recent `Makie.Tick`. A `tick` is produced for every frame rendered, i.e. at regular intervals for interactive figures, when an image is saved or when `record()` is used.
 
