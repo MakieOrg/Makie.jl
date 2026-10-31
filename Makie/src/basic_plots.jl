@@ -53,6 +53,14 @@ end
 function mixin_generic_plot_attributes()
     return @DocumentedAttributes begin
         """
+        Identifies this plot within its figure. Left empty it is filled in with
+        the plot's function name and a short hash, e.g. `"scatter_a3f21c"`. It is
+        what a link to this plot refers to -- a `Legend`'s sources, say -- so that
+        such a reference survives being written out and read back, where an object
+        cannot.
+        """
+        unique_name = ""
+        """
         Controls the inheritance or directly sets the transformations of a plot.
         Transformations include the transform function and model matrix as generated
         by `translate!(...)`, `scale!(...)` and `rotate!(...)`. They can be set

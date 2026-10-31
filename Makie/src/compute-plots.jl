@@ -844,7 +844,9 @@ function init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent)
     prepare_graph_for_attributes!(graph, attr, exclude, is_primitive = is_primitive)
     add_from_kwargs!(build_callback, graph, attr, kwargs, exclude)
     if !isnothing(parent)
-        exclude_from_parent = (:model, :transformation, :transform_func, :model_f32c)
+        # :unique_name identifies one plot, so a child gets its own rather than
+        # being connected to its parent's
+        exclude_from_parent = (:model, :transformation, :transform_func, :model_f32c, :unique_name)
         connect_parent!(build_callback, graph, parent, attr, exclude_from_parent)
     end
     add_remaining_inputs!(build_callback, graph, attr, exclude)
@@ -896,11 +898,34 @@ function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, graph)
 end
 
+"""
+    name_plot!(plot, func)
+
+Give the plot a name unless it was handed one. Reconstructing a serialized figure
+passes the stored name back in, which is what keeps a link to this plot -- a
+`Legend`'s sources, say -- pointing at the same plot on the other side.
+
+Called once the plot is connected to a scene, since `add_theme!` resets attributes
+to their defaults and would drop a name assigned before it.
+"""
+function name_plot!(plot::Plot, func)
+    attr = plot.attributes
+    # `unique_name` comes from mixin_generic_plot_attributes(), which not every
+    # recipe splices in -- `bracket` and `textlabel` do not, `band` and `ablines`
+    # do. Those plots simply go unnamed until their recipes gain the mixin.
+    haskey(attr, :unique_name) || return plot
+    isempty(attr[:unique_name][]) || return plot
+    short_hash = string(objectid(plot), base = 62)
+    update!(attr, :unique_name => string(func, '_', short_hash))
+    return plot
+end
+
 # should this just be connect_plot?
 function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     scene = parent_scene(parent)
     attr = plot.attributes
     add_theme!(Plot{Func}, plot.kw, attr, scene)
+    name_plot!(plot, Func)
     plot.parent = parent
 
     if attr.inputs[:f32c].value !== :uninitialized
