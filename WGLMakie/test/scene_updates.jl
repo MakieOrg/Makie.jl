@@ -2,7 +2,7 @@
     checks = Bonito.evaljs_value(
         edisplay.browserdisplay.handler.session, js"""
         (() => {
-            const Observable = $(Observable(0)).constructor;
+            const Observable = Object.values(WGL.scene_cache)[0].viewport.constructor;
             const observable = value => new Observable("test-redraw", value);
             const identity = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
             let redraws = 0;
