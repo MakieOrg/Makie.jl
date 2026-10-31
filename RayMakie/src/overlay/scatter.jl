@@ -237,6 +237,30 @@ end
 # Fragment Shader — SDF evaluation
 # =============================================================================
 
+"Glyph distance in the same normalized units as the sprite's horizontal UV."
+@inline function glyph_distance(uv::Vec2f, bbox::Vec4f, scale::Float32)
+    u = clamp(uv[1], 0f0, 1f0)
+    v = clamp(uv[2], 0f0, 1f0)
+    tu = bbox[1] + u * (bbox[3] - bbox[1])
+    tv = bbox[2] + v * (bbox[4] - bbox[2])
+    return scale * sample_texture_2d(UInt32(0), tu, tv, UInt32(0))
+end
+
+# GLMakie's distance_shape.frag samples each side separately: a centered
+# difference can cancel at a local extremum in a glyph's distance field.
+@inline glyph_squared_partial(center::Float32, hi::Float32, lo::Float32) =
+    2f0 * max((hi - center)^2, (center - lo)^2)
+
+@inline function glyph_squared_partial(center::Float32, uv::Vec2f, delta::Vec2f,
+                                      bbox::Vec4f, scale::Float32)
+    hi = glyph_distance(uv + 0.5f0 * delta, bbox, scale)
+    lo = glyph_distance(uv - 0.5f0 * delta, bbox, scale)
+    return glyph_squared_partial(center, hi, lo)
+end
+
+@inline glyph_aa_radius(viewport_scale::Float32, dx2::Float32, dy2::Float32) =
+    viewport_scale * ANTIALIAS_RADIUS * sqrt(2f0) * sqrt(dx2 + dy2)
+
 function scatter_fragment(
     inputs,
     gpu_positions::AbstractVector{<:Vec3f},
@@ -268,13 +292,20 @@ function scatter_fragment(
     u = f_uv[1]; v = f_uv[2]
     sh = Base.fptosi(Int32, f_shape + 0.5f0)
 
+    aa = ANTIALIAS_RADIUS
     sd = if sh == Int32(3)
+        center = glyph_distance(f_uv, f_uv_bbox, f_df_scale)
+        # KernelInterface's portable fragment derivatives are scalar, as in
+        # footprint_texel; Metal implements those scalar intrinsics directly.
+        du = Vec2f(dFdx(f_uv[1]), dFdx(f_uv[2]))
+        dv = Vec2f(dFdy(f_uv[1]), dFdy(f_uv[2]))
+        dx2 = glyph_squared_partial(center, f_uv, du, f_uv_bbox, f_df_scale)
+        dy2 = glyph_squared_partial(center, f_uv, dv, f_uv_bbox, f_df_scale)
+        aa = glyph_aa_radius(f_vp_from_u, dx2, dy2)
         cu = clamp(u, 0f0, 1f0); cv = clamp(v, 0f0, 1f0)
-        tu = f_uv_bbox[1] + cu * (f_uv_bbox[3] - f_uv_bbox[1])
-        tv = f_uv_bbox[2] + cv * (f_uv_bbox[4] - f_uv_bbox[2])
-        raw = sample_texture_2d(UInt32(0), tu, tv, UInt32(0))
         bu = u - cu; bv = v - cv
-        f_df_scale * raw - sqrt(bu*bu + bv*bv)
+        # Extend a clamped glyph only for its stroke/glow, as in GLMakie.
+        center - (gpu_stroke_width > 0f0 || gpu_glow_width > 0f0 ? sqrt(bu*bu + bv*bv) : 0f0)
     elseif sh == Int32(1)
         sx = f_sp_scl[1] / min(abs(f_sp_scl[1]), abs(f_sp_scl[2]))
         sy = f_sp_scl[2] / min(abs(f_sp_scl[1]), abs(f_sp_scl[2]))
@@ -289,7 +320,6 @@ function scatter_fragment(
     end
 
     sd = sd * f_vp_from_u
-    aa = 0.70710677f0
     # With `fxaa` the edge is a hard step and FXAA smooths it afterwards, as in
     # distance_shape.frag; smoothing both ways left a halo.
     inside = fxaa_or_aastep(fxaa, 0f0, sd, aa)
