@@ -80,10 +80,15 @@ export class TextureAtlas {
         let written = false;
         Object.keys(glyph_data).forEach((hash) => {
             this.requested.delete(hash);
+            const [uv, sdf, width, minimum] = glyph_data[hash];
             if (this.glyph_data.has(hash)) {
+                // Raw atlas entries can arrive before their font metrics.
+                const size = to_three_vector(width);
+                if (size.lengthSq() > 0) {
+                    this.glyph_data.set(hash, [to_three_vector(uv), size, to_three_vector(minimum)]);
+                }
                 return;
             }
-            const [uv, sdf, width, minimum] = glyph_data[hash];
             this.insert_glyph(
                 hash,
                 sdf,

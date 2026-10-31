@@ -116,9 +116,7 @@ function start_renderloop(three_scene) {
     const time_per_frame = (1 / fps) * 1000; // default is 30 fps
     // make sure we immediately render the first frame and dont wait 30ms
     let last_time_stamp = performance.now();
-    // Per-loop flag: is an rAF for *this* loop pending? Kept local (not on the
-    // shared screen) so that after a resync the old, disposed loop and the new
-    // loop can't clobber each other's scheduling state.
+    // Each scene owns its pending frame, including during a resync.
     let scheduled = false;
 
     function schedule() {
@@ -134,13 +132,9 @@ function start_renderloop(three_scene) {
         if (three_scene.disposed || !check_screen(screen)) {
             return;
         }
-        // With render_on_demand we only render when something marked the screen
-        // dirty via request_render (Plot.update / camera.update_matrices / resize /
-        // resync); otherwise we render every frame like a classic rAF loop.
         const due = timestamp - last_time_stamp > time_per_frame;
         if (due && (!screen.render_on_demand || screen.requires_update)) {
-            // consume the flag *before* rendering, so an update triggered during
-            // render_scene (re-)arms it and we render again next frame.
+            // An update during rendering must be able to request another frame.
             screen.requires_update = false;
             screen.frame_count++;
             const all_rendered = render_scene(three_scene);
@@ -152,15 +146,11 @@ function start_renderloop(three_scene) {
             last_time_stamp = performance.now();
         }
         if (!screen.render_on_demand || screen.requires_update) {
-            // not on-demand: keep spinning; on-demand & still dirty: keep going
             schedule();
         }
-        // on-demand & idle: park the loop. request_render() wakes it.
     }
 
-    // The single "something changed, please redraw" entry point. Reassigned on
-    // every (re)start, so it always drives the current scene's loop; a stale
-    // disposed loop is unreachable through it.
+    // Always target the newest scene after resync.
     screen.request_render = () => {
         screen.requires_update = true;
         schedule();
@@ -168,28 +158,21 @@ function start_renderloop(three_scene) {
 
     function _check_screen() {
         // make sure we delete the screen if the canvas is not in the DOM anymore
-        if (!check_screen(screen)){
+        if (three_scene.disposed || !check_screen(screen)) {
             return;
         }
-        // this can't happen via requestAnimationFrame
-        // since it may not be called after the canvas got removed.
-        // So we need another check outside the renderloop (which can run a lot slower)
+        // rAF may stop when the canvas leaves the DOM.
         setTimeout(_check_screen, 1000);
     }
 
-    // render one time before starting loop, so that we don't wait 30ms before
-    // first render. This also covers resync: a fresh snapshot swaps in a new
-    // scene and calls start_renderloop, so the new scene draws immediately even
-    // when the loop is otherwise parked.
+    // Draw the initial or replacement scene immediately.
     screen.frame_count++;
     render_scene(three_scene);
     screen.requires_update = false;
     _check_screen();
     if (!screen.render_on_demand) {
-        // classic continuous loop
         schedule();
     }
-    // on-demand: leave the loop parked; request_render() starts it on the first change.
 }
 
 /**
@@ -650,18 +633,13 @@ export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_p
         real_size.notify([final_width, final_height]);
 
         const init_scene = (scene_data) => {
-            // The julia side treats the JS scene as a cache of its state:
-            // every snapshot arriving on `scene_serialized` (re)builds the
-            // scene - the first one initializes, later ones (sent after a
-            // reconnect with stale state) swap the scene graph in place,
-            // keeping renderer, canvas and texture atlas alive.
+            // Resync replaces the scene graph while keeping the renderer and canvas.
             const screen = canvas.wglmakie_screen;
             const is_resync = !!(screen && screen.renderer);
             try {
                 if (is_resync) {
                     const old_scene = screen.root_scene;
                     if (old_scene) {
-                        old_scene.disposed = true; // terminates its renderloop
                         delete_three_scene(old_scene);
                     }
                     const three_scene = deserialize_scene(scene_data, screen);
@@ -782,15 +760,7 @@ function create_scene(
         winscale,
         comm,
         texture_atlas: undefined,
-        // On-demand rendering: only render a frame when something changed.
-        // `requires_update` is set via `screen.request_render()` from the dirty
-        // sources (Plot.update, camera.update_matrices, set_render_size) and the
-        // initial/resync render in start_renderloop. When the scene goes idle the
-        // rAF loop parks itself and request_render() wakes it back up. The screen
-        // outlives scene swaps (resync), so these flags persist across them.
-        // frame_count is for diagnostics/tests. `render_on_demand` defaults to
-        // true; pass false (WGLMakie.activate!(; render_on_demand=false)) for a
-        // continuous render loop.
+        // Shared across scene replacements; request_render wakes an idle loop.
         render_on_demand: render_on_demand !== false,
         requires_update: true,
         frame_count: 0,

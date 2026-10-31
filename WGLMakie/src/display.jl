@@ -67,13 +67,7 @@ mutable struct Screen <: Makie.MakieScreen
     canvas::Union{Nothing, Bonito.HTMLElement}
     tick_clock::Makie.BudgetedTimer
     lock::ReentrantLock
-    # The JS side is treated as a cache of the julia-side scene state, built
-    # exclusively from snapshots sent over the `scene_serialized` observable.
-    # Whenever a change cannot be sent incrementally (no live, initialized
-    # connection), this flag marks the JS state (or the eagerly serialized
-    # initial snapshot) as stale. It is consumed by the next snapshot
-    # opportunity: the first-connect serialization, the moment JS reports
-    # initialization, or a websocket reconnect (`session.on_open`).
+    # Plot mutations while disconnected require a fresh browser snapshot.
     needs_resync::Bool
     function Screen(scene::Union{Nothing, Scene}, config::ScreenConfig)
         timer = Makie.BudgetedTimer(1.0 / 30.0)
@@ -130,9 +124,7 @@ function poll_all_plots(scene)
     end
 end
 
-# Body of the polling task in `start_polling_loop!`. A named function so the
-# precompile directive in precompiles.jl can cover it - as an anonymous task
-# body it cost ~80ms of first-display inference.
+# Named so the polling task can be precompiled.
 function run_polling_loop(screen::Screen, scene::Scene, isrunning::Threads.Atomic{Bool})
     while !Makie.isclosed(scene) && isrunning[]
         try
@@ -183,9 +175,6 @@ function render_with_init(screen::Screen, session::Session, scene::Scene, figure
                 start_polling_loop!(screen, scene)
                 connect_post_init_events(screen, scene)
                 if screen.needs_resync
-                    # a mutation raced the JS scene construction: the snapshot
-                    # it was built from is stale, send a fresh one
-                    screen.needs_resync = false
                     request_resync()
                 end
             else
@@ -512,9 +501,7 @@ function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
     return
 end
 
-# The screen session is usually a sub-session whose `isopen` flag is
-# independent of the actual websocket; the root session reflects the real
-# connection state.
+# Both the figure and its root connection must be ready.
 function connection_live(screen::Screen)
     session = screen.session
     isnothing(session) && return false
@@ -554,18 +541,13 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
                 insert_scene!(live, screen, scene)
             end
         catch e
-            # the connection may die mid round trip - never throw into user
-            # code, the next snapshot (reconnect resync) repairs the JS state
-            @debug "insert! failed on live connection, scheduling resync" exception = (e, catch_backtrace())
+            e isa InterruptException && rethrow()
+            connection_live(screen) && rethrow()
+            @debug "Connection lost during plot insertion; scheduling resync" exception = (e, catch_backtrace())
             screen.needs_resync = true
         end
     else
-        # No live, initialized connection (browser still loading, websocket
-        # disconnected, static export, precompile workload, ...). Never
-        # block: mark the JS-bound state as stale - the change is picked up
-        # by the next full snapshot (first-connect serialization or the
-        # reconnect resync), and connections that never come online never
-        # need it.
+        # Initialization or reconnect will send the current scene without blocking here.
         screen.needs_resync = true
     end
     return

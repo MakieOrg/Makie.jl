@@ -90,6 +90,7 @@ end
 
     include("scene_updates.jl")
     include("glyph_sync.jl")
+    include("resync.jl")
 
     @testset "window open/closed" begin
         f, a, p = scatter(rand(10))

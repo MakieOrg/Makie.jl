@@ -183,7 +183,7 @@ function reinterpret_faces(@nospecialize(plot), faces::Buffer)
     return reinterpret_faces(plot, ShaderAbstractions.data(faces))
 end
 
-function serialize_scene(scene::Scene)
+function serialize_scene(scene::Scene, ::Nothing = nothing)
 
     hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
     pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], scene, viewport(scene); ignore_equal_values = true)
@@ -197,14 +197,12 @@ function serialize_scene(scene::Scene)
         nothing
     end
 
-    children = map(child -> serialize_scene(child), scene.children)
-
     light_dir = Observable(serialize_three(Vec3f(1)), ignore_equal_values = true)
     cam_rel = Observable(serialize_three(false), ignore_equal_values = true)
     ambient = Observable(serialize_three(RGBf(0, 0, 1)), ignore_equal_values = true)
     light_color = Observable(serialize_three(RGBf(1, 0, 0)), ignore_equal_values = true)
 
-    on(scene.compute.onchange, update = true) do _
+    on(scene, scene.compute.onchange, update = true) do _
         ambient[] = serialize_three(scene.compute[:ambient_color][])
         light_color[] = serialize_three(scene.compute[:dirlight_color][])
         light_dir[] = serialize_three(scene.compute[:dirlight_direction][])
@@ -222,12 +220,21 @@ function serialize_scene(scene::Scene)
         :camera_relative_light => cam_rel,
         :ambient => ambient,
         :light_color => light_color,
-        :plots => serialize_plots(scene, scene.plots),
         :cam3d_state => cam3d_state,
         :visible => scene.visible,
-        :uuid => js_uuid(scene),
-        :children => children
+        :uuid => js_uuid(scene)
     )
+    return serialize_scene(scene, serialized)
+end
+
+function serialize_scene(scene::Scene, previous::AbstractDict)
+    # Reuse reactive bindings; only the plot and child snapshots change.
+    serialized = copy(previous)
+    children = Dict{String, Any}(child[:uuid] => child for child in get(previous, :children, ()))
+    serialized[:children] = map(scene.children) do child
+        serialize_scene(child, get(children, js_uuid(child), nothing))
+    end
+    serialized[:plots] = serialize_plots(scene, scene.plots)
     return serialized
 end
 

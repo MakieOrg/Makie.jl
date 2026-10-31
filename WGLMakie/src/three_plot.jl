@@ -53,9 +53,7 @@ function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceCont
 end
 
 
-# Body of the real_size handler task in `three_display`. A named function so
-# the precompile directive in precompiles.jl can cover it - as an anonymous
-# task body it cost ~0.4s of inference on the first display.
+# Named so the browser resize callback can be precompiled.
 function apply_real_size!(
         screen::Screen, scene::Scene, scene_serialized_task::Makie.TrackedTask,
         scene_serialized::Observable{Union{Nothing, Dict{Symbol, Any}}},
@@ -74,7 +72,7 @@ function apply_real_size!(
             # plots were inserted/deleted after the eager serialization
             # started - take a fresh snapshot
             screen.needs_resync = false
-            serialized = serialize_scene(scene)
+            serialized = serialize_scene(scene, serialized)
         end
         # Now serialize with the correct size
         scene_serialized[] = serialized
@@ -96,6 +94,13 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     # Create observable for scene serialization that updates asynchronously
     scene_serialized = Observable{Union{Nothing, Dict{Symbol, Any}}}(nothing)
     done_init = Observable{Any}(nothing)
+    function request_resync()
+        screen.needs_resync = false
+        scene_serialized[] = serialize_scene(scene, scene_serialized[])
+        empty!(screen.displayed_scenes)
+        mark_as_displayed!(screen, scene)
+        return
+    end
     if is_offline
         # For offline connections, we have to serialize immediately
         # Since we cant do any round trip communication
@@ -116,14 +121,10 @@ function three_display(screen::Screen, session::Session, scene::Scene)
             end
             return
         end
-        # The websocket (re)connected while the JS scene state is stale
-        # (mutations while disconnected, see `Base.insert!`): rebuild from a
-        # fresh snapshot. On the first connect plot_initialized isn't ready
-        # and the real_size flow above owns the snapshot.
+        # First initialization is handled by real_size; reconnect refreshes stale scenes.
         on(session, session.on_open) do _
             if screen.needs_resync && isready(screen.plot_initialized)
-                screen.needs_resync = false
-                scene_serialized[] = serialize_scene(scene)
+                request_resync()
             end
             return
         end
@@ -153,10 +154,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     wrapper = DOM.div(canvas, config.spinner; style = "width: 100%; height: 100%; position: relative;")
     comm = Observable(Dict{String, Any}())
 
-    # Root-owned glyph channel: batches arrive as ordered evaljs events (see
-    # `sync_glyphs!`); `request` is the JS→Julia pull for missing hashes. Wired
-    # here so EVERY figure mount (re)installs the pull target — idempotent on
-    # the JS side.
+    # Every figure connects the page's glyph request channel, including cached plots.
     glyph_request = glyph_sync!(session).request
     evaljs(
         session, js"""
@@ -186,9 +184,5 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         window_open[] = true
     end
     connect_scene_events!(screen, scene, comm)
-    # used by render_with_init to take a fresh snapshot when a mutation raced
-    # JS scene construction (flag checked after plot_initialized is set, so
-    # there is no window in which a set flag can be missed)
-    request_resync() = (scene_serialized[] = serialize_scene(scene))
     return wrapper, done_init, request_resync
 end

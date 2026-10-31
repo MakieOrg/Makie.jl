@@ -7,6 +7,7 @@ js_plot_type(plot::Union{Lines, LineSegments}) = "Lines"
 
 function serialize_three(scene::Scene, plot::Makie.PrimitivePlotTypes)
     mesh = create_shader(scene, plot)
+    sync_glyphs!(scene, plot)
 
     mesh[:plot_type] = js_plot_type(plot)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
@@ -341,16 +342,14 @@ function glyph_sync!(session::Bonito.Session)
                 for h in hashes
                     h32 = UInt32(h)
                     idx = get(atlas.mapping, h32, nothing)
-                    if idx === nothing
-                        # Unknown hash: nothing to heal with — the JS side keeps its
-                        # zero-UV fallback and has already warned.
-                        @warn "glyph pull request for hash not in the atlas" hash = h32 maxlog = 5
+                    bounds = get(sync.bbox, h32, nothing)
+                    if idx === nothing || bounds === nothing
+                        @warn "Glyph pull request for an unregistered glyph" hash = h32 maxlog = 5
                         continue
                     end
                     uv = atlas.uv_rectangles[idx]
-                    w, mini = get(sync.bbox, h32, (Vec2f(0), Vec2f(0)))
+                    w, mini = bounds
                     out[h32] = [uv, Makie.get_glyph_sdf(atlas, h32), w, mini]
-                    push!(sync.shipped, h32)
                 end
                 return out
             end
@@ -376,7 +375,9 @@ function sync_glyphs!(scene::Scene, glyphs, fonts)
     sync = glyph_sync!(screen.session)
     root = Bonito.root_session(screen.session)
     glyph_hashes, wire_batch = lock(sync.lock) do
-        hashes, new_glyphs = Makie.get_glyph_data(atlas, sync.shipped, glyphs, fonts)
+        # Raw atlas hashes have no font metrics; later text must still register them.
+        tracker = glyphs isa AbstractVector{UInt32} ? Set(keys(sync.bbox)) : sync.shipped
+        hashes, new_glyphs = Makie.get_glyph_data(atlas, tracker, glyphs, fonts)
         for (h, v) in new_glyphs
             sync.bbox[h] = (Vec2f(v[3]), Vec2f(v[4]))
         end
@@ -384,6 +385,14 @@ function sync_glyphs!(scene::Scene, glyphs, fonts)
     end
     send_glyph_batch!(root, wire_batch)
     return glyph_hashes
+end
+
+# A cached plot computation may have been resolved for another page.
+sync_glyphs!(scene::Scene, plot::Plot) = nothing
+sync_glyphs!(scene::Scene, plot::Makie.Text) = sync_glyphs!(scene, plot.glyphindices[], plot.font_per_char[])
+function sync_glyphs!(scene::Scene, plot::Scatter)
+    plot.sdf_marker_shape[] == 3 && sync_glyphs!(scene, plot.marker[], plot.font[])
+    return
 end
 
 get_scatter_data(scene::Scene, markers, fonts) = sync_glyphs!(scene, markers, fonts)

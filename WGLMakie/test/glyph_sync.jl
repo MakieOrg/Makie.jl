@@ -108,3 +108,41 @@ end
         display(edisplay, App(nothing))
     end
 end
+
+@testset "Cached glyphs and raw atlas entries on fresh pages" begin
+    figure = Figure(size = (300, 160))
+    font = Makie.to_font("TeX Gyre Heros Makie")
+    Label(figure[1, 1], "Redisplay Ωλ", fontsize = 30, font = font)
+    reference = nothing
+    for _ in 1:2
+        server = Bonito.Server("127.0.0.1", 0)
+        page = Bonito.HTTPServer.ElectronDisplay(;
+            app = edisplay.window.app,
+            options = Dict{String, Any}("show" => false, "webPreferences" => Dict("offscreen" => true, "backgroundThrottling" => false))
+        )
+        page.browserdisplay.server = server
+        try
+            if reference === nothing
+                hashes, _ = Makie.get_glyph_data(Makie.get_texture_atlas(), Set{UInt32}(), collect("Redisplay Ωλ"), font)
+                atlas_scene = Scene(size = (300, 160))
+                scatter!(atlas_scene, fill(Point2f(0), length(hashes)), marker = hashes)
+                display(page, App(atlas_scene))
+                colorbuffer(atlas_scene)
+            end
+            display(page, App(figure))
+            image = copy(colorbuffer(figure))
+            if reference === nothing
+                reference = image
+                @test length(unique(image)) > 1
+            else
+                @test image == reference
+            end
+            sync = Bonito.get_metadata(page.browserdisplay.handler.session, :wglmakie_glyph_sync)
+            @test !isempty(sync.bbox)
+            @test any(bounds -> all(>(0), bounds[1]), values(sync.bbox))
+        finally
+            close(page)
+            close(server)
+        end
+    end
+end

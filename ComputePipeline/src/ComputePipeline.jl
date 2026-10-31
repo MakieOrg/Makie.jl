@@ -691,7 +691,7 @@ function dynamic_resolve!(edge::ComputeEdge)
     names = Tuple(Symbol[input.name for input in edge.inputs])
     values = Tuple(Any[input.value[] for input in edge.inputs])
     dirty = Tuple(Bool[d for d in edge.inputs_dirty])
-    result = edge.callback(NamedTuple{names}(values), NamedTuple{names}(dirty), nothing)
+    result = Base.invokelatest(edge.callback, NamedTuple{names}(values), NamedTuple{names}(dirty), nothing)
 
     if result isa Tuple
         all(is_node_value_valid, result) || throw_invalid_result_types(edge, result)

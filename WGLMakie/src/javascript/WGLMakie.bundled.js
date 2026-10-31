@@ -21683,10 +21683,18 @@ class TextureAtlas {
         let written = false;
         Object.keys(glyph_data).forEach((hash)=>{
             this.requested.delete(hash);
+            const [uv, sdf, width, minimum] = glyph_data[hash];
             if (this.glyph_data.has(hash)) {
+                const size = to_three_vector(width);
+                if (size.lengthSq() > 0) {
+                    this.glyph_data.set(hash, [
+                        to_three_vector(uv),
+                        size,
+                        to_three_vector(minimum)
+                    ]);
+                }
                 return;
             }
-            const [uv, sdf, width, minimum] = glyph_data[hash];
             this.insert_glyph(hash, sdf, to_three_vector(uv), to_three_vector(width), to_three_vector(minimum));
             written = true;
             return;
@@ -24779,7 +24787,7 @@ function start_renderloop(three_scene) {
         schedule();
     };
     function _check_screen() {
-        if (!check_screen(screen)) {
+        if (three_scene.disposed || !check_screen(screen)) {
             return;
         }
         setTimeout(_check_screen, 1000);
@@ -25109,7 +25117,6 @@ function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit
                 if (is_resync) {
                     const old_scene = screen.root_scene;
                     if (old_scene) {
-                        old_scene.disposed = true;
                         delete_three_scene(old_scene);
                     }
                     const three_scene = deserialize_scene(scene_data, screen);

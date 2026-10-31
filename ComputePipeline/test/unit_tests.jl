@@ -1138,3 +1138,18 @@ end
     @test length(calls) == 2
     @test calls[end] == (3, true, (result = 2,))
 end
+
+@testset "First resolve from an existing task" begin
+    graph = ComputeGraph()
+    add_input!(graph, :x, 1)
+    gate = Channel{Nothing}(1)
+    task = @async begin
+        take!(gate)
+        graph.result[]
+    end
+    yield()
+    callback = Core.eval(Module(gensym(:Callbacks)), :((inputs, changed, cached) -> (inputs.x + 1,)))
+    register_computation!(callback, graph, [:x], [:result])
+    put!(gate, nothing)
+    @test fetch(task) == 2
+end
