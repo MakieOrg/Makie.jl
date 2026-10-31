@@ -3,6 +3,11 @@
 ## [0.24.17] - 2026-10-30
 
 - Fixed a camera synchronization issue that may cause plots to not update their position on windows. [#5875](https://github.com/MakieOrg/Makie.jl/pull/5875)
+- Added headless OpenGL rendering with GLFW 4 through EGL or OSMesa, including saving figures and obtaining color buffers without a display server. [#5870](https://github.com/MakieOrg/Makie.jl/pull/5870)
+- Fixed monitor queries on headless systems and reject visible screens before allocating resources when no display server is available. [#5870](https://github.com/MakieOrg/Makie.jl/pull/5870)
+- Allow GLMakie to precompile and load without OpenGL drivers, while running the rendering precompile workload when an offscreen context is available. [#5870](https://github.com/MakieOrg/Makie.jl/pull/5870)
+- Preserve initialization errors without retrying from the diagnostic path, and keep invalid arguments and allocation failures visible during precompilation. [#5870](https://github.com/MakieOrg/Makie.jl/pull/5870)
+- Avoid duplicate warnings when reporting OpenGL context failures or skipping the precompile workload on systems without drivers. [#5870](https://github.com/MakieOrg/Makie.jl/pull/5870)
 - Fixed types getting pinned when passing a cycled attributes from one recipe to another. This fixes, for example, `background_color` not being able to update to a new type in `textlabel` because it is pinned to its initial type in `poly`. [#5868](https://github.com/MakieOrg/Makie.jl/pull/5868)
 - Fixed `backgroundcolor` in `Scene` (and `Figure`) not connecting to an Observable input. [#5868](https://github.com/MakieOrg/Makie.jl/pull/5868)
 - Improved Makie.jl precompile time and package image size. [#5867](https://github.com/MakieOrg/Makie.jl/pull/5867)
