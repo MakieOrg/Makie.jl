@@ -986,3 +986,34 @@ end
         @test leg.margin[] == (4, 3, 2, 1)
     end
 end
+
+@testset "word-wrapped Label honours justification" begin
+    # A word-wrapped Label fills the width it is given, so its text is centred
+    # in that width. `justification` used to only align the wrapped lines
+    # against each other, leaving the block itself floating in the middle —
+    # a left-justified paragraph then looked mis-indented beside unwrapped
+    # labels sharing its column.
+    text = "left justified wrapped text that is long enough to wrap here"
+    glyph_inset(l) = begin
+        bb = l.layoutobservables.computedbbox[]
+        Makie.boundingbox(only(l.blockscene.plots)).origin[1] - bb.origin[1]
+    end
+
+    f = Figure(size = (400, 300))
+    left = Label(f[1, 1], text; word_wrap = true, justification = :left,
+                 tellwidth = false)
+    auto = Label(f[2, 1], text; word_wrap = true, tellwidth = false)
+    right = Label(f[3, 1], text; word_wrap = true, justification = :right,
+                  tellwidth = false)
+    Makie.update_state_before_display!(f)
+
+    @test glyph_inset(left) ≈ 0 atol = 1e-4
+    @test glyph_inset(auto) > 1          # automatic still centres
+    @test glyph_inset(right) > glyph_inset(auto)
+
+    # Without wrapping the box hugs the text, so justification must not move it.
+    g = Figure(size = (400, 300))
+    plain = Label(g[1, 1], "short"; justification = :left, tellwidth = false)
+    Makie.update_state_before_display!(g)
+    @test glyph_inset(plain) ≈ 0 atol = 1e-4
+end

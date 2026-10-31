@@ -15,6 +15,34 @@ function refresh_contentsize!(sf::Subfigure)
     return sf.contentsize[]
 end
 
+"""
+    clip_content!(sf::Subfigure)
+
+Hide content that lies outside the visible viewport and show content that
+lies inside, so scrolled-away blocks stop drawing and stop taking clicks.
+
+Driven by the layout and viewport observables. Call it directly after
+replacing content in place: blocks are culled using the bbox they have when
+the check runs, and one built mid-rebuild is measured before the layout has
+placed it.
+"""
+function clip_content!(sf::Subfigure)
+    sf.visible[] || return
+    vp = sf.scene.viewport[]
+    (widths(vp)[1] <= 0 || widths(vp)[2] <= 0) && return
+    stack = flatten_layout_content(sf.layout)
+    while !isempty(stack)
+        block = pop!(stack)
+        append!(stack, flatten_layout_content(block))
+        bb = block.layoutobservables.computedbbox[]
+        all(isfinite, bb.origin) && all(isfinite, bb.widths) || continue
+        outside = bb.origin[1] + bb.widths[1] < left(vp) || bb.origin[1] > right(vp) ||
+            bb.origin[2] + bb.widths[2] < bottom(vp) || bb.origin[2] > top(vp)
+        outside ? hide!(block) : unhide!(block)
+    end
+    return
+end
+
 function initialize_block!(sf::Subfigure)
     blockscene = sf.blockscene
 
@@ -184,22 +212,7 @@ function initialize_block!(sf::Subfigure)
     a 714 px viewport put its buttons over the timeline underneath, where they
     ate the clicks). Hide what does not intersect the viewport.
     """
-    function clip_content_to_viewport!()
-        is_visible[] || return
-        vp = scene.viewport[]
-        (widths(vp)[1] <= 0 || widths(vp)[2] <= 0) && return
-        stack = flatten_layout_content(sf.layout)
-        while !isempty(stack)
-            block = pop!(stack)
-            append!(stack, flatten_layout_content(block))
-            bb = block.layoutobservables.computedbbox[]
-            all(isfinite, bb.origin) && all(isfinite, bb.widths) || continue
-            outside = bb.origin[1] + bb.widths[1] < left(vp) || bb.origin[1] > right(vp) ||
-                bb.origin[2] + bb.widths[2] < bottom(vp) || bb.origin[2] > top(vp)
-            outside ? hide!(block) : unhide!(block)
-        end
-        return
-    end
+    clip_content_to_viewport!() = clip_content!(sf)
     onany(blockscene, layout_bbox, scene.viewport) do _, _
         clip_content_to_viewport!()
         return

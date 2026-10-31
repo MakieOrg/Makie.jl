@@ -156,15 +156,30 @@ replace_content!(modal) do sf
 end
 ```
 """
+# `delete_layoutable!(::GridLayout)` only detaches the grid from its parent,
+# because SpecApi reuses the layoutables inside it. Rebuilding content has to
+# delete them, or the blocks of a nested grid keep their scenes and survive
+# every rebuild, drawing on top of the new ones.
+delete_content!(block::Block) = delete!(block)
+function delete_content!(grid::GridLayout)
+    for c in copy(contents(grid))
+        delete_content!(c)
+    end
+    return delete_layoutable!(grid)
+end
+
 function replace_content!(f, m::Modal)
     sf = m.subfigure
     layout = sf.layout
     for c in copy(contents(layout))
-        delete_layoutable!(c)
+        delete_content!(c)
     end
     trim!(layout)
     f(sf)
     refresh_contentsize!(sf)
+    # Blocks built by `f` were measured for culling before the layout placed
+    # them, so re-check now that they have their final bboxes.
+    clip_content!(sf)
     return m
 end
 
