@@ -71,4 +71,27 @@ using Electron, WGLMakie, Bonito, Test
         )
         @test wait_for_text("1xyz2@abc") == "1xyz2@abc"
     end
+
+    @testset "paste is one edit without character input" begin
+        edits = String[]
+        characters = Char[]
+        on(text -> push!(edits, text), textbox.displayed_string)
+        on(char -> push!(characters, char), events(fig).unicode_input; priority = 100)
+        content = repeat("x", 3000)
+        run(edisplay.window.app, """require("electron").clipboard.writeText("$content"); true""")
+        send_input(ctrl("V")...)
+        expected = "1xyz2@" * content * "abc"
+        @test wait_for_text(expected) == expected
+        Bonito.wait_for(() -> !isempty(edits); timeout = 10)
+        @test edits == [expected]
+        @test isempty(characters)
+
+        # Pasting with only the canvas focused must not trigger character hotkeys.
+        textbox.focused[] = false
+        send_input(ctrl("V")...)
+        send_input(press("3")...)
+        Bonito.wait_for(() -> !isempty(characters); timeout = 10)
+        @test characters == ['3']
+        @test edits == [expected]
+    end
 end

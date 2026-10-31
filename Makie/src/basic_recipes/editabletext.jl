@@ -808,6 +808,17 @@ function attach_editabletext_events!(
         end
     )
 
+    # Both backend paste events and the keyboard shortcut insert in one edit.
+    function paste_text!(content)
+        plot.focused[] || return Consume(false)
+        filtered = String(filter(plot.input_filter[], collect(content)))
+        isempty(filtered) && return Consume(true)
+        new_text, new_cursors = apply_edits(plot.text[], plot.cursors[], c -> _replace_op(c, filtered))
+        _commit_edit!(plot, new_text, new_cursors, parent, last_edit_time)
+        return Consume(true)
+    end
+    push!(plot.deregister_callbacks, on(paste_text!, events(parent).paste, priority = 60))
+
     # Unicode character input — type a character.
     push!(
         plot.deregister_callbacks, on(events(parent).unicode_input, priority = 60) do char
@@ -913,12 +924,7 @@ function attach_editabletext_events!(
                     @warn "Accessing the clipboard failed: $err"
                     return Consume(true)
                 end
-                # Run the same per-char filter as typed input so e.g. a single-line
-                # textbox strips newlines from a multi-line paste.
-                filtered = String(filter(plot.input_filter[], collect(content)))
-                isempty(filtered) && return Consume(true)
-                commit_op!((_, c) -> _replace_op(c, filtered))
-                return Consume(true)
+                return paste_text!(content)
 
             elseif key == Keyboard.d && cmd
                 # Cmd+D: select next occurrence of the most recent cursor's text;
