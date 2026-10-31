@@ -662,6 +662,13 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
             !any(paints_background, state.hikari_scene.lights.data_order)
         return state.film
     end
+    # Nothing to hit under a sky of environment maps, which is the raster path:
+    # every mesh is drawn by the rasterizer and the tracer was run only for the
+    # rays that escape. Those are looked up, not traced.
+    if Raycore.n_instances(tlas) == 0 && Hikari.paints_sky_in_rgb(state.hikari_scene.lights, state.integrator.sensor)
+        Hikari.paint_sky!(state.film, state.hikari_scene, state.camera[], state.integrator.sensor)
+        return state.film
+    end
     # (sync!(tlas) above already runs refit_tlas! when transforms are dirty.)
 
     # Clear film and tracer if data changed

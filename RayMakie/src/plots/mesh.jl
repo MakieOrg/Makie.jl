@@ -335,35 +335,61 @@ function register_raster_lights!(scene)
     graph = scene.compute
     # GLMakie's defaults for `max_lights` and `max_light_parameters`.
     haskey(graph, :N_lights) || Makie.register_multi_light_computation(scene, 64, 5 * 64)
-    haskey(graph, :raster_env_sh) ||
-        Makie.ComputePipeline.map!(environment_sh, graph, :lights, [:raster_env_sh, :raster_has_env])
+    if !haskey(graph, :raster_env_sh)
+        # The sky's lights alone: a light that follows the camera changes the
+        # scene's lights every frame, and the SH read them all, so a sun and sky
+        # that never moved were baked again every frame. Then their shapes at
+        # unit intensity, which a dimming sun does not change either: each
+        # step stops the graph when its vector comes out equal, and only a new
+        # shape bakes.
+        Makie.ComputePipeline.map!(environment_lights, graph, :lights, :raster_env_lights)
+        Makie.ComputePipeline.map!(ls -> map(unit_intensity, ls), graph, :raster_env_lights, :raster_env_shapes)
+        Makie.ComputePipeline.map!(ls -> map(unit_sh, ls), graph, :raster_env_shapes, :raster_env_unit_sh)
+        Makie.ComputePipeline.map!(environment_sh, graph, [:raster_env_lights, :raster_env_unit_sh],
+                                   [:raster_env_sh, :raster_has_env])
+    end
     register_raster_emitters!(graph)
     return
 end
 
-"""
-    environment_sh(lights) -> (Mat{3,9,Float32}, Int32)
+"The lights a raster scene's sky is made of."
+environment_lights(lights) = filter(l -> l isa Union{Makie.EnvironmentLight, Makie.SunSkyLight}, lights)
 
-The scene's `EnvironmentLight`s as nine spherical-harmonic coefficients of their
-irradiance over π, which is what `env_irradiance` in overlay/mesh.jl evaluates.
-
-The map is read the way the tracer reads it (`Hikari.EnvironmentMap`: equal-area
-square, a 2:1 image converted), and each texel of that square covers the same
-solid angle, so the projection is a plain sum. The radiance is `intensity *
-image`, Makie's meaning: a white map of intensity 1 lights a white surface to 1.
 """
-function environment_sh(lights)
-    sh = zeros(Float32, 3, 9)
-    has = false
-    for light in lights
-        light isa Union{Makie.EnvironmentLight, Makie.SunSkyLight} || continue
-        has = true
-        project_environment!(sh, light)
+    environment_sh(lights, unit_shs) -> (Mat{3,9,Float32}, Int32)
+
+The scene's sky lights (`EnvironmentLight`, `SunSkyLight`) as nine
+spherical-harmonic coefficients of their irradiance over π, which is what
+`env_irradiance` in overlay/mesh.jl evaluates: each light's radiance at unit
+intensity (`unit_sh`), times its intensity.
+"""
+function environment_sh(lights, unit_shs)
+    sh = zero(Mat{3, 9, Float32})
+    for (light, unit) in zip(lights, unit_shs)
+        sh += Float32(light.intensity) * unit
     end
     # The clamped cosine's band weights, π, 2π/3 and π/4, over π.
-    sh[:, 2:4] .*= 2f0 / 3f0
-    sh[:, 5:9] .*= 0.25f0
-    return (Mat{3, 9, Float32}(sh), Int32(has))
+    w = Mat{3, 9, Float32}(ntuple(i -> (b = cld(i, 3); b == 1 ? 1f0 : b <= 4 ? 2f0 / 3f0 : 0.25f0), 27))
+    return (sh .* w, Int32(!isempty(lights)))
+end
+
+"`light` at intensity 1: its shape, which is what its SH is baked from."
+unit_intensity(l::Makie.SunSkyLight) = Makie.SunSkyLight(l.direction, 1f0, l.turbidity, l.ground_albedo, l.ground_enabled)
+unit_intensity(l::Makie.EnvironmentLight) = Makie.EnvironmentLight(1f0, l.image, l.rotation_angle, l.rotation_axis)
+
+"""
+    unit_sh(light) -> Mat{3,9,Float32}
+
+`light`'s radiance projected on the first nine spherical harmonics. The map is
+read the way the tracer reads it (`Hikari.EnvironmentMap`: equal-area square,
+a 2:1 image converted), and each texel of that square covers the same solid
+angle, so the projection is a plain sum. The radiance is `intensity * image`,
+Makie's meaning: a white map of intensity 1 lights a white surface to 1.
+"""
+function unit_sh(light)
+    sh = zeros(Float32, 3, 9)
+    project_environment!(sh, light)
+    return Mat{3, 9, Float32}(sh)
 end
 
 function project_environment!(sh, light::Makie.EnvironmentLight)
@@ -411,7 +437,7 @@ What the raster path draws: the plot's own triangles, or a `GeneratedGeometry`'s
 tessellation.
 """
 function raster_geometry(::Any, args)
-    return (positions = map(p -> Vec3f(Makie.to_ndim(Point3f, p, 0f0)), args.positions_transformed_f32c),
+    return (positions = raster_points(args.positions_transformed_f32c),
             faces = args.faces, normals = args.normals, uvs = args.texturecoordinates,
             color = args.scaled_color)
 end
@@ -472,13 +498,41 @@ raster_colormap(args) = args.alpha_colormap === nothing ? Vec4f[Vec4f(0, 0, 0, 1
 # A buffer the stage indexes must exist even when nothing reads it.
 nonempty(v::AbstractVector{T}) where {T} = isempty(v) ? T[zero(T)] : v
 
-function raster_faces(faces)
-    out = Vector{UInt32}(undef, 3 * length(faces))
-    @inbounds for (i, f) in enumerate(faces), j in 1:3
-        out[3 * (i - 1) + j] = UInt32(Base.to_index(f[j]))
-    end
-    return out
+# Normals and points as the stage's buffers hold them; already `Vec3f` (on the
+# device too) as they are.
+vec3s(v::AbstractVector{Vec3f}) = v
+vec3s(v::AbstractGPUArray) = map(Vec3f, v)
+vec3s(v) = Vector{Vec3f}(v)
+
+# A mesh's points as the stage reads them. Points already on the device stay
+# there as they are: the update copies them into the stage's `Vec3f` buffer,
+# converting on the way, where a `map` made a new device array every frame.
+raster_points(ps::AbstractGPUArray{Point3f, 1}) = ps
+raster_points(ps) = map(p -> Vec3f(Makie.to_ndim(Point3f, p, 0f0)), ps)
+
+# What the shadow map is fitted around. Points on the device are reduced there:
+# iterated from the host, every one was a scalar read.
+local_bounds(ps::AbstractVector) = isempty(ps) ? Rect3f() : Rect3f(ps)
+function local_bounds(ps::AbstractGPUArray{T, 1}) where {T <: VecTypes{3, Float32}}
+    isempty(ps) && return Rect3f()
+    backend = KernelAbstractions.get_backend(ps)
+    lo = AK.mapreduce(identity, (a, b) -> min.(a, b), ps, backend;
+                      init = T(Inf32), neutral = T(Inf32), block_size = 64, switch_below = 0)
+    hi = AK.mapreduce(identity, (a, b) -> max.(a, b), ps, backend;
+                      init = T(-Inf32), neutral = T(-Inf32), block_size = 64, switch_below = 0)
+    return Rect3f(Vec3f(lo), Vec3f(hi - lo))
 end
+
+# The stage reads a triangle's corners as `GLTriangleFace` holds them, 0-based
+# `UInt32`s. Faces on the device are that buffer as they are (`reinterpret`,
+# their own memory), which an update copies on the device; this was a host loop
+# over every index, which device faces could not go through and host faces went
+# through again with every update of the points. A host vector is copied flat;
+# other face types become `GLTriangleFace`s first, by a `map` that runs where
+# they are.
+raster_faces(faces::AbstractGPUArray{GLTriangleFace, 1}) = reinterpret(UInt32, faces)
+raster_faces(faces::AbstractVector{GLTriangleFace}) = collect(reinterpret(UInt32, faces))
+raster_faces(faces) = raster_faces(map(GLTriangleFace, faces))
 
 raster_uv_transform(t::Mat{2, 3}) = Mat{2, 3, Float32}(t)
 raster_uv_transform(t::Mat{3, 3}) = Mat{2, 3, Float32}(t[1], t[2], t[4], t[5], t[7], t[8])
@@ -591,7 +645,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
         see_through = is_see_through(look, plot)
         fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured, see_through)
         # What the shadow map is fitted around; not a stage argument.
-        geometry_dirty && (uniforms = merge(uniforms, (local_bounds = isempty(geometry.positions) ? Rect3f() : Rect3f(geometry.positions),)))
+        geometry_dirty && (uniforms = merge(uniforms, (local_bounds = local_bounds(geometry.positions),)))
         uniforms = merge(uniforms, (
             has_normals = Int32(geometry.normals !== nothing),
             has_uvs = Int32(geometry.uvs isa AbstractVector{<:VecTypes{2}}),
@@ -603,13 +657,19 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
             see_through = see_through,
         ))
         vertex_count = 3 * length(geometry.faces)
-        if fresh || geometry_dirty
-            buffers[:raster_positions] = nonempty(geometry.positions)
-            buffers[:raster_faces] = nonempty(raster_faces(geometry.faces))
-            buffers[:raster_normals] = geometry.normals === nothing ? Vec3f[Vec3f(0)] :
-                                       nonempty(Vector{Vec3f}(geometry.normals))
-            buffers[:raster_uvs] = uniforms.has_uvs != 0 ? nonempty(Vec2f.(geometry.uvs)) : Vec2f[Vec2f(0)]
-        end
+        # Each buffer from its own node: a surface whose points move every frame
+        # (a sea) changes nothing else, and its triangles were converted and
+        # uploaded again with every frame's points. Device arrays stay on the
+        # device; the upload is then a copy between buffers.
+        remade = fresh || changed.material
+        # A new buffer takes the stage's type; an update is copied into it.
+        (remade || changed.positions_transformed_f32c) &&
+            (buffers[:raster_positions] = nonempty(remade ? vec3s(geometry.positions) : geometry.positions))
+        (remade || changed.faces) && (buffers[:raster_faces] = nonempty(raster_faces(geometry.faces)))
+        (remade || changed.normals) &&
+            (buffers[:raster_normals] = geometry.normals === nothing ? Vec3f[Vec3f(0)] : nonempty(vec3s(geometry.normals)))
+        (remade || changed.texturecoordinates) &&
+            (buffers[:raster_uvs] = uniforms.has_uvs != 0 ? nonempty(Vec2f.(geometry.uvs)) : Vec2f[Vec2f(0)])
         buffers[:raster_vertex_color] = colorinfo.source == COLOR_VERTEX ?
             rgba4.(geometry.color) : Vec4f[Vec4f(0)]
         buffers[:raster_vertex_value] = colorinfo.source in (COLOR_VERTEX_CMAP, COLOR_VERTEX_CMAP_FRAG) ?

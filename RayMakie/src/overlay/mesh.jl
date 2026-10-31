@@ -934,7 +934,8 @@ function mesh_vertex(vertexid::VertexIndex,
         fxaa::Int32)
     v0 = vertexid.value - Int32(1)
     tri = v0 ÷ Int32(3)
-    @inbounds vi = Int32(faces[v0 + Int32(1)])
+    # 0-based, as `GLTriangleFace` stores it (see `raster_faces`).
+    @inbounds vi = Int32(faces[v0 + Int32(1)]) + Int32(1)
     @inbounds p = positions[vi]
 
     # util.vert `render`
