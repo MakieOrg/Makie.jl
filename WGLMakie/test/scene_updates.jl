@@ -33,6 +33,31 @@
     @test checks == [true, true]
 end
 
+@testset "Removed notebook output skips delayed initialization" begin
+    checks = run(
+        edisplay.window, """
+        (() => {
+            WGL.setup_scene_init(null, null);
+            const Observable = Object.values(WGL.scene_cache)[0].viewport.constructor;
+            const snapshot = new Observable('removed-output', null);
+            const wrapper = document.createElement('div');
+            const canvas = document.createElement('canvas');
+            wrapper.appendChild(canvas);
+            document.body.appendChild(wrapper);
+            let sizes = 0;
+            let initialized = 0;
+            WGL.setup_scene_init(wrapper, canvas, 4, 4, false, 1, 1,
+                {notify: () => sizes++}, null, snapshot, null, 30, true,
+                {notify: () => initialized++});
+            wrapper.remove();
+            snapshot.notify({});
+            return [sizes === 1, initialized === 0, !canvas.wglmakie_screen];
+        })()
+        """
+    )
+    @test checks == [true, true, true]
+end
+
 @testset "Render on demand wakes after updates" begin
     scene = Scene(size = (200, 160), backgroundcolor = :white)
     plot = scatter!(scene, Point2f[(0, 0), (1, 1)]; color = :red)

@@ -608,6 +608,8 @@ export function initialize_canvas_size(canvas, resize_to, width, height, px_per_
 }
 
 export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, render_on_demand, done_init) {
+    // A notebook cell may disappear while its module or scene snapshot loads.
+    if (!wrapper || !canvas) return;
     const spinner = wrapper.querySelector('.wglmakie-spinner');
     try {
         // Calculate and apply the correct canvas size based on resize_to setting
@@ -633,6 +635,7 @@ export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_p
         real_size.notify([final_width, final_height]);
 
         const init_scene = (scene_data) => {
+            if (!canvas.isConnected) return;
             // Resync replaces the scene graph while keeping the renderer and canvas.
             const screen = canvas.wglmakie_screen;
             const is_resync = !!(screen && screen.renderer);

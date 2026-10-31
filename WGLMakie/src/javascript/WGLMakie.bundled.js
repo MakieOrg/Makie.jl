@@ -25097,6 +25097,7 @@ function initialize_canvas_size(canvas, resize_to, width, height, px_per_unit, s
     ];
 }
 function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, render_on_demand, done_init) {
+    if (!wrapper || !canvas) return;
     const spinner = wrapper.querySelector('.wglmakie-spinner');
     try {
         let final_width = width;
@@ -25111,6 +25112,7 @@ function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit
             final_height
         ]);
         const init_scene = (scene_data)=>{
+            if (!canvas.isConnected) return;
             const screen = canvas.wglmakie_screen;
             const is_resync = !!(screen && screen.renderer);
             try {
