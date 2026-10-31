@@ -36,6 +36,9 @@ makie_dir = @__DIR__
 # Add packages from branch, to make it easier to move the code later (e.g. when running this locally)
 # Since, package dir is much easier to move then the active project (on windows at least).
 paths = ["MakieCore", "", BACKEND]
+
+ENV["JULIA_PKG_PRECOMPILE_AUTO"] = "0" # dont compile!
+
 Pkg.develop(map(x -> (; path=joinpath(makie_dir, x)), paths))
 
 if BACKEND == "WGLMakie"
