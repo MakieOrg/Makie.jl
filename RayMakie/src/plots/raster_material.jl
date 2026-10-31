@@ -83,7 +83,6 @@ raster_look(m::Union{Hikari.Glossy, Hikari.Translucent, Hikari.Sheen}) = RasterL
 raster_look(m::Hikari.Principled) = RasterLook(base_color(m.base_color), NO_EMISSION)
 # The base is unused: `raster_material` gives the shader the metal's reflectance.
 raster_look(::Hikari.Metallic) = RasterLook(RGBAf(1, 1, 1, 1), NO_EMISSION)
-raster_look(m::Hikari.Glass) = RasterLook(srgb(handle_rgb(m.color, WHITE)), NO_EMISSION)
 raster_look(m::Hikari.OpenPBR) = raster_look(Hikari.Principled(m))
 # glTF's base colour texture is its colour; its factor, usually one, is what an untextured one has.
 raster_look(m::Hikari.GLTF) =
@@ -135,9 +134,12 @@ function deep_reflectance(medium::Hikari.HomogeneousMedium)
     return Hikari.RGBSpectrum(r(1), r(2), r(3))
 end
 
-raster_look(m::Hikari.MediumInterface{<:Union{Hikari.Dielectric, Hikari.Glass}, <:Hikari.HomogeneousMedium}) =
-    m.emission === nothing ? RasterLook(srgb(deep_reflectance(m.inside)), NO_EMISSION) :
-    with_emission(RasterLook(srgb(deep_reflectance(m.inside)), NO_EMISSION), m.emission)
+function raster_look(m::Hikari.MediumInterface{<:Union{Hikari.Dielectric, Hikari.Principled}, <:Hikari.HomogeneousMedium})
+    m.material isa Hikari.Principled && handle_float(m.material.transmission_weight, 0.0f0) < 0.5f0 &&
+        return invoke(raster_look, Tuple{Hikari.MediumInterface}, m)
+    return m.emission === nothing ? RasterLook(srgb(deep_reflectance(m.inside)), NO_EMISSION) :
+        with_emission(RasterLook(srgb(deep_reflectance(m.inside)), NO_EMISSION), m.emission)
+end
 
 function raster_look(m::Hikari.MediumInterface)
     surface = raster_look(m.material)
@@ -518,7 +520,9 @@ raster_material(m::Hikari.MediumInterface) = raster_material(m.material)
 raster_material(m::Union{Hikari.Mix, Hikari.Add}) = raster_material(mixed(m))
 
 "A dielectric over a scattering medium, as a coat over its deep reflectance; see `deep_reflectance`."
-function raster_material(m::Hikari.MediumInterface{<:Union{Hikari.Dielectric, Hikari.Glass}, <:Hikari.HomogeneousMedium})
+function raster_material(m::Hikari.MediumInterface{<:Union{Hikari.Dielectric, Hikari.Principled}, <:Hikari.HomogeneousMedium})
+    m.material isa Hikari.Principled && handle_float(m.material.transmission_weight, 0.0f0) < 0.5f0 &&
+        return invoke(raster_material, Tuple{Hikari.MediumInterface}, m)
     α, η = glass_alpha_ior(m.material)
     fe, fi = coat_averages(η)
     return RasterMaterial(Vec4f(MAT_COATED_DIFFUSE, α, η, 0.01f0), Vec4f(0), Vec4f(0, 0, 0, fe), Vec4f(0, 0, 0, fi))
@@ -555,9 +559,9 @@ end
 
 """A glass's GGX α and IOR: pbrt's remapped roughness, or Blender's roughness squared."""
 glass_alpha_ior(d::Hikari.Dielectric) = (material_alpha(Hikari.roughness_pair(d.roughness)..., d.remap_roughness), handle_float(d.ior, 1.5f0))
-glass_alpha_ior(g::Hikari.Glass) = (handle_float(g.roughness, 0.5f0)^2, handle_float(g.ior, 1.5f0))
+glass_alpha_ior(g::Hikari.Principled) = (handle_float(g.roughness, 0.5f0)^2, handle_float(g.ior, 1.5f0))
 
-function raster_material(m::Union{Hikari.Dielectric, Hikari.Glass})
+function raster_material(m::Hikari.Dielectric)
     α, η = glass_alpha_ior(m)
     return RasterMaterial(Vec4f(MAT_DIELECTRIC, α, η, 0), Vec4f(0), Vec4f(0), Vec4f(1, 1, 1, 0))
 end
