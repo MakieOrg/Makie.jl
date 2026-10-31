@@ -1697,3 +1697,165 @@ end
     @assert pointer(v) == pointer(graph.vec[]) "this is expected to be memory aliased, but isn't"
     @test graph.vecf[] == [1, 1, 1, 1]
 end
+
+# A struct input's fields are set one at a time, and a computation reading the input
+# with its field versions learns which of them changed. Comparing the values cannot
+# tell that for a field holding an array: setting another field rebuilds the struct
+# with the same array in it, which `is_same` takes as possibly changed.
+struct Look{C, R}
+    color::C
+    roughness::R
+end
+
+@testset "Fields of an input" begin
+    image = rand(Float32, 4, 4)
+    graph = ComputeGraph()
+    add_input!(graph, :look, Look(image, 0.5))
+    track_fields!(graph, :look)
+    seen = Dict{Symbol, Int}()
+    changed_fields = Symbol[]
+    register_computation!(graph, [:look, :look_fields], [:uploads]) do inputs, changed, last
+        empty!(changed_fields)
+        for (f, v) in inputs.look_fields
+            get(seen, f, 0) == v || push!(changed_fields, f)
+            seen[f] = v
+        end
+        return (copy(changed_fields),)
+    end
+    @test Set(graph.uploads[]) == Set([:color, :roughness])
+
+    graph.look.roughness = 0.25
+    @test graph.look[] === Look(image, 0.25)
+    @test graph.uploads[] == [:roughness]
+
+    # The same array assigned to its field again is set: it may have changed in place.
+    image .= 1
+    graph.look.color = image
+    @test graph.uploads[] == [:color]
+
+    # A value assigned whole sets all its fields, and one of another type all of its own.
+    graph.look = Look(rand(Float32, 2, 2), 0.1)
+    @test Set(graph.uploads[]) == Set([:color, :roughness])
+    update!(graph, look = (color = 1, roughness = 2, extra = 3))
+    @test Set(graph.uploads[]) == Set([:color, :roughness, :extra])
+
+    @test_throws ErrorException graph.look.missing = 1
+    map!(x -> x, graph, :look, :copied)
+    @test_throws ErrorException graph.copied.color = 2
+end
+
+@testset "Concurrent field assignments preserve both fields" begin
+    graph = ComputeGraph()
+    add_input!(graph, :look, Look(:red, 0.5))
+    track_fields!(graph, :look)
+    setter = lock(ComputePipeline.GLOBAL_LOCK) do
+        task = @async graph.look.roughness = 0.25
+        yield()
+        @test !istaskdone(task)
+        graph.look.color = :blue
+        task
+    end
+    fetch(setter)
+    @test graph.look[] === Look(:blue, 0.25)
+    @test graph.look_fields[] == Dict(:color => 2, :roughness => 2)
+end
+
+@testset "Nested input fields preserve siblings and track exact assignments" begin
+    image = rand(Float32, 4, 4)
+    graph = ComputeGraph()
+    add_input!(graph, :look, Look(Look(image, 0.5), 0.8))
+    track_fields!(graph, :look)
+    before = graph.look_fields[]
+    roughness = graph.look.color.roughness
+    @test roughness[] == 0.5
+    @test ComputePipeline.Observables.to_value(graph.look.color.color) === image
+
+    graph.look.color.roughness = 0.25
+    after = graph.look_fields[]
+    @test graph.look[] === Look(Look(image, 0.25), 0.8)
+    @test after[:color] == before[:color] + 1
+    @test ComputePipeline.field_was_set(after, before, (:color, :roughness))
+    @test ComputePipeline.field_was_set(after, copy(before), (:color, :roughness))
+    @test !ComputePipeline.field_was_set(after, before, (:color, :color))
+    @test !ComputePipeline.field_was_set(after, before, (:roughness,))
+
+    image .= 0.6
+    graph.look.color.color[] = image
+    uploaded = graph.look_fields[]
+    @test ComputePipeline.field_was_set(uploaded, after, (:color, :color))
+    @test !ComputePipeline.field_was_set(uploaded, after, (:color, :roughness))
+
+    graph.look.color = Look(image, 0.7)
+    replaced = graph.look_fields[]
+    @test ComputePipeline.field_was_set(replaced, uploaded, (:color, :color))
+    @test ComputePipeline.field_was_set(replaced, uploaded, (:color, :roughness))
+    @test roughness[] == 0.7 # The field reference follows the current input.
+
+    # A NamedTuple and then the original type again: histories never reset.
+    graph.look = (roughness = 0.1,)
+    graph.look = Look(Look(image, 0.9), 0.4)
+    @test graph.look_fields[][:color] > replaced[:color]
+    @test ComputePipeline.field_was_set(graph.look_fields[], replaced, (:color, :color))
+    roughness[] = 0.3f0
+    @test graph.look[].color.roughness === 0.3f0
+    graph.look = (color = (color = image, roughness = 0.6), roughness = 0.2)
+    graph.look.color.roughness = 0.4
+    @test graph.look[].color == (color = image, roughness = 0.4)
+
+    map!(identity, graph, :look, :copied)
+    @test graph.copied.color.roughness[] == 0.4
+    @test_throws ErrorException graph.copied.color.roughness = 0.8
+    @test_throws ErrorException graph.look.color.missing = 1
+end
+
+@testset "Concurrent nested field assignments preserve both fields" begin
+    graph = ComputeGraph()
+    add_input!(graph, :look, Look(Look(:red, 0.5), 0.8))
+    track_fields!(graph, :look)
+    setter = lock(ComputePipeline.GLOBAL_LOCK) do
+        task = @async graph.look.color.roughness = 0.25
+        yield()
+        @test !istaskdone(task)
+        graph.look.color.color = :blue
+        task
+    end
+    fetch(setter)
+    @test graph.look[] === Look(Look(:blue, 0.25), 0.8)
+end
+
+
+struct CallableInputConversion
+    scale::Float64
+end
+(f::CallableInputConversion)(x) = f.scale * x
+
+@testset "Callable input conversions" begin
+    graph = ComputeGraph()
+    add_input!(Float32, graph, :typed, 1)
+    add_input!(CallableInputConversion(0.5), graph, :scaled, 4)
+    register_computation!(graph, [:scaled], [:doubled]) do inputs, changed, cached
+        return (2 * only(inputs),)
+    end
+    @test graph.typed[] === 1.0f0
+    @test graph.doubled[] == 4.0
+    graph.scaled = 8
+    @test graph.doubled[] == 8.0
+end
+
+@testset "Wrong result length reports the callback on updates" begin
+    graph = ComputeGraph()
+    add_input!(graph, :valid, true)
+    register_computation!(graph, [:valid], [:result]) do inputs, changed, cached
+        return inputs.valid ? (1,) : (1, 2)
+    end
+    @test graph.result[] == 1
+    graph.valid = false
+    err = try
+        graph.result[]
+    catch exception
+        exception
+    end
+    @test err isa ResolveException
+    @test err.error isa ErrorException
+    @test occursin("Result needs to have same length", sprint(showerror, err.error))
+end

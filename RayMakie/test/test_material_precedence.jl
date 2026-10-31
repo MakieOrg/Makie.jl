@@ -11,7 +11,7 @@ using RayMakie: extract_material, color_was_set
 # colour?" with `!== nothing` is true for `:cycled` too, which merges the
 # palette colour over the material on every plot. The
 # material was accepted, converted and uploaded, and then overwritten: asking for
-# `Diffuse(Kd = green)` rendered the cycler's blue.
+# `Diffuse(color = green)` rendered the cycler's blue.
 #
 # Asserted on `extract_material` rather than on pixels because the failure is a
 # precedence decision, not a shading one — and a pixel test for it would need a
@@ -20,12 +20,12 @@ using RayMakie: extract_material, color_was_set
 const GREEN = Hikari.RGBSpectrum(0.05f0, 0.95f0, 0.05f0)
 const ORANGE_TEX = Hikari.ConstTexture(Hikari.RGBSpectrum(1.0f0, 0.65f0, 0.0f0))
 
-kd_of(mat) = Hikari.device_param(nothing, mat.Kd)
+kd_of(mat) = Hikari.device_param(nothing, mat.color)
 
 @testset "material/color precedence" begin
     @testset "color_was_set distinguishes :cycled from a real colour" begin
         scene = Scene(); cam3d!(scene)
-        no_color = mesh!(scene, Sphere(Point3f(0), 1.0f0); material=Hikari.Diffuse(Kd=GREEN))
+        no_color = mesh!(scene, Sphere(Point3f(0), 1.0f0); material = Hikari.Diffuse(color = GREEN))
         with_color = mesh!(scene, Sphere(Point3f(0), 1.0f0); color=:orange)
 
         # The exact shape of the bug: unset is `:cycled`, and it is not nothing.
@@ -38,7 +38,7 @@ kd_of(mat) = Hikari.device_param(nothing, mat.Kd)
 
     @testset "a material with no colour is returned untouched" begin
         scene = Scene(); cam3d!(scene)
-        plot = mesh!(scene, Sphere(Point3f(0), 1.0f0); material=Hikari.Diffuse(Kd=GREEN))
+        plot = mesh!(scene, Sphere(Point3f(0), 1.0f0); material = Hikari.Diffuse(color = GREEN))
         mat = extract_material(plot, ORANGE_TEX)
         @test mat isa Hikari.Diffuse
         # Green, not the cycled palette colour the texture carries.
@@ -48,7 +48,8 @@ kd_of(mat) = Hikari.device_param(nothing, mat.Kd)
     @testset "an explicit colour still merges over the material" begin
         scene = Scene(); cam3d!(scene)
         plot = mesh!(scene, Sphere(Point3f(0), 1.0f0);
-                     color=:orange, material=Hikari.Diffuse(Kd=GREEN))
+            color = :orange, material = Hikari.Diffuse(color = GREEN)
+        )
         mat = extract_material(plot, ORANGE_TEX)
         @test mat isa Hikari.Diffuse
         @test kd_of(mat).rgb == Hikari.RGBSpectrum(1.0f0, 0.65f0, 0.0f0)
@@ -59,21 +60,22 @@ kd_of(mat) = Hikari.device_param(nothing, mat.Kd)
     # city lights (the film's Earth) in the palette's blue.
     @testset "an emissive mix keeps its surface without a colour" begin
         scene = Scene(); cam3d!(scene)
-        glow = Hikari.Emissive(Le = Hikari.RGBSpectrum(1.0f0))
-        mix = Hikari.MixMaterialSpec(Hikari.Diffuse(Kd=GREEN), Hikari.Diffuse(Kd=GREEN), Hikari.ConstTexture(0.5f0))
+        glow = Hikari.Emission(color = Hikari.RGBSpectrum(1.0f0))
+        mix = Hikari.Mix(Hikari.Diffuse(color = GREEN), Hikari.Diffuse(color = GREEN), Hikari.ConstTexture(0.5f0))
         plot = mesh!(scene, Sphere(Point3f(0), 1.0f0); material=Hikari.MediumInterface(mix; emission=glow))
         mat = extract_material(plot, ORANGE_TEX)
-        @test kd_of(mat.material.material1).rgb == GREEN
-        @test kd_of(mat.material.material2).rgb == GREEN
+        @test kd_of(mat.material.a).rgb == GREEN
+        @test kd_of(mat.material.b).rgb == GREEN
 
         coloured = mesh!(scene, Sphere(Point3f(0), 1.0f0); color=:orange,
                          material=Hikari.MediumInterface(mix; emission=glow))
         mat = extract_material(coloured, ORANGE_TEX)
-        @test kd_of(mat.material.material1).rgb == Hikari.RGBSpectrum(1.0f0, 0.65f0, 0.0f0)
+        @test kd_of(mat.material.a).rgb == Hikari.RGBSpectrum(1.0f0, 0.65f0, 0.0f0)
 
         # A surface's unset colour is its colormapped heights, which do merge.
         surf = surface!(scene, rand(Float32, 4, 4);
-                        material=Hikari.MediumInterface(Hikari.Diffuse(Kd=GREEN); emission=glow))
+            material = Hikari.MediumInterface(Hikari.Diffuse(color = GREEN); emission = glow)
+        )
         mat = extract_material(surf, ORANGE_TEX)
         @test kd_of(mat.material).rgb == Hikari.RGBSpectrum(1.0f0, 0.65f0, 0.0f0)
     end

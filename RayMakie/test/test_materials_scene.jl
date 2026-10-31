@@ -28,9 +28,9 @@ function create_test_materials_scene(; size=(400, 300))
 
     # Define a subset of materials for testing
     # Row 1: Basic materials
-    diffuse_red = Hikari.Diffuse(Kd=(0.8, 0.2, 0.2))
-    mirror = Hikari.Mirror(Kr=(0.95, 0.95, 0.95))
-    glass = Hikari.Dielectric(Kt=(1, 1, 1), index=1.5)
+    diffuse_red = Hikari.Diffuse(color = (0.8, 0.2, 0.2))
+    mirror = Hikari.Glossy(roughness = 0, color = (0.95, 0.95, 0.95))
+    glass = Hikari.Glass(ior = 1.5)
 
     # Row 2: Metals
     gold = Hikari.Gold(roughness=0.05)
@@ -41,7 +41,7 @@ function create_test_materials_scene(; size=(400, 300))
     coated_red = Hikari.CoatedDiffuse(reflectance=(0.8, 0.2, 0.2), roughness=0.1)
 
     # Row 4: Emissive
-    emissive_white = Hikari.Emissive(Le=(3, 3, 3))
+    emissive_white = Hikari.Emission(color = (3, 3, 3))
 
     # Arrange in grid (2 rows x 4 columns)
     materials = [
@@ -50,7 +50,7 @@ function create_test_materials_scene(; size=(400, 300))
     ]
 
     # Floor
-    floor_material = Hikari.Diffuse(Kd=(0.8, 0.8, 0.8))
+    floor_material = Hikari.Diffuse(color = (0.8, 0.8, 0.8))
     floor_mesh = Rect3f(Vec3f(-10, -10, -0.001), Vec3f(20, 20, 0.001))
     mesh!(ax, floor_mesh; color=:white, material=floor_material)
 

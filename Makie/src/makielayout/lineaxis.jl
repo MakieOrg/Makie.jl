@@ -904,6 +904,11 @@ function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax
     length(tickvalues) < 2 && return vals
     n = i.n
 
+    # tickvalues are calculated so they may pick up a little bit of error. To
+    # avoid minor ticks getting cut by this, we add some extra space here
+    vmin = vmin - 100 * eps(vmin)
+    vmax = vmax + 100 * eps(vmax)
+
     if i.mirror
         firstinterval = tickvalues[2] - tickvalues[1]
         stepsize = firstinterval / n
@@ -927,7 +932,6 @@ function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax
         v = tickvalues[end] + stepsize
         append!(vals, v:stepsize:vmax)
     end
-
     return vals
 end
 

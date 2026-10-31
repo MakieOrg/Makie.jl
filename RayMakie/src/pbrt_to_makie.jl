@@ -317,7 +317,7 @@ function pbrt_shape_to_makie!(scene, srec::Hikari.PBRTShapeRecord, pbrt,
     # importers cannot drift: the keyword constructor normalizes by the D65
     # constant rather than by the emitter's own spectrum.
     if srec.area_light !== nothing
-        emissive = Hikari.Emissive(srec.area_light)
+        emissive = Hikari.Emission(srec.area_light)
         mesh!(scene, geom; material=Hikari.MediumInterface(mat;
             emission=emissive, inside=inside_medium, outside=outside_medium))
     elseif inside_medium !== nothing || outside_medium !== nothing

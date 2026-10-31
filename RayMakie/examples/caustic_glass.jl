@@ -33,7 +33,7 @@ begin
     # ========================================================================
     # Define materials
     # ========================================================================
-    glass = Hikari.Dielectric(Kt=(1, 1, 1), index=1.25)
+    glass = Hikari.Glass(ior = 1.25)
 
     floor_material = Hikari.Plastic(
         color=(0.64, 0.64, 0.64),

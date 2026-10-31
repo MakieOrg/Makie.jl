@@ -1051,7 +1051,8 @@ Mantle.@setup_workload begin
                               lights = [PointLight(RGBf(30, 30, 30), Vec3f(4, 5, 6))])
                 cam3d!(scene)
                 mesh!(scene, Sphere(Point3f(0, 0, 0), 0.9f0);
-                      material = Hikari.Diffuse(Kd = (0.6, 0.6, 0.6)))
+                    material = Hikari.Diffuse(color = (0.6, 0.6, 0.6))
+                )
                 activate!(; device = dev)
                 colorbuffer(scene; backend = RayMakie, samples = 1, max_depth = 4, hw_accel = true)
             end

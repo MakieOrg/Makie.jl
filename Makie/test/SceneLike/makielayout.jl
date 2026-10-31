@@ -553,6 +553,16 @@ end
     end
 end
 
+@testset "Minor tick with float precision issues" begin
+    # Checks for #4931
+    ticks = Makie.get_minor_tickvalues(
+        Makie.IntervalsBetween(5), identity,
+        [prevfloat(0.1), 0.2, nextfloat(0.3)], 0.08, 0.36
+    )
+    @test first(ticks) ≈ 0.08 # not 0.12
+    @test last(ticks) ≈ 0.36 # not 0.34
+end
+
 @testset "MultiplesTicks strip_zero" begin
     default = MultiplesTicks(5, pi, "π")
     strip = MultiplesTicks(5, pi, "π"; strip_zero = true)
@@ -1004,11 +1014,11 @@ end
 
     # changing active triggers animation
     e = events(f)
-    @test length(e.tick.listeners) == 0
+    n = length(e.tick.listeners)    # what `Events` keeps itself
     t.active[] = true
-    @test length(e.tick.listeners) == 1
+    @test length(e.tick.listeners) == n + 1
     e.tick[] = Makie.Tick(Makie.RegularRenderTick, 1, 1.0, 1.0)
-    @test length(e.tick.listeners) == 0
+    @test length(e.tick.listeners) == n
 end
 
 @testset "Textbox set! & unsafe_set!" begin

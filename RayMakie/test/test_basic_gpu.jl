@@ -20,10 +20,10 @@ let
     cam3d!(ax)
 
     # Basic diffuse material
-    diffuse_red = Hikari.Diffuse(Kd=(0.8, 0.2, 0.2))
+    diffuse_red = Hikari.Diffuse(color = (0.8, 0.2, 0.2))
 
     # Floor
-    floor_material = Hikari.Diffuse(Kd=(0.8, 0.8, 0.8))
+    floor_material = Hikari.Diffuse(color = (0.8, 0.8, 0.8))
     floor_mesh = Rect3f(Vec3f(-10, -10, -0.001), Vec3f(20, 20, 0.001))
     mesh!(ax, floor_mesh; color=:white, material=floor_material)
 

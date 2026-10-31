@@ -3,6 +3,8 @@ ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Test
 using LinearAlgebra
 using Markdown
+using Compat # allequal(f, itr) on Julia < 1.11
+
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics

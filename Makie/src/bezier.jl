@@ -199,6 +199,9 @@ struct BezierPath
     hash::UInt32
     function BezierPath(commands::Vector)
         c = convert(Vector{PathCommand}, commands)
+        if !isempty(c) && c[1] isa EllipticalArc
+            c = [MoveTo(point_at_angle(c[1], c[1].a1)); c]
+        end
         return new(c, bbox(c), hash_crc32(c))
     end
 end

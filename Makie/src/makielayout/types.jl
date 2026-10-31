@@ -2487,11 +2487,11 @@ end
         """
         protrusions = 30
         "The x ticks"
-        xticks = WilkinsonTicks(5; k_min = 3)
+        xticks = automatic
         "The y ticks"
-        yticks = WilkinsonTicks(5; k_min = 3)
+        yticks = automatic
         "The z ticks"
-        zticks = WilkinsonTicks(5; k_min = 3)
+        zticks = automatic
         "The x tick format"
         xtickformat = Makie.automatic
         "The y tick format"

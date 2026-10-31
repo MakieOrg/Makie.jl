@@ -300,7 +300,11 @@ function Scene(;
     global_theme = merge_without_obs!(copy(theme), current_default_theme())
     m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
 
-    bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values = true)
+    bg = if haskey(theme_kw, :backgroundcolor)
+        map(to_color, to_observable(theme_kw[:backgroundcolor]); ignore_equal_values = true)
+    else
+        Observable{RGBAf}(to_color(to_value(m_theme[:backgroundcolor])))
+    end
 
     wasnothing = isnothing(viewport)
     scene_viewport = if wasnothing
@@ -671,8 +675,10 @@ function assign_name!(scene::Scene, @nospecialize(plot::Plot))
         end
         update!(plot; name = n)
     elseif taken(given)
-        error("a plot named $(repr(given)) is already in this scene. Names identify " *
-              "plots, so they must be unique; `label` is the one that may repeat.")
+        error(
+            "a plot named $(repr(given)) is already in this scene. Names identify " *
+                "plots, so they must be unique; `label` is the one that may repeat."
+        )
     end
     return
 end

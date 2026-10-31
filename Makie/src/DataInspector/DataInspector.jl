@@ -151,7 +151,7 @@ function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...
         return parent.data_inspector
     end
 
-    kwarg_dict = Dict{Symbol, Any}(kwargs)
+    kwarg_dict = to_dict(kwargs)
     tick_priority = pop!(kwarg_dict, :tick_priority, 1_000)
     button_priority = pop!(kwarg_dict, :button_priority, 1_000)
 

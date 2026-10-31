@@ -76,6 +76,11 @@ Some general notes:
 
 module ComputePipeline
 
+if isdefined(Base, :Experimental)
+    isdefined(Base.Experimental, Symbol("@optlevel")) && Base.Experimental.@optlevel 1
+    isdefined(Base.Experimental, Symbol("@max_methods")) && Base.Experimental.@max_methods 1
+end
+
 using Preferences
 
 const ENABLE_COMPUTE_CHECKS = @load_preference("ENABLE_COMPUTE_CHECKS", false)
@@ -200,7 +205,7 @@ function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
 end
 
 function _get_named_change(::NamedTuple{Names}, dirty) where {Names}
-    values = ntuple(i -> dirty[i], length(Names))
+    values = ntuple(i -> dirty[i], Val(length(Names)))
     return NamedTuple{Names, NTuple{length(Names), Bool}}(values)
 end
 
@@ -214,27 +219,32 @@ function TypedEdge(edge::ComputeEdge)
     return Base.invokelatest(TypedEdge, edge, edge.callback, inputs)
 end
 
+Base.@nospecializeinfer @noinline function throw_invalid_result_types(edge::ComputeEdge, @nospecialize(result::Tuple))
+    invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
+    strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
+    str = join(strings, ", ")
+    error("Edge callback returned invalid types for outputs: [$str]")
+end
+
+Base.@nospecializeinfer @noinline function throw_length_mismatch(edge::Union{ComputeEdge, TypedEdge}, @nospecialize(result::Tuple))
+    m = first(methods(edge.callback))
+    line = string(m.file, ":", m.line)
+    error("Result needs to have same length. Found: $(result), for func $(line)")
+end
+
+Base.@nospecializeinfer @noinline throw_invalid_result(@nospecialize(result::Any)) =
+    error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+
 function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
 
     result = f(map(getindex, inputs), dirty, nothing)
 
     if result isa Tuple
+        all(is_node_value_valid, result) || throw_invalid_result_types(edge, result)
+        length(result) == length(edge.outputs) || throw_length_mismatch(edge, result)
 
-        if !all(is_node_value_valid, result)
-            invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
-            strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
-            str = join(strings, ", ")
-            error("Edge callback returned invalid types for outputs: [$str]")
-        end
-
-        if length(result) != length(edge.outputs)
-            m = first(methods(edge.callback))
-            line = string(m.file, ":", m.line)
-            error("Result needs to have same length. Found: $(result), for func $(line)")
-        end
-
-        outputs = ntuple(length(result)) do i
+        outputs = ntuple(Val(length(result))) do i
             v = result[i] isa RefValue ? result[i] : slotfor(result[i])
             if isdefined(edge.outputs[i], :value)
                 store!(edge.outputs[i], v[]) # set value of existing node
@@ -258,7 +268,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         foreach(node -> node.dirty = false, edge.outputs)
 
     else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+        throw_invalid_result(result)
     end
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
@@ -286,9 +296,9 @@ end
 Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of an ::Input to an Observable is not allowed")
 Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
-function Input(graph, name, @nospecialize(value), f, output, force_update = false)
+function Input(graph, name, @nospecialize(value), f::F, output, force_update = false) where {F}
     return Input{ComputeGraph}(
-        graph, name, value, f, output, true, ComputeEdge[], force_update
+        graph, name, value, f, output, true, ComputeEdge{ComputeGraph}[], force_update
     )
 end
 
@@ -565,7 +575,7 @@ function update_observables!(obs_to_update::Vector{Observable})
     return
 end
 
-function Base.setindex!(computed::Computed, value)
+function Base.setindex!(computed::Computed, @nospecialize(value))
     if computed.parent isa Input
         return setindex!(computed.parent, value)
     else
@@ -581,21 +591,23 @@ end
 # Inputs are strictly 1:1 edges (from input.value -> output), so we don't need
 # to worry about avoiding changes to input.value between multiple dependents.
 # However we do technically still need to protect it while the callback runs.
-Base.setindex!(input::Input, value) = _setindex!(input, value, input.force_update)
-function _setindex!(input::Input, value, force_update = false)
+Base.setindex!(input::Input, @nospecialize(value)) = _setindex!(input, value, input.force_update)
+function _setindex!(input::Input, @nospecialize(value), force_update = false)
     if !force_update && is_same(input.value, value)
         return value
     end
     @lock GLOBAL_LOCK begin
         input.value = value
         mark_dirty!(input)
+        tracks_fields(input.graph, input.name) &&
+            store_versions!(input.graph, input.name, set_all(input.graph.inputs[fields_key(input.name)].value, value))
     end
     update_observables!(input)
     return value
 end
 
 
-function _setproperty!(attr::ComputeGraph, key::Symbol, value)
+function _setproperty!(attr::ComputeGraph, key::Symbol, @nospecialize(value))
     input = attr.inputs[key]
     # Skip if the value is the same as before
     if !input.force_update && is_same(input.value, value)
@@ -606,11 +618,161 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
         # multiple times for a synchronized update (would cause desync)
         input.value = value
         mark_dirty!(input)
+        # A value assigned whole sets every field of it.
+        tracks_fields(attr, key) && store_versions!(attr, key, set_all(attr.inputs[fields_key(key)].value, value))
     end
     return value
 end
 
-function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
+# ── Fields of an input ──────────────────────────────────────────────────────
+
+struct FieldVersions <: AbstractDict{Symbol, Int}
+    roots::Dict{Symbol, Int}
+    paths::Dict{Tuple, Int}
+end
+Base.length(v::FieldVersions) = length(v.roots)
+Base.iterate(v::FieldVersions, state...) = iterate(v.roots, state...)
+Base.getindex(v::FieldVersions, key::Symbol) = v.roots[key]
+Base.get(v::FieldVersions, key::Symbol, default) = get(v.roots, key, default)
+Base.copy(v::FieldVersions) = FieldVersions(copy(v.roots), copy(v.paths))
+
+"""
+    track_fields!(graph, key)
+
+Track assignments to fields of the struct input `key` holds, including nested fields such as
+`graph.material.a.roughness = value`. The input `Symbol(key, :_fields)` counts assignments per
+top-level field; `field_was_set(current, previous, path)` distinguishes nested assignments from
+replacement of a whole ancestor. A value assigned whole sets all its fields.
+
+This also detects arrays changed in place and assigned again, while leaving unrelated images
+untouched. A nested field's value can be read or assigned through `graph.material.a.color[]`.
+"""
+function track_fields!(graph::ComputeGraph, key::Symbol)
+    tracks_fields(graph, key) && return graph
+    versions = FieldVersions(Dict{Symbol, Int}(), Dict{Tuple, Int}())
+    add_input!(graph, fields_key(key), set_all(versions, graph.inputs[key].value))
+    return graph
+end
+
+"""The input holding how often each field of input `key` was set (`track_fields!`)."""
+fields_key(key::Symbol) = Symbol(key, :_fields)
+tracks_fields(graph::ComputeGraph, key::Symbol) = haskey(graph.inputs, fields_key(key))
+
+"""`versions` with every field of `value` set once more."""
+function set_all(versions::FieldVersions, value)
+    roots = copy(versions.roots)
+    # Retain counters of fields absent in a replacement type: restoring that type
+    # must not reset its versions to values a consumer has already seen.
+    for field in union(keys(roots), fieldnames(typeof(value)))
+        roots[field] = get(roots, field, 0) + 1
+    end
+    paths = copy(versions.paths)
+    paths[()] = get(paths, (), 0) + 1
+    return FieldVersions(roots, paths)
+end
+
+function set_field(versions::FieldVersions, path::Tuple)
+    roots = copy(versions.roots)
+    roots[first(path)] = get(roots, first(path), 0) + 1
+    paths = copy(versions.paths)
+    paths[path] = get(paths, path, 0) + 1
+    return FieldVersions(roots, paths)
+end
+
+"""Whether `path`, or an ancestor assigned as a whole, was set since `previous`."""
+field_was_set(current::FieldVersions, previous::FieldVersions, field::Symbol) =
+    field_was_set(current, previous, (field,))
+function field_was_set(current::FieldVersions, previous::FieldVersions, path::Tuple)
+    return any(0:length(path)) do n
+        prefix = path[1:n]
+        get(current.paths, prefix, 0) != get(previous.paths, prefix, 0)
+    end
+end
+
+function store_versions!(graph::ComputeGraph, key::Symbol, versions::FieldVersions)
+    input = graph.inputs[fields_key(key)]
+    input.value = versions
+    mark_dirty!(input)
+    return
+end
+
+"""
+    with_field(x, field, value)
+
+`x` with `field` set to `value` and every other field as it was, rebuilt through its type's name,
+so a parametric type takes the type of `value`. Overload it for a type whose constructor does not
+take its fields positionally.
+"""
+with_field(x, field::Symbol, value) =
+    Base.typename(typeof(x)).wrapper(map(f -> f === field ? value : getfield(x, f), fieldnames(typeof(x)))...)
+with_field(x::NamedTuple, field::Symbol, value) = merge(x, NamedTuple{(field,)}((value,)))
+
+struct InputField{Path}
+    node::Computed
+end
+
+field_value(value, path::Tuple{}) = value
+field_value(value, path::Tuple) = field_value(getfield(value, first(path)), Base.tail(path))
+Base.getindex(field::InputField{Path}) where {Path} = field_value(getfield(field, :node)[], Path)
+Observables.to_value(field::InputField) = field[]
+Base.setindex!(field::InputField{Path}, value) where {Path} =
+    set_input_field!(getfield(field, :node), Path, value)
+Base.propertynames(field::InputField) = fieldnames(typeof(field[]))
+Base.show(io::IO, field::InputField{Path}) where {Path} =
+    print(io, "Computed field ", getfield(field, :node).name, '.', join(Path, '.'))
+
+function input_field(node::Computed, path::Tuple)
+    input = getparent(node)
+    value = input isa Input ? input.value : node[]
+    field_value(value, path) # Refuse a missing field at the access that names it.
+    return InputField{path}(node)
+end
+
+@inline function Base.getproperty(node::Computed, field::Symbol)
+    hasfield(Computed, field) && return getfield(node, field)
+    return input_field(node, (field,))
+end
+Base.getproperty(field::InputField{Path}, name::Symbol) where {Path} =
+    input_field(getfield(field, :node), (Path..., name))
+Base.setproperty!(field::InputField{Path}, name::Symbol, value) where {Path} =
+    set_input_field!(getfield(field, :node), (Path..., name), value)
+
+with_field_path(x, ::Tuple{}, value) = value
+function with_field_path(x, path::Tuple, value)
+    field = first(path)
+    hasfield(typeof(x), field) || error("$(typeof(x)) has no field `$field`.")
+    return with_field(x, field, with_field_path(getfield(x, field), Base.tail(path), value))
+end
+
+"""
+    node.field = value
+
+Set one field of the struct an input holds, the input `node` is the output of: the input is
+updated to the struct with that field changed (`with_field`), and where its fields are tracked
+(`track_fields!`) that field alone counts as set.
+"""
+function Base.setproperty!(node::Computed, field::Symbol, value)
+    hasfield(Computed, field) && return setfield!(node, field, convert(fieldtype(Computed, field), value))
+    return set_input_field!(node, (field,), value)
+end
+
+function set_input_field!(node::Computed, path::Tuple, value)
+    input = getparent(node)
+    input isa Input || error("Only the fields of an input can be set; $(node.name) is computed.")
+    graph = input.graph
+    @lock GLOBAL_LOCK begin
+        input.value = with_field_path(input.value, path, value)
+        mark_dirty!(input)
+        if tracks_fields(graph, input.name)
+            versions = set_field(graph.inputs[fields_key(input.name)].value, path)
+            store_versions!(graph, input.name, versions)
+        end
+    end
+    update_observables!(graph)
+    return value
+end
+
+function Base.setproperty!(attr::ComputeGraph, key::Symbol, @nospecialize(value))
     _setproperty!(attr, key, value)
     update_observables!(attr)
     return value
@@ -1037,20 +1199,18 @@ function locked_resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
-        names = ntuple(length(vals)) do i
+        names = ntuple(Val(length(vals))) do i
             edge.output_nodes[i].name
         end
         last = NamedTuple{names}(vals)
         result = edge.callback(map(getindex, edge.inputs), dirty, last)
         if result isa Tuple
-            if length(result) != length(edge.outputs)
-                error("Did not return correct length: $(length(result)) $result results into $(length(edge.outputs)) outputs, in $(edge.callback)")
-            end
+            length(result) == length(edge.outputs) || throw_length_mismatch(edge, result)
             set_result!(edge, result)
         elseif isnothing(result)
             foreach(x -> x.dirty = false, edge.output_nodes)
         else
-            error("Needs to return a Tuple with one element per output, or nothing")
+            throw_invalid_result(result)
         end
     end
     return
@@ -1246,7 +1406,7 @@ function cleanup_nested_key!(attr::ComputeGraph, key::Symbol)
     return
 end
 
-function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
+function _add_input!(func::F, attr::ComputeGraph, key::Symbol, value) where {F}
     @assert !(value isa Computed)
     if haskey(attr.inputs, key) || haskey(attr.outputs, key)
         # If this is a nested key we should not clean it up because it belongs
@@ -1464,7 +1624,7 @@ end
 
 See also: [`add_input!`](@ref), [`map!`](@ref)
 """
-function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(@nospecialize(f::Base.Callable), attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
     if !all(k -> haskey(attr.outputs, k), inputs)
         missing_keys = filter(k -> !haskey(attr.outputs, k), inputs)
         error("Could not register computation: Inputs $missing_keys not found.")
@@ -1496,7 +1656,7 @@ function convert_to_nodes(view::ComputeGraphView, inputs)
 end
 
 # [computed, symbol] is an Any Vector so no eltype here
-function register_computation!(f, attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(@nospecialize(f::Base.Callable), attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol})
     _inputs = convert_to_nodes(attr, inputs)
     register_computation!(f, attr, _inputs, outputs)
     return
@@ -1627,7 +1787,7 @@ function assert_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, o
     return
 end
 
-function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(@nospecialize(f::Function), attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
     @ifelse_enabled(check_boxed_values(f))
 
     if any(k -> haskey(attr.outputs, k), outputs)
@@ -2175,5 +2335,6 @@ export ComputeGraph
 export register_computation!, map_latest!
 export add_input!, add_inputs!, add_constant!, add_constants!
 export update!
+export track_fields!
 
 end

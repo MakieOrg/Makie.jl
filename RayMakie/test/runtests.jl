@@ -185,7 +185,7 @@ const VULKAN_RUNTIME_TEST_FILES = ["test_caching_gc_correctness.jl", "test_meshs
 # Point RayMakie at the backend that was found, once, before any file renders.
 # Individual files still override the device where they mean to.
 using RayMakie
-RayMakie.activate!(; device = BACKEND)
+RayMakie.activate!(; device = BACKEND, visible = get(ENV, "MANTLE_TEST_WINDOWS", "1") != "0")
 
 # Rasterised overlays — lines, scatter, text drawn OVER the raytraced image.
 # They need a graphics pipeline, which is a backend capability rather than a
@@ -219,6 +219,7 @@ const GRAPHICS_TEST_FILES = [
 
 @testset "RayMakie" begin
     for fname in TEST_FILES
+        @info "RayMakie tests" file = fname
         @testset "$fname" begin
             include(joinpath(@__DIR__, fname))
         end
@@ -241,9 +242,15 @@ const GRAPHICS_TEST_FILES = [
         # for every later file, which renders HDR radiance straight to white.
         # That file passes its config per call now and leaks nothing, so this is
         # a belt-and-braces line rather than the load-bearing one it was.
-        RayMakie.activate!(; device = BACKEND)
+        RayMakie.activate!(; device = BACKEND, visible = get(ENV, "MANTLE_TEST_WINDOWS", "1") != "0")
         for fname in GRAPHICS_TEST_FILES
+            if startswith(fname, "test_window") && get(ENV, "MANTLE_TEST_WINDOWS", "1") == "0"
+                @info "window test skipped (MANTLE_TEST_WINDOWS=0)" file = fname
+                @test_skip false
+                continue
+            end
             @testset "$fname" begin
+                @info "RayMakie tests" file = fname
                 include(joinpath(@__DIR__, fname))
             end
         end
@@ -256,6 +263,7 @@ const GRAPHICS_TEST_FILES = [
     # compiles it too, for lavapipe, while its default device stays Metal.
     if isdefined(Mantle, :LavaDevice) && Mantle.todevice(BACKEND) isa Mantle.LavaDevice
         for fname in VULKAN_RUNTIME_TEST_FILES
+            @info "RayMakie tests" file = fname
             @testset "$fname" begin
                 include(joinpath(@__DIR__, fname))
             end

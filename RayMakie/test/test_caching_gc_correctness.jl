@@ -32,7 +32,8 @@ function _make_makie_scene(; sz=(32, 32))
     update_cam!(scene, cam)
 
     mesh!(scene, Sphere(Point3f(0, 0, 0.5), 0.5f0);
-          material=Hikari.Diffuse(Kd=(0.8, 0.2, 0.2)))
+        material = Hikari.Diffuse(color = (0.8, 0.2, 0.2))
+    )
 
     return scene
 end
@@ -343,7 +344,8 @@ end
             cam1.lookat[] = Vec3f(0, 0, 0)
             update_cam!(scene1, cam1)
             mesh!(scene1, Sphere(Point3f(0, 0, 0.5), 0.5f0);
-                  material=Hikari.Diffuse(Kd=(0.9, 0.1, 0.1)))
+                material = Hikari.Diffuse(color = (0.9, 0.1, 0.1))
+            )
 
             # Scene 2: blue diffuse
             scene2 = Scene(; size=(16, 16), lights=[PointLight(RGBf(20, 20, 20), Point3f(0, 0, 5))])
@@ -353,7 +355,8 @@ end
             cam2.lookat[] = Vec3f(0, 0, 0)
             update_cam!(scene2, cam2)
             mesh!(scene2, Sphere(Point3f(0, 0, 0.5), 0.5f0);
-                  material=Hikari.Diffuse(Kd=(0.1, 0.1, 0.9)))
+                material = Hikari.Diffuse(color = (0.1, 0.1, 0.9))
+            )
 
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=nothing, gamma=1.0f0)
 

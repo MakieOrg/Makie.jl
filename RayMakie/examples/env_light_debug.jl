@@ -12,8 +12,8 @@ sky_matrix = FileIO.load(sky_path)
 
 # Perfect mirror material
 mirror = Hikari.Conductor(
-    eta = Hikari.RGBSpectrum(0.2f0),  # Low eta for high reflectance
-    k = Hikari.RGBSpectrum(3.0f0),    # High k for metallic look
+    ior = Hikari.RGBSpectrum(0.2f0),  # Low eta for high reflectance
+    extinction = Hikari.RGBSpectrum(3.0f0),    # High k for metallic look
     roughness = 0.0f0
 )
 

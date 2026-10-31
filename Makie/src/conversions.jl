@@ -314,6 +314,16 @@ function edges(v::AbstractVector{T}) where {T}
     end
 end
 
+function edges(r::AbstractRange{T}) where {T}
+    # Assuming some kind of uniformly stepped range
+    T_out = float_type(T)
+    l = length(r)
+    a = first(r)
+    b = last(r)
+    half = l == 1 ? 0.5 : 0.5 * step(r)
+    return range(T_out(a - half), T_out(b + half), l + 1)
+end
+
 function adjust_axes(::CellGrid, x::RealVector, y::RealVector, z::AbstractMatrix)
     x̂, ŷ = map((x, y), size(z)) do v, sz
         return length(v) == sz ? edges(v) : v
@@ -368,9 +378,13 @@ function to_endpoints(x::Tuple{<:Real, <:Real})
 end
 to_endpoints(x::Interval) = to_endpoints(endpoints(x))
 to_endpoints(x::EndPoints) = x
+to_endpoints(x::AbstractRange) = to_endpoints((first(x), last(x)))
 
 to_endpoints(x::AbstractVector, side, trait) = throw_range_error(x, side, trait)
 to_endpoints(x::Union{Tuple, EndPoints, Interval}, side, trait) = to_endpoints(x)
+
+to_endpoints_with_range(x, side, trait) = to_endpoints(x, side, trait)
+to_endpoints_with_range(x::AbstractRange, side, trait) = to_endpoints(x)
 
 function throw_range_error(value::T, side, trait) where {T}
     error(

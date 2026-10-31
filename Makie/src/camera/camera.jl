@@ -132,6 +132,66 @@ function is_mouseinside(scene::Scene)
     return receives_events(scene)
 end
 
+"""
+    HeldTime(camera, scene, buttons)
+
+How long each of `buttons()`, a `NamedTuple` of anything [`ispressed`](@ref) takes, was
+held since it was last taken, integrated over the button events rather than sampled when
+it is taken. A camera moved from the keyboard moves by how long a key was held: sampled
+once a tick, a key pressed and released between two ticks moved it not at all, and where
+ticks come once a frame that is every tap shorter than a frame.
+
+In tick time, with each event timed by [`interaction_time`](@ref): a recording moves the
+camera by its frames, a window by the time a key was down. `buttons` is called at every
+event, so a control rebound in between counts from then on. The listeners belong to
+`camera` and go when it disconnects.
+"""
+mutable struct HeldTime{F, P <: NamedTuple, H <: NamedTuple}
+    buttons::F
+    pressed::P      # each button's state since `last`
+    held::H         # seconds held since last taken
+    last::Float64   # tick time of the last event or take
+end
+
+function HeldTime(camera::Camera, scene, buttons)
+    e = events(scene)
+    pressed = map(b -> ispressed(scene, b), buttons())
+    h = HeldTime(buttons, pressed, map(_ -> 0.0, pressed), interaction_time(e))
+    # Right after `Events` updates its button state, at `typemax(Int)`, and before any
+    # listener that might consume the event: a key counts whoever else handles it, as
+    # `ispressed` does.
+    for button_event in (e.keyboardbutton, e.mousebutton)
+        on(camera, button_event, priority = typemax(Int) - 1) do _
+            advance!(h, scene, interaction_time(e))
+            return Consume(false)
+        end
+    end
+    return h
+end
+
+# Credits the time since the last event to what was pressed through it, then reads what
+# is pressed from now on. Tick time restarts with a recording, and the interval that
+# spans the restart counts for nothing.
+function advance!(h::HeldTime, scene, t::Float64)
+    dt = max(0.0, t - h.last)
+    h.held = map((held, pressed) -> held + pressed * dt, h.held, h.pressed)
+    h.pressed = map(b -> ispressed(scene, b), h.buttons())
+    h.last = t
+    return h
+end
+
+"""
+    take!(h::HeldTime, scene, t) -> NamedTuple
+
+The seconds each button was held from the last `take!` until `t`, a tick's `time`.
+"""
+function Base.take!(h::HeldTime, scene, t::Float64)
+    advance!(h, scene, t)
+    held = h.held
+    h.held = map(_ -> 0.0, held)
+    return held
+end
+
 
 function add_camera_computation!(graph::ComputeGraph, scene)
     # This includes all combinations of:

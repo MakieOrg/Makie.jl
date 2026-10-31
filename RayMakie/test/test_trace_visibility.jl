@@ -16,9 +16,10 @@ lum(c) = 0.2126f0 * c.r + 0.7152f0 * c.g + 0.0722f0 * c.b
 function lamp_scene()
     sc = Scene(; size = (64, 64), backgroundcolor = RGBf(0, 0, 0), lights = [AmbientLight(RGBf(0, 0, 0))])
     cam3d!(sc; center = false)
-    mesh!(sc, Rect3f(Vec3f(-3, -3, -0.01), Vec3f(6, 6, 0.01)); material = Hikari.Diffuse(Kd = (0.8, 0.8, 0.8)))
+    mesh!(sc, Rect3f(Vec3f(-3, -3, -0.01), Vec3f(6, 6, 0.01)); material = Hikari.Diffuse(color = (0.8, 0.8, 0.8)))
     lamp = mesh!(sc, Rect3f(Vec3f(-0.5, -0.5, 2), Vec3f(1, 1, 0.01));
-                 material = Hikari.Emissive(Le = (10, 10, 10), two_sided = true))
+        material = Hikari.Emission(color = (10, 10, 10), two_sided = true)
+    )
     update_cam!(sc, cameracontrols(sc), Vec3f(0, -5, 1.5), Vec3f(0, 0, 0), Vec3f(0, 0, 1))
     return sc, lamp
 end
@@ -27,7 +28,7 @@ function sphere_scene(; visible)
     sc = Scene(; size = (64, 64), backgroundcolor = RGBf(0, 0, 0),
                lights = [DirectionalLight(RGBf(3, 3, 3), Vec3f(0, 1, 0))])
     cam3d!(sc; center = false)
-    p = mesh!(sc, Sphere(Point3f(0), 1f0); material = Hikari.Diffuse(Kd = (0.8, 0.8, 0.8)), visible)
+    p = mesh!(sc, Sphere(Point3f(0), 1.0f0); material = Hikari.Diffuse(color = (0.8, 0.8, 0.8)), visible)
     update_cam!(sc, cameracontrols(sc), Vec3f(0, -4, 0), Vec3f(0), Vec3f(0, 0, 1))
     return sc, p
 end
@@ -70,7 +71,7 @@ function sphere_in_child()
     root = Scene(; size = (64, 64), backgroundcolor = RGBf(0, 0, 0))
     child = Scene(root; viewport = Rect2i(0, 0, 64, 64), lights = [DirectionalLight(RGBf(3, 3, 3), Vec3f(0, 1, 0))])
     cam3d!(child; center = false)
-    mesh!(child, Sphere(Point3f(0), 1f0); material = Hikari.Diffuse(Kd = (0.8, 0.8, 0.8)))
+    mesh!(child, Sphere(Point3f(0), 1.0f0); material = Hikari.Diffuse(color = (0.8, 0.8, 0.8)))
     update_cam!(child, cameracontrols(child), Vec3f(0, -4, 0), Vec3f(0), Vec3f(0, 0, 1))
     return root, child
 end

@@ -41,23 +41,13 @@ using Makie, RayMakie, Hikari, GeometryBasics, Raycore
     # Same instance, same instance count: no delete + re-push happened.
     @test after.instance_idx == before.instance_idx
     @test Raycore.n_instances(screen.scene_states[1].hikari_scene.accel) == n_before
-    # In-place `MultiTypeSet.update!` requires the concrete type to match.
+    # A colour after a colour: the material keeps its type and its slot.
     @test typeof(after.material) === typeof(before.material)
     # And the colour actually reached the material, so this is not passing by
     # doing nothing at all.
-    @test Hikari.constant_value(before.material.Kd) != Hikari.constant_value(after.material.Kd)
+    @test Hikari.constant_value(before.material.color) != Hikari.constant_value(after.material.color)
     # `==`, not `≈`: RGBSpectrum has no isapprox method.
-    @test Hikari.constant_value(after.material.Kd) == Hikari.RGBSpectrum(0.0f0, 0.0f0, 1.0f0, 1.0f0)
+    @test Hikari.constant_value(after.material.color) == Hikari.RGBSpectrum(0.0f0, 0.0f0, 1.0f0, 1.0f0)
 
     close(screen)
 end
-
-# NOT COVERED, deliberately: the rebuild fallback for a colour change that alters
-# the material's concrete type. `mesh_trace_dispatch!` guards on
-# `typeof(recolor_material) !== typeof(last_robj.material)` because
-# `MultiTypeSet.update!` cannot replace across types, but Makie's compute-graph
-# inputs are type-locked after creation — assigning a `Vector{RGBA{Float32}}` to
-# a plot created with a scalar colour throws in `ComputePipeline`, before RayMakie
-# is reached at all. So the guard is defensive and no test here can drive it; if
-# a future plot type does make `trace_color_tex` change type, this is the note
-# saying the branch was never exercised.
