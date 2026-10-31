@@ -328,6 +328,10 @@ function run_stage(screen, glscene, stage::RenderPlots)
         scenes = Dict(screen.screens)
         for (zindex, screenid, elem) in screen.renderlist
             elem.visible && haskey(elem.variants, stage.target) || continue
+            plot = screen.cache2plot[elem.id]
+            compare(Bool(to_value(plot.ssao)), stage.ssao) || continue
+            compare(Bool(to_value(plot.transparency)), stage.transparency) || continue
+            compare(Bool(to_value(plot.fxaa)), stage.fxaa) || continue
 
             scene = get(scenes, screenid, nothing)
             (scene !== nothing && Makie.scene_visible(scene)) || continue

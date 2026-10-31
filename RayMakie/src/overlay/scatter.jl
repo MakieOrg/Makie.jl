@@ -48,7 +48,7 @@ function get_scatter_pipeline!(screen)
                                       input = PointList(), output = TriangleStrip(),
                                       max_vertices = 4),
             fragment = FragmentShader(scatter_fragment; textures = 1),
-            blend = Premultiplied(),
+            blend = Mantle.AlphaBlend(),
             topology = PointList(),
             cull = NoCull(),
             depth = DepthLessEq(),
@@ -69,6 +69,33 @@ end
           0f0, 0f0, 0f0, 1f0)
 end
 
+# sprites.vert: mat3(model) * marker_offset (columns, not dot products
+# against columns, which would apply the transpose).
+@inline function scatter_model_offset(model::Mat4f, offset::Vec3f)
+    m = Mat3f(model[1,1], model[2,1], model[3,1],
+              model[1,2], model[2,2], model[3,2],
+              model[1,3], model[2,3], model[3,3])
+    return m * offset
+end
+
+# sprites.geom's full derivative of the perspective divide, evaluated at the
+# sprite centre. The fourth column matters when trans changes clip-space w.
+@inline function scatter_viewport_scale(clip::Vec4f, trans::Mat4f,
+                                       resolution::Vec2f, density::Float32)
+    inv_w = 1f0 / clip[4]
+    w2 = clip[4] * clip[4]
+    d_ndc_d_clip = Mat4f(
+        inv_w, 0f0, 0f0, 0f0,
+        0f0, inv_w, 0f0, 0f0,
+        0f0, 0f0, inv_w, 0f0,
+        -clip[1] / w2, -clip[2] / w2, -clip[3] / w2, 0f0)
+    j = d_ndc_d_clip * trans
+    viewport = Mat2f(0.5f0 * density * resolution[1], 0f0,
+                    0f0, 0.5f0 * density * resolution[2])
+    dxyv_dxys = viewport * Mat2f(j[1,1], j[2,1], j[1,2], j[2,2])
+    return sqrt(abs(det(dxyv_dxys)))
+end
+
 # =============================================================================
 # Vertex Shader — reads per-vertex buffers, applies model transform
 # Names match compute graph outputs (gpu_* for converted, direct for others)
@@ -79,7 +106,7 @@ end
 # `overlay/lines.jl` for why, and `KernelInterface.VertexIndex` for the contract.
 # The fallback's arity is `length(SCATTER_ARG_NAMES)`, fixed so it cannot match
 # its own forwarded call.
-scatter_vertex(args::Vararg{Any,24}) = scatter_vertex(VertexIndex(vertex_index()), args...)
+scatter_vertex(args::Vararg{Any,26}) = scatter_vertex(VertexIndex(vertex_index()), args...)
 
 function scatter_vertex(
     vertexid::VertexIndex,
@@ -97,7 +124,8 @@ function scatter_vertex(
     resolution::Vec2f, px_per_unit::Float32,
     gpu_stroke_width::Float32, gpu_glow_width::Float32,
     gpu_billboard::Int32, depth_shift::Float32,
-    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32, fxaa::Int32,
+    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32,
+    uniform_clip_planes::AbstractVector{Vec4f}, uniform_num_clip_planes::Int32, fxaa::Int32,
 )
     idx = vertexid.value
     pos = gpu_read(gpu_positions, idx)
@@ -108,10 +136,7 @@ function scatter_vertex(
     moff = gpu_read(marker_offset, idx)
     scaled_moff = Vec3f(f32c_scale[1]*moff[1], f32c_scale[2]*moff[2], f32c_scale[3]*moff[3])
     g_marker_offset = if gpu_transform_marker != Int32(0)
-        mc1 = Vec3f(model_f32c[1,1], model_f32c[2,1], model_f32c[3,1])
-        mc2 = Vec3f(model_f32c[1,2], model_f32c[2,2], model_f32c[3,2])
-        mc3 = Vec3f(model_f32c[1,3], model_f32c[2,3], model_f32c[3,3])
-        Vec3f(dot(mc1, scaled_moff), dot(mc2, scaled_moff), dot(mc3, scaled_moff))
+        scatter_model_offset(model_f32c, scaled_moff)
     else
         scaled_moff
     end
@@ -155,10 +180,18 @@ function scatter_geometry(
     resolution::Vec2f, px_per_unit::Float32,
     gpu_stroke_width::Float32, gpu_glow_width::Float32,
     gpu_billboard::Int32, depth_shift::Float32,
-    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32, fxaa::Int32,
+    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32,
+    uniform_clip_planes::AbstractVector{Vec4f}, uniform_num_clip_planes::Int32, fxaa::Int32,
 )
     # A `PointList` primitive is one vertex, so every field is its first.
     world_pos = prim.world_pos[1]
+    # sprites.geom's is_clipped: reject the complete sprite at its original
+    # world-space position, before the marker-space projection and offsets.
+    for i in Int32(1):uniform_num_clip_planes
+        plane = @inbounds uniform_clip_planes[i]
+        dot(world_pos, Vec3f(plane[1], plane[2], plane[3])) - plane[4] < 0f0 &&
+            return nothing
+    end
     g_marker_offset = prim.marker_offset[1]
     o_w = prim.offset_width[1]
     rot = prim.rotation[1]
@@ -182,11 +215,7 @@ function scatter_geometry(
     vclip = pview * Vec4f(position[1], position[2], position[3], 1f0) +
             trans * Vec4f(sprite_ctr[1], sprite_ctr[2], 0f0, 0f0)
 
-    inv_w = 1f0 / vclip[4]
-    sx = 0.5f0 * px_per_unit * resolution[1] * inv_w
-    sy = 0.5f0 * px_per_unit * resolution[2] * inv_w
-    det_J = (sx*trans[1,1]) * (sy*trans[2,2]) - (sx*trans[1,2]) * (sy*trans[2,1])
-    vp_from_sp = sqrt(abs(det_J))
+    vp_from_sp = scatter_viewport_scale(vclip, trans, resolution, px_per_unit)
 
     sp_from_u = min(abs(o_w[3]), abs(o_w[4]))
     f_vp_from_u = vp_from_sp * sp_from_u
@@ -195,15 +224,15 @@ function scatter_geometry(
     if gpu_sdf_marker_shape == Int32(3)
         uv_w = uv_bbox[3] - uv_bbox[1]
         px_x = uv_w * gpu_atlas_width
-        abs(px_x) > 1f-10 && (f_df_scale = -1f0 / px_x)
+        f_df_scale = -1f0 / px_x
     end
 
-    sp_from_vp = vp_from_sp > 1f-10 ? 1f0 / vp_from_sp : 0f0
+    sp_from_vp = 1f0 / vp_from_sp
     buf = sp_from_vp * (SPRITE_AA_RADIUS + max(gpu_glow_width, 0f0) + max(gpu_stroke_width, 0f0))
     bbox_rb = Vec2f(bbox_sr[1] + sign(bbox_sr[1]) * buf, bbox_sr[2] + sign(bbox_sr[2]) * buf)
 
-    uv_r = Vec2f(0.5f0 * bbox_rb[1] / (abs(bbox_sr[1]) > 1f-10 ? bbox_sr[1] : 1f0),
-                 0.5f0 * bbox_rb[2] / (abs(bbox_sr[2]) > 1f-10 ? bbox_sr[2] : 1f0))
+    uv_r = Vec2f(0.5f0 * bbox_rb[1] / bbox_sr[1],
+                 0.5f0 * bbox_rb[2] / bbox_sr[2])
     uv_mn = Vec2f(0.5f0 - uv_r[1], 0.5f0 - uv_r[2])
     uv_mx = Vec2f(0.5f0 + uv_r[1], 0.5f0 + uv_r[2])
     b_mn = Vec2f(-bbox_rb[1], -bbox_rb[2])
@@ -241,8 +270,9 @@ end
 @inline function glyph_distance(uv::Vec2f, bbox::Vec4f, scale::Float32)
     u = clamp(uv[1], 0f0, 1f0)
     v = clamp(uv[2], 0f0, 1f0)
-    tu = bbox[1] + u * (bbox[3] - bbox[1])
-    tv = bbox[2] + v * (bbox[4] - bbox[2])
+    # GLSL mix(x, y, a), as used by distance_shape.frag.
+    tu = bbox[1] * (1f0 - u) + bbox[3] * u
+    tv = bbox[2] * (1f0 - v) + bbox[4] * v
     return scale * sample_texture_2d(UInt32(0), tu, tv, UInt32(0))
 end
 
@@ -253,13 +283,50 @@ end
 
 @inline function glyph_squared_partial(center::Float32, uv::Vec2f, delta::Vec2f,
                                       bbox::Vec4f, scale::Float32)
-    hi = glyph_distance(uv + 0.5f0 * delta, bbox, scale)
-    lo = glyph_distance(uv - 0.5f0 * delta, bbox, scale)
-    return glyph_squared_partial(center, hi, lo)
+    hi = glyph_distance(uv + 0.5f0 * delta, bbox, 1f0)
+    lo = glyph_distance(uv - 0.5f0 * delta, bbox, 1f0)
+    # GLSL contracts get_distancefield(...)-center into one multiply-add.
+    # Preserve that rounding in the portable shader rather than rounding the
+    # scaled sample before subtracting the centre value.
+    df1 = muladd(scale, hi, -center)
+    df2 = muladd(-scale, lo, center)
+    return 2f0 * max(df1 * df1, df2 * df2)
 end
 
 @inline glyph_aa_radius(viewport_scale::Float32, dx2::Float32, dy2::Float32) =
     viewport_scale * ANTIALIAS_RADIUS * sqrt(2f0) * sqrt(dx2 + dy2)
+
+@inline function scatter_rectangle_distance(uv::Vec2f, scale::Vec2f, rounded::Bool)
+    s = scale / min(scale[1], scale[2])
+    lo = rounded ? 0.2f0 : 0f0
+    hi = rounded ? 0.8f0 : 1f0
+    dx = s[1] * max(lo - uv[1], uv[1] - hi)
+    dy = s[2] * max(lo - uv[2], uv[2] - hi)
+    radius = rounded ? s[1] * lo : 0f0
+    return -(sqrt(max(0f0, dx)^2 + max(0f0, dy)^2) + min(0f0, max(dx, dy)) - radius)
+end
+
+# distance_shape.frag's ellipse(), including its five Newton iterations.
+@inline function scatter_ellipse_distance(uv::Vec2f, scale::Vec2f)
+    wh = scale / min(scale[1], scale[2])
+    p = wh .* abs.(uv - Vec2f(0.5f0))
+    wh = 0.5f0 * wh
+    q = wh .* (p - wh)
+    cs = q[1] < q[2] ? Vec2f(0.01f0, 1f0) : Vec2f(1f0, 0.01f0)
+    cs = cs / sqrt(dot(cs, cs))
+    for i in Int32(0):Int32(4)
+        u = wh .* cs
+        v = wh .* Vec2f(-cs[2], cs[1])
+        a = dot(p - u, v)
+        c = dot(p - u, u) + dot(v, v)
+        b = sqrt(c * c - a * a)
+        cs = Vec2f(cs[1] * b - cs[2] * a, cs[2] * b + cs[1] * a) / c
+    end
+    delta = p - wh .* cs
+    d = sqrt(dot(delta, delta))
+    scaled = Vec2f(p[1] / wh[1], p[2] / wh[2])
+    return dot(scaled, scaled) > 1f0 ? -d : d
+end
 
 function scatter_fragment(
     inputs,
@@ -277,7 +344,8 @@ function scatter_fragment(
     resolution::Vec2f, px_per_unit::Float32,
     gpu_stroke_width::Float32, gpu_glow_width::Float32,
     gpu_billboard::Int32, depth_shift::Float32,
-    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32, fxaa::Int32,
+    gpu_atlas_width::Float32, gpu_sdf_marker_shape::Int32,
+    uniform_clip_planes::AbstractVector{Vec4f}, uniform_num_clip_planes::Int32, fxaa::Int32,
 )
     f_uv = inputs.uv
     f_color = inputs.colour
@@ -306,54 +374,52 @@ function scatter_fragment(
         bu = u - cu; bv = v - cv
         # Extend a clamped glyph only for its stroke/glow, as in GLMakie.
         center - (gpu_stroke_width > 0f0 || gpu_glow_width > 0f0 ? sqrt(bu*bu + bv*bv) : 0f0)
-    elseif sh == Int32(1)
-        sx = f_sp_scl[1] / min(abs(f_sp_scl[1]), abs(f_sp_scl[2]))
-        sy = f_sp_scl[2] / min(abs(f_sp_scl[1]), abs(f_sp_scl[2]))
-        dx = sx * max(-u, u-1f0); dy = sy * max(-v, v-1f0)
-        -(sqrt(max(0f0,dx)^2 + max(0f0,dy)^2) + min(0f0, max(dx,dy)))
+    elseif sh == Int32(1) || sh == Int32(2)
+        scatter_rectangle_distance(f_uv, f_sp_scl, sh == Int32(2))
     elseif sh == Int32(4)
         px = u-0.5f0; py = v-0.5f0
         tx = 1.4142135f0*(px-py); ty = 1.4142135f0*(px+py)
-        -max(max(abs(tx),abs(ty))-0.35355338f0, py)
-    else
+        -max(max(abs(tx),abs(ty)) - 1f0 / (2f0 * 1.4142135f0), py)
+    elseif sh == Int32(5)
+        scatter_ellipse_distance(f_uv, f_sp_scl)
+    elseif sh == Int32(0)
         0.5f0 - sqrt((u-0.5f0)^2 + (v-0.5f0)^2)
+    else
+        0f0
     end
 
     sd = sd * f_vp_from_u
     # With `fxaa` the edge is a hard step and FXAA smooths it afterwards, as in
     # distance_shape.frag; smoothing both ways left a halo.
-    inside = fxaa_or_aastep(fxaa, 0f0, sd, aa)
-    fill_c = Vec4f(f_color[1], f_color[2], f_color[3], max(f_color[4], 0.001f0))
-    color = Vec4f(fill_c[1], fill_c[2], fill_c[3], fill_c[4] * inside)
-
     s_sw = px_per_unit * gpu_stroke_width
-    if s_sw > 0.001f0
-        ti = fxaa_or_aastep(fxaa, -s_sw, sd, aa); to = fxaa_or_aastep(fxaa, 0f0, sd, aa)
-        st = ti - to
-        st > 0.001f0 && (color = color * (1f0-st) + f_scol * st)
+    inside = fxaa_or_aastep(fxaa, max(-s_sw, 0f0), sd, aa)
+    color = Vec4f(f_color[1], f_color[2], f_color[3], f_color[4] * inside)
+
+    # distance_shape.frag's stroke/stroke_fxaa, with width = -s_stroke_width.
+    if s_sw != 0f0
+        width = -s_sw
+        st = fxaa_or_aastep(fxaa, min(width, 0f0), sd, aa) -
+             fxaa_or_aastep(fxaa, max(width, 0f0), sd, aa)
+        bg = sd < 0.5f0 * width ? Vec4f(f_scol[1], f_scol[2], f_scol[3], 0f0) : color
+        color = bg * (1f0 - st) + f_scol * st
     end
 
     s_gw = px_per_unit * gpu_glow_width
-    if s_gw > 0.001f0
+    if gpu_glow_width > 0f0
         od = (abs(sd) - s_sw) / s_gw
-        ga = max(0f0, 1f0 - od)
+        ga = 1f0 - od
         gi = aastep(-s_sw, sd, aa)
-        if ga > 0.001f0 && gi < 0.999f0
-            glow = Vec4f(f_gcol[1], f_gcol[2], f_gcol[3], f_gcol[4]*ga)
-            color = glow * (1f0-gi) + color * gi
-        end
+        glow = Vec4f(f_gcol[1], f_gcol[2], f_gcol[3], f_gcol[4] * ga)
+        color = glow * (1f0 - gi) + color * gi
     end
 
     # A transparent fragment must not claim DEPTH: with writes on, an
     # alpha-zero corner of a glyph or marker quad occludes whatever should
     # have shown through it. Discarding is what lets a BLENDED pass use a
     # depth buffer, which is how a scene's z translation gets honoured.
-    # `<=`, at the 0.001 the fill is raised to above: a glyph faded to nothing
-    # kept exactly that inside, was never discarded, and a label drawn later at
-    # the same place (a caption replacing a faded one) had holes in the shape of
-    # the invisible letters.
-    color[4] <= 1f-3 && discard()
-    return raster_output(Vec4f(color[1]*color[4], color[2]*color[4], color[3]*color[4], color[4]), fxaa,
+    # Match fragment_output.frag: a faded-out glyph must not write depth.
+    color[4] <= 0f0 && discard()
+    return raster_output(color, fxaa,
                          unsafe_trunc(UInt32, inputs.pick_index + 0.5f0))
 end
 
@@ -371,6 +437,7 @@ const SCATTER_GRAPH_ARGS = (
     :preprojection, :projection, :view, :resolution, :px_per_unit,
     :gpu_stroke_width, :gpu_glow_width, :gpu_billboard, :depth_shift,
     :gpu_atlas_width, :gpu_sdf_marker_shape,
+    :uniform_clip_planes, :uniform_num_clip_planes,
 )
 const SCATTER_ARG_NAMES = (SCATTER_GRAPH_ARGS..., :fxaa)
 
@@ -378,9 +445,9 @@ const SCATTER_ARG_NAMES = (SCATTER_GRAPH_ARGS..., :fxaa)
 # what stops the two drifting: an argument added here without adding one there
 # would leave the arg-less spelling matching nothing, on the backend that has a
 # geometry stage only.
-length(SCATTER_ARG_NAMES) == 24 || error(
+length(SCATTER_ARG_NAMES) == 26 || error(
     "SCATTER_ARG_NAMES has $(length(SCATTER_ARG_NAMES)) entries and " *
-    "`scatter_vertex(args::Vararg{Any,24})` expects 24. Update the fallback's " *
+    "`scatter_vertex(args::Vararg{Any,26})` expects 26. Update the fallback's " *
     "arity in this file to match.")
 
 # =============================================================================
@@ -397,6 +464,7 @@ function setup_scatter!(screen, scene, plot, attr, backend)
 
     Makie.all_marker_computations!(attr)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
+    haskey(attr, :uniform_clip_planes) || Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
     # ── Conversion computations (gpu_* = GPU-ready type) ──
 

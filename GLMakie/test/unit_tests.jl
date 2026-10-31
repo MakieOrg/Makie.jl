@@ -1,5 +1,7 @@
 using Makie: getscreen, N0f8, RGBA
 
+include("render_stage_filters.jl")
+
 function project_sp(scene, point)
     point_px = Makie.project(scene, point)
     offset = Point2f(minimum(viewport(scene)[]))

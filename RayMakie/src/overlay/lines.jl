@@ -584,7 +584,7 @@ function lines_fragment(
     factor = clamp((-f_quad_sdf[1] - f_linestart) / f_linelength, 0f0, 1f0)
     col = f_color1 + factor * (f_color2 - f_color1)
     # lines.frag: a hard edge when FXAA will smooth it, `aastep` otherwise.
-    alpha = col[4] * f_alpha_weight * fxaa_or_aastep(fxaa, 0f0, -sdf)
+    alpha = col[4] * f_alpha_weight * fxaa_or_aastep(fxaa, 0f0, -sdf, AA_RADIUS)
 
     # Premultiply
     # A transparent fragment must not claim DEPTH: with writes on, an

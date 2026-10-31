@@ -50,7 +50,8 @@ function declare_overlay_draw!(p, robj::RenderObject, cell, viewport, default_vp
     # constant range, two stages declaring the same layout over it.
     Mantle.draw!(p, robj.pipeline, cell;
                  frag_args = Mantle.drawargs(cell),
-                 viewport = viewport === nothing ? default_vp : viewport)
+                 viewport = viewport === nothing ? default_vp : viewport,
+                 scissor = robj.uniforms[:pixel_scissor])
     # No `pin!` and no `hold!`. What the draw reads is reachable from `robj`,
     # which outlives the plan; the plan holds what it names for as long as it
     # lives, which is core's job and not this package's.
@@ -60,6 +61,30 @@ end
 # =============================================================================
 # Main render pass — collect and draw all RenderObjects
 # =============================================================================
+
+# GLMakie's handle_overdraw disables both depth testing and depth writes.
+# Keep the original pipeline so switching the plot attribute back restores its
+# own depth mode (including read-only depth for transparent meshes).
+overlay_without_depth(p::GraphicsPipeline) = GraphicsPipeline(;
+    vertex = p.vertex, fragment = p.fragment, geometry = p.geometry,
+    tess_control = p.tess_control, tess_eval = p.tess_eval,
+    blend = p.blend, cull = p.cull, topology = p.topology, depth = Mantle.DepthOff())
+overlay_without_depth(p::Mantle.MeshPipeline) = Mantle.MeshPipeline(;
+    object = p.object, mesh = p.mesh, fragment = p.fragment,
+    blend = p.blend, cull = p.cull, depth = Mantle.DepthOff())
+
+function sync_overlay_overdraw!(robj::RenderObject, plot)
+    overdraw = Bool(Makie.to_value(plot.overdraw))
+    if overdraw
+        original = get!(robj.uniforms, :depth_pipeline, robj.pipeline)
+        robj.pipeline = get!(robj.uniforms, :overdraw_pipeline) do
+            overlay_without_depth(original)
+        end
+    elseif haskey(robj.uniforms, :depth_pipeline)
+        robj.pipeline = robj.uniforms[:depth_pipeline]
+    end
+    return nothing
+end
 
 """
     collect_overlay_robjs(state, root_scene, raster; scenes = nothing)
@@ -105,6 +130,8 @@ function collect_overlay_robjs(state::RayMakieState, root_scene::Makie.Scene, ra
     root_h = size(root_scene)[2]
     for rscene in overlay_scenes
         vp = Makie.viewport(rscene)[]
+        clip = Makie.effective_clip(rscene)
+        any(<=(0), clip.widths) && continue
         vp_y = Float32(root_h - vp.origin[2])
         vp_rect = (Float32(vp.origin[1]), vp_y, Float32(vp.widths[1]), -Float32(vp.widths[2]))
         # The scene's glowing meshes light it in RASTER mode, so they are
@@ -133,6 +160,10 @@ function collect_overlay_robjs(state::RayMakieState, root_scene::Makie.Scene, ra
                     return nothing
                 end
                 if robj isa RenderObject && robj.visible
+                    sync_overlay_overdraw!(robj, ap)
+                    robj.uniforms[:scene_scissor] = (
+                        clip.origin[1], root_h - clip.origin[2] - clip.widths[2],
+                        clip.widths[1], clip.widths[2])
                     # Compact IDs are private to this screen. `pick` resolves
                     # them back to plots; editor object identities stay separate.
                     robj.uniforms[:pick_plot] = ap
@@ -262,7 +293,7 @@ function frame_signature(robjs, args, w, h)
          #
          # `isnothing(indices)`: WHETHER a draw is indexed decides the command
          # the backend emits. Whether it samples textures decides its layout.
-         (objectid(robj), objectid(robj.pipeline), vp,
+         (objectid(robj), objectid(robj.pipeline), vp, robj.uniforms[:pixel_scissor],
           isnothing(get(robj.buffers, :indices, nothing)), isnothing(robj.bindings),
           # The argument TYPES, because those are the pipeline and the layout.
           # `typeof` of the tuple says the same as a tuple of each argument's
@@ -466,10 +497,22 @@ function overlay_robjs(screen; scenes = nothing)
         screen.state = ss
         append!(robjs, collect_overlay_robjs(ss, screen.scene, screen.rasterize; scenes))
     end
-    # See-through meshes after the opaque ones, in their order otherwise: they
-    # write no depth, so whatever they cover has to be drawn first.
-    sort!(robjs; by = ((robj, _),) -> get(robj.uniforms, :see_through, false)::Bool, alg = Base.Sort.DEFAULT_STABLE)
+    # Match GLMakie's SortPlots: label backings must be blended before their
+    # text, even when the recipe inserts the text first. Depth testing alone
+    # cannot recover the backing beneath a partially covered glyph edge.
+    # See-through meshes still follow opaque draws because they write no depth.
+    sort!(robjs; by = ((robj, _),) -> (
+        get(robj.uniforms, :see_through, false)::Bool,
+        Makie.transformationmatrix(robj.uniforms[:pick_plot])[][3, 4]
+    ), alg = Base.Sort.DEFAULT_STABLE)
     for (i, (robj, _)) in enumerate(robjs)
+        robj.uniforms[:pixel_scissor] = map(x -> round(Int, x * screen.px_per_unit),
+                                          robj.uniforms[:scene_scissor])
+        # Offscreen setdensity! and window content-scale changes can happen
+        # after the plot's render object was built. As in GLMakie's RenderPlots,
+        # each draw uses the current screen density, not the creation density.
+        haskey(robj.uniforms, :px_per_unit) &&
+            (robj.uniforms[:px_per_unit] = screen.px_per_unit)
         i <= typemax(Int32) || error("too many raster objects for picking")
         robj.uniforms[:fxaa] = reinterpret(Int32, (UInt32(i) << 1) |
             (reinterpret(UInt32, robj.uniforms[:fxaa]) & UInt32(1)))

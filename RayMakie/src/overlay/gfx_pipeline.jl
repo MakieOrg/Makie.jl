@@ -48,7 +48,9 @@ function get_atlas_bindings(screen)
         return screen.gfx_atlas_bindings
     end
 
-    atlas_f32 = Float32.(atlas.data)
+    # Keep Makie's Float16 distance field, as GLMakie's get_texture! does.
+    # The texture format is part of filtered glyph sampling, not just storage.
+    atlas_data = atlas.data
 
     # Into the EXISTING texture when it fits, which is every time after the
     # first: the atlas array is a fixed size and gains glyphs in place. A new
@@ -57,13 +59,13 @@ function get_atlas_bindings(screen)
     # gets rasterised, uploaded, and still drawn blank. Same reason
     # `update_texture!` reuses a render object's texture.
     tex = screen.gfx_atlas_tex
-    if tex !== nothing && size(tex) == size(atlas_f32) && eltype(tex) == eltype(atlas_f32)
-        upload_texture_data!(tex, atlas_f32)
+    if tex !== nothing && size(tex) == size(atlas_data) && eltype(tex) == eltype(atlas_data)
+        upload_texture_data!(tex, atlas_data)
         screen.gfx_atlas_dirty[] = false
         return screen.gfx_atlas_bindings
     end
 
-    tex = Texture2D(screen.config.device, atlas_f32)
+    tex = Texture2D(screen.config.device, atlas_data)
     sampler = Sampler(screen.config.device; filter=:linear, wrap=:clamp)
     bindings = bind_textures([SampledTexture(tex, sampler)])
 

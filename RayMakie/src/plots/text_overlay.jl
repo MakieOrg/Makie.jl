@@ -18,6 +18,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Glyphs)
     haskey(attr, :sdf_uv) || return nothing
 
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
+    haskey(attr, :uniform_clip_planes) || Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
     # ── Text-specific conversions to gpu_* names (same targets as scatter) ──
 
