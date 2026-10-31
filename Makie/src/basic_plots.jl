@@ -71,6 +71,23 @@ function mixin_generic_plot_attributes()
         e.g. `(:nothing, (:xz, 1.0))`.
         """
         transformation = :automatic
+        """
+        Names the plot, so it can be found again — `plot.name[]`, or looked up on
+        a scene with `Makie.findplot(scene, :arm_left)`.
+
+        A name is an IDENTITY, not a label: it is what code, a serialised scene
+        or an animation curve uses to address this plot, and it never appears in
+        a legend. `label` remains the human-facing text and may repeat (a
+        `Legend` merges duplicates on purpose); a name may not.
+
+        `:automatic` derives one on insertion — from `label` if there is one, else
+        the plot type with a counter (`:mesh`, `:mesh_2`, …). Set it explicitly
+        and a collision is an error rather than a rename, because the point of
+        writing a name down is to look it up afterwards: silently turning
+        `:arm` into `:arm_2` breaks exactly the code that was going to ask for
+        `:arm`, and an alias cannot help because `:arm` is then ambiguous.
+        """
+        name = :automatic
         "Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`."
         model = automatic
         "Controls whether the plot gets rendered or not."

@@ -335,16 +335,26 @@ ignored. Replaces ad-hoc `hasmethod` reflection with plain dispatch.
 clear!(block::Block) = (delete!(block); nothing)
 
 function clear!(gl::GridLayout)
-    for gc in reverse(copy(gl.content))
-        obj = gc.content
-        if obj isa GridLayout
-            clear!(obj)
-            GridLayoutBase.remove_from_gridlayout!(gc)
-        else
-            clear!(obj)
+    # ONE relayout for the teardown, not one per removed column. `trim!` calls
+    # `deletecol!` once per empty column and every one of those runs `update!`,
+    # which walks up to the root layout and back down through the bbox
+    # observables of every block still standing — so emptying a layout costs
+    # O(columns × blocks). On the effects panel (229 parameter rows) that was
+    # 38 s and 22 GB of garbage for a single card rebuild, and it is what
+    # "the editor freezes when I pick a clip" actually was: the GC pressure
+    # stops every Julia thread, so the renderloop stops drawing too.
+    GridLayoutBase.with_updates_suspended(gl) do
+        for gc in reverse(copy(gl.content))
+            obj = gc.content
+            if obj isa GridLayout
+                clear!(obj)
+                GridLayoutBase.remove_from_gridlayout!(gc)
+            else
+                clear!(obj)
+            end
         end
+        GridLayoutBase.trim!(gl)
     end
-    GridLayoutBase.trim!(gl)
     return nothing
 end
 

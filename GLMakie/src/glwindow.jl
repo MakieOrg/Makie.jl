@@ -123,7 +123,18 @@ function MonitorProperties(monitor::GLFW.Monitor)
     physicalsize = Vec{2, Int}(GLFW.GetMonitorPhysicalSize(monitor)...)
     videomode = GLFW.GetVideoMode(monitor)
     sfactor = Sys.isapple() ? 2.0 : 1.0
-    dpi = Vec(videomode.width * 25.4, videomode.height * 25.4) * sfactor ./ Vec{2, Float64}(physicalsize)
+    # A MONITOR CAN REPORT NOTHING AND STILL BE THE PRIMARY ONE. XWayland's virtual
+    # display answers `0x0@0Hz` for the video mode and `0x0` mm for the physical
+    # size, and `0 * 25.4 / 0` is NaN — which `window_area` then hands to every
+    # window as `events.window_dpi`, from where it spreads into anything scaled by
+    # it. Measured on this machine: `dpi = [NaN, NaN]`. Fall back to the
+    # conventional 96 dpi instead of passing NaN on.
+    dpi = if iszero(videomode.width) || iszero(videomode.height) || any(iszero, physicalsize)
+        Vec(96.0, 96.0)
+    else
+        Vec(videomode.width * 25.4, videomode.height * 25.4) * sfactor ./ Vec{2, Float64}(physicalsize)
+    end
+
     videomode_supported = GLFW.GetVideoModes(monitor)
 
     return MonitorProperties(name, isprimary, position, physicalsize, videomode, videomode_supported, dpi, monitor)
