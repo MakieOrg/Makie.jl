@@ -9,12 +9,11 @@ end
 t_using = @ctime @eval using $Package
 
 if Package === :WGLMakie
-    # The HTTP@2 Bonito stack drives electron through ElectronCall; older
-    # (registered) Bonito uses Electron. Import whichever the project has.
-    try
-        @eval import ElectronCall
-    catch
+    # Import the browser driver available in each benchmark environment.
+    if Base.find_package("ElectronCall") === nothing
         @eval import Electron
+    else
+        @eval import ElectronCall
     end
     # Backwards compatibility for master
     Bonito = isdefined(WGLMakie, :Bonito) ? WGLMakie.Bonito : WGLMakie.JSServe
