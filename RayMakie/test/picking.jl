@@ -47,4 +47,29 @@ using Makie
         @test RayMakie.raster_pick_data(screen)===nothing
     end
 end
+
+# A plot with `inspectable = false` is drawn and not picked: a click on it finds
+# what is behind it. The case is a glowing sheet over a cut-open instrument, which
+# covered every part and took every click. A see-through plot that IS inspectable
+# (glass) is still picked, so the exception is the attribute, not see-through.
+@testset "an uninspectable plot is drawn and clicked through" begin
+    scene=Scene(;size=(96,96),camera=campixel!,backgroundcolor=:black)
+    back=mesh!(scene,Rect2f(8,8,80,80);color=:blue,shading=NoShading)
+    glass=mesh!(scene,Rect2f(12,12,30,30);color=RGBAf(1,1,1,0.5),transparency=true,shading=NoShading)
+    veil=mesh!(scene,Rect2f(50,50,30,30);color=RGBAf(1,1,1,0.5),transparency=true,shading=NoShading,
+               inspectable=false)
+    translate!(glass,0,0,5);translate!(veil,0,0,5)
+    screen=RayMakie.Screen(scene;device=Mantle.defaultbackend(),visible=false,rasterize=true,shadows=false)
+    try
+        img=colorbuffer(screen)
+        @test pick(scene,screen,Vec2d(25,25))[1]===glass
+        @test pick(scene,screen,Vec2d(65,65))[1]===back
+        # …and the veil is still drawn: where it lies, the blue is lightened.
+        row,col=96-65,65
+        blue=img[96-30,70]
+        @test img[row,col]!=blue
+    finally
+        close(screen)
+    end
+end
 end

@@ -666,6 +666,16 @@ geometry_changed(plot, changed) =
 geometry_changed(::Makie.MeshScatter, changed) =
     changed.vertex_position || changed.faces || changed.normal || changed.uv || changed.material
 
+# Which geometry node changed, per buffer, so a buffer is uploaded only when its
+# own node changed. A mesh's are its arguments; a meshscatter's are its marker's
+# (`raster_geometry`), and its `positions_transformed_f32c` are the instances.
+positions_changed(plot, changed) = changed.positions_transformed_f32c
+positions_changed(::Makie.MeshScatter, changed) = changed.vertex_position
+normals_changed(plot, changed) = changed.normals
+normals_changed(::Makie.MeshScatter, changed) = changed.normal
+uvs_changed(plot, changed) = changed.texturecoordinates
+uvs_changed(::Makie.MeshScatter, changed) = changed.uv
+
 instances_changed(plot, changed) = changed.raster_uv_transform
 instances_changed(::Makie.MeshScatter, changed) =
     changed.positions_transformed_f32c || changed.rotation || changed.markersize ||
@@ -799,7 +809,8 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
         colorinfo = raster_color(geometry.color, args, ncolors; fragment = fragment_cmap(plot, args))
         textured = colorinfo.texture !== nothing
         see_through = is_see_through(look, plot)
-        fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured, see_through)
+        pickable = plot.inspectable[] !== false
+        fresh |= !fresh && last_robj.pipeline !== get_mesh_pipeline!(screen, textured, see_through, pickable)
         # What the shadow map is fitted around; not a stage argument.
         (geometry_dirty || instances_dirty) &&
             (uniforms = merge(uniforms, (local_bounds = instanced_bounds(geometry, instances),)))
@@ -820,12 +831,12 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
         # device; the upload is then a copy between buffers.
         remade = fresh || changed.material
         # A new buffer takes the stage's type; an update is copied into it.
-        (remade || changed.positions_transformed_f32c) &&
+        (remade || positions_changed(plot, changed)) &&
             (buffers[:raster_positions] = nonempty(remade ? vec3s(geometry.positions) : geometry.positions))
         (remade || changed.faces) && (buffers[:raster_faces] = nonempty(raster_faces(geometry.faces)))
-        (remade || changed.normals) &&
+        (remade || normals_changed(plot, changed)) &&
             (buffers[:raster_normals] = geometry.normals === nothing ? Vec3f[Vec3f(0)] : nonempty(vec3s(geometry.normals)))
-        (remade || changed.texturecoordinates) &&
+        (remade || uvs_changed(plot, changed)) &&
             (buffers[:raster_uvs] = uniforms.has_uvs != 0 ? nonempty(Vec2f.(geometry.uvs)) : Vec2f[Vec2f(0)])
         buffers[:raster_vertex_color] = colorinfo.source == COLOR_VERTEX ?
             rgba4.(geometry.color) : Vec4f[Vec4f(0)]
@@ -847,7 +858,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
 
     robj = if fresh
         backend = screen.config.device
-        RenderObject(get_mesh_pipeline!(screen, colorinfo.texture !== nothing, see_through);
+        RenderObject(get_mesh_pipeline!(screen, colorinfo.texture !== nothing, see_through, pickable);
             backend,
             fxaa = plot_fxaa(plot),
             arg_names = MESH_ARG_NAMES,
