@@ -23,7 +23,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Makie = {path = "../Makie"}
 
 [compat]
-Bonito = "4.2"
+Bonito = "4.2, 5"
 Colors = "0.11, 0.12, 0.13"
 FileIO = "1.1"
 FreeTypeAbstraction = "0.10"
