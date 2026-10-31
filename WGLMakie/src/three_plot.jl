@@ -49,6 +49,7 @@ end
 
 
 function get_order!(session::Session)
+    
     order = Bonito.get_metadata(session, :wglmakie_scene_order, 1)
     Bonito.set_metadata!(session, :wglmakie_scene_order, order + 1)
     return order
