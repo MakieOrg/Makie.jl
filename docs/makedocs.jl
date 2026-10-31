@@ -80,6 +80,7 @@ pages = [
                 "menu.md",
                 "paramform.md",
                 "polaraxis.md",
+                "scrollarea.md",
                 "slider.md",
                 "slidergrid.md",
                 "table.md",

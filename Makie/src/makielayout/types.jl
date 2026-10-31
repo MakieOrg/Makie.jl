@@ -1475,39 +1475,43 @@ end
 
 
 """
-    Subfigure(fig_or_scene; kwargs...)
+    ScrollArea(fig_or_scene; kwargs...)
 
-A clipped, scrollable region with its own `Scene` paired with a
-`GridLayout` — the same shape as a `Figure`, scoped to a sub-region. Place
-blocks via `Axis(subfig[1, 1])` etc., or plot directly into
-`content_scene(subfig)` (in viewport-local pixel coords).
+A clipped, scrollable region with its own `Scene` paired with a `GridLayout` —
+the same shape as a `Figure`, scoped to a sub-region. Place blocks via
+`Axis(area[1, 1])` etc., or plot directly into `content_scene(area)` (in
+viewport-local pixel coords).
 
-The `visible::Observable{Bool}` attribute controls whether the subfigure is
-shown. When hidden it renders nothing and, because the scene-stacking event
-router (`receives_events`) treats hidden subtrees as inert, receives no
-mouse or keyboard input either.
+Because a `ScrollArea` is just a `Block`, it composes into any layout slot — a
+figure cell, a `Modal`, a `Tabs` tab, or nested inside another `ScrollArea`.
+That makes it the building block for "make this content scrollable": wrap the
+content in a `ScrollArea`, and keep fixed content beside it in the parent
+layout.
 
-Content larger than the subfigure scrolls vertically and horizontally;
-scrollbars appear only when there is overflow. Content size is derived
-from the inner `GridLayout`'s determinable size, so setting fixed row /
-column sizes makes the subfigure overflow and scroll.
+Content larger than the area scrolls vertically and horizontally; scrollbars
+appear only when there is overflow. Content size is derived from the inner
+`GridLayout`'s determinable size, so setting fixed row / column sizes makes the
+area overflow and scroll. With `scrollable = false` the area still clips its
+content but shows no scrollbars and takes no scroll input — a plain clipped
+panel (this is how `Modal`/`Tabs` host their content, leaving scrolling opt-in).
 
-`Tabs` is built on `Subfigure` — one per tab, with
-`visible = (tabs.active == i)`. Use `Subfigure` directly for scrollable
-scientific-figure panels, sidebars, dialog regions, etc.
+The `visible::Observable{Bool}` attribute controls whether the area is shown.
+When hidden it renders nothing and, because the scene-stacking event router
+(`receives_events`) treats hidden subtrees as inert, receives no mouse or
+keyboard input either.
 """
-@Block Subfigure begin
+@Block ScrollArea begin
     scene::Scene
     scroll::Observable{Vec2f}
     contentsize::Observable{Vec2f}
     @attributes begin
-        "Whether the subfigure is shown. When `false` it renders nothing and receives no input."
+        "Whether the area is shown. When `false` it renders nothing and receives no input."
         visible = true
         "Padding (in pixels) around the content, as a number or a (left, right, bottom, top) tuple."
         contentpadding = 10
         "Background color of the content area."
         backgroundcolor = :transparent
-        "Whether wheel/trackpad scroll inside the subfigure scrolls its content."
+        "Whether the content scrolls on overflow (scrollbars + wheel/drag). `false` clips only."
         scrollable = true
         "Speed of wheel/trackpad scrolling."
         scroll_speed = 15.0
@@ -1521,9 +1525,9 @@ scientific-figure panels, sidebars, dialog regions, etc.
         scrollbar_thumb_color_active = RGBAf(0, 0, 0, 0.5)
         # halign / valign / alignmode match the block layout mixin defaults and
         # are added automatically; only the ones that differ are set here.
-        "The height setting of the subfigure."
+        "The height setting of the area."
         height = nothing
-        "The width setting of the subfigure."
+        "The width setting of the area."
         width = nothing
         "Controls if the parent layout can adjust to this element's width."
         tellwidth = false
@@ -1544,14 +1548,14 @@ struct TabFontMetrics
 end
 
 """
-Per-tab state for [`Tabs`](@ref): the tab's [`Subfigure`](@ref), its label and
-closability, and the observables backing its header rendering. One `TabData`
-exists per live tab, so closing a tab in the middle is a single `deleteat!` with
-nothing to keep in sync. Mutate via [`add_tab!`](@ref), [`remove_tab!`](@ref),
-[`set_tab!`](@ref) rather than directly.
+Per-tab state for [`Tabs`](@ref): the tab's content [`ScrollArea`](@ref), its
+label and closability, and the observables backing its header rendering. One
+`TabData` exists per live tab, so closing a tab in the middle is a single
+`deleteat!` with nothing to keep in sync. Mutate via [`add_tab!`](@ref),
+[`remove_tab!`](@ref), [`set_tab!`](@ref) rather than directly.
 """
 struct TabData
-    subfigure::Subfigure
+    content::ScrollArea
     label::Observable{Any}
     closable::Observable{Bool}
     visible::Observable{Bool}
@@ -1570,12 +1574,12 @@ end
 """
     Tabs(fig_or_scene, labels = ["Tab 1", "Tab 2"]; closable = true, kwargs...)
 
-A tabbed container. Each tab is backed by a [`Subfigure`](@ref): place blocks
-with `tabs[i][row, col] = Axis(...)` or plot directly into
-`content_scene(tabs, i)`. Only the active tab is visible, and because hidden
-scenes are inert to the event router, only the active tab receives mouse /
-keyboard events. Content larger than the visible area scrolls vertically and
-horizontally.
+A tabbed container. Each tab hosts a clipped content area: place blocks with
+`tabs[i][row, col] = Axis(...)` or plot directly into `content_scene(tabs, i)`.
+Only the active tab is visible, and because hidden scenes are inert to the event
+router, only the active tab receives mouse / keyboard events. Tab content is
+clipped to the tab but does not scroll by default; nest a [`ScrollArea`](@ref)
+in a tab for a scrollable region.
 
 `labels` (a positional argument) and the `closable` keyword seed the initial
 tabs; they are not reactive attributes. Change the set of tabs afterwards with
@@ -2850,8 +2854,9 @@ blocks pointer input to everything underneath, while a centered body holds a
 `dismiss_on_backdrop_click = false` — by clicking the backdrop).
 
 The body auto-sizes to its content (floored at `min_size`); pass numbers for
-`width`/`height` to fix the body size instead, in which case overflowing
-content scrolls (the content area is a [`Subfigure`](@ref)).
+`width`/`height` to fix the body size instead. The content area clips to the
+body but does not scroll by default — nest a [`ScrollArea`](@ref) for a
+scrollable region (e.g. a fixed header beside a scrolling body).
 
 Pointer isolation uses the scene-stacking event router: the overlay scene is
 marked `captures_mouse = true`, so while the modal is open only its own
@@ -2859,7 +2864,7 @@ subtree receives events.
 """
 @Block Modal begin
     overlay::Scene
-    subfigure::Subfigure
+    content::ScrollArea
     @attributes begin
         "Title shown in the modal's header."
         title = ""
