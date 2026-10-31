@@ -27,7 +27,9 @@ end
 function serialize_three(array::AbstractVector{T}) where {T <: OffsetInteger}
     return serialize_three(map(GeometryBasics.raw, array))
 end
-function serialize_three(array::AbstractArray{T}) where {T <: Union{N0f8, UInt8, Int32, UInt32, Float32, Float16, Float64}}
+serialize_three(array::AbstractArray{N0f8}) = reinterpret(UInt8, vec(convert(Array, array)))
+
+function serialize_three(array::AbstractArray{T}) where {T <: Union{UInt8, Int32, UInt32, Float32, Float16, Float64}}
     return vec(convert(Array, array))
 end
 
@@ -76,7 +78,7 @@ Base.size(x::NoDataTextureAtlas) = x.dims
 Base.show(io::IO, ::NoDataTextureAtlas) = print(io, "NoDataTextureAtlas()")
 
 function serialize_three(fta::NoDataTextureAtlas)
-    tex = Dict(
+    tex = Dict{Symbol, Any}(
         :type => "Sampler", :data => "texture_atlas",
         :size => [fta.dims...], :three_format => three_format(Float16),
         :three_type => three_type(Float16),
@@ -90,7 +92,7 @@ function serialize_three(fta::NoDataTextureAtlas)
 end
 
 function serialize_three(color::Sampler{T, N}) where {T, N}
-    tex = Dict(
+    tex = Dict{Symbol, Any}(
         :type => "Sampler",
         :data => serialize_three(color.data),
         :size => Int32[size(color.data)...],
@@ -171,7 +173,7 @@ function ShaderAbstractions.convert_uniform(
 end
 
 function serialize_buffer_attribute(buffer::AbstractVector{T}) where {T}
-    return Dict(:flat => serialize_three(buffer), :type_length => tlength(T))
+    return Dict{Symbol, Any}(:flat => serialize_three(buffer), :type_length => tlength(T))
 end
 
 
@@ -181,28 +183,26 @@ function reinterpret_faces(@nospecialize(plot), faces::Buffer)
     return reinterpret_faces(plot, ShaderAbstractions.data(faces))
 end
 
-function serialize_scene(scene::Scene)
+function serialize_scene(scene::Scene, ::Nothing = nothing)
 
     hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
     pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], scene, viewport(scene); ignore_equal_values = true)
     cam_controls = cameracontrols(scene)
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
-        dict = Dict((f => lift(x -> serialize_three(Float32.(x)), scene, getfield(cam_controls, f)) for f in fields))
+        dict = Dict{Symbol, Any}((f => lift(x -> serialize_three(Float32.(x)), scene, getfield(cam_controls, f)) for f in fields))
         dict[:resolution] = lift(res -> Int32[res...], scene, scene.camera.resolution; ignore_equal_values = true)
         dict
     else
         nothing
     end
 
-    children = map(child -> serialize_scene(child), scene.children)
-
     light_dir = Observable(serialize_three(Vec3f(1)), ignore_equal_values = true)
     cam_rel = Observable(serialize_three(false), ignore_equal_values = true)
     ambient = Observable(serialize_three(RGBf(0, 0, 1)), ignore_equal_values = true)
     light_color = Observable(serialize_three(RGBf(1, 0, 0)), ignore_equal_values = true)
 
-    on(scene.compute.onchange, update = true) do _
+    on(scene, scene.compute.onchange, update = true) do _
         ambient[] = serialize_three(scene.compute[:ambient_color][])
         light_color[] = serialize_three(scene.compute[:dirlight_color][])
         light_dir[] = serialize_three(scene.compute[:dirlight_direction][])
@@ -210,7 +210,7 @@ function serialize_scene(scene::Scene)
         return
     end
 
-    serialized = Dict(
+    serialized = Dict{Symbol, Any}(
         :viewport => pixel_area,
         :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor; ignore_equal_values = true),
         :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor; ignore_equal_values = true),
@@ -220,12 +220,21 @@ function serialize_scene(scene::Scene)
         :camera_relative_light => cam_rel,
         :ambient => ambient,
         :light_color => light_color,
-        :plots => serialize_plots(scene, scene.plots),
         :cam3d_state => cam3d_state,
         :visible => scene.visible,
-        :uuid => js_uuid(scene),
-        :children => children
+        :uuid => js_uuid(scene)
     )
+    return serialize_scene(scene, serialized)
+end
+
+function serialize_scene(scene::Scene, previous::AbstractDict)
+    # Reuse reactive bindings; only the plot and child snapshots change.
+    serialized = copy(previous)
+    children = Dict{String, Any}(child[:uuid] => child for child in get(previous, :children, ()))
+    serialized[:children] = map(scene.children) do child
+        serialize_scene(child, get(children, js_uuid(child), nothing))
+    end
+    serialized[:plots] = serialize_plots(scene, scene.plots)
     return serialized
 end
 

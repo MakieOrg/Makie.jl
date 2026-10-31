@@ -124,18 +124,25 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
     return
 end
 
+# Tick-clock body as a named function so the precompile directive in
+# precompiles.jl covers it - it only runs once the browser finishes init, so
+# no workload can compile it by calling it.
+function scene_tick!(scene::Scene, events::Makie.Events, tick_callback::Makie.TickCallback, timer::Makie.BudgetedTimer)
+    if !Makie.isclosed(scene)
+        tick_callback(Makie.RegularRenderTick)
+    else
+        Makie.stop!(timer)
+        events.window_open[] = false
+    end
+    return
+end
+
 function connect_post_init_events(screen, scene)
     e = events(scene)
     tick_callback = Makie.TickCallback(e.tick)
     # key = rand(UInt16) # Is the right clock closing?
     Makie.start!(screen.tick_clock) do timer
-        if !Makie.isclosed(scene)
-            tick_callback(Makie.RegularRenderTick)
-        else
-            Makie.stop!(timer)
-            e.window_open[] = false
-        end
-        return
+        scene_tick!(scene, e, tick_callback, timer)
     end
     return
 end

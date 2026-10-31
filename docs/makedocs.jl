@@ -3,6 +3,13 @@ ENV["JULIA_DEBUG"] = "Documenter"
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
+# Match the Bonito and ElectronCall versions exercised by WGLMakie CI.
+Pkg.add(
+    [
+        (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/media-proxy"),
+        (; url = "https://github.com/JuliaWeb/ElectronCall.jl.git", rev = "sd/relocatable-assets"),
+    ]
+)
 Pkg.instantiate()
 Pkg.precompile()
 

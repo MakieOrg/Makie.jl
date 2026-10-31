@@ -21660,6 +21660,9 @@ class TextureAtlas {
         }
         this.glyph_data = new Map();
         this.textures = new Map();
+        this.waiters = [];
+        this.requested = new Set();
+        this.request_obs = null;
     }
     insert_glyph(hash, glyph_data, uv_pos, width, minimum) {
         this.glyph_data.set(hash, [
@@ -21679,10 +21682,19 @@ class TextureAtlas {
     insert_glyphs(glyph_data) {
         let written = false;
         Object.keys(glyph_data).forEach((hash)=>{
+            this.requested.delete(hash);
+            const [uv, sdf, width, minimum] = glyph_data[hash];
             if (this.glyph_data.has(hash)) {
+                const size = to_three_vector(width);
+                if (size.lengthSq() > 0) {
+                    this.glyph_data.set(hash, [
+                        to_three_vector(uv),
+                        size,
+                        to_three_vector(minimum)
+                    ]);
+                }
                 return;
             }
-            const [uv, sdf, width, minimum] = glyph_data[hash];
             this.insert_glyph(hash, sdf, to_three_vector(uv), to_three_vector(width), to_three_vector(minimum));
             written = true;
             return;
@@ -21690,11 +21702,58 @@ class TextureAtlas {
         if (written) {
             this.upload_tex_data();
         }
+        this.resolve_waiters();
+    }
+    resolve_waiters() {
+        if (this.waiters.length === 0) return;
+        const still_waiting = [];
+        for (const w of this.waiters){
+            for (const h of [
+                ...w.missing
+            ]){
+                if (this.glyph_data.has(h)) w.missing.delete(h);
+            }
+            if (w.missing.size === 0) {
+                try {
+                    w.on_ready();
+                } catch (e) {
+                    console.error("glyph on_ready failed:", e);
+                }
+            } else {
+                still_waiting.push(w);
+            }
+        }
+        this.waiters = still_waiting;
+    }
+    ensure_glyphs(hashes, on_ready) {
+        const missing = [
+            ...new Set(Array.from(hashes, (h)=>h.toString()))
+        ].filter((h)=>!this.glyph_data.has(h));
+        if (missing.length === 0) return true;
+        const waiter = {
+            missing: new Set(missing),
+            on_ready
+        };
+        this.waiters.push(waiter);
+        const to_pull = missing.filter((h)=>!this.requested.has(h));
+        if (to_pull.length > 0 && this.request_obs) {
+            to_pull.forEach((h)=>this.requested.add(h));
+            this.request_obs.notify(to_pull.map(Number));
+        }
+        setTimeout(()=>{
+            if (this.waiters.includes(waiter) && waiter.missing.size > 0) {
+                console.warn("WGLMakie: glyphs never arrived (rendering without them):", [
+                    ...waiter.missing
+                ].join(","));
+                waiter.missing.forEach((h)=>this.requested.delete(h));
+                this.waiters = this.waiters.filter((x1)=>x1 !== waiter);
+            }
+        }, 10000);
+        return false;
     }
     get_glyph_data(hash, scale) {
         const data = this.glyph_data.get(hash.toString());
         if (!data) {
-            console.warn(`Glyph with hash ${hash} not found in the atlas.`);
             return null;
         }
         const [uv_offset_width, width, mini] = data;
@@ -22741,6 +22800,7 @@ class MakieCamera {
                 console.error("Error during camera update callback:", e);
             }
         }
+        this.screen?.request_render?.();
     }
     recalculate_light_dir() {
         const light_dir = this.original_light_direction;
@@ -22861,6 +22921,7 @@ function add_plot(scene, plot_data) {
     const p = create_plot(scene, plot_data);
     plot_cache[p.uuid] = p.mesh;
     scene.add(p.mesh);
+    scene.screen.request_render?.();
     const next_insert = new Set(ON_NEXT_INSERT);
     next_insert.forEach((f)=>f());
 }
@@ -22963,28 +23024,21 @@ const ON_NEXT_INSERT = new Set();
 function on_next_insert(f) {
     ON_NEXT_INSERT.add(f);
 }
-function add_glyphs_from_plots(scene_data) {
-    const atlas = get_texture_atlas();
-    scene_data.plots.forEach((plot_data)=>{
-        if (plot_data.glyph_data) {
-            const glyph_data = plot_data.glyph_data;
-            const { atlas_updates  } = glyph_data;
-            if (atlas_updates) {
-                atlas.insert_glyphs(atlas_updates);
-            }
-        }
-    });
-    scene_data.children.forEach((child)=>{
-        add_glyphs_from_plots(child);
-    });
-}
 function deserialize_scene(data, screen) {
-    add_glyphs_from_plots(data);
     return deserialize_scene_recursive(data, screen);
 }
 function deserialize_scene_recursive(data, screen) {
     const scene = new mod.Scene();
     scene.screen = screen;
+    scene.deregister_callbacks = [];
+    function on(observable, callback = ()=>{}) {
+        const update = (value)=>{
+            callback(value);
+            screen.request_render?.();
+        };
+        observable.on(update);
+        scene.deregister_callbacks.push(()=>observable.off(update));
+    }
     const { canvas  } = screen;
     add_scene(data.uuid, scene);
     scene.scene_uuid = data.uuid;
@@ -22995,6 +23049,7 @@ function deserialize_scene_recursive(data, screen) {
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
     const camera = new MakieCamera();
+    camera.screen = screen;
     scene.wgl_camera = camera;
     function update_cam(camera_matrices, force) {
         if (!force) {
@@ -23009,28 +23064,37 @@ function deserialize_scene_recursive(data, screen) {
         attach_3d_camera(canvas, camera, data.cam3d_state, data.light_direction, scene);
     }
     update_cam(data.camera.value, true);
-    data.camera.on(update_cam);
+    on(data.camera, update_cam);
+    for (const observable of [
+        data.viewport,
+        data.backgroundcolor,
+        data.backgroundcolor_alpha,
+        data.clearscene,
+        data.visible
+    ]){
+        on(observable);
+    }
     if (data.camera_relative_light.value) {
         camera.update_light_dir(data.light_direction.value);
         scene.light_direction = camera.light_direction;
-        data.light_direction.on((value)=>{
+        on(data.light_direction, (value)=>{
             camera.update_light_dir(value);
         });
     } else {
         const light_dir = new mod.Vector3().fromArray(data.light_direction.value);
         scene.light_direction = new mod.Uniform(light_dir);
-        data.light_direction.on((value)=>{
+        on(data.light_direction, (value)=>{
             scene.light_direction.value.fromArray(value);
         });
     }
     const ambient = new mod.Vector3().fromArray(data.ambient.value);
     scene.ambient = new mod.Uniform(ambient);
-    data.ambient.on((value)=>{
+    on(data.ambient, (value)=>{
         scene.ambient.value.fromArray(value);
     });
     const light_color = new mod.Vector3().fromArray(data.light_color.value);
     scene.light_color = new mod.Uniform(light_color);
-    data.light_color.on((value)=>{
+    on(data.light_color, (value)=>{
         scene.light_color.value.fromArray(value);
     });
     data.plots.forEach((plot_data)=>{
@@ -23043,9 +23107,14 @@ function deserialize_scene_recursive(data, screen) {
     return scene;
 }
 function delete_plot(plot) {
+    const screen = plot.plot_object.parent?.screen;
     plot.plot_object.dispose();
+    screen?.request_render?.();
 }
 function delete_three_scene(scene) {
+    scene.disposed = true;
+    scene.deregister_callbacks.forEach((off)=>off());
+    scene.orbitcontrols?.dispose();
     delete scene_cache[scene.scene_uuid];
     scene.scene_children.forEach(delete_three_scene);
     while(scene.children.length > 0){
@@ -23086,9 +23155,9 @@ class Plot {
         this.name = data.name;
         this.uuid = data.uuid;
         this.parent = scene;
-        data.updater.on((data)=>{
-            this.update(data);
-        });
+        this.update_observable = data.updater;
+        this.update_callback = (data)=>this.update(data);
+        this.update_observable.on(this.update_callback);
     }
     init_mesh() {
         this.mesh.plot_uuid = this.plot_data.uuid;
@@ -23099,6 +23168,7 @@ class Plot {
         this.mesh.visible = this.plot_data.visible;
     }
     dispose() {
+        this.update_observable.off(this.update_callback);
         delete plot_cache[this.uuid];
         this.parent.remove(this.mesh);
         this.mesh.geometry.dispose();
@@ -23117,6 +23187,7 @@ class Plot {
         connect_plot(scene, this);
         scene.add(this.mesh);
         this.parent = scene;
+        scene.screen.request_render?.();
         return;
     }
     update(data) {
@@ -23141,6 +23212,7 @@ class Plot {
             }
         });
         this.apply_updates();
+        this.parent?.screen?.request_render?.();
     }
     update_uniform(name, new_data) {
         const uniform = this.mesh.material.uniforms[name];
@@ -24467,9 +24539,8 @@ function get_glyph_data_attributes(atlas, glyph_data) {
     if (glyph_data == null) {
         return {};
     }
-    const { glyph_hashes , atlas_updates , scales  } = glyph_data;
-    atlas.insert_glyphs(atlas_updates);
-    if (glyph_hashes) {
+    const { glyph_hashes , scales  } = glyph_data;
+    if (glyph_hashes && scales) {
         const [sdf_uv, quad_scale, quad_offset] = per_glyph_data(glyph_hashes, scales);
         return {
             sdf_uv,
@@ -24485,6 +24556,7 @@ class Scatter extends Plot {
         const lengths = {
             sdf_uv: 4
         };
+        const glyph_info = data.glyph_data ?? null;
         if ("glyph_data" in data) {
             const gdata = get_glyph_data_attributes(atlas, data.glyph_data);
             delete data.glyph_data;
@@ -24500,12 +24572,32 @@ class Scatter extends Plot {
         super(scene, data);
         this.is_instanced = true;
         this.atlas = atlas;
+        this.glyph_info = glyph_info;
         this.mesh = create_instanced_mesh(this);
         this.init_mesh();
+        this.heal_missing_glyphs();
+    }
+    heal_missing_glyphs() {
+        const info = this.glyph_info;
+        if (!info || !info.glyph_hashes || info.glyph_hashes.length === 0) return;
+        this.atlas.ensure_glyphs(info.glyph_hashes, ()=>{
+            if (!this.mesh || this.glyph_info !== info) return;
+            if (info.scales) {
+                this.update([
+                    [
+                        "glyph_data",
+                        info
+                    ]
+                ]);
+            }
+            this.parent?.screen?.request_render?.();
+        });
     }
     update(data_key_value_array) {
         const dict = Object.fromEntries(data_key_value_array);
-        if ("glyph_data" in dict) {
+        const fresh_glyphs = "glyph_data" in dict;
+        if (fresh_glyphs) {
+            this.glyph_info = dict.glyph_data;
             const data = get_glyph_data_attributes(this.atlas, dict.glyph_data);
             delete dict.glyph_data;
             for (const [key, value] of Object.entries(data)){
@@ -24513,6 +24605,9 @@ class Scatter extends Plot {
             }
         }
         super.update(Object.entries(dict));
+        if (fresh_glyphs) {
+            this.heal_missing_glyphs();
+        }
     }
 }
 function nan_free_points_indices(points, ndim) {
@@ -24572,39 +24667,23 @@ const mod1 = {
     Scatter: Scatter
 };
 window.THREE = mod;
-const orderedExecutor = {
-    tasks: new Map(),
-    nextExpected: 1,
-    insert (f, order) {
-        if (this.tasks.has(order)) {
-            throw new Error(`Duplicate task for order ${order}`);
-        }
-        this.tasks.set(order, f);
-        this.flush();
-    },
-    flush () {
-        while(this.tasks.has(this.nextExpected)){
-            const f = this.tasks.get(this.nextExpected);
-            f();
-            this.tasks.delete(this.nextExpected);
-            this.nextExpected += 1;
-        }
-    }
-};
-function execute_in_order(order, f) {
-    if (order < 1 || !Number.isInteger(order)) {
-        throw new Error(`Invalid order: ${order}`);
-    }
-    orderedExecutor.insert(f, order);
+function insert_glyphs(batch) {
+    get_texture_atlas().insert_glyphs(batch);
 }
-function dispose_screen(screen) {
+function set_glyph_request(request_obs) {
+    get_texture_atlas().request_obs = request_obs;
+}
+function dispose_screen(screen, notify_close = true) {
     if (Object.keys(screen).length === 0) {
         return;
     }
     const { renderer , picking_target , root_scene , comm  } = screen;
-    comm.notify({
-        window_open: false
-    });
+    screen.request_render = undefined;
+    if (notify_close) {
+        comm.notify({
+            window_open: false
+        });
+    }
     if (renderer) {
         const canvas = renderer.domElement;
         if (canvas.parentNode) {
@@ -24672,31 +24751,54 @@ function render_scene(scene, picking = false) {
     return scene.scene_children.every((x1)=>render_scene(x1, picking));
 }
 function start_renderloop(three_scene) {
-    const { fps  } = three_scene.screen;
+    const screen = three_scene.screen;
+    const { fps  } = screen;
     const time_per_frame = 1 / fps * 1000;
     let last_time_stamp = performance.now();
-    function renderloop(timestamp) {
-        if (!check_screen(three_scene.screen)) {
-            return false;
+    let scheduled = false;
+    function schedule() {
+        if (scheduled || three_scene.disposed || !check_screen(screen)) {
+            return;
         }
-        if (timestamp - last_time_stamp > time_per_frame) {
+        scheduled = true;
+        requestAnimationFrame(renderloop);
+    }
+    function renderloop(timestamp) {
+        scheduled = false;
+        if (three_scene.disposed || !check_screen(screen)) {
+            return;
+        }
+        const due = timestamp - last_time_stamp > time_per_frame;
+        if (due && (!screen.render_on_demand || screen.requires_update)) {
+            screen.requires_update = false;
+            screen.frame_count++;
             const all_rendered = render_scene(three_scene);
             if (!all_rendered) {
                 return;
             }
             last_time_stamp = performance.now();
         }
-        requestAnimationFrame(renderloop);
+        if (!screen.render_on_demand || screen.requires_update) {
+            schedule();
+        }
     }
+    screen.request_render = ()=>{
+        screen.requires_update = true;
+        schedule();
+    };
     function _check_screen() {
-        if (!check_screen(three_scene.screen)) {
+        if (three_scene.disposed || !check_screen(screen)) {
             return;
         }
         setTimeout(_check_screen, 1000);
     }
+    screen.frame_count++;
     render_scene(three_scene);
+    screen.requires_update = false;
     _check_screen();
-    renderloop();
+    if (!screen.render_on_demand) {
+        schedule();
+    }
 }
 function get_element_size(element) {
     if (!element) {
@@ -24964,6 +25066,7 @@ function set_render_size(screen, width, height) {
     canvas.style.height = sheight + "px";
     renderer.setViewport(0, 0, real_pixel_width, real_pixel_height);
     add_picking_target(screen);
+    screen.request_render?.();
     return;
 }
 function initialize_canvas_size(canvas, resize_to, width, height, px_per_unit, scalefactor) {
@@ -24993,7 +25096,8 @@ function initialize_canvas_size(canvas, resize_to, width, height, px_per_unit, s
         initial_height
     ];
 }
-function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, done_init) {
+function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, render_on_demand, done_init) {
+    if (!wrapper || !canvas) return;
     const spinner = wrapper.querySelector('.wglmakie-spinner');
     try {
         let final_width = width;
@@ -25008,17 +25112,31 @@ function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit
             final_height
         ]);
         const init_scene = (scene_data)=>{
+            if (!canvas.isConnected) return;
+            const screen = canvas.wglmakie_screen;
+            const is_resync = !!(screen && screen.renderer);
             try {
-                create_scene(wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height, framerate, resize_to, px_per_unit, scalefactor);
-                spinner?.remove();
-                requestAnimationFrame(()=>requestAnimationFrame(()=>done_init.notify(true)));
+                if (is_resync) {
+                    const old_scene = screen.root_scene;
+                    if (old_scene) {
+                        delete_three_scene(old_scene);
+                    }
+                    const three_scene = deserialize_scene(scene_data, screen);
+                    screen.root_scene = three_scene;
+                    start_renderloop(three_scene);
+                } else {
+                    create_scene(wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height, framerate, render_on_demand, resize_to, px_per_unit, scalefactor);
+                    spinner?.remove();
+                    requestAnimationFrame(()=>requestAnimationFrame(()=>done_init.notify(true)));
+                }
             } catch (e) {
                 Bonito.Connection.send_error("error initializing scene", e);
-                done_init.notify(e);
-                spinner?.remove();
+                if (!is_resync) {
+                    done_init.notify(e);
+                    spinner?.remove();
+                }
                 return;
             }
-            return false;
         };
         if (scene_serialized.value) {
             init_scene(scene_serialized.value);
@@ -25052,7 +25170,7 @@ function add_picking_target(screen) {
     });
     return;
 }
-function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, fps, resize_to, px_per_unit, scalefactor) {
+function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, fps, render_on_demand, resize_to, px_per_unit, scalefactor) {
     if (!scalefactor) {
         scalefactor = window.devicePixelRatio || 1.0;
     }
@@ -25078,7 +25196,10 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         scalefactor,
         winscale,
         comm,
-        texture_atlas: undefined
+        texture_atlas: undefined,
+        render_on_demand: render_on_demand !== false,
+        requires_update: true,
+        frame_count: 0
     };
     canvas.wglmakie_screen = screen;
     add_canvas_events(screen, comm, resize_to);
@@ -25407,11 +25528,11 @@ window.WGL = {
     get_resize_element,
     convert_to_makie_size,
     initialize_canvas_size,
-    setup_scene_init,
-    execute_in_order
+    setup_scene_init
 };
 export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert, get_texture_atlas as get_texture_atlas, get_parent_size as get_parent_size, get_element_size as get_element_size, get_resize_element as get_resize_element, convert_to_makie_size as convert_to_makie_size };
-export { execute_in_order as execute_in_order };
+export { insert_glyphs as insert_glyphs };
+export { set_glyph_request as set_glyph_request };
 export { dispose_screen as dispose_screen };
 export { render_scene as render_scene };
 export { wglerror as wglerror };

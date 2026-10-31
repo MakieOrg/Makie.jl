@@ -4,7 +4,7 @@
 using ReferenceTests: RNG, @reference_test
 using ReferenceTests, WGLMakie
 using Test
-import Electron, Bonito
+import ElectronCall, Bonito
 
 struct EScreenshot
     display
@@ -99,21 +99,17 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false, figures
         })();
         """
     )
-    Electron.ElectronAPI.setContentSize(win, win_size...)
+    ElectronCall.ElectronAPI.setContentSize(win, win_size...)
     sleep(1) # give the resize round-trip a chance to start
     wait_for_render(win)
-    winid = win.id
-    js_path = replace(path, '\\' => '/')
-    run(
+    image = run(
         edisplay.window.app,
         """
-        const win = BrowserWindow.fromId($winid)
-        win.webContents.capturePage().then(image => {
-            require('fs').writeFileSync('$(js_path)', image.toPNG());
-        }).catch(err => console.error('Screenshot error:', err));
-        """,
+        electron.BrowserWindow.fromId($(win.id)).webContents.capturePage()
+            .then(image => image.toPNG().toString('base64'))
+        """
     )
-    Bonito.wait_for(() -> isfile(path); timeout = 30)
+    write(path, Bonito.Base64.base64decode(image))
     return path
 end
 
@@ -307,15 +303,20 @@ function create_test_figure()
 end
 
 # Makie.inline!(Makie.automatic)
-edisplay = Bonito.use_electron_display(; devtools = true)
+edisplay = Bonito.use_electron_display(; devtools = false, options = Dict{String, Any}("show" => false, "webPreferences" => Dict("offscreen" => true, "backgroundThrottling" => false)))
 # ReferenceTests.RECORDING_DIR[] = joinpath(pwd(), "WidgetTests")
 # ReferenceTests.REGISTERED_TESTS |> empty!
-function close_devtools(w)
-    return run(w.app, "electron.BrowserWindow.fromId($(w.id)).webContents.closeDevTools()")
-end
 
-# Devtools cut off the screenshot!
-close_devtools(edisplay.window.window)
+# Force devicePixelRatio to 1.0 so reference images match CI regardless of local DPI
+let dpr = run(edisplay.window, "window.devicePixelRatio")
+    if dpr != 1.0
+        @info "Correcting devicePixelRatio from $dpr to 1.0"
+        run(
+            edisplay.window.app,
+            "electron.BrowserWindow.fromId($(edisplay.window.window.id)).webContents.setZoomFactor($(1.0 / dpr))"
+        )
+    end
+end
 
 @reference_test "Widgets layout" begin
     WGLMakie.activate!(; use_html_widgets = false, px_per_unit = Makie.automatic, scalefactor = Makie.automatic)

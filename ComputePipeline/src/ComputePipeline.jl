@@ -99,6 +99,12 @@ struct ComputeEdge{T} <: AbstractEdge
     # edges, that rely on outputs from this edge
     # Mainly needed for mark_dirty!(edge) to propagate to all dependents
     dependents::Vector{ComputeEdge{T}}
+    # whether the edge has been resolved at least once (unlike got_resolved
+    # this is never reset). The first resolve runs the callback dynamically;
+    # the TypedEdge island is only built on the first re-resolve, so edges
+    # that never update (most plots are static) never pay for inferring the
+    # typed resolve chain.
+    resolved_once::RefValue{Bool}
     typed_edge::RefValue{TypedEdge}
 end
 
@@ -106,7 +112,7 @@ end
 function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
     return ComputeEdge{ComputeGraph}(
         graph, f, [input], [true], [output], RefValue(false),
-        ComputeEdge[], RefValue{TypedEdge}()
+        ComputeEdge[], RefValue(false), RefValue{TypedEdge}()
     )
 end
 
@@ -326,7 +332,7 @@ end
 function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
     return ComputeEdge{ComputeGraph}(
         graph, f, inputs, fill(true, length(inputs)), Computed[], RefValue(false),
-        ComputeEdge[], RefValue{TypedEdge}()
+        ComputeEdge[], RefValue(false), RefValue{TypedEdge}()
     )
 end
 
@@ -668,14 +674,62 @@ function _resolve!(computed::Computed)
     return computed.value[]
 end
 
+# Resolve once without specializing the typed update path for a static plot.
+function dynamic_resolve!(edge::ComputeEdge)
+    if edge.callback === compute_identity
+        # mirror TypedEdge(edge, ::typeof(compute_identity), inputs): outputs
+        # alias the input RefValues, no callback evaluation
+        if length(edge.inputs) != length(edge.outputs)
+            error("A `compute_identity` callback requires the length of inputs and outputs to match.")
+        end
+        for i in eachindex(edge.inputs)
+            edge.outputs[i].value = edge.inputs[i].value
+            edge.outputs[i].dirty = true
+        end
+        return
+    end
+    names = Tuple(Symbol[input.name for input in edge.inputs])
+    values = Tuple(Any[input.value[] for input in edge.inputs])
+    dirty = Tuple(Bool[d for d in edge.inputs_dirty])
+    result = Base.invokelatest(edge.callback, NamedTuple{names}(values), NamedTuple{names}(dirty), nothing)
+
+    if result isa Tuple
+        all(is_node_value_valid, result) || throw_invalid_result_types(edge, result)
+        length(result) == length(edge.outputs) || throw_length_mismatch(edge, result)
+        for i in eachindex(edge.outputs)
+            r = result[i]
+            node = edge.outputs[i]
+            node.value = r isa RefValue ? r : RefValue(r)
+            node.dirty = true
+        end
+    elseif isnothing(result)
+        for node in edge.outputs
+            node.value = RefValue(nothing)
+            node.dirty = false
+        end
+    else
+        throw_invalid_result(result)
+    end
+    return
+end
+
 function resolve!(edge::ComputeEdge)
     isdirty(edge) || return false
     return lock(edge.graph.lock) do
         # Resolve inputs first
         foreach(_resolve!, edge.inputs)
         if !isassigned(edge.typed_edge)
-            # constructor does first resolve to determine fully typed outputs
-            edge.typed_edge[] = TypedEdge(edge)
+            if edge.resolved_once[]
+                # First re-resolve: build the typed island from the values the
+                # dynamic first resolve produced (without calling back), then
+                # resolve it normally so the callback sees correct changed
+                # flags and cached values (incl. skip-via-nothing semantics).
+                edge.typed_edge[] = TypedEdge_no_call(edge)
+                resolve!(edge.typed_edge[])
+            else
+                dynamic_resolve!(edge)
+                edge.resolved_once[] = true
+            end
         else
             resolve!(edge.typed_edge[])
         end
@@ -1390,6 +1444,7 @@ function unsafe_init!(node::Computed, value)
         foreach(_resolve!, edge.inputs)
         edge.typed_edge[] = TypedEdge_no_call(edge)
         edge.got_resolved[] = true
+        edge.resolved_once[] = true
         fill!(edge.inputs_dirty, false)
         for dep in edge.dependents
             mark_input_dirty!(edge, dep)

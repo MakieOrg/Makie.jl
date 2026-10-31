@@ -12,8 +12,7 @@ using JSON, AlgebraOfGraphics, CairoMakie, DataFrames, Bootstrap
 using Statistics: median
 Package = length(ARGS) > 0 ? ARGS[1] : "CairoMakie"
 n_samples = length(ARGS) > 1 ? parse(Int, ARGS[2]) : 7
-# base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
-base_branch = "master"
+base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
 
 # Package = "CairoMakie"
 # n_samples = 2
@@ -55,7 +54,13 @@ ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
 if Package == "WGLMakie"
-    Pkg.add([(; name = "Electron")])
+    # Match the Bonito and ElectronCall versions exercised by WGLMakie CI.
+    Pkg.add(
+        [
+            (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/media-proxy"),
+            (; url = "https://github.com/JuliaWeb/ElectronCall.jl.git", rev = "sd/relocatable-assets"),
+        ]
+    )
 end
 pkgs = map(["ComputePipeline", "Makie", Package]) do name
     path = joinpath(@__DIR__, "..", "..", name)
@@ -75,7 +80,7 @@ pkgs = [
     (; rev = base_branch, name = Package),
     (; name = "JSON"),
 ]
-Package == "WGLMakie" && push!(pkgs, (; name = "Electron"))
+Package == "WGLMakie" && push!(pkgs, (; name = "ElectronCall"))
 Pkg.add(pkgs)
 
 @time Pkg.precompile()

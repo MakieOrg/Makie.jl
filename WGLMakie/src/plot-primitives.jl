@@ -7,6 +7,7 @@ js_plot_type(plot::Union{Lines, LineSegments}) = "Lines"
 
 function serialize_three(scene::Scene, plot::Makie.PrimitivePlotTypes)
     mesh = create_shader(scene, plot)
+    sync_glyphs!(scene, plot)
 
     mesh[:plot_type] = js_plot_type(plot)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
@@ -104,7 +105,7 @@ function plot_updates(args, changed)
                 # Check if value is an array with all identical elements
                 if Makie.is_vector_attribute(value) && length(value) > 1 && all(x -> x == value[1], value)
                     # Use compressed format for arrays with identical elements
-                    Dict("value" => serialize_three(value[1]), "length" => length(value))
+                    Dict{String, Any}("value" => serialize_three(value[1]), "length" => length(value))
                 else
                     serialize_three(value)
                 end
@@ -211,7 +212,7 @@ function scatter_program(attr)
     dfield = attr.sdf_marker_shape === Cint(Makie.DISTANCEFIELD)
     atlas = attr.atlas
     distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : false
-    data = Dict(
+    data = Dict{Symbol, Any}(
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),
@@ -260,8 +261,10 @@ function create_shader(scene::Scene, plot::Scatter)
     Makie.all_marker_computations!(attr, markersym)
     register_computation!(attr, [:sdf_marker_shape, :marker, :font], [:glyph_data]) do (shape, markers, fonts), changed, last
         shape != 3 && return nothing
-        data = get_scatter_data(scene, markers, fonts)
-        dict = Dict(:atlas_updates => data)
+        hashes = get_scatter_data(scene, markers, fonts)
+        # Scatter's uv/quad buffers are computed Julia-side; JS only needs the
+        # atlas TEXTURE regions present. The hashes let it await/pull them.
+        dict = Dict{Symbol, Any}(:glyph_hashes => hashes)
         return (dict,)
     end
 
@@ -299,48 +302,110 @@ function create_shader(scene::Scene, plot::Scatter)
     return create_wgl_renderobject(scatter_program, attr, inputs)
 end
 
-function get_atlas_tracker(f, scene::Scene)
-    screen = Makie.getscreen(scene, WGLMakie)
+# Plots carry glyph hashes. Each root sends new atlas entries separately;
+# the browser requests any entries it missed when a figure mounts later.
+mutable struct GlyphSync
+    lock::ReentrantLock
+    shipped::Set{UInt32}
+    bbox::Dict{UInt32, Tuple{Vec2f, Vec2f}}
+    # Any: the JS notify delivers plain numbers; the responder converts.
+    request::Observable{Any}
+end
+GlyphSync() = GlyphSync(
+    ReentrantLock(), Set{UInt32}(), Dict{UInt32, Tuple{Vec2f, Vec2f}}(),
+    Observable{Any}(UInt32[])
+)
+
+function send_glyph_batch!(root::Bonito.Session, batch::Dict{UInt32, Any})
+    isempty(batch) && return
+    wire = Dict{String, Any}(string(h) => v for (h, v) in batch)
+    Bonito.evaljs(
+        root, js"""
+            $(WGL).then(WGL => WGL.insert_glyphs($(wire)))
+        """
+    )
+    return
+end
+
+# Get-or-create the sync for `session`'s root; wires the pull responder once.
+function glyph_sync!(session::Bonito.Session)
+    root = Bonito.root_session(session)
+    return lock(root.deletion_lock) do
+        sync = Bonito.get_metadata(root, :wglmakie_glyph_sync, nothing)
+        sync isa GlyphSync && return sync
+        sync = GlyphSync()
+        Bonito.set_metadata!(root, :wglmakie_glyph_sync, sync)
+        on(root, sync.request) do hashes
+            atlas = Makie.get_texture_atlas()
+            batch = lock(sync.lock) do
+                out = Dict{UInt32, Any}()
+                for h in hashes
+                    h32 = UInt32(h)
+                    idx = get(atlas.mapping, h32, nothing)
+                    bounds = get(sync.bbox, h32, nothing)
+                    if idx === nothing || bounds === nothing
+                        @warn "Glyph pull request for an unregistered glyph" hash = h32 maxlog = 5
+                        continue
+                    end
+                    uv = atlas.uv_rectangles[idx]
+                    w, mini = bounds
+                    out[h32] = [uv, Makie.get_glyph_sdf(atlas, h32), w, mini]
+                end
+                return out
+            end
+            send_glyph_batch!(root, batch)
+            return
+        end
+        return sync
+    end
+end
+
+# Diff `glyphs` against the root's shipped-set; send the new SDFs on the glyph
+# channel and return only the hash list for the plot data.
+function sync_glyphs!(scene::Scene, glyphs, fonts)
+    atlas = Makie.get_texture_atlas()
+    screen = Makie.getscreen(Makie.root(scene), WGLMakie)
     if isnothing(screen) || isnothing(screen.session)
-        @warn "No session found, returning empty atlas tracker"
-        # TODO, it's not entirely clear in which case this can happen,
-        # which is why we don't just error, but just assume there isn't anything tracked
-        return f(Set{UInt32}())
+        # No live session (e.g. the precompile workload serializing without a
+        # display) — nothing to ship glyphs to; hashes still serialize.
+        @debug "No session found, glyph batches are dropped"
+        glyph_hashes, _ = Makie.get_glyph_data(atlas, Set{UInt32}(), glyphs, fonts)
+        return glyph_hashes
     end
-    session = screen.session
-    atlas = Bonito.get_metadata(session, :wglmakie_scene_atlas, nothing)
-    if isnothing(atlas)
-        atlas = Set{UInt32}()
-        Bonito.set_metadata!(session, :wglmakie_scene_atlas, atlas)
+    sync = glyph_sync!(screen.session)
+    root = Bonito.root_session(screen.session)
+    glyph_hashes, wire_batch = lock(sync.lock) do
+        # Raw atlas hashes have no font metrics; later text must still register them.
+        tracker = glyphs isa AbstractVector{UInt32} ? Set(keys(sync.bbox)) : sync.shipped
+        hashes, new_glyphs = Makie.get_glyph_data(atlas, tracker, glyphs, fonts)
+        for (h, v) in new_glyphs
+            sync.bbox[h] = (Vec2f(v[3]), Vec2f(v[4]))
+        end
+        return hashes, Dict{UInt32, Any}(new_glyphs)
     end
-    return f(atlas)
+    send_glyph_batch!(root, wire_batch)
+    return glyph_hashes
 end
 
-function get_scatter_data(scene::Scene, markers, fonts)
-    return get_atlas_tracker(Makie.root(scene)) do tracker
-        atlas = Makie.get_texture_atlas()
-        _, new_glyphs = Makie.get_glyph_data(atlas, tracker, markers, fonts)
-        return new_glyphs
-    end
+# A cached plot computation may have been resolved for another page.
+sync_glyphs!(scene::Scene, plot::Plot) = nothing
+sync_glyphs!(scene::Scene, plot::Makie.Text) = sync_glyphs!(scene, plot.glyphindices[], plot.font_per_char[])
+function sync_glyphs!(scene::Scene, plot::Scatter)
+    plot.sdf_marker_shape[] == 3 && sync_glyphs!(scene, plot.marker[], plot.font[])
+    return
 end
 
-function get_glyph_data(scene::Scene, glyphs, fonts)
-    return get_atlas_tracker(Makie.root(scene)) do tracker
-        atlas = Makie.get_texture_atlas()
-        glyph_hashes, new_glyphs = Makie.get_glyph_data(atlas, tracker, glyphs, fonts)
-        return glyph_hashes, new_glyphs
-    end
-end
+get_scatter_data(scene::Scene, markers, fonts) = sync_glyphs!(scene, markers, fonts)
+get_glyph_data(scene::Scene, glyphs, fonts) = sync_glyphs!(scene, glyphs, fonts)
 
 function register_text_computation!(attr, scene)
     map!(attr, [:text_blocks, :text_scales], :glyph_scales) do text_blocks, fontsize
         return Makie.map_per_glyph(text_blocks, Vec2f, Makie.to_2d_scale(fontsize))
     end
     return register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs, fonts, glyph_scales), changed, last
-        hashes, updates = get_glyph_data(scene, glyphs, fonts)
-        dict = Dict(
+        hashes = get_glyph_data(scene, glyphs, fonts)
+        dict = Dict{Symbol, Any}(
             :glyph_hashes => hashes,
-            :atlas_updates => updates,
             :scales => serialize_three(glyph_scales)
         )
         return (dict,)
@@ -382,7 +447,7 @@ to_3x3(M::Mat{2, 3}) = Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
 to_3x3(xs::Vector{Vec2f}) = Sampler(xs) # already has appropriate format
 
 function meshscatter_program(args)
-    instance = Dict(
+    instance = Dict{Symbol, Any}(
         :vertex_position => args.vertex_position,
         :faces => args.faces,
         :normal => args.normal,
@@ -493,7 +558,7 @@ end
 
 function mesh_program(attr)
 
-    data = Dict(
+    data = Dict{Symbol, Any}(
         :shading => attr.use_shading,
         :diffuse => attr.diffuse,
         :specular => attr.specular,
@@ -679,7 +744,7 @@ end
 
 
 function create_lines_data(islines, attr)
-    uniforms = Dict(
+    uniforms = Dict{Symbol, Any}(
         :model_f32c => attr.model_f32c,
         :depth_shift => attr.depth_shift,
         :picking => false,
@@ -710,7 +775,7 @@ function create_lines_data(islines, attr)
         end
     end
 
-    return Dict(
+    return Dict{Symbol, Any}(
         :plot_type => "Lines",
         :visible => attr.visible,
         :is_segments => !islines,

@@ -6,7 +6,7 @@ module MakieApp
 using $BACKEND
 
 if "$BACKEND" == "WGLMakie"
-    using Electron
+    using ElectronCall
     function _display(fig)
         disp = WGLMakie.Bonito.use_electron_display()
         display(disp, WGLMakie.Bonito.App(fig))
@@ -35,7 +35,7 @@ Pkg.activate("MakieApp")
 # Speed up compilation and dont make the CI OOM.
 # This should still precompile anything in the APP and backe that to the image.
 write(
-    joinpath(tmpdir, "LocalPreferences.toml"), """
+    joinpath(tmpdir, "MakieApp", "LocalPreferences.toml"), """
     [CairoMakie]
     precompile_workload = false
     [GLMakie]
@@ -52,11 +52,18 @@ makie_dir = @__DIR__
 # Add packages from branch, to make it easier to move the code later (e.g. when running this locally)
 # Since, package dir is much easier to move then the active project (on windows at least).
 paths = ["Makie", "ComputePipeline", BACKEND]
-Pkg.develop(map(x -> (; path = joinpath(makie_dir, x)), paths))
 
 if BACKEND == "WGLMakie"
-    pkg"add Electron@5.1"
+    # Match the Bonito and ElectronCall versions exercised by WGLMakie CI.
+    Pkg.add(
+        [
+            (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/media-proxy"),
+            (; url = "https://github.com/JuliaWeb/ElectronCall.jl.git", rev = "sd/relocatable-assets"),
+        ]
+    )
 end
+
+Pkg.develop(map(x -> (; path = joinpath(makie_dir, x)), paths))
 
 open("MakieApp/src/MakieApp.jl", "w") do io
     print(io, module_src)

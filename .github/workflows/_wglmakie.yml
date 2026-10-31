@@ -32,9 +32,12 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
+          # Exercise the pending Bonito and ElectronCall fixes.
+          Pkg.add([
+              PackageSpec(url="https://github.com/SimonDanisch/Bonito.jl", rev="sd/media-proxy"),
+              PackageSpec(url="https://github.com/JuliaWeb/ElectronCall.jl", rev="sd/relocatable-assets"),
+          ])
           pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
-          # Test against Bonito's master branch (WGLMakie + Bonito v5 work)
-          Pkg.add(PackageSpec(url="https://github.com/SimonDanisch/Bonito.jl", rev="master"))
       - name: Run the tests
         continue-on-error: true
         run: >
