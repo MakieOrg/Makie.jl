@@ -68,6 +68,32 @@ end
     close(screen)
 end
 
+@testset "mesh — Glass preset uses Principled nested updates" begin
+    scene, plt, screen, st = trace_fixture(
+        s -> mesh!(s, cube_mesh(); material = Hikari.Glass(base_color = (0.8, 0.9, 1.0)))
+    )
+    handle = robj_of(plt).handle
+    before = counters(st)
+    stored() = (Raycore.@allowscalar st.hikari_scene.media_interfaces[handle.interface]).material
+    key = stored()
+    try
+        @test plt.material[] isa Hikari.Principled
+        plt.material.base_color = (0.2, 0.6, 0.8)
+        plt.material.roughness = 0.25
+        plt.material.ior = 1.6
+        RayMakie.poll_all_plots(screen, scene)
+        @test plt.material[].base_color == (0.2, 0.6, 0.8)
+        @test plt.material[].roughness == 0.25
+        @test plt.material[].ior == 1.6
+        @test plt.material[].transmission_weight == 1
+        @test stored() == key
+        @test robj_of(plt).handle === handle
+        @test counters(st) == before
+    finally
+        close(screen)
+    end
+end
+
 # A material of another kind, or a node set into one field of a shader, is another
 # stored type. It takes a slot of its type and the mesh's interface is pointed at it;
 # the geometry stays. `Hikari.update_material!` threw before ("push it as a new
@@ -90,7 +116,10 @@ end
     RayMakie.poll_all_plots(screen, scene)
     push!(keys, stored()); push!(colours, mean_colour())
 
-    @test allunique(k.type_idx for k in keys)
+    # Glass returns the original constant Principled class; only the noisy graph
+    # needs another stored type. The preset has no separate material path.
+    @test keys[1].type_idx == keys[3].type_idx
+    @test keys[2].type_idx != keys[1].type_idx
     @test counters(st) == before
     @test robj_of(plt).handle === handle
     @test allunique(colours)

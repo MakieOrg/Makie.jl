@@ -1421,6 +1421,10 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
     # is the authority and corrects it below, before anything reads it.
     GLFW.Init() || error("RayMakie: GLFW could not initialise, so no window can be \
                           opened. Use `visible = false` for an offscreen screen.")
+    GLFW.GetPlatform() == GLFW.PLATFORM_NULL && error(
+        "RayMakie cannot open a visible window on GLFW's NULL platform. " *
+            "Use `visible = false` for offscreen rendering."
+    )
     ppu = primary_monitor_scale()
     screen.px_per_unit = ppu
     pw, ph = round(Int, w * ppu), round(Int, h * ppu)
