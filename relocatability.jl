@@ -6,7 +6,7 @@ module MakieApp
 using $BACKEND
 
 if "$BACKEND" == "WGLMakie"
-    using Electron
+    using ElectronCall
     function _display(fig)
         disp = WGLMakie.Bonito.use_electron_display()
         display(disp, WGLMakie.Bonito.App(fig))

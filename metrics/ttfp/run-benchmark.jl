@@ -80,7 +80,7 @@ pkgs = [
     (; rev = base_branch, name = Package),
     (; name = "JSON"),
 ]
-Package == "WGLMakie" && push!(pkgs, (; name = "Electron"))  # master uses Electron
+Package == "WGLMakie" && push!(pkgs, (; name = "ElectronCall"))
 Pkg.add(pkgs)
 
 @time Pkg.precompile()
