@@ -7,6 +7,8 @@ jobs:
     name: GLMakie Julia ${{ matrix.version }}
     env:
       MODERNGL_DEBUGGING: "true"
+      # Keep cached package images portable between runners with different CPUs.
+      JULIA_CPU_TARGET: generic
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -26,9 +28,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
-      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 libegl1 libegl-mesa0 libgl1-mesa-dri freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Install Julia dependencies
-        shell: julia --project=monorepo {0}
+        env:
+          JULIA_PKG_PRECOMPILE_AUTO: "0"
+        shell: julia -C generic --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
@@ -39,7 +43,7 @@ jobs:
         id: referencetests
         continue-on-error: true
         run: >
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia -C generic --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v7

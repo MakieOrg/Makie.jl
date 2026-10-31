@@ -280,27 +280,14 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
             (GLFW.SCALE_TO_MONITOR, true),  # Windows & X11
             (GLFW.SCALE_FRAMEBUFFER, true), # OSX & Wayland
         ]
-        window = try
-            GLFW.Window(
-                resolution = initial_resolution,
-                windowhints = windowhints,
-                visible = false,
-                focus = false,
-                fullscreen = false,
-                debugging = debugging,
-            )
-        catch e
-            @warn(
-                """
-                    GLFW couldn't create an OpenGL window.
-                    This likely means, you don't have an OpenGL capable Graphic Card,
-                    or you don't have an OpenGL 3.3 capable video driver installed.
-                    Have a look at the troubleshooting section in the GLMakie readme:
-                    https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
-                """
-            )
-            rethrow(e)
-        end
+        window = GLFW.Window(
+            resolution = initial_resolution,
+            windowhints = windowhints,
+            visible = false,
+            focus = false,
+            fullscreen = false,
+            debugging = debugging,
+        )
 
         # GLFW doesn't support setting the icon on OSX
         GLFW.SetWindowIcon(window, Makie.icon())
@@ -402,6 +389,13 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
 end
 
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool = true)
+    screen.owns_glscreen && check_window_visibility(config.visible)
+    return _apply_config!(screen, config; start_renderloop)
+end
+
+# Constructors validate before acquiring a screen, then apply the configuration
+# directly. Updating an existing screen goes through apply_config! above.
+function _apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool = true)
     @debug("Applying screen config! to existing screen")
     glw = screen.glscreen
 
@@ -459,8 +453,9 @@ function Screen(;
     )
     # Screen config is managed by the current active theme, so managed by Makie
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
+    isnothing(window) && check_window_visibility(config.visible)
     screen = screen_from_pool(config.debugging; window)
-    apply_config!(screen, config; start_renderloop = start_renderloop)
+    _apply_config!(screen, config; start_renderloop = start_renderloop)
     if !isnothing(resolution)
         resize!(screen, resolution...)
     end
@@ -490,6 +485,13 @@ function set_screen_visibility!(screen::Screen, visible::Bool)
         any_visible || macos_set_dock_visible(false)
     end
     return
+end
+
+function check_window_visibility(visible::Bool)
+    if visible && GLFW.GetPlatform() == GLFW.PLATFORM_NULL
+        error("GLMakie cannot show a window without a display server. Use `visible = false`, `colorbuffer`, or `save` for headless rendering.")
+    end
+    return nothing
 end
 
 function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
@@ -534,9 +536,10 @@ Makie.@noconstprop function Screen(
         scene::Scene, config::ScreenConfig; visible = nothing,
         start_renderloop = true
     )
-    screen = singleton_screen(config.debugging)
     !isnothing(visible) && (config.visible = visible)
-    apply_config!(screen, config; start_renderloop = start_renderloop)
+    check_window_visibility(config.visible)
+    screen = singleton_screen(config.debugging)
+    _apply_config!(screen, config; start_renderloop = start_renderloop)
     display_scene!(screen, scene)
     return screen
 end
@@ -546,9 +549,10 @@ Makie.@noconstprop function Screen(
         scene::Scene, config::ScreenConfig, io::Union{Nothing, String, IO},
         typ::MIME; visible = nothing, start_renderloop = false
     )
-    screen = singleton_screen(config.debugging)
     !isnothing(visible) && (config.visible = visible)
-    apply_config!(screen, config; start_renderloop = start_renderloop)
+    check_window_visibility(config.visible)
+    screen = singleton_screen(config.debugging)
+    _apply_config!(screen, config; start_renderloop = start_renderloop)
     display_scene!(screen, scene)
     return screen
 end
@@ -558,9 +562,9 @@ Makie.@noconstprop function Screen(
         scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat;
         start_renderloop = false
     )
-    screen = singleton_screen(config.debugging)
     config.visible = false
-    apply_config!(screen, config; start_renderloop = start_renderloop)
+    screen = singleton_screen(config.debugging)
+    _apply_config!(screen, config; start_renderloop = start_renderloop)
     display_scene!(screen, scene)
     return screen
 end

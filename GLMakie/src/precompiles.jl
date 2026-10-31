@@ -11,44 +11,61 @@ macro compile(block)
     end
 end
 
+function is_context_unavailable(err)
+    return err isa GLFW.GLFWError && err.code in (
+        GLFW.NOT_INITIALIZED, GLFW.API_UNAVAILABLE, GLFW.VERSION_UNAVAILABLE,
+        GLFW.PLATFORM_ERROR, GLFW.FORMAT_UNAVAILABLE,
+    )
+end
+
+function precompile_screen()
+    try
+        return singleton_screen(false)
+    catch err
+        is_context_unavailable(err) || rethrow()
+        @info "Skipping GLMakie's OpenGL precompile workload because no usable context is available." exception = err
+        return nothing
+    end
+end
+
 let
     @setup_workload begin
         x = rand(5)
         @compile_workload begin
+            # NULL can render with EGL or OSMesa. Only skip the workload when
+            # context creation actually fails, so imports also work without drivers.
+            screen = precompile_screen()
+            if !isnothing(screen)
+                GLMakie.activate!(visible = false)
+                close(screen)
+                destroy!(screen)
 
-            GLMakie.activate!()
-            screen = GLMakie.singleton_screen(false)
-            close(screen)
-            destroy!(screen)
-
-            foreach(include, Makie.shared_precompile_paths())
-            try
+                foreach(include, Makie.shared_precompile_paths())
                 display(plot(x); visible = false)
-            catch
+
+                screen = Screen(Scene(); visible = false)
+                refresh_func = refreshwindowcb(screen)
+                refresh_func(to_native(screen))
+                close(screen)
+                screen = empty_screen(false)
+                close(screen)
+                destroy!(screen)
+                screen = empty_screen(false, false, nothing)
+                destroy!(screen)
+                config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}())
+                screen = Screen(Scene(), config, nothing, MIME"image/png"(); visible = false, start_renderloop = false)
+                close(screen)
+
+
+                config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}())
+                screen = Screen(Scene(), config; visible = false, start_renderloop = false)
+                close(screen)
+
+                closeall(; empty_shader = false)
+                @assert isempty(SCREEN_REUSE_POOL)
+                @assert isempty(ALL_SCREENS)
+                @assert isempty(SINGLETON_SCREEN)
             end
-
-            screen = Screen(Scene())
-            refresh_func = refreshwindowcb(screen)
-            refresh_func(to_native(screen))
-            close(screen)
-            screen = empty_screen(false)
-            close(screen)
-            destroy!(screen)
-            screen = empty_screen(false, false, nothing)
-            destroy!(screen)
-            config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}())
-            screen = Screen(Scene(), config, nothing, MIME"image/png"(); visible = false, start_renderloop = false)
-            close(screen)
-
-
-            config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}())
-            screen = Screen(Scene(), config; visible = false, start_renderloop = false)
-            close(screen)
-
-            closeall(; empty_shader = false)
-            @assert isempty(SCREEN_REUSE_POOL)
-            @assert isempty(ALL_SCREENS)
-            @assert isempty(SINGLETON_SCREEN)
             # Cleanup globals to avoid serializing stale state (fonts, figures, tasks)
             # Note: __init__ doesn't run during precompilation, so we must always clean up here
             Makie.cleanup_globals()
