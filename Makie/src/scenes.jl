@@ -103,6 +103,13 @@ mutable struct Scene <: AbstractScene
     """
     onplot::Observable{Pair{Bool, AbstractPlot}}
 
+    """
+    The `Block` this is the `blockscene` of, or `nothing`. Only that one scene
+    is bound; a block's other scenes are its children, so [`get_block`](@ref)
+    finds them by walking up.
+    """
+    block::Union{Nothing, Block}
+
     theme::Attributes
 
     "Children of the Scene inherit its transformation."
@@ -155,6 +162,7 @@ mutable struct Scene <: AbstractScene
             nothing,
             plots,
             Observable{Pair{Bool, AbstractPlot}}(),
+            nothing,
             theme,
             children,
             current_screens,
@@ -731,6 +739,19 @@ parent_scene(x::Plot) = parent_scene(parent(x))::Scene
 parent_scene(x::Block) = parent_scene(x.blockscene)::Scene
 parent_scene(x::Scene) = x
 parent_scene(::Nothing) = nothing
+
+"""
+    get_block(x)
+
+The `Block` a scene or plot sits in, or `nothing` for one that is not in a block.
+
+Only a block's `blockscene` is bound to it; the scenes a block makes beyond that
+-- an Axis's `scene`, a Menu's `menuscene` -- are children of it, so the answer
+is the nearest bound ancestor.
+"""
+get_block(x) = get_block(parent_scene(x))
+get_block(::Nothing) = nothing
+get_block(scene::Scene) = isnothing(scene.block) ? get_block(scene.parent) : scene.block
 
 Base.isopen(x::SceneLike) = events(x).window_open[]
 

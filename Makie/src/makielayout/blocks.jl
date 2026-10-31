@@ -311,6 +311,13 @@ attribute_groups(::Type{<:Block}) = Pair{String, Vector{Symbol}}[]
 
 function mixin_block_layout_attributes()
     return @DocumentedAttributes begin
+        """
+        Identifies this block within its figure. Left empty it is filled in with
+        the block's type and a short hash, e.g. `"Axis_a3f21c"`. It is what a link
+        to this block refers to -- a `Legend`'s sources, say -- so that such a
+        reference survives being written out and read back, where an object cannot.
+        """
+        unique_name = ""
         "The horizontal alignment of the block in its suggested bounding box."
         halign = :center
         "The vertical alignment of the block in its suggested bounding box."
@@ -456,6 +463,21 @@ function get_topscene(s::Scene)
         error("Can only use scenes with PixelCamera as topscene")
     end
     return s
+end
+
+"""
+    name_block!(block, blockname)
+
+Give the block a name unless it was handed one, the counterpart of `name_plot!`.
+Reconstructing a serialized figure passes the stored name back in, which is what
+keeps a link to this block pointing at the same block on the other side.
+"""
+function name_block!(@nospecialize(block::Block), blockname::Symbol)
+    attr = block.attributes
+    isempty(attr[:unique_name][]) || return block
+    short_hash = string(objectid(block), base = 62)
+    update!(attr, :unique_name => string(blockname, '_', short_hash))
+    return block
 end
 
 function register_in_figure!(fig::Figure, @nospecialize block::Block)
@@ -631,6 +653,11 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
         b, layout_width, layout_height, layout_tellwidth,
         layout_tellheight, layout_halign, layout_valign, layout_alignmode
     )
+
+    # Every @Block has a blockscene, and any further scene it makes is a child of
+    # it, so this one binding answers for all of them -- see `get_block`.
+    b.blockscene.block = b
+    name_block!(b, blockname)
 
     if fig_or_scene isa Figure
         register_in_figure!(fig_or_scene, b)
