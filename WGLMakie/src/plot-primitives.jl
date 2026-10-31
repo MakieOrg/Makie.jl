@@ -324,11 +324,6 @@ function get_atlas_tracker(f, scene::Scene)
         return f(Set{UInt32}())
     end
     session = screen.session
-    if Bonito.root_session(session).connection isa Bonito.NoConnection
-        # Offline/static exports must embed atlas updates independent of previous
-        # interactive renders, so avoid reusing session-level glyph tracking.
-        return f(Set{UInt32}())
-    end
     atlas = Bonito.get_metadata(session, :wglmakie_scene_atlas, nothing)
     if isnothing(atlas)
         atlas = Set{UInt32}()
