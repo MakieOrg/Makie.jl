@@ -385,8 +385,35 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     return plot
 end
 
+function minimal_connect!(scene, plot)
+    pscene = parent_scene(scene)
+    apply_theme!(pscene, plot)
+    t_user = to_value(get(attributes(plot), :transformation, automatic))
+    if t_user isa Transformation
+        plot.transformation = t_user
+    else
+        if t_user isa Automatic
+            plot.transformation = Transformation()
+        else
+            t = Transformation()
+            transform!(t, t_user)
+            plot.transformation = t
+        end
+        if is_space_compatible(plot, pscene)
+            obsfunc = connect!(transformation(pscene), transformation(plot))
+            append!(plot.deregister_callbacks, obsfunc)
+        end
+    end
+    plot.model = transformationmatrix(plot)
+    return
+end
+
 function plot!(scene::SceneLike, plot::Plot)
-    connect_plot!(scene, plot)
+    if plot isa Atomic
+        connect_plot!(scene, plot)
+    else
+        minimal_connect!(scene, plot)
+    end
     push!(scene, plot)
     return plot
 end

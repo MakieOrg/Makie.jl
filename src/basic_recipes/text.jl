@@ -168,7 +168,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
         Point3d[to_ndim(Point3d, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
     )
 
-    attrs = plot.attributes
+    attrs = copy(plot.attributes)
     pop!(attrs, :position)
     pop!(attrs, :calculated_colors)
     pop!(attrs, :text)

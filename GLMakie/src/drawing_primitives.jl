@@ -233,7 +233,6 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
     robj = get!(screen.cache, objectid(plot)) do
-
         filtered = filter(plot.attributes) do (k, v)
             return !in(k, EXCLUDE_KEYS)
         end
@@ -254,7 +253,7 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
-            gl_value = lift_convert(key, value, plot, screen)
+            gl_value = lift_convert(key, convert(Observable, value), plot, screen)
             gl_key => gl_value
         end)
         gl_attributes[:model] = map(Makie.patch_model, f32_conversion_obs(plot), plot.model)
@@ -319,6 +318,9 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     ShaderAbstractions.switch_context!(screen.glscreen)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
+    if !(x isa Atomic)
+        Makie.connect_plot!(scene, x)
+    end
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
     else

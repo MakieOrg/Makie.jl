@@ -171,7 +171,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
     color_type = gl_color_type_annotation(data[:color])
     # somehow color gets here as Observable{Any}
     # This is just a hot fix, need to find the root cause for a real fix
-    data[:color] = map(identity, data[:color])
+    # data[:color] = map(identity, data[:color])
     @gen_defaults! data begin
         vertex              = positions => GLBuffer
         color               = nothing => GLBuffer
@@ -207,6 +207,6 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         data[:pattern] = tex
         data[:pattern_length] = lift(pt -> Float32(last(pt) - first(pt)), pattern)
     end
-    targets = get(data, :gl_convert_targets, nothing)
+    return assemble_shader(data)
 end
 @specialize
