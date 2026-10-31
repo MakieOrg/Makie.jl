@@ -471,7 +471,7 @@ Backends use this as the scissor rectangle, so a scene is rendered only within
 the bounds shared by itself and all of its parents. Including the scene's own
 viewport keeps the scissor a subset of it (some drivers require `scissor ⊆
 viewport`), while intersecting the ancestors is what clips content that has
-scrolled or been positioned outside an enclosing region (e.g. a `Subfigure`).
+scrolled or been positioned outside an enclosing region (e.g. a `ScrollArea`).
 
 For the root scene this is just its own viewport, so the scissor matches the
 window.

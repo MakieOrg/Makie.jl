@@ -74,12 +74,12 @@ function initialize_block!(t::Tabs, labels::AbstractVector = ["Tab 1", "Tab 2"];
 end
 
 """
-    add_tab!(tabs::Tabs, label = "Tab N"; activate = false, kwargs...) -> Subfigure
+    add_tab!(tabs::Tabs, label = "Tab N"; activate = false, kwargs...) -> ScrollArea
 
-Append a tab to `tabs` and return its [`Subfigure`](@ref). Plot into it via
-`tabs[end][row, col] = Axis(...)` or `content_scene(tabs, length(tabs))`. Pass
-`activate = true` to switch to the new tab immediately. The first tab added to an
-empty `Tabs` becomes active automatically.
+Append a tab to `tabs` and return its content [`ScrollArea`](@ref). Plot into it
+via `tabs[end][row, col] = Axis(...)` or `content_scene(tabs, length(tabs))`.
+Pass `activate = true` to switch to the new tab immediately. The first tab added
+to an empty `Tabs` becomes active automatically.
 
 `label` accepts anything `text!` does — a plain `String`, a `rich(...)` for
 colored / styled spans, or a `LaTeXString` (`L"..."`). Any further keywords
@@ -96,10 +96,11 @@ function add_tab!(
     # An inactive tab is hidden (`visible = false`), and the scene-stacking
     # event router (`receives_events`, honored by `is_mouseinside` /
     # `addmouseevents!`) keeps hidden subtrees inert — so the shared-events
-    # Subfigure needs nothing extra to isolate a tab's input.
-    sf = Subfigure(
+    # area needs nothing extra to isolate a tab's input. `scrollable = false`:
+    # the tab clips its content but doesn't scroll; nest a `ScrollArea` for that.
+    content = ScrollArea(
         blockscene;
-        bbox = t.content_area,
+        bbox = t.content_area, scrollable = false,
         visible = visible, contentpadding = t.contentpadding,
     )
 
@@ -132,7 +133,7 @@ function add_tab!(
     translate!(closeplot, 0, 0, 1)
 
     td = TabData(
-        sf, label_obs, closable_obs, visible, rect, bgcolor, labelpos, labelcolor,
+        content, label_obs, closable_obs, visible, rect, bgcolor, labelpos, labelcolor,
         labelboundingboxes, close_segments, close_color, close_rect, close_visible,
         (polyplot, labelplot, closeplot),
     )
@@ -169,13 +170,13 @@ function add_tab!(
     end
     refresh_visibility!(t)
     recompute_layout!(t)
-    return sf
+    return content
 end
 
 """
     remove_tab!(tabs::Tabs, i::Integer)
 
-Remove tab `i`, freeing its [`Subfigure`](@ref) content and header plots. The
+Remove tab `i`, freeing its content [`ScrollArea`](@ref) and header plots. The
 remaining tabs shift down and `active` is updated to keep pointing at the same
 tab (or its neighbour if the active tab itself was removed).
 """
@@ -184,7 +185,7 @@ function remove_tab!(t::Tabs, i::Integer)
     (1 <= i <= n) || return
 
     td = t.tabs[i]
-    delete!(td.subfigure)
+    delete!(td.content)
     for p in td.plots
         delete!(t.blockscene, p)
     end
@@ -343,7 +344,7 @@ function recompute_layout!(t::Tabs)
     return
 end
 
-Base.getindex(t::Tabs, i::Integer) = t.tabs[i].subfigure
+Base.getindex(t::Tabs, i::Integer) = t.tabs[i].content
 Base.length(t::Tabs) = length(t.tabs)
 
 # Generic `Block` indexing would lazy-init a fresh, disconnected `GridLayout`
@@ -366,14 +367,14 @@ end
 
 Return the content `Scene` of tab `i`, for plotting directly into a tab.
 """
-content_scene(t::Tabs, i::Integer) = content_scene(t.tabs[i].subfigure)
+content_scene(t::Tabs, i::Integer) = content_scene(t.tabs[i].content)
 
-# Hand pre-display state updates to each tab's Subfigure so blocks placed inside a
-# tab (which the Figure can't see because they have a Scene parent, not a
-# Figure parent) still get e.g. auto axis limits.
+# Hand pre-display state updates to each tab's content area so blocks placed
+# inside a tab (which the Figure can't see because they have a Scene parent, not
+# a Figure parent) still get e.g. auto axis limits.
 function update_state_before_display!(t::Tabs)
     for td in t.tabs
-        update_state_before_display!(td.subfigure)
+        update_state_before_display!(td.content)
     end
     return
 end

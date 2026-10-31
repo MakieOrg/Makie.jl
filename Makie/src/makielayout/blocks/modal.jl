@@ -23,7 +23,7 @@ function initialize_block!(m::Modal)
     translate!(backdrop, 0, 0, -2)
 
     # Body sizing: content-driven (floored at min_size) unless width/height
-    # are fixed numbers. The content autosize comes from the inner Subfigure.
+    # are fixed numbers. The content autosize comes from the inner ScrollArea.
     content_autosize = Observable(Vec2f(0, 0); ignore_equal_values = true)
     body_rect = lift(
         blockscene, blockscene.viewport, content_autosize,
@@ -84,19 +84,20 @@ function initialize_block!(m::Modal)
     closeplot = linesegments!(overlay, close_segments; color = close_color, linewidth = 1.5, inspectable = false)
     translate!(closeplot, 0, 0, 2)
 
-    # Content: a Subfigure parented under the overlay, so it shares the
-    # cover's subtree and keeps receiving events while the modal is open.
-    # It also gives us scrolling for free when width/height are fixed.
+    # Content: a ScrollArea parented under the overlay, so it shares the cover's
+    # subtree and keeps receiving events while the modal is open. `scrollable =
+    # false` — the body clips to the dialog but doesn't scroll; nest a
+    # `ScrollArea` in the content for a scrollable region.
     content_bbox = lift(blockscene, body_rect, m.contentpadding, m.header_height) do r, pad, hh
         return round_to_IRect2D(
             Rect2f(left(r) + pad, bottom(r) + pad, widths(r)[1] - 2pad, widths(r)[2] - hh - 2pad)
         )
     end
-    sf = Subfigure(overlay; bbox = content_bbox, visible = is_open, contentpadding = 0)
-    m.subfigure = sf
+    content = ScrollArea(overlay; bbox = content_bbox, scrollable = false, visible = is_open, contentpadding = 0)
+    m.content = content
     # Forward `modal[row, col]` to the content layout.
-    m.layout = sf.layout
-    on(blockscene, sf.contentsize) do cs
+    m.layout = content.layout
+    on(blockscene, content.contentsize) do cs
         content_autosize[] = cs
         return
     end
@@ -125,7 +126,7 @@ function initialize_block!(m::Modal)
     return
 end
 
-content_scene(m::Modal) = content_scene(m.subfigure)
+content_scene(m::Modal) = content_scene(m.content)
 
 "Show the modal."
 open!(m::Modal) = (m.open = true; nothing)
@@ -135,5 +136,5 @@ close!(m::Modal) = (m.open = false; nothing)
 Base.isopen(m::Modal) = m.open[]
 
 function update_state_before_display!(m::Modal)
-    return update_state_before_display!(m.subfigure)
+    return update_state_before_display!(m.content)
 end
