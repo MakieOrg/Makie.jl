@@ -1,9 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- Improved WGLMakie first-display latency and switched browser tests to ElectronCall. Plot insertion and deletion no longer block while disconnected, and independently mounted figures recover missing glyphs. Axis construction and the first compute-graph resolve do less compilation work. [#5584](https://github.com/MakieOrg/Makie.jl/pull/5584)
-
 ## [0.24.17] - 2026-10-30
 
 - Fixed a camera synchronization issue that may cause plots to not update their position on windows. [#5875](https://github.com/MakieOrg/Makie.jl/pull/5875)
@@ -111,7 +107,6 @@
 - Fixed `surface` normals sometimes being `NaN` in GLMakie (when vertices collapse to single point on the edge of a surface) [#5725](https://github.com/MakieOrg/Makie.jl/pull/5725)
 - Fixed specialized `args_preferred_axis` methods getting skipped by less specialized Makie defaults. [#5722](https://github.com/MakieOrg/Makie.jl/pull/5722)
 - Fixed `Axis3(..., title = rich(...))` not working [#5729](https://github.com/MakieOrg/Makie.jl/pull/5729)
-
 
 ## [0.24.13] - 2026-07-02
 
