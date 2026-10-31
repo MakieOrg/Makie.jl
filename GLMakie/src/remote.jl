@@ -60,6 +60,22 @@ mutable struct RemoteScreen{Connection} <: Makie.MakieScreen
     cache2plot::Dict{UInt64, Plot}
     scene_ids::IdDict{Scene, UInt64}
     requires_update::Bool
+    # Everything bound for the broadcast connection is collected here and goes
+    # out as one message per sweep. A camera move dirties ~10 plots, and a
+    # message each costs its own serialize, lock and websocket frame.
+    outbox::Vector{Any}
+    # Producers are not just the send loop: a client's resize reaches scene
+    # fields on the websocket handler task, and that queues too.
+    outbox_lock::ReentrantLock
+    # Remote input mutates the same compute graph the periodic send loop resolves.
+    # Event callbacks must stay on the websocket task (text layout can reach
+    # FreeType and other thread-affine state), so serialize both paths here.
+    update_lock::ReentrantLock
+    # A timer wakes the graph-owning task so server-side changes are discovered
+    # without every producer knowing which screens consume them. Explicit plot
+    # insertion also wakes it so late plots do not wait for that timer.
+    sendloop_wakeup::Base.Event
+    sendloop_timer::Union{Nothing, Timer}
     sendloop::Union{Nothing, Task}
     stop_sendloop::Bool
 end
@@ -68,7 +84,8 @@ function RemoteScreen(connection; screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     screen = RemoteScreen(
         connection, config, nothing, Dict{UInt64, RemoteObject}(), UInt64[], Dict{UInt64, Plot}(),
-        IdDict{Scene, UInt64}(), false, nothing, false
+        IdDict{Scene, UInt64}(), false, Any[], ReentrantLock(), ReentrantLock(),
+        Base.Event(true), nothing, nothing, false
     )
     watch_atlas!(screen)
     return screen
@@ -93,27 +110,105 @@ watch_atlas!(screen::RemoteScreen) =
 unwatch_atlas!(screen::RemoteScreen) =
     Makie.remove_font_render_callback!(Makie.get_texture_atlas(), AtlasForwarder(screen))
 
+"""
+    queue!(screen::RemoteScreen, msg)
+
+Hold `msg` for the next flush. Everything the screen broadcasts goes through
+here so that ordering is kept: a `:delete` must not overtake the `:plot` it
+refers to.
+"""
+queue!(screen::RemoteScreen, msg) = lock(() -> push!(screen.outbox, msg), screen.outbox_lock)
+
+"""
+    flush_outbox!(screen::RemoteScreen)
+
+Send everything queued as a single message. The receiving side already applies
+a vector of messages in order.
+"""
+function flush_outbox!(screen::RemoteScreen)
+    # Held across the send as well as the take: two flushing tasks that each
+    # grabbed a batch could otherwise put them on the wire out of order, and a
+    # `:delete` must not overtake the `:plot` it refers to.
+    return lock(screen.outbox_lock) do
+        isempty(screen.outbox) && return
+        send(screen.connection, screen.outbox)
+        empty!(screen.outbox)
+        return
+    end
+end
+
+# Wake the task that handles periodic and explicitly requested graph sweeps.
+# Event notifications coalesce, so several insertions need only one sweep.
+wake_sendloop!(screen::RemoteScreen) = notify(screen.sendloop_wakeup)
+
+function handle_remote_event!(screen::RemoteScreen, name::Symbol, value)
+    scene = screen.scene
+    isnothing(scene) && return
+    lock(screen.update_lock) do
+        try
+            getproperty(scene.events, name)[] = value
+            # window_area alone does not move the scene; resize it as a real
+            # window would.
+            name === :window_area && Makie.resize!(scene, widths(value)...)
+        catch err
+            # A user callback must not take the serving session down with it.
+            @error "RemoteMakie failed to handle $name" exception = (err, catch_backtrace())
+        end
+        # Resolve after every callback triggered by the event has completed.
+        # Sending from here removes the periodic loop's latency without allowing
+        # that loop to resolve the graph concurrently.
+        screen.stop_sendloop || poll_updates(screen)
+    end
+    return
+end
+
 # The counterpart of GLMakie's render loop: resolving the graph is what makes
-# updates get sent, so without this nothing propagates until someone asks.
+# updates get sent, so without this nothing propagates until someone asks. Input
+# events resolve synchronously in `handle_remote_event!`; this loop discovers
+# changes originating on the server, whose observables do not know which screens
+# consume them.
 #
 # Resolving text can insert a glyph, and the atlas tells every callback about it
 # -- including the texture upload of a Screen in this same process, which is only
 # legal on the thread holding its GL context. So do not open a GLMakie window
 # beside a RemoteScreen serving the same figure: the upload will run here and
 # segfault. Serving is for a process that does not draw.
-function start_sendloop!(screen::RemoteScreen; framerate = 30.0)
-    isnothing(screen.sendloop) || return screen.sendloop
-    screen.sendloop = Threads.@spawn while !screen.stop_sendloop
-        poll_updates(screen)
-        sleep(1.0 / framerate)
+function start_sendloop!(screen::RemoteScreen; framerate = screen.config.framerate)
+    if !isnothing(screen.sendloop) && !istaskdone(screen.sendloop)
+        return screen.sendloop
     end
+    framerate > 0 || error("framerate must be positive, got $framerate")
+    screen.stop_sendloop = false
+    # Keep graph resolution on the thread that created the screen. Text updates
+    # can enter FreeType, whose state is not safe to move to a spawned thread.
+    screen.sendloop = @async while !screen.stop_sendloop
+        wait(screen.sendloop_wakeup)
+        lock(screen.update_lock) do
+            screen.stop_sendloop || poll_updates(screen)
+        end
+    end
+    interval = 1.0 / framerate
+    screen.sendloop_timer = Timer(interval; interval) do _
+        wake_sendloop!(screen)
+    end
+    # Flush the state collected while display was setting the screen up without
+    # waiting for the first timer interval.
+    wake_sendloop!(screen)
     return screen.sendloop
 end
 
 function stop_sendloop!(screen::RemoteScreen)
     screen.stop_sendloop = true
+    timer = screen.sendloop_timer
+    isnothing(timer) || close(timer)
+    screen.sendloop_timer = nothing
+    wake_sendloop!(screen)
     return
 end
+
+# The counterpart of `wait(::Screen)`, which waits on the render task: a serving
+# process has no window to close, so what keeps it alive is the send loop.
+Base.wait(screen::RemoteScreen) = !isnothing(screen.sendloop) && wait(screen.sendloop)
 
 # Scene state a receiving scene needs so its plots come out the same. Camera and
 # lights are both per-scene: a plot reads them from the scene it is drawn in, so
@@ -146,7 +241,7 @@ function (updater::RemoteSceneUpdater)(args::NamedTuple, changed::NamedTuple, @n
     updates = Pair{Symbol, Any}[n => args[n] for n in names]
     isnothing(last) && append!(updates, scene_field_state(updater.scene))
     isroot = updater.scene === updater.screen.scene
-    isempty(updates) || send(updater.screen.connection, (:scene, updater.id, updates, isroot))
+    isempty(updates) || queue!(updater.screen, (:scene, updater.id, updates, isroot))
     updater.screen.requires_update = true
     return (updater.id,)
 end
@@ -162,7 +257,8 @@ function scene_id!(screen::RemoteScreen, scene::Scene)
     scene.compute[:remote_scene][]
     for name in SCENE_WIRE_FIELDS
         Makie.on(getproperty(scene, name)) do value
-            send(screen.connection, (:scene, id, Pair{Symbol, Any}[name => value], scene === screen.scene))
+            queue!(screen, (:scene, id, Pair{Symbol, Any}[name => value], scene === screen.scene))
+            flush_outbox!(screen)
             return
         end
     end
@@ -207,7 +303,7 @@ function (updater::RemoteObjectUpdater)(args::NamedTuple, changed::NamedTuple, @
         for name in keys(args)
             robj.values[name] = args[name]
         end
-        send(updater.screen.connection, plot_message(robj))
+        queue!(updater.screen, plot_message(robj))
     else
         updates = Pair{Symbol, Any}[]
         for name in keys(args)
@@ -216,7 +312,7 @@ function (updater::RemoteObjectUpdater)(args::NamedTuple, changed::NamedTuple, @
             robj.values[name] = value
             push!(updates, name => value)
         end
-        isempty(updates) || send(updater.screen.connection, (:update, robj.id, updates))
+        isempty(updates) || queue!(updater.screen, (:update, robj.id, updates))
     end
     updater.screen.requires_update = true
     return (robj,)
@@ -293,6 +389,7 @@ function Base.insert!(screen::RemoteScreen, scene::Scene, @nospecialize(plot::Pl
         foreach(p -> insert!(screen, scene, p), plot.plots)
     end
     screen.requires_update = true
+    wake_sendloop!(screen)
     return
 end
 
@@ -305,7 +402,8 @@ function Base.delete!(screen::RemoteScreen, ::Scene, plot::Plot)
     filter!(!=(objectid(plot)), screen.order)
     delete!(screen.cache2plot, robj.id)
     haskey(plot.attributes, :remote_object) && delete!(plot.attributes, :remote_object)
-    send(screen.connection, (:delete, robj.id))
+    queue!(screen, (:delete, robj.id))
+    flush_outbox!(screen)
     return
 end
 
@@ -318,13 +416,28 @@ function poll_updates(screen::RemoteScreen)
     for plot in values(screen.cache2plot)
         scene = Makie.parent_scene(plot)
         scene.visible[] || continue
-        try
-            plot.attributes[:remote_object][]
-        catch e
-            @error "Failed to update remote object - skipping update" exception = (e, catch_backtrace())
-            ComputePipeline.mark_resolved!(plot.attributes[:remote_object])
+        robj = screen.cache[objectid(plot)]
+        # Match Screen's `is visible || was visible` rule. Axis relayout leaves
+        # hidden tick/text primitives in the cache, and resolving those stale
+        # graphs can pull intermediate state which the local GL screen skips.
+        # Still resolve the visible -> hidden transition once so the receiver
+        # learns that the object disappeared.
+        if plot.visible[] || get(robj.values, :visible, true)
+            try
+                plot.attributes[:remote_object][]
+            catch e
+                @error "Failed to update remote object - skipping update" exception = (e, catch_backtrace())
+                try
+                    ComputePipeline.mark_resolved!(plot.attributes[:remote_object])
+                catch
+                    # Keep the batch moving even if recovery itself encounters
+                    # an unexpected failure. The other objects still need to
+                    # update and the already queued messages still need to flush.
+                end
+            end
         end
     end
+    flush_outbox!(screen)
     return
 end
 
@@ -340,6 +453,11 @@ end
 function Base.display(screen::RemoteScreen, scene::Scene; display_kw...)
     screen.scene = scene
     Makie.push_screen!(scene, screen)
+    # A windowed backend sets this when its window appears, and Makie reads it as
+    # "this figure is live": `plot!(::AbstractAxis, plot)` only calls
+    # `reset_limits!` for an open scene. Serving is being live, so without this a
+    # plot added after `display` leaves the axis on its default limits.
+    scene.events.window_open[] = true
     register_scenes!(screen, scene)
     Makie.insertplots!(screen, scene)
     start_sendloop!(screen)
@@ -356,8 +474,9 @@ Base.size(screen::RemoteScreen) = isnothing(screen.scene) ? (0, 0) : size(screen
 
 function Base.empty!(screen::RemoteScreen)
     for (id, _) in screen.cache2plot
-        send(screen.connection, (:delete, id))
+        queue!(screen, (:delete, id))
     end
+    flush_outbox!(screen)
     empty!(screen.cache)
     empty!(screen.order)
     empty!(screen.cache2plot)
@@ -367,6 +486,7 @@ end
 
 function Base.close(screen::RemoteScreen)
     stop_sendloop!(screen)
+    isnothing(screen.scene) || (screen.scene.events.window_open[] = false)
     unwatch_atlas!(screen)
     empty!(screen)
     # the connection owns a listening socket; leaving it bound makes the next

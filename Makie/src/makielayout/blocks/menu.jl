@@ -117,7 +117,15 @@ function initialize_block!(m::Menu; default = 1)
         translate!(menuscene, t[1], new_y, t[3])
     end
 
-    optionstrings_all = lift(o -> optionlabel.(o), blockscene, m.options; ignore_equal_values = true)
+    # `options` and `selection` carry user data -- `optionvalue(::Tuple{Any, Any})`
+    # promises to take anything -- and the graph never updates either in place, so
+    # the default deepcopy guard has nothing to disambiguate and only makes values
+    # that cannot be copied at all (Modules, file handles) unusable as options.
+    # Claiming both observables here also settles `on(menu.selection)` in user
+    # code, which would otherwise be the first caller and get the guarded variant.
+    options = ComputePipeline.get_observable!(m.options, use_deepcopy = false)
+    ComputePipeline.get_observable!(m.selection, use_deepcopy = false)
+    optionstrings_all = lift(o -> optionlabel.(o), blockscene, options; ignore_equal_values = true)
 
     filtered_indices = lift(blockscene, optionstrings_all, search_text, m.filter; ignore_equal_values = true) do strings, query, filter_fn
         isempty(query) ? collect(eachindex(strings)) : findall(s -> filter_fn(query, s)::Bool, strings)
@@ -401,7 +409,7 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    on(blockscene, m.options) do options
+    on(blockscene, options) do options
         # Make sure i_selected is on a valid index when the contentgrid updates
         old_selection = m.selection[]
         old_selected_text = selected_text[]

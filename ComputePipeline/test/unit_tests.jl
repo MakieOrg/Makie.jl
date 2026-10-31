@@ -796,6 +796,29 @@ end
         g.input1 = 1
         @test g.output[] == (2, 3)
     end
+
+    @testset "Failed parent" begin
+        g = ComputeGraph()
+        add_input!(g, :input, 1)
+        add_input!(g, :sibling_input, 1)
+        map!(x -> x < 0 ? error("negative") : x, g, :input, :checked)
+        map!(identity, g, :sibling_input, :sibling)
+        map!(tuple, g, [:checked, :sibling], :output)
+
+        @test g.output[] == (1, 1)
+        g.input = -1
+        g.sibling_input = 2
+        @test ComputePipeline.isdirty(g.output)
+        @test isnothing(ComputePipeline.mark_resolved!(g.output))
+        @test !ComputePipeline.isdirty(g.output)
+        @test g.output[] == (1, 1)
+
+        # A later input must dirty the discarded branch again. The valid sibling
+        # was resolved during recovery, so its update remains available.
+        g.input = 3
+        @test ComputePipeline.isdirty(g.output)
+        @test g.output[] == (3, 2)
+    end
 end
 
 @testset "mixed-map" begin

@@ -808,6 +808,12 @@ function prepare_user_lims(ax, _lims, idx)
         lims = reverse(lims)
         reversed = true
     end
+    if all(x -> x isa Real, lims)
+        scale = (ax.xscale, ax.yscale)[idx][]
+        if !validate_limits_for_scale(lims, scale)
+            error("Invalid $(dim)-limits $lims for scale $scale which is defined on the interval $(defined_interval(scale))")
+        end
+    end
     return lims, reversed
 end
 

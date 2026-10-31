@@ -229,6 +229,22 @@ end
     @test_throws MethodError limits!(f[1, 1], -1, 1, -1, 1)
 end
 
+@testset "Invalid scaled limits do not mutate the Axis" begin
+    f = Figure()
+    ax = Axis(f[1, 1]; yscale = log10)
+    lines!(ax, 1:3, [0.1, 0.2, 0.15])
+    ylims!(ax, 0.01, 0.3)
+    limits_before = ax.limits[]
+    final_before = ax.finallimits[]
+
+    @test_throws ErrorException ylims!(ax, 0.0, 0.3)
+    @test ax.limits[] == limits_before
+    @test ax.finallimits[] == final_before
+
+    ylims!(ax, 0.02, 0.4)
+    @test ax.limits[][2] == (0.02, 0.4)
+end
+
 # issue 3240
 @testset "Axis limits 4-tuple" begin
     fig = Figure()

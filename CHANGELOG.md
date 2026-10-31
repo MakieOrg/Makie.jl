@@ -59,6 +59,9 @@
 
 ## Unreleased
 
+- Fixed `RemoteScreen` autoscaling for plots added after display, batched render updates, removed the periodic polling delay from remote input handling, and prevented a failed or hidden render object from breaking later updates.
+- Fixed invalid user-supplied `Axis` limits mutating the compute graph before failing scale validation, which could leave later render updates stuck on the invalid state.
+- Fixed `Menu` erroring with `deepcopy of Modules not supported` (and similar) when option values were not deep-copyable, both on construction and on selecting such an option
 - `Menu` is now searchable: typing while it is open filters the options. Set `searchable = false` for the old behavior [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
 - Added `textcolor_active` and `textcolor_hover` attributes to `Menu`, with the selected entry now white by default [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)
 - Fixed `Menu` erroring on hover when `cell_color_hover` or `cell_color_active` were not `RGBA` values [#5642](https://github.com/MakieOrg/Makie.jl/pull/5642)

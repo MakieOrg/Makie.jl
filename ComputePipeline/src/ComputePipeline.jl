@@ -479,7 +479,18 @@ end
 function mark_resolved!(edge::ComputeEdge)
     if !edge.got_resolved[]
         @lock GLOBAL_LOCK begin
-            foreach(locked_resolve!, edge.inputs)
+            for input in edge.inputs
+                try
+                    locked_resolve!(input)
+                catch
+                    # `mark_resolved!` is the recovery path after a computation
+                    # failed. Keep successfully resolved parents, but if the
+                    # same parent fails again, retain its cached value and
+                    # discard just that dirty branch so recovery cannot throw
+                    # forever or drop an unrelated sibling update.
+                    locked_discard_update!(input)
+                end
+            end
             edge.got_resolved[] = true
             fill!(edge.inputs_dirty, false)
         end
@@ -487,6 +498,27 @@ function mark_resolved!(edge::ComputeEdge)
     return
 end
 mark_resolved!(edge::Input) = edge.dirty = false
+
+function locked_discard_update!(computed::Computed)
+    hasparent(computed) && locked_discard_update!(computed.parent)
+    computed.dirty = false
+    return
+end
+
+function locked_discard_update!(edge::ComputeEdge)
+    edge.got_resolved[] && return
+    foreach(locked_discard_update!, edge.inputs)
+    edge.got_resolved[] = true
+    fill!(edge.inputs_dirty, false)
+    foreach(computed -> computed.dirty = false, edge.outputs)
+    return
+end
+
+function locked_discard_update!(input::Input)
+    input.dirty = false
+    input.output.dirty = false
+    return
+end
 
 function mark_dirty!(computed::Computed)
     hasparent(computed) || return
