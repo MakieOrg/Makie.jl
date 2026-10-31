@@ -201,6 +201,7 @@ const GRAPHICS_TEST_FILES = [
     "test_interaction_overlays.jl",
     "test_reference_frames.jl",
     "test_text_3d.jl",
+    "test_text_antialiasing.jl",
     "test_surface_paths.jl",
     "test_window_frame.jl",
     "test_window_blit.jl",
