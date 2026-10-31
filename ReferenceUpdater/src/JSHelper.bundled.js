@@ -14,24 +14,34 @@ function setupImageCycleButton(buttonContainer, mediaRecorded, mediaReference, m
     const button = buttonContainer.querySelector('button');
     const cycle_checkbox = document.querySelectorAll('.cycle-checkbox')[0];
     if (!button) return;
-    button.addEventListener('click', ()=>{
+    const media = [
+        [
+            mediaRecorded,
+            'recorded'
+        ],
+        [
+            mediaReference,
+            'reference'
+        ],
+        [
+            mediaGlmakie,
+            'glmakie'
+        ]
+    ].filter(([el])=>el);
+    const cycle = ()=>{
         const getZ = (el)=>parseInt(el.style.zIndex || window.getComputedStyle(el).zIndex || '0');
-        if (getZ(mediaRecorded) > getZ(mediaReference) && getZ(mediaRecorded) > getZ(mediaGlmakie)) {
-            mediaRecorded.style.zIndex = '1';
-            mediaReference.style.zIndex = '3';
-            mediaGlmakie.style.zIndex = '2';
-            button.textContent = 'Showing: reference';
-        } else if (cycle_checkbox.checked && getZ(mediaReference) > getZ(mediaRecorded) && getZ(mediaReference) > getZ(mediaGlmakie)) {
-            mediaRecorded.style.zIndex = '2';
-            mediaReference.style.zIndex = '1';
-            mediaGlmakie.style.zIndex = '3';
-            button.textContent = 'Showing: glmakie';
-        } else {
-            mediaRecorded.style.zIndex = '3';
-            mediaReference.style.zIndex = '2';
-            mediaGlmakie.style.zIndex = '1';
-            button.textContent = 'Showing: recorded';
-        }
+        const active = media.filter(([, label])=>label !== 'glmakie' || cycle_checkbox.checked);
+        const current = media.reduce((a, b)=>getZ(b[0]) > getZ(a[0]) ? b : a);
+        const [nextEl, nextLabel] = active[(active.indexOf(current) + 1) % active.length];
+        media.forEach(([el])=>{
+            el.style.zIndex = '1';
+        });
+        nextEl.style.zIndex = '3';
+        button.textContent = 'Showing: ' + nextLabel;
+    };
+    button.addEventListener('click', cycle);
+    media.forEach(([el])=>{
+        if (el.tagName === 'IMG') el.addEventListener('click', cycle);
     });
 }
 function sortByBackend(grid, backend) {
@@ -89,7 +99,7 @@ function compareToGLMakie(grid, selectedBackend) {
                 grid.appendChild(card);
             });
         });
-        grid.style.gridTemplateColumns = '1fr 1fr 1fr';
+        grid.style.gridTemplateColumns = '';
         return;
     }
     const groups = new Map();

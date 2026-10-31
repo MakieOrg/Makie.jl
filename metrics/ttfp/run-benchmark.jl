@@ -54,17 +54,10 @@ ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
 if Package == "WGLMakie"
-    # The PR side needs the (not yet released) HTTP@2 Bonito stack and uses
-    # ElectronCall for the electron display. The fixes are merged upstream but
-    # not yet released, so pin the dev branches until the registered versions
-    # catch up. Keep in sync with .github/workflows/_wglmakie.yml. The master
-    # side below keeps using the registered Bonito + Electron.
+    # Match the Bonito and ElectronCall versions exercised by WGLMakie CI.
     Pkg.add(
         [
-            (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/v5"),
-            (; url = "https://github.com/JuliaWeb/HTTP.jl.git", rev = "master"),
-            (; url = "https://github.com/JuliaServices/Reseau.jl.git", rev = "main"),
-            (; url = "https://github.com/JuliaIO/MsgPack.jl.git", rev = "master"),
+            (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/media-proxy"),
             (; url = "https://github.com/IanButterworth/ElectronCall.jl.git", rev = "main"),
         ]
     )

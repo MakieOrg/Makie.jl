@@ -31,9 +31,9 @@ plt = volumeslices!(ax, x, y, z, vol)
 # connect sliders to `volumeslices` update methods
 sl_yz, sl_xz, sl_xy = sgrid.sliders
 
-on(sl_yz.value) do v; plt[:update_yz][](v) end
-on(sl_xz.value) do v; plt[:update_xz][](v) end
-on(sl_xy.value) do v; plt[:update_xy][](v) end
+on(i -> plt.yz_index = i, sl_yz.value)
+on(i -> plt.xz_index = i, sl_xz.value)
+on(i -> plt.xy_index = i, sl_xy.value)
 
 set_close_to!(sl_yz, .5length(x))
 set_close_to!(sl_xz, .5length(y))

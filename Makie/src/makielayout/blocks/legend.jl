@@ -450,14 +450,24 @@ end
 function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
-    fracpoints = attrs.polypoints
-    points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
-    pol = poly!(
-        scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
-        strokecolor = attrs.polystrokecolor, inspectable = false,
-        colormap = attrs.polycolormap, colorrange = attrs.polycolorrange,
-        linestyle = attrs.linestyle, alpha = attrs.alpha
-    )
+    if haskey(attrs, :poly)
+        pol = poly!(
+            scene, attrs.poly, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
+            strokecolor = attrs.polystrokecolor, inspectable = false,
+            colormap = attrs.polycolormap, colorrange = attrs.polycolorrange,
+            linestyle = attrs.linestyle, alpha = attrs.alpha
+        )
+        on(bb -> translate!(pol, origin(bb)..., 0), scene, bbox)
+    else
+        fracpoints = attrs.polypoints
+        points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
+        pol = poly!(
+            scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
+            strokecolor = attrs.polystrokecolor, inspectable = false,
+            colormap = attrs.polycolormap, colorrange = attrs.polycolorrange,
+            linestyle = attrs.linestyle, alpha = attrs.alpha
+        )
+    end
 
     return [pol]
 end
@@ -958,7 +968,7 @@ function Legend(
     )
 
     scene = get_topscene(fig_or_scene)
-    legend_defaults = block_defaults(:Legend, Dict{Symbol, Any}(kwargs), scene)
+    legend_defaults = block_defaults(:Legend, to_dict(kwargs), scene)
     entry_groups = to_entry_group(Attributes(legend_defaults), contents, labels, title)
     entrygroups = Observable(entry_groups)
     legend_defaults[:entrygroups] = entrygroups
@@ -992,7 +1002,7 @@ function Legend(
     )
 
     scene = get_scene(fig_or_scene)
-    legend_defaults = block_defaults(:Legend, Dict{Symbol, Any}(kwargs), scene)
+    legend_defaults = block_defaults(:Legend, to_dict(kwargs), scene)
     entry_groups = to_entry_group(legend_defaults, contentgroups, labelgroups, titles)
     entrygroups = Observable(entry_groups)
     legend_defaults[:entrygroups] = entrygroups

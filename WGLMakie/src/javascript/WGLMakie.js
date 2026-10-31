@@ -19,17 +19,7 @@ import {get_texture_atlas} from "./TextureAtlas.js";
 
 window.THREE = THREE;
 
-// NOTE: the old `orderedExecutor` / `execute_in_order` gate is GONE. It forced
-// figure inits to run in SERIALIZATION order because glyph SDFs used to ride
-// whichever plot serialized them first. That assumption breaks fatally for
-// independently-mounted fragments (a page waiting on order N that never mounts
-// hangs every later figure). Glyphs now sync via the root glyph channel + pull
-// (`insert_glyphs` / `ensure_glyphs`), so figures init the moment they mount.
-
-// ── Glyph channel entry points (see plot-primitives.jl `GlyphSync`) ─────────
-// Batches arrive as ordered evaljs events from the root session; the request
-// observable is the JS→Julia pull for hashes a plot referenced but the page
-// atlas doesn't have. Both are idempotent, so every figure mount may (re)wire.
+// Glyph delivery is independent of the order in which figures mount.
 export function insert_glyphs(batch) {
     get_texture_atlas().insert_glyphs(batch);
 }

@@ -39,7 +39,15 @@ function initialize_block!(ax::Axis3)
             _planes = planes(lims)
             _planes = apply_transform.(Ref(model), _planes)
             nudge = 1.0f0 + 1.0f-5 # clip slightly outside to avoid float precision issues with 0 margin
-            return map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
+            clip_planes = map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
+            # Creating a plot in Axis3 will read scene.theme.clip_planes to initialize
+            # them in the plot, but update them afterwards. We need to do that manually
+            for plot in scene.plots
+                if !haskey(plot.kw, :clip_planes) # not set by user
+                    plot.clip_planes = clip_planes
+                end
+            end
+            return clip_planes
         else
             return Plane3f[]
         end
@@ -178,8 +186,8 @@ function initialize_block!(ax::Axis3)
     end
 
     titlet = text!(
-        blockscene, ax.title,
-        position = titlepos,
+        blockscene, titlepos,
+        text = ax.title,
         visible = ax.titlevisible,
         fontsize = ax.titlesize,
         align = titlealignnode,
@@ -284,6 +292,9 @@ function calculate_matrices(
     else
         error("Invalid aspect $aspect")
     end
+
+    # Do not allow dimensions to collapse
+    scales = @. ifelse(abs(scales) < floatmin(Float32), ifelse(scales < 0, -1.0, 1.0), scales)
 
     # center and scale axis bbox so that the longest side is -1..1
     # then rotate (and permute axes) according to azimuth and elevation
@@ -1016,11 +1027,12 @@ function zautolimits(ax::Axis3)
     return zlims
 end
 
-Makie.xlims!(ax::Axis3, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
-Makie.ylims!(ax::Axis3, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
-Makie.zlims!(ax::Axis3, zlims::Interval) = Makie.zlims!(ax, endpoints(zlims))
+xlims!(ax::Axis3, xlims::Interval) = xlims!(ax, endpoints(xlims))
+ylims!(ax::Axis3, ylims::Interval) = ylims!(ax, endpoints(ylims))
+zlims!(ax::Axis3, zlims::Interval) = zlims!(ax, endpoints(zlims))
 
-function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
+function xlims!(ax::Axis3, xlims)
+    xlims = map(x -> convert_dim_value(ax, 1, x), xlims)
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
     elseif xlims[1] == xlims[2] && xlims[1] !== nothing
@@ -1038,7 +1050,8 @@ function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, 
     return nothing
 end
 
-function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
+function ylims!(ax::Axis3, ylims)
+    ylims = map(x -> convert_dim_value(ax, 2, x), ylims)
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
     elseif ylims[1] == ylims[2] && ylims[1] !== nothing
@@ -1056,7 +1069,8 @@ function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, 
     return nothing
 end
 
-function Makie.zlims!(ax::Axis3, zlims)
+function zlims!(ax::Axis3, zlims)
+    zlims = map(x -> convert_dim_value(ax, 3, x), zlims)
     if length(zlims) != 2
         error("Invalid zlims length of $(length(zlims)), must be 2.")
     elseif zlims[1] == zlims[2] && zlims[1] !== nothing

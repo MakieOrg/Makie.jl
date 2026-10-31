@@ -3,16 +3,13 @@ ENV["JULIA_DEBUG"] = "Documenter"
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
-# v5 WGLMakie needs the unreleased HTTP@2 Bonito stack (keep in sync with
-# .github/workflows/_wglmakie.yml); drop the pins once the registered versions
-# catch up.
-Pkg.add([
-    (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/v5"),
-    (; url = "https://github.com/JuliaWeb/HTTP.jl.git", rev = "master"),
-    (; url = "https://github.com/JuliaServices/Reseau.jl.git", rev = "main"),
-    (; url = "https://github.com/JuliaIO/MsgPack.jl.git", rev = "master"),
-    (; url = "https://github.com/IanButterworth/ElectronCall.jl.git", rev = "main"),
-])
+# Match the Bonito and ElectronCall versions exercised by WGLMakie CI.
+Pkg.add(
+    [
+        (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/media-proxy"),
+        (; url = "https://github.com/IanButterworth/ElectronCall.jl.git", rev = "main"),
+    ]
+)
 Pkg.instantiate()
 Pkg.precompile()
 
@@ -125,6 +122,7 @@ pages = [
                 "text.md",
                 "textlabel.md",
                 "tooltip.md",
+                "tricontour.md",
                 "tricontourf.md",
                 "triplot.md",
                 "violin.md",

@@ -2,8 +2,12 @@ using PrecompileTools
 
 macro compile(block)
     return quote
-        figlike = $(esc(block))
-        Makie.colorbuffer(figlike)
+        # Run the workload inside a `let` body, to avoid storing
+        # f, ax, pl as module level globals that get stored in package images
+        let
+            figlike = $(esc(block))
+            Makie.colorbuffer(figlike)
+        end
     end
 end
 

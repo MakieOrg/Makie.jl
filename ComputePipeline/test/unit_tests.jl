@@ -1117,3 +1117,24 @@ end
     @assert pointer(v) == pointer(graph.vec[]) "this is expected to be memory aliased, but isn't"
     @test graph.vecf[] == [1, 1, 1, 1]
 end
+
+@testset "Deferred typed edge" begin
+    graph = ComputeGraph()
+    add_input!(graph, :x, 1)
+    calls = Any[]
+    register_computation!(graph, [:x], [:result]) do (x,), changed, cached
+        push!(calls, (x, changed.x, cached))
+        return (2x,)
+    end
+    edge = graph.result.parent
+    @test graph.result[] == 2
+    @test calls == [(1, true, nothing)]
+    @test !isassigned(edge.typed_edge)
+    @test graph.result[] == 2
+    @test length(calls) == 1
+    graph.x = 3
+    @test graph.result[] == 6
+    @test isassigned(edge.typed_edge)
+    @test length(calls) == 2
+    @test calls[end] == (3, true, (result = 2,))
+end

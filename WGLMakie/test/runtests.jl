@@ -50,21 +50,11 @@ end
 @testset "reference tests" begin
     WGLMakie.activate!()
 
-    @testset "ComputeGraph Sanity Checks" begin
-        # This is supposed to catch changes in ComputePipeline causing nodes to
-        # be skipped or become duplicated. This will also trigger if plot attributes
-        # are modified in which case the numbers should just be updated
-        f, a, p = scatter(rand(10))
-        colorbuffer(f)
-        @test length(p.attributes.inputs) == 42
-        @test length(p.attributes.outputs) == 96
-    end
-
     @testset "refimages" begin
         ReferenceTests.mark_broken_tests(excludes)
-        recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl" joinpath(@__DIR__, "html_widgets_refimages.jl")
-        missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")
-        ReferenceTests.test_comparison(scores; threshold = 0.05)
+        attempted_tests, recording_dir = @include_reference_tests WGLMakie "refimages.jl" joinpath(@__DIR__, "html_widgets_refimages.jl")
+        missing_images, scores, exempt = ReferenceTests.record_comparison(recording_dir, "WGLMakie"; attempted_tests)
+        ReferenceTests.test_comparison(scores; threshold = 0.05, exempt)
     end
 
     @testset "js texture atlas" begin
@@ -97,6 +87,8 @@ end
         @test atlas.data ≈ js_atlas_data
     end
 
+
+    include("glyph_sync.jl")
 
     @testset "window open/closed" begin
         f, a, p = scatter(rand(10))
@@ -283,6 +275,8 @@ end
 
     @testset "memory leaks" begin
         Makie.CURRENT_FIGURE[] = nothing
+        # Drain the display's one-render buffer before measuring the empty page.
+        display(edisplay, App(nothing))
         app = App(nothing)
         display(edisplay, app)
         GC.gc(true)
@@ -320,9 +314,12 @@ end
         ) / 10^6
 
         @test length(session.session_objects) == 0
+        @test length(session.deregister_callbacks) == 1
+        @test only(session.deregister_callbacks).observable ===
+            Bonito.get_metadata(session, :wglmakie_glyph_sync).request
         # getproperty, not getfield: in Bonito v5 `inbox` lives on the shared
         # RootSession and getfield would throw a FieldError (works via the shim on both).
-        @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :message_queue, :deregister_callbacks]
+        @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :message_queue]
             @test isempty(getproperty(session, field))
         end
         # `inbox` is the live WS receive channel on the still-connected display

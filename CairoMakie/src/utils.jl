@@ -340,6 +340,7 @@ function to_cairo_miter_limit(miter_limit)
 end
 
 to_cairo_linestyle(::Nothing, ::Any) = nothing
+to_cairo_linestyle(ls::Linestyle, lw::Any) = to_cairo_linestyle(ls.value, lw)
 to_cairo_linestyle(::AbstractVector, ::AbstractArray) = nothing
 function to_cairo_linestyle(linestyle::AbstractVector, linewidth::Real)
     # There is a discrepancy between Makie and Cairo when it comes to linestyles.
@@ -416,12 +417,14 @@ function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
     return color_or_nothing(to_value(get(attributes, attribute, nothing)))
 end
 
-function per_face_colors(_color, matcap, faces, normals, uv)
+function per_face_colors(_color, matcap, faces, normals, uv, view_normalmatrix = nothing)
     color = to_color(_color)
     if !isnothing(matcap)
+        vnm = view_normalmatrix[]::Mat3f
         wsize1 = reverse(size(matcap::Matrix{RGBAf}))
         wh1 = wsize1 .- 1
-        cvec = map(normals) do n
+        cvec = map(normals) do normal
+            n = vnm * normal
             muv = 0.5n[Vec(1, 2)] .+ Vec2f(0.5)
             x, y = clamp.(round.(Int, Tuple(muv) .* wh1) .+ 1, 1, wh1)
             return matcap[end - (y - 1), x]

@@ -21746,7 +21746,6 @@ class TextureAtlas {
     get_glyph_data(hash, scale) {
         const data = this.glyph_data.get(hash.toString());
         if (!data) {
-            console.warn(`Glyph with hash ${hash} not found in the atlas.`);
             return null;
         }
         const [uv_offset_width, width, mini] = data;
@@ -24548,6 +24547,7 @@ class Scatter extends Plot {
         const info = this.glyph_info;
         if (!info || !info.glyph_hashes || info.glyph_hashes.length === 0) return;
         this.atlas.ensure_glyphs(info.glyph_hashes, ()=>{
+            if (!this.mesh || this.glyph_info !== info) return;
             if (info.scales) {
                 this.update([
                     [

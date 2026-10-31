@@ -1,7 +1,7 @@
 name = "CairoMakie"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 author = ["Simon Danisch <sdanisch@gmail.com>"]
-version = "0.15.13"
+version = "0.15.17"
 
 [deps]
 CRC32c = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
@@ -10,6 +10,7 @@ Cairo_jll = "83423d85-b0ee-5818-9007-b63ccbeb887a"
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 FreeType = "b38be410-82b0-50bf-ab77-7b57e271db43"
+FreeType2_jll = "d7e528f0-a631-5988-bf34-fe36492bcfd7"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
@@ -22,11 +23,12 @@ Cairo_jll = "1.18.0"
 Colors = "0.10, 0.11, 0.12, 0.13"
 FileIO = "1.1"
 FreeType = "3, 4.0"
+FreeType2_jll = "2 - 2.14"
 GeometryBasics = "0.5"
 LinearAlgebra = "1.0, 1.6"
-Makie = "=0.24.13"
+Makie = "=0.24.17"
 PrecompileTools = "1.0"
-julia = "1"
+julia = "1.10"
 
 [sources.Makie]
 path = "../Makie"

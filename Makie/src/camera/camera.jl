@@ -144,7 +144,11 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     # to simplify this (i.e. avoid the need to listen to 25 matrices or some
     # subset of the inputs)
     # Note: The value needs to change so that the update doesn't get discarded
-    map!((a, b, c) -> time(), graph, [:view, :projection, :viewport], :camera_trigger)
+    counter = Ref(0)
+    map!(graph, [:view, :projection, :viewport], :camera_trigger) do args...
+        counter[] = counter[] + 1
+        return counter
+    end
 
     map!(graph, :viewport, [:scene_origin, :resolution]) do viewport
         return (Vec2d(origin(viewport)), Vec2d(widths(viewport)))

@@ -13,8 +13,7 @@ macro compile(block)
             dom = Bonito.session_dom(session, app)
             show(IOBuffer(), dom)
             Makie.second_resolve(figlike, :wgl_renderobject)
-            # the render loop polls every displayed plot type for
-            # renderobject updates - cover that per plot type here
+            serialize_scene(Makie.get_scene(figlike))
             WGLMakie.poll_all_plots(Makie.get_scene(figlike))
             close(session)
             yield()

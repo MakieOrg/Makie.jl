@@ -22,8 +22,8 @@ end
 function to_range(index)
     return map(index) do val
         isa(val, Integer) && return val:val
-        isa(val, AbstractRange) && return val
-        error("Indexing only defined for integers or ranges. Found: $val")
+        isa(val, UnitRange) && return val
+        error("Indexing only defined for integers and unit ranges. Found: $val")
     end
 end
 
@@ -52,10 +52,10 @@ function setindex!(A::GPUArray{T, N}, value::Array{T, N}, ranges::UnitRange...) 
 end
 
 gl_switch_context!(A::GPUArray) = gl_switch_context!(A.context)
-function update!(A::GPUArray{T, N}, value::AbstractArray{T2, N}) where {T, N, T2}
+function ShaderAbstractions.update!(A::GPUArray{T, N}, value::AbstractArray{T2, N}) where {T, N, T2}
     return update!(A, convert(Array{T, N}, value))
 end
-function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
+function ShaderAbstractions.update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     gl_switch_context!(A)
     if size(A) != size(value)
         if isa(A, GLBuffer) && length(A) != length(value)
@@ -72,7 +72,7 @@ function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     A[dims...] = value
     return
 end
-update!(A::GPUArray, value::ShaderAbstractions.Sampler) = update!(A, value.data)
+ShaderAbstractions.update!(A::GPUArray, value::ShaderAbstractions.Sampler) = update!(A, value.data)
 
 function getindex(A::GPUArray{T, N}, i::Int) where {T, N}
     checkbounds(A, i)

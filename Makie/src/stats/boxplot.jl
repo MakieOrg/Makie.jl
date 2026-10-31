@@ -31,6 +31,10 @@ the 75% percentile) with a midline marking the median
     mediancolor = @inherit linecolor
     "Sets the width of the median line."
     medianlinewidth = @inherit linewidth
+    "Sets the linestyle of the median line"
+    medianlinestyle = @inherit linestyle nothing
+    "Sets the linecap of the median line"
+    medianlinecap = @inherit linecap
 
     # whiskers
     """
@@ -47,6 +51,10 @@ the 75% percentile) with a midline marking the median
     whiskercolor = @inherit linecolor
     "Sets the linewidth of errorbars."
     whiskerlinewidth = @inherit linewidth
+    "Sets the linestyle of errorbars"
+    whiskerlinestyle = @inherit linestyle nothing
+    "Sets the linecap of errorbars"
+    whiskerlinecap = @inherit linecap
 
     # outliers points
     "Show outliers as points. Any point outside the errorbars is consider one."
@@ -210,6 +218,8 @@ function Makie.plot!(plot::BoxPlot)
         plot.t_segments,
         color = plot.whiskercolor,
         linewidth = plot.whiskerlinewidth,
+        linestyle = plot.whiskerlinestyle,
+        linecap = plot.whiskerlinecap,
         inspectable = plot.inspectable,
         visible = plot.visible
     )
@@ -217,7 +227,9 @@ function Makie.plot!(plot::BoxPlot)
         plot, Attributes(plot),
         plot.centers, plot.medians, plot.boxmin, plot.boxmax,
         gap = 0, color = plot.boxcolor, width = plot.boxwidth,
-        show_midline = plot.show_median, midlinecolor = plot.mediancolor, midlinewidth = plot.medianlinewidth,
+        show_midline = plot.show_median, midlinecolor = plot.mediancolor,
+        midlinewidth = plot.medianlinewidth, midlinecap = plot.medianlinecap,
+        midlinestyle = plot.medianlinestyle,
         # These should not be passed/defaulted
         n_dodge = automatic, dodge = automatic
     )

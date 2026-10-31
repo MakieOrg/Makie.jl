@@ -6,9 +6,10 @@
     * `"mkv"`  (open standard, the default)
     * `"mp4"`  (good for Web, most supported format)
     * `"webm"` (smallest file size)
+    * `"mov"`  (good for Apple devices, transparent background, but not widely supported)
     * `"gif"`  (largest file size for the same quality)
 
-    `mp4` and `mk4` are marginally bigger than `webm`. `gif`s can be significantly (as much as
+    `mp4`, `mk4`, and `mov` are marginally bigger than `webm`. `gif`s can be significantly (as much as
     6x) larger with worse quality (due to the limited color palette) and only should be used
     as a last resort, for playing in a context where videos aren't supported.
 - `framerate = 24`: The target framerate.
@@ -22,15 +23,18 @@
     - `compression` has no effect on `mkv` and `gif` outputs.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
   you have issues playing a video, try `profile = "high"` or `profile = "main"`.
+    - for `mov`, the default is `4`, which is the highest quality ProRes 4444 format with alpha channel support.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
-  applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
+  applies to `mp4` and `mov`. Defaults to `yuv444p` for `profile = "high444"`.
+    -`mov` defaults to `yuva420p` for `pixel_format`, which supports alpha channel.
+    -`webm` defaults to `yuv420p` for `pixel_format`, which does not support alpha channel.
 - `loop = 0`: Number of times the video is repeated, for a `gif` or `html` output. Defaults to `0`, which
   means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
   means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
 
 !!! warning
-    `profile` and `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
-    is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
+    `profile` and `pixel_format` are only used when `format` is `"mp4"` or `"mov"`; a warning will be issued if `format`
+    is not `"mp4"` or `"mov"` and those two arguments are not `nothing`. Similarly, `compression` is only
     valid when `format` is `"mp4"` or `"webm"`.
 """
 struct VideoStreamOptions
@@ -38,6 +42,7 @@ struct VideoStreamOptions
     framerate::Int
     compression::Union{Nothing, Int}
     profile::Union{Nothing, String}
+    input_pixel_format::String
     pixel_format::Union{Nothing, String}
     loop::Union{Nothing, Int}
 
@@ -46,8 +51,16 @@ struct VideoStreamOptions
     rawvideo::Bool
 
     function VideoStreamOptions(
-            format::AbstractString, framerate::Real, compression, profile,
-            pixel_format, loop, loglevel::String, input::String, rawvideo::Bool = true
+            format::AbstractString,
+            framerate::Real,
+            compression,
+            profile,
+            input_pixel_format,
+            pixel_format,
+            loop,
+            loglevel::String,
+            input::String,
+            rawvideo::Bool = true,
         )
 
         if !isa(framerate, Integer)
@@ -57,11 +70,18 @@ struct VideoStreamOptions
 
         if format == "mp4"
             (profile === nothing) && (profile = "high422")
+            (compression === nothing) && (compression = 20)
             (pixel_format === nothing) && (pixel_format = (profile == "high444" ? "yuv444p" : "yuv420p"))
         end
 
-        if format in ("mp4", "webm")
+        if format == "mov"
+            (profile === nothing) && (profile = "4")  # prores_ks:  0 = ProRes 422 Proxy 1 = ProRes 422 LT 2 = ProRes 422 3 = ProRes 422 HQ 4 = ProRes 4444 5 = ProRes 4444 XQ
+            (pixel_format === nothing) && (pixel_format = "yuva444p10le")  # "le" = little-endian, "be" = big-endian. 10-bit color depth for ProRes 4444
+        end
+
+        if format == "webm"
             (compression === nothing) && (compression = 20)
+            (pixel_format === nothing) && (pixel_format = "yuv420p")
         end
 
         (loop === nothing) && (loop = 0)
@@ -69,8 +89,8 @@ struct VideoStreamOptions
         # items are name, value, allowed_formats
         allowed_kwargs = [
             ("compression", compression, ("mp4", "webm")),
-            ("profile", profile, ("mp4",)),
-            ("pixel_format", pixel_format, ("mp4",)),
+            ("profile", profile, ("mp4", "mov")),
+            ("pixel_format", pixel_format, ("mp4", "webm", "mov")),
         ]
 
         for (name, value, allowed_formats) in allowed_kwargs
@@ -106,13 +126,37 @@ struct VideoStreamOptions
         if !(loglevel in loglevels)
             error("loglevel needs to be one of $(loglevels)")
         end
-        return new(format, framerate, compression, profile, pixel_format, loop, loglevel, input, rawvideo)
+        return new(format, framerate, compression, profile, input_pixel_format, pixel_format, loop, loglevel, input, rawvideo)
     end
 end
 
-function VideoStreamOptions(; format = "mp4", framerate = 24, compression = nothing, profile = nothing, pixel_format = nothing, loop = nothing, loglevel = "quiet", input = "pipe:0", rawvideo = true)
-    return VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, input, rawvideo)
+function VideoStreamOptions(;
+        format = "mp4",
+        framerate = 24,
+        compression = nothing,
+        profile = nothing,
+        input_pixel_format = "rgb24",
+        pixel_format = nothing,
+        loop = nothing,
+        loglevel = "quiet",
+        input = "pipe:0",
+        rawvideo = true,
+    )
+    return VideoStreamOptions(
+        format,
+        framerate,
+        compression,
+        profile,
+        input_pixel_format,
+        pixel_format,
+        loop,
+        loglevel,
+        input,
+        rawvideo,
+    )
 end
+
+using Colors
 
 function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer = 0)
     # explanation of ffmpeg args. note that the order of args is important; args pertaining
@@ -128,8 +172,8 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
     # -b:v, -b:a: video and audio bitrate, respectively
     # -crf: "constant rate factor", the lower the better the quality (0 is lossless, 51 is
     #   maximum compression)
-    # -pix_fmt: (mp4 only) the output pixel format
-    # -profile:v: (mp4 only) the output video profile
+    # -pix_fmt: (mp4, mov only) the output pixel format
+    # -profile:v: (mp4, mov only) the output video profile
     # -an: no audio in output
     # -loop: (gif only) number of times to loop
     (format, framerate, compression, profile, pixel_format, loop) = (vso.format, vso.framerate, vso.compression, vso.profile, vso.pixel_format, vso.loop)
@@ -144,7 +188,7 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
         ffmpeg_prefix = `
             $ffmpeg_prefix
             -framerate $(framerate)
-            -pixel_format rgb24
+            -pixel_format $(vso.input_pixel_format)
             -f rawvideo`
     end
     xdim > 0 && ydim > 0 && (ffmpeg_prefix = `$ffmpeg_prefix -s:v $(xdim)x$(ydim)`)
@@ -165,9 +209,17 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
         `
     elseif format == "webm"
         # this may need improvement, see here: https://trac.ffmpeg.org/wiki/Encode/VP9
+        # -metadata line is needed to make sure the alpha channel is preserved in webm
         `-crf $(compression)
          -c:v libvpx-vp9
          -b:v 0
+         -pix_fmt $(pixel_format)
+         -an
+        `
+    elseif format == "mov"
+        `-profile:v $(profile)
+         -c:v prores_ks
+         -pix_fmt $(pixel_format)
          -an
         `
     elseif format == "gif"
@@ -224,7 +276,7 @@ mutable struct VideoStream
     process::Base.Process
     screen::MakieScreen
     tick_controller::TickController
-    buffer::Matrix{RGB{N0f8}}
+    buffer::Matrix
     path::String
     options::VideoStreamOptions
 end
@@ -278,8 +330,12 @@ function VideoStream(
     _ydim, _xdim = size(first_frame)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
-    buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
-    vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, "pipe:0", true)
+    # Decide on the element type we'll write to ffmpeg (prefer 8-bit integer color types)
+    write_eltype = _write_eltype_for_ffmpeg(eltype(first_frame))
+    buffer = Matrix{write_eltype}(undef, xdim, ydim)
+    @debug "FFmpeg input" frame_eltype = eltype(first_frame) write_eltype = write_eltype
+    input_pixel_format = _color_type_to_ffmpeg_string(write_eltype)
+    vso = VideoStreamOptions(format, framerate, compression, profile, input_pixel_format, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
     # a plain `open` without the `pipeline` causes hangs when IOCapture.capture closes over a function that creates
     # a `VideoStream` without closing the process explicitly, such as when returning `Record` in a cell in Documenter or quarto
@@ -299,13 +355,17 @@ end
 Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
-    glnative = colorbuffer(io.screen, GLNative)
-    # Make no copy if already Matrix{RGB{N0f8}}
-    # There may be a 1px padding for odd dimensions
+    # `convert` is a no-op when the backend already hands us a dense `Matrix` of the
+    # write element type (GLMakie's framecache), and materializes + converts otherwise
+    # (CairoMakie's PermutedDimsArray, float color buffers).
+    write_el = eltype(io.buffer)
+    glnative = convert(Matrix{write_el}, colorbuffer(io.screen, GLNative))
     xdim, ydim = size(glnative)
-    if eltype(glnative) == eltype(io.buffer) && size(glnative) == size(io.buffer)
+
+    if size(glnative) == size(io.buffer)
         write(io.io, glnative)
     else
+        # 1px padding for odd dimensions: write the frame into the padded buffer
         copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
         write(io.io, io.buffer)
     end
@@ -348,3 +408,15 @@ function extract_frames(video, frame_folder; loglevel = "quiet")
     path = joinpath(frame_folder, "frame%04d.png")
     return run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
 end
+
+_write_eltype_for_ffmpeg(::Type{RGB{T}}) where {T} = (T <: AbstractFloat) ? RGB{N0f8} : RGB{T}
+_write_eltype_for_ffmpeg(::Type{RGBA{T}}) where {T} = (T <: AbstractFloat) ? RGBA{N0f8} : RGBA{T}
+_write_eltype_for_ffmpeg(::Type{ARGB32}) = ARGB32
+
+_color_type_to_ffmpeg_string(::Type{RGB{T}}) where {T} = "rgb24"
+_color_type_to_ffmpeg_string(::Type{ARGB32}) = Base.ENDIAN_BOM == 0x04030201 ? "bgra" : "argb"
+_color_type_to_ffmpeg_string(::Type{RGBA{T}}) where {T} = "rgba"
+_color_type_to_ffmpeg_string(::Type{T}) where {T} = (
+    @warn "Unsupported color type $T for video encoding. Falling back to 'rgb24'.";
+    "rgb24"
+)

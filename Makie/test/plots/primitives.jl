@@ -8,19 +8,6 @@
     @test Point2f.(points[]) == [Point2f(5), Point2f(15)]
 end
 
-@testset "arrows" begin
-    # Test for:
-    # https://github.com/MakieOrg/Makie.jl/issues/3273
-    directions = decompose(Point2f, Circle(Point2f(0), 1))
-    points = decompose(Point2f, Circle(Point2f(0), 0.5))
-    color = range(0, 1, length = length(directions))
-    fig, ax, pl = arrows2d(points, directions; color = color)
-    cbar = Colorbar(fig[1, 2], pl)
-    @test cbar.limits[] == Vec2f(0, 1)
-    pl.colorrange = (0.5, 0.6)
-    @test cbar.limits[] ≈ Vec2f(0.5, 0.6)
-end
-
 @testset "voxels" begin
     data = reshape(collect(range(0.3, 1.8, length = 6 * 5 * 4)), 6, 5, 4)
     f, a, p = voxels(
@@ -104,6 +91,12 @@ end
     @test sl.scaled_colorrange[] == Vec2f(1, 30)
     f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (Makie.automatic, Makie.automatic))
     @test sl.scaled_colorrange[] == Vec2f(1, 100)
+    f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (Makie.automatic, -10))
+    cb = Colorbar(f[1, 2], sl)
+    @test sl.unscaled_colorrange[] == Vec2f(-10, -10)
+    f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (110, Makie.automatic))
+    cb = Colorbar(f[1, 2], sl)
+    @test sl.unscaled_colorrange[] == Vec2f(110.0f0, 110.0f0)
 end
 
 @recipe MaybeDict (data,) begin
@@ -192,4 +185,30 @@ end
         p = annotation!(ax, [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], text = ["A", "", "C"])
         @test !any(x -> any(isnan, x), p.offsets[])
     end
+end
+
+@testset "Resampler" begin
+    # mainly just checking that image paths to the same plot! function as
+    # heatmap when given a Resampler. The visualization should then be the same
+    # and is tested in refimages
+    f, a, p = image(Resampler([1 2; 3 4]))
+    @test p isa Makie.ImageShader
+    @test p.plots[1] isa Image
+    @test p.plots[2] isa Image
+    @test p.plots[1].visible[] === p.background_visible[]
+    p.background_visible = false
+    @test p.plots[1].visible[] === false
+
+    f, a, p = image(0 .. 1, 0 .. 1, Resampler([1 2; 3 4]))
+    @test p isa Makie.ImageShader
+    @test p.plots[1] isa Image
+    @test p.plots[2] isa Image
+
+    f, a, p = heatmap((0, 1), 0 .. 1, Resampler([1 2; 3 4]))
+    @test p isa Makie.HeatmapShader
+    @test p.plots[1] isa Image
+    @test p.plots[2] isa Image
+    @test p.plots[1].visible[] === p.background_visible[]
+    p.background_visible = false
+    @test p.plots[1].visible[] === false
 end

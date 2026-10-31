@@ -398,6 +398,7 @@ export class Scatter extends Plot {
         const info = this.glyph_info;
         if (!info || !info.glyph_hashes || info.glyph_hashes.length === 0) return;
         this.atlas.ensure_glyphs(info.glyph_hashes, () => {
+            if (!this.mesh || this.glyph_info !== info) return;
             if (info.scales) {
                 this.update([["glyph_data", info]]);
             }

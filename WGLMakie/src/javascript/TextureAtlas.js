@@ -157,9 +157,6 @@ export class TextureAtlas {
     get_glyph_data(hash, scale) {
         const data = this.glyph_data.get(hash.toString());
         if (!data) {
-            console.warn(
-                `Glyph with hash ${hash} not found in the atlas.`
-            );
             return null;
         }
         const [uv_offset_width, width, mini] = data;
