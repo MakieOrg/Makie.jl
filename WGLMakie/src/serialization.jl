@@ -27,7 +27,9 @@ end
 function serialize_three(array::AbstractVector{T}) where {T <: OffsetInteger}
     return serialize_three(map(GeometryBasics.raw, array))
 end
-function serialize_three(array::AbstractArray{T}) where {T <: Union{N0f8, UInt8, Int32, UInt32, Float32, Float16, Float64}}
+serialize_three(array::AbstractArray{N0f8}) = reinterpret(UInt8, vec(convert(Array, array)))
+
+function serialize_three(array::AbstractArray{T}) where {T <: Union{UInt8, Int32, UInt32, Float32, Float16, Float64}}
     return vec(convert(Array, array))
 end
 
