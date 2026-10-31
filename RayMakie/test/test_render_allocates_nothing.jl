@@ -101,15 +101,22 @@ it there. What is left is the wrapper layer itself, measured per sample with
     out of the `@objc` call. Nothing in Metal.jl or above it can avoid asking
     for a command buffer and an encoder.
 
+ONE of each per sample, because a submission is one command buffer however many
+pieces the sample plan was cut into. Until Mantle's Metal backend replayed a
+submission's pieces into one encoder, each piece got its own — four for this scene
+(head, the bounce loop's body twice, tail), 256 B — and Mantle read the plan's
+recording through an `Any` field, which boxed the run's `UInt64` token: 272 B.
+
 There was a third: `drain_cleanups!` boxed a status enum for every command buffer
 that retired during the sample, so the count depended on GPU timing and one sample
 in twenty went over. Metal.jl reads it through a `Bool` barrier now, and its own
 `test/command_batching.jl` pins that. A CEILING rather than an exact number because
-the wrappers are one backend's; it is tight on purpose: every regression this file
-was written for is orders of magnitude bigger — 7 KB for boxing 21 render objects
-in the poll, 684 B for boxing the camera once.
+the wrappers are one backend's (Vulkan measures 0); it is tight on purpose: one more
+command buffer is over it, and every other regression this file was written for is
+bigger still — 7 KB for boxing 21 render objects in the poll, 684 B for boxing the
+camera once.
 """
-const WRAPPER_CEILING = 256
+const WRAPPER_CEILING = 64
 
 @testset "a sample of a still scene allocates nothing above the ObjC wrappers" begin
     scene, plt = allocfree_scene()

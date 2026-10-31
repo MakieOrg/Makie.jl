@@ -128,7 +128,11 @@ end
     # ── 3. Scene state management ──
     @testset "scene state management" begin
         @testset "film allocated at correct resolution" begin
-            scene = _make_makie_scene(; sz=(48, 32))
+            # Wider than any platform's minimum for a framed window. This one is
+            # SHOWN, and Windows does not let a framed window be narrower than its
+            # minimum track width — 116 units on the LapWin laptop, so a 48-unit
+            # scene got a 116-unit drawable and this asserted the OS's limit.
+            scene = _make_makie_scene(; sz=(160, 100))
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
 
             screen = RayMakie.Screen(scene)
@@ -149,7 +153,7 @@ end
             ppu = Makie.px_per_unit(screen)
             @test size(state.film.framebuffer) == size(screen.output_buffer)
             fh, fw = size(state.film.framebuffer)
-            @test (round(Int, fw / ppu), round(Int, fh / ppu)) == (48, 32)
+            @test (round(Int, fw / ppu), round(Int, fh / ppu)) == (160, 100)
 
             close(screen)
         end

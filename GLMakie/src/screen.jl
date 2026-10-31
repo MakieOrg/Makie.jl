@@ -409,7 +409,13 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     if screen.owns_glscreen
         gl_switch_context!(glw)
         GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
-        GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
+        # Frameless while hidden: there is no frame to show, and on Windows a FRAMED
+        # window cannot be narrower than the system's minimum track width (116
+        # units on a Radeon 8060S laptop). The `resize!` below then came back wider,
+        # the scene was resized to the window, and an offscreen 96-unit figure was
+        # laid out 116 units wide and cut to 96 by `colorbuffer`.
+        # `set_screen_visibility!` puts the frame back when the window is shown.
+        GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated && config.visible)
         GLFW.SetWindowTitle(glw, config.title)
         if GLFW.GetPlatform() != GLFW.PLATFORM_WAYLAND
             GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
@@ -470,6 +476,9 @@ function set_screen_visibility!(screen::Screen, visible::Bool)
         error(unimplemented_error)
     end
 
+    # The frame comes and goes with visibility; see `apply_config!`.
+    isnothing(screen.config) ||
+        GLFW.SetWindowAttrib(screen.glscreen, GLFW.DECORATED, screen.config.decorated && visible)
     set_screen_visibility!(screen.glscreen, visible)
     if visible
         macos_set_dock_visible(true)

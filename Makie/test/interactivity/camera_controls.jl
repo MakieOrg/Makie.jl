@@ -98,3 +98,25 @@
 
     @test init == Makie._PICK_COUNTER[]
 end
+
+# Every camera update has to reach the plots. The trigger the plots' camera
+# matrices listen to was `time()`, and ComputePipeline drops an update whose value
+# is unchanged: on Windows `time()` advances every 16 ms, so a second update inside
+# one tick never reached a plot. Back-to-back updates, as here, share a tick on any
+# clock that coarse.
+@testset "back-to-back camera updates reach the plots" begin
+    scene = Scene(size = (400, 300))
+    cam3d!(scene)
+    p = scatter!(scene, rand(Point3f, 4))
+    p.attributes[:projection][]                       # resolved once, before the updates
+    triggers = Any[]
+    for w in 200:2:240
+        scene.viewport[] = Rect2i(0, 0, w, 300)
+        push!(triggers, scene.compute[:camera_trigger][])
+    end
+    @test allunique(triggers)
+    # The plot's `projection` is in ITS spaces (a scatter's markerspace is pixel),
+    # so it is compared with the scene graph's matrix of the same name.
+    projname = p.attributes[:camera_matrix_names][][2]
+    @test p.attributes[:projection][] == Mat4f(scene.compute[projname][])
+end
