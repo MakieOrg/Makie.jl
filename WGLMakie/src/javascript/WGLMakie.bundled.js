@@ -22741,6 +22741,9 @@ class MakieCamera {
                 console.error("Error during camera update callback:", e);
             }
         }
+        if (this.screen && this.screen.request_render) {
+            this.screen.request_render();
+        }
     }
     recalculate_light_dir() {
         const light_dir = this.original_light_direction;
@@ -22995,6 +22998,7 @@ function deserialize_scene_recursive(data, screen) {
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
     const camera = new MakieCamera();
+    camera.screen = screen;
     scene.wgl_camera = camera;
     function update_cam(camera_matrices, force) {
         if (!force) {
@@ -23141,6 +23145,10 @@ class Plot {
             }
         });
         this.apply_updates();
+        const screen = this.parent && this.parent.screen;
+        if (screen && screen.request_render) {
+            screen.request_render();
+        }
     }
     update_uniform(name, new_data) {
         const uniform = this.mesh.material.uniforms[name];
@@ -24672,31 +24680,55 @@ function render_scene(scene, picking = false) {
     return scene.scene_children.every((x1)=>render_scene(x1, picking));
 }
 function start_renderloop(three_scene) {
-    const { fps  } = three_scene.screen;
+    const screen = three_scene.screen;
+    const { fps  } = screen;
     const time_per_frame = 1 / fps * 1000;
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
-        if (!check_screen(three_scene.screen)) {
-            return false;
+        if (!check_screen(screen)) {
+            screen.renderloop_running = false;
+            return;
         }
-        if (timestamp - last_time_stamp > time_per_frame) {
+        const due = timestamp - last_time_stamp > time_per_frame;
+        if (due && (!screen.render_on_demand || screen.requires_update)) {
+            screen.requires_update = false;
+            screen.frame_count++;
             const all_rendered = render_scene(three_scene);
             if (!all_rendered) {
+                screen.renderloop_running = false;
                 return;
             }
             last_time_stamp = performance.now();
         }
-        requestAnimationFrame(renderloop);
+        if (!screen.render_on_demand || screen.requires_update) {
+            requestAnimationFrame(renderloop);
+        } else {
+            screen.renderloop_running = false;
+        }
     }
+    screen.request_render = ()=>{
+        screen.requires_update = true;
+        if (!screen.renderloop_running && check_screen(screen)) {
+            screen.renderloop_running = true;
+            requestAnimationFrame(renderloop);
+        }
+    };
     function _check_screen() {
         if (!check_screen(three_scene.screen)) {
             return;
         }
         setTimeout(_check_screen, 1000);
     }
+    screen.frame_count++;
     render_scene(three_scene);
+    screen.requires_update = false;
     _check_screen();
-    renderloop();
+    if (screen.render_on_demand) {
+        screen.renderloop_running = false;
+    } else {
+        screen.renderloop_running = true;
+        requestAnimationFrame(renderloop);
+    }
 }
 function get_element_size(element) {
     if (!element) {
@@ -24964,6 +24996,9 @@ function set_render_size(screen, width, height) {
     canvas.style.height = sheight + "px";
     renderer.setViewport(0, 0, real_pixel_width, real_pixel_height);
     add_picking_target(screen);
+    if (screen.request_render) {
+        screen.request_render();
+    }
     return;
 }
 function initialize_canvas_size(canvas, resize_to, width, height, px_per_unit, scalefactor) {
@@ -24993,7 +25028,7 @@ function initialize_canvas_size(canvas, resize_to, width, height, px_per_unit, s
         initial_height
     ];
 }
-function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, done_init) {
+function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, render_on_demand, done_init) {
     const spinner = wrapper.querySelector('.wglmakie-spinner');
     try {
         let final_width = width;
@@ -25009,7 +25044,7 @@ function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit
         ]);
         const init_scene = (scene_data)=>{
             try {
-                create_scene(wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height, framerate, resize_to, px_per_unit, scalefactor);
+                create_scene(wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height, framerate, render_on_demand, resize_to, px_per_unit, scalefactor);
                 done_init.notify(true);
                 spinner?.remove();
             } catch (e) {
@@ -25052,7 +25087,7 @@ function add_picking_target(screen) {
     });
     return;
 }
-function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, fps, resize_to, px_per_unit, scalefactor) {
+function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, fps, render_on_demand, resize_to, px_per_unit, scalefactor) {
     if (!scalefactor) {
         scalefactor = window.devicePixelRatio || 1.0;
     }
@@ -25077,7 +25112,11 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         scalefactor,
         winscale,
         comm,
-        texture_atlas: undefined
+        texture_atlas: undefined,
+        render_on_demand: render_on_demand !== false,
+        requires_update: true,
+        renderloop_running: false,
+        frame_count: 0
     };
     canvas.wglmakie_screen = screen;
     add_canvas_events(screen, comm, resize_to);

@@ -172,6 +172,13 @@ export class Plot {
         });
         // For e.g. when we need to re-create the geometry
         this.apply_updates();
+        // On-demand rendering: every plot data change funnels through here
+        // (subclasses super.update() into it, and glyph/atlas updates are paired
+        // with an update too), so this is the one place to request a redraw.
+        const screen = this.parent && this.parent.screen;
+        if (screen && screen.request_render) {
+            screen.request_render();
+        }
     }
 
     update_uniform(name, new_data) {

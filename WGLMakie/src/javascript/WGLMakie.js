@@ -128,26 +128,55 @@ export function render_scene(scene, picking = false) {
 }
 
 function start_renderloop(three_scene) {
+    const screen = three_scene.screen;
     // extract the first scene for screen, which should be shared by all scenes!
-    const { fps } = three_scene.screen;
+    const { fps } = screen;
     const time_per_frame = (1 / fps) * 1000; // default is 30 fps
     // make sure we immediately render the first frame and dont wait 30ms
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
-        if (!check_screen(three_scene.screen)) {
-            return false;
+        if (!check_screen(screen)) {
+            screen.renderloop_running = false;
+            return;
         }
-        if (timestamp - last_time_stamp > time_per_frame) {
+        // With render_on_demand we only render when something marked the screen
+        // dirty via request_render (Plot.update / camera.update_matrices / resize);
+        // otherwise we render every frame like a classic rAF loop.
+        const due = timestamp - last_time_stamp > time_per_frame;
+        if (due && (!screen.render_on_demand || screen.requires_update)) {
+            // consume the flag *before* rendering, so an update triggered during
+            // render_scene (re-)arms it and we render again next frame.
+            screen.requires_update = false;
+            screen.frame_count++;
             const all_rendered = render_scene(three_scene);
             if (!all_rendered) {
                 // if scenes don't render it means they're not displayed anymore
                 // - time to quit the renderin' business
+                screen.renderloop_running = false;
                 return;
             }
             last_time_stamp = performance.now();
         }
-        requestAnimationFrame(renderloop);
+        if (!screen.render_on_demand || screen.requires_update) {
+            // not on-demand: always keep spinning; on-demand & still dirty: keep going
+            requestAnimationFrame(renderloop);
+        } else {
+            // on-demand & idle: park the loop. request_render() wakes it.
+            screen.renderloop_running = false;
+        }
     }
+
+    // The single "something changed, please redraw" entry point. Reachable from
+    // anywhere holding the screen (Plot.update, camera.update_matrices,
+    // set_render_size). Idempotent and cheap when the loop is already running.
+    screen.request_render = () => {
+        screen.requires_update = true;
+        if (!screen.renderloop_running && check_screen(screen)) {
+            screen.renderloop_running = true;
+            requestAnimationFrame(renderloop);
+        }
+    };
+
     function _check_screen() {
         // make sure we delete the screen if the canvas is not in the DOM anymore
         if (!check_screen(three_scene.screen)){
@@ -160,9 +189,19 @@ function start_renderloop(three_scene) {
     }
 
     // render one time before starting loop, so that we don't wait 30ms before first render
+    screen.frame_count++;
     render_scene(three_scene);
+    // The initial frame is complete (glyphs are inserted before this point).
+    screen.requires_update = false;
     _check_screen();
-    renderloop();
+    if (screen.render_on_demand) {
+        // leave the loop parked; request_render() starts it on the first change.
+        screen.renderloop_running = false;
+    } else {
+        // classic continuous loop
+        screen.renderloop_running = true;
+        requestAnimationFrame(renderloop);
+    }
 }
 
 /**
@@ -541,6 +580,12 @@ function set_render_size(screen, width, height) {
 
     renderer.setViewport(0, 0, real_pixel_width, real_pixel_height);
     add_picking_target(screen);
+    // A resize changes the framebuffer, so we need to redraw. (Guarded because
+    // set_render_size also runs once during setup, before the loop exists - that
+    // initial frame is covered by the explicit render in start_renderloop.)
+    if (screen.request_render) {
+        screen.request_render();
+    }
     return;
 }
 
@@ -591,7 +636,7 @@ export function initialize_canvas_size(canvas, resize_to, width, height, px_per_
     return [initial_width, initial_height];
 }
 
-export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, done_init) {
+export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, render_on_demand, done_init) {
     const spinner = wrapper.querySelector('.wglmakie-spinner');
     try {
         // Calculate and apply the correct canvas size based on resize_to setting
@@ -620,7 +665,7 @@ export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_p
             try {
                 const renderer = create_scene(
                     wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height,
-                    framerate, resize_to, px_per_unit, scalefactor
+                    framerate, render_on_demand, resize_to, px_per_unit, scalefactor
                 );
                 // Remove spinner after successful initialization
                 done_init.notify(true);
@@ -685,6 +730,7 @@ function create_scene(
     width,
     height,
     fps,
+    render_on_demand,
     resize_to,
     px_per_unit,
     scalefactor
@@ -719,6 +765,17 @@ function create_scene(
         winscale,
         comm,
         texture_atlas: undefined,
+        // On-demand rendering: only render a frame when something changed.
+        // `requires_update` is set via `screen.request_render()` from the dirty
+        // sources (Plot.update, camera.update_matrices, set_render_size). When the
+        // scene goes idle the rAF loop parks itself (renderloop_running=false) and
+        // request_render() wakes it back up. frame_count is for diagnostics/tests.
+        // `render_on_demand` defaults to true; pass false (WGLMakie.activate!(;
+        // render_on_demand=false)) to fall back to a continuous render loop.
+        render_on_demand: render_on_demand !== false,
+        requires_update: true,
+        renderloop_running: false,
+        frame_count: 0,
     };
     canvas.wglmakie_screen = screen;
 
