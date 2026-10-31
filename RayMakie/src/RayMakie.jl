@@ -34,6 +34,13 @@ import Mantle: GraphicsPipeline, LavaFramebuffer, OffscreenTarget,
                LavaTexture2D, LavaSampler, SampledTexture, bind_textures,
                vk_context, ensure_active_batch!, transition_image!,
                LavaArray, LavaBackend, BatchQueue, allocate_batch_queue!
+# `VK` is Mantle's alias for the Vulkan package. This file used to say
+# `import Lava.Vulkan` and the call sites said `Vulkan.FORMAT_…`; the split
+# replaced the import with this line and left the 18 call sites naming a module
+# RayMakie no longer has, so the package did not load at all. Reached through
+# Mantle rather than depended on directly: RayMakie describes what to draw, and
+# the Vulkan handle types it still touches — viewport, scissor, format — belong
+# to the runtime that owns the command buffer.
 import Mantle: VK
 using Adapt
 using Makie.ComputePipeline: register_computation!

@@ -1,0 +1,65 @@
+name: Reference Image Status
+
+on:
+  workflow_run:
+    workflows: [Backends]
+    types:
+      - completed
+
+jobs:
+  download:
+    permissions:
+      statuses: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Download artifact"
+        uses: actions/github-script@v8
+        with:
+          debug: true
+          script: |
+            console.log(context.payload.workflow_run);
+            let allArtifacts = await github.rest.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: context.payload.workflow_run.id,
+            });
+            let matchArtifact = allArtifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == "n_missing_refimages"
+            })[0];
+            let download = await github.rest.actions.downloadArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: matchArtifact.id,
+               archive_format: 'zip',
+            });
+            let fs = require('fs');
+            fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/n_missing_refimages.zip`, Buffer.from(download.data));
+
+      - name: 'Unzip artifact'
+        run: unzip n_missing_refimages.zip
+
+      - name: Add reference images status
+        uses: actions/github-script@v8
+        with:
+          debug: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            let fs = require('fs');
+            let content = fs.readFileSync('./n_missing_refimages', { encoding: 'utf8' });
+            let lines = content.split('\n');
+            let n_missing = Number(lines[0]);
+            let commit_sha = lines[1];
+
+            await github.request('POST /repos/{owner}/{repo}/statuses/{sha}', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: commit_sha,
+              state: n_missing === 0 ? 'success' : 'failure',
+              target_url: null,
+              description: `${n_missing == 0 ? 'No' : n_missing} missing reference image${n_missing == 1 ? '' : 's'} must be uploaded`,
+              context: 'Reference Tests',
+              headers: {
+                'X-GitHub-Api-Version': '2022-11-28'
+              }
+            })   
+      

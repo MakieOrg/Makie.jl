@@ -3,7 +3,7 @@
 
 using Test
 using Makie, RayMakie, Lava, Hikari
-using Lava: LavaArray, Mat3x4f
+using Mantle: LavaArray, Mat3x4f
 using GeometryBasics
 using GeometryBasics: Point3f, Vec3f, Vec4f, Rect3f
 

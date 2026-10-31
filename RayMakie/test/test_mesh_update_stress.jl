@@ -3,7 +3,7 @@
 # All updates use the standard Makie API. Persistent screen across frames.
 
 using Test, Makie, RayMakie, Lava, Hikari, GeometryBasics
-using Lava: LavaArray
+using Mantle: LavaArray
 using GeometryBasics: Point3f, Vec3f, Rect3f, Sphere
 using Makie: Mat4f
 

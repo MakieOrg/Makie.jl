@@ -32,7 +32,7 @@ PIXEL_FILTER() = Hikari.GaussianFilter(radius = Point2f(1.5f0, 1.5f0), sigma = 0
 # survived every primary-coloured test. It also made the raytraced pixels depend
 # on whether the scene happened to contain an overlay, since only then did
 # `colorbuffer` route through this framebuffer at all.
-const COMPOSITE_FORMAT = Vulkan.FORMAT_B8G8R8A8_UNORM
+const COMPOSITE_FORMAT = VK.FORMAT_B8G8R8A8_UNORM
 
 """
     ScreenConfig

@@ -7,7 +7,7 @@ function get_overlay_framebuffer(screen, w::Int, h::Int)
     if screen.overlay_fb === nothing || screen.overlay_fb_size != (w, h)
         screen.overlay_fb = LavaFramebuffer(w, h;
             depth=false,
-            color_format=Vulkan.FORMAT_R32G32B32A32_SFLOAT)
+            color_format=VK.FORMAT_R32G32B32A32_SFLOAT)
         screen.overlay_fb_size = (w, h)
     end
     return screen.overlay_fb

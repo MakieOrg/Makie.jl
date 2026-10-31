@@ -21,7 +21,7 @@
 #  11. Large-mesh meshscatter refit stress, 50 frames, hi-res sphere
 
 using Test, Makie, RayMakie, Lava, Raycore, Hikari, GeometryBasics
-using Lava: LavaArray, LavaBackend, Mat3x4f
+using Mantle: LavaArray, LavaBackend, Mat3x4f
 using GeometryBasics: Point3f, Vec3f, Vec4f
 using Statistics: mean
 
