@@ -29,7 +29,7 @@
 end
 
 @testset "Glyph delivery across subsessions" begin
-    WGLMakie.activate!()
+    WGLMakie.activate!(use_html_widgets = false)
     owner = Figure(size = (300, 200))
     Label(owner[1, 1], "Late glyphs Ωλ", fontsize = 30)
     visible = Figure(size = (300, 200))
@@ -60,7 +60,7 @@ end
         @test run(
             edisplay.window, """
             (() => {
-                const plot = Object.values(WGL.plot_cache).map(mesh => mesh.plot_object).find(p => p.glyph_info?.scales);
+                const plot = Object.values(WGL.plot_cache).map(mesh => mesh.plot_object).find(p => p.glyph_info?.scales && p.glyph_info.glyph_hashes.length > 0);
                 const heal = Object.getPrototypeOf(plot).heal_missing_glyphs;
                 let reply;
                 let updates = 0;

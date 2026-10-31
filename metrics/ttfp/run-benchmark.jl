@@ -58,7 +58,7 @@ if Package == "WGLMakie"
     Pkg.add(
         [
             (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/media-proxy"),
-            (; url = "https://github.com/IanButterworth/ElectronCall.jl.git", rev = "main"),
+            (; url = "https://github.com/JuliaWeb/ElectronCall.jl.git", rev = "sd/relocatable-assets"),
         ]
     )
 end

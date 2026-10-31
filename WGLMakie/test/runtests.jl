@@ -34,7 +34,7 @@ excludes = Set(
 )
 
 Makie.inline!(Makie.automatic)
-edisplay = Bonito.use_electron_display(devtools = false, options = Dict{String, Any}("show" => false))
+edisplay = Bonito.use_electron_display(devtools = false, options = Dict{String, Any}("show" => false, "webPreferences" => Dict("offscreen" => true, "backgroundThrottling" => false)))
 
 # Force devicePixelRatio to 1.0 so reference images match CI regardless of local DPI
 let dpr = run(edisplay.window, "window.devicePixelRatio")

@@ -19,29 +19,39 @@ end
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 18
     @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 11
+    @test length(cache.program_cache) == 10
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 18
     @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 11
+    @test length(cache.program_cache) == 10
     # Same for linesegments
     display(screen, linesegments(1:4))
     @test length(cache.shader_cache) == 18
     @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 11
+    @test length(cache.program_cache) == 10
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
     @test length(cache.shader_cache) == 20
     @test length(cache.template_cache) == 20
-    @test length(cache.program_cache) == 12
+    @test length(cache.program_cache) == 11
 
     # For second time no new shaders should be added
-    display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
+    figure, axis, plot = heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4))
+    display(screen, figure)
     @test length(cache.shader_cache) == 20
     @test length(cache.template_cache) == 20
+    @test length(cache.program_cache) == 11
+
+    # Rectangle selection compiles its program only when first used.
+    zoom = axis.interactions[:rectanglezoom][2]
+    @test !zoom.mesh_initialized
+    Makie.initialize_selection_mesh!(zoom, axis)
     @test length(cache.program_cache) == 12
+    Makie.initialize_selection_mesh!(zoom, axis)
+    @test length(cache.program_cache) == 12
+
 end
 
 @testset "unit tests" begin

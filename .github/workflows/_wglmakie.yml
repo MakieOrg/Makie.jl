@@ -32,10 +32,10 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          # Exercise the pending Bonito release and current ElectronCall.
+          # Exercise the pending Bonito and ElectronCall fixes.
           Pkg.add([
               PackageSpec(url="https://github.com/SimonDanisch/Bonito.jl", rev="sd/media-proxy"),
-              PackageSpec(url="https://github.com/IanButterworth/ElectronCall.jl", rev="main"),
+              PackageSpec(url="https://github.com/JuliaWeb/ElectronCall.jl", rev="sd/relocatable-assets"),
           ])
           pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests

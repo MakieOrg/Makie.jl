@@ -102,31 +102,14 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false, figures
     ElectronCall.ElectronAPI.setContentSize(win, win_size...)
     sleep(1) # give the resize round-trip a chance to start
     wait_for_render(win)
-    winid = win.id
-    # Normalize path for JavaScript (replace backslashes with forward slashes on Windows)
-    js_path = replace(path, '\\' => '/')
-    # Use DevTools Protocol Page.captureScreenshot which works on hidden windows
-    # (unlike capturePage() which needs the compositor to paint a visible surface)
-    run(
+    image = run(
         edisplay.window.app,
         """
-        const win = BrowserWindow.fromId($winid);
-        (async () => {
-            try {
-                win.webContents.debugger.attach('1.3');
-                const result = await win.webContents.debugger.sendCommand('Page.captureScreenshot', {format: 'png'});
-                win.webContents.debugger.detach();
-                const buffer = Buffer.from(result.data, 'base64');
-                require('fs').writeFileSync('$(js_path)', buffer);
-                console.log('Screenshot saved to', '$(js_path)');
-            } catch(err) {
-                try { win.webContents.debugger.detach(); } catch(e) {}
-                console.error('Screenshot error:', err);
-            }
-        })();
-        """,
+        electron.BrowserWindow.fromId($(win.id)).webContents.capturePage()
+            .then(image => image.toPNG().toString('base64'))
+        """
     )
-    Bonito.wait_for(() -> isfile(path); timeout = 30)
+    write(path, Bonito.Base64.base64decode(image))
     return path
 end
 
@@ -320,7 +303,7 @@ function create_test_figure()
 end
 
 # Makie.inline!(Makie.automatic)
-edisplay = Bonito.use_electron_display(; devtools = false, options = Dict{String, Any}("show" => false))
+edisplay = Bonito.use_electron_display(; devtools = false, options = Dict{String, Any}("show" => false, "webPreferences" => Dict("offscreen" => true, "backgroundThrottling" => false)))
 # ReferenceTests.RECORDING_DIR[] = joinpath(pwd(), "WidgetTests")
 # ReferenceTests.REGISTERED_TESTS |> empty!
 
