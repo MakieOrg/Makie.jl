@@ -94,7 +94,14 @@ in the order specified by `robj.arg_names`.
 # into a tuple — and so does Base's `map` from 32 names on, which a 69-argument
 # stage has. A frame builds the arguments of every overlay object, and in a
 # 5000-plot GUI that was a fifth of the frame.
-build_args(robj::RenderObject) = Mantle.argmap(name -> argvalue(robj, name), robj.arg_names)
+function build_args(robj::RenderObject; fxaa::Bool = true)
+    # Hard shader edges are valid only when the screen will run FXAA.
+    # Preserve picking bits while falling back to analytic antialiasing.
+    return Mantle.argmap(robj.arg_names) do name
+        value = argvalue(robj, name)
+        name === :fxaa && !fxaa ? value & ~Int32(1) : value
+    end
+end
 
 function argvalue(robj::RenderObject, name::Symbol)
     buf = get(robj.buffers, name, nothing)

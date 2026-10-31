@@ -19,6 +19,21 @@ using Test, RayMakie, Makie
     @test RayMakie.glyph_squared_partial(0f0, 0.25f0, -1f0) == 2f0
 end
 
+@testset "screen without FXAA keeps analytic glyph antialiasing" begin
+    scene = Scene(; size = (360,96), camera = campixel!, backgroundcolor = :black)
+    text!(scene, Point2f(8,40); text = "Optical resolution", fontsize = 31, color = :white, fxaa = true)
+    try
+        pixels = Makie.colorbuffer(scene; backend = RayMakie, rasterize = true, fxaa = false)
+        # Hard step edges have only black and white. Analytic coverage must
+        # remain even when the screen suppresses the plot's FXAA request.
+        partial = count(c -> 0.02 < Makie.Colors.red(c) < 0.98, pixels)
+        @test partial > 30
+    finally
+        close(Makie.getscreen(scene, RayMakie))
+        Makie.free(scene)
+    end
+end
+
 @testset "adaptive glyph shader renders on the active backend" begin
     scene = Scene(; size = (360,96), camera = campixel!, backgroundcolor = :black)
     text!(scene, Point2f(8,55); text = "opening: up to 25 mm", fontsize = 24, color = :white)
