@@ -206,12 +206,11 @@ function Camera3D(scene::Scene; kwargs...)
 
     disconnect!(camera(scene))
 
-    # Keyboard controls
-    # ticks every so often to get consistent position updates.
+    # Keyboard controls: each tick moves by how long each key was held since the last one.
+    held = HeldTime(camera(scene), scene, () -> pulse_buttons(cam))
     on(camera(scene), events(scene).tick) do tick
-        if cam.selected[]
-            on_pulse(scene, cam, tick.delta_time)
-        end
+        held_for = take!(held, scene, tick.time)
+        cam.selected[] && on_pulse(scene, cam, held_for)
     end
 
     # de/select plot on click outside/inside
@@ -295,41 +294,41 @@ end
 ################################################################################
 
 
-function on_pulse(scene, cam::Camera3D, timestep)
+function pulse_buttons(cam::Camera3D)
     @extractvalue cam.controls (
         right_key, left_key, up_key, down_key, backward_key, forward_key,
         tilt_up_key, tilt_down_key, pan_left_key, pan_right_key, roll_counterclockwise_key, roll_clockwise_key,
         zoom_out_key, zoom_in_key, increase_fov_key, decrease_fov_key,
     )
+    return (;
+        right_key, left_key, up_key, down_key, backward_key, forward_key,
+        tilt_up_key, tilt_down_key, pan_left_key, pan_right_key, roll_counterclockwise_key, roll_clockwise_key,
+        zoom_out_key, zoom_in_key, increase_fov_key, decrease_fov_key,
+    )
+end
 
-    if !ispressed(
-            scene, right_key | left_key | up_key | down_key | backward_key | forward_key |
-                tilt_up_key | tilt_down_key | pan_left_key | pan_right_key | roll_counterclockwise_key |
-                roll_clockwise_key | zoom_out_key | zoom_in_key | increase_fov_key | decrease_fov_key
-        )
-
-        return
-    end
+# `held`: the seconds each of `pulse_buttons(cam)` was held since the last tick. Zoom and
+# field of view scale by `exp`, the limit of compounding `1 + speed * dt` once a tick, so
+# one long tick goes as far as many short ones.
+function on_pulse(scene, cam::Camera3D, held::NamedTuple)
+    any(>(0), held) || return
 
     @extractvalue cam.settings (
         keyboard_translationspeed, keyboard_rotationspeed, keyboard_zoomspeed, projectiontype,
     )
 
     # translation
-    right = ispressed(scene, right_key)
-    left = ispressed(scene, left_key)
-    up = ispressed(scene, up_key)
-    down = ispressed(scene, down_key)
-    backward = ispressed(scene, backward_key)
-    forward = ispressed(scene, forward_key)
-    translating = right || left || up || down || backward || forward
+    right, left = held.right_key, held.left_key
+    up, down = held.up_key, held.down_key
+    backward, forward = held.backward_key, held.forward_key
+    translating = any(>(0), (right, left, up, down, backward, forward))
 
     if translating
         # translation in camera space x/y/z direction
         if projectiontype == Perspective
             viewnorm = norm(cam.lookat[] - cam.eyeposition[])
             xynorm = 2 * viewnorm * tand(0.5 * cam.fov[])
-            translation = keyboard_translationspeed * timestep * Vec3d(
+            translation = keyboard_translationspeed * Vec3d(
                 xynorm * (right - left),
                 xynorm * (up - down),
                 viewnorm * (backward - forward)
@@ -337,7 +336,7 @@ function on_pulse(scene, cam::Camera3D, timestep)
         else
             # translation in camera space x/y/z direction
             viewnorm = norm(cam.eyeposition[] - cam.lookat[])
-            translation = 2 * viewnorm * keyboard_translationspeed * timestep * Vec3d(
+            translation = 2 * viewnorm * keyboard_translationspeed * Vec3d(
                 right - left, up - down, backward - forward
             )
         end
@@ -345,39 +344,32 @@ function on_pulse(scene, cam::Camera3D, timestep)
     end
 
     # rotation
-    up = ispressed(scene, tilt_up_key)
-    down = ispressed(scene, tilt_down_key)
-    left = ispressed(scene, pan_left_key)
-    right = ispressed(scene, pan_right_key)
-    counterclockwise = ispressed(scene, roll_counterclockwise_key)
-    clockwise = ispressed(scene, roll_clockwise_key)
-    rotating = up || down || left || right || counterclockwise || clockwise
+    up, down = held.tilt_up_key, held.tilt_down_key
+    left, right = held.pan_left_key, held.pan_right_key
+    counterclockwise, clockwise = held.roll_counterclockwise_key, held.roll_clockwise_key
+    rotating = any(>(0), (up, down, left, right, counterclockwise, clockwise))
 
     if rotating
         # rotations around camera space x/y/z axes
-        angles = keyboard_rotationspeed * timestep *
-            Vec3d(up - down, left - right, counterclockwise - clockwise)
+        angles = keyboard_rotationspeed * Vec3d(up - down, left - right, counterclockwise - clockwise)
 
         _rotate_cam!(scene, cam, angles)
     end
 
     # zoom
-    zoom_out = ispressed(scene, zoom_out_key)
-    zoom_in = ispressed(scene, zoom_in_key)
-    zooming = zoom_out || zoom_in
+    zoom_out, zoom_in = held.zoom_out_key, held.zoom_in_key
+    zooming = zoom_out > 0 || zoom_in > 0
 
     if zooming
-        zoom_step = (1.0 + keyboard_zoomspeed * timestep)^(zoom_out - zoom_in)
-        _zoom!(scene, cam, zoom_step, false, false)
+        _zoom!(scene, cam, exp(keyboard_zoomspeed * (zoom_out - zoom_in)), false, false)
     end
 
     # fov
-    fov_inc = ispressed(scene, increase_fov_key)
-    fov_dec = ispressed(scene, decrease_fov_key)
-    fov_adjustment = fov_inc || fov_dec
+    fov_inc, fov_dec = held.increase_fov_key, held.decrease_fov_key
+    fov_adjustment = fov_inc > 0 || fov_dec > 0
 
     if fov_adjustment
-        step = (1 + keyboard_zoomspeed * timestep)^(fov_inc - fov_dec)
+        step = exp(keyboard_zoomspeed * (fov_inc - fov_dec))
         cam.fov[] = clamp(cam.fov[] * step, 0.1, 179.0)
     end
 

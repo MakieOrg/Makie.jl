@@ -10,19 +10,23 @@
 # but the ambient term.
 
 """
-    RasterLook(color, emission)
+    RasterLook(color, emission, glow = nothing)
 
 How the raster shader draws a Hikari material. `color` is what the shader takes
 as the base colour (sRGB encoded, as a Makie colour is; alpha below one for
-glass, zero for no surface at all) or, for a material that emits an image, that
-image. `emission` is `(r, g, b, mode)`: mode 0 emits nothing, mode 1 emits the
-radiance `rgb` (linear, through the film like the tracer's), mode 2 emits the
-sampled colour times `r`, with no surface under it.
+glass, zero for no surface at all), one colour or an image for a sampled
+reflectance, or, for a material that emits an image, that image. `emission` is
+`(r, g, b, mode)`: mode 0 emits nothing, mode 1 emits the radiance `rgb`
+(linear, through the film like the tracer's), mode 2 emits the sampled colour
+times `r`, with no surface under it, mode 3 emits the image `glow` (sRGB
+encoded, sampled as a second texture) times `r` over the surface `color` is.
 """
-struct RasterLook{C}
+struct RasterLook{C, G}
     color::C
     emission::Vec4f
+    glow::G
 end
+RasterLook(color, emission::Vec4f) = RasterLook(color, emission, nothing)
 
 const NO_EMISSION = Vec4f(0)
 
@@ -31,12 +35,36 @@ srgb(c::Hikari.RGBSpectrum, alpha = 1f0) =
     RGBAf(Hikari.linear_to_srgb_gamma(c.c[1]), Hikari.linear_to_srgb_gamma(c.c[2]),
           Hikari.linear_to_srgb_gamma(c.c[3]), alpha)
 
+"""Linear radiance as a colour the shader takes as it is."""
+linear_rgba(c::Hikari.RGBSpectrum) = RGBAf(c.c[1], c.c[2], c.c[3], 1f0)
+
 """The colour of a constant texture handle, or `fallback` for a sampled one."""
 handle_rgb(h::Hikari.TexHandle, fallback) =
     h.kind in (Hikari.TexKind.CONST_SPECTRUM, Hikari.TexKind.CONST_FLOAT) ? Hikari.const_spectrum(h) : fallback
+handle_rgb(t::Hikari.Texture{<:Hikari.RGBSpectrum, 0}, fallback) = Hikari.constant_value(t)
 handle_rgb(::Any, fallback) = fallback
 
 const WHITE = Hikari.RGBSpectrum(1f0)
+
+"""Whether a material parameter is an image rather than one value."""
+is_sampled(t::Hikari.Texture{<:Any, 2}) = !t.isconst
+is_sampled(::Any) = false
+
+"""
+    raster_image(f, texture) -> Matrix
+
+A sampled texture as the raster shader's image of it, `f` applied to each
+texel. The data goes as it is: the raster stage samples a texture at a uv where
+the tracer's `sample_texture_data` does (dim 1 is 1 - v, dim 2 is u).
+"""
+raster_image(f, t::Hikari.Texture) = map(f, t.data)
+
+"""
+A reflectance parameter as the base colour: one colour, or for a sampled one its
+image, in 8 bits as albedo maps are (14.6 MB for the film's 2700×1350 Earth
+against 58 MB in floats).
+"""
+base_color(p) = is_sampled(p) ? raster_image(c -> RGBA{N0f8}(srgb(c)), p) : srgb(handle_rgb(p, WHITE))
 
 """
     raster_look(material) -> RasterLook or nothing
@@ -45,8 +73,8 @@ const WHITE = Hikari.RGBSpectrum(1f0)
 plot's own colour, as before.
 """
 raster_look(::Any) = nothing
-raster_look(m::Hikari.Diffuse) = RasterLook(srgb(handle_rgb(m.Kd, WHITE)), NO_EMISSION)
-raster_look(m::Hikari.CoatedDiffuse) = RasterLook(srgb(handle_rgb(m.reflectance, WHITE)), NO_EMISSION)
+raster_look(m::Hikari.Diffuse) = RasterLook(base_color(m.Kd), NO_EMISSION)
+raster_look(m::Hikari.CoatedDiffuse) = RasterLook(base_color(m.reflectance), NO_EMISSION)
 # The base is unused: `raster_conductor` gives the shader its reflectance.
 raster_look(::Hikari.Conductor) = RasterLook(RGBAf(1, 1, 1, 1), NO_EMISSION)
 # Glass's colour is its transmittance; how see-through it is at each angle is
@@ -54,10 +82,26 @@ raster_look(::Hikari.Conductor) = RasterLook(RGBAf(1, 1, 1, 1), NO_EMISSION)
 raster_look(m::Hikari.Dielectric) = RasterLook(srgb(handle_rgb(m.Kt, WHITE)), NO_EMISSION)
 raster_look(::Hikari.ThinDielectric) = RasterLook(RGBAf(1, 1, 1, 1), NO_EMISSION)
 raster_look(m::Hikari.CoatedConductor) = RasterLook(RGBAf(1, 1, 1, 1), NO_EMISSION)
-raster_look(m::Hikari.DiffuseTransmission) = RasterLook(srgb(handle_rgb(m.reflectance, WHITE)), NO_EMISSION)
+raster_look(m::Hikari.DiffuseTransmission) = RasterLook(base_color(m.reflectance), NO_EMISSION)
 raster_look(::Hikari.NullMaterial) = RasterLook(RGBAf(0, 0, 0, 0), NO_EMISSION)
-# A pure emitter reflects nothing.
-raster_look(m::Hikari.Emissive) = with_emission(RasterLook(RGBAf(0, 0, 0, 1), NO_EMISSION), m)
+# A pure emitter reflects nothing; an image it emits is all there is of it.
+raster_look(m::Hikari.Emissive) =
+    is_sampled(m.Le) ? emitted_image(m) : with_emission(RasterLook(RGBAf(0, 0, 0, 1), NO_EMISSION), m)
+
+"""
+    mixed(mix) -> Material
+
+The material of a `MixMaterialSpec` the raster path draws. The tracer picks one
+of the two per hit by `amount` (the share of `material2`); the raster path has
+one material per mesh, so it takes the one picked over more of it. The film's
+Earth mixes matte land and glossy water by a water mask: 49 % water once the
+clouds are on it, so the raster Earth is matte.
+"""
+mixed(m::Hikari.MixMaterialSpec) = mean_amount(m.amount) > 0.5f0 ? m.material2 : m.material1
+mean_amount(t::Hikari.Texture{<:Any, 2}) = Float32(sum(t.data) / length(t.data))
+mean_amount(t::Hikari.Texture{<:Any, 0}) = Float32(Hikari.constant_value(t))
+mean_amount(x) = handle_float(x, 0.5f0)
+raster_look(m::Hikari.MixMaterialSpec) = raster_look(mixed(m))
 
 """
 Clear water and the like: a dielectric over a scattering medium. The tracer sees
@@ -91,16 +135,34 @@ uplifts that RGB to (and so takes back out).
 """
 emitted_scale(e::Hikari.Emissive) = e.scale * Hikari.D65_PHOTOMETRIC
 
+"""
+    with_emission(look, emissive) -> RasterLook
+
+The surface `look` glowing with `emissive`'s radiance: mode 1 for one radiance,
+mode 3 for an image over a surface, mode 2 for an image with no surface under it
+(a `NullMaterial`).
+"""
 function with_emission(look::RasterLook, e::Hikari.Emissive)
-    Le = e.Le
-    if Le isa Hikari.Texture && !Le.isconst
-        # Mode 2: the image is the emission, the surface is gone.
-        img = map(c -> RGBAf(c.c[1], c.c[2], c.c[3], 1f0), Le.data)
-        return RasterLook(img, Vec4f(emitted_scale(e), 0, 0, 2))
-    end
-    c = handle_rgb(Le, Hikari.RGBSpectrum(0f0))
+    is_sampled(e.Le) && return glowing(look, e)
+    c = handle_rgb(e.Le, Hikari.RGBSpectrum(0f0))
     s = emitted_scale(e)
     return RasterLook(look.color, Vec4f(c.c[1] * s, c.c[2] * s, c.c[3] * s, 1))
+end
+
+"""Mode 2: the image is the emission, the surface is gone."""
+emitted_image(e::Hikari.Emissive) = RasterLook(raster_image(linear_rgba, e.Le), Vec4f(emitted_scale(e), 0, 0, 2))
+
+# Mode 3 samples the surface's colour as an image too: one colour is an image of
+# one texel. The Earth's city lights over its day colours are the case. The glow
+# is 8-bit sRGB of the radiance over its peak, the peak going into the scale: a
+# texture table takes one texel type, and the surface's is 8 bits.
+glowing(look::RasterLook{<:Colorant}, e::Hikari.Emissive) =
+    alpha(look.color) == 0f0 ? emitted_image(e) :
+    glowing(RasterLook(fill(RGBA{N0f8}(look.color), 1, 1), look.emission), e)
+function glowing(look::RasterLook{<:AbstractMatrix}, e::Hikari.Emissive)
+    peak = max(maximum(c -> max(c.c[1], c.c[2], c.c[3]), e.Le.data), floatmin(Float32))
+    img = raster_image(c -> RGBA{N0f8}(srgb(Hikari.RGBSpectrum(c.c[1] / peak, c.c[2] / peak, c.c[3] / peak))), e.Le)
+    return RasterLook(look.color, Vec4f(emitted_scale(e) * peak, 0, 0, 3), img)
 end
 
 """
@@ -124,7 +186,8 @@ surface (a glowing sheet): the tracer's rays pass it.
 """
 casts_shadow(::Nothing) = true
 casts_shadow(look::RasterLook{<:Colorant}) = look.emission[4] == 0f0 && alpha(look.color) > 0f0
-casts_shadow(::RasterLook) = false   # an image look is an emitted image, mode 2
+# An image is a sampled surface (modes 0 and 3) or what an emitter emits (mode 2).
+casts_shadow(look::RasterLook{<:AbstractMatrix}) = look.emission[4] == 0f0
 # Glass does cast: the tracer's shadow rays stop at any surface with a material.
 
 """
@@ -136,7 +199,22 @@ is_see_through(look, plot) = (haskey(plot, :transparency) && to_value(plot.trans
                              see_through_look(look) || is_glass(raster_material(overlay_material(plot)))
 see_through_look(::Nothing) = false
 see_through_look(look::RasterLook{<:Colorant}) = alpha(look.color) < 1f0 || look.emission[4] == 2f0
-see_through_look(::RasterLook) = true   # an image look is an emitted image, mode 2
+see_through_look(look::RasterLook{<:AbstractMatrix}) = look.emission[4] == 2f0
+
+
+"""
+The image a look glows with (mode 3), as the second texture's texels, or
+`nothing`.
+"""
+glow_texels(::Nothing) = nothing
+glow_texels(look::RasterLook{<:Any, Nothing}) = nothing
+glow_texels(look::RasterLook) = texeldata(look.glow)
+
+# A material's image repeats past the uv square, as the tracer samples it
+# (`Hikari.sample_texture_data`); an image given as the plot's colour is clamped,
+# as GLMakie draws it.
+material_wrap(colorinfo, ::RasterLook{<:AbstractMatrix}) = merge(colorinfo, (wrap = :repeat,))
+material_wrap(colorinfo, ::Any) = colorinfo
 
 # -----------------------------------------------------------------------------
 # Glowing meshes as lights
@@ -177,23 +255,21 @@ function emission_of(e::Hikari.Emissive)
 end
 
 """
-    raster_emitter(plot) -> RasterEmitter or nothing
+    raster_emitter(positions, faces, material) -> Vector{RasterEmitter}
 
-The area light a mesh plot is, in the space the raster path draws in (the
-plot's model matrix applied to its transformed, Float32-converted positions):
-its largest face fixes the normal, and the faces turned the same way give the
-area and the centre. For a thin box (a softbox) that is one side, which is the
-side that shines; the other is behind it. The in-plane extent of those faces'
-corners gives the rectangle (`patch_extent`).
+The area light a mesh is, in its own space (its transformed, Float32-converted
+positions, before the model matrix): its largest face fixes the normal, and the
+faces turned the same way give the area and the centre. For a thin box (a
+softbox) that is one side, which is the side that shines; the other is behind
+it. The in-plane extent of those faces' corners gives the rectangle
+(`patch_extent`). Empty when the material does not glow. A vector, so the
+compute node holding it (`:raster_emitter_local`) keeps one type whether or not
+the mesh glows.
 """
-function raster_emitter(plot)
-    e = emission_of(overlay_material(plot))
-    e === nothing && return nothing
-    model = Mat4f(plot.model_f32c[])
-    world(p) = (h = model * Vec4f(p[1], p[2], p[3], 1f0); Vec3f(h[1], h[2], h[3]) / h[4])
-    P = world.(plot.positions_transformed_f32c[])
-    faces = plot.faces[]
-    isempty(faces) && return nothing
+function raster_emitter(positions::AbstractVector, faces::AbstractVector, material)
+    e = emission_of(material)
+    (e === nothing || isempty(faces)) && return RasterEmitter[]
+    P = map(Vec3f, positions)
     tris = map(faces) do f
         a, b, c = P[f[1]], P[f[2]], P[f[3]]
         n = cross(b - a, c - a)
@@ -216,7 +292,44 @@ function raster_emitter(plot)
     # its ends twice turned a 24×5 softbox's axis towards that diagonal and
     # shrank its rectangle to 21×6.
     axis, half = patch_extent(unique!(corners), centre, ref, area)
-    return RasterEmitter(centre, ref, area, e.two_sided, e.L, axis, half)
+    return [RasterEmitter(centre, ref, area, e.two_sided, e.L, axis, half)]
+end
+
+"""
+    placed(emitter, model) -> RasterEmitter
+
+`emitter`, found in a mesh's own space, where the raster path draws it: moved by
+the plot's `model` matrix. The centre and the rectangle's axes go through the
+matrix, the normal through its inverse transpose, and the area by how the
+matrix stretches the patch's plane. The light's shape is the one found in the
+mesh's own space, which for a rotation, translation or uniform scale (a turning
+globe) is exactly the shape found after it.
+"""
+function placed(e::RasterEmitter, model::Mat4f)
+    L = Mat3f(model[1, 1], model[2, 1], model[3, 1], model[1, 2], model[2, 2], model[3, 2],
+              model[1, 3], model[2, 3], model[3, 3])
+    h = model * Vec4f(e.centre[1], e.centre[2], e.centre[3], 1f0)
+    m = transpose(inv(L)) * e.normal
+    axis = L * e.axis
+    across = L * cross(e.normal, e.axis)
+    return RasterEmitter(Vec3f(h[1], h[2], h[3]) / h[4], normalize(m), e.area * abs(det(L)) * norm(m),
+                         e.two_sided, e.L, normalize(axis), Vec2f(e.half[1] * norm(axis), e.half[2] * norm(across)))
+end
+
+"""
+    raster_emitter_node!(plot) -> plot
+
+Give a mesh plot its `:raster_emitter_local` node: `raster_emitter` of its
+positions, faces and material, recomputed only when one of them changes. Walking
+a 130k-face globe and averaging its 3.6-megapixel city-light texture per frame
+held a scene with it to 3 fps.
+"""
+function raster_emitter_node!(plot)
+    attr = plot.attributes
+    haskey(attr, :raster_emitter_local) && return plot
+    Makie.ComputePipeline.map!(raster_emitter, attr,
+        [:positions_transformed_f32c, :faces, :material], :raster_emitter_local)
+    return plot
 end
 
 """
@@ -257,9 +370,12 @@ function sync_raster_emitters!(scene::Makie.Scene)
     emitters = RasterEmitter[]
     for p in scene.plots
         Makie.for_each_atomic_plot(p) do ap
-            (ap isa Makie.Mesh && ap.visible[]) || return nothing
-            e = raster_emitter(ap)
-            e === nothing || push!(emitters, e)
+            (ap isa Makie.Mesh && ap.visible[] && haskey(ap.attributes, :material)) || return nothing
+            raster_emitter_node!(ap)
+            model = Mat4f(ap.model_f32c[])
+            for e in ap.raster_emitter_local[]
+                push!(emitters, placed(e, model))
+            end
             return nothing
         end
     end
@@ -294,7 +410,7 @@ function with_suns(lights, n, types, colors, params)
     isempty(suns) && return (n, types, colors, params)
     return (n + length(suns),
             vcat(types, fill(Int32(Makie.LightType.DirectionalLight), length(suns))),
-            vcat(colors, [RGBf(Hikari.sunsky_sun_rgb(s.intensity)) for s in suns]),
+        vcat(colors, [RGBf(Hikari.sunsky_sun_rgb(Vec3f(s.direction); s.intensity, s.turbidity)) for s in suns]),
             vcat(params, reduce(vcat, [Float32.(-normalize(s.direction)) for s in suns])))
 end
 
@@ -318,6 +434,8 @@ end
 handle_float(h::Hikari.TexHandle, fallback) = h.kind in (Hikari.TexKind.CONST_FLOAT, Hikari.TexKind.CONST_SPECTRUM) ?
                                               Hikari.const_float(h) : Float32(fallback)
 handle_float(x::Real, fallback) = Float32(x)
+# An IOR that is a spectrum, at the sodium D line, where an index of refraction is quoted.
+handle_float(s::Hikari.PiecewiseLinearSpectrum, fallback) = Hikari.sample(s, 589.3f0)
 handle_float(::Any, fallback) = Float32(fallback)
 
 """The GGX α a material's roughness pair stands for, as pbrt remaps it; a sampled roughness reads as 0.5."""
@@ -330,6 +448,19 @@ end
 spectral(s::Hikari.PiecewiseLinearSpectrum, λ, i) = Hikari.sample(s, λ)
 spectral(h::Hikari.TexHandle, λ, i) = h.rgb.c[i]
 rgb_of(s) = Vec3f(spectral(s, 630f0, 1), spectral(s, 532f0, 2), spectral(s, 465f0, 3))
+
+"""
+A conductor's `(η, k)` at red, green and blue, as `Hikari.conductor_ior` makes them: its own, or
+pbrt-v4's of the reflectance it was given instead. A sampled reflectance reads as mid grey.
+"""
+conductor_rgb(eta, k, reflectance::Hikari.TexHandle) =
+    Hikari.is_none(reflectance) ? (rgb_of(eta), rgb_of(k)) : reflectance_rgb(handle_rgb(reflectance, GREY))
+conductor_rgb(eta, k, reflectance) = reflectance_rgb(handle_rgb(reflectance, GREY))
+function reflectance_rgb(c::Hikari.RGBSpectrum)
+    r = clamp.(Vec3f(c.c[1], c.c[2], c.c[3]), 0f0, 0.9999f0)
+    return Vec3f(1), 2f0 .* sqrt.(r) ./ sqrt.(1f0 .- r)
+end
+const GREY = Hikari.RGBSpectrum(0.5f0)
 
 """
 The hemispherical averages of a coat of index η: F̄ₑ, of the Fresnel
@@ -352,6 +483,7 @@ Lambert in the plot's colour.
 """
 raster_material(::Any) = LAMBERT
 raster_material(m::Hikari.MediumInterface) = raster_material(m.material)
+raster_material(m::Hikari.MixMaterialSpec) = raster_material(mixed(m))
 
 "A dielectric over a scattering medium, as a coat over its deep reflectance; see `deep_reflectance`."
 function raster_material(m::Hikari.MediumInterface{<:Hikari.Dielectric, <:Hikari.HomogeneousMedium})
@@ -364,25 +496,24 @@ end
 
 function raster_material(m::Hikari.CoatedDiffuse)
     α = material_alpha(m.u_roughness, m.v_roughness, m.remap_roughness)
-    fe, fi = coat_averages(m.eta)
-    return RasterMaterial(Vec4f(MAT_COATED_DIFFUSE, α, m.eta, handle_float(m.thickness, 0.01f0)),
+    η = handle_float(m.eta, 1.5f0)
+    fe, fi = coat_averages(η)
+    return RasterMaterial(Vec4f(MAT_COATED_DIFFUSE, α, η, handle_float(m.thickness, 0.01f0)),
                           Vec4f(0), Vec4f(0, 0, 0, fe), Vec4f(0, 0, 0, fi))
 end
 
 function raster_material(m::Hikari.Conductor)
-    α = material_alpha(m.roughness, m.roughness, m.remap_roughness)
-    η, k = rgb_of(m.eta), rgb_of(m.k)
-    tint = handle_rgb(m.reflectance, WHITE)
-    return RasterMaterial(Vec4f(MAT_CONDUCTOR, α, 1, 0), Vec4f(η..., 0), Vec4f(k..., 0),
-                          Vec4f(tint.c[1], tint.c[2], tint.c[3], 0))
+    α = material_alpha(m.u_roughness, m.v_roughness, m.remap_roughness)
+    η, k = conductor_rgb(m.eta, m.k, m.reflectance)
+    return RasterMaterial(Vec4f(MAT_CONDUCTOR, α, 1, 0), Vec4f(η..., 0), Vec4f(k..., 0), Vec4f(1, 1, 1, 0))
 end
 
 function raster_material(m::Hikari.CoatedConductor)
     α = material_alpha(m.interface_u_roughness, m.interface_v_roughness, m.remap_roughness)
     αc = material_alpha(m.conductor_u_roughness, m.conductor_v_roughness, m.remap_roughness)
-    ηi = m.interface_eta
+    ηi = handle_float(m.interface_eta, 1.5f0)
     # pbrt divides the conductor's η and k by the coat's index
-    η, k = rgb_of(m.conductor_eta) / ηi, rgb_of(m.conductor_k) / ηi
+    η, k = conductor_rgb(m.conductor_eta, m.conductor_k, m.conductor_reflectance) ./ ηi
     fe, fi = coat_averages(ηi)
     return RasterMaterial(Vec4f(MAT_COATED_CONDUCTOR, α, ηi, handle_float(m.thickness, 0.01f0)),
                           Vec4f(η..., αc), Vec4f(k..., fe), Vec4f(1, 1, 1, fi))

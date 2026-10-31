@@ -10,7 +10,7 @@ RayMakie.activate!()
 @testset "traced meshscatter memory is linear in the instance count" begin
     spheres(n) = (r = Xoshiro(3); [Point3f(6rand(r) - 3, 6rand(r) - 3, rand(r)) for _ in 1:n])
     dev = Mantle.todevice(Mantle.defaultbackend())
-    live() = Mantle.gpu_live_bytes(dev.ctx)
+    live() = Mantle.gpu_live_bytes(dev)
     GC.gc(true)
     before = live()
     fig = Figure(; size = (400, 250))

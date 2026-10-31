@@ -301,3 +301,57 @@ end
     empty_rows = count(i -> maximum(c -> green(c), img[i, :]) <= 0.05, axes(img, 1))
     @test empty_rows == 0
 end
+
+# A material that samples images: its texture, as the tracer samples it at the
+# same uv, and an image it glows with over that surface. Before, the raster path
+# read a sampled reflectance as white and a `MixMaterialSpec` not at all (the
+# plot's palette colour), and an image an opaque surface emitted replaced the
+# surface: the film's Earth was a plain blue ball.
+corner(a, b) = [i <= 8 && j <= 8 ? a : b for i in 1:16, j in 1:16]
+
+function sampled_quad(material)
+    sc = Scene(; size = (64, 64), backgroundcolor = RGBf(0, 0, 0), lights = [AmbientLight(RGBf(1, 1, 1))])
+    cam3d!(sc; center = false)
+    mesh!(sc, quad(0f0); material)
+    cam = cameracontrols(sc)
+    cam.fov[] = 45
+    update_cam!(sc, cam, Vec3f(0, 0, 2f0 / tand(22.5f0)), Vec3f(0), Vec3f(0, 1, 0))
+    return sc
+end
+
+const TEX_RED = Hikari.RGBSpectrum(0.8f0, 0.1f0, 0.1f0, 1f0)
+const TEX_BLUE = Hikari.RGBSpectrum(0.1f0, 0.1f0, 0.6f0, 1f0)
+
+textured_diffuse() = Hikari.Diffuse(Kd = Hikari.Texture(corner(TEX_RED, TEX_BLUE)))
+
+# Matte and glossy blue mixed by a mask that picks the matte one over most of the
+# quad, glowing warm white in the image's first quadrant.
+glowing_mix() = Hikari.MediumInterface(
+    Hikari.MixMaterialSpec(Hikari.Diffuse(Kd = Hikari.Texture(fill(TEX_BLUE, 16, 16))),
+                           Hikari.CoatedDiffuse(reflectance = Hikari.Texture(fill(TEX_BLUE, 16, 16)),
+                                                roughness = 0.06f0, eta = 1.33f0),
+                           Hikari.Texture(fill(0.2f0, 16, 16)));
+    emission = Hikari.Emissive(Le = Hikari.Texture(corner(Hikari.RGBSpectrum(1f0, 0.75f0, 0.45f0, 1f0),
+                                                          Hikari.RGBSpectrum(0f0, 0f0, 0f0, 1f0)))))
+
+# The image's first quadrant lands top left (dim 1 is 1 - v, dim 2 is u).
+quadrant_pixels(img) = (img[16, 16], img[16, 48], img[48, 16], img[48, 48])
+
+@testset "a sampled material looks as the tracer samples it" begin
+    @testset "$label" for (label, material) in (("an image reflectance", textured_diffuse),
+                                                ("an image glowing over a mixed surface", glowing_mix))
+        raster = quadrant_pixels(Makie.colorbuffer(raster_screen(sampled_quad(material()))))
+        traced = quadrant_pixels(Makie.colorbuffer(RayMakie.Screen(sampled_quad(material()); samples = 64,
+                                                                   max_depth = 2, hw_accel = false)))
+        # measured, image reflectance: raster (0.88, 0.39, 0.39) and (0.39, 0.39, 0.84),
+        # traced (0.88, 0.39, 0.38) and (0.39, 0.39, 0.84); glowing mix: raster
+        # (0.91, 0.89, 0.91) where it glows, traced (0.92, 0.89, 0.91)
+        for (r, t) in zip(raster, traced)
+            @test abs(red(r) - red(t)) < 0.06
+            @test abs(green(r) - green(t)) < 0.06
+            @test abs(blue(r) - blue(t)) < 0.06
+        end
+        # the surface's blue where nothing glows, not white and not the palette's
+        @test blue(raster[4]) - red(raster[4]) > 0.3
+    end
+end

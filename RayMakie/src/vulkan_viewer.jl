@@ -98,8 +98,7 @@ function connect_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window,
     end)
 end
 
-function poll_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window,
-                          frame_count::Int, last_time::Float64)
+function poll_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window)
     events = scene.events
 
     # Both in UNITS, which is what Makie lays a figure out in. GLFW reports the
@@ -122,11 +121,7 @@ function poll_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window,
     x, y = GLFW.GetCursorPos(window)
     mp = (Float64(x) * s, uh - Float64(y) * s)
     mp != events.mouseposition[] && (events.mouseposition[] = mp)
-
-    # Frame tick
-    now = time()
-    events.tick[] = Makie.Tick(Makie.RegularRenderTick, frame_count, now, Float64(now - last_time))
-    return now
+    return nothing
 end
 
 """
@@ -147,24 +142,38 @@ end
 """
     wait_viewer(screen::Screen)
 
-Block until the viewer window is closed. Polls GLFW events on the main thread
-(required by GLFW — event processing must happen on the main thread).
-Use this instead of `wait(screen)` for interactive windows.
+Block until the viewer window is closed, for a script, which has no idle REPL to run the
+render and input loops in. Use this instead of `wait(screen)` for interactive windows.
 """
 function wait_viewer(screen::Screen)
-    win = screen.window
-    (win === nothing || !renderloop_running(screen)) && return
-    root_scene = screen.scene
-    frame_count = 0
-    last_time = time()
-    while renderloop_running(screen)
-        GLFW.PollEvents()
-        if !isopen(win)
+    task = screen.rendertask
+    (screen.window === nothing || task === nothing) && return
+    wait(task)
+end
+
+"""
+    start_input_loop!(screen, root_scene, win) -> Task
+
+Window events at 120 Hz, on a task of their own beside the render loop, which yields to it
+whenever it waits for the GPU. Input does not wait for frames: a key or a click reaches
+its listeners while a frame renders, not after it.
+
+The tick is the render loop's, once a frame: a tick is a frame Makie can draw into, so
+whatever an animation computes on it is drawn. Ticked from here, at the input rate, it
+was 120 frames a second that were never drawn.
+"""
+function start_input_loop!(screen::Screen, root_scene, win)
+    return @async begin
+        try
+            while !screen.stop_renderloop[]
+                GLFW.PollEvents()
+                isopen(win) || break
+                poll_glfw_events!(screen, root_scene, win.handle)
+                sleep(1 / 120)
+            end
+        catch e
+            @error "RayMakie: input loop" exception = (e, catch_backtrace())
             screen.stop_renderloop[] = true
-            break
         end
-        frame_count += 1
-        last_time = poll_glfw_events!(screen, root_scene, win.handle, frame_count, last_time)
-        sleep(1/120)
     end
 end
