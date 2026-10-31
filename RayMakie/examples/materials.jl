@@ -206,10 +206,10 @@ end
 # Render
 sensor = Hikari.FilmSensor(; iso=50, exposure_time=1.0, white_balance=0)
 using pocl_jll, OpenCL, KernelAbstractions, Abacus
-device = OpenCL.OpenCLBackend()
+# device = OpenCL.OpenCLBackend()
 device = AMDGPU.ROCBackend()
-device = KernelAbstractions.CPU()
-device = Abacus.AbacusBackend()
+# device = KernelAbstractions.CPU()
+# device = Abacus.AbacusBackend()
 RayMakie.activate!(
     device=device,
     exposure=0.6f0,
