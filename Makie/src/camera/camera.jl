@@ -147,7 +147,7 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     counter = Ref(0)
     map!(graph, [:view, :projection, :viewport], :camera_trigger) do args...
         counter[] = counter[] + 1
-        return counter
+        return counter[]
     end
 
     map!(graph, :viewport, [:scene_origin, :resolution]) do viewport

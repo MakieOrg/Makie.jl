@@ -706,34 +706,19 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
 
     map!(
         plot,
-        [:string_boundingboxes, pixel_pos_node, :contour_points, :elements_per_segment],
-        :masked_lines
-    ) do bboxes, pixel_pos, segments, elements_per_segment
-        masked = copy(segments)
-        nan = P(NaN32)
-        start = 0
-        for (n, (level, N_points)) in enumerate(elements_per_segment)
-            current_range = start .+ (1:N_points)
+        [:labels, :label_fits, :label_pixel_positions, :label_frame_boxes, :text_rotation, :labelpadding, :contour_points, :pixel_contour_points, :elements_per_segment],
+        [:masked_lines, :masked_elements_per_segment]
+    ) do use_labels, fits, centers, boxes, angles, padding, points, pixel_points, elements_per_segment
+        use_labels || return points, elements_per_segment
 
-            # simple heuristic to turn off masking segments when it has few
-            # points, to avoid removing short contour lines entirely.
-            if count(!isnan, view(pixel_pos, current_range)) >= 10
-                bb = Rect2(bboxes[n])
-
-                for i in current_range
-                    if pixel_pos[i] in bb
-                        masked[i] = nan
-                        for dir in (-1, +1)
-                            j = i
-                            while true
-                                j += dir
-                                checkbounds(Bool, segments, j) || break
-                                pixel_pos[j] in bb || break
-                                masked[j] = nan
-                            end
-                        end
-                    end
-                end
+        masked = empty(points)
+        masked_elements_per_segment = empty(elements_per_segment)
+        for (n, (level, line_range)) in enumerate(line_ranges(elements_per_segment))
+            line = view(points, line_range)
+            pixel_line = view(pixel_points, line_range)
+            if fits[n]
+                box = pad_label_box(boxes[n], padding)
+                line = label_gap_masked_line(line, pixel_line, centers[n], angles[n], box)
             end
             append!(masked, line)
             push!(masked_elements_per_segment, level => length(line))
