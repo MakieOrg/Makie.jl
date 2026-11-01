@@ -57,6 +57,7 @@ Loads the source code from the given filepath. The shader type is derived from
 the file extension (.vert, .frag, .geom or .comp).
 """
 function ShaderSource(path::String)
+    Base.include_dependency(path)
     typ = GLAbstraction.shadertype(splitext(path)[2])
     source = read(path, String)
     name = String(path)

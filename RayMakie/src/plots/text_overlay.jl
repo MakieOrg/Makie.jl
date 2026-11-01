@@ -1,4 +1,4 @@
-# draw_atomic for text — uses same scatter pipeline with text-specific conversions
+# Glyphs is the atomic child of Text; use the shared sprite pipeline.
 
 """
 Is `r` the one rotation that means "not rotated"?
@@ -13,7 +13,7 @@ function identity_rotation(r)
     return q[1] == 0 && q[2] == 0 && q[3] == 0 && q[4] == 1
 end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
+function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Glyphs)
     attr = plot.attributes
     haskey(attr, :sdf_uv) || return nothing
 
@@ -21,16 +21,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
 
     # ── Text-specific conversions to gpu_* names (same targets as scatter) ──
 
-    # per_char_positions → gpu_positions (element-wise via register_computation!)
-    Makie.ComputePipeline.register_computation!(attr,
-        [:per_char_positions_transformed_f32c], [:gpu_positions]
+    # positions → gpu_positions (element-wise via register_computation!)
+    Makie.ComputePipeline.register_computation!(
+        attr,
+        [:positions_transformed_f32c], [:gpu_positions]
     ) do (pos,), changed, cached
-        return ([Vec3f(Makie.to_ndim(Point3f, p, 0f0)) for p in pos],)
+        return ([Vec3f(Makie.to_ndim(Point3f, p, 0.0f0)) for p in pos],)
     end
 
-    # text_color → gpu_colors
-    Makie.ComputePipeline.register_computation!(attr,
-        [:text_color], [:gpu_colors]
+    # computed_color → gpu_colors
+    Makie.ComputePipeline.register_computation!(
+        attr,
+        [:computed_color], [:gpu_colors]
     ) do (tc,), changed, cached
         if tc isa AbstractVector
             return ([Vec4f(RGBA{Float32}(c).r, RGBA{Float32}(c).g, RGBA{Float32}(c).b, RGBA{Float32}(c).alpha) for c in tc],)
@@ -40,9 +42,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
         end
     end
 
-    # text_rotation → gpu_rotation (Vec4f from Quaternion)
-    haskey(attr, :gpu_rotation) || Makie.ComputePipeline.register_computation!(attr,
-        [:text_rotation], [:gpu_rotation]
+    # rotation → gpu_rotation (Vec4f from Quaternion)
+    haskey(attr, :gpu_rotation) || Makie.ComputePipeline.register_computation!(
+        attr,
+        [:rotation], [:gpu_rotation]
     ) do (rot,), changed, cached
         if rot isa AbstractVector
             return ([Vec4f(r[1], r[2], r[3], r[4]) for r in rot],)
@@ -52,17 +55,15 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
         end
     end
 
-    # stroke/glow from plot attrs → gpu_stroke_color, gpu_glow_color
-    Makie.ComputePipeline.register_computation!(attr,
-        [:per_char_positions_transformed_f32c], [:gpu_stroke_color, :gpu_glow_color]
-    ) do (pos,), changed, cached
+    # Glyph stroke colors can vary per glyph, just like their fill colors.
+    Makie.ComputePipeline.register_computation!(
+        attr,
+        [:positions_transformed_f32c, :strokecolor, :glowcolor], [:gpu_stroke_color, :gpu_glow_color]
+    ) do (pos, stroke, glow), changed, cached
         n = length(pos)
-        sc = haskey(plot, :text_strokecolor) ? to_value(plot.text_strokecolor) : RGBAf(0,0,0,0)
-        sc_c = sc isa Colorant ? RGBA{Float32}(sc) : RGBA{Float32}(0,0,0,0)
-        gc = haskey(plot, :glowcolor) ? to_value(plot.glowcolor) : RGBAf(0,0,0,0)
-        gc_c = gc isa Colorant ? RGBA{Float32}(gc) : RGBA{Float32}(0,0,0,0)
-        return (fill(Vec4f(sc_c.r, sc_c.g, sc_c.b, sc_c.alpha), n),
-                fill(Vec4f(gc_c.r, gc_c.g, gc_c.b, gc_c.alpha), n))
+        rgba(c) = Vec4f(RGBA{Float32}(c).r, RGBA{Float32}(c).g, RGBA{Float32}(c).b, RGBA{Float32}(c).alpha)
+        colors(c) = c isa AbstractVector ? rgba.(c) : fill(rgba(c), n)
+        return (colors(stroke), colors(glow))
     end
 
     # Constants
@@ -82,7 +83,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
     # smeared every glyph quad into a band across the whole figure, which is what
     # `surface(rand(20, 20))` looked like.
     haskey(attr, :billboard) || Makie.ComputePipeline.map!(
-        identity_rotation, attr, :text_rotation, :billboard)
+        identity_rotation, attr, :rotation, :billboard
+    )
     haskey(attr, :transform_marker) || Makie.ComputePipeline.add_constant!(attr, :transform_marker, false)
 
     # Scalar conversions to gpu_* (Int32)
@@ -91,10 +93,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
     Makie.ComputePipeline.map!(x -> Int32(x), attr, :sdf_marker_shape, :gpu_sdf_marker_shape)
 
     # Constants
-    haskey(attr, :gpu_stroke_width) || Makie.ComputePipeline.add_constant!(attr, :gpu_stroke_width,
-        Float32(haskey(plot, :strokewidth) ? to_value(plot.strokewidth) : 0f0))
-    haskey(attr, :gpu_glow_width) || Makie.ComputePipeline.add_constant!(attr, :gpu_glow_width, 0f0)
-    haskey(attr, :depth_shift) || Makie.ComputePipeline.add_constant!(attr, :depth_shift, 0f0)
+    Makie.ComputePipeline.map!(Float32, attr, :uniform_strokewidth, :gpu_stroke_width)
+    Makie.ComputePipeline.map!(Float32, attr, :glowwidth, :gpu_glow_width)
+    haskey(attr, :depth_shift) || Makie.ComputePipeline.add_constant!(attr, :depth_shift, 0.0f0)
     haskey(attr, :px_per_unit) || Makie.ComputePipeline.add_constant!(attr, :px_per_unit, screen.px_per_unit)
 
     atlas = Makie.get_texture_atlas()
@@ -103,7 +104,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
     # ── Final robj — same pattern as scatter ──
     deps = collect(SCATTER_GRAPH_ARGS)
 
-    register_computation!(attr, deps, [:trace_renderobject]) do args, changed, cached
+    return register_computation!(attr, deps, [:trace_renderobject]) do args, changed, cached
         n = length(args.gpu_positions)
         n == 0 && return (nothing,)
 
@@ -120,9 +121,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
             return (robj,)
         end
 
-        robj = construct_robj(get_scatter_pipeline!(screen), args, SCATTER_ARG_NAMES;
-                                      backend=screen.config.device, fxaa = plot_fxaa(plot),
-                                      vertex_count=n)
+        robj = construct_robj(
+            get_scatter_pipeline!(screen), args, SCATTER_ARG_NAMES;
+            backend = screen.config.device, fxaa = plot_fxaa(plot),
+            vertex_count = n
+        )
         robj.bindings = get_atlas_bindings(screen)
         return (robj,)
     end

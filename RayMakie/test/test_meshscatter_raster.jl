@@ -26,16 +26,30 @@ positions(n) = (r = Xoshiro(3); [Point3f(6rand(r) - 3, 6rand(r) - 3, rand(r)) fo
 
 const CASES = [
     "one colour" => ax -> meshscatter!(ax, positions(300); markersize = 0.1, color = :steelblue),
-    "per-instance colour" => ax -> (r = Xoshiro(1); meshscatter!(ax, positions(300); markersize = 0.1,
-        color = [RGBAf(rand(r), rand(r), rand(r), 1) for _ in 1:300])),
-    "colormapped values" => ax -> (r = Xoshiro(1); meshscatter!(ax, positions(300); markersize = 0.1,
-        color = rand(r, 300), colormap = :viridis)),
-    "per-instance size and rotation" => ax -> (r = Xoshiro(1); meshscatter!(ax, positions(200);
-        marker = Rect3f(Vec3f(-0.5), Vec3f(1)),
-        markersize = [Vec3f(0.05, 0.1, 0.3) * rand(r) for _ in 1:200],
-        rotation = [Makie.qrotation(Vec3f(0, 0, 1), 2pi * rand(r)) for _ in 1:200])),
-    "marker not transformed by model" => ax -> meshscatter!(ax, positions(200); markersize = 0.1,
-        transform_marker = false),
+    "per-instance colour" => ax -> (
+        r = Xoshiro(1); meshscatter!(
+            ax, positions(300); markersize = 0.1,
+            color = [RGBAf(rand(r), rand(r), rand(r), 1) for _ in 1:300]
+        )
+    ),
+    "colormapped values" => ax -> (
+        r = Xoshiro(1); meshscatter!(
+            ax, positions(300); markersize = 0.1,
+            color = rand(r, 300), colormap = :viridis
+        )
+    ),
+    "per-instance size and rotation" => ax -> (
+        r = Xoshiro(1); meshscatter!(
+            ax, positions(200);
+            marker = Rect3f(Vec3f(-0.5), Vec3f(1)),
+            markersize = [Vec3f(0.05, 0.1, 0.3) * rand(r) for _ in 1:200],
+            rotation = [Makie.qrotation(Vec3f(0, 0, 1), 2pi * rand(r)) for _ in 1:200]
+        )
+    ),
+    "marker not transformed by model" => ax -> meshscatter!(
+        ax, positions(200); markersize = 0.1,
+        transform_marker = false
+    ),
 ]
 
 function frame(build, screenof)
@@ -47,10 +61,14 @@ function frame(build, screenof)
     return img
 end
 # One pixel per unit for both, and the film mapping off, so the images line up.
-rasterscreen(fig) = RayMakie.Screen(fig.scene; visible = false, vsync = false, rasterize = true,
-                                    tonemap = nothing, gamma = nothing)
-glscreen(fig) = GLMakie.Screen(fig.scene; start_renderloop = false, visible = false, vsync = false,
-                               px_per_unit = 1, scalefactor = 1)
+rasterscreen(fig) = RayMakie.Screen(
+    fig.scene; visible = false, vsync = false, rasterize = true,
+    tonemap = nothing, gamma = nothing
+)
+glscreen(fig) = GLMakie.Screen(
+    fig.scene; start_renderloop = false, visible = false, vsync = false,
+    px_per_unit = 1, scalefactor = 1
+)
 
 @testset "meshscatter in RASTER mode" begin
     @testset "$name draws as GLMakie does" for (name, build) in CASES
@@ -59,7 +77,7 @@ glscreen(fig) = GLMakie.Screen(fig.scene; start_renderloop = false, visible = fa
         @test size(a) == size(b)
         @test drawn(b) > 1000
         @test abs(drawn(a) - drawn(b)) <= 0.01 * drawn(a)
-        @test mean(abs.(lum.(a) .- lum.(b))) < 2e-3
+        @test mean(abs.(lum.(a) .- lum.(b))) < 2.0e-3
     end
 
     @testset "nothing goes to the Hikari scene while rasterising" begin
@@ -76,7 +94,7 @@ glscreen(fig) = GLMakie.Screen(fig.scene; start_renderloop = false, visible = fa
     @testset "a mesh is one instance at the origin" begin
         fig = Figure(; size = (200, 200))
         ax = LScene(fig[1, 1]; show_axis = false)
-        m = mesh!(ax, Sphere(Point3f(0), 1f0); color = :orange)
+        m = mesh!(ax, Sphere(Point3f(0), 1.0f0); color = :orange)
         screen = rasterscreen(fig)
         colorbuffer(screen)
         robj = m.raster_renderobject[]
@@ -106,12 +124,24 @@ glscreen(fig) = GLMakie.Screen(fig.scene; start_renderloop = false, visible = fa
     @testset "the instance count is the frame's cost, not its memory" begin
         # 100k spheres: the case that froze a desktop. A frame must not need
         # more than a few hundred MB beyond the marker and the instance arrays.
-        fig, _ = scatter_scene(ax -> meshscatter!(ax, positions(100_000); markersize = 0.03))
+        fig, ms = scatter_scene(ax -> meshscatter!(ax, positions(100_000); markersize = 0.03))
         screen = rasterscreen(fig)
-        t = @elapsed colorbuffer(screen)
+        colorbuffer(screen)
         t2 = @elapsed img = colorbuffer(screen)
         @test drawn(img) > 10_000
-        @test t2 < 2.0
+        robj = ms.raster_renderobject[]
+        @test robj.instances == 100_000
+        @test ms.trace_renderobject[] === nothing
+        device_bytes = sum(b -> length(b) * sizeof(eltype(b)), values(robj.buffers))
+        # Instance transforms, colours and the shared marker need about 180 B
+        # per instance, versus the old traced representation's 85 KB each.
+        @test device_bytes < 32 * 1024^2
+        # Readback allocates a frame on the host. Repeated rendering must not
+        # reconstruct per-instance materials or geometry. Absolute frame times
+        # depend on the device; Lavapipe executes the same 100k instances on CPU.
+        host_bytes = @allocated colorbuffer(screen)
+        @test host_bytes < 8 * 1024^2
+        @info "100k raster instances" seconds = t2 device_bytes host_bytes
         close(screen)
     end
 end

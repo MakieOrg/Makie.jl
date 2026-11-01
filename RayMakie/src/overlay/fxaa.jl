@@ -10,11 +10,13 @@
 
 # A fragment writes colour and unblended integer metadata. The first word packs
 # plot ID and the FXAA bit; the second identifies its triangle, point or segment.
-const RASTER_METADATA = Vec{2,UInt32}
+const RASTER_METADATA = Vec{2, UInt32}
 @inline fxaa_enabled(flags::Int32) = (flags & Int32(1)) != Int32(0)
-@inline function raster_output(color::Vec4f, flags::Int32, index::UInt32 = UInt32(0),
-                              glow::Bool = false)
-    (color[4] <= 0f0 && (!glow || maximum(Vec3f(color[1],color[2],color[3])) <= 0f0)) && discard()
+@inline function raster_output(
+        color::Vec4f, flags::Int32, index::UInt32 = UInt32(0),
+        glow::Bool = false
+    )
+    (color[4] <= 0.0f0 && (!glow || maximum(Vec3f(color[1], color[2], color[3])) <= 0.0f0)) && discard()
     return (color, RASTER_METADATA(reinterpret(UInt32, flags), index))
 end
 
@@ -56,7 +58,7 @@ end
     @inbounds f = flag[i]
     r, g, b = unorm(c.r), unorm(c.g), unorm(c.b)
     luma = (f[1] & UInt32(1)) != UInt32(0) ?
-        round(clamp(0.299f0 * r + 0.587f0 * g + 0.114f0 * b, 0f0, 1f0) * 255f0) * (1f0 / 255f0) : 1f0
+        round(clamp(0.299f0 * r + 0.587f0 * g + 0.114f0 * b, 0.0f0, 1.0f0) * 255.0f0) * (1.0f0 / 255.0f0) : 1.0f0
     return Vec4f(r, g, b, luma)
 end
 
@@ -121,8 +123,10 @@ const FXAA_QUALITY_P4 = 12.0f0
         lumaEndP = fxaa_tex(colour, flag, width, height, posP)[4]
         lumaEndP = lumaEndP - lumaNN * 0.5f0
     end
-    doneN = abs(lumaEndN) >= gradientScaled
-    doneP = abs(lumaEndP) >= gradientScaled
+    # Preserve threshold equality across normalized-texture sampling roundoff,
+    # as in GLMakie. This is far below one step of the 8-bit input buffer.
+    doneN = abs(lumaEndN) + 1.0f-5 >= gradientScaled
+    doneP = abs(lumaEndP) + 1.0f-5 >= gradientScaled
     doneN || (posN = posN - offNP * step)
     doneNP = !doneN || !doneP
     doneP || (posP = posP + offNP * step)
@@ -225,8 +229,8 @@ function fxaa_pixel_shader(
 
     lumaEndN -= lumaNN * 0.5f0
     lumaEndP -= lumaNN * 0.5f0
-    doneN = abs(lumaEndN) >= gradientScaled
-    doneP = abs(lumaEndP) >= gradientScaled
+    doneN = abs(lumaEndN) + 1.0f-5 >= gradientScaled
+    doneP = abs(lumaEndP) + 1.0f-5 >= gradientScaled
     doneN || (posN = posN - offNP * FXAA_QUALITY_P1)
     doneNP = !doneN || !doneP
     doneP || (posP = posP + offNP * FXAA_QUALITY_P1)

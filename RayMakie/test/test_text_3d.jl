@@ -31,8 +31,8 @@ function ink_fraction(fig, plot)
     with = copy(Makie.colorbuffer(fig; backend = RayMakie))
     d = map(without, with) do a, b
         abs(Float64(red(a)) - Float64(red(b))) +
-        abs(Float64(green(a)) - Float64(green(b))) +
-        abs(Float64(blue(a)) - Float64(blue(b)))
+            abs(Float64(green(a)) - Float64(green(b))) +
+            abs(Float64(blue(a)) - Float64(blue(b)))
     end
     return count(>(0.02), d) / length(d)
 end
@@ -53,10 +53,11 @@ end
 
     # The case that broke: a per-character rotation in data markerspace.
     @test to_value(labels[:markerspace]) === :data
-    @test to_value(labels[:text_rotation]) isa AbstractVector
+    glyphs = only(filter(p -> p isa Makie.Glyphs, labels.plots))
+    @test to_value(glyphs[:rotation]) isa AbstractVector
 
     # …so it must NOT be billboarded.
-    @test to_value(labels[:billboard]) === false
+    @test to_value(glyphs[:billboard]) === false
 
     # And the glyphs cover a sliver of the figure rather than banding it.
     # 0.16 % here against 38.65 % with the bug.

@@ -1034,11 +1034,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         return color isa Colorant ? fill(RGBAf(color), 1, 1) : color
     end
 
-    # the surface shader always samples an image texture, so uniform colors become 1x1
-    map!(attr, :scaled_color, :surface_color) do color
-        return color isa Colorant ? fill(RGBAf(color), 1, 1) : color
-    end
-
     inputs = [
         # Special
         :space,
