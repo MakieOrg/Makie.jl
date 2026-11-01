@@ -35,6 +35,9 @@ jobs:
 
     uses: ./.github/workflows/_makie.yml
 
+  raymakie:
+    uses: ./.github/workflows/raymakie.yml
+
   compute-pipeline:
 
     uses: ./.github/workflows/_compute-pipeline.yml
@@ -77,7 +80,7 @@ jobs:
     name: CI result
     runs-on: ubuntu-latest
     if: always()
-    needs: [codespell, formatting, makie, compute-pipeline, reference-tests, promote-refimages, rprmakie, relocatability, docs]
+    needs: [codespell, formatting, makie, raymakie, compute-pipeline, reference-tests, promote-refimages, rprmakie, relocatability, docs]
     steps:
       - run: |
           results='${{ toJSON(needs.*.result) }}'

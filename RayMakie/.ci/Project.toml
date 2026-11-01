@@ -1,0 +1,37 @@
+[deps]
+CompilerCaching = "9db33cc3-5358-4881-8759-fa4194144afd"
+ComputePipeline = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+RayMakie = "70852e3a-d594-4041-8350-783a02753e02"
+Vulkan = "9f14b124-c50e-4008-a7d4-969b3a6cd68a"
+VulkanCore = "16167f82-ea26-5cba-b1de-ed6fd5e30a11"
+Hikari = "afc56b53-c9a9-482a-a956-d1d800e05558"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+KernelInterface = "4ee993da-d684-4d17-a7dd-4e58e78d92bf"
+Lava = "3a680b1f-cb25-4bee-9cf7-bc880b76dc8c"
+Lavapipe_jll = "89601188-ea2b-501d-a121-fa144db6cabf"
+Mantle = "8f4c1f2e-6a3d-4b71-9c05-2e7d8a1b6f34"
+Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+Raycore = "afc56b53-c9a9-482a-a956-d1d800e05559"
+
+# These packages are not all registered yet. Keep the test environment explicit:
+# transitive [sources] do not supply the matrix vocabulary in KernelInterface.
+[sources]
+CompilerCaching = {url = "https://github.com/maleadt/CompilerCaching.jl", rev = "8f929d3dfa8f6562d184d57758f9d8ec15030c8c"}
+ComputePipeline = {path = "../../ComputePipeline"}
+Makie = {path = "../../Makie"}
+GLMakie = {path = "../../GLMakie"}
+RayMakie = {path = ".."}
+Vulkan = {url = "https://github.com/JuliaGPU/Vulkan.jl", rev = "sd/vk1.4"}
+VulkanCore = {url = "https://github.com/JuliaGPU/VulkanCore.jl", rev = "sd/vk1.4"}
+Hikari = {url = "https://github.com/JuliaGraphics/Hikari.jl", rev = "sd/lava-refactor"}
+KernelAbstractions = {url = "https://github.com/SimonDanisch/KernelAbstractions.jl", rev = "sd/lava-refactor"}
+KernelInterface = {url = "https://github.com/SimonDanisch/KernelAbstractions.jl", rev = "sd/lava-refactor", subdir = "lib/KernelInterface"}
+Lava = {url = "https://github.com/SimonDanisch/Lava.jl", rev = "sd/lava-refactor"}
+Mantle = {url = "https://github.com/SimonDanisch/Mantle.jl", rev = "sd/lava-refactor"}
+Metal = {url = "https://github.com/SimonDanisch/Metal.jl", rev = "sd/lava-refactor"}
+Raycore = {url = "https://github.com/JuliaGeometry/Raycore.jl", rev = "sd/with-texture"}
+
+[compat]
+julia = "1.12"

@@ -1,0 +1,35 @@
+name: RayMakie Lavapipe
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches:
+      - sd/lava-refactor
+
+concurrency:
+  group: raymakie-lavapipe-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: RayMakie / Lavapipe_jll
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install virtual display and OpenGL software driver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@v2
+      - name: Resolve published backend dependencies
+        run: julia --project=RayMakie/.ci -e 'using Pkg; Pkg.instantiate()'
+      - name: Run RayMakie tests
+        env:
+          RAYMAKIE_TEST_LAVAPIPE: 'true'
+          LIBGL_ALWAYS_SOFTWARE: 'true'
+        run: xvfb-run -a julia --project=RayMakie/.ci -e 'using Pkg; Pkg.test("RayMakie"; allow_reresolve = false, julia_args = `--check-bounds=auto`)'

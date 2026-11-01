@@ -1,0 +1,17 @@
+[Makie]
+precompile_workload = false
+
+[CairoMakie]
+precompile_workload = false
+
+[GLMakie]
+precompile_workload = false
+
+[WGLMakie]
+precompile_workload = false
+
+[ComputePipeline]
+ENABLE_COMPUTE_CHECKS = true
+
+[RayMakie]
+precompile_workload = false

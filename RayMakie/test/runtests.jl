@@ -1,5 +1,11 @@
 using Test
 
+if get(ENV, "RAYMAKIE_TEST_LAVAPIPE", "false") == "true"
+    using Lavapipe_jll
+    ENV["VK_DRIVER_FILES"] = Lavapipe_jll.lvp_icd
+    ENV["VK_ICD_FILENAMES"] = Lavapipe_jll.lvp_icd
+end
+
 
 # The oldest hardware this should run on is an M1 (Apple GPU family 7) with
 # macOS 15. Without one, run the suite on any Apple silicon Mac with
@@ -10,78 +16,18 @@ using Test
 # compiled as for that target, and one that uses a newer GPU's or system's
 # feature fails to compile. It cannot catch a bug in the M1's own GPU compiler.
 
-# Load a GPU backend, and say which one.
-#
-# `using RayMakie` alone leaves Mantle with no registered backend, so every
-# test that renders dies with "Mantle: no GPU backend is available" — reported
-# as errors rather than as "this suite needs a device it cannot find" — and
-# passes on a Vulkan box only if something else in the environment pulled a
-# backend in.
-#
-# Probed rather than named: both packages resolve on any platform, and which one
-# is USABLE is the question. Note that "did the package import" is NOT that
-# question — `Lava` is the SPIR-V compiler and imports perfectly well on a
-# machine with no Vulkan loader, registering no backend at all. So each
-# candidate is loaded and then Mantle is asked what actually registered.
+# Mantle registers the platform backend itself. The test sandbox need not list
+# its compiler packages as direct dependencies to select an available device.
 using Mantle
+const BACKEND = haskey(ENV, "RAYMAKIE_TEST_DEVICE") ?
+    Mantle.defaultdevice!(ENV["RAYMAKIE_TEST_DEVICE"]) : Mantle.defaultbackend()
 
-"""
-The one line of a load failure worth printing, without the colours it came in.
-
-A backend that is installed and unloadable is the ORDINARY case here: this suite
-tries Lava first and runs on Metal, and on a Mac the Lava attempt ends in a
-`libvulkan.dylib` that is not there. Reported with `exception = err` that was a
-sixty-line backtrace, twice over (Pkg also prints the failed precompilation live),
-before the first test — noise a reader has to scroll past to reach a real failure.
-What matters is the sentence naming the missing loader.
-"""
-function loadreason(err)
-    plain = replace(sprint(showerror, err), r"\e\[[0-9;]*m" => "")
-    lines = split(plain, '\n')
-    for l in lines
-        i = findfirst("ERROR: ", l)
-        i === nothing || return String(strip(l[(last(i) + 1):end]))
+if get(ENV, "RAYMAKIE_TEST_LAVAPIPE", "false") == "true"
+    @testset "Lavapipe_jll test device" begin
+        @test isfile(Lavapipe_jll.lvp_icd)
+        @test occursin("llvmpipe", lowercase(Mantle.devicename(Mantle.todevice(Mantle.defaultbackend()))))
     end
-    return String(strip(first(filter(!isempty, strip.(lines)); init = "")))
 end
-
-const BACKEND = let found = nothing
-    for name in ("Lava", "Metal")
-        id = Base.identify_package(name)
-        id === nothing && continue
-        why = try
-            # The attempt's own output goes to a temp file: the loader writes its
-            # error to stderr and Pkg its live precompile log to stdout, and
-            # neither is what someone running RayMakie's tests asked to see.
-            mktemp() do _, io
-                redirect_stdout(io) do
-                    redirect_stderr(io) do
-                        Base.require(id)
-                    end
-                end
-            end
-            nothing
-        catch err
-            err
-        end
-        if why !== nothing
-            @info "RayMakie tests: $name is installed but not loadable here. " *
-                  loadreason(why)
-            continue
-        end
-        avail = Base.invokelatest(Mantle.availablebackends)
-        if !isempty(avail)
-            found = Base.invokelatest(Mantle.defaultbackend)
-            break
-        end
-    end
-    found
-end
-
-BACKEND === nothing &&
-    error("RayMakie's tests need a GPU backend. Install/enable Lava (with a Vulkan " *
-          "loader) or Metal (on an Apple GPU). Refusing to run: without one, every " *
-          "rendering test errors identically and the run says nothing about RayMakie.")
 
 @info "RayMakie tests: using $(nameof(typeof(BACKEND)))"
 
@@ -125,6 +71,7 @@ const TEST_FILES = [
     "test_lava_surface_ledger.jl",
     # Pure dispatch, no device: which `gpu_read` a scatter attribute takes.
     "test_gpu_read.jl",
+    "test_raycore_mesh_conversion.jl",
     # CPU-only (no render), so it fails fast and before anything touches a device.
     "test_pbrt_import_settings.jl",
     "test_hw_accel_switch.jl",
@@ -196,6 +143,7 @@ RayMakie.activate!(; device = BACKEND, visible = get(ENV, "MANTLE_TEST_WINDOWS",
 # has a direct-readback path for scenes with no overlays, and that is the one
 # such a backend takes.
 const GRAPHICS_TEST_FILES = [
+    "test_shader_asset_cache.jl",
     "test_overlay_compositing.jl",
     "test_figure_scene_routing.jl",
     "test_interaction_overlays.jl",
@@ -217,8 +165,14 @@ const GRAPHICS_TEST_FILES = [
     "test_uv_transform.jl",
 ]
 
+# Named test files support focused device checks; an empty argument list runs all.
+const REQUESTED_TESTS = Set(ARGS)
+const UNKNOWN_TESTS = setdiff(REQUESTED_TESTS, Set([TEST_FILES; GRAPHICS_TEST_FILES; VULKAN_RUNTIME_TEST_FILES]))
+isempty(UNKNOWN_TESTS) || error("Unknown RayMakie test files: $(join(sort!(collect(UNKNOWN_TESTS)), ", "))")
+
 @testset "RayMakie" begin
     for fname in TEST_FILES
+        isempty(REQUESTED_TESTS) || fname in REQUESTED_TESTS || continue
         @info "RayMakie tests" file = fname
         @testset "$fname" begin
             include(joinpath(@__DIR__, fname))
@@ -244,6 +198,7 @@ const GRAPHICS_TEST_FILES = [
         # a belt-and-braces line rather than the load-bearing one it was.
         RayMakie.activate!(; device = BACKEND, visible = get(ENV, "MANTLE_TEST_WINDOWS", "1") != "0")
         for fname in GRAPHICS_TEST_FILES
+            isempty(REQUESTED_TESTS) || fname in REQUESTED_TESTS || continue
             if startswith(fname, "test_window") && get(ENV, "MANTLE_TEST_WINDOWS", "1") == "0"
                 @info "window test skipped (MANTLE_TEST_WINDOWS=0)" file = fname
                 @test_skip false
@@ -256,13 +211,14 @@ const GRAPHICS_TEST_FILES = [
         end
     else
         @info "RayMakie tests: this backend does not rasterise; skipping the overlay files" backend =
-              nameof(typeof(BACKEND)) files = GRAPHICS_TEST_FILES
+            nameof(typeof(BACKEND)) files = GRAPHICS_TEST_FILES
     end
 
     # The DEVICE under test, not whether the Vulkan runtime is compiled in: a Mac
     # compiles it too, for lavapipe, while its default device stays Metal.
     if isdefined(Mantle, :LavaDevice) && Mantle.todevice(BACKEND) isa Mantle.LavaDevice
         for fname in VULKAN_RUNTIME_TEST_FILES
+            isempty(REQUESTED_TESTS) || fname in REQUESTED_TESTS || continue
             @info "RayMakie tests" file = fname
             @testset "$fname" begin
                 include(joinpath(@__DIR__, fname))
