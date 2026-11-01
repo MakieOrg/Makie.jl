@@ -333,8 +333,9 @@ Base.@nospecializeinfer @noinline function throw_length_mismatch(edge::Union{Com
     error("Result needs to have same length. Found: $(result), for func $(line)")
 end
 
-Base.@nospecializeinfer @noinline throw_invalid_result(@nospecialize(result::Any)) =
-    error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+Base.@nospecializeinfer @noinline function throw_invalid_result(@nospecialize(result::Any))
+    error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output. Value: $result")
+end
 
 function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
@@ -1878,7 +1879,9 @@ function convert_to_nodes(view::ComputeGraphView, inputs)
 end
 
 # [computed, symbol] is an Any Vector so no eltype here
-Base.@nospecializeinfer function register_computation!(@nospecialize(f::Base.Callable), attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(
+        @nospecialize(f::Base.Callable), attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol}
+    )
     _inputs = convert_to_nodes(attr, inputs)
     register_computation!(f, attr, _inputs, outputs)
     return
@@ -2238,7 +2241,8 @@ result = graph[:filtered_image][]
 """
 function map_latest!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol}; spawn = false, init = nothing)
     update_key = Symbol(:_update_trigger_, string(hash((inputs, outputs))))
-    add_input!(attr, update_key, time())
+    add_input!(attr, update_key, 0)
+    input_node = attr.inputs[update_key]
     # TODO, should both channels be size 1?
     # Channel for input requests
     input_channel = Channel{Any}(2)
@@ -2253,7 +2257,7 @@ function map_latest!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::V
                 # Put result in the result channel
                 put!(result_channel, result)
                 # Notify that we got a new value, for the below computation to run
-                update!(attr, update_key => time())
+                update!(attr, update_key => input_node.value::Int + 1)
             catch e
                 @error "Error in background computation task" exception = (e, catch_backtrace())
             end

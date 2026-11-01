@@ -105,15 +105,18 @@ Makie.@noconstprop function Texture(
     numbertype = julia2glenum(eltype(T))
     set_packing_alignment(data)
 
+    # Allow an empty texture to be created by padding it to 1px
+    dims1 = max.(1, dims)
+
     if texparams.samples > 1
-        glTexImage2DMultisample(texturetype, texparams.samples, internalformat, max.(1, dims)..., GL_TRUE)
+        glTexImage2DMultisample(texturetype, texparams.samples, internalformat, dims1..., GL_TRUE)
         texture = Texture{T, NDim}(
             context, id, texturetype, numbertype, internalformat, format,
             texparams,
             dims
         )
     else
-        glTexImage(texturetype, 0, internalformat, max.(1, dims)..., 0, format, numbertype, data)
+        glTexImage(texturetype, 0, internalformat, dims1..., 0, format, numbertype, data)
         mipmap && glGenerateMipmap(texturetype)
         texture = Texture{T, NDim}(
             context, id, texturetype, numbertype, internalformat, format,
