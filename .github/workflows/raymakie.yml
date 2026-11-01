@@ -14,20 +14,24 @@ concurrency:
 jobs:
   test:
     name: RayMakie / Lavapipe_jll
-    runs-on: ubuntu-latest
+    # Ubuntu 26.04 Mesa 26.0.8 corrupts GLMakie fragment gl_PrimitiveID.
+    # Vulkan still comes from Lavapipe_jll on this stable OpenGL reference.
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - name: Install virtual display and OpenGL software driver
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libgl1-mesa-dri
+          sudo apt-get install -y xvfb libgl1-mesa-dri mesa-utils
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1.12'
       - uses: julia-actions/cache@v2
       - name: Resolve published backend dependencies
         run: julia --project=RayMakie/.ci -e 'using Pkg; Pkg.instantiate()'
+      - name: Inspect software OpenGL
+        run: LIBGL_ALWAYS_SOFTWARE=true xvfb-run -a glxinfo -B
       - name: Run RayMakie tests
         env:
           RAYMAKIE_TEST_LAVAPIPE: 'true'

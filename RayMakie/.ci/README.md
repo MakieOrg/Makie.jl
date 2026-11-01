@@ -16,6 +16,16 @@ llvmpipe after loading the backend. All material updates, nested field updates,
 image updates and supported graphics/window tests run. No pixel tolerances or
 sample counts are reduced for software rendering.
 
+The workflow uses Ubuntu 24.04 for the OpenGL comparison driver. Ubuntu 26.04's
+Mesa 26.0.8 corrupts GLMakie mesh outputs when the fragment shader requests
+`gl_PrimitiveID`, including meshes with zero stroke width. A GLMakie-only sphere
+reproduces the failure; its uploaded uniforms are correct and OpenGL reports no
+API error. Removing the primitive-ID request only in a diagnostic restores the
+sphere. The corresponding upstream regression is listed among the
+[Mesa 26.2 fixes](https://docs.mesa3d.org/relnotes/26.2.0.html).
+The unchanged 66-assertion raster suite passes on Ubuntu 24.04 and local Mesa
+26.2.4. This CI runner choice preserves every comparison and its thresholds.
+
 The normal bounds policy is required by the GPU stack, as in Raycore's GPU
 suite. A forced `--check-bounds=yes` injects device exception paths.
 
