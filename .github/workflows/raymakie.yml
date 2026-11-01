@@ -21,15 +21,24 @@ jobs:
       - name: Install virtual display and OpenGL software driver
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libgl1-mesa-dri
+          sudo apt-get install -y xvfb libgl1-mesa-dri mesa-utils
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1.12'
       - uses: julia-actions/cache@v2
       - name: Resolve published backend dependencies
         run: julia --project=RayMakie/.ci -e 'using Pkg; Pkg.instantiate()'
+      - name: Inspect software OpenGL
+        run: LIBGL_ALWAYS_SOFTWARE=true xvfb-run -a glxinfo -B
       - name: Run RayMakie tests
         env:
           RAYMAKIE_TEST_LAVAPIPE: 'true'
           LIBGL_ALWAYS_SOFTWARE: 'true'
-        run: xvfb-run -a julia --project=RayMakie/.ci -e 'using Pkg; Pkg.test("RayMakie"; allow_reresolve = false, julia_args = `--check-bounds=auto`)'
+          RAYMAKIE_RASTER_DIAGNOSTICS: ${{ runner.temp }}/raymakie-raster
+        run: xvfb-run -a julia --project=RayMakie/.ci -e 'using Pkg; Pkg.test("RayMakie"; allow_reresolve = false, test_args = ["test_mesh_raster.jl"], julia_args = `--check-bounds=auto`)'
+      - name: Save raster diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raster-comparison
+          path: ${{ runner.temp }}/raymakie-raster

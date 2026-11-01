@@ -192,6 +192,12 @@ end
             gl = Makie.colorbuffer(make(); backend = GLMakie, px_per_unit = 1)
             rm = Makie.colorbuffer(raster_screen(make(); tonemap = nothing, gamma = nothing))
             d = disagreement(gl, rm)
+            root = ENV["RAYMAKIE_RASTER_DIAGNOSTICS"]
+            mkpath(root)
+            tag = replace(label, r"[^a-zA-Z0-9]+" => "_")
+            Makie.FileIO.save(joinpath(root, tag * "_gl.png"), gl)
+            Makie.FileIO.save(joinpath(root, tag * "_ray.png"), rm)
+            @info "Raster comparison" label d gl_center = gl[div(end, 2), div(end, 2)] ray_center = rm[div(end, 2), div(end, 2)]
             @testset "$label" begin
                 @test d.fraction < 0.03
                 @test d.mean < 0.02
