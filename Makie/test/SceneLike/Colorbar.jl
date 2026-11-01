@@ -54,8 +54,8 @@ end
         f, a, p = contourf([1 2; 3 4])
         cb = Colorbar(f[1, 2], p)
         verify_colorbar_defaults(
-            cb, p, color = p.computed_levels, colormap = p.computed_colormap,
-            colorrange = p.computed_colorrange, lowclip = p.cb_lowclip, highclip = p.cb_highclip
+            cb, p, color = p.cb_levels, colormap = p.cb_colormap,
+            colorrange = p.cb_limits, lowclip = p.cb_lowclip, highclip = p.cb_highclip
         )
 
         f, a, p = contour([1 2; 3 4])
@@ -106,7 +106,8 @@ end
         f, a, p = vspan(0:2, 1:3, color = 1:3)
         verify_colorbar_defaults(f, p)
 
-        f, a, p = pathtext(1:3, [1, 2, 1], text = "123", color = 1:3)
+        # one color for the whole string, so the range has to be given
+        f, a, p = pathtext(1:3, [1, 2, 1], text = "123", color = 2, colorrange = (1, 3))
         verify_colorbar_defaults(f, p)
 
         f, a, p = pie(1:3, color = 1:3)
@@ -150,8 +151,8 @@ end
         f, a, p = tricontourf(rand(10), rand(10), 1:10)
         cb = Colorbar(f[1, 2], p)
         verify_colorbar_defaults(
-            cb, p, color = p.computed_levels, colormap = p.computed_colormap,
-            colorrange = p.computed_colorrange, lowclip = p.cb_lowclip, highclip = p.cb_highclip
+            cb, p, color = p.cb_levels, colormap = p.cb_colormap,
+            colorrange = p.cb_limits, lowclip = p.cb_lowclip, highclip = p.cb_highclip
         )
 
         # also unclear

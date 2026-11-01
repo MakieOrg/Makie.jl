@@ -18,6 +18,12 @@ separators for multiple segments), or separate `x, y, z` vectors.
 The tube geometry is a triangle mesh, so it is fully ray-traceable and
 benefits from lighting, shadows, and reflections in RayMakie.
 
+## Arguments
+
+* `positions` A vector of 3D points describing the tube centerline. NaN points
+  separate disconnected tubes.
+* `x, y, z` Coordinate vectors describing the tube centerline.
+
 ## Attributes
 
 - `radius`: Tube radius. Scalar or per-vertex `Vector{Float32}`.
@@ -64,16 +70,16 @@ end
 Evaluate a centripetal Catmull-Rom spline at parameter `t` in [0,1].
 `alpha=0.5` gives centripetal parameterization (no cusps, no self-intersections).
 """
-function catmull_rom(p0::Point3f, p1::Point3f, p2::Point3f, p3::Point3f, t::Float32; alpha::Float32=0.5f0)
+function catmull_rom(p0::Point3f, p1::Point3f, p2::Point3f, p3::Point3f, t::Float32; alpha::Float32 = 0.5f0)
     # Knot parameterization
     d01 = sqrt(sum((p1 .- p0) .^ 2))^alpha
     d12 = sqrt(sum((p2 .- p1) .^ 2))^alpha
     d23 = sqrt(sum((p3 .- p2) .^ 2))^alpha
-    d01 = max(d01, 1f-6)
-    d12 = max(d12, 1f-6)
-    d23 = max(d23, 1f-6)
+    d01 = max(d01, 1.0f-6)
+    d12 = max(d12, 1.0f-6)
+    d23 = max(d23, 1.0f-6)
 
-    t0 = 0f0
+    t0 = 0.0f0
     t1 = t0 + d01
     t2 = t1 + d12
     t3 = t2 + d23
@@ -87,7 +93,7 @@ function catmull_rom(p0::Point3f, p1::Point3f, p2::Point3f, p3::Point3f, t::Floa
     B1 = A1 .* ((t2 - tt) / (t2 - t0)) .+ A2 .* ((tt - t0) / (t2 - t0))
     B2 = A2 .* ((t3 - tt) / (t3 - t1)) .+ A3 .* ((tt - t1) / (t3 - t1))
 
-    C  = B1 .* ((t2 - tt) / (t2 - t1)) .+ B2 .* ((tt - t1) / (t2 - t1))
+    C = B1 .* ((t2 - tt) / (t2 - t1)) .+ B2 .* ((tt - t1) / (t2 - t1))
     return Point3f(C)
 end
 
@@ -98,20 +104,20 @@ Interpolate a polyline with centripetal Catmull-Rom splines.
 Returns a denser polyline. Each input segment produces `resolution` output points.
 The first and last points are duplicated to serve as phantom control points.
 """
-function interpolate_spline(points::AbstractVector{Point3f}; resolution::Int=10)
+function interpolate_spline(points::AbstractVector{Point3f}; resolution::Int = 10)
     n = length(points)
     n < 2 && return copy(points)
 
     # Pad with phantom points (reflection of first/last segment)
     p0 = points[1] + (points[1] - points[min(2, n)])
-    pn = points[n] + (points[n] - points[max(n-1, 1)])
+    pn = points[n] + (points[n] - points[max(n - 1, 1)])
     padded = vcat([p0], points, [pn])
 
     result = Point3f[]
     for i in 1:(length(padded) - 3)
         for j in 0:(resolution - 1)
             t = Float32(j) / Float32(resolution)
-            push!(result, catmull_rom(padded[i], padded[i+1], padded[i+2], padded[i+3], t))
+            push!(result, catmull_rom(padded[i], padded[i + 1], padded[i + 2], padded[i + 3], t))
         end
     end
     push!(result, points[end])
@@ -122,7 +128,7 @@ end
 Linearly interpolate per-vertex data to match the spline-interpolated point count.
 Works for Float32, RGBA, or any type supporting lerp-style interpolation.
 """
-function interpolate_vertex_data(data::AbstractVector{T}, n_orig::Int, n_interp::Int) where T
+function interpolate_vertex_data(data::AbstractVector{T}, n_orig::Int, n_interp::Int) where {T}
     n_orig == n_interp && return data
     length(data) != n_orig && return data
     result = Vector{T}(undef, n_interp)
@@ -135,9 +141,9 @@ function interpolate_vertex_data(data::AbstractVector{T}, n_orig::Int, n_interp:
     return result
 end
 
-_lerp_value(a::T, b::T, t::Float32) where {T<:Number} = a + (b - a) * t
+_lerp_value(a::T, b::T, t::Float32) where {T <: Number} = a + (b - a) * t
 function _lerp_value(a::RGBA{Float32}, b::RGBA{Float32}, t::Float32)
-    RGBA{Float32}(
+    return RGBA{Float32}(
         red(a) + (red(b) - red(a)) * t,
         green(a) + (green(b) - green(a)) * t,
         blue(a) + (blue(b) - blue(a)) * t,
@@ -159,11 +165,11 @@ Returns `(positions, normals, faces, vertex_colors)` where vertex_colors is
 `nothing` if no per-vertex colors were provided.
 """
 function build_tube_mesh(
-    points::AbstractVector{Point3f},
-    radius,
-    n_sides::Int;
-    colors=nothing,
-)
+        points::AbstractVector{Point3f},
+        radius,
+        n_sides::Int;
+        colors = nothing,
+    )
     n_pts = length(points)
     n_pts < 2 && return (Point3f[], Vec3f[], GLTriangleFace[], nothing)
 
@@ -176,7 +182,7 @@ function build_tube_mesh(
     vert_colors = colors !== nothing ? Vector{eltype(colors)}(undef, n_verts) : nothing
 
     # Pre-compute circle template
-    angles = [2f0 * Float32(pi) * (k - 1) / n_sides for k in 1:n_sides]
+    angles = [2.0f0 * Float32(pi) * (k - 1) / n_sides for k in 1:n_sides]
     cos_a = cos.(angles)
     sin_a = sin.(angles)
 
@@ -191,8 +197,8 @@ function build_tube_mesh(
             tangent = Vec3f(points[i + 1] - points[i - 1])
         end
         tangent_len = sqrt(sum(tangent .^ 2))
-        tangent_len < 1f-10 && (tangent = Vec3f(0, 0, 1))
-        tangent = tangent / max(tangent_len, 1f-10)
+        tangent_len < 1.0f-10 && (tangent = Vec3f(0, 0, 1))
+        tangent = tangent / max(tangent_len, 1.0f-10)
 
         # Stable perpendicular vector
         if abs(tangent[1]) < 0.9f0
@@ -201,7 +207,7 @@ function build_tube_mesh(
             perp = Vec3f(0, 1, 0)
         end
         normal = cross(tangent, perp)
-        normal = normal / max(sqrt(sum(normal .^ 2)), 1f-10)
+        normal = normal / max(sqrt(sum(normal .^ 2)), 1.0f-10)
         binormal = cross(tangent, normal)
 
         # Per-vertex radius
@@ -292,15 +298,19 @@ function Makie.plot!(p::Tubes{<:Tuple{<:AbstractVector{<:Point3f}}})
         if color isa AbstractVector{<:Number}
             # Numeric -> colormap. Filter NaN for extrema (NaN = segment separator).
             finite_vals = filter(isfinite, color)
-            cr = crange === automatic ? (isempty(finite_vals) ? (0f0, 1f0) : extrema(finite_vals)) : crange
+            cr = crange === automatic ? (isempty(finite_vals) ? (0.0f0, 1.0f0) : extrema(finite_vals)) : crange
             cs = cscale === identity ? identity : cscale
             cmap_vec = Makie.to_colormap(cmap)
             transparent = RGBA{Float32}(0, 0, 0, 0)
-            return [isfinite(color[i]) ?
-                    Makie.interpolated_getindex(cmap_vec,
-                        clamp(Float32(cs((color[i] - cr[1]) / max(cr[2] - cr[1], 1f-10))), 0f0, 1f0)) :
+            return [
+                isfinite(color[i]) ?
+                    Makie.interpolated_getindex(
+                        cmap_vec,
+                        clamp(Float32(cs((color[i] - cr[1]) / max(cr[2] - cr[1], 1.0f-10))), 0.0f0, 1.0f0)
+                    ) :
                     transparent
-                    for i in 1:length(color)]
+                    for i in 1:length(color)
+            ]
         elseif color isa AbstractVector{<:Colorant}
             return [RGBA{Float32}(c) for c in color]
         elseif color isa Colorant || color isa Symbol || color isa String
@@ -330,7 +340,7 @@ function Makie.plot!(p::Tubes{<:Tuple{<:AbstractVector{<:Point3f}}})
             # Spline interpolation
             if do_spline && length(seg) >= 2
                 n_orig = length(seg)
-                seg = interpolate_spline(seg; resolution=spline_res)
+                seg = interpolate_spline(seg; resolution = spline_res)
                 if seg_colors !== nothing && length(seg_colors) == n_orig
                     seg_colors = interpolate_vertex_data(seg_colors, n_orig, length(seg))
                 end
@@ -343,7 +353,7 @@ function Makie.plot!(p::Tubes{<:Tuple{<:AbstractVector{<:Point3f}}})
                 seg_radius = radius
             end
 
-            pos, norms, fcs, vcols = build_tube_mesh(seg, seg_radius, n_sides; colors=seg_colors)
+            pos, norms, fcs, vcols = build_tube_mesh(seg, seg_radius, n_sides; colors = seg_colors)
 
             # Offset face indices
             offset_faces = [GLTriangleFace(f[1] + vertex_offset, f[2] + vertex_offset, f[3] + vertex_offset) for f in fcs]
@@ -364,8 +374,9 @@ function Makie.plot!(p::Tubes{<:Tuple{<:AbstractVector{<:Point3f}}})
     # Extract observables for mesh!
     mesh_data = map(p, tube_mesh_obs) do (positions, normals, faces, colors)
         isempty(positions) && return GeometryBasics.Mesh(
-            Point3f[Point3f(0,0,0)], GLTriangleFace[])
-        return GeometryBasics.mesh(positions, faces; position=positions, normal=normals)
+            Point3f[Point3f(0, 0, 0)], GLTriangleFace[]
+        )
+        return GeometryBasics.mesh(positions, faces; position = positions, normal = normals)
     end
 
     mesh_colors = map(p, tube_mesh_obs) do (positions, normals, faces, colors)
@@ -375,9 +386,9 @@ function Makie.plot!(p::Tubes{<:Tuple{<:AbstractVector{<:Point3f}}})
     # Use mesh! for rendering -- works in all backends including RayMakie
     mat = p.material[]
     if mat !== nothing
-        mesh!(p, mesh_data; color=mesh_colors, material=mat)
+        mesh!(p, mesh_data; color = mesh_colors, material = mat)
     else
-        mesh!(p, mesh_data; color=mesh_colors)
+        mesh!(p, mesh_data; color = mesh_colors)
     end
 
     return p

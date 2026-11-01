@@ -65,7 +65,9 @@ function create_gui_colorbar!(fig::Figure, ax, plot::AbstractPlot, options::Dict
     # (child plots whose colormaps disagree, so the caller has to pick one).
     # Catching that turned an ambiguous colormap into a missing colorbar.
     cmap = Makie.extract_colormap_recursive(plot)
-    isnothing(cmap) && return nothing
+    colorbar_attributes_complete(cmap) || return nothing
+    values = to_value(cmap[:color])
+    values isa Union{AbstractArray{<:Colorant}, Colorant, ShaderAbstractions.Sampler, AbstractPattern} && return nothing
     # Validate margin usage
     if haskey(options, :margin) && !(position isa Symbol)
         error("`margin` is only valid for overlay positioning (Symbol like :rt). For grid positions, use padding on the layout instead.")

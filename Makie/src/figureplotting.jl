@@ -587,7 +587,6 @@ end
 
 plot!(fa::FigureBlock, plot) = plot!(fa.block, plot)
 
-
 function plot!(ax::AbstractAxis, plot::AbstractPlot)
     plot!(ax.scene, plot)
     if !isnothing(get_conversions(plot))
@@ -600,6 +599,7 @@ function plot!(ax::AbstractAxis, plot::AbstractPlot)
     if is_open_or_any_parent(ax.scene)
         reset_limits!(ax)
     end
+
     return plot
 end
 

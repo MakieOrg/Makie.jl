@@ -197,12 +197,12 @@ include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
 
 # Note: This file could easily be moved out into a mini-package.
-include("RenderPipeline/BufferFormat.jl")
-include("RenderPipeline/RenderPipeline.jl")
-include("RenderPipeline/LoweredPipeline.jl")
-include("RenderPipeline/io.jl")
-include("RenderPipeline/defaults.jl")
-include("RenderPipeline/gui.jl")
+include("RenderGraph/BufferFormat.jl")
+include("RenderGraph/RenderGraph.jl")
+include("RenderGraph/LoweredRenderGraph.jl")
+include("RenderGraph/io.jl")
+include("RenderGraph/defaults.jl")
+include("RenderGraph/gui.jl")
 
 include("dim-converts/dim-converts.jl")
 include("dim-converts/unitful-integration.jl")
@@ -599,6 +599,7 @@ export resize_to_layout!
 include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
+include("basic_recipes/glyphs.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/pathtext.jl")
 include("basic_recipes/raincloud.jl")

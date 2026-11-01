@@ -195,7 +195,7 @@ function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Sca
     end
 end
 
-function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Text, view::Dict{String, String})
+function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Glyphs, view::Dict{String, String})
     position = plot.positions_transformed_f32c[]
     view["position_calc"] = position_calc(position, GLBuffer)::String
     shader = GLVisualizeShader(

@@ -148,8 +148,8 @@ struct EnvironmentLight <: AbstractLight
     rotation_axis::Vec3f
 end
 
-function EnvironmentLight(intensity, image; rotation_angle=0f0, rotation_axis=Vec3f(0f0, 1f0, 0f0))
-    EnvironmentLight(Float32(intensity), Matrix{RGBf}(image), Float32(rotation_angle), Vec3f(rotation_axis))
+function EnvironmentLight(intensity, image; rotation_angle = 0.0f0, rotation_axis = Vec3f(0.0f0, 1.0f0, 0.0f0))
+    return EnvironmentLight(Float32(intensity), Matrix{RGBf}(image), Float32(rotation_angle), Vec3f(rotation_axis))
 end
 
 """
@@ -176,13 +176,14 @@ struct SunSkyLight <: AbstractLight
     ground_enabled::Bool   # Whether to show ground plane below horizon
 end
 
-function SunSkyLight(direction::VecTypes{3};
-    intensity::Real = 1.0,
-    turbidity::Real = 2.5,
-    ground_albedo::Colorant = RGBf(0.3, 0.3, 0.3),
-    ground_enabled::Bool = true,
-)
-    SunSkyLight(
+function SunSkyLight(
+        direction::VecTypes{3};
+        intensity::Real = 1.0,
+        turbidity::Real = 2.5,
+        ground_albedo::Colorant = RGBf(0.3, 0.3, 0.3),
+        ground_enabled::Bool = true,
+    )
+    return SunSkyLight(
         normalize(Vec3f(direction)),
         Float32(intensity),
         Float32(turbidity),
@@ -301,8 +302,8 @@ function add_light_computation!(graph, scene, lights)
 
     # Split this to avoid updating WGLMakie
     # camera view matrix, not space adjusted plot matrix (right?)
-    map!(graph, [:dirlight_direction, :dirlight_cam_relative, :eye_to_world], :dirlight_final_direction) do dir, cam_relative, iview
-        final_dir = cam_relative ? Vec3f(iview[Vec(1, 2, 3), Vec(1, 2, 3)] * dir) : dir
+    map!(graph, [:dirlight_direction, :dirlight_cam_relative, :eye_to_world], :dirlight_final_direction) do dir, cam_relative, inv_view
+        final_dir = cam_relative ? Vec3f(inv_view[Vec(1, 2, 3), Vec(1, 2, 3)] * dir) : dir
         return final_dir
     end
 
@@ -390,7 +391,6 @@ end
 
 ################################################################################
 # Plot Interface
-
 
 add_resolved_shading!(@nospecialize(plot), scene) = nothing
 

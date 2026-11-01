@@ -19,13 +19,11 @@ function cairo_project_to_screen(
         attr;
         input_name = :positions_transformed_f32c, yflip = true, output_type = Point2f
     )
-    Makie.register_computation!(
+    map!(
         attr,
-        [:projectionview, :resolution, :model_f32c, input_name], [:cairo_screen_pos]
-    ) do inputs, changed, cached
-
-        output = cairo_project_to_screen_impl(values(inputs)..., output_type, yflip)
-        return (output,)
+        [:projectionview, :resolution, :model_f32c, input_name], :cairo_screen_pos
+    ) do inputs...
+        return cairo_project_to_screen_impl(inputs..., output_type, yflip)
     end
 
     return attr[:cairo_screen_pos][]

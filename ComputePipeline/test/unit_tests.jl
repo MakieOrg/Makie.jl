@@ -160,7 +160,7 @@ end
     # bitstype
     register_computation!(graph, [:in1, :in2], [:merged]) do inputs, changed, cached
         counter[:merged] += 1
-        return (changed.in1 ? inputs[1] + inputs[2] : nothing,)
+        return (changed.in1 ? inputs[1] + inputs[2] : skip_update,)
     end
     register_computation!(graph, [:merged], [:merged2]) do inputs, changed, cached
         counter[:merged2] += 1
@@ -1858,4 +1858,117 @@ end
     @test err isa ResolveException
     @test err.error isa ErrorException
     @test occursin("Result needs to have same length", sprint(showerror, err.error))
+end
+
+@testset "select!" begin
+    graph = ComputeGraph()
+    add_input!(graph, :user_choice, 1)
+    add_input!(graph, :x, 5)
+    add_input!(graph, :y, -1)
+
+    map!(identity, graph, :x, :input1)
+    map!(identity, graph, :y, :input2)
+    map!(+, graph, [:x, :y], :input3)
+
+    select!(graph, :user_choice, [:input1, :input2, :input3], :output)
+
+    # Verify initial state
+    function check_state(graph, state)
+        for (i, name) in enumerate([:user_choice, :x, :y, :input1, :input2, :input3, :output])
+            @test isdirty(graph[name]) == Bool(state[i])
+        end
+    end
+
+    @assert all(isdirty, values(graph.outputs)) "Test expects nodes to not initialize until first resolve"
+
+    @test graph.output[] == 5
+    check_state(graph, [0, 0, 1, 0, 1, 1, 0])
+
+    graph.x = 4
+    check_state(graph, [0, 1, 1, 1, 1, 1, 1])
+    @test graph.output[] == 4
+    check_state(graph, [0, 0, 1, 0, 1, 1, 0])
+
+    graph.user_choice = 2
+    check_state(graph, [1, 0, 1, 0, 1, 1, 1])
+    @test graph.output[] == -1
+    check_state(graph, [0, 0, 0, 0, 0, 1, 0])
+
+    update!(graph, user_choice = 3, x = 5, y = 2)
+    check_state(graph, [1, 1, 1, 1, 1, 1, 1])
+    @test graph.output[] == 5 + 2
+    check_state(graph, [0, 0, 0, 1, 1, 0, 0])
+
+    # test dirty propagation
+    map!(x -> x, graph, :output, :next)
+    first_val = graph.next[]
+    graph.x = 10
+    @test graph.next[] != first_val
+end
+
+@testset "boolean select!" begin
+    graph = ComputeGraph()
+    add_input!(graph, :user_choice, true)
+    add_input!(graph, :x, 5)
+    add_input!(graph, :y, -1)
+
+    map!(identity, graph, :x, :input1)
+    map!(identity, graph, :y, :input2)
+
+    select!(graph, :user_choice, :input1, :input2, :output)
+
+    # Verify initial state
+    function check_state(graph, state)
+        for (i, name) in enumerate([:user_choice, :x, :y, :input1, :input2, :output])
+            @test isdirty(graph[name]) == Bool(state[i])
+        end
+    end
+
+    @assert all(isdirty, values(graph.outputs)) "Test expects nodes to not initialize until first resolve"
+
+    @test graph.output[] == 5
+    check_state(graph, [0, 0, 1, 0, 1, 0])
+
+    graph.x = 4
+    check_state(graph, [0, 1, 1, 1, 1, 1])
+    @test graph.output[] == 4
+    check_state(graph, [0, 0, 1, 0, 1, 0])
+
+    graph.user_choice = false
+    check_state(graph, [1, 0, 1, 0, 1, 1])
+    @test graph.output[] == -1
+    check_state(graph, [0, 0, 0, 0, 0, 0])
+end
+
+@testset "skip_update vs nothing" begin
+    graph = ComputeGraph()
+    add_input!(graph, :a, 2)
+    map!(x -> iseven(x) ? x : skip_update, graph, :a, :even1)
+    register_computation!(graph, [:even1], [:counter]) do inputs, changed, cached
+        return (isnothing(cached) ? 1 : cached[1] + 1,)
+    end
+    map!(x -> iseven(x) ? x : nothing, graph, :a, :even2)
+    ComputePipeline.set_type!(graph.even2, Any)
+
+    @test graph.even1[] == 2
+    @test graph.counter[] == 1
+    @test graph.even2[] == 2
+
+    graph.a = 1
+
+    @test graph.even1[] == 2
+    @test graph.counter[] == 1
+    @test graph.even2[] === nothing
+
+    graph.a = 2
+
+    @test graph.even1[] == 2
+    @test graph.counter[] == 1
+    @test graph.even2[] == 2
+
+    graph.a = 4
+
+    @test graph.even1[] == 4
+    @test graph.counter[] == 2
+    @test graph.even2[] == 4
 end

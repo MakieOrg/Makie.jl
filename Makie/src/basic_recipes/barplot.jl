@@ -167,7 +167,7 @@ function add_slow_limits!(plot::Plot)
             mini = minimum(lims)
             return (Rect2d(mini - 100ws, 201ws),)
         else
-            return nothing
+            return skip_update
         end
     end
     add_input!(plot.attributes, :slow_limits_transformed, scene.compute.slow_limits_transformed)
@@ -406,9 +406,10 @@ function plot!(p::BarPlot)
     # stack
     map!(
         p, [:stack, :fillto, :x, :raw_y, :offset], [:y, :computed_fillto]
-    ) do stack, fillto, x, y, offset
+    ) do stack, _fillto, x, y, offset
+        fillto = ifelse(_fillto === automatic, offset, _fillto)
         if stack === automatic
-            return y, ifelse(fillto === automatic, offset, fillto)
+            return y, fillto
         elseif eltype(stack) <: Integer
             if !iszero(offset)
                 @warn "Ignore keyword offset when keyword stack is provided"

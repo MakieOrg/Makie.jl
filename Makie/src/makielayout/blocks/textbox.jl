@@ -1,7 +1,7 @@
 function initialize_block!(tbox::Textbox)
     topscene = tbox.blockscene
 
-    scenearea = lift(topscene, tbox.layoutobservables.computedbbox; ignore_equal_values=true) do bb
+    scenearea = lift(topscene, tbox.layoutobservables.computedbbox; ignore_equal_values = true) do bb
         Rect(round.(Int, bb.origin), round.(Int, bb.widths))
     end
 
@@ -143,8 +143,10 @@ function initialize_block!(tbox::Textbox)
         # Fixed/relative widths do not depend on the text. Reporting a new
         # intrinsic width per keystroke still propagates a full parent layout,
         # even with tellwidth=false. Only notify when a relevant size changes.
-        size = (width isa Auto ? text_w + l + r : nothing,
-                height isa Auto ? text_h + b + t : nothing)
+        size = (
+            width isa Auto ? text_w + l + r : nothing,
+            height isa Auto ? text_h + b + t : nothing,
+        )
         isequal(tbox.layoutobservables.autosize[], size) ||
             (tbox.layoutobservables.autosize[] = size)
         return
@@ -209,7 +211,7 @@ function initialize_block!(tbox::Textbox)
             return Float32(origins[head + 1][1])
         elseif head == length(origins) && !isempty(origins)
             extents = text_plot.glyph_extents[]
-            scales = text_plot.text_scales[]
+            scales = text_plot.glyph_scales[]
             return Float32(origins[end][1] + extents[end].hadvance * scales[end][1])
         else
             return 0.0f0
@@ -239,7 +241,7 @@ function initialize_block!(tbox::Textbox)
         origins = text_plot.glyph_origins[]
         isempty(origins) && return
         extents = text_plot.glyph_extents[]
-        scales = text_plot.text_scales[]
+        scales = text_plot.glyph_scales[]
         text_right = Float32(l + origins[end][1] + extents[end].hadvance * scales[end][1])
         gap = right - (text_right + Float32(scene.transformation.translation[][1]))
         tx2 = Float32(scene.transformation.translation[][1])

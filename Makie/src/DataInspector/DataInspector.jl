@@ -237,7 +237,11 @@ function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...
     # TODO: remove priority, make compatible with 3D axis
     # persistent tooltip
     mouse_listener = on(e.mousebutton, priority = button_priority) do event
-        return update_persistent_tooltips!(inspector)
+        if event.action == Mouse.press
+            return update_persistent_tooltips!(inspector)
+        else
+            return Consume(false)
+        end
     end
 
     push!(inspector.obsfuncs, tick_listener, mouse_listener)
@@ -763,7 +767,7 @@ function update_persistent_tooltips!(di::DataInspector)
             element = pick_element(plot_stack(plot), idx)
             add_persistent_tooltip!(di, element)
             return Consume(true)
-        elseif rootparent_plot(plot) isa Tooltip
+        elseif rootparent_plot(plot) isa DataInspectorTooltip
             element = pick_element(plot_stack(plot), idx)
             if remove_persistent_tooltip!(di, element)
                 return Consume(true)
@@ -842,7 +846,7 @@ function add_persistent_tooltip!(di::DataInspector, element::PlotElement{PT}) wh
     return true
 end
 
-function remove_persistent_tooltip!(di::DataInspector, tooltip_element::PlotElement{<:Tooltip})
+function remove_persistent_tooltip!(di::DataInspector, tooltip_element::PlotElement{<:DataInspectorTooltip})
     tt = get_plot(tooltip_element)
     key = findfirst(==(tt), di.persistent_tooltips)
 

@@ -18,7 +18,6 @@ hidedecorations!(ax) # remove axis labeling
 f
 ```
 
-
 ### Sparse matrix with structure and color
 
 ```@figure

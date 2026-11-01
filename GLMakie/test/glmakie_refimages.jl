@@ -279,7 +279,7 @@ end
 
     begin
         # Pipeline matches test_pipeline_2D up to color_tint
-        pipeline = Makie.RenderPipeline()
+        pipeline = Makie.RenderGraph()
 
         render1 = push!(pipeline, Makie.PlotRenderStage(transparency = false, fxaa = true))
         render2 = push!(pipeline, Makie.TransparentPlotRenderStage())
@@ -326,7 +326,7 @@ end
 # activate!() changes the default, so we need a reset here
 GLMakie.activate!(render_pipeline = Makie.automatic)
 
-@reference_test "Dynamic Render Pipeline replacement" begin
+@reference_test "Dynamic Render Graph replacement" begin
     scene = Scene(size = (300, 300))
     meshscatter!(scene, Rect2f(-0.5, -0.5, 1, 1), alpha = 0.5, markersize = Vec3f(0.4, 0.6, 0.5), transparency = true)
     meshscatter!(scene, [0, 0], [-0.5, 0.5], [0.5, -0.5], alpha = 0.5, markersize = 0.2, transparency = true)

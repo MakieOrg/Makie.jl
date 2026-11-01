@@ -177,7 +177,7 @@ pages = [
         "Ecosystem" => "ecosystem.md",
     ],
     "Dev Docs" => [
-        "devdocs/render_pipeline.md",
+        "devdocs/rendergraph.md",
     ],
 ]
 

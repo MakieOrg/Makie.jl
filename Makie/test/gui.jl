@@ -133,7 +133,7 @@ end
     colorbar4 = f4.gui_state.colorbar
     @test !isnothing(colorbar4)
     # Colorbar should have a colormap (derived from plot)
-    @test length(to_value(colorbar4.colormap)) > 0
+    @test !isempty(Makie.to_colormap(colorbar4.colormap[]))
 end
 
 @testset "Hover bar attributes" begin
@@ -285,7 +285,10 @@ end
     Makie.add_gui!(f2, ax2, pl2)
     @test !isnothing(f2.gui_state.colorbar)
     # Colorbar should have a colormap (derived from plot)
-    @test length(to_value(f2.gui_state.colorbar.colormap)) > 0
+    @test !isempty(Makie.to_colormap(f2.gui_state.colorbar.colormap[]))
+    @test f2.gui_state.colorbar.colormap[] == pl2.colormap[]
+    pl2.colormap = :viridis
+    @test f2.gui_state.colorbar.colormap[] == :viridis
 
     # Series with legend - multiple labels
     f3, ax3, pl3 = series(

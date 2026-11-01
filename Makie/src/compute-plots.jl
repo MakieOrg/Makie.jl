@@ -362,12 +362,12 @@ function register_positions_transformed_f32c!(
 
     register_computation!(
         attr, [input_name, :model, :f32c, :space], [output_name]
-    ) do (positions, model, f32c, space), changed, last
+    ) do (positions, model, f32c, space), changed, @nospecialize(last)
 
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
-            pos = changed[1] ? el32convert(positions) : nothing
+            pos = changed[1] ? el32convert(positions) : skip_update
             return (pos,)
         elseif false # is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
@@ -467,7 +467,7 @@ function add_convert_kwargs!(graph, user_kw, P, args)
             push!(conv_attr_input, key)
         end
     end
-    register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, changed, last
+    register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, @nospecialize(changed), @nospecialize(last)
         return (_filter(!isnothing, inputs),)
     end
     ComputePipeline.set_type!(graph[:convert_kwargs], Any)
@@ -683,10 +683,18 @@ function register_marker_computations!(attr::ComputeGraph)
 end
 
 const PrimitivePlotTypes = Union{
-    Scatter, Lines, LineSegments, Text, Mesh,
+    Scatter, Lines, LineSegments, Glyphs, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume,
 }
 
+"""
+    uses_convert_attribute(::Type{<:Plot})
+
+Returns true for plot types that opt in to using `convert_attribute`
+infrastructure. This is `false` by default for recipes.
+"""
+uses_convert_attribute(::Type{<:PrimitivePlotTypes}) = true
+uses_convert_attribute(::Type{<:AbstractPlot}) = false
 
 function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, p.attributes, inputs, outputs)
@@ -694,6 +702,8 @@ end
 function Base.map!(f, p::Plot, inputs::Union{Vector, ComputePipeline.InputNodeTypes}, outputs::Union{Vector, ComputePipeline.OutputNodeTypes})
     return map!(f, p.attributes, inputs, outputs)
 end
+ComputePipeline.select!(f, p::Plot, args...) = select!(f, p.attributes, args...)
+ComputePipeline.select!(p::Plot, args...) = select!(p.attributes, args...)
 
 struct AttributeConvert{Key, Plot} <: Function end
 @inline AttributeConvert(key, plot) = AttributeConvert{key, plot}()
@@ -773,6 +783,7 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
         if haskey(graph.inputs, name)
             input = graph.inputs[name]
             input.f = CycleConvert(input.f, scene.theme.palette, graph, name)
+
         end
     end
 
@@ -785,6 +796,16 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
     union!(exclude, conv_attributes)
 
     add_theme!(graph, attr, T, scene, exclude, user_kw, cycle)
+
+    # not resolving this during init can rarely change ordering.
+    # E.g. in "annotation manual", where ylims! somehow resolves cycled
+    # attributes of the annotations without the lines plot through
+    # plotlist updates, causing lines to get a different cycled color
+    for name in attrsyms(cycle)
+        if haskey(graph.inputs, name)
+            graph[name][]
+        end
+    end
 
     return
 end
@@ -869,7 +890,6 @@ end
 function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
     attr = documented_attributes(P)
     name = Makie.plotkey(P)
-    is_primitive = P <: PrimitivePlotTypes
 
     # Cycle is added here to allow `plot(..., cycle = Observable(...))`. Updating
     # cycle may only change which attribute maps to which, not which attributes
@@ -879,7 +899,7 @@ function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
         add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
     end
 
-    if is_primitive
+    if uses_convert_attribute(P)
         init_graph!(key -> AttributeConvert(key, name), graph, attr, true, kwargs, parent)
     else
         init_graph!(key -> compute_identity, graph, attr, false, kwargs, parent)
@@ -967,16 +987,6 @@ function collect_all_connected_nodes(computed::ComputePipeline.Computed, tracked
 end
 
 Observables.to_value(computed::ComputePipeline.Computed) = computed[]
-function Base.notify(computed::ComputePipeline.Computed)
-    nodes = collect_all_connected_nodes(computed)
-    graph = computed.parent.graph
-    to_notify = intersect(nodes, keys(graph.observables))
-    foreach(to_notify) do key
-        notify(graph.observables[key])
-    end
-    return
-end
-
 
 function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
     return map!(attr, [attribute, :positions], output_name) do vec, positions
@@ -1321,7 +1331,7 @@ function register_pattern_uv_transform!(attr; modelname = :model_f32c, colorname
                 return (uvt,)
             end
         else
-            return nothing
+            return skip_update
         end
     end
     return

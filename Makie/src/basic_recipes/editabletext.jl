@@ -181,7 +181,7 @@ end
 function cursor_anchor_positions(
         glyph_origins::AbstractVector{<:VecTypes{3}},
         glyph_extents::AbstractVector{GlyphExtent},
-        text_scales::AbstractVector{Vec2f},
+        glyph_scales::AbstractVector{Vec2f},
         font::NativeFont,
         fontsize::Float32, lineheight::Float32,
         align::Tuple, trailing_newline::Bool,
@@ -223,7 +223,7 @@ function cursor_anchor_positions(
         # Trailing newline: extrapolate to the start of the empty next line.
         anchors[n + 1] = Point2f(0, glyph_origins[n][2] - line_h)
     else
-        adv = Float32(glyph_extents[n].hadvance) * text_scales[n][1]
+        adv = Float32(glyph_extents[n].hadvance) * glyph_scales[n][1]
         anchors[n + 1] = Point2f(glyph_origins[n][1] + adv, glyph_origins[n][2])
     end
     return CursorAnchors(anchors, ascender, descender, line_h)
@@ -548,7 +548,6 @@ function plot!(plot::EditableText)
         space = plot.space, markerspace = :pixel,
         visible = plot.visible, inspectable = false,
     )
-    register_markerspace_positions!(text_plot, Point2f)
 
     # The block's projected pixel position. `text!` always renders one block
     # per position vector, so `only` matches that invariant — it errors if the
@@ -559,7 +558,7 @@ function plot!(plot::EditableText)
 
     anchors_obs = lift(
         text_plot.glyph_origins, text_plot.glyph_extents,
-        text_plot.text_scales, text_plot.selected_font, plot.fontsize, plot.lineheight, plot.align,
+        text_plot.glyph_scales, text_plot.selected_font, plot.fontsize, plot.lineheight, plot.align,
     ) do origins, extents, scales, font, fontsize, lh, align
         # `plot.text` is the upstream input that drives `glyph_origins`, so by
         # the time this lift fires the text observable is already up to date.

@@ -1,8 +1,10 @@
 # `hovered` is an index into the VISIBLE (filtered) options; `m.i_selected` always
 # references the ORIGINAL options, so the selection highlight maps through
 # `filtered_indices` (search support, API as in MakieOrg/Makie.jl#5642).
-function _update_option_colors!(hovered, optionstrings, optionpolycolors, optiontextcolors, m,
-                                filtered_indices)
+function _update_option_colors!(
+        hovered, optionstrings, optionpolycolors, optiontextcolors, m,
+        filtered_indices
+    )
     n = length(optionstrings[])
     resize!(optionpolycolors.val, n)
     resize!(optiontextcolors.val, n)
@@ -119,8 +121,10 @@ function initialize_block!(m::Menu; default = 1)
     is_searchable = m.searchable[]
     search_text = Observable(""; ignore_equal_values = true)
     optionstrings_all = lift(o -> optionlabel.(o), blockscene, m.options; ignore_equal_values = true)
-    filtered_indices = lift(blockscene, optionstrings_all, search_text, m.filter;
-                            ignore_equal_values = true) do strings, query, filter_fn
+    filtered_indices = lift(
+        blockscene, optionstrings_all, search_text, m.filter;
+        ignore_equal_values = true
+    ) do strings, query, filter_fn
         isempty(query) ? collect(eachindex(strings)) :
             [i for (i, s) in enumerate(strings) if filter_fn(query, s)]
     end
@@ -128,8 +132,10 @@ function initialize_block!(m::Menu; default = 1)
         strings[idx]
     end
 
-    selected_text = lift(blockscene, m.prompt, m.i_selected, search_text, m.is_open;
-                         ignore_equal_values = true) do prompt, i_selected, query, open
+    selected_text = lift(
+        blockscene, m.prompt, m.i_selected, search_text, m.is_open;
+        ignore_equal_values = true
+    ) do prompt, i_selected, query, open
         if open && is_searchable
             isempty(query) ? m.search_placeholder[] : query * "▏"
         elseif i_selected == 0 || i_selected > length(optionstrings_all[])
@@ -249,9 +255,16 @@ function initialize_block!(m::Menu; default = 1)
     optionpolys = poly!(menuscene, optionrects, color = optionpolycolors, inspectable = false)
 
     optiontexts = text!(
-        menuscene, textpositions, text = optionstrings, align = (:left, :center),
-        fontsize = m.fontsize, color = optiontextcolors, inspectable = false
+        menuscene, textpositions[], text = optionstrings[], align = (:left, :center),
+        fontsize = m.fontsize, color = optiontextcolors[], inspectable = false
     )
+    # Filtering resizes these Observable arrays in separate callbacks. Publish
+    # one consistent update to the text graph, including when the list is empty.
+    onany(blockscene, optionstrings, textpositions, optiontextcolors) do strings, positions, colors
+        length(strings) == length(positions) == length(colors) || return
+        update!(optiontexts; arg1 = positions, text = strings, color = colors)
+        return
+    end
 
     # listheight needs to be up to date before showing the menuscene so that its
     # direction is correct

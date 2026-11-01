@@ -117,8 +117,11 @@ end
     @test allunique(triggers)
     # The plot's `projection` is in ITS spaces (a scatter's markerspace is pixel),
     # so it is compared with the scene graph's matrix of the same name.
-    projname = p.attributes[:camera_matrix_names][][2]
-    @test p.attributes[:projection][] == Mat4f(scene.compute[projname][])
+    @test p.attributes[:projection][] == Mat4f(Makie.get_projection(scene, p.markerspace[]))
+    for getter in (Makie.get_projectionview, Makie.get_projection, Makie.get_view), space in (:data, :pixel)
+        @test getter(scene, space) == getter(scene.compute, space)
+        @test getter(p, space) == getter(scene.compute, space)
+    end
 end
 
 # Keyboard movement is how long a key was held, integrated over the key events. It was

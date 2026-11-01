@@ -1,6 +1,13 @@
 # ===== TABLE PLOT RECIPE =====
 # A recipe that renders tabular data efficiently with one poly, one text, and one linesegments plot
 
+"""
+Draw tabular data with column headers, row selection and scrolling.
+
+## Arguments
+
+* `data` A `Dict{Symbol, Any}` mapping column names to vectors of cell values.
+"""
 @recipe TablePlot (data::Dict{Symbol, Any},) begin
     # Data
     column_names = automatic

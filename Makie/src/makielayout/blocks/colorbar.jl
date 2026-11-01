@@ -555,18 +555,8 @@ function Colorbar(
         position = :rt, margin = (6, 50, 6, 6), kwargs...
     )
     pos_kw = legend_position_to_aligns(position)
-    # Extract colormap from the plot
-    cmap = extract_colormap_recursive(plot)
-    func = plotfunc(plot)
-    if isnothing(cmap)
-        error("Neither $(func) nor any of its children use a colormap. Cannot create a Colorbar from this plot, please create it manually.")
-    end
-    if !(cmap isa ColorMapping)
-        error("extract_colormap(::$(Plot{func})) returned an invalid value: $cmap. Needs to return a `Makie.ColorMapping`.")
-    end
     return Colorbar(
-        ax.parent;
-        colormap = cmap,
+        ax.parent, plot;
         bbox = ax.scene.viewport,
         margin = margin,
         pos_kw...,

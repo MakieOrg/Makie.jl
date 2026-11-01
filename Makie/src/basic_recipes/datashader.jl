@@ -450,7 +450,7 @@ function canvas_computation!(p::DataShader)
             canvas.bounds = lims64
         end
         has_changed = has_changed || isnothing(last)
-        return has_changed ? (canvas,) : nothing
+        return has_changed ? (canvas,) : skip_update
     end
 end
 
@@ -460,18 +460,22 @@ function Makie.plot!(p::DataShader{<:Tuple{<:AbstractVector{<:Point}}})
     add_input!(p.attributes, :pixel_area, scene.viewport)
     canvas_computation!(p)
 
-    register_computation!(p, [:points, :point_transform], [:data_limits]) do (points, f), _, _
-        return (fast_bb(points, f),)
+    map!(p, [:points, :point_transform], :data_limits) do points, f
+        return fast_bb(points, f)
     end
 
-    register_computation!(p, [:canvas, :points, :point_transform, :method, :colorrange], [:canvas_with_aggregation, :raw_colorrange]) do (canvas, points, f, method, crange), changed, _
+    map!(
+        p,
+        [:canvas, :points, :point_transform, :method, :colorrange],
+        [:canvas_with_aggregation, :raw_colorrange]
+    ) do canvas, points, f, method, crange
         Aggregation.aggregate!(canvas, points; point_transform = f, method = method)
         if crange isa Automatic
             cr = Vec2f(distinct_extrema_nan(canvas.data_extrema))
         else
             cr = Vec2f(crange)
         end
-        return (canvas, cr)
+        return canvas, cr
     end
     image!(
         p, p.canvas_with_aggregation, p.operation, p.local_operation;
@@ -510,9 +514,9 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     add_axis_limits!(p)
     add_input!(p.attributes, :pixel_area, scene.viewport)
     canvas_computation!(p)
-    register_computation!(p, [:points, :point_transform], [:data_limits]) do (categories, f), _, _
+    map!(p, [:points, :point_transform], :data_limits) do categories, f
         rects = map(points -> fast_bb(points, f), values(categories))
-        return (reduce(union, rects),)
+        return reduce(union, rects)
     end
     categories = p.points[]
     canvas = p.canvas[]
@@ -521,14 +525,14 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
             for (k, v) in categories
     )
 
-    register_computation!(p, [:canvas, :points], [:canvas_with_aggregation, :total_value]) do (canvas, cats), _, _
+    map!(p, [:canvas, :points], [:canvas_with_aggregation, :total_value]) do canvas, cats
         for (k, c) in canvases
             Base.resize!(c, canvas.resolution)
             c.bounds = canvas.bounds
         end
         aggregate_categories!(canvases, cats; method = p.method[])
         total_value = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
-        return (canvases, total_value)
+        return canvases, total_value
     end
     # sorted, so that colors, draw order and legend entries don't depend on the
     # hash order of the category dict
@@ -728,7 +732,7 @@ function resample_image(x, y, image, max_resolution, limits)
     vmini = minimum(visible_rect)
     vw = widths(visible_rect)
     if !(visible_rect in data_rect) || any(w -> w <= 0, vw)
-        return nothing
+        return skip_nothing
     end
 
     # (xmin, ymin), (xmax, ymax)
@@ -746,7 +750,7 @@ function resample_image(x, y, image, max_resolution, limits)
         return LinRange(max(1, indices[1]), min(indices[2], si), len)
     end
     if isempty(x_index_range) || isempty(y_index_range)
-        return nothing
+        return skip_nothing
     end
     interpolated = image(x_index_range, y_index_range)
     return EndPoints{Float32}(ranges[1]), EndPoints{Float32}(ranges[2]), interpolated
@@ -839,7 +843,7 @@ function Makie.plot!(p::Union{HeatmapShader, ImageShader})
         init = (p.x[], p.x[], fill(zero(T), 2, 2), false)
     ) do image, x, y, max_resolution, limits
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
-        isnothing(xe_ye_oimg) && return nothing
+        xe_ye_oimg === skip_update && return skip_update
         return (xe_ye_oimg..., true)
     end
 

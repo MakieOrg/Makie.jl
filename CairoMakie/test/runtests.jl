@@ -1,10 +1,15 @@
 ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 
+run(
+    `julia -e "using Makie.ComputePipeline; ComputePipeline.enable_debugging!(); ComputePipeline.log_nothing_splat(true)"`
+)
+
 using Test
 using CairoMakie
 using Makie.FileIO
 using ReferenceTests
 using GeometryBasics
+
 
 # Before changing Pkg environment, try the test in #864
 @testset "Runs without error" begin
@@ -352,3 +357,7 @@ end
         end
     end
 end
+
+using Makie.ComputePipeline
+ComputePipeline.disable_debugging!()
+ComputePipeline.log_nothing_splat(false)

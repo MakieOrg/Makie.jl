@@ -78,6 +78,8 @@ barplot(tbl.cat, tbl.height,
 
 ### Dodged bars
 
+### Dodged bars
+
 Passing `grp` to `dodge` will instead draw the individual height values as separate bars side by side.
 Here 1 is the left most and 3 the right most bar.
 The gap between dodged bars can be adjusted with `dodge_gap`.
@@ -90,6 +92,9 @@ barplot(tbl.cat, tbl.height,
                 title = "Dodged bars"),
         )
 ```
+
+
+### Dodged and stacked bars
 
 Note that `dodge` will create slots based on the maximum group value.
 If we replaced 3 with 4 in `grp` a gap would be drawn between bars of group 2 and group 4.
