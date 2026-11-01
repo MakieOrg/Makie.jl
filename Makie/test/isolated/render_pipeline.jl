@@ -6,6 +6,18 @@ using Makie: generate_buffers, default_pipeline
 
 @testset "Render RenderGraph" begin
 
+    @testset "Consistent stage sample counts" begin
+        stage(counts) = RenderStage(
+            :samples; outputs = [Symbol(:buffer_, i) => BufferFormat(samples = n) for (i, n) in enumerate(counts)]
+        )
+        for counts in ((), (1,), (2,), (4,), (8,), (1, 1), (4, 4), (4, 4, 4))
+            @test Makie.validate_pipeline(RenderGraph(stage(counts))) === nothing
+        end
+        for counts in ((1, 4), (4, 1), (4, 4, 8), (2, 4, 2))
+            @test_throws ErrorException Makie.validate_pipeline(RenderGraph(stage(counts)))
+        end
+    end
+
     @testset "BufferFormat" begin
         @testset "Constructors" begin
             f = BufferFormat()
