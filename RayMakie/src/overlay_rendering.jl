@@ -282,9 +282,8 @@ and carries the instance count with it. That choice is compiled in — it decide
 which command the backend records — so it is made here, once, and `rebind!` can
 only ever supply the same kind.
 """
-function overlay_binding(robj::RenderObject, dev)
+function overlay_binding(robj::RenderObject, dev, args = build_args(robj))
     ix = get(robj.buffers, :indices, nothing)
-    args = build_args(robj)
     return ix === nothing ?
         Mantle.DrawBinding(dev, args, robj.vertex_count; instances = robj.instances,
                            bindings = robj.bindings) :
@@ -353,7 +352,7 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
     # that receives. Which meshes cast is fixed by the plan, the matrix is not.
     shadow = shadow_frame(screen, robjs)
     jobs = shadow === nothing ? () : shadow_jobs(shadow)
-    args = [build_args(robj) for (robj, _) in robjs]
+    args = [build_args(robj; fxaa = screen.config.fxaa) for (robj, _) in robjs]
     sig = (key, objectid(source), fxaa, shadow_signature(shadow), frame_signature(robjs, args, w, h))
     cached = get(screen.frame_plans, key, nothing)
     if cached !== nothing && cached[1] == sig
@@ -370,7 +369,7 @@ function frame_plan!(screen, key::Symbol, mktarget, clear, source, robjs, w, h;
         Mantle.free!(cached[3].pixels)
     end
 
-    cells = [overlay_binding(robj, dev) for (robj, _) in robjs]
+    cells = [overlay_binding(robj, dev, args[i]) for (i, (robj, _)) in enumerate(robjs)]
     shadowcells = shadow_cells(dev, jobs)
     g = Mantle.Graph(dev)
     shadow === nothing || shadow_pass!(g, screen, shadow, jobs, shadowcells)

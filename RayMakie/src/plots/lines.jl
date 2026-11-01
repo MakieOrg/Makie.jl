@@ -11,9 +11,22 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
     # Reuse Makie's built-in computations (same as GLMakie)
     Makie.add_computation!(attr, :gl_miter_limit)
 
-    # Generate adjacency indices + valid_vertex (CPU, reuse arrays across updates)
+    # Topology is consumed by this screen's GPU. Keep its preparation on that
+    # same device even when Makie's transformed positions start on the host.
+    register_computation!(attr, [:positions_transformed_f32c], [:trace_line_positions]) do (positions,), changed, cached
+        if cached === nothing
+            data = Mantle.devicearray(screen.config.device, positions)
+        else
+            data = cached.trace_line_positions
+            resize!(data, length(positions))
+            copyto!(data, positions)
+        end
+        return (data,)
+    end
+
+    # Generate adjacency indices + validity on the screen's Mantle device.
     register_computation!(
-        attr, [:positions_transformed_f32c], [:trace_gl_indices, :trace_gl_valid_vertex]
+        attr, [:trace_line_positions], [:trace_gl_indices, :trace_gl_valid_vertex]
     ) do (positions,), changed, cached
         if isnothing(cached)
             # `similar`, so the topology lands wherever the positions already
@@ -37,13 +50,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
     # the plot is drawn too).
     if isnothing(plot.linestyle[])
         register_computation!(
-            attr, [:positions_transformed_f32c, :resolution], [:trace_gl_lastlen]
+            attr, [:trace_line_positions, :resolution], [:trace_gl_lastlen]
         ) do (positions, resolution), changed, cached
             return (lines_sumlengths(positions, resolution),)
         end
     else
         register_computation!(
-            attr, [:positions_transformed_f32c, :projectionview, :model_f32c, :resolution], [:trace_gl_lastlen]
+            attr, [:trace_line_positions, :projectionview, :model_f32c, :resolution], [:trace_gl_lastlen]
         ) do (positions, pv, model, resolution), changed, cached
             return (lines_sumlengths(lines_clip.(positions, (Mat4f(pv) * Mat4f(model),)), resolution),)
         end
