@@ -14,10 +14,8 @@ concurrency:
 jobs:
   test:
     name: RayMakie / Lavapipe_jll
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
-    env:
-      GALLIUM_DRIVER: softpipe
     steps:
       - uses: actions/checkout@v4
       - name: Install virtual display and OpenGL software driver
