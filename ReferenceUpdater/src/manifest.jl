@@ -180,6 +180,12 @@ function approval_coverage(
     )
 end
 
+classify_pins(root_path) = classify_entries(read_manifest(joinpath(root_path, "refimage_updates")), joinpath(root_path, "reference"))
+
+function recorded_pinned_new(root_path, classified = classify_pins(root_path))
+    return filter(path -> isfile(joinpath(root_path, "recorded", path)), sort!(collect(classified.exempt_new)))
+end
+
 total_images(cov) = cov.new.total + cov.changed.total + cov.deleted.total
 approved_images(cov) = cov.new.approved + cov.changed.approved + cov.deleted.approved
 images_approved(cov) = total_images(cov) == approved_images(cov)

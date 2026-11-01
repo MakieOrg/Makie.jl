@@ -386,7 +386,7 @@ function _block(
 end
 
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args...; bbox = nothing, kwargs...)
-    return _block(T, fig_or_scene, Any[args...], Dict{Symbol, Any}(kwargs), bbox)
+    return _block(T, fig_or_scene, Any[args...], to_dict(kwargs), bbox)
 end
 
 function _block(T::Type{<:Block}, args...; bbox = nothing, kwargs...)

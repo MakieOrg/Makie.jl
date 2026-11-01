@@ -41,9 +41,14 @@ function Makie.window_area(scene::Scene, screen::Screen)
     disconnect!(screen, window_area)
 
     # TODO: Figure out which monitor the window is on and react to DPI changes
-    monitor = GLFW.GetPrimaryMonitor()
-    props = MonitorProperties(monitor)
-    scene.events.window_dpi[] = minimum(props.dpi)
+    monitor = GLFW.GetPlatform() == GLFW.PLATFORM_NULL ? GLFW.Monitor(C_NULL) : GLFW.GetPrimaryMonitor()
+    if monitor.handle == C_NULL
+        scene.events.window_dpi[] = 96.0
+    else
+        props = MonitorProperties(monitor)
+        dpi = minimum(props.dpi)
+        scene.events.window_dpi[] = isfinite(dpi) && dpi > 0 ? dpi : 96.0
+    end
 
     function windowsizecb(window, width::Cint, height::Cint)
         area = scene.events.window_area
