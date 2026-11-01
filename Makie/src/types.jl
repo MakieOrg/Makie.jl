@@ -153,6 +153,10 @@ struct Events
     - `delta_time` which is the time since the last frame
     """
     tick::Observable{Tick}
+    """
+    The `time()` at which `tick` was last set, for [`interaction_time`](@ref).
+    """
+    tick_walltime::Base.RefValue{Float64}
 end
 
 function Base.show(io::IO, events::Events)
@@ -183,7 +187,8 @@ function Events()
         Observable(String[]),
         Observable(false),
         Observable(false),
-        Observable(Tick())
+        Observable(Tick()),
+        Ref(time())
     )
 
     connect_states!(events)
@@ -220,7 +225,29 @@ function connect_states!(e::Events)
         # This never consumes because it just keeps track of the state
         return Consume(false)
     end
+
+    on(e.tick, priority = typemax(Int)) do _
+        e.tick_walltime[] = time()
+        return Consume(false)
+    end
     return
+end
+
+"""
+    interaction_time(events) -> Float64
+
+Now, in the time of `events.tick`: the last tick's `time`, plus the time since that tick
+when ticks come from a running render loop. A frame for `record` or `colorbuffer`
+(`OneTimeRenderTick`) is produced on request, and no time passes between two of them but
+what the next tick says, so a recording with synthetic events times them by its frames.
+In a window an event is timed when it happens, however slow the frames: ticks come once a
+frame, and timed by the last one, a press and a release within one frame were at the same
+time.
+"""
+function interaction_time(e::Events)
+    tick = e.tick[]
+    tick.state == OneTimeRenderTick && return tick.time
+    return tick.time + (time() - e.tick_walltime[])
 end
 
 # Compat only
@@ -238,7 +265,7 @@ end
 
 function Base.empty!(events::Events)
     for field in fieldnames(Events)
-        field in (:mousebuttonstate, :keyboardstate) && continue
+        field in (:mousebuttonstate, :keyboardstate, :tick_walltime) && continue
         obs = getfield(events, field)
         for (prio, f) in obs.listeners
             prio == typemax(Int) && continue

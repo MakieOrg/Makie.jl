@@ -28,11 +28,25 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         return (indices, valid)
     end
 
-    # Cumulative screen-space lengths for pattern UV
-    register_computation!(
-        attr, [:positions_transformed_f32c, :resolution], [:trace_gl_lastlen]
-    ) do (positions, resolution), changed, cached
-        return (lines_sumlengths(positions, resolution),)
+    # Cumulative screen-space lengths, which the dash pattern runs along:
+    # measured on the clip-space positions, as GLMakie's `sumlengths` measures
+    # them, so they follow the camera. Measured on the positions as given, a
+    # dash was the pattern's length in data units scaled by half the frame:
+    # 120 times too dense on a 240-pixel campixel frame. A solid line never
+    # reads them, so it does not depend on the camera (GLMakie decides this when
+    # the plot is drawn too).
+    if isnothing(plot.linestyle[])
+        register_computation!(
+            attr, [:positions_transformed_f32c, :resolution], [:trace_gl_lastlen]
+        ) do (positions, resolution), changed, cached
+            return (lines_sumlengths(positions, resolution),)
+        end
+    else
+        register_computation!(
+            attr, [:positions_transformed_f32c, :projectionview, :model_f32c, :resolution], [:trace_gl_lastlen]
+        ) do (positions, pv, model, resolution), changed, cached
+            return (lines_sumlengths(lines_clip.(positions, (Mat4f(pv) * Mat4f(model),)), resolution),)
+        end
     end
 
     # Build RenderObject: create once, update buffers on changes
@@ -63,8 +77,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         else
             lc === :butt ? Int32(0) : lc === :square ? Int32(1) : lc === :round ? Int32(2) : Int32(0)
         end
-        linestyle = to_value(args.linestyle)
-        pat_length = 0f0
+        pattern, pat_length = linepattern(to_value(args.linestyle))
 
         if !isnothing(cached) && cached.trace_renderobject isa RenderObject
             robj = cached.trace_renderobject
@@ -96,19 +109,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             robj.uniforms[:miter_limit] = ml
             robj.uniforms[:pattern_length] = pat_length
             robj.visible = true
-            if changed.linestyle && linestyle !== nothing
-                ls = linestyle isa AbstractVector ? linestyle : Makie.to_linestyle(linestyle)
-                sdf_data = Float32.(Makie.linestyle_to_sdf(ls))
-                pat_length = Float32(last(ls) - first(ls))
-                robj.uniforms[:pattern_length] = pat_length
-                # (N, 1) and not (1, N): a texture is `data[x, y]`, so the pattern runs
-                # along the FIRST index. As a row it was one texel wide, and sampling it
-                # along u gives the same value everywhere: a dashed line drawn
-                # solid. Both uploads read a single-row matrix as one contiguous
-                # run whichever way the dimensions are named, so only the shape
-                # declared here distinguishes them.
-                sdf_2d = reshape(sdf_data, length(sdf_data), 1)
-                update_texture!(robj, sdf_2d; filter=:linear, wrap=:repeat)
+            if changed.linestyle
+                update_texture!(robj, pattern; filter=:linear, wrap=:repeat)
+                update_buffer!(robj, :pattern, vec(pattern))
             end
             return (robj,)
         end
@@ -130,7 +133,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         backend = screen.config.device
         robj = RenderObject(pipeline;
             backend,
-            arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
+            arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness, :pattern,
                          :projectionview, :model, :px_per_unit, :depth_shift,
                          :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length,
                          :fxaa),
@@ -141,6 +144,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
                 :lastlen => Mantle.devicearray(backend, lastlen_data),
                 :valid_vertex => Mantle.devicearray(backend, valid_data),
                 :thickness => Mantle.devicearray(backend, thickness_data),
+                # the pattern again, for the geometry stage (`lines_process_pattern`)
+                :pattern => Mantle.devicearray(backend, vec(pattern)),
                 :indices => Mantle.indexbuffer(backend, UInt32.(indices)),
             ),
             uniforms = Dict{Symbol, Any}(
@@ -159,28 +164,31 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             instances = 1,
         )
 
-        # Pattern texture (or dummy)
-        if linestyle !== nothing
-            ls = linestyle isa AbstractVector ? linestyle : Makie.to_linestyle(linestyle)
-            sdf_data = Float32.(Makie.linestyle_to_sdf(ls))
-            pat_length = Float32(last(ls) - first(ls))
-            robj.uniforms[:pattern_length] = pat_length
-            # (N, 1) and not (1, N): a texture is `data[x, y]`, so the pattern runs
-            # along the FIRST index. As a row it was one texel wide, and sampling it
-            # along u gives the same value everywhere: a dashed line drawn
-            # solid. Both uploads read a single-row matrix as one contiguous
-            # run whichever way the dimensions are named, so only the shape
-            # declared here distinguishes them.
-            sdf_2d = reshape(sdf_data, length(sdf_data), 1)
-            update_texture!(robj, sdf_2d; filter=:linear, wrap=:repeat)
-        else
-            # Dummy texture — fragment shader always references binding 0
-            update_texture!(robj, reshape(Float32[-1], 1, 1); filter=:linear, wrap=:repeat)
-        end
+        update_texture!(robj, pattern; filter=:linear, wrap=:repeat)
 
         return (robj,)
     end
 end
+
+"""
+    linepattern(linestyle) -> (texture, length)
+
+The dash pattern of a converted `linestyle` as the lines stage samples it, and
+its length. Makie's `Linestyle` holds the pattern's cumulative lengths (a
+vector before Makie 0.24.16, and RayMakie's lines failed to draw once it was
+the type). A solid line, `nothing` or fewer than two lengths, is a texel of -1
+and length 0: binding 0 always has a texture.
+
+(N, 1) and not (1, N): a texture is `data[x, y]`, so the pattern runs along the
+FIRST index. As a row it was one texel wide, and sampling it along u gives the
+same value everywhere: a dashed line drawn solid.
+"""
+function linepattern(ls::Makie.Linestyle)
+    length(ls.value) < 2 && return linepattern(nothing)
+    sdf = Float32.(Makie.linestyle_to_sdf(ls.value))
+    return reshape(sdf, length(sdf), 1), Float32(last(ls.value) - first(ls.value))
+end
+linepattern(::Nothing) = (reshape(Float32[-1], 1, 1), 0f0)
 
 # LineSegments: same pipeline but simpler — no joints, GL_LINES topology
 # TODO: implement line_segment.vert/geom matching GLMakie exactly
@@ -268,7 +276,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
         backend = screen.config.device
         robj = RenderObject(pipeline;
             backend,
-            arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness,
+            arg_names = (:vertex, :color, :lastlen, :valid_vertex, :thickness, :pattern,
                          :projectionview, :model, :px_per_unit, :depth_shift,
                          :resolution, :scene_origin, :linecap, :joinstyle, :miter_limit, :pattern_length,
                          :fxaa),
@@ -279,6 +287,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
                 :lastlen => Mantle.devicearray(backend, lastlen_data),
                 :valid_vertex => Mantle.devicearray(backend, valid_data),
                 :thickness => Mantle.devicearray(backend, thickness_data),
+                :pattern => Mantle.devicearray(backend, Float32[-1]),
                 :indices => Mantle.indexbuffer(backend, UInt32.(indices)),
             ),
             uniforms = Dict{Symbol, Any}(

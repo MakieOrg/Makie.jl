@@ -36,8 +36,7 @@ import Mantle
 # and `run!` owns the submission, so this package names no queue at all.
 import Mantle: DeviceArray, GraphicsPipeline, Framebuffer, OffscreenTarget, WindowTarget,
                Texture2D, Sampler, SampledTexture, bind_textures,
-               upload_texture_data!,
-               transition_image!,
+               upload_texture_data!, mipmapped,
                supports_graphics, waitidle
 # Fixed-function state: what a pipeline IS, not what compiles it.
 import Mantle: Premultiplied, Opaque, PerAttachment, NoWrite, TriangleList, NoCull, DepthOff, DepthLess, DepthLessEq, DepthLessEqReadOnly
@@ -143,6 +142,9 @@ mutable struct RayMakieState
     # The scene's lights as last handed to the tracer; `nothing` for an
     # overlay-only scene. See `sync_lights!`.
     lights::Union{Nothing, TracedLights}
+    # The guide grid the film's depth, normal and albedo were last filled with,
+    # 0 once the film is cleared. See `refresh_guides!`.
+    guide_grid::Int
 end
 
 # Helper to get HWTLAS from state
@@ -400,7 +402,11 @@ function retrace(set, keys, old::Makie.SunSkyLight, light::Makie.SunSkyLight)
         return trace_lights(to_trace_light(light))
     sky = set[keys[1]]
     return (Hikari.EnvironmentLight(sky.env_map, Hikari.RGBSpectrum(light.intensity / Hikari.D65_PHOTOMETRIC)),
-            Hikari.SunLight(Hikari.sunsky_sun_rgb(light.intensity), -normalize(Vec3f(light.direction))))
+        Hikari.SunLight(
+            Hikari.sunsky_sun_rgb(Vec3f(light.direction); light.intensity, light.turbidity),
+            -normalize(Vec3f(light.direction))
+        ),
+    )
 end
 
 # Asked on every sample (`sync_lights!`), so it reads the node's own typed `Ref`
@@ -595,7 +601,7 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
     # Clear film when Makie camera changes (rotation, zoom, pan)
 
     state = RayMakieState(rscene, film, camera, hikari_scene, false,
-                          new_volpath(screen.config), false, false, 0, 0, lights)
+                          new_volpath(screen.config), false, false, 0, 0, lights, 0)
     # Guard: only clear film when the projection matrix actually changes.
     # Makie's Observable fires on every notify(), even when the value is identical.
     # Without this guard, GLMakie re-renders (triggered by overlay image updates)
@@ -615,9 +621,22 @@ end
 # owns, with viewport-remapped projection matrices — so a per-scene film is not
 # "the same buffer" in a second copy, it is a buffer nothing ever reads.
 function create_overlay_only_state(scene::Makie.Scene, screen)
-    state = RayMakieState(scene, nothing, nothing, nothing, false, nothing, true, false, 0, 0, nothing)
+    state = RayMakieState(scene, nothing, nothing, nothing, false, nothing, true, false, 0, 0, nothing, 0)
     return state
 end
+
+"""
+    shown(scene) -> Bool
+
+Whether `scene` is drawn at all: it and every scene it sits in `visible`, which
+is what `visible = false` on a scene means to every Makie backend. A state's
+film and its plots were drawn whatever its scene said, so a hidden `LScene`
+stayed on screen.
+"""
+shown(scene::Makie.Scene) = scene.visible[] && (isnothing(scene.parent) || shown(scene.parent))
+
+"""Whether a state has a picture of its own to composite: traced (not overlay-only) and shown."""
+composites(state) = !state.overlay_only && shown(state.makie_scene)
 
 """
     collect_overlay_scenes(scene, raster) -> Vector{Scene}

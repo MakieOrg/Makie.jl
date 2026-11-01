@@ -86,16 +86,23 @@ function color_was_set(plot::Plot)
     return value !== nothing && value !== :cycled
 end
 
+"""Whether the plot's colour is only the cycler's default, which no one chose. A surface's
+unset colour is `nothing` instead, and is its colormapped values."""
+color_cycled(plot::Plot) = haskey(plot.attributes.inputs, :color) && plot.attributes.inputs[:color].value === :cycled
+
 function extract_material(plot::Plot, tex::Union{Hikari.Texture, Hikari.VertexColorTexture, Nothing})
     has_material = haskey(plot, :material) && !isnothing(to_value(plot.material))
     material = has_material ? to_value(plot.material) : nothing
 
     if material isa Hikari.Material && !isnothing(tex)
-        # MediumInterface with emission: always merge the color into the base material.
+        # MediumInterface with emission: merge the color into the base material.
         # This lets users combine colormap/color with emissive overlays, e.g.
         # surface!(...; colormap=..., material=MediumInterface(Diffuse(); emission=Emissive(...)))
+        # The cycler's palette colour is no colour (see below): with it the material
+        # keeps its own surface. Merging it painted a textured emissive mix, an Earth
+        # with city lights, in the palette's blue.
         if material isa Hikari.MediumInterface && material.emission !== nothing
-            return merge_color_with_material(tex, material)
+            return color_cycled(plot) ? material : merge_color_with_material(tex, material)
         end
         # If material was set post-construction (not in inputs), it's a deliberate
         # user override (e.g. recipe_plot.plots[1].material = my_mat) and should
@@ -272,7 +279,7 @@ end
 
 function create_material_with_color(color::Colorant, template::Hikari.Conductor)
     Hikari.Conductor(
-        template.eta, template.k, template.roughness,
+        template.eta, template.k, template.u_roughness, template.v_roughness,
         Hikari.ConstTexture(to_spectrum(color)),
         template.remap_roughness, template.displacement
     )

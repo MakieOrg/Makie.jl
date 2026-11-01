@@ -1177,9 +1177,10 @@ function mesh_fragment(inputs,
         unsafe_trunc(UInt32, inputs.tri + 0.5f0) + UInt32(1), emission[4] != 0f0)
 end
 
-@inline texel(u::Float32, v::Float32) =
-    Vec4f(sample_texture_2d(UInt32(0), u, v, UInt32(0)), sample_texture_2d(UInt32(0), u, v, UInt32(1)),
-          sample_texture_2d(UInt32(0), u, v, UInt32(2)), sample_texture_2d(UInt32(0), u, v, UInt32(3)))
+@inline texel(binding::UInt32, u::Float32, v::Float32) =
+    Vec4f(sample_texture_2d(binding, u, v, UInt32(0)), sample_texture_2d(binding, u, v, UInt32(1)),
+          sample_texture_2d(binding, u, v, UInt32(2)), sample_texture_2d(binding, u, v, UInt32(3)))
+@inline texel(u::Float32, v::Float32) = texel(UInt32(0), u, v)
 
 """
     footprint_texel(uv) -> Vec4f
@@ -1259,10 +1260,50 @@ end
         unsafe_trunc(UInt32, inputs.tri + 0.5f0) + UInt32(1), emission[4] != 0f0)
 end
 
-"""
-    get_mesh_pipeline!(screen, textured, see_through = false, pickable = true)
+# A surface image that glows with a second image (`RasterLook` mode 3): binding 0
+# is the surface's colour, binding 1 the radiance it emits there, sRGB encoded
+# and times `emission[1]`. That radiance per fragment is then a mode 1 glow,
+# added to what the surface reflects before the film maps the sum, as for one
+# radiance.
+@inline function mesh_fragment_glowing(inputs,
+        positions, faces, normals, uvs, vertex_colors, vertex_values, cmap, stroke_data,
+        clip_planes, light_types, light_colors, light_parameters,
+        model::Mat4f, view::Mat4f, projection::Mat4f, eyeposition::Vec3f,
+        world_normalmatrix::Mat3f, view_normalmatrix::Mat3f,
+        depth_shift::Float32, has_normals::Int32, has_uvs::Int32, uv_transform::Mat{2,3,Float32},
+        color_source::Int32, uniform_color::Vec4f, colorrange::Vec2f, colormap_linear::Int32,
+        lowclip::Vec4f, highclip::Vec4f, nan_color::Vec4f,
+        shading_mode::Int32, ambient::Vec3f, light_color::Vec3f, light_direction::Vec3f,
+        N_lights::Int32, has_env::Int32, env_sh::Mat{3,9,Float32},
+        diffuse::Vec3f, specular::Vec3f, shininess::Float32, backlight::Float32,
+        exposure::Float32, tonemap::Int32, white_point::Float32, inv_gamma::Float32, apply_gamma::Int32,
+        strokewidth::Float32, strokecolor::Vec4f, resolution::Vec2f, px_per_unit::Float32,
+        viewport_origin::Vec2f, num_clip_planes::Int32,
+        physical::Int32, shadow_map, light_space::Mat4f, shadow_light::Int32, shadow_params::Vec4f,
+        ao_map, ao_centre::Vec4f, ao_params::Vec4f, material::RasterMaterial, emission::Vec4f,
+        instance_positions, instance_rotations, instance_scales, instance_uv_transforms,
+        f32c_scale::Vec3f, transform_marker::Int32, color_per_instance::Int32,
+        fxaa::Int32)
+    u, v = inputs.uv[1], inputs.uv[2]
+    color = texel(UInt32(0), u, v)
+    g = texel(UInt32(1), u, v)
+    glow = Vec4f(Hikari.srgb_gamma_to_linear(g[1]) * emission[1], Hikari.srgb_gamma_to_linear(g[2]) * emission[1],
+                 Hikari.srgb_gamma_to_linear(g[3]) * emission[1], 1f0)
+    return raster_output(mesh_finish(inputs, color, stroke_data, clip_planes, num_clip_planes,
+        light_types, light_colors, light_parameters, model, view, projection, has_normals,
+        shading_mode, ambient, light_color, light_direction, N_lights, has_env, env_sh,
+        diffuse, specular, shininess, backlight, exposure, tonemap, white_point,
+        inv_gamma, apply_gamma, strokewidth, strokecolor, resolution, px_per_unit,
+        physical, shadow_map, light_space, shadow_light, shadow_params,
+        ao_map, ao_centre, ao_params, material, glow), fxaa,
+        unsafe_trunc(UInt32, inputs.tri + 0.5f0) + UInt32(1), true)
+end
 
-The mesh pipeline: with a texture or without, and for see-through surfaces
+"""
+    get_mesh_pipeline!(screen, ntextures, see_through = false, pickable = true)
+
+The mesh pipeline: with no texture, one (an image, a matcap, a pattern), or two
+(a surface image and the image it glows with), and for see-through surfaces
 (glass, a glow) one that tests depth without writing it, so what is behind
 them still draws. Those are drawn after everything opaque (`overlay_robjs`).
 
@@ -1271,13 +1312,12 @@ the id target alone, so a click on it finds what is behind it. A glowing sheet
 over a cut-open instrument is the case: it covers every part, and clicking a
 part should select the part.
 """
-function get_mesh_pipeline!(screen, textured::Bool, see_through::Bool = false, pickable::Bool = true)
-    key = Symbol(textured ? :mesh_textured : :mesh, see_through ? :_see_through : :_opaque,
+function get_mesh_pipeline!(screen, ntextures::Int, see_through::Bool = false, pickable::Bool = true)
+    key = Symbol((:mesh, :mesh_textured, :mesh_glowing)[ntextures + 1], see_through ? :_see_through : :_opaque,
                  pickable ? "" : :_unpicked)
     get!(screen.gfx_pipelines, key) do
         GraphicsPipeline(; vertex = VertexShader(mesh_vertex; outputs = MESH_VERTEX_OUT),
-                           fragment = textured ? FragmentShader(mesh_fragment_textured; textures = 1) :
-                                                 FragmentShader(mesh_fragment),
+                           fragment = mesh_fragment_shader(Val(ntextures)),
                            # The colour, then the pick id (`RASTER_METADATA`).
                            blend = pickable ? Premultiplied() : PerAttachment(Premultiplied(), NoWrite()),
                            topology = TriangleList(),
@@ -1285,3 +1325,7 @@ function get_mesh_pipeline!(screen, textured::Bool, see_through::Bool = false, p
                            depth = see_through ? DepthLessEqReadOnly() : DepthLessEq())
     end
 end
+
+mesh_fragment_shader(::Val{0}) = FragmentShader(mesh_fragment)
+mesh_fragment_shader(::Val{1}) = FragmentShader(mesh_fragment_textured; textures = 1)
+mesh_fragment_shader(::Val{2}) = FragmentShader(mesh_fragment_glowing; textures = 2)

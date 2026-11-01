@@ -2146,6 +2146,8 @@ end
         reset_on_defocus = false
         "Controls if the textbox is defocused when a string is submitted."
         defocus_on_submit = true
+        "Whether Enter starts a new line, in which case Ctrl+Enter (Cmd+Enter on macOS) submits."
+        multiline = false
         "Text size."
         fontsize = @inherit(:fontsize, 16.0f0)
         "Text color."

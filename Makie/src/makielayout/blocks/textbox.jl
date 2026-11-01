@@ -82,7 +82,7 @@ function initialize_block!(tbox::Textbox)
         font = tbox.font,
         fontsize = tbox.fontsize,
         cursor_color = tbox.cursorcolor,
-        multiline = false,
+        multiline = tbox.multiline,
         manage_focus = false,            # Textbox drives focus (see below)
         input_filter = c -> is_allowed(c, tbox.restriction[]),
         on_submit = (text) -> begin
