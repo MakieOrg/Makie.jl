@@ -1027,11 +1027,12 @@ function zautolimits(ax::Axis3)
     return zlims
 end
 
-Makie.xlims!(ax::Axis3, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
-Makie.ylims!(ax::Axis3, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
-Makie.zlims!(ax::Axis3, zlims::Interval) = Makie.zlims!(ax, endpoints(zlims))
+xlims!(ax::Axis3, xlims::Interval) = xlims!(ax, endpoints(xlims))
+ylims!(ax::Axis3, ylims::Interval) = ylims!(ax, endpoints(ylims))
+zlims!(ax::Axis3, zlims::Interval) = zlims!(ax, endpoints(zlims))
 
-function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
+function xlims!(ax::Axis3, xlims)
+    xlims = map(x -> convert_dim_value(ax, 1, x), xlims)
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
     elseif xlims[1] == xlims[2] && xlims[1] !== nothing
@@ -1049,7 +1050,8 @@ function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, 
     return nothing
 end
 
-function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
+function ylims!(ax::Axis3, ylims)
+    ylims = map(x -> convert_dim_value(ax, 2, x), ylims)
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
     elseif ylims[1] == ylims[2] && ylims[1] !== nothing
@@ -1067,7 +1069,8 @@ function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, 
     return nothing
 end
 
-function Makie.zlims!(ax::Axis3, zlims)
+function zlims!(ax::Axis3, zlims)
+    zlims = map(x -> convert_dim_value(ax, 3, x), zlims)
     if length(zlims) != 2
         error("Invalid zlims length of $(length(zlims)), must be 2.")
     elseif zlims[1] == zlims[2] && zlims[1] !== nothing

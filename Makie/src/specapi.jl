@@ -209,7 +209,7 @@ Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
 
 
 function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec} = PlotSpec[], kw...)
-    attr = Dict{Symbol, Any}(kw)
+    attr = to_dict(kw)
     if typ == :Legend
         # TODO, this is hacky and works around the fact,
         # that legend gets its legend elements from the positional arguments

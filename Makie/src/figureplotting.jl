@@ -206,10 +206,6 @@ See also: [`preferred_axis_type`](@ref)
 """
 preferred_axis_attributes(args...) = NamedTuple()
 
-to_dict(dict::Dict) = convert(Dict{Symbol, Any}, dict)
-to_dict(nt::NamedTuple) = Dict{Symbol, Any}(pairs(nt))
-to_dict(attr::Attributes) = attributes(attr)
-
 function extract_attributes(dictlike, key)
     dictlike = pop!(dictlike, key, Dict{Symbol, Any}())
     _validate_nt_like_keyword(dictlike, key)

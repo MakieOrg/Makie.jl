@@ -804,12 +804,11 @@ and no tool controls. Used for the self-contained `export_static` per-PR page.
 function review_content(root_path, backends, score_thresholds; display_threshold = 0.05)
     # inert pin files (their reference changed since the pin was taken) are left out
     # entirely, since they neither exempt an image nor need any action
-    classified = classify_entries(read_manifest(joinpath(root_path, "refimage_updates")), joinpath(root_path, "reference"))
+    classified = classify_pins(root_path)
     pinned_paths = union(classified.exempt_changed, classified.exempt_new, classified.to_delete)
     pinned_names = Set(replace(path, r"(GLMakie|CairoMakie|WGLMakie)/" => "") for path in pinned_paths)
-    pinned_new = filter(path -> isfile(joinpath(root_path, "recorded", path)), sort!(collect(classified.exempt_new)))
 
-    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends; extra_paths = pinned_new, review_only = true, pinned_paths)
+    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends; extra_paths = recorded_pinned_new(root_path, classified), review_only = true, pinned_paths)
     missing_cards = create_simple_grid_content(root_path, "missing_files.txt", "reference", backends; review_only = true, pinned_paths)
 
     scores_imgs = readdlm(joinpath(root_path, "scores.tsv"), '\t')
@@ -898,7 +897,7 @@ function create_app_content(session::Session, root_path::String)
     session.connection isa Bonito.NoConnection && return review_content(root_path, backends, score_thresholds)
 
     # Newly added Images
-    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends)
+    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends; extra_paths = recorded_pinned_new(root_path))
 
     # Deleted/Missing Images
     missing_cards = create_simple_grid_content(root_path, "missing_files.txt", "reference", backends)
