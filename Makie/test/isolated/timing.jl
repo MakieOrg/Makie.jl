@@ -44,6 +44,19 @@
         @test 99.9 * dt < real_dt < 100.1 * dt
     end
 
+    @testset "busysleep includes saved budget" begin
+        # The budget is measured in seconds, like the target interval. Adding
+        # it directly to a nanosecond deadline truncated the busy-wait portion.
+        function elapsed_with_budget(timer)
+            Makie.reset!(timer, 0.03)
+            timer.budget = 0.03
+            t = timer.last_time
+            Makie.busysleep(timer)
+            return 1.0e-9 * (time_ns() - t)
+        end
+        @test elapsed_with_budget(timer) >= 0.059
+    end
+
     @testset "callbacks" begin
         counter = Ref(0)
         timer = Makie.BudgetedTimer(1.0 / 30.0, false) do timing

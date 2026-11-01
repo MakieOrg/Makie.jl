@@ -202,9 +202,7 @@ function busysleep(timer::BudgetedTimer)
     end
 
     # busy sleep remaining time
-    time_passed = 1.0e-9 * (time_ns() - timer.last_time)
-    sleep_time = timer.target_delta_time - time_passed + timer.budget
-    while time_ns() < timer.last_time + 1.0e9 * timer.target_delta_time + timer.budget
+    while time_ns() < timer.last_time + 1.0e9 * (timer.target_delta_time + timer.budget)
         yield()
     end
 
