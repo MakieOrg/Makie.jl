@@ -1368,7 +1368,7 @@ function cleanup_nested_key!(attr::ComputeGraph, key::Symbol)
     return
 end
 
-function _add_input!(func::Function, attr::ComputeGraph, key::Symbol, value)
+function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
     if haskey(attr.inputs, key) || haskey(attr.outputs, key)
         # If this is a nested key we should not clean it up because it belongs

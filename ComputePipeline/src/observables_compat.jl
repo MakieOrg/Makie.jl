@@ -7,7 +7,7 @@ function Observables.connect!(target::Observables.AbstractObservable, source::Co
     return Observables.connect!(target, get_observable!(source))
 end
 
-Base.convert(::Type{T}, c::Computed) where {T<:Observable} = get_observable!(c)
+Base.convert(::Type{T}, c::Computed) where {T <: Observable} = get_observable!(c)
 
 # This generates all the functions below, as strings, and appends them to this file.
 
