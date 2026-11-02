@@ -66,10 +66,12 @@ function default_shader(screen::Screen, @nospecialize(robj::RenderObject), plot:
     view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
     view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
 
+    stroke_shader = isnothing(robj.uniforms[:stroke_data]) ? "mesh_nostroke.frag" : "mesh_stroke.frag"
+
     shader = GLVisualizeShader(
         screen,
         "util.vert", "mesh.vert",
-        "fragment_output.frag", "mesh.frag", "mesh_stroke.frag",
+        "fragment_output.frag", "mesh.frag", stroke_shader,
         "lighting.frag",
         view = view
     )
