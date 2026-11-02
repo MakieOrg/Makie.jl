@@ -1,6 +1,6 @@
 @testset "refresh_contentsize! is idempotent" begin
     f = Figure()
-    sf = Subfigure(f.scene; bbox = Observable(Rect2f(0, 0, 300, 300)))
+    sf = ScrollArea(f.scene; bbox = Observable(Rect2f(0, 0, 300, 300)))
     Button(sf.layout[1, 1]; label = "x", width = 80, height = 20)
     Makie.update_state_before_display!(f)
 
@@ -22,22 +22,22 @@ end
 
     add_rows!(2)
     Makie.update_state_before_display!(f)
-    small = m.subfigure.layoutobservables.computedbbox[].widths[2]
+    small = m.content.layoutobservables.computedbbox[].widths[2]
 
     add_rows!(5)
     Makie.update_state_before_display!(f)
-    mid = m.subfigure.layoutobservables.computedbbox[].widths[2]
+    mid = m.content.layoutobservables.computedbbox[].widths[2]
     @test mid > small
 
     # Back to the smaller list: no stale rows, so it shrinks back exactly.
     add_rows!(2)
     Makie.update_state_before_display!(f)
-    @test m.subfigure.layoutobservables.computedbbox[].widths[2] ≈ small
+    @test m.content.layoutobservables.computedbbox[].widths[2] ≈ small
 
-    # Well past max_size: body is clamped and the content scrolls.
+    # Well past max_size: body and its content viewport are clamped.
     add_rows!(40)
     Makie.update_state_before_display!(f)
-    @test m.subfigure.layoutobservables.computedbbox[].widths[2] <= 200
+    @test m.content.layoutobservables.computedbbox[].widths[2] <= 200
 end
 
 @testset "replace_content! leaves no empty tracks behind" begin

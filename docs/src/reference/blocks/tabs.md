@@ -1,44 +1,27 @@
 # Tabs
 
-A tabbed container. Each tab is backed by a [`Subfigure`](@ref) with isolated
-events: only the active tab is visible, and only the active tab receives
-mouse and keyboard input. Place blocks with `tabs[i][row, col] = Axis(...)`
-or plot directly into `content_scene(tabs, i)`. Content larger than the
-visible area scrolls vertically and horizontally; scrollbars appear only when
-there is overflow.
+A tabbed container. Each tab hosts a clipped content area: only the active tab
+is visible, and only the active tab receives mouse and keyboard input. Place
+blocks with `tabs[i][row, col] = Axis(...)` or plot directly into
+`content_scene(tabs, i)`. Tab content is clipped to the tab but does not scroll
+by default — nest a [`ScrollArea`](@ref) in a tab for a scrollable region.
 
 ```@example tabs
 using GLMakie
-import Makie.GridLayoutBase as GLB
 GLMakie.activate!() # hide
 
 fig = Figure(size = (700, 450))
 
-tabs = Tabs(fig[1, 1], ["Single axis", "Wide", "Tall"])
+tabs = Tabs(fig[1, 1], ["Scatter", "Lines", "Heatmap"])
 
-# Tab 1 — a single axis
 scatter!(
     Axis(tabs[1][1, 1], title = "Drag to pan, scroll to zoom"),
     randn(150), randn(150), color = 1:150, colormap = :viridis
 )
 
-# Tab 2 — three Fixed-width axes side by side → horizontal scroll
-for (col, sym) in enumerate((:tomato, :steelblue, :seagreen))
-    ax = Axis(tabs[2][1, col], title = "col $col")
-    scatter!(ax, randn(60), randn(60), color = sym)
-end
-GLB.colsize!(tabs[2].layout, 1, GLB.Fixed(300))
-GLB.colsize!(tabs[2].layout, 2, GLB.Fixed(300))
-GLB.colsize!(tabs[2].layout, 3, GLB.Fixed(300))
+lines!(Axis(tabs[2][1, 1], title = "A random walk"), cumsum(randn(400)), color = :tomato)
 
-# Tab 3 — three Fixed-height axes stacked → vertical scroll
-for (row, sym) in enumerate((:tomato, :steelblue, :seagreen))
-    ax = Axis(tabs[3][row, 1], title = "row $row")
-    lines!(ax, 1:50, cumsum(randn(50)), color = sym)
-end
-GLB.rowsize!(tabs[3].layout, 1, GLB.Fixed(180))
-GLB.rowsize!(tabs[3].layout, 2, GLB.Fixed(180))
-GLB.rowsize!(tabs[3].layout, 3, GLB.Fixed(180))
+heatmap!(Axis(tabs[3][1, 1], title = "Noise"), randn(30, 30), colormap = :thermal)
 
 fig
 nothing # hide
@@ -61,49 +44,25 @@ function tab_close_center(tabs, i)
     return Point2f(sum(p -> p[1], seg) / length(seg), sum(p -> p[2], seg) / length(seg))
 end
 
-function vbar_thumb_center(sf)
-    ca = sf.scene.viewport[]
-    cs = sf.contentsize[][2]
-    vh = widths(ca)[2]
-    ch = max(cs, vh)
-    thumb_h = max(20.0, vh^2 / ch)
-    max_sy = max(0.0, ch - vh)
-    usable = vh - thumb_h
-    sc_y = sf.scroll[][2]
-    ty = top(ca) - thumb_h - (sc_y / max_sy) * usable
-    return Point2f(right(ca) - 4, ty + thumb_h / 2)
-end
-
 events = [
     Wait(1.0),
-    Lazy() do fig MouseTo(tab_label_center(tabs, 2)) end,    # over tab 2 ("Wide")
+    Lazy() do fig MouseTo(tab_label_center(tabs, 2)) end,    # over tab 2 ("Lines")
     LeftClick(),
     Wait(1.0),
-    Lazy() do fig MouseTo(tab_label_center(tabs, 3)) end,    # over tab 3 ("Tall")
+    Lazy() do fig MouseTo(tab_label_center(tabs, 3)) end,    # over tab 3 ("Heatmap")
+    LeftClick(),
+    Wait(0.6),
+    Lazy() do fig MouseTo(tab_label_center(tabs, 1)) end,    # back to tab 1
     LeftClick(),
     Wait(0.4),
-    # Grab the vertical scrollbar thumb and drag it down.
-    Lazy() do fig MouseTo(vbar_thumb_center(tabs[3])) end,
-    LeftDown(),
+    # Zoom the scatter axis with the wheel — only the active tab reacts.
     Lazy() do fig
-        sf = tabs[3]
-        ca = sf.scene.viewport[]
-        MouseTo(Point2f(right(ca) - 4, bottom(ca) + 60), 1.5)
-    end,
-    LeftUp(),
-    Wait(0.5),
-    # Move into the (now-visible) bottom row's axis and zoom it with the
-    # wheel — Tabs lets the axis consume scroll first when the cursor is
-    # inside, so this demonstrates per-tab interactivity.
-    Lazy() do fig
-        sf = tabs[3]
-        ca = sf.scene.viewport[]
-        MouseTo(Point2f(left(ca) + 0.45 * widths(ca)[1], bottom(ca) + 0.2 * widths(ca)[2]))
+        ca = tabs[1].scene.viewport[]
+        MouseTo(Point2f(left(ca) + 0.5 * widths(ca)[1], bottom(ca) + 0.5 * widths(ca)[2]))
     end,
     Scroll((0.0, -3.0); duration = 0.5),             # zoom in
     Wait(0.5),
-    # Close the "Wide" tab via its × button. Small pause after landing so
-    # the click doesn't feel instantaneous.
+    # Close the "Lines" tab via its × button.
     Lazy() do fig MouseTo(tab_close_center(tabs, 2)) end,
     Wait(0.3),
     LeftClick(),
@@ -115,6 +74,21 @@ interaction_record(fig, "tabs_example.mp4", events)
 
 ```@raw html
 <video autoplay loop muted playsinline src="./tabs_example.mp4" width="700"/>
+```
+
+
+## Scrollable tab content
+
+Tabs clip but do not scroll on their own. To make a tab's content scrollable,
+put it inside a [`ScrollArea`](@ref):
+
+```julia
+tabs = Tabs(fig[1, 1], ["Long form"])
+area = ScrollArea(tabs[1][1, 1])
+for i in 1:30
+    Label(area[i, 1], "param $i"; halign = :right, tellwidth = false)
+    Slider(area[i, 2]; range = 0:100, width = 150)
+end
 ```
 
 
@@ -131,9 +105,9 @@ fig = Figure(size = (700, 300))
 tabs = Tabs(fig[1, 1], ["First"])
 lines(tabs[1][1, 1], cumsum(randn(100)))
 
-# `add_tab!` returns the new tab's Subfigure, so you can plot into it directly.
-sf = add_tab!(tabs, "Second"; activate = true)
-scatter(sf[1, 1], randn(50), randn(50))
+# `add_tab!` returns the new tab's content ScrollArea, so you can plot into it.
+area = add_tab!(tabs, "Second"; activate = true)
+scatter(area[1, 1], randn(50), randn(50))
 
 # A third tab, populated via the `tabs[i]` accessor instead.
 add_tab!(tabs, "Third")
