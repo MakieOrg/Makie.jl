@@ -1,12 +1,41 @@
 Package = Symbol(ARGS[1])
-macro ctime(x)
-    return quote
-        tstart = time_ns()
-        $(esc(x))
-        Float64(time_ns() - tstart)
+results_file = ARGS[2]
+run_index = parse(Int, ARGS[3])
+mode = ARGS[4]
+count_inference = mode == "inference"
+
+# Loaded only for inference runs so that timing runs are not affected by it.
+count_inference && @eval using SnoopCompileCore
+
+count_nodes(node) = 1 + sum(count_nodes, node.children; init = 0)
+
+function measure(f)
+    if count_inference
+        SnoopCompileCore.start_deep_timing()
+        try
+            f()
+        finally
+            SnoopCompileCore.stop_deep_timing()
+        end
+        root = SnoopCompileCore.finish_snoop_inference()
+        return ["inferred" => count_nodes(root) - 1]
     end
+    bytes = Base.gc_bytes()
+    tstart = time_ns()
+    f()
+    elapsed = time_ns() - tstart
+    return ["time" => Float64(elapsed), "alloc" => Float64(Base.gc_bytes() - bytes)]
 end
-t_using = @ctime @eval using $Package
+
+rows = Dict{String, Any}[]
+function record!(stage, f)
+    for (quantity, value) in measure(f)
+        push!(rows, Dict("run" => run_index, "stage" => stage, "quantity" => quantity, "value" => value))
+    end
+    return
+end
+
+record!("using", () -> @eval using $Package)
 
 if Package === :WGLMakie
     import Electron
@@ -18,20 +47,12 @@ end
 set_theme!(size = (800, 600))
 
 GC.gc()
-create_time = @ctime fig = scatter(1:4; color = 1:4, colormap = :turbo, markersize = 20, visible = true)
+record!("first create", () -> global fig = scatter(1:4; color = 1:4, colormap = :turbo, markersize = 20, visible = true))
 GC.gc()
-display_time = @ctime colorbuffer(fig; px_per_unit = 1)
+record!("first display", () -> colorbuffer(fig; px_per_unit = 1))
 
 using JSON
-using Pkg
 using Statistics: median
-
-project_name = basename(dirname(Pkg.project().path))
-
-result = "$(project_name)-benchmark.json"
-old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], []]
-@show [t_using, create_time, display_time]
-push!.(old[1:3], [t_using, create_time, display_time])
 
 macro simple_median_time(expr)
     time_expr = quote
@@ -52,16 +73,20 @@ macro simple_median_time(expr)
         median(times)
     end
 end
-@time "creating figure" figure_time = @simple_median_time fig = scatter(1:4; color = 1:4, colormap = :turbo, markersize = 20, visible = true)
-fig = scatter(1:4; color = 1:4, colormap = :turbo, markersize = 20, visible = true)
-@time "colorbuffer" colorbuffer_time = @simple_median_time colorbuffer(fig; px_per_unit = 1)
 
-using Statistics
+if !count_inference
+    @time "creating figure" figure_time = @simple_median_time fig = scatter(1:4; color = 1:4, colormap = :turbo, markersize = 20, visible = true)
+    fig = scatter(1:4; color = 1:4, colormap = :turbo, markersize = 20, visible = true)
+    @time "colorbuffer" colorbuffer_time = @simple_median_time colorbuffer(fig; px_per_unit = 1)
+    for (stage, value) in ["create" => figure_time, "display" => colorbuffer_time]
+        push!(rows, Dict("run" => run_index, "stage" => stage, "quantity" => "time", "value" => value))
+    end
+end
 
-push!(old[4], figure_time)
-push!(old[5], colorbuffer_time)
-
-open(io -> JSON.print(io, old), result, "w")
+if mode != "warmup"
+    old_rows = isfile(results_file) ? JSON.parsefile(results_file) : []
+    open(io -> JSON.print(io, [old_rows; rows]), results_file, "w")
+end
 
 try
     rm("test.png")
