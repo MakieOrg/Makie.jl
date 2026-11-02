@@ -57,6 +57,29 @@ is_freed(x::GLMakie.GPUArray) = x.id == 0
     @test length(cache.program_cache) == Np + 2
 end
 
+@testset "Changing mesh and surface strokes" begin
+    for plot_mesh in (true, false)
+        scene = Scene(size = (200, 200), camera = campixel!)
+        plot = if plot_mesh
+            mesh!(scene, Rect2f(20, 20, 160, 160); color = :red, shading = NoShading)
+        else
+            surface!(
+                scene, range(20, 180, length = 3), range(20, 180, length = 3), zeros(3, 3);
+                color = :red, shading = NoShading, strokeedges = :all
+            )
+        end
+        plain = copy(colorbuffer(scene))
+        plot.strokewidth[] = 8
+        stroked = copy(colorbuffer(scene))
+        @test plain != stroked
+        plot.strokewidth[] = 0
+        @test colorbuffer(scene) == plain
+        plot.strokewidth[] = 8
+        @test colorbuffer(scene) == stroked
+    end
+    GLMakie.closeall()
+end
+
 @testset "unit tests" begin
     GLMakie.closeall()
     @testset "Window handling" begin
