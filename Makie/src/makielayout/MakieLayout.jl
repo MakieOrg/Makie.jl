@@ -41,7 +41,7 @@ include("blocks/paramform.jl")
 
 export @Block, Block
 export axislegend, axiscolorbar
-export open!, close!, replace_content!, refresh_contentsize!
+export open!, close!, replace_content!, refresh_contentsize!, clip_content!
 export card_accessory, filter_cards!
 export Between, OneOf, FilePath, convert_form_input
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement

@@ -315,7 +315,11 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
                 event = event.f(figlike)
             end
 
-            t_event += current_duration # from previous
+            # Advance to where the recording clock actually is, not by the
+            # previous event's declared duration. They agree for events that
+            # run to completion, but a `WaitUntil` that breaks early would
+            # otherwise leave its unused timeout as dead time in the video.
+            t_event = t
             event_startposition = Point2f(content_scene.events.mouseposition[])
             current_duration = duration(event, event_startposition)
 

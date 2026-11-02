@@ -56,3 +56,38 @@ end
         @test size(m.layout) == (n, 1)
     end
 end
+
+@testset "replace_content! deletes blocks inside nested grids" begin
+    f = Figure()
+    m = Modal(f; title = "t")
+    open!(m)
+
+    # A nested GridLayout is ordinary content. `delete_layoutable!` only
+    # detaches the grid, so without a recursive delete its blocks keep their
+    # scenes and every rebuild stacks another copy on top of the last.
+    build!(labels) = replace_content!(m) do sf
+        Label(sf.layout[1, 1], "header")
+        inner = GridLayout(sf.layout[2, 1])
+        for (i, l) in enumerate(labels)
+            Checkbox(inner[1, 2i - 1]; checked = false)
+            Label(inner[1, 2i], l)
+        end
+    end
+
+    # Each block owns a scene under the content scene; an orphaned block keeps
+    # its scene and goes on rendering, so this counts what is actually drawn.
+    nblocks() = length(Makie.content_scene(m).children)
+
+    build!(["a", "b"])
+    Makie.update_state_before_display!(f)
+    first_count = nblocks()
+    @test first_count == 5          # header + 2 * (checkbox + label)
+
+    build!(["a", "b"])
+    Makie.update_state_before_display!(f)
+    @test nblocks() == first_count  # rebuilt, not accumulated
+
+    build!(["x"])
+    Makie.update_state_before_display!(f)
+    @test nblocks() == 3
+end
