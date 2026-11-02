@@ -50,6 +50,7 @@ using ComputePipeline
 import Unitful
 import UnicodeFun
 using RelocatableFolders: @path
+using ScopedValues: ScopedValue, @with
 import StatsBase
 import Distributions
 import KernelDensity
