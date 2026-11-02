@@ -129,7 +129,7 @@ end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])
@@ -156,7 +156,7 @@ end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
     color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])
@@ -165,8 +165,8 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
 
     broadcast_foreach(
         points_list, color,
-        strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])
-    ) do points, color, strokecolor, strokestyle, strokewidth, model
+        strokecolor, poly.strokewidth[], Ref(poly.model[])
+    ) do points, color, strokecolor, strokewidth, model
         draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth, miter_limit, joinstyle, linecap)
     end
     if color isa Cairo.CairoPattern
@@ -279,14 +279,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
     color = to_cairo_color(poly.color[], poly)
 
     linestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
-    if isnothing(linestyle)
-        linestyle_diffed = nothing
-    elseif linestyle isa AbstractVector{<:Real}
-        linestyle_diffed = diff(Float64.(linestyle))
-    else
-        error("Wrong type for linestyle: $(poly.linestyle[]).")
-    end
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
 
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])
     joinstyle = to_cairo_joinstyle(poly.joinstyle[])
@@ -391,7 +384,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     end
 
     color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])
@@ -435,7 +428,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     end
 
     color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly.plots[2])
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])
@@ -627,39 +620,5 @@ end
 # Override `is_cairomakie_atomic_plot` to allow `Tricontourf` to remain a unit,
 # instead of auto-decomposing in lines and mesh.
 function is_cairomakie_atomic_plot(plot::Tricontourf)
-    return true
-end
-
-
-################################################################################
-#                                   Arrows2D                                   #
-#   The SVG backend does not support CairoMeshPattern, rasterizing the image   #
-#  instead of using vector constructs.  Avoid a simple arrow rasterizing the   #
-#  image by intercepting simple (typical) arrows and redirecting them through  #
-#             the already special cased 2D polygon rendering path.             #
-################################################################################
-
-function draw_plot(scene::Scene, screen::Screen, arrow::Arrows2D)
-    poly = only(arrow.plots)
-    color = to_cairo_color(poly.color[], poly)
-    model = Ref(poly.model[])
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
-    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
-    strokewidth = poly.strokewidth[]
-
-    miter_limit = to_cairo_miter_limit(poly.miter_limit[])
-    joinstyle = to_cairo_joinstyle(poly.joinstyle[])
-    linecap = to_cairo_linecap(poly.linecap[])
-
-    broadcast_foreach(
-        poly.meshes[], color, model, strokecolor, strokestyle, strokewidth
-    ) do mesh, props...
-        points = [Point2(c[1], c[2]) for c in coordinates(mesh)]
-        draw_poly(scene, screen, poly, points, props..., miter_limit, joinstyle, linecap)
-    end
-    return nothing
-end
-
-function is_cairomakie_atomic_plot(plot::Arrows2D)
     return true
 end

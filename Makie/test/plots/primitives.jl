@@ -104,6 +104,12 @@ end
     @test sl.scaled_colorrange[] == Vec2f(1, 30)
     f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (Makie.automatic, Makie.automatic))
     @test sl.scaled_colorrange[] == Vec2f(1, 100)
+    f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (Makie.automatic, -10))
+    cb = Colorbar(f[1, 2], sl)
+    @test_broken cb.resolved_colorrange[] == Vec2f(-10, -10)
+    f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (110, Makie.automatic))
+    cb = Colorbar(f[1, 2], sl)
+    @test_broken cb.resolved_colorrange[] == Vec2f(110, 110)
 end
 
 @recipe MaybeDict (data,) begin
@@ -192,4 +198,30 @@ end
         p = annotation!(ax, [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], text = ["A", "", "C"])
         @test !any(x -> any(isnan, x), p.offsets[])
     end
+end
+
+@testset "Resampler" begin
+    # mainly just checking that image paths to the same plot! function as
+    # heatmap when given a Resampler. The visualization should then be the same
+    # and is tested in refimages
+    f, a, p = image(Resampler([1 2; 3 4]))
+    @test p isa Makie.ImageShader
+    @test p.plots[1] isa Image
+    @test p.plots[2] isa Image
+    @test p.plots[1].visible[] === p.background_visible[]
+    p.background_visible = false
+    @test p.plots[1].visible[] === false
+
+    f, a, p = image(0 .. 1, 0 .. 1, Resampler([1 2; 3 4]))
+    @test p isa Makie.ImageShader
+    @test p.plots[1] isa Image
+    @test p.plots[2] isa Image
+
+    f, a, p = heatmap((0, 1), 0 .. 1, Resampler([1 2; 3 4]))
+    @test p isa Makie.HeatmapShader
+    @test p.plots[1] isa Image
+    @test p.plots[2] isa Image
+    @test p.plots[1].visible[] === p.background_visible[]
+    p.background_visible = false
+    @test p.plots[1].visible[] === false
 end

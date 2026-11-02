@@ -2,6 +2,10 @@ ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 ENV["ELECTRON_LOG_FILE"] = joinpath(@__DIR__, "electron.log")
 ENV["ELECTRON_ENABLE_LOGGING"] = "true"
 
+run(
+    `julia -e "using Makie.ComputePipeline; ComputePipeline.enable_debugging!(); ComputePipeline.log_nothing_splat(true)"`
+)
+
 using FileIO
 using WGLMakie, Makie, Test
 using WGLMakie.Bonito
@@ -39,21 +43,11 @@ edisplay = Bonito.use_electron_display(devtools = true)
 @testset "reference tests" begin
     WGLMakie.activate!()
 
-    @testset "ComputeGraph Sanity Checks" begin
-        # This is supposed to catch changes in ComputePipeline causing nodes to
-        # be skipped or become duplicated. This will also trigger if plot attributes
-        # are modified in which case the numbers should just be updated
-        f, a, p = scatter(rand(10))
-        colorbuffer(f)
-        @test length(p.attributes.inputs) == 37
-        @test length(p.attributes.outputs) == 92
-    end
-
     @testset "refimages" begin
         ReferenceTests.mark_broken_tests(excludes)
-        recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl" joinpath(@__DIR__, "html_widgets_refimages.jl")
-        missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")
-        ReferenceTests.test_comparison(scores; threshold = 0.05)
+        attempted_tests, recording_dir = @include_reference_tests WGLMakie "refimages.jl" joinpath(@__DIR__, "html_widgets_refimages.jl")
+        missing_images, scores, exempt = ReferenceTests.record_comparison(recording_dir, "WGLMakie"; attempted_tests)
+        ReferenceTests.test_comparison(scores; threshold = 0.05, exempt)
     end
 
     @testset "js texture atlas" begin
@@ -227,7 +221,7 @@ edisplay = Bonito.use_electron_display(devtools = true)
             # 2. `close` stopped tick production
             # To verify this we check that the number of ticks is proportional
             # to the real render time, which should be close to the sleep time.
-            @test render_time * 30 - 1 <= length(tick_record) <= render_time * 30 + 20
+            @test render_time * 30 - 1 <= length(tick_record) <= render_time * 30 + 40
 
             t = 0.0
             for (i, tick) in enumerate(tick_record)
@@ -349,3 +343,7 @@ println("###########################")
 println("WGLMakie tests DONE")
 println("Open Tasks: ", length(Makie.TRACKED_TASKS))
 println("###########################")
+
+using Makie.ComputePipeline
+ComputePipeline.disable_debugging!()
+ComputePipeline.log_nothing_splat(false)

@@ -102,6 +102,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     colors = Attributes(DEFAULT_COLORS),
     fontsize = 14,
     textcolor = :black,
+    text_handler = nothing,
     padding = Vec3f(0.05),
     figure_padding = 16,
     rowgap = 18,

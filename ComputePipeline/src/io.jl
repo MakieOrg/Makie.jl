@@ -81,10 +81,10 @@ function edge_callback_location(edge)
     return edge_callback_location(f, arg_types)
 end
 function edge_callback_location(f, arg_types::Tuple)
-    if hasmethod(f, arg_types)
-        file, line = Base.functionloc(f, arg_types)
-        return "$file:$line"
-    else
+    try
+        method = Base.which(f, arg_types)
+        return "$(method.file):$(method.line)"
+    catch e
         return "unknown method location"
     end
 end
@@ -99,7 +99,7 @@ function edge_callback_to_string(f, arg_types::Tuple)
     arg_str = replace(arg_str, "Base.RefValue" => "Ref")
     func = edge_callback_name(f, "($arg_str)")
     loc = edge_callback_location(f, arg_types)
-    return "$func", "@ $loc"
+    return "$func", "$loc"
 end
 
 function Base.show(io::IO, edge::ComputeEdge)
@@ -120,7 +120,7 @@ function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
 
     f, loc = edge_callback_to_string(edge)
     println(io, "  callback:\n    $f")
-    printstyled(io, "    $loc\n", color = :light_black)
+    printstyled(io, "    @ $loc\n", color = :light_black)
 
     print(io, "  inputs:")
     for (dirty, v) in zip(edge.inputs_dirty, edge.inputs)
@@ -162,7 +162,7 @@ function Base.show(io::IO, ::MIME"text/plain", input::Input)
     println(io, "  value:    ", input.value)
     f, loc = edge_callback_to_string(input)
     print(io, "  callback: $f")
-    printstyled(io, " $loc\n", color = :light_black)
+    printstyled(io, " @ $loc\n", color = :light_black)
     print(io, "  output:   ")
     if isdirty(input)
         printstyled(io, "↻ $(input.output)\n", color = :light_black)
@@ -247,6 +247,15 @@ function Base.show(io::IO, ::MIME"text/plain", graph::ComputeGraph)
 end
 
 
+function Base.showerror(io::IO, re::ResolveException{SelectException})
+    trace_error(io, re.start, re.error.edge)
+    print(io, "Due to ")
+    printstyled(io, "ERROR: ", color = :light_red, bold = true)
+    Base.showerror(io, re.error)
+end
+
+Base.showerror(io::IO, se::SelectException) = print(io, se.msg)
+
 function Base.showerror(io::IO, re::ResolveException)
     trace_error(io, re.start)
     print(io, "Due to ")
@@ -271,24 +280,27 @@ function collect_dirty(edge::Input, marked = Set{Symbol}())
 end
 
 # Error handling tools
-function trace_error(io::IO, computed::Computed)
+function trace_error(io::IO, computed::Computed, stop_at = nothing)
     print(io, "Failed to resolve ")
     printstyled(io, "$(computed.name):\n", color = :red)
     if hasparent(computed)
         marked = collect_dirty(computed)
         push!(marked, computed.name)
-        trace_error(io, computed.parent, marked)
+        trace_error(io, computed.parent, marked, stop_at)
     end
     return
 end
-trace_error(io::IO, edge::ComputeEdge) = trace_error(io, edge, collect_dirty(edge))
 
-function trace_error(io::IO, computed::Computed, marked)
-    hasparent(computed) && trace_error(io, computed.parent, marked)
+function trace_error(io::IO, edge::ComputeEdge, stop_at = nothing)
+    return trace_error(io, edge, collect_dirty(edge), stop_at)
+end
+
+function trace_error(io::IO, computed::Computed, marked::Set, stop_at = nothing)
+    hasparent(computed) && trace_error(io, computed.parent, marked, stop_at)
     return
 end
 
-function trace_error(io::IO, edge::ComputeEdge, marked)
+function trace_error(io::IO, edge::ComputeEdge, marked::Set, stop_at = nothing)
     if isdirty(edge)
         print(io, "[ComputeEdge] ")
 
@@ -312,18 +324,23 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
         printstyled(io, "  @ $(edge_callback_location(edge))\n", color = :light_black)
 
         idx = findfirst(computed -> computed.name in marked, edge.inputs)
-        if idx === nothing # All resolved
+        if isnothing(idx) || stop_at === edge # All resolved or marked as stopping point
             print(io, "  with edge inputs:")
             ioc = IOContext(io, :limit => true)
             for (input, dirty) in zip(edge.inputs, edge.inputs_dirty)
                 c = ifelse(dirty, :normal, :light_black)
                 printstyled(io, "\n    ", input.name, " = ", color = c)
-                show(ioc, input.value[])
+                if isdirty(input)
+                    val = is_initialized(input) ? input.value[] : "#undef"
+                    printstyled(ioc, val * " (outdated)", color = :light_black)
+                else
+                    show(ioc, input.value[])
+                end
             end
             println(io)
-            print_root_inputs(io, edge)
+            isnothing(idx) && print_root_inputs(io, edge)
         else # idx is first dirty
-            trace_error(io, edge.inputs[idx], marked)
+            trace_error(io, edge.inputs[idx], marked, stop_at)
         end
     end
     return
@@ -349,7 +366,7 @@ function trace_inputs!(input::Input, root_inputs)
     return
 end
 
-function trace_error(io::IO, edge::Input, marked = nothing)
+function trace_error(io::IO, edge::Input, marked = nothing, stop_at = nothing)
     print(io, "[Input] ")
     if edge.dirty
         printstyled(io, edge.name, color = :red)
@@ -380,4 +397,14 @@ function show_inputs(io::IO, edge::ComputeEdge, tab = 0)
         show_inputs(io, node, tab)
     end
     return
+end
+
+source_info_str(edge::TypedEdge) = source_info_str(edge.output_nodes[1].parent)
+function source_info_str(compute_edge::ComputeEdge)
+    input_names = map(x -> x.name, compute_edge.inputs)
+    output_names = map(x -> x.name, compute_edge.outputs)
+    callback_name, callback_loc = edge_callback_to_string(compute_edge)
+    str = "Triggered by `map!` or `register_computation!` connecting $input_names " *
+        "to $output_names with callback $callback_name defined at $callback_loc."
+    return str
 end

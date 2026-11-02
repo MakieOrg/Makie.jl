@@ -17,7 +17,7 @@ msaa_pipeline = let
         )
     end
 
-    pipeline = Makie.RenderPipeline()
+    pipeline = Makie.RenderGraph()
     render = push!(pipeline, MinimalPlotRenderStage(samples = 4)) # 4x MSAA
     resolve = push!(pipeline, Makie.MSAAResolveStage(render))
     display = push!(pipeline, MinimalDisplayStage())
@@ -39,5 +39,5 @@ Notes:
 - the setup above requires disabling the `final_stage` check in GLMakie/render_pipeline
 - should add clamp msaa samples to:
     `msaa = Ref{GLint}(); glGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES, msaa); msaa[]`
-- Makie.RenderPipeline should probably merge depth + stencil when both are there
+- Makie.RenderGraph should probably merge depth + stencil when both are there
 =#

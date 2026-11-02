@@ -287,7 +287,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         if visible || used
             return (get_minor_tickvalues(ticks, scale, values, limits...),)
         else
-            return isnothing(cached) ? (Float64[],) : nothing
+            return isnothing(cached) ? (Float64[],) : skip_update
         end
     end
 
@@ -589,7 +589,11 @@ function tight_ticklabel_spacing!(la::LineAxis)
 end
 
 
-iswhitespace(str) = match(r"^\s*$", str) !== nothing
+# `String` because regex matching only works on `String`, and a label may be any
+# `AbstractString` (a `text_handler`'s input type, say). Text that isn't string-like
+# at all can't be whitespace.
+iswhitespace(str::AbstractString) = match(r"^\s*$", String(str)) !== nothing
+iswhitespace(@nospecialize(_)) = false
 
 function Base.delete!(la::LineAxis)
     for (_, d) in la.elements
@@ -904,6 +908,11 @@ function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax
     length(tickvalues) < 2 && return vals
     n = i.n
 
+    # tickvalues are calculated so they may pick up a little bit of error. To
+    # avoid minor ticks getting cut by this, we add some extra space here
+    vmin = vmin - 100 * eps(vmin)
+    vmax = vmax + 100 * eps(vmax)
+
     if i.mirror
         firstinterval = tickvalues[2] - tickvalues[1]
         stepsize = firstinterval / n
@@ -927,7 +936,6 @@ function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax
         v = tickvalues[end] + stepsize
         append!(vals, v:stepsize:vmax)
     end
-
     return vals
 end
 

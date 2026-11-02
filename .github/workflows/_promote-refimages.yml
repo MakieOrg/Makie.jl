@@ -1,0 +1,30 @@
+name: Promote reference images
+on:
+  workflow_call:
+
+jobs:
+  promote:
+    name: Promote to release tarball
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Download ReferenceImages artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: ReferenceImages
+          path: ./reference_images_data
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v3
+      - name: Install Julia dependencies
+        run: julia --project=ReferenceUpdater -e 'using Pkg; Pkg.instantiate()'
+      - name: Promote manifested reference images into the release tarball
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          julia --project=ReferenceUpdater -e
+          'using ReferenceUpdater; ReferenceUpdater.promote_manifest(joinpath("reference_images_data", "recorded"))'

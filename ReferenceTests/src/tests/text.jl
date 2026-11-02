@@ -66,7 +66,7 @@ end
     scene = Scene(camera = campixel!, size = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
-    scatter!(scene, points, marker = :circle, markersize = 10px)
+    scatter!(scene, points, marker = :circle, markersize = 10)
 
     i = 1
     for halign in (:right, :center, :left), valign in (:top, :center, :bottom)
@@ -109,7 +109,7 @@ end
             for rotation in angles
     ]
 
-    scatter!(scene, points, marker = :circle, markersize = 10px, color = :black)
+    scatter!(scene, points, marker = :circle, markersize = 10, color = :black)
 
     text!(
         scene, points, text = strings, align = aligns, rotation = rotations,
@@ -123,7 +123,7 @@ end
     scene = Scene(camera = campixel!, size = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
-    scatter!(scene, points, marker = :circle, markersize = 10px, color = :black)
+    scatter!(scene, points, marker = :circle, markersize = 10, color = :black)
 
     symbols = (:left, :center, :right)
 
@@ -555,11 +555,12 @@ end
     ax = Axis(f[1, 1]; limits = ((-0.2, 4.2), (-0.2, 3)))
     hidedecorations!(ax); hidespines!(ax)
     lines!(ax, bp; color = (:gray, 0.4), linewidth = 2)
-    # Plain string with per-char color vector, offset above the curve.
-    cols = resample_cmap(:viridis, 17)
+    str = "Text along a path"
+    cols = resample_cmap(:viridis, length(str))
+    per_char = rich((rich(string(c); color = col) for (c, col) in zip(str, cols))...)
     pathtext!(
-        ax, bp; text = "Text along a path", fontsize = 14,
-        align = (:center, :bottom), offset = 8, color = cols,
+        ax, bp; text = per_char, fontsize = 14,
+        align = (:center, :bottom), offset = 8,
     )
     # RichText with bold, color, sub/superscript, offset below the curve.
     rt = rich(

@@ -7,6 +7,17 @@ using Makie, Test
     @test_nowarn BezierPath("M 100,100 C 100,200 200,100 200,200 z")
     @test_nowarn BezierPath("M 100,100 Q 50,150,100,100 z") isa BezierPath
     @test_broken BezierPath("M 3.0 10.0 A 10.0 7.5 0.0 0.0 0.0 20.0 15.0 z") isa BezierPath
+    @test_nowarn BezierPath([EllipticalArc([0.0, 0.0], 1.2, 0.5, 0.3, 0, 2pi)])
+
+    # TODO: do we want to avoid overlapping points like this?
+    # For now this is a simple test for checking that the MoveTo doesn't jump
+    # to the wrong place.
+    bp = BezierPath([EllipticalArc([0.0, 0.0], 1.2, 0.5, 0.3, 0, 2pi)])
+    ps = Makie.to_vertices(bp)
+    @test ps[1] ≈ ps[2]
+    bp = BezierPath([EllipticalArc([1.0, -1.0], 1.2, 0.5, -0.3, 0.3, 4.0)])
+    ps = Makie.to_vertices(bp)
+    @test ps[1] ≈ ps[2]
 end
 
 @testset "Parsing Q/q" begin

@@ -91,6 +91,29 @@ num_diff_pixels, diff_img = pixelmatch(img1, img2)
 save("diff.png", diff_img)
 ```
 
+## Updating Reference Images
+
+A PR that intentionally changes rendering does not upload to the reference-image release directly. It records the images to update in `ReferenceTests/refimage_updates/`, a directory with one small `<Backend>/<name>.png.pin` fragment file per updated image (content is the pin: the hash of the reference it replaces, or `new`/`delete`). Per-image files keep concurrent PRs from conflicting on a shared manifest. CI exempts listed images while the pin matches, and the post-merge CI run on the target branch promotes them into the `refimages-vX.Y` release.
+
+Pin the affected images before pushing whenever they can be predicted, since every missing pin costs a full CI round. An extra pin is cheap: the PR's review page lists every pinned image with its score, so an unneeded pin shows up as a pinned image that barely changed. From a scratch env with `ReferenceUpdater` dev'ed:
+
+```julia
+ReferenceUpdater.pin_images(["title of changed test", "title of new test"])
+ReferenceUpdater.pin_images(["title of removed test"]; delete = true)
+```
+
+Titles are the `@reference_test` names. A title with stored references is pinned for all of its stored images (stepper frames and videos included) in each backend that has them; a title without references is pinned as `new` for every backend in `backends`, so pass `backends` when a new test does not run everywhere (see each backend's `excludes` in `test/runtests.jl`). The release tarball is cached and only downloaded again when it changes, so repeated calls are fast.
+
+- New, renamed, changed or deleted reference tests: pin their titles (renames as `new` plus `delete`).
+- A change scoped to one recipe, attribute or conversion path: find the tests that exercise it in `ReferenceTests/src/tests/` and pin them. Changes in Makie itself usually affect all backends alike, so pin all backends unless the change lives in backend code. If it is unclear which candidates change, render them locally with one backend (usually CairoMakie) and compare against `ReferenceUpdater.cached_refimages()`.
+- Sweeping changes (theme defaults, text or layout machinery, colormaps, core plot construction) where the affected set cannot be predicted: push without pins, let CI run, then fill the manifest from the PR's CI artifact (needs `GITHUB_TOKEN` or a `gh` login):
+
+```julia
+ReferenceUpdater.add_pr_updates_to_manifest(<pr_number>)   # or select = ["CairoMakie/foo.png", ...]
+```
+
+See `ReferenceUpdater/README.md` for details.
+
 ## Code Formatting
 
 All code must be formatted before finalizing a PR:
@@ -101,4 +124,4 @@ julia tooling/formatter/format.jl
 
 ## Changelog
 
-User-facing changes (bug fixes, new features, breaking changes) must be recorded in `CHANGELOG.md` under the `## Unreleased` section at the top. Each entry is a single bullet point with a brief description and a link to the PR.
+User-facing changes (bug fixes, new features, breaking changes) must be recorded in a new file `changelog/<PR number>.md`, not in `CHANGELOG.md` directly. The file contains one or more `- ` bullet points with a brief description each, optionally grouped under `## Breaking`, `## Added`, `## Changed`, `## Deprecated`, `## Removed` or `## Fixed`; the PR link is added automatically on release. Validate with `julia tooling/changelog.jl check`. See `changelog/README.md` for the format.

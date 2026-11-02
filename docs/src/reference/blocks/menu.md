@@ -28,7 +28,7 @@ func = Observable{Any}(funcs[1])
 ys = lift(func) do f
     f.(0:0.3:10)
 end
-scat = scatter!(ax, ys, markersize = 10px, color = ys)
+scat = scatter!(ax, ys, markersize = 10, color = ys)
 
 cb = Colorbar(fig[1, 3], scat)
 
@@ -84,6 +84,25 @@ interaction_record(fig, "menu_example.mp4", events)
 <video autoplay loop muted playsinline src="./menu_example.mp4" width="600"/>
 ```
 
+
+## Searching
+
+While a menu is open, its selection box acts as a text box and typing filters the visible options. The `filter` attribute decides what counts as a match and defaults to a case-insensitive substring match on the option label. Set `searchable = false` for a plain dropdown without this behavior.
+
+```@figure backend=GLMakie
+fig = Figure(size = (300, 300))
+
+menu = Menu(
+    fig[1, 1], tellheight = false, valign = :top,
+    options = ["Apple", "Apricot", "Banana", "Blackberry", "Cherry", "Grape"],
+    search_placeholder = "type to filter..."
+)
+
+menu.is_open = true
+events(fig).unicode_input[] = 'b'
+
+fig
+```
 
 ## Menu direction
 

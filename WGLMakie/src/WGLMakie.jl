@@ -22,7 +22,7 @@ using ShaderAbstractions: InstancedProgram
 using GeometryBasics: StaticVector
 
 import Makie.FileIO
-using Makie: get_texture_atlas, SceneSpace, Pixel, Automatic
+using Makie: get_texture_atlas, Automatic
 using Makie: MouseButtonEvent, KeyEvent
 using Makie: apply_transform, transform_func_obs
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space

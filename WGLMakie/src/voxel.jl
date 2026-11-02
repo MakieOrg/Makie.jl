@@ -37,17 +37,17 @@ function create_shader(scene::Scene, plot::Voxels)
         end
     elseif haskey(attr, :voxel_color)
         Makie.add_computation!(attr, scene, Val(:voxel_uv_transform))
-        register_computation!(
-            attr, [:voxel_color, :packed_uv_transform, :interpolate],
+        map!(
+            attr,
+            [:voxel_color, :packed_uv_transform, :interpolate],
             [:wgl_colormap, :wgl_uv_transform, :wgl_color]
-        ) do inputs, changed, cached
+        ) do color, uvt, interpolate
             # how interpolate?
-            color, uvt, interpolate = inputs
             filter = ifelse(interpolate, :linear, :nearest)
             if isnothing(uvt)
-                return (false, false, Sampler(color, minfilter = filter)) # color vector
+                return false, false, Sampler(color, minfilter = filter) # color vector
             else
-                return (false, Sampler(uvt, minfilter = :nearest), Sampler(color, minfilter = filter)) # texture map
+                return false, Sampler(uvt, minfilter = :nearest), Sampler(color, minfilter = filter) # texture map
             end
         end
     else
@@ -57,7 +57,7 @@ function create_shader(scene::Scene, plot::Voxels)
     Makie.register_world_normalmatrix!(attr, :voxel_model)
     Makie.add_computation!(attr, Val(:uniform_clip_planes), :model, :voxel_model)
 
-    # TODO: this is a waste, should just be "make N instances with no data"
+    # TODO: this is a waste. It should just be "make N instances with no data"
     register_computation!(attr, [:chunk_u8, :gap], [:dummy_data]) do (chunk, gap), changed, cached
         N = sum(size(chunk))
         N_instances = ifelse(gap > 0.01, 2 * N, N + 3)
@@ -70,21 +70,20 @@ function create_shader(scene::Scene, plot::Voxels)
                 dummy_data .= 0
                 return (dummy_data,)
             else
-                return nothing
+                return skip_update
             end
         end
     end
 
-    add_primitive_shading!(scene, attr)
     inputs = [
         :dummy_data,
 
         :depth_shift, :world_normalmatrix,
-        :gap, :chunk_u8, :voxel_model,
+        :gap, :chunk_sampler, :voxel_model,
         :wgl_colormap, :wgl_uv_transform, :wgl_color,
 
         :diffuse, :specular, :shininess, # :backlight,
-        :depthsorting, :primitive_shading,
+        :depthsorting, :use_shading,
         :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
 
@@ -104,9 +103,9 @@ function voxel_program(attr)
         :view_direction => Vec3f(1),
         :depthsorting => attr.depthsorting,
         :world_normalmatrix => attr.world_normalmatrix,
-        :shading => attr.primitive_shading,
+        :shading => attr.use_shading,
         :gap => attr.gap,
-        :chunk_u8 => attr.chunk_u8,
+        :chunk_sampler => attr.chunk_sampler,
         :voxel_model => attr.voxel_model,
         :wgl_colormap => attr.wgl_colormap,
         :wgl_uv_transform => attr.wgl_uv_transform,

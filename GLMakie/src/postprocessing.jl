@@ -43,7 +43,7 @@ end
     GLRenderStage
 
 Represents a task or stage that needs to run when rendering a frame. These
-tasks are collected in the RenderPipeline.
+tasks are collected in the RenderGraph.
 
 Each task may implement:
 - `prepare_stage(screen, glscene, stage)`: Initialize the task.
@@ -87,30 +87,30 @@ Broadcast.broadcastable(x::GLRenderStage) = Ref(x)
 
 
 """
-    GLRenderPipeline(pipeline::Makie.RenderPipeline, stages::Vector{GLRenderStage})
+    GLRenderGraph(pipeline::Makie.RenderGraph, stages::Vector{GLRenderStage})
 
-Creates a `GLRenderPipeline`. The pipeline mostly acts as a collection of stages
+Creates a `GLRenderGraph`. The pipeline mostly acts as a collection of stages
 which run in sequence when calling `render_frame!(screen, scene, pipeline)`.
 """
-struct GLRenderPipeline
-    parent::Makie.LoweredRenderPipeline
+struct GLRenderGraph
+    parent::Makie.LoweredRenderGraph
     stages::Vector{GLRenderStage}
 end
 
-function GLRenderPipeline()
-    return GLRenderPipeline(Makie.LoweredRenderPipeline(), GLRenderStage[])
+function GLRenderGraph()
+    return GLRenderGraph(Makie.LoweredRenderGraph(), GLRenderStage[])
 end
 
 # Allow iteration
-function Base.iterate(pipeline::GLRenderPipeline, idx = 1)
+function Base.iterate(pipeline::GLRenderGraph, idx = 1)
     idx > length(pipeline) && return nothing
     return (pipeline.stages[idx], idx + 1)
 end
-Base.length(pipeline::GLRenderPipeline) = length(pipeline.stages)
-Base.eltype(::Type{GLRenderPipeline}) = GLRenderStage
+Base.length(pipeline::GLRenderGraph) = length(pipeline.stages)
+Base.eltype(::Type{GLRenderGraph}) = GLRenderStage
 
 # render each stage
-function render_frame(screen, glscene, pipeline::GLRenderPipeline)
+function render_frame(screen, glscene, pipeline::GLRenderGraph)
     for stage in pipeline
         require_context(screen.glscreen)
         run_stage(screen, glscene, stage)
@@ -120,14 +120,14 @@ end
 
 # map framebuffer resize to each stage
 # bundled with framebuffer_manager resizes
-function Base.resize!(pipeline::GLRenderPipeline, w, h)
+function Base.resize!(pipeline::GLRenderGraph, w, h)
     for stage in pipeline
         on_resize(stage, w, h)
     end
     return
 end
 
-function destroy!(pipeline::GLRenderPipeline)
+function destroy!(pipeline::GLRenderGraph)
     destroy!.(pipeline.stages)
     empty!(pipeline.stages)
     return

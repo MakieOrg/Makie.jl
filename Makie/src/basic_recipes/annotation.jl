@@ -287,7 +287,7 @@ function plot!(p::Annotation)
                 return (tps .+ loffpos,)
             else
                 # Skip updates from camera and transform func
-                return (nothing,)
+                return skip_update
             end
         else
             transformed_label_pos = apply_transform(tf, loffpos)

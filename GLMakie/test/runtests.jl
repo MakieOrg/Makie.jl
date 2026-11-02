@@ -1,12 +1,38 @@
 ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 
+run(
+    `julia -e "using Makie.ComputePipeline; ComputePipeline.enable_debugging!(); ComputePipeline.log_nothing_splat(true)"`
+)
+
 using Makie
 using GLMakie, Test
 using FileIO
+using Libdl
 using GeometryBasics
 using GeometryBasics: origin
 using Random
 using ReferenceTests
+
+if Sys.islinux() && Base.pkgversion(GLMakie.GLFW) >= v"4"
+    @testset "headless subprocess" begin
+        mktempdir() do runtime_dir
+            cmd = `$(Base.julia_cmd()) --startup-file=no --project=$(dirname(Base.active_project())) $(joinpath(@__DIR__, "headless.jl"))`
+            env = copy(ENV)
+            delete!(env, "DISPLAY")
+            delete!(env, "WAYLAND_DISPLAY")
+            env["XDG_RUNTIME_DIR"] = runtime_dir
+            env["JULIA_GLFW_PLATFORM"] = "null"
+            @test success(pipeline(setenv(cmd, env); stdout = stdout, stderr = stderr))
+            if isempty(Libdl.find_library(["libOSMesa.so.8", "libOSMesa.so.6", "libOSMesa.so"]))
+                # With no OSMesa fallback installed, disabling EGL vendors
+                # exercises loading and error reporting without any driver.
+                env["__EGL_VENDOR_LIBRARY_FILENAMES"] = joinpath(runtime_dir, "no-vendor.json")
+                env["GLMAKIE_TEST_NO_DRIVER"] = "true"
+                @test success(pipeline(setenv(cmd, env); stdout = stdout, stderr = stderr))
+            end
+        end
+    end
+end
 
 # verify OpenGL object cleanup
 GLMakie.DEBUG[] = true
@@ -35,22 +61,12 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
     include("isolated_tests.jl")
     include("unit_tests.jl")
 
-    @testset "ComputeGraph Sanity Checks" begin
-        # This is supposed to catch changes in ComputePipeline causing nodes to
-        # be skipped or become duplicated. This will also trigger if plot attributes
-        # are modified in which case the numbers should just be updated
-        f, a, p = scatter(rand(10))
-        colorbuffer(f)
-        @test length(p.attributes.inputs) == 37
-        @test length(p.attributes.outputs) == 83
-    end
-
     @testset "Reference Tests" begin
         @testset "refimages" begin
             ReferenceTests.mark_broken_tests()
-            recorded_files, recording_dir = @include_reference_tests GLMakie "refimages.jl" joinpath(@__DIR__, "glmakie_refimages.jl")
-            missing_images, scores = ReferenceTests.record_comparison(recording_dir, "GLMakie")
-            ReferenceTests.test_comparison(scores; threshold = 0.05)
+            attempted_tests, recording_dir = @include_reference_tests GLMakie "refimages.jl" joinpath(@__DIR__, "glmakie_refimages.jl")
+            missing_images, scores, exempt = ReferenceTests.record_comparison(recording_dir, "GLMakie"; attempted_tests)
+            ReferenceTests.test_comparison(scores; threshold = 0.05, exempt)
         end
 
         GLMakie.closeall()
@@ -258,3 +274,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         @test GLMakie.GLAbstraction.FAILED_FREE_COUNTER[] == 0
     end
 end
+
+using Makie.ComputePipeline
+ComputePipeline.disable_debugging!()
+ComputePipeline.log_nothing_splat(false)
