@@ -3,8 +3,6 @@ ENV["JULIA_DEBUG"] = "Documenter"
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
-# Match the ElectronCall version exercised by WGLMakie CI.
-Pkg.add(url = "https://github.com/JuliaWeb/ElectronCall.jl.git", rev = "sd/relocatable-assets")
 Pkg.instantiate()
 Pkg.precompile()
 

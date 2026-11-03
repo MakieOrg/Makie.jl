@@ -6,7 +6,7 @@ module MakieApp
 using $BACKEND
 
 if "$BACKEND" == "WGLMakie"
-    using ElectronCall
+    using Electron
     function _display(fig)
         disp = WGLMakie.Bonito.use_electron_display()
         display(disp, WGLMakie.Bonito.App(fig))
@@ -53,12 +53,10 @@ makie_dir = @__DIR__
 # Since, package dir is much easier to move then the active project (on windows at least).
 paths = ["Makie", "ComputePipeline", BACKEND]
 
-if BACKEND == "WGLMakie"
-    # Match the ElectronCall version exercised by WGLMakie CI.
-    Pkg.add(url = "https://github.com/JuliaWeb/ElectronCall.jl.git", rev = "sd/relocatable-assets")
-end
-
 Pkg.develop(map(x -> (; path = joinpath(makie_dir, x)), paths))
+if BACKEND == "WGLMakie"
+    pkg"add Electron@5.1"
+end
 
 open("MakieApp/src/MakieApp.jl", "w") do io
     print(io, module_src)

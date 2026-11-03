@@ -54,8 +54,7 @@ ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
 if Package == "WGLMakie"
-    # Match the ElectronCall version exercised by WGLMakie CI.
-    Pkg.add(url = "https://github.com/JuliaWeb/ElectronCall.jl.git", rev = "sd/relocatable-assets")
+    Pkg.add([(; name = "ElectronCall")])
 end
 pkgs = map(["ComputePipeline", "Makie", Package]) do name
     path = joinpath(@__DIR__, "..", "..", name)
