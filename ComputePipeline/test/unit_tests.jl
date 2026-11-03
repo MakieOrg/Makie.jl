@@ -1139,6 +1139,61 @@ end
     @test calls[end] == (3, true, (result = 2,))
 end
 
+@testset "First resolve compiles once for all callbacks and results" begin
+    specializations(f, sig) = count(Returns(true), Base.specializations(which(f, sig)))
+    counts() = (
+        specializations(ComputePipeline.dynamic_resolve!, Tuple{Any, ComputePipeline.ComputeEdge}),
+        specializations(ComputePipeline.set_result!, Tuple{ComputePipeline.ComputeEdge, Tuple}),
+    )
+    graph = ComputeGraph()
+    add_input!(graph, :x, 1)
+    register_computation!((inputs, changed, cached) -> (inputs.x,), graph, [:x], [:warm])
+    @test graph.warm[] == 1
+    before = counts()
+    register_computation!((inputs, changed, cached) -> (Val(1), 1.0), graph, [:x], [:a1, :a2])
+    register_computation!((inputs, changed, cached) -> ("s", Val(2), 1), graph, [:x], [:b1, :b2, :b3])
+    @test graph.a1[] == Val(1)
+    @test graph.b1[] == "s"
+    @test counts() == before
+end
+
+struct CustomFirstResolve <: Function end
+(::CustomFirstResolve)(inputs, changed, cached) = (inputs.x + 1,)
+function ComputePipeline.dynamic_resolve!(::CustomFirstResolve, edge::ComputePipeline.ComputeEdge)
+    return ComputePipeline.set_result!(edge, (10 * edge.inputs[1].value[],))
+end
+
+@testset "Callback specific first resolve" begin
+    graph = ComputeGraph()
+    add_input!(graph, :x, 2)
+    register_computation!(CustomFirstResolve(), graph, [:x], [:result])
+    @test graph.result[] == 20
+    graph.x = 3
+    @test graph.result[] == 4
+end
+
+@testset "First resolve result handling" begin
+    graph = ComputeGraph()
+    add_input!(graph, :x, 1)
+    register_computation!((inputs, changed, cached) -> nothing, graph, [:x], [:skipped])
+    @test graph.skipped[] === nothing
+    @test !graph.skipped.dirty
+
+    register_computation!((inputs, changed, cached) -> (1, 2), graph, [:x], [:one_output])
+    @test_throws ResolveException graph.one_output[]
+
+    register_computation!((inputs, changed, cached) -> 1, graph, [:x], [:not_a_tuple])
+    @test_throws ResolveException graph.not_a_tuple[]
+
+    register_computation!((inputs, changed, cached) -> (graph,), graph, [:x], [:invalid_type])
+    @test_throws ResolveException graph.invalid_type[]
+
+    ref = Ref(5)
+    register_computation!((inputs, changed, cached) -> (ref,), graph, [:x], [:from_ref])
+    @test graph.from_ref[] == 5
+    @test graph.outputs[:from_ref].value === ref
+end
+
 @testset "First resolve from an existing task" begin
     graph = ComputeGraph()
     add_input!(graph, :x, 1)
