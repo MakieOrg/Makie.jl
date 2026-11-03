@@ -380,3 +380,39 @@ end
     @test g3[:w][] == 2.0
     @test eltype(g3.w) == Union{Int, Float64}
 end
+
+@testset "disconnecting graphs from a shared parent" begin
+    parent = ComputeGraph()
+    add_input!(parent, :a, 1)
+    add_input!(parent, :b, 2)
+    double(inputs, changed, outputs) = (2 * inputs[1],)
+    register_computation!(double, parent, [:a], [:c])
+    sum2(inputs, changed, outputs) = (inputs[1] + inputs[2],)
+    children = map(1:4) do _
+        g = ComputeGraph()
+        # Two inputs from one parent edge's graph and one local: a parent must end up without
+        # this graph's edge, however many inputs reach it from there.
+        register_computation!(sum2, g, [parent.c, parent.b], [:d])
+        g
+    end
+    c, b = parent.outputs[:c].parent, parent.outputs[:b].parent
+    own(i) = children[i].outputs[:d].parent
+    @test c.dependents == [own(i) for i in 1:4]
+    @test b.dependents == [own(i) for i in 1:4]
+
+    # Any order, and only the edge asked for.
+    ComputePipeline.unsafe_disconnect_from_parents!(children[2])
+    @test c.dependents == [own(1), own(3), own(4)]
+    @test b.dependents == [own(1), own(3), own(4)]
+    # Twice is once.
+    ComputePipeline.unsafe_atomic_delete!(own(2))
+    @test c.dependents == [own(1), own(3), own(4)]
+    for i in (4, 1, 3)
+        ComputePipeline.unsafe_disconnect_from_parents!(children[i])
+    end
+    @test isempty(c.dependents)
+    @test isempty(b.dependents)
+    # What is left still computes.
+    parent.a = 5
+    @test parent[:c][] == 10
+end

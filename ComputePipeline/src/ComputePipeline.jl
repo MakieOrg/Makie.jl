@@ -2428,21 +2428,19 @@ end
 
 unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::Input) = nothing
 function unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::ComputeEdge)
-    for input in edge.inputs
-        if !haskey(attr.outputs, input.name) || !(input in values(attr.outputs))
-            unsafe_atomic_delete!(edge)
-        end
-    end
+    outside(input) = !haskey(attr.outputs, input.name) || !(input in values(attr.outputs))
+    any(outside, edge.inputs) && unsafe_atomic_delete!(edge)
     return
 end
 
 function unsafe_atomic_delete!(edge::ComputeEdge)
-    # deregister this edge as a dependency of its parents
-    for computed in edge.inputs
-        if hasparent(computed)
-            parent_edge = computed.parent
-            filter!(e -> e !== edge, parent_edge.dependents)
-        end
+    # Deregister this edge as a dependency of its parents, where it is registered once.
+    # Searched from the end, and removed rather than the list rewritten: a scene's graph has
+    # 100k dependents on one parent, and rewriting them per edge made freeing 5000 plots take 38 s.
+    # `Base.empty!(::Scene)` deletes newest first, so the edge is found at the tail.
+    for parent_edge in unique(computed.parent for computed in edge.inputs if hasparent(computed))
+        i = findlast(e -> e === edge, parent_edge.dependents)
+        i === nothing || deleteat!(parent_edge.dependents, i)
     end
 
     return
