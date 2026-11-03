@@ -199,10 +199,7 @@ end
 
 function replace_widget!(menu::Makie.Menu)
     Makie.hide!(menu)
-    scene = Makie.rootparent(menu.blockscene)
     initial_selection = menu.selection[]
-    initial_selection_idx = menu.i_selected[]
-    options = menu.options[]
 
     # Extract Makie styling attributes
     cell_color_inactive = menu.cell_color_inactive_even[]
@@ -212,34 +209,44 @@ function replace_widget!(menu::Makie.Menu)
     text_color = menu.textcolor[]
     text_size = menu.fontsize[]
     text_padding = menu.textpadding[]
-    # Create custom dropdown items
-    dropdown_items = []
-    option_style = Styles(
-        CSS(
-            "background-color" => cell_color_inactive,
-            "color" => text_color,
-            "font-size" => "calc(var(--winscale) * $(text_size) * 1px)",
-            "padding" => "calc(var(--winscale) * $(text_padding[1]) * 1px) calc(var(--winscale) * $(text_padding[2]) * 1px) calc(var(--winscale) * $(text_padding[3]) * 1px) calc(var(--winscale) * $(text_padding[4]) * 1px)",
-            "cursor" => "pointer",
-        ),
-        CSS(":hover", "background-color" => cell_color_hover),
-        CSS(".selected", "background-color" => cell_color_active),
-    )
-    for (i, option) in enumerate(options)
-        label_text = Makie.optionlabel(option)
-        is_selected = (i == initial_selection_idx)
 
-        push!(
-            dropdown_items, DOM.div(
-                label_text,
-                dataValue = i,
-                style = option_style,
-            )
-        )
+    # The option entries are (re)built in JavaScript whenever `menu.options`
+    # changes, so they can't rely on Bonito's per-node `Styles`. Instead we inject
+    # a stylesheet with a class unique to this menu and apply it to items in JS.
+    option_class = "makie-menu-option-" * string(objectid(menu); base = 16)
+    option_padding = "calc(var(--winscale) * $(text_padding[1]) * 1px) calc(var(--winscale) * $(text_padding[2]) * 1px) calc(var(--winscale) * $(text_padding[3]) * 1px) calc(var(--winscale) * $(text_padding[4]) * 1px)"
+    option_css = DOM.style(
+        """
+            .$(option_class) {
+                background-color: $(Bonito.convert_css_attribute(cell_color_inactive));
+                color: $(Bonito.convert_css_attribute(text_color));
+                font-size: calc(var(--winscale) * $(text_size) * 1px);
+                padding: $(option_padding);
+                cursor: pointer;
+            }
+            .$(option_class):hover { background-color: $(Bonito.convert_css_attribute(cell_color_hover)); }
+            .$(option_class).selected { background-color: $(Bonito.convert_css_attribute(cell_color_active)); }
+        """
+    )
+
+    # A label-only, reactive view of the options that is cheap to send to the
+    # frontend and updates whenever options are added/removed/changed.
+    option_labels = map(menu.options) do options
+        String[Makie.optionlabel(option) for option in collect(options)]
     end
 
-    # Current selection display
-    current_label = Makie.optionlabel(initial_selection)
+    # Text of the closed menu. It follows `i_selected` like the Makie widget does, so an
+    # options update that drops the selected entry (`i_selected = 0`) shows the prompt.
+    selected_label = map(menu.i_selected, option_labels, menu.prompt) do i, labels, prompt
+        return 1 <= i <= length(labels) ? labels[i] : prompt
+    end
+
+    # Initial (server-side rendered) option list.
+    dropdown_items = map(enumerate(option_labels[])) do (i, label_text)
+        DOM.div(label_text; dataValue = i, class = option_class)
+    end
+
+    current_label = selected_label[]
     dropdown_style = Styles(
         CSS(
             "width" => "100%",
@@ -297,7 +304,7 @@ function replace_widget!(menu::Makie.Menu)
     const dropdown = $(select_element);
     const display = dropdown.querySelector('.dropdown-display');
     const list = dropdown.querySelector('.dropdown-list');
-    const items = list.querySelectorAll('[data-value]');
+    const option_class = $(option_class);
 
     // Toggle dropdown
     display.onclick = function() {
@@ -323,10 +330,11 @@ function replace_widget!(menu::Makie.Menu)
         }
     };
 
+    // Highlight the entry matching the current selection.
     function update_background() {
         const selected_index = $(menu.i_selected).value;
-        items.forEach((item, index) => {
-            if (index + 1 === selected_index) {
+        list.querySelectorAll('[data-value]').forEach((item) => {
+            if (parseInt(item.dataset.value) === selected_index) {
                 item.classList.add('selected');
             } else {
                 item.classList.remove('selected');
@@ -334,18 +342,35 @@ function replace_widget!(menu::Makie.Menu)
         });
     }
 
-    // Handle item selection
-    items.forEach(item => {
-        item.onclick = function() {
-            const selected_index = parseInt(this.dataset.value);
-            $(menu.i_selected).notify(selected_index);
-            display.textContent = this.textContent;
-            list.style.display = 'none';
-            // Update active styling
-            update_background();
-        };
+    // Rebuild the option entries whenever `menu.options` changes on the Julia
+    // side, so newly added entries (panels, etc.) show up in the dropdown.
+    function rebuild(new_labels) {
+        const frag = document.createDocumentFragment();
+        new_labels.forEach((label_text, idx) => {
+            const item = document.createElement('div');
+            item.className = option_class;
+            item.setAttribute('data-value', idx + 1);
+            item.textContent = label_text;
+            frag.appendChild(item);
+        });
+        list.replaceChildren(frag);
+        update_background();
+    }
+
+    // Event delegation so dynamically rebuilt entries keep working.
+    list.addEventListener('click', function(e) {
+        const item = e.target.closest('[data-value]');
+        if (!item || !list.contains(item)) return;
+        $(menu.i_selected).notify(parseInt(item.dataset.value));
+        display.textContent = item.textContent;
+        list.style.display = 'none';
     });
-    update_background()
+
+    $(option_labels).on(rebuild);
+    $(menu.i_selected).on(update_background);
+    $(selected_label).on(label => { display.textContent = label; });
+    update_background();
+
     // Close dropdown when clicking outside
     document.addEventListener('click', function(e) {
         if (!dropdown.contains(e.target)) {
@@ -359,7 +384,7 @@ function replace_widget!(menu::Makie.Menu)
         style = WIDGET_CONTAINER_STYLES
     )
     jss = resize_parent(menu_div, menu)
-    return DOM.div(FONT_STYLE, menu_div, jss, dropdown_js)
+    return DOM.div(FONT_STYLE, option_css, menu_div, jss, dropdown_js)
 end
 
 function replace_widget!(textbox::Makie.Textbox)

@@ -72,7 +72,7 @@
         @test run(edisplay.window, "resync_test.timers.size") == 1
         @test length(scene.compute.onchange.listeners) == listener_count
         @test length(scene.deregister_callbacks) == binding_count
-        @test_throws Makie.ComputePipeline.ResolveException voxels!(scene, Array{Float32, 3}(undef, 0, 0, 0))
+        @test_throws Makie.ComputePipeline.ResolveException scatter!(scene, Point2f[(0.5, 0.5)]; color = :not_a_color)
         delete!(scene, last(scene.plots))
         @test !screen.needs_resync
     finally

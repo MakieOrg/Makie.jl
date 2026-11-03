@@ -273,6 +273,10 @@ end
         end
     end
 
+    @testset "keyboard" begin
+        include("keyboard.jl")
+    end
+
     @testset "html-widgets" begin
         include("html-widgets.jl")
     end

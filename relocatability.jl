@@ -54,13 +54,8 @@ makie_dir = @__DIR__
 paths = ["Makie", "ComputePipeline", BACKEND]
 
 if BACKEND == "WGLMakie"
-    # Match the Bonito and ElectronCall versions exercised by WGLMakie CI.
-    Pkg.add(
-        [
-            (; url = "https://github.com/SimonDanisch/Bonito.jl.git", rev = "sd/media-proxy"),
-            (; url = "https://github.com/JuliaWeb/ElectronCall.jl.git", rev = "sd/relocatable-assets"),
-        ]
-    )
+    # Match the ElectronCall version exercised by WGLMakie CI.
+    Pkg.add(url = "https://github.com/JuliaWeb/ElectronCall.jl.git", rev = "sd/relocatable-assets")
 end
 
 Pkg.develop(map(x -> (; path = joinpath(makie_dir, x)), paths))
