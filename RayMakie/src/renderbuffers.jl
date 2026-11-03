@@ -39,7 +39,7 @@ function capturebuffers(screen::Screen)
     fill!(p.coverage, bg_a)
     for state in screen.scene_states
         composites(state) || continue
-        sky = fillauxbuffers!(screen, state)
+        sky = fillauxbuffers!(screen, state; guides = true)
         film = state.film
         vh, vw = size(film.framebuffer)
         vp = scene_viewport_px(state.makie_scene, screen.px_per_unit)
