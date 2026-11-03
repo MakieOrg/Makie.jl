@@ -102,14 +102,23 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false, figures
     ElectronCall.ElectronAPI.setContentSize(win, win_size...)
     sleep(1) # give the resize round-trip a chance to start
     wait_for_render(win)
-    image = run(
+    # ElectronCall 1.0 doesn't wait for a promise from `run(app, ...)`, so the main
+    # process writes the image itself. The rename means `isfile` only sees a whole file.
+    js_path = replace(path, '\\' => '/')
+    run(
         edisplay.window.app,
         """
-        electron.BrowserWindow.fromId($(win.id)).webContents.capturePage()
-            .then(image => image.toPNG().toString('base64'))
+        (() => {
+            const fs = require('fs');
+            electron.BrowserWindow.fromId($(win.id)).webContents.capturePage().then(image => {
+                fs.writeFileSync($(repr(js_path * ".tmp")), image.toPNG());
+                fs.renameSync($(repr(js_path * ".tmp")), $(repr(js_path)));
+            }).catch(err => console.error('Screenshot error:', err));
+            return null;
+        })()
         """
     )
-    write(path, Bonito.Base64.base64decode(image))
+    Bonito.wait_for(() -> isfile(path); timeout = 30) == :success || error("No screenshot written to $path")
     return path
 end
 
