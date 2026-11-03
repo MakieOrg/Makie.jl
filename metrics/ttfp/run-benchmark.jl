@@ -1,156 +1,113 @@
-#= TODOs
-1) Use one GH-Action job in the end to merge all results and comment in one go (instead of merging with existing comment)
-2) Improve analysis of benchmark results to account for the variance in the benchmarks.
-3) Upload raw benchmark data as artifacts to e.g. create plots from It
+#= TODO
+Improve analysis of benchmark results to account for the variance in the benchmarks.
 =#
 
-using Pkg
+using Pkg, TOML
 Pkg.activate(@__DIR__)
 Pkg.update()
 
-using JSON, AlgebraOfGraphics, CairoMakie, DataFrames, Bootstrap
-using Statistics: median
-Package = length(ARGS) > 0 ? ARGS[1] : "CairoMakie"
-n_samples = length(ARGS) > 1 ? parse(Int, ARGS[2]) : 7
-base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
+include("plot-benchmark.jl")
 
-# Package = "CairoMakie"
-# n_samples = 2
-# base_branch = "breaking-release"
+length(ARGS) == 4 || error("Usage: run-benchmark.jl <Package> <n_samples> <merged checkout> <base checkout>")
+Package, n_samples_arg, merged_checkout, base_checkout = ARGS
+n_samples = parse(Int, n_samples_arg)
+n_inference_samples = 3
 
-@info("Benchmarking $(Package) against $(base_branch) with $(n_samples) samples")
+@info("Benchmarking $(Package) at $(merged_checkout) against $(base_checkout) with $(n_samples) samples")
 
+results_dir = abspath("benchmark_results")
+results_file(project) = joinpath(results_dir, "$Package-$(basename(project)).json")
 
-function run_benchmarks(projects; n = n_samples)
+function run_benchmark(project, run_index, mode)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
+    println(basename(project), " ", mode, " ", run_index)
+    run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package $(results_file(project)) $run_index $mode`)
+    return
+end
+
+function run_benchmarks(projects)
     # go A, A, B, B, A, A, B, B, etc. because if A or B have some effect on their
     # subsequent run, then we distribute those more evenly. If we used A, B, A, B then
     # B would always influence A and A always B which might bias the results (something
     # that can carry over separate processes like thermal throttling or so)
 
     A, B = projects
-    As = Iterators.partition(fill(A, n), 2)
-    Bs = Iterators.partition(fill(B, n), 2)
+    As = Iterators.partition(fill(A, n_samples), 2)
+    Bs = Iterators.partition(fill(B, n_samples), 2)
+    timing_order = collect(Iterators.flatten(Iterators.flatten(zip(As, Bs))))
 
-    for project in Iterators.flatten(Iterators.flatten(zip(As, Bs)))
-        println(basename(project))
-        run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
+    # The first run after precompilation pays for a cold disk cache.
+    for project in projects
+        run_benchmark(project, 0, "warmup")
+    end
+    for (run_index, project) in enumerate(timing_order)
+        run_benchmark(project, run_index, "timing")
+    end
+    for (run_index, project) in enumerate(repeat(projects, n_inference_samples))
+        run_benchmark(project, run_index, "inference")
     end
     return
 end
 
 function make_project_folder(name)
-    result = "$name-benchmark.json"
-    isfile(result) && rm(result) # remove old benchmark results
     project = joinpath(@__DIR__, "benchmark-projects", name)
+    rm(results_file(project); force = true)
     # It seems, that between julia versions, the manifest must be deleted to not get problems
     isdir(project) && rm(project; force = true, recursive = true)
     mkpath(project)
     return project
 end
 
+function setup_project(name, checkout)
+    project = make_project_folder(name)
+    Pkg.activate(project)
+    Pkg.develop([(; path = joinpath(checkout, pkg)) for pkg in ["ComputePipeline", "Makie", Package]])
+    Pkg.add(Package == "WGLMakie" ? ["JSON", "SnoopCompileCore", "Electron"] : ["JSON", "SnoopCompileCore"])
+    @time Pkg.precompile()
+    return project
+end
 
+function manifest_versions(project)
+    manifest = TOML.parsefile(joinpath(project, "Manifest.toml"))
+    return Dict(name => get(first(entries), "version", "stdlib") for (name, entries) in manifest["deps"])
+end
+
+function manifest_diff_markdown(merged, base)
+    merged_versions, base_versions = manifest_versions(merged), manifest_versions(base)
+    names = sort!(collect(union(keys(merged_versions), keys(base_versions))))
+    rows = NamedTuple[]
+    for name in names
+        m, b = get(merged_versions, name, nothing), get(base_versions, name, nothing)
+        m == b && continue
+        change = m === nothing ? "removed" :
+            b === nothing ? "added" :
+            VersionNumber(m) > VersionNumber(b) ? "upgraded" : "downgraded"
+        push!(rows, (; name, base = something(b, "-"), merged = something(m, "-"), change))
+    end
+    isempty(rows) && return "$Package: Manifests identical\n"
+
+    counts = join(["$(count(r -> r.change == c, rows)) $c" for c in ["added", "removed", "upgraded", "downgraded"]], ", ")
+    table = join(["| $(r.name) | $(r.base) | $(r.merged) | $(r.change) |" for r in rows], "\n")
+    return """
+    <details><summary>$Package: Manifest differences ($counts)</summary>
+
+    | Package | base | merged | change |
+    |---|---|---|---|
+    $table
+
+    </details>
+    """
+end
+
+mkpath(results_dir)
 ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
-project1 = make_project_folder("current-pr")
-Pkg.activate(project1)
-if Package == "WGLMakie"
-    Pkg.add([(; name = "ElectronCall")])
-end
-pkgs = map(["ComputePipeline", "Makie", Package]) do name
-    path = joinpath(@__DIR__, "..", "..", name)
-    (; path = path)
-end
-# cd("dev/Makie")
-Pkg.develop(pkgs)
-Pkg.add([(; name = "JSON")])
+projects = [setup_project("merged", merged_checkout), setup_project("base", base_checkout)]
 
-@time Pkg.precompile()
-
-project2 = make_project_folder(base_branch)
-Pkg.activate(project2)
-pkgs = [
-    (; url = "https://github.com/MakieOrg/Makie.jl/", subdir = "ComputePipeline", rev = base_branch),
-    (; rev = base_branch, name = "Makie", subdir = "Makie"),
-    (; rev = base_branch, name = Package),
-    (; name = "JSON"),
-]
-Package == "WGLMakie" && push!(pkgs, (; name = "ElectronCall"))
-Pkg.add(pkgs)
-
-@time Pkg.precompile()
-
-projects = [project1, project2]
-projnames = map(basename, [project1, project2])
+manifest_diff = manifest_diff_markdown(projects...)
+println(manifest_diff)
+write(joinpath(results_dir, "$Package-manifest-diff.md"), manifest_diff)
 
 run_benchmarks(projects)
 
-json_files = map(projnames) do pname
-    "$(pname)-benchmark.json"
-end
-
-colnames = ["using", "first create", "first display", "create", "display"]
-
-df = reduce(
-    vcat, map(json_files, projnames) do filename, pname
-        arrs = map(x -> map(identity, x), JSON.parsefile(filename))
-        df = DataFrame(colnames .=> arrs)
-        df.name .= pname
-        df
-    end
-)
-
-##
-
-fgrid = AlgebraOfGraphics.data(df) *
-    mapping(:name, colnames .=> (x -> x / 1.0e9) .=> "time (s)", color = :name, layout = dims(1) => renamer(colnames)) *
-    visual(RainClouds, orientation = :horizontal, markersize = 5, show_median = false, plot_boxplots = false) |>
-    draw(
-    scales(
-        Color = (; legend = false),
-        # AoG ≥ 0.11 wraps 5 facets as 3 × 2; pin a landscape 2 × 3 layout with
-        # the bootstrapped-ratios panel filling the [2, 3] slot.
-        Layout = (; palette = [(1, 1), (1, 2), (1, 3), (2, 1), (2, 2)]),
-    ),
-    facet = (; linkxaxes = false),
-    axis = (; xticklabelrotation = pi / 4, width = 200, height = 150),
-    figure = (; title = "$Package Benchmarks")
-)
-
-df_current_pr = df[df.name .== projnames[1], :]
-df_base_branch = df[df.name .== projnames[2], :]
-
-medians_df = map(names(df_current_pr, Not(:name))) do colname
-    col_base = df_base_branch[!, colname]
-    col_pr = df_current_pr[!, colname]
-    medians_base = bootstrap(median, col_base, Bootstrap.BasicSampling(1000))
-    medians_pr = bootstrap(median, col_pr, Bootstrap.BasicSampling(1000))
-    ratios = Bootstrap.straps(medians_pr)[1] ./ Bootstrap.straps(medians_base)[1]
-    colname => ratios
-end |> DataFrame
-
-specmedians = AlgebraOfGraphics.data(stack(medians_df)) *
-    mapping(:variable => presorted => "", :value => "Ratios of medians\n$(projnames[1]) / $(projnames[2])") * visual(Violin, show_median = true)
-
-background_bands = AlgebraOfGraphics.pregrouped([0.75:0.05:1.2], [0.8:0.05:1.25]) *
-    AlgebraOfGraphics.visual(HSpan, color = range(-1, 1, length = 10), colormap = [:green, :white, :tomato], alpha = 0.5)
-
-zeroline = AlgebraOfGraphics.pregrouped([1]) * AlgebraOfGraphics.visual(HLines, color = :gray60)
-
-spec = background_bands + zeroline + specmedians
-
-AlgebraOfGraphics.draw!(
-    fgrid.figure[2, 3], spec, axis = (;
-        yaxisposition = :right,
-        xticklabelrotation = pi / 4,
-        title = "Bootstrapped median ratios",
-        yautolimitmargin = (0, 0),
-        yticks = WilkinsonTicks(7, k_min = 5),
-    )
-)
-
-resize_to_layout!(fgrid.figure)
-
-##
-
-mkpath("benchmark_results")
-save(joinpath("benchmark_results", "$Package.svg"), fgrid)
+fig = plot_results(load_results(results_dir, Package), Package)
+save(joinpath(results_dir, "$Package.svg"), fig)
