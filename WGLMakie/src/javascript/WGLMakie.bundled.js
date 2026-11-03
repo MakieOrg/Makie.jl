@@ -24629,6 +24629,10 @@ function dispose_screen(screen) {
         screen.resizeObserver.disconnect();
         screen.resizeObserver = undefined;
     }
+    if (screen.paste_listener) {
+        document.removeEventListener("paste", screen.paste_listener);
+        screen.paste_listener = undefined;
+    }
     Object.keys(screen).forEach((key)=>delete screen[key]);
     return;
 }
@@ -24865,17 +24869,37 @@ function add_canvas_events(screen, comm, resize_to) {
         return false;
     }
     canvas.addEventListener("wheel", wheel);
+    function is_shortcut(event) {
+        return (event.ctrlKey || event.metaKey) && !event.getModifierState("AltGraph");
+    }
     function keydown(event) {
+        if (is_shortcut(event) && event.key.toLowerCase() === "v") {
+            return;
+        }
         event.preventDefault();
         comm.notify({
             keydown: [
                 event.code,
-                event.key
+                is_shortcut(event) ? "" : event.key
             ]
         });
         return false;
     }
     canvas.addEventListener("keydown", keydown);
+    function paste(event) {
+        if (canvas.getRootNode().activeElement !== canvas) {
+            return;
+        }
+        event.preventDefault();
+        const text = event.clipboardData.getData("text/plain");
+        if (text) {
+            comm.notify({
+                paste: text
+            });
+        }
+    }
+    document.addEventListener("paste", paste);
+    screen.paste_listener = paste;
     function keyup(event) {
         event.preventDefault();
         comm.notify({
