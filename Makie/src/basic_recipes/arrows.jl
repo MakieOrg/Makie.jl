@@ -178,8 +178,8 @@ function mixin_arrow_attributes()
 end
 
 
-arrows(args...; kwargs...) = resolve_arrows_deprecation(false, args, Dict{Symbol, Any}(kwargs))
-arrows!(args...; kwargs...) = resolve_arrows_deprecation(true, args, Dict{Symbol, Any}(kwargs))
+arrows(args...; kwargs...) = resolve_arrows_deprecation(false, args, to_dict(kwargs))
+arrows!(args...; kwargs...) = resolve_arrows_deprecation(true, args, to_dict(kwargs))
 
 function full_docs(::Type{<:Plot{arrows}}; replace_figure = true)
     str = read(joinpath(@__DIR__, "..", "documentation", "plots", "arrows.md"), String)

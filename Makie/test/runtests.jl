@@ -3,6 +3,8 @@ ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Test
 using LinearAlgebra
 using Markdown
+using Compat # allequal(f, itr) on Julia < 1.11
+
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics
@@ -50,6 +52,7 @@ end
         include("plots/poly.jl")
         include("plots/mesh_stroke.jl")
         include("plots/arrows.jl")
+        include("plots/contour.jl")
         include("plots/contourf.jl")
         include("plots/tricontour.jl")
         include("plots/voronoiplot.jl")

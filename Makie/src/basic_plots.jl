@@ -243,6 +243,11 @@ Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image)
 ) begin
     "Sets whether colors should be interpolated between pixels."
     interpolate = true
+    """
+    Hides the background image used when the `image` argument is a `Resampler`.
+    This may be useful with transparent images. Has no effect for other inputs.
+    """
+    background_visible = true
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
     fxaa = false
@@ -271,6 +276,11 @@ preferred for large, regularly spaced grids.
 ) begin
     "Sets whether colors should be interpolated"
     interpolate = false
+    """
+    Hides the background image used when the `image` argument is a `Resampler`.
+    This may be useful with transparent images. Has no effect for other inputs.
+    """
+    background_visible = true
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
 end

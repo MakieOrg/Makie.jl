@@ -76,6 +76,11 @@ Some general notes:
 
 module ComputePipeline
 
+if isdefined(Base, :Experimental)
+    isdefined(Base.Experimental, Symbol("@optlevel")) && Base.Experimental.@optlevel 1
+    isdefined(Base.Experimental, Symbol("@max_methods")) && Base.Experimental.@max_methods 1
+end
+
 using Preferences
 
 const ENABLE_COMPUTE_CHECKS = @load_preference("ENABLE_COMPUTE_CHECKS", false)
@@ -288,7 +293,7 @@ logging_id(e::TypedEdge) = logging_id(e.output_nodes[1].parent)
 logging_id(e::ComputeEdge) = logging_id(e.callback, e.inputs, e.outputs)
 
 function _get_named_change(::NamedTuple{Names}, dirty) where {Names}
-    values = ntuple(i -> dirty[i], length(Names))
+    values = ntuple(i -> dirty[i], Val(length(Names)))
     return NamedTuple{Names, NTuple{length(Names), Bool}}(values)
 end
 
@@ -304,6 +309,23 @@ function TypedEdge(callback, edge::ComputeEdge)
     return Base.invokelatest(TypedEdge, edge, callback, inputs)
 end
 
+Base.@nospecializeinfer @noinline function throw_invalid_result_types(edge::ComputeEdge, @nospecialize(result::Tuple))
+    invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
+    strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
+    str = join(strings, ", ")
+    error("Edge callback returned invalid types for outputs: [$str]")
+end
+
+Base.@nospecializeinfer @noinline function throw_length_mismatch(edge::ComputeEdge, @nospecialize(result::Tuple))
+    m = first(methods(edge.callback))
+    line = string(m.file, ":", m.line)
+    error("Result needs to have same length. Found: $(result), for func $(line)")
+end
+
+Base.@nospecializeinfer @noinline function throw_invalid_result(@nospecialize(result::Any))
+    error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output. Value: $result")
+end
+
 function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
     result = f(map(getindex, inputs), dirty, nothing)
@@ -312,18 +334,8 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
 end
 
 function _init_outputs(result::Tuple, edge::ComputeEdge)
-    if !all(is_node_value_valid, result)
-        invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
-        strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
-        str = join(strings, ", ")
-        error("Edge callback returned invalid types for outputs: [$str]")
-    end
-
-    if length(result) != length(edge.outputs)
-        m = first(methods(edge.callback))
-        line = string(m.file, ":", m.line)
-        error("Result needs to have same length. Found: $(result), for func $(line)")
-    end
+    all(is_node_value_valid, result) || throw_invalid_result_types(edge, result)
+    length(result) == length(edge.outputs) || throw_length_mismatch(edge, result)
 
     outputs = ntuple(length(result)) do i
         v = result[i] isa RefValue ? result[i] : RefValue(result[i])
@@ -401,7 +413,7 @@ Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of a
 
 function Input(graph, name, @nospecialize(value), f, output, force_update = false)
     return Input{ComputeGraph}(
-        graph, name, value, f, output, true, ComputeEdge[], force_update
+        graph, name, value, f, output, true, ComputeEdge{ComputeGraph}[], force_update
     )
 end
 
@@ -731,7 +743,7 @@ end
 
 Base.notify(node::Union{Computed, Input}) = mark_dirty!(node)
 
-function Base.setindex!(computed::Computed, value)
+function Base.setindex!(computed::Computed, @nospecialize(value))
     if computed.parent isa Input
         return setindex!(computed.parent, value)
     else
@@ -747,8 +759,8 @@ end
 # Inputs are strictly 1:1 edges (from input.value -> output), so we don't need
 # to worry about avoiding changes to input.value between multiple dependents.
 # However we do technically still need to protect it while the callback runs.
-Base.setindex!(input::Input, value) = _setindex!(input, value, input.force_update)
-function _setindex!(input::Input, value, force_update = false)
+Base.setindex!(input::Input, @nospecialize(value)) = _setindex!(input, value, input.force_update)
+function _setindex!(input::Input, @nospecialize(value), force_update = false)
     if !force_update && is_same(input.value, value)
         return value
     end
@@ -760,7 +772,7 @@ function _setindex!(input::Input, value, force_update = false)
     return value
 end
 
-function _setproperty!(attr::ComputeGraph, key::Symbol, value)
+function _setproperty!(attr::ComputeGraph, key::Symbol, @nospecialize(value))
     input = attr.inputs[key]
     # Skip if the value is the same as before
     if !input.force_update && is_same(input.value, value)
@@ -775,7 +787,7 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
     return value
 end
 
-function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
+function Base.setproperty!(attr::ComputeGraph, key::Symbol, @nospecialize(value))
     _setproperty!(attr, key, value)
     update_observables!(attr)
     return value
@@ -1164,7 +1176,7 @@ function locked_resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
-        names = ntuple(length(vals)) do i
+        names = ntuple(Val(length(vals))) do i
             edge.output_nodes[i].name
         end
         last = NamedTuple{names}(vals)
@@ -1452,6 +1464,7 @@ compute_identity(inputs::NamedTuple, ::NamedTuple, @nospecialize(cached)) = valu
 compute_identity(arg) = arg
 compute_identity(args...) = args
 
+
 function _recreate_typed_edge(te::TypedEdge{IT, OT, F}, inputs) where {IT, OT, F}
     N = length(inputs)
     values = ntuple(i -> inputs[i].value, N)
@@ -1658,7 +1671,7 @@ end
 
 See also: [`add_input!`](@ref), [`map!`](@ref)
 """
-function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(@nospecialize(f::Base.Callable), attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
     if !all(k -> haskey(attr.outputs, k), inputs)
         missing_keys = filter(k -> !haskey(attr.outputs, k), inputs)
         error("Could not register computation: Inputs $missing_keys not found.")
@@ -1694,7 +1707,9 @@ function convert_to_nodes(view::ComputeGraphView, inputs)
 end
 
 # [computed, symbol] is an Any Vector so no eltype here
-function register_computation!(f, attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(
+        @nospecialize(f::Base.Callable), attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol}
+    )
     _inputs = convert_to_nodes(attr, inputs)
     register_computation!(f, attr, _inputs, outputs)
     return
@@ -1886,7 +1901,9 @@ function _maybe_transfer_dependents!(to::AbstractEdge, from::Computed)
     return
 end
 
-function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
+Base.@nospecializeinfer function register_computation!(
+        @nospecialize(f::Function), attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol}
+    )
     @ifelse_enabled(check_boxed_values(f))
 
     if any(k -> haskey(attr.outputs, k), outputs)
@@ -2151,7 +2168,8 @@ result = graph[:filtered_image][]
 """
 function map_latest!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol}; spawn = false, init = nothing)
     update_key = Symbol(:_update_trigger_, string(hash((inputs, outputs))))
-    add_input!(attr, update_key, time())
+    add_input!(attr, update_key, 0)
+    input_node = attr.inputs[update_key]
     # TODO, should both channels be size 1?
     # Channel for input requests
     input_channel = Channel{Any}(2)
@@ -2166,7 +2184,7 @@ function map_latest!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::V
                 # Put result in the result channel
                 put!(result_channel, result)
                 # Notify that we got a new value, for the below computation to run
-                update!(attr, update_key => time())
+                update!(attr, update_key => input_node.value::Int + 1)
             catch e
                 @error "Error in background computation task" exception = (e, catch_backtrace())
             end
