@@ -5,7 +5,17 @@ function initialize_block!(tbox::Textbox)
         Rect(round.(Int, bb.origin), round.(Int, bb.widths))
     end
 
-    scene = Scene(topscene, scenearea)
+    # A scene's viewport is not clipped by its parent's, so inside a scrolling parent the
+    # text drew over whatever lay beyond it once the box had scrolled out. Positions below
+    # are window coordinates (`absolute`), so narrowing the viewport moves nothing; one
+    # pixel at least, because a pixel camera on an empty viewport divides by zero, and that
+    # pixel inside the parent: the box is elsewhere, so nothing of it lands there.
+    shownarea = lift(topscene, scenearea, topscene.viewport; ignore_equal_values = true) do area, parent
+        lo = clamp.(minimum(area), minimum(parent), maximum(parent) .- 1)
+        hi = min.(maximum(area), maximum(parent))
+        Rect(lo, max.(hi .- lo, 1))
+    end
+    scene = Scene(topscene, shownarea)
     campixel!(scene; absolute = true)
 
     roundedrectpoints = lift(roundedrectvertices, topscene, scenearea, tbox.cornerradius, tbox.cornersegments)
