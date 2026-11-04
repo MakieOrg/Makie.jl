@@ -277,7 +277,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         ($funcname!)(args...; kw...) = _create_plot!($funcname, to_dict(kw), args...)
 
         const $attr_placeholder = $attr_expr
-        $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
+        $(Makie)._documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
@@ -294,8 +294,23 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     return expr
 end
 
-# this can be used for inheriting from other recipes
-documented_attributes(::Any) = DocumentedAttributes()
+"""
+    documented_attributes(::Type{<:Plot})
+    documented_attributes(::Type{<:Block})
+
+Returns the `DocumentedAttributes` of a plot or block type as they were generated
+from `@recipe`, `@Block` or `@DocumentedAttributes`.
+
+`DocumentedAttributes` can be used within the aforementioned macros as mixins.
+For example this will add all the attributes of `Scatter` to `MyPlot`
+```
+@recipe MyPlot begin
+    documented_attributes(Scatter)...
+end
+```
+"""
+documented_attributes(x) = _documented_attributes(x)
+_documented_attributes(::Any) = DocumentedAttributes()
 
 function create_args_type_expr(PlotType, args::Nothing)
     return [], :()
