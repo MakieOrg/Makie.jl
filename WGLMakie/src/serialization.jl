@@ -189,7 +189,7 @@ function reinterpret_faces(@nospecialize(plot), faces::Buffer)
     return reinterpret_faces(plot, ShaderAbstractions.data(faces))
 end
 
-function serialize_scene(scene::Scene, ::Nothing = nothing)
+function serialize_scene(session::Session, scene::Scene, ::Nothing = nothing)
 
     hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
     pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], scene, viewport(scene); ignore_equal_values = true)
@@ -230,30 +230,32 @@ function serialize_scene(scene::Scene, ::Nothing = nothing)
         :visible => scene.visible,
         :uuid => js_uuid(scene)
     )
-    return serialize_scene(scene, serialized)
+    return serialize_scene(session, scene, serialized)
 end
 
-function serialize_scene(scene::Scene, previous::AbstractDict)
+function serialize_scene(session::Session, scene::Scene, previous::AbstractDict)
     # Reuse reactive bindings; only the plot and child snapshots change.
     serialized = copy(previous)
     children = Dict{String, Any}(child[:uuid] => child for child in get(previous, :children, ()))
     serialized[:children] = map(scene.children) do child
-        serialize_scene(child, get(children, js_uuid(child), nothing))
+        serialize_scene(session, child, get(children, js_uuid(child), nothing))
     end
-    serialized[:plots] = serialize_plots(scene, scene.plots)
+    serialized[:plots] = serialize_plots(session, scene, scene.plots)
     return serialized
 end
 
-function serialize_plots(scene::Scene, plots::Vector{Plot}, result = [])
+function serialize_plots(session::Session, scene::Scene, plots::Vector{Plot}, result = [])
     for plot in plots
         # if no plots inserted, this truly is an atomic
         if Makie.is_atomic_plot(plot)
             plot_data = serialize_three(scene, plot)
+            sync_glyphs!(session, plot)
+            watch_glyphs!(session, plot)
             plot_data[:uuid] = js_uuid(plot)
             push!(result, plot_data)
         end
         if !isempty(plot.plots)
-            serialize_plots(scene, plot.plots, result)
+            serialize_plots(session, scene, plot.plots, result)
         end
     end
     return result

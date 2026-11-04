@@ -39,7 +39,7 @@ end
         hidden[] = Bonito.Session(session)
         # Render the first figure's initialization payload without mounting it.
         Bonito.session_dom(hidden[], App(owner))
-        WGLMakie.serialize_scene(owner.scene)
+        WGLMakie.serialize_scene(hidden[], owner.scene)
         return visible
     end
     display(edisplay, app)
@@ -144,5 +144,73 @@ end
             close(page)
             close(server)
         end
+    end
+end
+
+@testset "Glyph batches apply before later messages" begin
+    font = Makie.to_font("TeX Gyre Heros Makie")
+    _, new_glyphs = Makie.get_glyph_data(Makie.get_texture_atlas(), Set{UInt32}(), ['ŧ'], font)
+    hash, data = only(new_glyphs)
+    key = string(hash)
+    display(edisplay, App(Scene(size = (10, 10))))
+    root = edisplay.browserdisplay.handler.session
+    try
+        # A fused message runs in one browser task, so a batch deferred by a promise misses the check.
+        Bonito.send(
+            root; msg_type = Bonito.FusedMessage, payload = [
+                Dict(:msg_type => Bonito.EvalJavascript, :payload => js"WGL.get_texture_atlas().glyph_data.delete($(key))"),
+                Dict(:msg_type => Bonito.EvalJavascript, :payload => WGLMakie.glyph_batch_js(Dict{UInt32, Any}(hash => data))),
+                Dict(:msg_type => Bonito.EvalJavascript, :payload => js"window.test_batch_applied = WGL.get_texture_atlas().glyph_data.has($(key))"),
+            ]
+        )
+        @test Bonito.wait_for(; timeout = 20) do
+            run(edisplay.window, "window.test_batch_applied !== undefined")
+        end == :success
+        @test run(edisplay.window, "window.test_batch_applied") === true
+    finally
+        run(edisplay.window, "delete window.test_batch_applied")
+        display(edisplay, App(nothing))
+    end
+end
+
+@testset "Figure on two open pages" begin
+    figure = Figure(size = (300, 160))
+    label = Label(figure[1, 1], "Two pages ßŋ", fontsize = 30, font = Makie.to_font("TeX Gyre Heros Makie"))
+    scene = Makie.get_scene(figure)
+    function open_page()
+        server = Bonito.Server("127.0.0.1", 0)
+        page = Bonito.HTTPServer.ElectronDisplay(;
+            app = edisplay.window.app,
+            options = Dict{String, Any}("show" => false, "webPreferences" => Dict("offscreen" => true, "backgroundThrottling" => false))
+        )
+        page.browserdisplay.server = server
+        return page, server
+    end
+    (first_page, first_server), (second_page, second_server) = open_page(), open_page()
+    try
+        display(first_page, App(figure))
+        colorbuffer(figure)
+        display(second_page, App(figure))
+        @test length(scene.current_screens) == 2
+        first_screen, second_screen = scene.current_screens
+        colorbuffer(second_screen)
+        reference = WGLMakie.session2image(first_screen.session, scene)
+        @test length(unique(reference)) > 1
+        @test WGLMakie.session2image(second_screen.session, scene) == reference
+        # Glyphs neither page has yet have to reach both, before the update that uses them.
+        glyph_count(page) = run(page.window, "WGL.get_texture_atlas().glyph_data.size")
+        counts = glyph_count(first_page), glyph_count(second_page)
+        label.text = "Neue Ħŧ"
+        colorbuffer(first_screen)
+        updated = WGLMakie.session2image(first_screen.session, scene)
+        @test updated != reference
+        @test WGLMakie.session2image(second_screen.session, scene) == updated
+        @test glyph_count(first_page) > counts[1]
+        @test glyph_count(second_page) > counts[2]
+    finally
+        close(first_page)
+        close(first_server)
+        close(second_page)
+        close(second_server)
     end
 end

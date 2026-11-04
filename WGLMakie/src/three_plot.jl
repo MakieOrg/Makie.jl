@@ -72,7 +72,7 @@ function apply_real_size!(
             # plots were inserted/deleted after the eager serialization
             # started - take a fresh snapshot
             screen.needs_resync = false
-            serialized = serialize_scene(scene, serialized)
+            serialized = serialize_scene(screen.session, scene, serialized)
         end
         # Now serialize with the correct size
         scene_serialized[] = serialized
@@ -96,7 +96,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     done_init = Observable{Any}(nothing)
     function request_resync()
         screen.needs_resync = false
-        scene_serialized[] = serialize_scene(scene, scene_serialized[])
+        scene_serialized[] = serialize_scene(session, scene, scene_serialized[])
         empty!(screen.displayed_scenes)
         mark_as_displayed!(screen, scene)
         return
@@ -104,11 +104,11 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     if is_offline
         # For offline connections, we have to serialize immediately
         # Since we cant do any round trip communication
-        scene_serialized[] = serialize_scene(scene)
+        scene_serialized[] = serialize_scene(session, scene)
     else
         scene_serialized_task = Makie.async_tracked() do alive
             alive[] || return nothing
-            ser = serialize_scene(scene)
+            ser = serialize_scene(session, scene)
             return ser
         end
         # Wait for real size to be determined, then resize scene and serialize

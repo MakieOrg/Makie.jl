@@ -469,7 +469,7 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
             # serialize & update the parent scene
             return insert_scene!(session, screen, scene.parent)
         end
-        scene_ser = serialize_scene(scene)
+        scene_ser = serialize_scene(session, scene)
         parent = scene.parent
         parent_uuid = js_uuid(parent)
         err = "Cannot find scene js_uuid(scene) == $(parent_uuid)"
@@ -491,7 +491,7 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
 end
 
 function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
-    plot_data = serialize_plots(scene, Plot[plot])
+    plot_data = serialize_plots(session, scene, Plot[plot])
     # serialize + evaljs via sub session, so we can keep track of those observables
     js = js"""
     $(WGL).then(WGL=> {

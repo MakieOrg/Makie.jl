@@ -10,7 +10,7 @@ macro compile(block)
             dom = Bonito.session_dom(session, app)
             show(IOBuffer(), dom)
             Makie.second_resolve(figlike, :wgl_renderobject)
-            serialize_scene(Makie.get_scene(figlike))
+            serialize_scene(session, Makie.get_scene(figlike))
             WGLMakie.poll_all_plots(Makie.get_scene(figlike))
             close(session)
             yield()
@@ -30,7 +30,7 @@ let
             app = App(() -> DOM.div(figlike))
             dom = Bonito.session_dom(session, app)
             show(IOBuffer(), dom)
-            data = WGLMakie.serialize_scene(Makie.get_scene(figlike))
+            data = WGLMakie.serialize_scene(session, Makie.get_scene(figlike))
             Bonito.serialize_binary(session, data)
             figlike.plot.color = rand(4)
             figlike.plot.markersize = 20.0f0
@@ -40,11 +40,13 @@ let
             close(session)
             # Also cover scalar colors on a default-colored scatter.
             fig2 = Makie.scatter(rand(Point2f, 4))
-            WGLMakie.serialize_scene(Makie.get_scene(fig2))
+            session2 = Session()
+            WGLMakie.serialize_scene(session2, Makie.get_scene(fig2))
             fig2.plot.color = :red
             fig2.plot.markersize = 10.0f0
             Makie.xlims!(fig2.axis, 0, 5)
             Makie.second_resolve(fig2, :wgl_renderobject)
+            close(session2)
         end
         # Loading Makie invalidates Bonito's serving methods; cache them again with a figure.
         Bonito.serve_workload(App(() -> DOM.div(Makie.scatter(1:4), Bonito.Slider(1:10))))

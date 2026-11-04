@@ -7,7 +7,6 @@ js_plot_type(plot::Union{Lines, LineSegments}) = "Lines"
 
 function serialize_three(scene::Scene, plot::Makie.PrimitivePlotTypes)
     mesh = create_shader(scene, plot)
-    sync_glyphs!(scene, plot)
 
     mesh[:plot_type] = js_plot_type(plot)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
@@ -261,7 +260,7 @@ function create_shader(scene::Scene, plot::Scatter)
     Makie.all_marker_computations!(attr, markersym)
     register_computation!(attr, [:sdf_marker_shape, :marker, :font], [:glyph_data]) do (shape, markers, fonts), changed, last
         shape != 3 && return nothing
-        hashes = get_scatter_data(scene, markers, fonts)
+        hashes = glyph_hashes(markers, fonts)
         # Scatter's uv/quad buffers are computed Julia-side; JS only needs the
         # atlas TEXTURE regions present. The hashes let it await/pull them.
         dict = Dict{Symbol, Any}(:glyph_hashes => hashes)
@@ -316,14 +315,23 @@ GlyphSync() = GlyphSync(
     Observable{Any}(UInt32[])
 )
 
+# A loaded module applies the batch right in the message handler. The scene snapshot
+# sent after it builds its meshes in the handler too, so `$(WGL).then` could land late.
+function glyph_batch_js(batch::Dict{UInt32, Any})
+    wire = Dict{String, Any}(string(h) => v for (h, v) in batch)
+    return js"""
+        const batch = $(wire);
+        if (window.WGL) {
+            window.WGL.get_texture_atlas().insert_glyphs(batch);
+        } else {
+            $(WGL).then(WGL => WGL.insert_glyphs(batch));
+        }
+    """
+end
+
 function send_glyph_batch!(root::Bonito.Session, batch::Dict{UInt32, Any})
     isempty(batch) && return
-    wire = Dict{String, Any}(string(h) => v for (h, v) in batch)
-    Bonito.evaljs(
-        root, js"""
-            $(WGL).then(WGL => WGL.insert_glyphs($(wire)))
-        """
-    )
+    Bonito.evaljs(root, glyph_batch_js(batch))
     return
 end
 
@@ -360,50 +368,63 @@ function glyph_sync!(session::Bonito.Session)
     end
 end
 
-# Diff `glyphs` against the root's shipped-set; send the new SDFs on the glyph
-# channel and return only the hash list for the plot data.
-function sync_glyphs!(scene::Scene, glyphs, fonts)
-    atlas = Makie.get_texture_atlas()
-    screen = Makie.getscreen(Makie.root(scene), WGLMakie)
-    if isnothing(screen) || isnothing(screen.session)
-        # No live session (e.g. the precompile workload serializing without a
-        # display) — nothing to ship glyphs to; hashes still serialize.
-        @debug "No session found, glyph batches are dropped"
-        glyph_hashes, _ = Makie.get_glyph_data(atlas, Set{UInt32}(), glyphs, fonts)
-        return glyph_hashes
-    end
-    sync = glyph_sync!(screen.session)
-    root = Bonito.root_session(screen.session)
-    glyph_hashes, wire_batch = lock(sync.lock) do
+# Contains every hash, so `Makie.get_glyph_data` returns hashes without reading any SDFs.
+struct AllGlyphs end
+Base.in(hash, ::AllGlyphs) = true
+
+# Plot data only carries hashes, and those are the same on every page.
+function glyph_hashes(glyphs, fonts)
+    hashes, _ = Makie.get_glyph_data(Makie.get_texture_atlas(), AllGlyphs(), glyphs, fonts)
+    return hashes
+end
+
+plot_glyphs(::Plot) = nothing
+plot_glyphs(plot::Makie.Text) = (plot.glyphindices[], plot.font_per_char[])
+plot_glyphs(plot::Scatter) = plot.sdf_marker_shape[] == 3 ? (plot.marker[], plot.font[]) : nothing
+
+# Ship the glyphs of `plot` that the page of `session` is still missing.
+function sync_glyphs!(session::Bonito.Session, plot::Plot)
+    glyph_data = plot_glyphs(plot)
+    isnothing(glyph_data) && return
+    glyphs, fonts = glyph_data
+    sync = glyph_sync!(session)
+    wire_batch = lock(sync.lock) do
         # Raw atlas hashes have no font metrics; later text must still register them.
         tracker = glyphs isa AbstractVector{UInt32} ? Set(keys(sync.bbox)) : sync.shipped
-        hashes, new_glyphs = Makie.get_glyph_data(atlas, tracker, glyphs, fonts)
+        _, new_glyphs = Makie.get_glyph_data(Makie.get_texture_atlas(), tracker, glyphs, fonts)
         for (h, v) in new_glyphs
             sync.bbox[h] = (Vec2f(v[3]), Vec2f(v[4]))
         end
-        return hashes, Dict{UInt32, Any}(new_glyphs)
+        return Dict{UInt32, Any}(new_glyphs)
     end
-    send_glyph_batch!(root, wire_batch)
-    return glyph_hashes
-end
-
-# A cached plot computation may have been resolved for another page.
-sync_glyphs!(scene::Scene, plot::Plot) = nothing
-sync_glyphs!(scene::Scene, plot::Makie.Text) = sync_glyphs!(scene, plot.glyphindices[], plot.font_per_char[])
-function sync_glyphs!(scene::Scene, plot::Scatter)
-    plot.sdf_marker_shape[] == 3 && sync_glyphs!(scene, plot.marker[], plot.font[])
+    send_glyph_batch!(Bonito.root_session(session), wire_batch)
     return
 end
 
-get_scatter_data(scene::Scene, markers, fonts) = sync_glyphs!(scene, markers, fonts)
-get_glyph_data(scene::Scene, glyphs, fonts) = sync_glyphs!(scene, glyphs, fonts)
+# Keep the page's glyphs current when the plot's glyphs change.
+watch_glyphs!(::Bonito.Session, ::Plot) = nothing
+function watch_glyphs!(session::Bonito.Session, plot::Union{Makie.Text, Scatter})
+    updater = plot.attributes[:wgl_update_obs][]
+    lock(Bonito.deletion_lock(session)) do
+        Bonito.isclosed(session) && return
+        any(listener -> listener.observable === updater, session.deregister_callbacks) && return
+        # Owned by the session showing the plot, so closing it releases the plot.
+        # The priority makes new glyphs reach the browser before the update using them.
+        listener = on(updater; priority = 1) do update
+            any(value -> first(value) === :glyph_data, update.data) && sync_glyphs!(session, plot)
+            return
+        end
+        push!(session.deregister_callbacks, listener)
+    end
+    return
+end
 
-function register_text_computation!(attr, scene)
+function register_text_computation!(attr)
     map!(attr, [:text_blocks, :text_scales], :glyph_scales) do text_blocks, fontsize
         return Makie.map_per_glyph(text_blocks, Vec2f, Makie.to_2d_scale(fontsize))
     end
     return register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs, fonts, glyph_scales), changed, last
-        hashes = get_glyph_data(scene, glyphs, fonts)
+        hashes = glyph_hashes(glyphs, fonts)
         dict = Dict{Symbol, Any}(
             :glyph_hashes => hashes,
             :scales => serialize_three(glyph_scales)
@@ -418,7 +439,7 @@ function create_shader(scene::Scene, plot::Makie.Text)
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr, :text_color)
-    register_text_computation!(attr, scene)
+    register_text_computation!(attr)
 
     ComputePipeline.alias!(attr, :text_rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :text_strokecolor, :converted_strokecolor)
