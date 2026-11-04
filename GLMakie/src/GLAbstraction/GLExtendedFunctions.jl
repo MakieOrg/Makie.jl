@@ -65,6 +65,15 @@ function get_uniform_location(program::GLuint, name::String)
     return location
 end
 
+# A name the driver wrote, as the NUL-terminated string it is: the count it reports can run past
+# what it wrote, and the bytes after that are uninitialized. A NUL among them throws from `Symbol`,
+# far from here, about once in five editor suite runs.
+function glstring(buf::Vector{GLchar}, reported::Integer)
+    stop = findfirst(iszero, buf)
+    n = stop === nothing ? length(buf) : stop - 1
+    return unsafe_string(pointer(buf), min(Int(reported), n))
+end
+
 function glGetActiveUniform(programID::GLuint, index::Integer)
     actualLength = GLsizei[1]
     uniformSize = GLint[1]
@@ -76,7 +85,7 @@ function glGetActiveUniform(programID::GLuint, index::Integer)
 
     actualLength[1] <= 0 &&  error("No active uniform at given index. Index: ", index)
 
-    uname = unsafe_string(pointer(name), actualLength[1])
+    uname = glstring(name, actualLength[1])
     # replace array brackets. This is not really a good solution.
     uname = cached_Symbol(replace(uname, r"\[\d*\]" => ""))
     return (uname, typ[1], uniformSize[1])
@@ -93,7 +102,7 @@ function glGetActiveAttrib(programID::GLuint, index::Integer)
 
     actualLength[1] <= 0 && error("No active uniform at given index. Index: ", index)
 
-    uname = unsafe_string(pointer(name), actualLength[1])
+    uname = glstring(name, actualLength[1])
     # replace array brackets. This is not really a good solution.
     uname = cached_Symbol(replace(uname, r"\[\d*\]" => ""))
     return (uname, typ[1], attributeSize[1])
