@@ -4,8 +4,6 @@ using GridLayoutBase
 using GridLayoutBase: GridSubposition
 
 const FPS = Observable(30)
-const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))
-const COLOR_ACCENT_DIMMED = Ref(RGBf(((174, 192, 230) ./ 255)...))
 
 include("blocks.jl")
 include("geometrybasics_extension.jl")
@@ -20,6 +18,7 @@ include("blocks/axis3d.jl")
 include("blocks/polaraxis.jl")
 include("blocks/colorbar.jl")
 include("blocks/label.jl")
+include("blocks/spinner.jl")
 include("blocks/slider.jl")
 include("blocks/slidergrid.jl")
 include("blocks/intervalslider.jl")
@@ -30,11 +29,21 @@ include("blocks/toggle.jl")
 include("blocks/legend.jl")
 include("blocks/scene.jl")
 include("blocks/menu.jl")
+include("blocks/table.jl")
 include("blocks/textbox.jl")
 include("blocks/container.jl")
+include("blocks/scrollarea.jl")
+include("blocks/card.jl")
+include("blocks/tabs.jl")
+include("blocks/modal.jl")
+include("blocks/paramform.jl")
+# HoverMenu type is defined in types.jl; its implementation is in GUI/hovermenu.jl
 
 export @Block, Block
-export axislegend
+export axislegend, axiscolorbar
+export open!, close!, replace_content!, refresh_contentsize!, clip_content!
+export card_accessory, filter_cards!
+export Between, OneOf, FilePath, convert_form_input
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect

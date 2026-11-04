@@ -12,11 +12,11 @@ function setup!(screen::Screen, fb)
     glEnable(GL_SCISSOR_TEST)
     ppu = screen.px_per_unit[]
     for (id, scene) in screen.screens
-        if scene.visible[] && scene.clear[]
+        if Makie.scene_visible(scene) && scene.clear[]
             a = viewport(scene)[]
-            rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-            glViewport(rt...)
-            glScissor(rt...)
+            sa = Makie.effective_clip(scene)
+            glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            glScissor(round.(Int, ppu .* minimum(sa))..., round.(Int, ppu .* widths(sa))...)
             c = scene.backgroundcolor[]
             glClearColor(red(c), green(c), blue(c), alpha(c))
             glClear(GL_COLOR_BUFFER_BIT)

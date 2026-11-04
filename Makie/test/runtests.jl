@@ -40,6 +40,7 @@ end
         include("isolated/argument_docs.jl")
         include("isolated/recipes.jl") # @recipe, @Block generated code
         include("isolated/showoff.jl")
+        include("isolated/derive_colors.jl")
     end
 
     @testset "Plots" begin
@@ -65,7 +66,14 @@ end
         include("SceneLike/scenes.jl")
         include("SceneLike/figures.jl")
         include("SceneLike/makielayout.jl")
+        include("SceneLike/card.jl")
+        include("SceneLike/scrollarea.jl")
         include("SceneLike/PolarAxis.jl")
+        include("events_isolation.jl")
+    end
+
+    @testset "GUI" begin
+        include("gui.jl")
     end
 
     @testset "Conversion & Projection Pipeline" begin
