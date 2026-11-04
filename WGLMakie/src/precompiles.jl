@@ -29,6 +29,7 @@ let
     @compile_workload begin
         WGLMakie.activate!()
         include(Makie.SHARED_PRECOMPILE_PATH)
+        include(Makie.SHARED_INTERACTIVE_PRECOMPILE_PATH)
         # Cleanup globals to avoid serializing stale state (servers, sessions, fonts, figures, tasks)
         # Note: __init__ doesn't run during precompilation, so we must always clean up here
         Bonito.cleanup_globals()

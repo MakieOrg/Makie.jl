@@ -452,6 +452,7 @@ end
 export cleanup_globals
 
 const SHARED_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile.jl")
+const SHARED_INTERACTIVE_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile-interactive.jl")
 
 include("precompiles.jl")
 

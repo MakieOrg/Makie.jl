@@ -41,6 +41,7 @@ let
                 destroy!(screen)
 
                 include(Makie.SHARED_PRECOMPILE_PATH)
+                include(Makie.SHARED_INTERACTIVE_PRECOMPILE_PATH)
                 display(plot(x); visible = false)
 
                 screen = Screen(Scene(); visible = false)
