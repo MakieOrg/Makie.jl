@@ -88,6 +88,13 @@ end
     end
 
 
+    @testset "relocatable shader sources" begin
+        # A compiled app may run without the package directory; the sources ride in the sysimage.
+        shaders = readdir(joinpath(@__DIR__, "..", "assets"))
+        @test Set(keys(WGLMakie.SHADER_DIR.files)) == Set(shaders)
+        @test WGLMakie.lasset("sprites.vert") == read(joinpath(@__DIR__, "..", "assets", "sprites.vert"), String)
+    end
+
     include("scene_updates.jl")
     include("glyph_sync.jl")
     include("resync.jl")

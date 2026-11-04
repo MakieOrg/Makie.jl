@@ -156,10 +156,12 @@ function flatten_buffer(array::AbstractArray{T}) where {T}
     return flatten_buffer(collect(reinterpret(eltype(T), array)))
 end
 
+# Shader sources are read lazily; `@path` keeps them available in a relocated app.
+const SHADER_DIR = @path joinpath(@__DIR__, "..", "assets")
 const ALL_SHADERS = Dict{String, String}()
 function lasset(paths...)
     return get!(ALL_SHADERS, joinpath(paths...)) do
-        read(joinpath(@__DIR__, "..", "assets", paths...), String)
+        read(joinpath(SHADER_DIR, paths...), String)
     end
 end
 

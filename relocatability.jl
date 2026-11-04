@@ -10,14 +10,18 @@ if "$BACKEND" == "WGLMakie"
     function _display(fig)
         disp = WGLMakie.Bonito.use_electron_display()
         display(disp, WGLMakie.Bonito.App(fig))
+        # `display` returns once the page is up; the plot initializes afterwards and
+        # reports failures (e.g. files missing after relocation) through its screen.
+        screen = WGLMakie.Makie.getscreen(WGLMakie.Makie.get_scene(fig), WGLMakie)
+        WGLMakie.get_screen_session(screen; error = "Plot did not initialize")
+        return screen
     end
 else
     _display(fig) = display(fig)
 end
 
 function julia_main()::Cint
-    screen = _display(scatter(1:4))
-    # wait(screen) commented out to test if this blocks anything, but didn't change anything
+    _display(scatter(1:4))
     return 0 # if things finished successfully
 end
 
@@ -55,7 +59,12 @@ paths = ["Makie", "ComputePipeline", BACKEND]
 
 Pkg.develop(map(x -> (; path = joinpath(makie_dir, x)), paths))
 if BACKEND == "WGLMakie"
-    pkg"add Electron@5.1"
+    # Electron 6 passes `--no-sandbox` itself. Bonito 5 only disables the sandbox through
+    # ElectronCall's SecurityConfig, and without the flag Chromium aborts on GitHub's
+    # runners (no SUID helper), leaving the app waiting for Electron forever.
+    # The registered ElectronCall cannot be relocated yet (it resolves main.js through
+    # the package directory); move to it once a release carries the `@path` fix.
+    pkg"add Electron@6.1"
 end
 
 open("MakieApp/src/MakieApp.jl", "w") do io
@@ -69,9 +78,23 @@ using PackageCompiler
 
 create_app(joinpath(pwd(), "MakieApp"), "executable"; force = true, incremental = true, include_transitive_dependencies = false)
 exe = joinpath(pwd(), "executable", "bin", "MakieApp")
-# `run` allows to see potential informative printouts, `success` swallows those
-p = run(`$(exe)`)
-@test p.exitcode == 0
+
+# Keep the app's output visible, and bound the run: a dead Electron (e.g. a sandbox
+# abort) would otherwise leave it waiting forever.
+function run_app(exe; timeout = 600)
+    # `wait = false` swallows the child's stdio unless it is redirected explicitly.
+    p = run(pipeline(`$(exe)`; stdout = stdout, stderr = stderr); wait = false)
+    timer = Timer(timeout) do _
+        @error "MakieApp did not exit within $(timeout)s, killing it"
+        kill(p)
+    end
+    wait(p)
+    close(timer)
+    return p
+end
+
+p = run_app(exe)
+@test success(p)
 
 julia_pkg_dir = joinpath(Base.DEPOT_PATH[1], "packages")
 @test isdir(julia_pkg_dir)
@@ -82,8 +105,8 @@ mv(makie_dir, new_makie_dir; force = true)
 # Move package dir so that we can test relocatability (hardcoded paths to package dir being invalid now)
 try
     @info "Running executable in relocated mode..."
-    p2 = run(`$(exe)`)
-    @test p2.exitcode == 0
+    p2 = run_app(exe)
+    @test success(p2)
 finally
     mv(mvd_julia_pkg_dir, julia_pkg_dir)
     mv(new_makie_dir, makie_dir)
