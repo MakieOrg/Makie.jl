@@ -37,7 +37,7 @@ end
     checks = run(
         edisplay.window, """
         (() => {
-            WGL.setup_scene_init(null, null);
+            WGL.setup_scene_init('removed-output', null, null);
             const Observable = Object.values(WGL.scene_cache)[0].viewport.constructor;
             const snapshot = new Observable('removed-output', null);
             const wrapper = document.createElement('div');
@@ -46,7 +46,7 @@ end
             document.body.appendChild(wrapper);
             let sizes = 0;
             let initialized = 0;
-            WGL.setup_scene_init(wrapper, canvas, 4, 4, false, 1, 1,
+            WGL.setup_scene_init('removed-output', wrapper, canvas, 4, 4, false, 1, 1,
                 {notify: () => sizes++}, null, snapshot, null, 30, true,
                 {notify: () => initialized++});
             wrapper.remove();
