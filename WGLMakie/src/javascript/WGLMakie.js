@@ -642,7 +642,7 @@ export function initialize_canvas_size(canvas, resize_to, width, height, px_per_
     return [initial_width, initial_height];
 }
 
-export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, render_on_demand, done_init) {
+export function setup_scene_init(session_id, wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, render_on_demand, done_init) {
     // A notebook cell may disappear while its module or scene snapshot loads.
     if (!wrapper || !canvas) return;
     const spinner = wrapper.querySelector('.wglmakie-spinner');
@@ -692,6 +692,14 @@ export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_p
                     // the drawn content composite together on the next frame, so there's
                     // no blank flash).
                     spinner?.remove();
+                    // Bonito frees the session once its DOM left the document. Release
+                    // the WebGL context then: Julia can no longer reach the session, and
+                    // waiting for the garbage collector lets Chromium evict live contexts
+                    // after sixteen of them.
+                    Bonito.Sessions.on_free(session_id, () => {
+                        const screen = canvas.wglmakie_screen;
+                        if (screen && !canvas.isConnected) dispose_screen(screen, false);
+                    });
                     // Signal init-done only after the browser has actually painted that
                     // frame (two rAFs), so Julia's `wait_for_display` means "on screen".
                     requestAnimationFrame(() => requestAnimationFrame(() => done_init.notify(true)));

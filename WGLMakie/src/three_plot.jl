@@ -161,6 +161,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         $(WGL).then(WGL => {
             WGL.set_glyph_request($(glyph_request));
             WGL.setup_scene_init(
+                $(session.id),
                 $wrapper,
                 $canvas,
                 $width,

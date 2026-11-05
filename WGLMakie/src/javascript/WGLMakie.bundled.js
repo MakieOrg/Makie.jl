@@ -25120,7 +25120,7 @@ function initialize_canvas_size(canvas, resize_to, width, height, px_per_unit, s
         initial_height
     ];
 }
-function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, render_on_demand, done_init) {
+function setup_scene_init(session_id, wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, render_on_demand, done_init) {
     if (!wrapper || !canvas) return;
     const spinner = wrapper.querySelector('.wglmakie-spinner');
     try {
@@ -25151,6 +25151,10 @@ function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit
                 } else {
                     create_scene(wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height, framerate, render_on_demand, resize_to, px_per_unit, scalefactor);
                     spinner?.remove();
+                    Bonito.Sessions.on_free(session_id, ()=>{
+                        const screen = canvas.wglmakie_screen;
+                        if (screen && !canvas.isConnected) dispose_screen(screen, false);
+                    });
                     requestAnimationFrame(()=>requestAnimationFrame(()=>done_init.notify(true)));
                 }
             } catch (e) {

@@ -382,7 +382,10 @@ plot_glyphs(::Plot) = nothing
 plot_glyphs(plot::Makie.Text) = (plot.glyphindices[], plot.font_per_char[])
 plot_glyphs(plot::Scatter) = plot.sdf_marker_shape[] == 3 ? (plot.marker[], plot.font[]) : nothing
 
-# Ship the glyphs of `plot` that the page of `session` is still missing.
+# Ship the glyphs of `plot` that the page of `session` is still missing. The batch
+# travels on the plot's own session: it is queued ahead of the scene snapshot that
+# needs it, and in an offline export that session's script is the one that imports
+# the WGL module, which the batch refers to.
 function sync_glyphs!(session::Bonito.Session, plot::Plot)
     glyph_data = plot_glyphs(plot)
     isnothing(glyph_data) && return
@@ -397,7 +400,7 @@ function sync_glyphs!(session::Bonito.Session, plot::Plot)
         end
         return Dict{UInt32, Any}(new_glyphs)
     end
-    send_glyph_batch!(Bonito.root_session(session), wire_batch)
+    send_glyph_batch!(session, wire_batch)
     return
 end
 
