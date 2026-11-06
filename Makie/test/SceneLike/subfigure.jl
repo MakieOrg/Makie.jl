@@ -276,3 +276,29 @@ end
     @test Makie.scene_visible(label.blockscene)
     @test first(label.blockscene.plots).visible[]
 end
+
+@testset "a textbox scrolled out of its parent draws nothing beyond it" begin
+    f = Figure(size = (300, 300))
+    sf = Subfigure(f[1, 1])
+    boxes = [Textbox(sf[i, 1]; stored_string = "row $i", width = 100, height = 30) for i in 1:40]
+    Makie.update_state_before_display!(f)
+    refresh_contentsize!(sf)
+    parent = sf.scene.viewport[]
+    within(box) = begin
+        shown = only(box.blockscene.children).viewport[]
+        all(widths(shown) .>= 1) && all(minimum(shown) .>= minimum(parent)) && all(maximum(shown) .<= maximum(parent))
+    end
+    bbox(box) = box.layoutobservables.computedbbox[]
+
+    # Scrolled to the top, the last box lies below the pane.
+    @test maximum(bbox(last(boxes)))[2] < minimum(parent)[2]    # …or this tests nothing
+    @test within(last(boxes))
+    @test within(first(boxes))
+    @test widths(only(first(boxes).blockscene.children).viewport[]) == round.(Int, widths(bbox(first(boxes))))
+
+    # Scrolled to the bottom, the first box lies above it.
+    sf.scroll[] = Vec2f(0, 100000)
+    @test minimum(bbox(first(boxes)))[2] > maximum(parent)[2]    # …or this tests nothing
+    @test within(first(boxes))
+    @test within(last(boxes))
+end

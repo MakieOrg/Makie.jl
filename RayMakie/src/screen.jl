@@ -800,14 +800,15 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
 end
 
 """
-    fillauxbuffers!(screen, state) -> paints_sky::Bool
+    fillauxbuffers!(screen, state; guides = screen.config.denoise) -> paints_sky::Bool
 
 The film's depth, normal and albedo from primary rays, and whether one of the
 scene's lights is seen where a ray hits nothing (`paints_background`). What the
 postprocess composites the background by, and what the HDR capture's guides and
-coverage are.
+coverage are. `guides`: whether anything reads the normal and albedo, see
+[`refresh_guides!`](@ref).
 """
-function fillauxbuffers!(screen::Screen, scene_state::RayMakieState)
+function fillauxbuffers!(screen::Screen, scene_state::RayMakieState; guides::Bool = screen.config.denoise)
     film = scene_state.film
     # Depth, normal and albedo. Unconditional: `postprocess!` below composites
     # the background wherever `isinf(depth)`, so a frame that skips this reads a
@@ -830,7 +831,7 @@ function fillauxbuffers!(screen::Screen, scene_state::RayMakieState)
     # background colour.
     paints_sky = any(paints_background, lights.data_order)
     if Raycore.n_instances(tlas) > 0
-        refresh_guides!(screen, scene_state)
+        refresh_guides!(screen, scene_state; guides)
     else
         # Nothing to hit, so every ray escapes. Any depth `Hikari.missed` accepts
         # will do; `Inf` is the clearest. No surface either: the guides are zero.
@@ -860,14 +861,18 @@ function guide_grid(live::Bool, samples::Integer)
 end
 
 """
-    refresh_guides!(screen, state)
+    refresh_guides!(screen, state; guides = screen.config.denoise)
 
 Refill the film's depth, normal and albedo when its accumulated samples call for a finer
 [`guide_grid`](@ref) than they were filled with since the film was last cleared. Every other call
 costs nothing, which is what lets a frame ask for them every time.
+
+Without `guides` the grid stays at one ray per pixel: nothing reads the normal and albedo then, and
+depth is the centre ray's at every grid. An offscreen frame clears its film, so it would pay the
+finest grid, 81 rays a pixel, every time.
 """
-function refresh_guides!(screen::Screen, state::RayMakieState)
-    grid = guide_grid(screen.window !== nothing, state.film.iteration_index[])
+function refresh_guides!(screen::Screen, state::RayMakieState; guides::Bool = screen.config.denoise)
+    grid = guides ? guide_grid(screen.window !== nothing, state.film.iteration_index[]) : 1
     grid > state.guide_grid || return
     # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
     adapted_scene = Adapt.adapt(screen.config.device, state.hikari_scene)

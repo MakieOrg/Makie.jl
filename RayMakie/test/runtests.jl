@@ -92,6 +92,7 @@ const TEST_FILES = [
     "test_trace_visibility.jl",
     "test_renderbuffers.jl",
     "test_render_allocates_nothing.jl",
+    "test_arena_growth_frame.jl",
     # Leak / GC regressions.
     "test_materials_scene.jl",
     "test_lines_topology.jl",

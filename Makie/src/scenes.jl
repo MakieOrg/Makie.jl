@@ -596,8 +596,9 @@ end
 
 function Base.empty!(scene::Scene; reset_theme = true)
     foreach(empty!, copy(scene.children))
-    # clear plots of this scene
-    for plot in copy(scene.plots)
+    # clear plots of this scene, newest first: each one's graph edges are then at the tail of
+    # the lists they are removed from (`ComputePipeline.unsafe_atomic_delete!`)
+    for plot in reverse(scene.plots)
         delete!(scene, plot)
     end
 
