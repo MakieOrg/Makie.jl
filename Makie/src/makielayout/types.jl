@@ -444,10 +444,10 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xticksvisible::Bool = true
         "Controls if the ytick marks are visible."
         yticksvisible::Bool = true
-        "The alignment of the xtick marks relative to the axis spine (0 = out, 1 = in)."
-        xtickalign::Float64 = 0.0f0
-        "The alignment of the ytick marks relative to the axis spine (0 = out, 1 = in)."
-        ytickalign::Float64 = 0.0f0
+        "The alignment of the xtick marks relative to the axis spine (0 = out, 1 = in, 0.5 = centered). `:out_spine` and `:in_spine` start the marks at the spine centerline instead."
+        xtickalign = 0.0f0
+        "The alignment of the ytick marks relative to the axis spine (0 = out, 1 = in, 0.5 = centered). `:out_spine` and `:in_spine` start the marks at the spine centerline instead."
+        ytickalign = 0.0f0
         "The width of the xtick marks."
         xtickwidth::Float64 = 1.0f0
         "The width of the ytick marks."
@@ -690,8 +690,8 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xreversed::Bool = false
         "Controls if minor ticks on the x axis are visible"
         xminorticksvisible::Bool = false
-        "The alignment of x minor ticks on the axis spine"
-        xminortickalign::Float64 = 0.0f0
+        "The alignment of x minor ticks on the axis spine, see `xtickalign`."
+        xminortickalign = 0.0f0
         "The tick size of x minor ticks"
         xminorticksize::Float64 = 3.0f0
         "The tick width of x minor ticks"
@@ -709,8 +709,8 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xminorticks = IntervalsBetween(2)
         "Controls if minor ticks on the y axis are visible"
         yminorticksvisible::Bool = false
-        "The alignment of y minor ticks on the axis spine"
-        yminortickalign::Float64 = 0.0f0
+        "The alignment of y minor ticks on the axis spine, see `ytickalign`."
+        yminortickalign = 0.0f0
         "The tick size of y minor ticks"
         yminorticksize::Float64 = 3.0f0
         "The tick width of y minor ticks"
@@ -860,7 +860,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         ticklabelspace = Makie.automatic
         "The gap between tick labels and tick marks."
         ticklabelpad = 3.0f0
-        "The alignment of the tick marks relative to the axis spine (0 = out, 1 = in)."
+        "The alignment of the tick marks relative to the axis spine (0 = out, 1 = in, 0.5 = centered). `:out_spine` and `:in_spine` start the marks at the spine centerline instead."
         tickalign = 0.0f0
         "The line width of the tick marks."
         tickwidth = 1.0f0
@@ -928,7 +928,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
         "Controls if minor ticks are visible"
         minorticksvisible = false
-        "The alignment of minor ticks on the axis spine"
+        "The alignment of minor ticks on the axis spine, see `tickalign`."
         minortickalign = 0.0f0
         "The tick size of minor ticks"
         minorticksize = 3.0f0
