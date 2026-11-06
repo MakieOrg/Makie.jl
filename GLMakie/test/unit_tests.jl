@@ -76,6 +76,14 @@ end
         @test colorbuffer(scene) == plain
         plot.strokewidth[] = 8
         @test colorbuffer(scene) == stroked
+        # A shader rebuild and a stroke change may arrive in the same update.
+        # The obsolete render object's instructions must not be reinitialized.
+        per_vertex = plot_mesh ? fill(RGBAf(1, 0, 0, 1), length(coordinates(plot[1][]))) :
+            fill(RGBAf(1, 0, 0, 1), 3, 3)
+        Makie.update!(plot; color = per_vertex, strokewidth = 0)
+        @test colorbuffer(scene) == plain
+        Makie.update!(plot; color = :red, strokewidth = 8)
+        @test colorbuffer(scene) == stroked
     end
     GLMakie.closeall()
 end
