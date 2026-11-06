@@ -31,6 +31,7 @@ Raycore = {url = "https://github.com/JuliaGeometry/Raycore.jl", rev = "sd/with-t
 
 [compat]
 Adapt = "4.4.0"
+GLFW = "4"
 ImageCore = "0.10.5"
 KernelAbstractions = "0.9, 0.10"
 
