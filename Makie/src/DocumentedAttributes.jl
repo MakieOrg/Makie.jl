@@ -421,7 +421,7 @@ function build_documented_attributes!(output::Vector, expr::Expr, local_vars)
             # layer. If the mixin contains nesting, that nesting will nest from
             # the current nesting layer.
             mixin_expr = quote
-                mixin = $mixin
+                mixin = $(esc(mixin))
                 prev_state = last(state[1])
                 Makie._merge_attributes!(attr, state, mixin)
                 @assert last(state[1]) == prev_state "Mixin must return to the previous state when finished"
@@ -575,8 +575,8 @@ function _merge_attributes_rec!(target, state, source, _trace, current_layer)
                 allow_edit = false
             )
             if !got_added
-                target_path = join(state[2], '.') * '.' * string(key)
-                source_path = join(_trace, '.') * '.' * string(key)
+                target_path = join([state[2]..., string(key)], '.')
+                source_path = join([_trace..., string(key)], '.')
                 error("Could not add :$target_path from :$source_path because :$target_path already exists.")
             end
         end

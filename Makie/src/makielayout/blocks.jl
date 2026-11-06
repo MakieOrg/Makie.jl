@@ -419,10 +419,10 @@ function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
     return
 end
 
-function init_layout!(b)
+function init_layout!(b, args...; kwargs...)
     # create the gridlayout and set its parent to blockscene so that
     # one can create objects in the layout and scene more easily
-    b.layout = GridLayout()
+    b.layout = GridLayout(args...; kwargs...)
     b.layout.parent = b.blockscene
 
     lobservables = b.layoutobservables
@@ -681,6 +681,12 @@ end
 
 # allow this to be overwritten for explicit argument handling (without args in @Block)
 function initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block}
+    return _initialize_block!(block, arg, _args...; kwargs...)
+end
+
+# defer to a different name so it's possible to return to when implementing a custom
+# initialize_block!() method
+function _initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block}
     args = (arg, _args...)
     kw_dict = Dict{Symbol, Any}(kwargs)
 
