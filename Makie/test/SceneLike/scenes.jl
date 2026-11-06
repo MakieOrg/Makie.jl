@@ -140,3 +140,34 @@ end
     @test Pair(false, p3) in buffer
     @test length(buffer) == 2
 end
+
+@testset "scene teardown disconnects dependent child callbacks first" begin
+    root = Scene()
+    source = Scene(root)
+    dependent = Scene(root)
+    owned = Ref(0)
+    external = Ref(0)
+    on(dependent, source.onplot) do _
+        owned[] += 1
+    end
+    on(source.onplot) do _
+        external[] += 1
+    end
+
+    plot = scatter!(source, [Point2f(0)])
+    delete!(source, plot)
+    @test (owned[], external[]) == (2, 2)
+    plot = scatter!(source, [Point2f(1)])
+    delete!(source, plot)
+    @test (owned[], external[]) == (4, 4)
+    scatter!(source, [Point2f(2)])
+
+    # A legend in another child scene subscribes this way. Its computations
+    # must not run while the whole tree is being freed, including at shutdown
+    # after font caches have been released. External deletion observers remain.
+    Makie.free(root)
+    @test owned[] == 5
+    @test external[] == 6
+    @test isempty(dependent.deregister_callbacks)
+    @test isempty(root.children)
+end

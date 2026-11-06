@@ -559,6 +559,13 @@ function getindex(scene::Scene, ::Type{OldAxis})
     return nothing
 end
 
+function disconnect_scene_callbacks!(scene::Scene)
+    foreach(Observables.off, scene.deregister_callbacks)
+    empty!(scene.deregister_callbacks)
+    foreach(disconnect_scene_callbacks!, scene.children)
+    return
+end
+
 function free(scene::Scene)
     # Errors should be handled at a lower level because otherwise
     # some of the cleanup will be incomplete.
@@ -575,6 +582,10 @@ function free(scene::Scene)
         delete!(screen, scene)
     end
     empty!(scene.current_screens)
+    # Disconnect the whole tree before deleting its plots. A legend in a
+    # sibling scene otherwise recomputes while its inputs are being freed,
+    # including after font caches have been released during shutdown.
+    disconnect_scene_callbacks!(scene)
     empty!(scene; reset_theme = false)
     for field in [:backgroundcolor, :viewport, :visible]
         Observables.clear(getfield(scene, field))
