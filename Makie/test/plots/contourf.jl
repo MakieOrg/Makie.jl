@@ -133,6 +133,15 @@ end
         end
     end
 
+    @testset "alpha applies to :auto extend colors (#5829)" begin
+        f, a, p = contourf(data, levels = 4, extendlow = :auto, extendhigh = :auto, alpha = 0.3)
+        @test p.computed_lowcolor[].alpha ≈ 0.3
+        @test p.computed_highcolor[].alpha ≈ 0.3
+        # explicit colors behave like lowclip/highclip and keep their own alpha
+        f, a, p = contourf(data, levels = 4, extendlow = :cyan, extendhigh = (:magenta, 0.5), alpha = 0.3)
+        @test p.computed_lowcolor[].alpha == 1
+        @test p.computed_highcolor[].alpha == 0.5
+    end
 end
 
 @testset "contourf constant field" begin
