@@ -90,10 +90,16 @@ function serialize_three(fta::NoDataTextureAtlas)
 end
 
 function serialize_three(color::Sampler{T, N}) where {T, N}
+    # Keep Samplers at a minimum size of 1 so backend textures are valid
+    data = if isempty(color.data)
+        serialize_three(Vector{T}(undef, 1)) # risky?
+    else
+        serialize_three(color.data)
+    end
     tex = Dict(
         :type => "Sampler",
-        :data => serialize_three(color.data),
-        :size => Int32[size(color.data)...],
+        :data => data,
+        :size => Int32[max.(1, size(color.data))...],
         :three_format => three_format(T),
         :three_type => three_type(eltype(T)),
         :minFilter => three_filter(color.minfilter),

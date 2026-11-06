@@ -241,3 +241,25 @@ end
     @test coverage_summary(cov) == "No new, changed or deleted images"
     @test fully_approved(cov)
 end
+
+@testset "recorded_pinned_new" begin
+    mktempdir() do dir
+        make_reference_tree(joinpath(dir, "reference"), ["CairoMakie/existing.png" => "ref-existing"])
+        make_reference_tree(
+            joinpath(dir, "recorded"), [
+                "CairoMakie/b_new.png" => "rec-b",
+                "GLMakie/a_new.png" => "rec-a",
+                "CairoMakie/existing.png" => "rec-existing",
+            ]
+        )
+        write_manifest(
+            [
+                RefimageUpdate("GLMakie/a_new.png", "new"),
+                RefimageUpdate("CairoMakie/b_new.png", "new"),
+                RefimageUpdate("WGLMakie/unrecorded.png", "new"),
+                RefimageUpdate("CairoMakie/existing.png", "new"),
+            ], joinpath(dir, "refimage_updates")
+        )
+        @test recorded_pinned_new(dir) == ["CairoMakie/b_new.png", "GLMakie/a_new.png"]
+    end
+end

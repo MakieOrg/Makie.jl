@@ -102,6 +102,9 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
                     e.unicode_input[] = keydown[2][1]
                 end
             end
+            @handle msg.paste begin
+                e.paste[] = replace(paste, "\r\n" => "\n")
+            end
             @handle msg.keyup begin
                 if keyup == "delete_keys"
                     # this works fine

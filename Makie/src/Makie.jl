@@ -446,6 +446,7 @@ function cleanup_globals()
     empty!(FONT_CACHE)
     empty!(DEFAULT_FONT)
     empty!(ALTERNATIVE_FONTS)
+    empty!(TEXTURE_ATLASES)
     return
 end
 

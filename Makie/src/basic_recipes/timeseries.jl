@@ -27,7 +27,7 @@ end
     documented_attributes(Lines)...
 end
 
-signal2point(signal::Number, start) = Point2f(time() - start, signal)
+signal2point(signal::Number, start) = Point2f(1.0e-9 * (time_ns() - start), signal)
 signal2point(signal::Point2, start) = signal
 signal2point(signal, start) = error(
     """ Signal needs to be of type Number or Point.
@@ -42,7 +42,7 @@ function Makie.plot!(plot::TimeSeries)
     points = Observable(fill(Point2f(NaN), plot.history[]))
     buffer_ref = Ref(copy(points[]))
     lines!(plot, Attributes(plot), points)
-    start = time()
+    start = time_ns()
     on(plot, plot.signal) do x
         current_visible = points[]
         current_buffer = buffer_ref[]

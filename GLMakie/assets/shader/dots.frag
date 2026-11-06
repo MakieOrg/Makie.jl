@@ -10,6 +10,7 @@ uniform vec2 scale;
 uniform int marker_shape;
 
 void main(){
+    gl_FragDepth = gl_FragCoord.z;
     vec2 p = gl_PointCoord - 0.5; // Normalized coordinates centered at (0.5, 0.5)
     float len = length(p * 2.0); // Length from center, scale to range [-1, 1]
     float alpha;

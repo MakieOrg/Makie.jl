@@ -132,7 +132,7 @@ function Base.display(
         figlike::FigureLike; backend = current_backend(),
         inline = ALWAYS_INLINE_PLOTS[], update = true, screen_config...
     )
-    config = Dict{Symbol, Any}(screen_config)
+    config = to_dict(screen_config)
     if ismissing(backend)
         error(
             """
@@ -350,7 +350,7 @@ function FileIO.save(
             # Else, we create a new scene and update the state of the fig
             update && update_state_before_display!(fig)
             visible = isvisible(getscreen(scene)) # if already has a screen, don't hide it!
-            config = Dict{Symbol, Any}(screen_config)
+            config = to_dict(screen_config)
             get!(config, :visible, visible)
             screen = getscreen(backend, scene, config, io, mime)
             events(fig).tick[] = Tick(OneTimeRenderTick, 0, 0.0, 0.0)
@@ -481,7 +481,7 @@ function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; 
         update && update_state_before_display!(fig)
         # if already has a screen, use their visibility value, if no screen, returns false
         visible = isvisible(getscreen(scene))
-        config = Dict{Symbol, Any}(screen_config)
+        config = to_dict(screen_config)
         get!(config, :visible, visible)
         get!(config, :start_renderloop, false)
         screen = getscreen(backend, scene, config)

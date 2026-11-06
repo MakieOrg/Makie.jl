@@ -968,7 +968,7 @@ function Legend(
     )
 
     scene = get_topscene(fig_or_scene)
-    legend_defaults = block_defaults(:Legend, Dict{Symbol, Any}(kwargs), scene)
+    legend_defaults = block_defaults(:Legend, to_dict(kwargs), scene)
     entry_groups = to_entry_group(Attributes(legend_defaults), contents, labels, title)
     entrygroups = Observable(entry_groups)
     legend_defaults[:entrygroups] = entrygroups
@@ -1002,7 +1002,7 @@ function Legend(
     )
 
     scene = get_scene(fig_or_scene)
-    legend_defaults = block_defaults(:Legend, Dict{Symbol, Any}(kwargs), scene)
+    legend_defaults = block_defaults(:Legend, to_dict(kwargs), scene)
     entry_groups = to_entry_group(legend_defaults, contentgroups, labelgroups, titles)
     entrygroups = Observable(entry_groups)
     legend_defaults[:entrygroups] = entrygroups

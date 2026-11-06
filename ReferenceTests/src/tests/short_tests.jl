@@ -209,8 +209,26 @@ end
     poly(P, color = [:red, :green], strokecolor = [:blue, :red], strokewidth = 2)
 end
 
-@reference_test "fast pixel marker" begin
-    scatter(RNG.rand(Point2f, 10000), marker = Makie.FastPixel())
+@reference_test "fast pixel depth" begin
+    scene = Scene(size = (400, 200))
+    mesh!(
+        scene,
+        Point3f.([-1, -1, 1, 1], [-1, 1, -1, 1], [-1, -1, 1, 1]),
+        [1 2 3; 2 3 4],
+        color = [:red, :red, :blue, :blue], shading = NoShading
+    )
+    for i in -2:2
+        scatter!(
+            scene, [Point3f(x, 0.4 * i, 0.4 * i) for x in range(-1, 1, 21)],
+            marker = FastPixel(), markersize = 16, color = :black,
+        )
+        scatter!(
+            scene, [Point3f(x, 0.4 * i, 0.4 * i) for x in range(-1, 1, 21)],
+            marker = Rect, markersize = 16, color = :transparent,
+            strokecolor = :white, strokewidth = 1
+        )
+    end
+    scene
 end
 
 @reference_test "barplot lowclip highclip nan_color" begin

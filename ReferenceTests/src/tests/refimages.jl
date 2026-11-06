@@ -79,3 +79,7 @@ end
 @testset "generic_components" begin
     include("generic_components.jl")
 end
+# for @testset that should run in every backend rather than @reference_test
+@testset "Shared backend tests" begin
+    include("backend_tests.jl")
+end

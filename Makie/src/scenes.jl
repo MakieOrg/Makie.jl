@@ -256,7 +256,11 @@ function Scene(;
     global_theme = merge_without_obs!(copy(theme), current_default_theme())
     m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
 
-    bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values = true)
+    bg = if haskey(theme_kw, :backgroundcolor)
+        map(to_color, convert(Observable{Any}, theme_kw[:backgroundcolor]), ignore_equal_values = true)
+    else
+        Observable{RGBAf}(to_color(to_value(m_theme[:backgroundcolor])))
+    end
 
     wasnothing = isnothing(viewport)
     scene_viewport = if wasnothing

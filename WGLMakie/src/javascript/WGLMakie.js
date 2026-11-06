@@ -81,6 +81,10 @@ export function dispose_screen(screen) {
         screen.resizeObserver.disconnect();
         screen.resizeObserver = undefined;
     }
+    if (screen.paste_listener) {
+        document.removeEventListener("paste", screen.paste_listener);
+        screen.paste_listener = undefined;
+    }
     Object.keys(screen).forEach((key) => delete screen[key]);
     return;
 }
@@ -412,16 +416,47 @@ function add_canvas_events(screen, comm, resize_to) {
     }
     canvas.addEventListener("wheel", wheel);
 
+    // Ctrl/Cmd shortcuts don't type their character. AltGr reports as Ctrl+Alt
+    // on Windows, but types characters like "@".
+    function is_shortcut(event) {
+        return (
+            (event.ctrlKey || event.metaKey) &&
+            !event.getModifierState("AltGraph")
+        );
+    }
+
     function keydown(event) {
+        // Leave paste to the browser, which reads the clipboard of the machine
+        // it runs on, not the one Julia runs on, and fires `paste` below.
+        if (is_shortcut(event) && event.key.toLowerCase() === "v") {
+            return;
+        }
         // Prevent the default browser behavior for `Space`, which is to scroll.
         event.preventDefault();
         comm.notify({
-            keydown: [event.code, event.key],
+            keydown: [event.code, is_shortcut(event) ? "" : event.key],
         });
         return false;
     }
 
     canvas.addEventListener("keydown", keydown);
+
+    // Chromium fires `paste` at the body rather than at a focused canvas, so
+    // listen on the document and only take it while this canvas has focus.
+    function paste(event) {
+        if (canvas.getRootNode().activeElement !== canvas) {
+            return;
+        }
+        event.preventDefault();
+        const text = event.clipboardData.getData("text/plain");
+        if (text) {
+            comm.notify({ paste: text });
+        }
+    }
+
+    document.addEventListener("paste", paste);
+    // Store listener in screen for cleanup
+    screen.paste_listener = paste;
 
     function keyup(event) {
         event.preventDefault();
