@@ -158,21 +158,23 @@ function calculate_contourf_polys!(
     return (polys, colors)
 end
 
-function compute_lowcolor(el, cmap)
+function compute_lowcolor(el, cmap, alpha)
     if isnothing(el)
         return RGBAf(0, 0, 0, 0)
     elseif el === automatic || el === :auto
-        return RGBAf(to_colormap(cmap)[begin])
+        # match the alpha of the colormap colors this is derived from
+        return RGBAf(add_alpha(to_colormap(cmap)[begin], alpha))
     else
         return to_color(el)::RGBAf
     end
 end
 
-function compute_highcolor(eh, cmap)
+function compute_highcolor(eh, cmap, alpha)
     if isnothing(eh)
         return RGBAf(0, 0, 0, 0)
     elseif eh === automatic || eh === :auto
-        return RGBAf(to_colormap(cmap)[end])
+        # match the alpha of the colormap colors this is derived from
+        return RGBAf(add_alpha(to_colormap(cmap)[end], alpha))
     else
         return to_color(eh)::RGBAf
     end
@@ -221,8 +223,8 @@ function register_contourf_computations!(graph, argname)
         edges_scaled = (edges .- minimum(edges)) ./ (maximum(edges) - minimum(edges))
         return cgrad(base_cmap, edges_scaled; categorical = true)
     end
-    map!(compute_lowcolor, graph, [:extendlow, :colormap], :computed_lowcolor)
-    map!(compute_highcolor, graph, [:extendhigh, :colormap], :computed_highcolor)
+    map!(compute_lowcolor, graph, [:extendlow, :colormap, :alpha], :computed_lowcolor)
+    map!(compute_highcolor, graph, [:extendhigh, :colormap, :alpha], :computed_highcolor)
 
     return
 end
