@@ -18,7 +18,7 @@ Raycore = "afc56b53-c9a9-482a-a956-d1d800e05559"
 # These packages are not all registered yet. Keep the test environment explicit:
 # transitive [sources] do not supply the matrix vocabulary in KernelInterface.
 [sources]
-CompilerCaching = {url = "https://github.com/maleadt/CompilerCaching.jl", rev = "8f929d3dfa8f6562d184d57758f9d8ec15030c8c"}
+CompilerCaching = {url = "https://github.com/maleadt/CompilerCaching.jl", rev = "bae1df4d098a62905496ee7afd95ce00d937ec6b"}
 ComputePipeline = {path = "../../ComputePipeline"}
 Makie = {path = "../../Makie"}
 GLMakie = {path = "../../GLMakie"}
