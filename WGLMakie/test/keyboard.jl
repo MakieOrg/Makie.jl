@@ -1,4 +1,4 @@
-using Electron, WGLMakie, Bonito, Test
+using WGLMakie, Bonito, Test
 
 @testset "Keyboard" begin
     WGLMakie.activate!(use_html_widgets = false)

@@ -172,6 +172,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     end
 
     if event.type === MouseEventTypes.leftdragstart
+        initialize_selection_mesh!(r, ax)
         data = _rectanglezoom_data_position(ax, event.data, transf, inv_transf)
         prev_data = _rectanglezoom_data_position(ax, event.prev_data, transf, inv_transf)
 
