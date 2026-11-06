@@ -69,6 +69,7 @@ let
             # Cleanup globals to avoid serializing stale state (fonts, figures, tasks)
             # Note: __init__ doesn't run during precompilation, so we must always clean up here
             Makie.cleanup_globals()
+            empty!(FIGURE_NUMBERS)
         end
     end
     nothing

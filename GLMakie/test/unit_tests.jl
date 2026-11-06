@@ -6,6 +6,15 @@ function project_sp(scene, point)
     return point_px .+ offset
 end
 
+"""Read the native window title through the GLFW function not exposed by GLFW.jl."""
+function window_title(screen::GLMakie.Screen)
+    title = ccall(
+        (:glfwGetWindowTitle, GLMakie.GLFW.libglfw), Cstring,
+        (Ptr{Cvoid},), screen.glscreen.handle
+    )
+    return unsafe_string(title)
+end
+
 @testset "shader cache" begin
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
@@ -131,6 +140,90 @@ end
         scatter_plot_idx = filter(pi -> pi[1] isa Scatter, picks)
         @test Set(last.(scatter_plot_idx)) == Set(99991:99998)
         GLMakie.destroy!(screen)
+    end
+end
+
+@testset "Automatic figure numbering" begin
+    @testset "Window reuse" begin
+        GLMakie.closeall()
+        number = GLMakie.FIGURE_NUMBER_COUNTER[] + 1
+        fig = Figure(size = (100, 100))
+        screen = display(fig, pause_renderloop = true)
+        @test window_title(screen) == "Makie: Figure $number"
+        @test screen.config.title isa Makie.Automatic
+        display(screen, fig)
+        @test window_title(screen) == "Makie: Figure $number"
+        empty!(fig)
+        display(screen, fig)
+        @test window_title(screen) == "Makie: Figure $number"
+
+        close(screen)
+        screen = display(fig, pause_renderloop = true)
+        @test window_title(screen) == "Makie: Figure $number"
+        fig2 = Figure(size = (100, 100))
+        screen2 = display(fig2, pause_renderloop = true)
+        @test screen2 === screen
+        @test window_title(screen2) == "Makie: Figure $(number + 1)"
+        screen = display(fig, pause_renderloop = true)
+        @test window_title(screen) == "Makie: Figure $number"
+
+        GLMakie.closeall()
+        fig3 = Figure(size = (100, 100))
+        screen = display(GLMakie.Screen(start_renderloop = false), fig3)
+        @test window_title(screen) == "Makie: Figure $(number + 2)"
+        close(screen)
+        screen2 = display(GLMakie.Screen(start_renderloop = false), fig3)
+        @test screen2 === screen
+        @test window_title(screen2) == "Makie: Figure $(number + 2)"
+        display(screen2, Figure(size = (100, 100)))
+        @test window_title(screen2) == "Makie: Figure $(number + 3)"
+        GLMakie.closeall()
+        screen = display(fig, pause_renderloop = true)
+        @test window_title(screen) == "Makie: Figure $number"
+        GLMakie.closeall()
+    end
+
+    @testset "Custom titles" begin
+        GLMakie.closeall()
+        number = GLMakie.FIGURE_NUMBER_COUNTER[] + 1
+        fig = Figure(size = (100, 100))
+        screen = display(GLMakie.Screen(title = "Custom title", start_renderloop = false), fig)
+        @test window_title(screen) == "Custom title"
+        GLMakie.set_title!(screen, "Manual title")
+        display(screen, fig)
+        @test window_title(screen) == "Manual title"
+        screen2 = display(fig, title = "Keyword title", pause_renderloop = true)
+        @test screen2 === screen
+        @test window_title(screen2) == "Keyword title"
+        display(fig, title = Makie.automatic, pause_renderloop = true)
+        @test window_title(screen) == "Makie: Figure $number"
+        GLMakie.closeall()
+    end
+
+    @testset "Offscreen rendering" begin
+        GLMakie.closeall()
+        number = GLMakie.FIGURE_NUMBER_COUNTER[] + 1
+        screen = GLMakie.Screen(visible = false, start_renderloop = false)
+        @test window_title(screen) == "Makie"
+        close(screen)
+
+        fig = Figure(size = (100, 100))
+        Makie.colorbuffer(fig)
+        mktempdir() do path
+            save(joinpath(path, "unseen.png"), fig)
+        end
+        @test GLMakie.FIGURE_NUMBER_COUNTER[] == number - 1
+
+        fig2 = Figure(size = (100, 100))
+        screen = display(fig2, pause_renderloop = true)
+        @test window_title(screen) == "Makie: Figure $number"
+        mktempdir() do path
+            save(joinpath(path, "displayed.png"), fig2)
+        end
+        @test window_title(screen) == "Makie: Figure $number"
+        screen = display(fig, pause_renderloop = true)
+        @test window_title(screen) == "Makie: Figure $(number + 1)"
+        GLMakie.closeall()
     end
 end
 

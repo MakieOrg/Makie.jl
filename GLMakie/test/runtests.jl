@@ -43,6 +43,9 @@ end
 
 GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
 @testset "GLMakie" begin
+    # Precompile workloads must not consume runtime figure numbers.
+    @test GLMakie.FIGURE_NUMBER_COUNTER[] == 0
+
     @testset "mimes" begin
         Makie.inline!(true)
         f, ax, pl = scatter(1:4)
