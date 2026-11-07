@@ -102,29 +102,38 @@ function set_proj_view!(camera::Camera, projection, view)
     return camera.projection[] = projection
 end
 
-is_mouseinside(x, target) = is_mouseinside(get_scene(x), target)
-function is_mouseinside(scene::Scene, target)
-    scene === target && return false
-    Vec(scene.events.mouseposition[]) in viewport(scene)[] || return false
-    for child in r.children
-        is_mouseinside(child, target) && return true
-    end
-    return false
-end
-
 """
     is_mouseinside(scene)
 
-Returns true if the current mouseposition is inside the given scene.
+Returns true if the mouse is over the visible part of `scene`, i.e. `scene` and all its
+ancestors are visible and the mouse is inside all of their viewports, and no other scene
+captures the mouse (see `Scene.captures_mouse`).
 """
 is_mouseinside(x) = is_mouseinside(get_scene(x))
 function is_mouseinside(scene::Scene)
-    return scene.visible[] && in(Vec(scene.events.mouseposition[]), viewport(scene)[])
-    # Check that mouse is not inside any other screen
-    # for child in scene.children
-    #     is_mouseinside(child) && return false
-    # end
+    mp = Vec(events(scene).mouseposition[])
+    s = scene
+    while true
+        (s.visible[] && mp in viewport(s)[]) || return false
+        isroot(s) && break
+        s = parent(s)
+    end
+    capture = mouse_capture(s, mp)
+    return isnothing(capture) || is_ancestor_or_self(capture, scene) || is_ancestor_or_self(scene, capture)
 end
+
+# The scene capturing the mouse at `mp`, if any. Later scenes in tree order take precedence.
+function mouse_capture(scene::Scene, mp)::Union{Nothing, Scene}
+    (scene.visible[] && mp in viewport(scene)[]) || return nothing
+    capture = scene.captures_mouse ? scene : nothing
+    for child in scene.children
+        c = mouse_capture(child, mp)
+        isnothing(c) || (capture = c)
+    end
+    return capture
+end
+
+is_ancestor_or_self(a::Scene, b::Scene) = a === b || (!isroot(b) && is_ancestor_or_self(a, parent(b)))
 
 
 function add_camera_computation!(graph::ComputeGraph, scene)

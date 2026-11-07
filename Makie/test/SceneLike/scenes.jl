@@ -109,6 +109,28 @@ end
     end
 end
 
+@testset "scene_visible and effective_clip" begin
+    root = Scene(size = (800, 600))
+    child = Scene(root; viewport = Recti(100, 100, 200, 200), visible = true)
+    grandchild = Scene(child; viewport = Recti(150, 150, 400, 400), visible = true)
+
+    @test Makie.effective_clip(root) == Recti(0, 0, 800, 600)
+    @test Makie.effective_clip(child) == Recti(100, 100, 200, 200)
+    @test Makie.effective_clip(grandchild) == Recti(150, 150, 150, 150)
+    # disjoint or negative-width viewports clip everything
+    outside = Scene(child; viewport = Recti(500, 500, 10, 10))
+    @test Makie.effective_clip(outside) == Recti(0, 0, 0, 0)
+    negative = Scene(root; viewport = Recti(14, 14, 1, -32))
+    @test Makie.effective_clip(negative) == Recti(0, 0, 0, 0)
+
+    @test Makie.scene_visible(grandchild)
+    child.visible[] = false
+    grandchild.visible[] = true # own flag doesn't override a hidden ancestor
+    @test !Makie.scene_visible(grandchild)
+    child.visible[] = true
+    @test Makie.scene_visible(grandchild)
+end
+
 @testset "onplot" begin
     scene = Scene()
     p = scatter!(scene, rand(10))
