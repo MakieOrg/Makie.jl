@@ -79,12 +79,16 @@ function get_default_expr(expr, attribute_path, full_expr, local_vars)
         """
         return :("default")
     else
-        return MacroTools.postwalk(expr) do x
-            if x isa Symbol && !in(x, local_vars)
-                return esc(x)
-            end
-            return x
+        return escape_nonlocal(expr, local_vars)
+    end
+end
+
+function escape_nonlocal(expr, local_vars)
+    return MacroTools.postwalk(expr) do x
+        if x isa Symbol && !in(x, local_vars)
+            return esc(x)
         end
+        return x
     end
 end
 
@@ -421,7 +425,7 @@ function build_documented_attributes!(output::Vector, expr::Expr, local_vars)
             # layer. If the mixin contains nesting, that nesting will nest from
             # the current nesting layer.
             mixin_expr = quote
-                mixin = $(esc(mixin))
+                mixin = $(escape_nonlocal(mixin, local_vars))
                 prev_state = last(state[1])
                 Makie._merge_attributes!(attr, state, mixin)
                 @assert last(state[1]) == prev_state "Mixin must return to the previous state when finished"
@@ -1100,8 +1104,6 @@ end
 ########################################
 # Convenience
 ########################################
-
-documented_attributes(::Type) = DocumentedAttributes()
 
 has_root_key(attr::DocumentedAttributes, key::Symbol) = haskey(attr.nesting.keytables[1], key)
 

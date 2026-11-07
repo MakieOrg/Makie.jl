@@ -199,7 +199,7 @@ end
 end
 
 @testset "external mixin" begin
-    external_mixin() = @DocumentedAttributes begin
+    external_mixin() = Makie.@DocumentedAttributes begin
         "documented"
         x = 1
         "nested"
@@ -210,7 +210,7 @@ end
         end
     end
 
-    attr = @DocumentedAttributes begin
+    attr = Makie.@DocumentedAttributes begin
         external_mixin()...
         z = 1
     end
@@ -234,11 +234,11 @@ end
             @test i in attr.inherit
         end
     end
-    @test attr.nested_docstring == [nothing, "nesting"]
+    @test attr.nested_docstring == [nothing, "nested"]
 end
 
 @testset "Makie owned mixin" begin
-    attr = @DocumentedAttributes begin
+    attr = Makie.@DocumentedAttributes begin
         "shading"
         shading = @attributes begin
             Makie.mixin_shading_attributes()...
@@ -255,7 +255,7 @@ end
         flattened[Symbol("shading.", name)] = (
             docstring = mixin.leaf_docstring[i],
             default = mixin.defaults[i],
-            expr = mixin.default_expr[i]
+            expr = mixin.default_expr[i],
         )
     end
 
