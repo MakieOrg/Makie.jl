@@ -329,34 +329,31 @@ end
     end
 end
 
-# All of these are currently undefined behavior and fail in some way. The tests
-# are kept here in case we decide to define and fix their behavior
-#=
-
 @testset "Recursion from resolve!() callback" begin
     @testset "Set input from input" begin
-        # Setting an input during it's own resolution is technically fine since
-        # the value has already passed to the callback, but may still result in
-        # a deadlock or broken state due to mark_dirty!() running during resolve!()
-        graph = ComputeGraph()
-        add_input!(graph, :a, 1) do v
-            graph.a = v+1
-            return v
-        end
-        map!(identity, graph, :a, :b)
+        @test_broken false
+        # # Setting an input during it's own resolution is technically fine since
+        # # the value has already passed to the callback, but may still result in
+        # # a deadlock or broken state due to mark_dirty!() running during resolve!()
+        # graph = ComputeGraph()
+        # add_input!(graph, :a, 1) do k, v
+        #     graph.a = v+1
+        #     return v
+        # end
+        # map!(identity, graph, :a, :b)
 
-        task = @async graph.b[]
-        yield()
+        # task = @async graph.b[]
+        # yield()
 
-        if istaskdone(task)
-            @test fetch(task) == 1
-            @test isdirty(graph.a.parent)
-            @test isdirty(graph.b.parent)
-            @test graph.inputs[:a].value == 2
-            @test graph.b[] == 2
-        else
-            error("Possible deadlock detected.")
-        end
+        # if istaskdone(task)
+        #     @test fetch(task) == 1
+        #     @test isdirty(graph.a.parent)
+        #     @test isdirty(graph.b.parent)
+        #     @test graph.inputs[:a].value == 2
+        #     @test graph.b[] == 2
+        # else
+        #     error("Possible deadlock detected.")
+        # end
     end
 
     @testset "Set input from dependent" begin
@@ -365,7 +362,7 @@ end
         graph = ComputeGraph()
         add_input!(graph, :a, 1)
         map!(graph, :a, :b) do v
-            graph.a = v+1
+            graph.a = v + 1
             return v
         end
 
@@ -389,7 +386,7 @@ end
         graph = ComputeGraph()
         add_input!(graph, :a, 1)
         map!(graph, :a, :b) do v
-            graph.a = v+1
+            graph.a = v + 1
             return v
         end
         map!(identity, graph, :a, :c)
@@ -412,90 +409,95 @@ end
     end
 
     @testset "Set Computed from direct dependent" begin
-        # Analogue to the first Input setting test
-        graph = ComputeGraph()
-        add_input!(graph, :a, 1)
-        map!(identity, graph, :a, :b)
-        map!(graph, :b, :c) do v
-            # setting graph.a would just set the input again
-            graph.b[] = v+1
-            return v
-        end
-        map!(identity, graph, :c, :d)
+        @test_broken false
+        # # Analogue to the first Input setting test
+        # graph = ComputeGraph()
+        # add_input!(graph, :a, 1)
+        # map!(identity, graph, :a, :b)
+        # map!(graph, :b, :c) do v
+        #     # setting graph.a would just set the input again
+        #     graph.b[] = v+1
+        #     return v
+        # end
+        # map!(identity, graph, :c, :d)
 
-        task = @async graph.d[]
-        yield()
+        # task = @async graph.d[]
+        # yield()
 
-        if istaskdone(task)
-            @test fetch(task) == 1
-            @test isdirty(graph.a.parent)
-            @test isdirty(graph.b.parent)
-            @test isdirty(graph.c.parent)
-            @test isdirty(graph.d.parent)
-            @test graph.inputs[:a].value == 2
-            @test graph.d[] == 2
-        else
-            error("Possible deadlock detected.")
-        end
+        # if istaskdone(task)
+        #     @test fetch(task) == 1
+        #     @test isdirty(graph.a.parent)
+        #     @test isdirty(graph.b.parent)
+        #     @test isdirty(graph.c.parent)
+        #     @test isdirty(graph.d.parent)
+        #     @test graph.inputs[:a].value == 2
+        #     @test graph.d[] == 2
+        # else
+        #     error("Possible deadlock detected.")
+        # end
     end
 
     @testset "Set Computed from indirect dependent" begin
-        # And the second one
-        graph = ComputeGraph()
-        add_input!(graph, :a, 1)
-        map!(identity, graph, :a, :b)
-        map!(identity, graph, :b, :c)
-        map!(graph, :c, :d) do v
-            graph.b[] = v+1
-            return v
-        end
+        @test_broken false
+        # # And the second one
+        # graph = ComputeGraph()
+        # add_input!(graph, :a, 1)
+        # map!(identity, graph, :a, :b)
+        # map!(identity, graph, :b, :c)
+        # map!(graph, :c, :d) do v
+        #     graph.b[] = v+1
+        #     return v
+        # end
 
-        task = @async graph.c[]
-        yield()
+        # task = @async graph.c[]
+        # yield()
 
-        if istaskdone(task)
-            @test fetch(task) == 1
-            @test isdirty(graph.a.parent)
-            @test isdirty(graph.b.parent)
-            @test isdirty(graph.c.parent)
-            @test isdirty(graph.d.parent)
-            @test graph.inputs[:a].value == 2
-            @test graph.d[] == 2
-        else
-            error("Possible deadlock detected.")
-        end
+        # if istaskdone(task)
+        #     @test fetch(task) == 1
+        #     @test isdirty(graph.a.parent)
+        #     @test isdirty(graph.b.parent)
+        #     @test isdirty(graph.c.parent)
+        #     @test isdirty(graph.d.parent)
+        #     @test graph.inputs[:a].value == 2
+        #     @test graph.d[] == 2
+        # else
+        #     error("Possible deadlock detected.")
+        # end
     end
 
     @testset "Set reused Computed from indirect dependent" begin
-        graph = ComputeGraph()
-        add_input!(graph, :a, 1)
-        map!(identity, graph, :a, :b)
-        map!(graph, :b, :c) do v
-            graph.b[] = v+1
-            return v
-        end
-        map!(identity, graph, :b, :d)
-        map!(+, graph, [:c, :d], :e)
+        @test_broken false
+        # graph = ComputeGraph()
+        # add_input!(graph, :a, 1)
+        # map!(identity, graph, :a, :b)
+        # map!(graph, :b, :c) do v
+        #     graph.b[] = v+1
+        #     return v
+        # end
+        # map!(identity, graph, :b, :d)
+        # map!(+, graph, [:c, :d], :e)
 
-        task = @async graph.e[]
-        yield()
+        # task = @async graph.e[]
+        # yield()
 
-        if istaskdone(task)
-            @test fetch(task) == 2
-            @test isdirty(graph.a.parent)
-            @test isdirty(graph.b.parent)
-            @test isdirty(graph.c.parent)
-            @test isdirty(graph.d.parent)
-            @test isdirty(graph.e.parent)
-            @test graph.inputs[:a].value == 2
-            @test graph.e[] == 4
-        else
-            error("Possible deadlock detected.")
-        end
+        # if istaskdone(task)
+        #     @test fetch(task) == 2
+        #     @test isdirty(graph.a.parent)
+        #     @test isdirty(graph.b.parent)
+        #     @test isdirty(graph.c.parent)
+        #     @test isdirty(graph.d.parent)
+        #     @test isdirty(graph.e.parent)
+        #     @test graph.inputs[:a].value == 2
+        #     @test graph.e[] == 4
+        # else
+        #     error("Possible deadlock detected.")
+        # end
     end
 end
 
 @testset "Recursion from resolve!() callback with forced evaluation" begin
+    @test_broken false
+    #=
     # Having output Observables causes any update to trigger onchange, which
     # then attempts to update every Observable connected to a dirty graph output
     # by resolving that output, settings obs.val and notifying it.
@@ -655,6 +657,5 @@ end
             error("Possible deadlock detected.")
         end
     end
+    =#
 end
-
-=#
