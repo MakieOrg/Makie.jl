@@ -125,6 +125,12 @@ mutable struct Scene <: AbstractScene
     # Can't type this, don't have the type yet
     data_inspector::Any
 
+    """
+    While visible and under the mouse, this scene captures the mouse: only the scene,
+    its ancestors and its descendants receive mouse input (see `is_mouseinside`).
+    """
+    captures_mouse::Bool
+
     function Scene(
             parent::Union{Nothing, Scene},
             events::Events,
@@ -165,7 +171,8 @@ mutable struct Scene <: AbstractScene
             ComputeGraph(),
             DimConversions(),
             false,
-            nothing
+            nothing,
+            false
         )
         add_camera_computation!(scene.compute, scene)
         add_light_computation!(scene.compute, scene, lights)
@@ -447,6 +454,30 @@ function root(scene::Scene)
     return scene
 end
 parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
+
+"""
+    scene_visible(scene::Scene)
+
+Whether `scene` and all of its ancestors are visible.
+"""
+scene_visible(scene::Scene) = scene.visible[] && (isroot(scene) || scene_visible(parent(scene)))
+
+"""
+    effective_clip(scene::Scene)::Rect2i
+
+The part of `scene`'s viewport that is also inside the viewports of all its ancestors.
+Backends clip rendering to this area. Returns an empty `Rect2i` if there is no overlap.
+"""
+function effective_clip(scene::Scene)
+    clip = viewport(scene)[]
+    s = scene
+    while !isroot(s)
+        s = parent(s)
+        clip = intersect(clip, viewport(s)[])
+    end
+    # `intersect` of disjoint rects has negative widths and an origin that overflows when scaled
+    return any(<(0), widths(clip)) ? Rect2i(0, 0, 0, 0) : clip
+end
 
 GeometryBasics.widths(scene::Scene) = widths(to_value(viewport(scene)))
 
