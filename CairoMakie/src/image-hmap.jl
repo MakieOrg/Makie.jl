@@ -30,6 +30,10 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen{RT}, plot::Union{Heatmap, Image}) where {RT}
+    # Empty image/heatmap plots corrupt state, so skip them entirely
+    map!(size, plot, :image, :image_size)
+    prod(plot.image_size[]::Tuple{Int, Int}) == 0 && return
+
     attr = plot.attributes
     image_grid!(Makie.plotfunc(plot), attr)
     cairo_image_orientation!(Makie.plotfunc(plot), attr)

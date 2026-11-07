@@ -248,28 +248,28 @@ function RectangleZoom(callback::Function; restrict_x = false, restrict_y = fals
     )
 end
 
+mutable struct TicklabelspaceReset
+    delay::Float64
+    idle_time::Float64
+    tick_listener::Union{Nothing, Observables.ObserverFunction}
+    prev_xticklabelspace::Union{Automatic, Symbol, Float64}
+    prev_yticklabelspace::Union{Automatic, Symbol, Float64}
+end
+
+TicklabelspaceReset(delay) = TicklabelspaceReset(delay, 0.0, nothing, 0.0, 0.0)
+
 struct ScrollZoom
     speed::Float32
-    reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    reset_delay::Float32
+    ticklabelspace_reset::TicklabelspaceReset
 end
 
-function ScrollZoom(speed, reset_delay)
-    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
-end
+ScrollZoom(speed, reset_delay::Real) = ScrollZoom(speed, TicklabelspaceReset(reset_delay))
 
 struct DragPan
-    reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    reset_delay::Float32
+    ticklabelspace_reset::TicklabelspaceReset
 end
 
-function DragPan(reset_delay)
-    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
-end
+DragPan(reset_delay::Real) = DragPan(TicklabelspaceReset(reset_delay))
 
 
 struct DragRotate
@@ -280,7 +280,7 @@ mutable struct FocusOnCursor
     timeout::Float64
     skip::Int64
 end
-FocusOnCursor(skip, timeout = 0.1) = FocusOnCursor(time(), timeout, skip)
+FocusOnCursor(skip, timeout = 0.1) = FocusOnCursor(1.0e-9 * time_ns(), timeout, skip)
 
 struct ScrollEvent
     x::Float32
@@ -2161,11 +2161,11 @@ end
         """
         protrusions = 30
         "The x ticks"
-        xticks = WilkinsonTicks(5; k_min = 3)
+        xticks = automatic
         "The y ticks"
-        yticks = WilkinsonTicks(5; k_min = 3)
+        yticks = automatic
         "The z ticks"
-        zticks = WilkinsonTicks(5; k_min = 3)
+        zticks = automatic
         "The x tick format"
         xtickformat = Makie.automatic
         "The y tick format"

@@ -295,7 +295,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         newxorigin = xzoomlock[] ? xorigin : xorigin + mp_axfraction[1] * (xwidth - newxwidth)
         newyorigin = yzoomlock[] ? yorigin : yorigin + mp_axfraction[2] * (ywidth - newywidth)
 
-        timed_ticklabelspace_reset(ax, s.reset_timer, s.prev_xticklabelspace, s.prev_yticklabelspace, s.reset_delay)
+        freeze_ticklabelspace_until_idle!(ax, s.ticklabelspace_reset)
 
         newrect_trans = if ispressed(scene, xzoomkey[])
             Rectd(newxorigin, yorigin, newxwidth, ywidth)
@@ -363,7 +363,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax::Axis)
     end
 
     # TODO: unnecessary now?
-    timed_ticklabelspace_reset(ax, dp.reset_timer, dp.prev_xticklabelspace, dp.prev_yticklabelspace, dp.reset_delay)
+    freeze_ticklabelspace_until_idle!(ax, dp.ticklabelspace_reset)
 
     inv_transf = ax.inverse_transform_func[]
     newrect_trans = Rectd(Vec2(xori, yori), widths(tlimits_trans))
@@ -549,7 +549,7 @@ function process_interaction(lr::LimitReset, event::MouseEvent, ax::Axis3)
 end
 
 function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}, ax::Axis3)
-    if ispressed(ax, ax.cursorfocuskey[]) && is_mouseinside(ax.scene) && (time() > focus.last_time + focus.timeout)
+    if ispressed(ax, ax.cursorfocuskey[]) && is_mouseinside(ax.scene) && (time_ns() > focus.last_time + 1.0e9 * focus.timeout)
         xy = events(ax.scene).mouseposition[]
         plot, idx = pick(ax.scene, xy)
         if isnothing(plot) || (parent_scene(plot) !== ax.scene) || is_data_space(plot) ||
@@ -563,7 +563,7 @@ function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}
             tlimits = ax.targetlimits
             ws = widths(tlimits[])
             tlimits[] = Rect3f(p3d - 0.5 * ws, ws)
-            focus.last_time = time() # to avoid double triggers
+            focus.last_time = time_ns() # to avoid double triggers
             return Consume(true)
         end
     end

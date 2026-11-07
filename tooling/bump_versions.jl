@@ -1,7 +1,8 @@
 using REPL.TerminalMenus
 using TOML
 using Pkg
-using Dates
+
+include("changelog.jl")
 
 dictmap(f, d) = Dict(key => f(key, value) for (key, value) in d)
 
@@ -11,26 +12,11 @@ bump_major(v::VersionNumber) = VersionNumber(v.major + 1, 0, 0)
 
 function update_changelog(new_version::VersionNumber, root::String)
     changelog_path = joinpath(root, "CHANGELOG.md")
+    Changelog.release!(new_version; changelog_path, dir = joinpath(root, "changelog"))
 
     # Read all lines
     all_lines = readlines(changelog_path)
-
-    # Find the index of "## Unreleased"
-    unreleased_idx = findfirst(line -> startswith(line, "## Unreleased"), all_lines)
-    if unreleased_idx === nothing
-        @warn "Could not find '## Unreleased' section in CHANGELOG.md"
-        return
-    end
-
-    # Create new version header with current date
-    current_date = Dates.format(Dates.today(), "yyyy-mm-dd")
-    new_version_header = "## [$new_version] - $current_date"
-
-    # Replace "## Unreleased" with the new version header and add new "## Unreleased"
     new_lines = copy(all_lines)
-    new_lines[unreleased_idx] = new_version_header
-    insert!(new_lines, unreleased_idx, "## Unreleased")
-    insert!(new_lines, unreleased_idx + 1, "")  # Add empty line after "## Unreleased"
 
     # Find link section and update it
     link_start_idx = findfirst(i -> match(r"^\[[\d\.]+\]:\s*https://", all_lines[i]) !== nothing, 1:length(all_lines))

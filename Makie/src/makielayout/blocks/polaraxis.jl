@@ -592,8 +592,7 @@ function _tick_angle(theta_0, dir, ps, mirror)
 end
 
 function draw_axis!(po::PolarAxis)
-    _, sample_labels = get_ticks(po.rticks[], identity, po.rtickformat[], po.target_rlims[]...)
-    rtick_pos_lbl = Observable(Tuple{eltype(sample_labels), Point2f}[])
+    rtick_pos_lbl = Observable(Tuple{Any, Point2f}[])
     rticklabelalign = Observable{Point2f}()
     rticklabeloffset = Observable{Point2f}()
     rticklabelrotation = Observable{Float32}()
@@ -690,8 +689,7 @@ function draw_axis!(po::PolarAxis)
     end
 
 
-    _, sample_labels = get_ticks(po.thetaticks[], identity, po.thetatickformat[], po.target_thetalims[]...)
-    thetatick_pos_lbl = Observable(Tuple{eltype(sample_labels), Point2f}[])
+    thetatick_pos_lbl = Observable(Tuple{Any, Point2f}[])
     thetaticklabelalign = Point2f[]
     thetaticklabeloffset = Point2f[]
     thetagridpoints = Observable{Vector{Point2f}}()

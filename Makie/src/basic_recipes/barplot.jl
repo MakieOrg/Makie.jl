@@ -4,6 +4,30 @@ bar_label_formatter(label::LaTeXString) = label
 bar_label_formatter(label::RichText) = label
 
 """
+    clamp_stack_to_fillto!(from, to, fillto)
+
+Clamps the stack boundaries `from`/`to` so that stacks of positive values never
+extend below `fillto` and stacks of negative values never extend above it. This
+makes `fillto` the baseline of the stack and, for a log scaled axis, replaces the
+zeros that would otherwise map to `-Inf` (dropping the whole segment).
+"""
+function clamp_stack_to_fillto!(from, to, _fillto)
+    for i in eachindex(from, to)
+        # We need to adjust values if:
+        # - the bar starts a stack (from == 0)
+        # - a negative stacked bar (from or to < 0) starts above fillto (from > fillto)
+        # - a positive stacked bar (from or to > 0) starts below fillto (from < fillto)
+        fillto = sv_getindex(_fillto, i)
+        if iszero(from[i]) || ifelse(from[i] < 0, from[i] > fillto, from[i] < fillto)
+            from[i] = fillto
+            mini, maxi = minmax(fillto, to[i])
+            to[i] = ifelse(to[i] < 0, mini, maxi)
+        end
+    end
+    return from, to
+end
+
+"""
 Plots bars of the given heights at the given positions.
 
 ## Arguments
@@ -21,6 +45,11 @@ Plots bars of the given heights at the given positions.
     Controls the baseline of the bars. This is zero in the default `automatic` case
     unless the barplot is in a log-scaled `Axis`. With a log scale, the automatic
     default is half the minimum value because zero is an invalid value for a log scale.
+
+    When `stack` is used, `fillto` must be a single number and acts as the baseline
+    of each stack: positive stacks never extend below it and negative stacks never
+    extend above it. With a log scale, the automatic default is half the minimum
+    positive stack total.
     """
     fillto = automatic
     "Offsets all bars by the given real value. Can also be set per-bar."
@@ -380,11 +409,11 @@ function plot!(p::BarPlot)
     # stack
     map!(
         p, [:stack, :fillto, :x, :raw_y, :offset], [:y, :computed_fillto]
-    ) do stack, fillto, x, y, offset
+    ) do stack, _fillto, x, y, offset
+        fillto = ifelse(_fillto === automatic, offset, _fillto)
         if stack === automatic
-            return y, ifelse(fillto === automatic, offset, fillto)
+            return y, fillto
         elseif eltype(stack) <: Integer
-            fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
             if !iszero(offset)
                 @warn "Ignore keyword offset when keyword stack is provided"
                 offset = 0.0
@@ -392,6 +421,7 @@ function plot!(p::BarPlot)
             i_stack = stack
 
             from, to = stack_grouped_from_to(i_stack, y, (x = x,))
+            iszero(fillto) || clamp_stack_to_fillto!(from, to, fillto)
             return to, from
         else
             throw(ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`"))
