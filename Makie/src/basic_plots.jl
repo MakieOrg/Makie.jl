@@ -244,24 +244,17 @@ Plots an image on a rectangle bounded by `x` and `y`.
     "Sets whether colors should be interpolated between pixels."
     interpolate = true
     """
-    A tuple `(d1, d2)` of directions describing how the first and second array
-    dims run on the rectangle in data space. Each entry is one of `:up`,
-    `:down`, `:left`, `:right`; exactly one must be vertical and one
-    horizontal. Directions are stated relative to the image-conventional data
-    space where y goes down and x to the right. `image` sets `yreversed = true`
-    as an axis hint on freshly-created axes so that `:down` in `orientation`
-    lines up with the visual downward direction on screen. This hint is applied
-    regardless of `orientation`, and it reverses the y direction for everything
-    else plotted into the same axis, so overlaid plots must state their y
-    coordinates in the same downward-growing convention.
+    A tuple `(d1, d2)` giving the direction in which the first and second
+    matrix index grow, each one of `:up`, `:down`, `:left`, `:right` (one
+    vertical, one horizontal). The default `(:down, :right)` is the usual image
+    layout (`FileIO.load`, NumPy, OpenCV): `image[1, 1]` is the top-left pixel,
+    rows go down, columns go right. For example, `(:left, :up)` puts
+    `image[1, 1]` at the bottom right, with the first index growing to the left.
 
-    The default `(:down, :right)` matches the convention used by
-    `FileIO.load`, NumPy, PIL, OpenCV and the like: `image[1, 1]` is the
-    top-left pixel, the first array dim runs top-to-bottom, the second runs
-    left-to-right. If your image was stored differently, for example because
-    it was recorded by an unusual scientific instrument, adjust `orientation`
-    accordingly (e.g. `(:left, :up)` for an image where `image[1, 1]` is the
-    bottom-right pixel and the first dim runs along x).
+    Directions refer to an axis with `yreversed = true`, which `image` sets when
+    it creates the axis. On an axis with normal y direction, `:up` and `:down`
+    appear swapped on screen, so set `ax.yreversed = true` when using `image!`
+    on an existing axis.
     """
     orientation = (:down, :right)
     """
