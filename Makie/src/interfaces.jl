@@ -135,7 +135,9 @@ function plot!(::Plot{F, Args}) where {F, Args}
     end
 end
 
-function handle_transformation!(plot, parent)
+
+Base.@nospecializeinfer function handle_transformation!(plot::Plot, parent::SceneLike)
+    @nospecialize
     t_user = to_value(pop!(plot.kw, :transformation, :automatic))
 
     # Handle passing transform!() inputs through transformation

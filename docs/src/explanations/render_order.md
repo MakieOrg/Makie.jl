@@ -69,9 +69,13 @@ scatter!(child, ps, markersize = 20, color = :red)
 root
 ```
 
+Every scene draws strictly above the scenes rendered before it.
+Plots of different scenes never interleave, regardless of their depth or z translation.
+If a plot needs to draw below the plots of another scene, it must be part of a scene that renders earlier, e.g. a scene with a lower `zindex`.
+
 ## Plot Render Order
 
-2D plots (constant z/depth value after all transformations) are ordered based on:
+Within a scene, 2D plots (constant z/depth value after all transformations) are ordered based on:
 1. Their depth which typically follows from `translate!(plot, 0, 0, z)` or rarely z values given in plot arguments.
 2. The order plots were created in.
 
@@ -99,7 +103,8 @@ In 3D the render order depends on the backend to a degree.
 
 GLMakie and WGLMakie keep track of the depth of each drawn pixel.
 A plot only draws to a pixel if it is in front of what is already there.
-So a plot can be both in front of and behind another plot.
+So a plot can be both in front of and behind another plot of the same scene.
+The tracked depth is reset at the start of every scene, which is what makes scenes draw strictly above each other.
 
 The per pixel depth is a result of interpolating the plots coordinates (typically given as arguments), its transformations (transform function, model transformations), camera matrices (i.e. the perspective the plot is seen from) and the `depth_shift` attribute.
 The latter is meant to resolve overlap issues (z-fighting) by nudging a plots depth values closer to the viewer (negative) or further away (positive).
@@ -223,9 +228,7 @@ scene
 
 When `scene.clear = false`, the scene does not "clear" its viewport with its background color.
 Any plots and scenes under it will thus remain visible.
-It also does not clear the per-pixel depth values that GLMakie and WGLMakie use.
-As a result plots can reorder in groups of scenes starting with a `clear = true` scene and ending before the next `clear = true` scene.
-This is also true in CairoMakie.
+The plots of the scene still draw strictly above everything rendered before, independent of their depth or z translation.
 
 ```@figure
 ps = [Point2f(x, y) for x in 0:50:300 for y in 0:50:300]
@@ -233,18 +236,17 @@ ps = [Point2f(x, y) for x in 0:50:300 for y in 0:50:300]
 parent = Scene(backgroundcolor = :gray, clear = true, size = (300, 300), camera = campixel!)
 p1 = scatter!(parent, ps, color = :darkred, markersize = 50)
 
-# This scene does not draw a background and is grouped with parent. Plots from
-# both scenes are pooled and order together
+# This scene does not draw a background, so the parent remains visible
 child = Scene(
     parent, backgroundcolor = :red, clear = false,
     viewport = Rect2i(50, 50, 200, 200), camera = campixel!
 )
 
 p2 = scatter!(child, ps, color = :green, markersize = 50)
-translate!(p2, 25, 0, -1) # below p1 despite being in the child scene
+translate!(p2, 25, 0, -1) # still above p1, scenes don't interleave
 
 p3 = scatter!(child, ps, color = :blue, markersize = 50)
-translate!(p3, 0, 25, 1) # above p1 despite being in the child scene
+translate!(p3, 0, 25, 1) # above p2, ordered within the child scene
 
 parent
 ```

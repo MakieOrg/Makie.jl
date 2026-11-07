@@ -124,4 +124,4 @@ julia tooling/formatter/format.jl
 
 ## Changelog
 
-User-facing changes (bug fixes, new features, breaking changes) must be recorded in `CHANGELOG.md` under the `## Unreleased` section at the top. Each entry is a single bullet point with a brief description and a link to the PR.
+User-facing changes (bug fixes, new features, breaking changes) must be recorded in a new file `changelog/<PR number>.md`, not in `CHANGELOG.md` directly. The file contains one or more `- ` bullet points with a brief description each, optionally grouped under `## Breaking`, `## Added`, `## Changed`, `## Deprecated`, `## Removed` or `## Fixed`; the PR link is added automatically on release. Validate with `julia tooling/changelog.jl check`. See `changelog/README.md` for the format.

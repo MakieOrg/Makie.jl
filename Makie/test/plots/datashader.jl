@@ -136,3 +136,13 @@ end
         end
     end
 end
+
+@testset "datashader cycles category colors (#4345)" begin
+    groups = repeat(1:8; inner = 2)
+    points = Point2f.(eachindex(groups), groups)
+    fig, ax, pl = datashader(groups, points; async = false)
+    palette = Makie.wong_colors()
+    @test length(pl.plots) == 8
+    @test first.(pl._categories[]) == string.(1:8)
+    @test last.(pl._categories[]) == [palette; first(palette)]
+end

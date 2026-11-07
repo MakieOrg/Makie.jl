@@ -676,8 +676,8 @@ using Makie: generate_buffers, default_pipeline
         @test pipeline.stages[1] == RenderStage(:ZSort)
         @test pipeline.stages[2] == RenderStage(
             :SceneClear, Dict{Symbol, Int}(), BufferFormat[],
-            Dict(:color => 1, :depth => 2),
-            [BufferFormat(4, N0f8), BufferFormat(1, BFT.depth24)],
+            Dict(:color => 1, :depth => 2, :objectid => 3),
+            [BufferFormat(4, N0f8), BufferFormat(1, BFT.depth24), BufferFormat(2, UInt32)],
         )
         @test pipeline.stages[3] == RenderStage(
             :Render, Dict{Symbol, Int}(), BufferFormat[],
@@ -716,7 +716,7 @@ using Makie: generate_buffers, default_pipeline
         # Note: Order technically irrelevant but it's easier to test with order
         # Same for inputs and outputs here
         @test length(pipeline.formats) == 7
-        @test length(pipeline.stageio2idx) == 20
+        @test length(pipeline.stageio2idx) == 21
         @test pipeline.formats[pipeline.stageio2idx[(6, 1)]] == BufferFormat(4, N0f8, minfilter = :linear)
         @test pipeline.formats[pipeline.stageio2idx[(7, -1)]] == BufferFormat(4, N0f8, minfilter = :linear)
         @test pipeline.formats[pipeline.stageio2idx[(4, 2)]] == BufferFormat(4, Float16)
@@ -729,6 +729,7 @@ using Makie: generate_buffers, default_pipeline
         @test pipeline.formats[pipeline.stageio2idx[(6, -1)]] == BufferFormat(4, N0f8)
         @test pipeline.formats[pipeline.stageio2idx[(4, 3)]] == BufferFormat(2, UInt32)
         @test pipeline.formats[pipeline.stageio2idx[(3, 3)]] == BufferFormat(2, UInt32)
+        @test pipeline.formats[pipeline.stageio2idx[(2, 3)]] == BufferFormat(2, UInt32)
         @test pipeline.formats[pipeline.stageio2idx[(8, -3)]] == BufferFormat(2, UInt32)
         @test pipeline.formats[pipeline.stageio2idx[(6, -2)]] == BufferFormat(2, UInt32)
         @test pipeline.formats[pipeline.stageio2idx[(7, 1)]] == BufferFormat(4, N0f8)

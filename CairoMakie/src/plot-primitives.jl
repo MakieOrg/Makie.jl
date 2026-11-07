@@ -35,57 +35,26 @@ function cairo_draw(screen::Screen, root_scene::Scene)
     should_rasterize = is_vector_backend(screen.surface)
 
     root_height = widths(viewport(Makie.root(root_scene))[])[2]
-    last_scene = root_scene
+    plots = AbstractPlot[]
 
-    start_idx = 1
-    while start_idx <= length(all_scenes)
+    # Every scene draws strictly above the scenes before it, so plots are only
+    # depth sorted within their scene
+    for scene in all_scenes
+        draw_background(screen, scene, root_height)
 
-        Cairo.save(screen.context)
-
-        # This is expected to be a scene with clear = true but it's probably fine
-        # if it isn't (i.e. if the root scene doesn't clear)
-        draw_background(screen, all_scenes[start_idx], root_height)
-
-        # Find group of scenes that draw on top of a cleared scene. These may mix
-        # when depth-sorting
-        stop_idx = start_idx
-        while stop_idx < length(all_scenes)
-            if all_scenes[stop_idx + 1].clear[]
-                break
-            end
-            stop_idx += 1
-        end
-        scenes = view(all_scenes, start_idx:stop_idx)
-        start_idx = stop_idx + 1
-
-        # Collect and depth sort all plots within the current scene group
-        # (high depth = back, low depth = front)
-        plots = AbstractPlot[]
-        for scene in scenes
-            Makie.collect_atomic_plots(scene.plots, plots, is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
-        end
+        empty!(plots)
+        Makie.collect_atomic_plots(scene.plots, plots, is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
+        isempty(plots) && continue
         sort!(plots; by = cairo_zindex)
 
         Cairo.save(screen.context)
-        prepare_for_scene(screen, last_scene)
-
+        prepare_for_scene(screen, scene)
         for p in plots
             check_parent_plots(p) do plot
                 to_value(get(plot, :visible, true))
             end || continue
 
-            # only prepare for scene when it changes
-            # this should reduce the number of unnecessary clipping masks etc.
-            pparent = Makie.parent_scene(p)::Scene
-            pparent.visible[]::Bool || continue
-            if pparent != last_scene
-                Cairo.restore(screen.context)
-                Cairo.save(screen.context)
-                prepare_for_scene(screen, pparent)
-                last_scene = pparent
-            end
             Cairo.save(screen.context)
-
             # When a plot is too large to save with a reasonable file size on a vector backend,
             # the user can choose to rasterize it when plotting to vector backends, by using the
             # `rasterize` keyword argument.  This can be set to a Bool or an Int which describes
@@ -96,14 +65,13 @@ function cairo_draw(screen::Screen, root_scene::Scene)
             # TODO: Should this work recursively, starting with non-CairoMakie-primitive recipes?
             rasterize = Int(p.rasterize[]::Integer)
             if should_rasterize && rasterize != 0
-                draw_plot_as_image(pparent, screen, p, rasterize)
+                draw_plot_as_image(scene, screen, p, rasterize)
             else # draw vector
-                draw_plot(pparent, screen, p)
+                draw_plot(scene, screen, p)
             end
             Cairo.restore(screen.context)
         end
         Cairo.restore(screen.context) # prepare_for_scene
-        Cairo.restore(screen.context) # scene group
     end
 
     return

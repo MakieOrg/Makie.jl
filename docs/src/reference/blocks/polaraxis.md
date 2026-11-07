@@ -113,8 +113,9 @@ f
 ```
 
 
-Note that in order to see the grid we need to adjust its depth with `ax.gridz = 100` (higher z means lower depth).
-The hard limits for `ax.gridz` are `(-10_000, 10_000)` with `9000` being a soft limit where axis components may order incorrectly.
+Note that in order to see the grid we need to draw it above the plots with `ax.gridz = 100`.
+With `gridz <= 0` grid lines draw below all plots, with `gridz > 0` above them.
+Above plots, `gridz` also orders grid lines relative to the other axis decorations, so values beyond `9000` may draw over the clip, spine or ticks.
 
 ## Hiding spines and decorations
 

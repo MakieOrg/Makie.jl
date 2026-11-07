@@ -10,8 +10,8 @@ using FileIO
 using WGLMakie, Makie, Test
 using WGLMakie.Bonito
 using ReferenceTests
+import ElectronCall
 using Makie: N0f8, RGBA
-import Electron
 
 @testset "mimes" begin
     Makie.inline!(true)
@@ -38,7 +38,18 @@ excludes = Set(
 )
 
 Makie.inline!(Makie.automatic)
-edisplay = Bonito.use_electron_display(devtools = true)
+edisplay = Bonito.use_electron_display(devtools = false, options = Dict{String, Any}("show" => false, "webPreferences" => Dict("offscreen" => true, "backgroundThrottling" => false)))
+
+# Force devicePixelRatio to 1.0 so reference images match CI regardless of local DPI
+let dpr = run(edisplay.window, "window.devicePixelRatio")
+    if dpr != 1.0
+        @info "Correcting devicePixelRatio from $dpr to 1.0"
+        run(
+            edisplay.window.app,
+            "electron.BrowserWindow.fromId($(edisplay.window.window.id)).webContents.setZoomFactor($(1.0 / dpr))"
+        )
+    end
+end
 
 @testset "reference tests" begin
     WGLMakie.activate!()
@@ -80,6 +91,17 @@ edisplay = Bonito.use_electron_display(devtools = true)
         @test atlas.data ≈ js_atlas_data
     end
 
+
+    @testset "relocatable shader sources" begin
+        # A compiled app may run without the package directory; the sources ride in the sysimage.
+        shaders = readdir(joinpath(@__DIR__, "..", "assets"))
+        @test Set(keys(WGLMakie.SHADER_DIR.files)) == Set(shaders)
+        @test WGLMakie.lasset("sprites.vert") == read(joinpath(@__DIR__, "..", "assets", "sprites.vert"), String)
+    end
+
+    include("scene_updates.jl")
+    include("glyph_sync.jl")
+    include("resync.jl")
 
     @testset "window open/closed" begin
         f, a, p = scatter(rand(10))
@@ -125,10 +147,12 @@ edisplay = Bonito.use_electron_display(devtools = true)
         # p5 = mesh!(scene, Rect2f(0,0,1,1), color = rand(RGBA{N0f8}, 4, 4))
         # p6 = scatter!(scene, 1:4, color = rand(N0f8, 4))
         display(edisplay, App(scene))
-        Bonito.wait_for(() -> events(scene).window_open[])
-        sleep(2)
+        @test Bonito.wait_for(() -> events(scene).window_open[]; timeout = 20) == :success
+        @test isempty(edisplay.browserdisplay.handler.session.message_queue)
 
-        @test eltype(p1.wgl_renderobject[][:uniforms][:uniform_color][:data]) === N0f8
+        byte_data = p1.wgl_renderobject[][:uniforms][:uniform_color][:data]
+        @test eltype(byte_data) === UInt8
+        @test all(==(0x80), byte_data)
         @test eltype(p2.wgl_renderobject[][:uniforms][:uniform_color][:data]) === Float16
         @test eltype(p3.wgl_renderobject[][:uniforms][:uniform_color][:data]) === UInt8 # RGBA gets splatted
         @test_broken eltype(p4.wgl_renderobject[][:uniforms][:uniform_color][:data]) === Float16 # can we allow Float16 to pass to js?
@@ -260,12 +284,18 @@ edisplay = Bonito.use_electron_display(devtools = true)
         end
     end
 
+    @testset "keyboard" begin
+        include("keyboard.jl")
+    end
+
     @testset "html-widgets" begin
         include("html-widgets.jl")
     end
 
     @testset "memory leaks" begin
         Makie.CURRENT_FIGURE[] = nothing
+        # Drain the display's one-render buffer before measuring the empty page.
+        display(edisplay, App(nothing))
         app = App(nothing)
         display(edisplay, app)
         GC.gc(true)
@@ -303,9 +333,12 @@ edisplay = Bonito.use_electron_display(devtools = true)
         ) / 10^6
 
         @test length(session.session_objects) == 0
+        @test length(session.deregister_callbacks) == 1
+        @test only(session.deregister_callbacks).observable ===
+            Bonito.get_metadata(session, :wglmakie_glyph_sync).request
         # getproperty, not getfield: in Bonito v5 `inbox` lives on the shared
         # RootSession and getfield would throw a FieldError (works via the shim on both).
-        @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :message_queue, :deregister_callbacks]
+        @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :message_queue]
             @test isempty(getproperty(session, field))
         end
         # `inbox` is the live WS receive channel on the still-connected display

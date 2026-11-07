@@ -64,8 +64,8 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
 end
 
 include("glwindow.jl")
-include("postprocessing.jl")
 include("RenderContext.jl")
+include("postprocessing.jl")
 include("screen.jl")
 include("render_pipeline.jl")
 include("glshaders/visualize_interface.jl")

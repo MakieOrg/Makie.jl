@@ -90,17 +90,10 @@ mutable struct Scene <: AbstractScene
     """
     Controls whether a scene clears its viewport to the background color.
     This will erase content from scenes that are behind this scene.
+    Independent of this, every scene draws strictly above the scenes rendered
+    before it. Plots of different scenes never interleave by depth.
     """
     clear::Observable{Bool}
-
-    """
-    Controls where a scene clears the current content of the depth buffer within
-    its viewport. If this is `true` any plot within this scene will draw strictly
-    above plots of prior scenes. Otherwise plots of this scene may draw under
-    plots of a prior scene depending on their depth.
-    Note that is overwritten to be `true` when `clear = true`.
-    """
-    clear_depth::Observable{Bool}
 
     """
     Affects the render order of the scene by controlling the position it occupies
@@ -166,7 +159,6 @@ mutable struct Scene <: AbstractScene
             events::Events,
             viewport::Observable{Rect2i},
             clear::Observable{Bool},
-            clear_depth::Observable{Bool},
             zindex::Int64,
             camera::Camera,
             camera_controls::AbstractCamera,
@@ -187,7 +179,6 @@ mutable struct Scene <: AbstractScene
             events,
             viewport,
             clear,
-            clear_depth,
             zindex,
             camera,
             camera_controls,
@@ -346,7 +337,6 @@ function Scene(;
         viewport::Union{Observable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
         clear::Union{Automatic, Observable{Bool}, Bool} = automatic,
-        clear_depth::Union{Observable{Bool}, Bool} = true,
         zindex::Int64 = 0,
         transform_func = identity,
         camera::Union{Function, Camera, Nothing} = nothing,
@@ -367,7 +357,11 @@ function Scene(;
     global_theme = merge_without_obs!(copy(theme), current_default_theme())
     m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
 
-    bg = map(to_color, m_theme.backgroundcolor)
+    bg = if haskey(theme_kw, :backgroundcolor)
+        map(to_color, convert(Observable{Any}, theme_kw[:backgroundcolor]), ignore_equal_values = true)
+    else
+        Observable{RGBAf}(to_color(to_value(m_theme[:backgroundcolor])))
+    end
 
     wasnothing = isnothing(viewport)
     scene_viewport = if wasnothing
@@ -416,9 +410,7 @@ function Scene(;
         clear = convert(Observable{Bool}, clear)
     end
     scene = Scene(
-        parent, events, scene_viewport, clear,
-        convert(Observable{Bool}, clear_depth),
-        zindex, cam, camera_controls,
+        parent, events, scene_viewport, clear, zindex, cam, camera_controls,
         transformation, plots, m_theme,
         children, current_screens, bg, visible, ssao, _lights;
         deregister_callbacks = deregister_callbacks
