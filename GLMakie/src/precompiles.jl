@@ -40,7 +40,7 @@ let
                 close(screen)
                 destroy!(screen)
 
-                include(Makie.SHARED_PRECOMPILE_PATH)
+                foreach(include, Makie.shared_precompile_paths())
                 display(plot(x); visible = false)
 
                 screen = Screen(Scene(); visible = false)

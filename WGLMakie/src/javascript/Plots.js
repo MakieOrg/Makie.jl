@@ -108,9 +108,9 @@ export class Plot {
         this.name = data.name;
         this.uuid = data.uuid;
         this.parent = scene;
-        data.updater.on((data) => {
-            this.update(data);
-        });
+        this.update_observable = data.updater;
+        this.update_callback = data => this.update(data);
+        this.update_observable.on(this.update_callback);
     }
 
     init_mesh() {
@@ -124,6 +124,7 @@ export class Plot {
     }
 
     dispose() {
+        this.update_observable.off(this.update_callback);
         delete plot_cache[this.uuid];
         this.parent.remove(this.mesh);
         this.mesh.geometry.dispose();
@@ -145,17 +146,14 @@ export class Plot {
         connect_plot(scene, this);
         scene.add(this.mesh);
         this.parent = scene;
+        scene.screen.request_render?.();
         return;
     }
 
     update(data) {
         const { mesh } = this;
         if (!mesh) {
-            // The plot was disposed (`dispose()` sets `mesh = undefined`) but a
-            // late update still arrived on `data.updater` — `dispose()` does not
-            // unregister that listener (registered in the constructor). The plot
-            // is gone, so the update is moot; skip it instead of crashing on
-            // `mesh.geometry`.
+            // Ignore an update already in flight when the plot was disposed.
             return;
         }
         const { geometry } = mesh;
@@ -177,6 +175,10 @@ export class Plot {
         });
         // For e.g. when we need to re-create the geometry
         this.apply_updates();
+        // On-demand rendering: every plot data change funnels through here
+        // (subclasses super.update() into it), so this is the one place to
+        // request a redraw. `parent` is the scene, which carries the screen ref.
+        this.parent?.screen?.request_render?.();
     }
 
     update_uniform(name, new_data) {
@@ -339,13 +341,17 @@ function per_glyph_data(glyph_hashes, scales) {
     return [uv_offset_width, markersize, quad_offsets];
 }
 
+// Plot data carries glyph HASHES only — the SDFs travel on the root glyph
+// channel (WGLMakie.insert_glyphs) and self-heal via the atlas pull. Text
+// (`scales` present) derives its per-glyph quad buffers here, with a zero-UV
+// fallback for not-yet-arrived glyphs; scatter's buffers are baked Julia-side
+// and only need the texture region, so it has no buffer path at all.
 function get_glyph_data_attributes(atlas, glyph_data) {
     if (glyph_data == null) {
         return {}
     }
-    const { glyph_hashes, atlas_updates, scales } = glyph_data;
-    atlas.insert_glyphs(atlas_updates);
-    if (glyph_hashes) {
+    const { glyph_hashes, scales } = glyph_data;
+    if (glyph_hashes && scales) {
         const [sdf_uv, quad_scale, quad_offset] = per_glyph_data(
             glyph_hashes,
             scales
@@ -360,6 +366,7 @@ export class Scatter extends Plot {
     constructor(scene, data) {
         const atlas = get_texture_atlas();
         const lengths = { sdf_uv: 4 };
+        const glyph_info = data.glyph_data ?? null;
         if ("glyph_data" in data) {
             const gdata = get_glyph_data_attributes(atlas, data.glyph_data);
             delete data.glyph_data;
@@ -375,13 +382,33 @@ export class Scatter extends Plot {
         super(scene, data);
         this.is_instanced = true;
         this.atlas = atlas;
+        this.glyph_info = glyph_info;
         this.mesh = create_instanced_mesh(this);
         this.init_mesh();
+        this.heal_missing_glyphs();
+    }
+
+    // Buffers built while glyphs were missing used the zero-UV fallback. Once
+    // the atlas receives them (channel batch or pull response), re-derive the
+    // per-glyph buffers (text; `scales` present) and request a re-render (the
+    // texture upload itself already healed scatter markers).
+    heal_missing_glyphs() {
+        const info = this.glyph_info;
+        if (!info || !info.glyph_hashes || info.glyph_hashes.length === 0) return;
+        this.atlas.ensure_glyphs(info.glyph_hashes, () => {
+            if (!this.mesh || this.glyph_info !== info) return;
+            if (info.scales) {
+                this.update([["glyph_data", info]]);
+            }
+            this.parent?.screen?.request_render?.();
+        });
     }
 
     update(data_key_value_array) {
         const dict = Object.fromEntries(data_key_value_array);
-        if ("glyph_data" in dict) {
+        const fresh_glyphs = "glyph_data" in dict;
+        if (fresh_glyphs) {
+            this.glyph_info = dict.glyph_data;
             const data = get_glyph_data_attributes(this.atlas, dict.glyph_data);
             delete dict.glyph_data;
             for (const [key, value] of Object.entries(data)) {
@@ -389,5 +416,8 @@ export class Scatter extends Plot {
             }
         }
         super.update(Object.entries(dict));
+        if (fresh_glyphs) {
+            this.heal_missing_glyphs();
+        }
     }
 }
