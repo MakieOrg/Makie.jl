@@ -179,12 +179,14 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
                 expr.args[1] => expr.args[2]
             end
         )
-        el.info = "@example $blockname"
+        hide_code = get(kwargs, :hide_code, false)
+        el.info = hide_code ? "@eval" : "@example $blockname"
 
         id = string(hash(IMAGE_COUNTER[], hash(el.code)), base = 16)[1:7]
         IMAGE_COUNTER[] += 1
         el.code = transform_figure_code(el.code; id, page = page.source, pagetitle = title, is_continued, kwargs...)
-        Documenter.Selectors.runner(Documenter.Expanders.ExampleBlocks, node, page, doc)
+        runner = hide_code ? Documenter.Expanders.EvalBlocks : Documenter.Expanders.ExampleBlocks
+        Documenter.Selectors.runner(runner, node, page, doc)
 
         last_png = MakieDocsHelpers.FIGURES[MakieDocsHelpers.PageInfo(page.source, title)][end]
         @assert last_png.id == id
@@ -207,7 +209,7 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
     end
 end
 
-function transform_figure_code(code::String; id::String, page::String, pagetitle::String, is_continued::Bool, backend::Symbol = :CairoMakie, mime = :png)
+function transform_figure_code(code::String; id::String, page::String, pagetitle::String, is_continued::Bool, backend::Symbol = :CairoMakie, mime = :png, hide_code::Bool = false)
     backend in (:CairoMakie, :GLMakie) || error("Invalid backend $backend")
     mimetype = mime == :svg ? "image/svg+xml" : mime == :png ? "image/png" : error("Unknown mimetype $mime")
 
@@ -215,19 +217,33 @@ function transform_figure_code(code::String; id::String, page::String, pagetitle
     # escaped when the string is interpolated later.
     page = replace(page, "\\" => "\\\\")
 
-    return (
-        is_continued ? "" : """
+    if hide_code
+        setup = is_continued ? "" : """
+            using $backend
+            $backend.activate!(; px_per_unit = 2)
+            """
+        return setup * """
+            import ..MakieDocsHelpers
+            var"#result" = begin
+            $code
+            end
+            MakieDocsHelpers.register_figure!("$page", "$pagetitle", "$id", var"#result")
+            save("$id.$mime", var"#result")
+            nothing
+            """
+    else
+        setup = is_continued ? "" : """
             using $backend
             $backend.activate!(; px_per_unit = 2) # hide
             """
-    ) *
-        """
-        import ..MakieDocsHelpers # hide
-        var"#result" = begin # hide
-        $code
-        end # hide
-        MakieDocsHelpers.register_figure!("$page", "$pagetitle", "$id", var"#result") # hide
-        save("$id.$mime", var"#result") # hide
-        nothing # hide
-        """
+        return setup * """
+            import ..MakieDocsHelpers # hide
+            var"#result" = begin # hide
+            $code
+            end # hide
+            MakieDocsHelpers.register_figure!("$page", "$pagetitle", "$id", var"#result") # hide
+            save("$id.$mime", var"#result") # hide
+            nothing # hide
+            """
+    end
 end
