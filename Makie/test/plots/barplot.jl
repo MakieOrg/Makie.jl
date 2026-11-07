@@ -128,11 +128,52 @@
         @test to == to_
     end
 
+    @testset "empty construction" begin
+        # Also indirectly checks that boundingbox works
+        f, a, p = barplot(Float64[], Float64[])
+        Makie.update_state_before_display!(f)
+        @test isempty(p.bar_rectangles[])
+
+        # ... with multiple transform_funcs
+        f, a, p = barplot(Float64[], Float64[], axis = (yscale = log10, xscale = log2))
+        Makie.update_state_before_display!(f)
+        @test isempty(p.bar_rectangles[])
+
+        # PolarAxis doesn't work but that's on PolarAxis, not boundingbox() with
+        # a Polar transform
+        # f = Figure()
+        # a = PolarAxis(f[1, 1])
+        # p = barplot!(a, Float64[], Float64[])
+        # Makie.update_state_before_display!(f)
+        # @test isempty(p.bar_rectangles[])
+    end
+
+    @testset "zero construction" begin
+        f, a, p = barplot(1:10, zeros(10))
+        Makie.update_state_before_display!(f)
+        whs = widths.(Rect2d.(coordinates.(p.bar_rectangles[])))
+        @test all(wh -> wh ≈ Vec2d(0.8, 0), whs)
+
+        # no regular width here because space isn't linear
+        f, a, p = barplot(1:10, zeros(10), axis = (yscale = log10, xscale = log2))
+        Makie.update_state_before_display!(f)
+        whs = widths.(Rect2d.(coordinates.(p.bar_rectangles[])))
+        @test all(wh -> wh[2] == 0, whs)
+
+        # 0 radius means all points collapse to (0, 0) post transform
+        f = Figure()
+        a = PolarAxis(f[1, 1])
+        p = barplot!(a, 1:10, zeros(10))
+        Makie.update_state_before_display!(f)
+        whs = widths.(Rect2d.(coordinates.(p.bar_rectangles[])))
+        @test all(wh -> wh ≈ Vec2d(0.0, 0), whs)
+    end
+
     @testset "stack fillto" begin
         # https://github.com/MakieOrg/Makie.jl/issues/4549
-        rects(p) = p.plots[1][1][]
-        bottoms(p) = [r.origin[2] for r in rects(p)]
-        tops(p) = [r.origin[2] + r.widths[2] for r in rects(p)]
+        rects(p) = p.bar_rectangles[]
+        bottoms(p) = [minimum(Rect2(poly))[2] for poly in rects(p)]
+        tops(p) = [maximum(Rect2(poly))[2] for poly in rects(p)]
 
         x = [1, 2, 3, 1, 2, 3]
         y = [1, 2, 3, 1, 2, 3]
@@ -143,25 +184,25 @@
         @test bottoms(p) == [0.5, 0.5, 0.5, 1.0, 2.0, 3.0]
         @test tops(p) == [1.0, 2.0, 3.0, 2.0, 4.0, 6.0]
 
-        # log scale automatic fillto: half of the smallest positive stack total
+        # log scale transforms the default fillto = 0 to -Inf. This transformed
+        # value gets clamped when creating the bar polygons, in this case to
+        # -300. (This value can change in the future. It should just remain
+        # (far) below the transformed axis y limits)
         f, ax, p = barplot(x, y; stack, axis = (; yscale = log10))
-        @test bottoms(p) == [0.5, 0.5, 0.5, 1.0, 2.0, 3.0]
-        @test tops(p) == [1.0, 2.0, 3.0, 2.0, 4.0, 6.0]
-        @test all(>(0), bottoms(p))
+        @test bottoms(p) ≈ [-300.0, -300.0, -300.0, log10(1.0), log10(2.0), log10(3.0)]
+        @test tops(p) ≈ log10.([1.0, 2.0, 3.0, 2.0, 4.0, 6.0])
 
         # zeros anywhere in the stack must not produce a 0 (-> -Inf) boundary
         x = [1, 2, 3, 4, 1, 2, 3, 4]
         y = [0, 2, 3, 0, 1, 0, 3, 0]
         stack = [1, 1, 1, 1, 2, 2, 2, 2]
         f, ax, p = barplot(x, y; stack, axis = (; yscale = log10))
-        @test all(>(0), bottoms(p))
-        @test all(>(0), tops(p))
-        @test bottoms(p) == [0.5, 0.5, 0.5, 0.5, 0.5, 2.0, 3.0, 0.5]
-        @test tops(p) == [0.5, 2.0, 3.0, 0.5, 1.0, 2.0, 6.0, 0.5]
+        @test bottoms(p) ≈ [-300.0, -300.0, -300.0, -300.0, -300.0, log10(2.0), log10(3.0), -300.0]
+        @test tops(p) ≈ [-300.0, log10(2.0), log10(3.0), -300.0, log10(1.0), log10(2.0), log10(6.0), -300.0]
 
         # log scale in x direction
         f, ax, p = barplot(x, y; stack, direction = :x, axis = (; xscale = log10))
-        @test [r.origin[1] for r in rects(p)] == [0.5, 0.5, 0.5, 0.5, 0.5, 2.0, 3.0, 0.5]
+        @test [minimum(r)[1] for r in rects(p)] == [-300.0, -300.0, -300.0, -300.0, -300.0, log10(2.0), log10(3.0), -300.0]
 
         # linear scale is unchanged by default
         f, ax, p = barplot(x, y; stack)
@@ -187,6 +228,9 @@
         @test bottoms(p) == [1.5, -2.0, 1.5, -6.0]
         @test tops(p) == [1.5, 1.5, 4.0, -2.0]
 
-        @test_throws ArgumentError barplot(x, y; stack, fillto = zeros(length(x)))
+        # TODO: probably needs more work...
+        f, a, p = barplot(x, y; stack, fillto = 0.1:0.1:0.8)
+        @test bottoms(p) == [0.1, 0.2, 0.3, 0.4, 0.5, 2.0, 3.0, 0.8]
+        @test tops(p) == [0.1, 2.0, 3.0, 0.4, 1.0, 2.0, 6.0, 0.8]
     end
 end

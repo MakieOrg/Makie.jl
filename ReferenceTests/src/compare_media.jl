@@ -29,7 +29,7 @@ function compare_images(a::AbstractMatrix{<:Union{RGB, RGBA}}, b::AbstractMatrix
     b = rgbaf_convert(b)
 
     if size(a) != size(b)
-        @warn "images don't have the same size, difference will be Inf"
+        @warn "images don't have the same size ($(size(a)) != $(size(b))), difference will be Inf"
         return Inf
     end
 

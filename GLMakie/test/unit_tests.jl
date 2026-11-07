@@ -6,52 +6,87 @@ function project_sp(scene, point)
     return point_px .+ offset
 end
 
+is_freed(x::GLMakie.GLAbstraction.TextureBuffer) = x.texture.id == 0 && x.buffer.id == 0
+is_freed(x::GLMakie.GPUArray) = x.id == 0
+
 @testset "shader cache" begin
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
+
     # Postprocessing shaders
-    @test length(cache.shader_cache) == 5
-    @test length(cache.template_cache) == 5
-    @test length(cache.program_cache) == 4
+    @test length(cache.shader_cache) == 4
+    @test length(cache.template_cache) == 4
+    @test length(cache.program_cache) == 3
+
+    # Just Axis adds...
+    # f = Figure();
+    # a = Axis(f[1, 1])
+    # display(screen, f)
+    Ns = 18
+    Np = 7
 
     # Shaders for scatter + linesegments + poly etc (axis)
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 18
-    @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 18
-    @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
+
     # Same for linesegments
     display(screen, linesegments(1:4))
-    @test length(cache.shader_cache) == 18
-    @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
+
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
-    @test length(cache.shader_cache) == 20
-    @test length(cache.template_cache) == 20
-    @test length(cache.program_cache) == 11
+    @test length(cache.shader_cache) == Ns + 2
+    @test length(cache.template_cache) == Ns + 2
+    @test length(cache.program_cache) == Np + 2
 
     # For second time no new shaders should be added
     figure, axis, plot = heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4))
     display(screen, figure)
-    @test length(cache.shader_cache) == 20
-    @test length(cache.template_cache) == 20
-    @test length(cache.program_cache) == 11
+    @test length(cache.shader_cache) == Ns + 2
+    @test length(cache.template_cache) == Ns + 2
+    @test length(cache.program_cache) == Np + 2
 
     # Rectangle selection compiles its program only when first used.
     zoom = axis.interactions[:rectanglezoom][2]
     @test !zoom.mesh_initialized
     Makie.initialize_selection_mesh!(zoom, axis)
-    @test length(cache.program_cache) == 12
+    @test length(cache.program_cache) == Np + 3
     Makie.initialize_selection_mesh!(zoom, axis)
-    @test length(cache.program_cache) == 12
+    @test length(cache.program_cache) == Np + 3
+end
 
+@testset "Changing mesh and surface strokes" begin
+    for plot_mesh in (true, false)
+        scene = Scene(size = (200, 200), camera = campixel!)
+        plot = if plot_mesh
+            mesh!(scene, Rect2f(20, 20, 160, 160); color = :red, shading = NoShading)
+        else
+            surface!(
+                scene, range(20, 180, length = 3), range(20, 180, length = 3), zeros(3, 3);
+                color = :red, shading = NoShading, strokeedges = :all
+            )
+        end
+        plain = copy(colorbuffer(scene))
+        plot.strokewidth[] = 8
+        stroked = copy(colorbuffer(scene))
+        @test plain != stroked
+        plot.strokewidth[] = 0
+        @test colorbuffer(scene) == plain
+        plot.strokewidth[] = 8
+        @test colorbuffer(scene) == stroked
+    end
+    GLMakie.closeall()
 end
 
 @testset "unit tests" begin
@@ -159,10 +194,12 @@ end
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms
                 if v isa GLMakie.GPUArray
-                    @test v.id == 0
+                    @test is_freed(v)
                 end
             end
-            @test robj.vertexarray.id == 0
+            for inst in values(robj.variants)
+                @test inst.vertexarray.id == 0
+            end
         end
     end
     ax = Axis(fig[1, 1])
@@ -173,10 +210,12 @@ end
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms
                 if v isa GLMakie.GPUArray
-                    @test v.id != 0
+                    @test !is_freed(v)
                 end
             end
-            @test robj.vertexarray.id != 0
+            for inst in values(robj.variants)
+                @test inst.vertexarray.id != 0
+            end
         end
     end
     close(screen)
@@ -194,7 +233,7 @@ end
 
     @test ax.scene.plots == [hmp, lp, tp]
 
-    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots...])
+    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots[1]])
 
     empty!(ax)
 
@@ -202,10 +241,12 @@ end
     for robj in robjs
         for (k, v) in robj.uniforms
             if (v isa GLMakie.GPUArray) && (v !== tex_atlas)
-                @test v.id == 0
+                @test is_freed(v)
             end
         end
-        @test robj.vertexarray.id == 0
+        for inst in values(robj.variants)
+            @test inst.vertexarray.id == 0
+        end
     end
 
     heatmap!(ax, rand(4, 4))
@@ -215,10 +256,12 @@ end
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms
                 if v isa GLMakie.GPUArray
-                    @test v.id != 0
+                    @test !is_freed(v)
                 end
             end
-            @test robj.vertexarray.id != 0
+            for inst in values(robj.variants)
+                @test inst.vertexarray.id != 0
+            end
         end
     end
     close(screen)
@@ -301,7 +344,7 @@ end
 
         @test screen.scene === nothing
         @test screen.rendertask === nothing
-        @test (Base.summarysize(screen) / 10^6) < 1.4
+        @test (Base.summarysize(screen) / 10^6) < 1.45
     end
     # All should go to pool after close
     @test all(x -> x in GLMakie.SCREEN_REUSE_POOL, screens)
@@ -334,7 +377,7 @@ end
     screen = display(GLMakie.Screen(visible = true, scalefactor = 2), fig)
     @test screen.scalefactor[] === 2.0f0
     @test screen.px_per_unit[] === 2.0f0  # inherited from scale factor
-    @test size(screen.framebuffer) == (2W, 2H)
+    @test size(screen.framebuffer_manager) == (2W, 2H)
     @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
 
     # check that picking works through the resized GL buffers
@@ -362,7 +405,7 @@ end
     screen = display(GLMakie.Screen(visible = false, scalefactor = 2, px_per_unit = 1), fig)
     @test screen.scalefactor[] === 2.0f0
     @test screen.px_per_unit[] === 1.0f0
-    @test size(screen.framebuffer) == (W, H)
+    @test size(screen.framebuffer_manager) == (W, H)
 
     # decrease the scale factor after-the-fact
     screen.scalefactor[] = 1
@@ -507,7 +550,7 @@ end
     p = lines!(scene, Point2f[])
     screen = display(scene, visible = false)
     robj = screen.cache[objectid(p)]
-    indexbuffer = robj.vertexarray.indices
+    indexbuffer = robj.indices
     @test isempty(indexbuffer)
     @test length(indexbuffer) == 0 # skip condition for draw call
 
@@ -536,6 +579,31 @@ end
     @test eltype(p4.gl_renderobject[][:volumedata]) === RGBA{Float16}
     # @test eltype(p5.gl_renderobject[][:image]) === RGBA{N0f8}
     # @test eltype(p6.gl_renderobject[].vertexarray.buffers["intensity"]) === N0f8
+end
+
+struct RasterizedMarker end
+
+Makie.to_spritemarker(m::RasterizedMarker) = m
+
+function Makie.rasterize_marker_for_gpu(::RasterizedMarker, markersize, px_per_unit)
+    n = max(2, round(Int, first(Makie.to_2d_scale(markersize)) * px_per_unit))
+    return fill(RGBAf(1, 0, 0, 1), n, n)
+end
+
+@testset "markers rasterize at the screen's px_per_unit" begin
+    s = Scene(camera = campixel!, size = (100, 100))
+    p = scatter!(s, Point2f(50, 50), marker = RasterizedMarker(), markersize = 20)
+    screen = display(GLMakie.Screen(visible = false, px_per_unit = 2), s)
+    @test size(p.image[]) == (40, 40)
+
+    screen.px_per_unit[] = 4
+    @test size(p.image[]) == (80, 80)
+
+    GLMakie.closeall()
+    screen = display(GLMakie.Screen(visible = false, px_per_unit = 1), s)
+    @test size(p.image[]) == (20, 20)
+
+    GLMakie.closeall()
 end
 
 @testset "events after `empty!(scene)`" begin

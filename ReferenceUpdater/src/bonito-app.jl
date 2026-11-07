@@ -390,7 +390,7 @@ const REFIMG_STYLES = Styles(
     CSS(
         ".main-container",
         "font-family" => "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-        "max-width" => "1400px",
+        "max-width" => "4000px",
         "margin" => "0 auto",
         "padding" => "24px",
         "background-color" => BG_LIGHT
@@ -559,7 +559,11 @@ function build_card_grid(img_names, backends, should_include, card_builder)
     return cards
 end
 
-function create_simple_grid_content(root_path, filename, image_folder, backends; extra_paths = String[], review_only::Bool = false, pinned_paths = nothing)
+function create_simple_grid_content(
+        root_path, filename, image_folder, backends;
+        extra_paths = String[], review_only::Bool = false, pinned_paths = nothing
+    )
+
     path = joinpath(root_path, filename)
     files = unique(vcat(isfile(path) ? readlines(path) : String[], collect(extra_paths)))
     filter!(!isempty, files)
@@ -725,7 +729,7 @@ function BackendCard(
 end
 
 """
-    upload_selection(tag, marked_for_upload, marked_for_deletion, root_path)
+    upload_selection(tag, marked_for_upload, marked_for_deletion, recorded_path)
 
 Upload selected reference images.
 """
@@ -733,9 +737,8 @@ function upload_selection(
         tag::String,
         marked_for_upload::Set{String},
         marked_for_deletion::Set{String},
-        root_path::String
+        recorded_path::String
     )
-    recorded_path = joinpath(root_path, "recorded")
 
     @info "Downloading latest reference image folder for $tag"
     tmpdir = try
@@ -988,7 +991,10 @@ function create_app_content(session::Session, root_path::String)
                     Bonito.evaljs(session, js"const overlay = $(loading_overlay); overlay.classList.add('active')")
                     upload_for_upload_set = Set{String}(selections["upload_files"])
                     marked_for_deletion_set = Set{String}(selections["delete_files"])
-                    @time upload_selection(tag_textfield.value[], upload_for_upload_set, marked_for_deletion_set, root_path)
+                    @time upload_selection(
+                        tag_textfield.value[], upload_for_upload_set, marked_for_deletion_set,
+                        joinpath(root_path, "recorded")
+                    )
                 catch e
                     @error "Upload process failed." exception = e
                 finally

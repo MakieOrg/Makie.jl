@@ -1,0 +1,107 @@
+struct ExplicitUpdate{T}
+    data::T
+    rule::Symbol
+
+    function ExplicitUpdate{T}(data::T, rule::Symbol) where {T}
+        if !in(rule, (:force, :auto, :deny))
+            error("Invalid value for should_update: :$should_update. Must be :force, :auto or :deny")
+        end
+        return new{T}(data, rule)
+    end
+end
+
+"""
+    ExplicitUpdate(data, strategy)
+
+Wraps a value in ComputeGraph to mark its update strategy. Can be:
+- `:force`: always propagate update
+- `:deny`: never propagate update
+- `:auto`: propagate update if `is_same(previous_data, new_data)` is false
+
+Unmarked data uses `:auto`.
+
+See also [`unwrap_explicit_update`](@ref)
+"""
+function ExplicitUpdate(data::T, rule::Symbol = :auto) where {T}
+    return ExplicitUpdate{T}(data, rule)
+end
+
+is_same(old::ExplicitUpdate, new) = is_same(old.data, new)
+is_same(old::ExplicitUpdate, new::ExplicitUpdate) = is_same(old.data, new)
+function is_same(old, new::ExplicitUpdate)
+    if new.rule == :auto
+        return is_same(old, new.data)
+    else
+        # force should always fail the is_same discard, deny should always pass
+        return new.rule == :deny
+    end
+end
+
+"""
+    unwrap_explicit_update(x)
+
+Returns the value contained in an ExplicitUpdate `x` if one is passed. Otherwise
+return `x`.
+"""
+unwrap_explicit_update(x) = x
+unwrap_explicit_update(x::ComputePipeline.ExplicitUpdate) = x.data
+
+export ExplicitUpdate, unwrap_explicit_update
+
+"""
+    select!(graph, selector, choices, output)
+    select!(callback, graph, selection_inputs, choices, output)
+
+Selects one of the `choices` nodes based on the index given in the `selector`
+node and forwards it to the `output` node without resolving the other `choices`.
+
+Alternatively, a `callback` and one or more `selection_inputs` can be given to
+define the selected index based on the result of `callback(selection_inputs...)`.
+
+This calls `map!(select, graph, [selector, choices...], output)` internally. If
+a callback is given, it will generate a `selector` node beforehand.
+"""
+function select!(graph::AbstractComputeGraph, selector::InputNodeTypes, choices::Vector, output::OutputNodeTypes)
+    node = get_node(graph, selector)
+    if is_initialized(node)
+        node.value[] isa Int || error("Selector node $(node.name) must contain an Int, but is initialized to $(node.value[])")
+    else
+        ComputePipeline.set_type!(node, Int)
+    end
+    inputs = Computed[node, get_node.(Ref(graph), choices)...]
+    map!(select, graph, inputs, output)
+    return
+end
+
+function select!(callback, graph::AbstractComputeGraph, selection_inputs, choices::Vector, output::OutputNodeTypes)
+    selector = Symbol(output, :_selector)
+    map!(callback, graph, selection_inputs, selector)
+    select!(callback, graph, selector, choices, output)
+    return
+end
+
+"""
+    select!(graph, condition, true_choice, false_choice, output)
+
+Selects one of the two choices based on the boolean value of `condition` without
+resolving the other. This is equivalent to
+`map!(ifelse, graph, [condition, true_choice, false_choice], output)`.
+"""
+function select!(
+        graph::AbstractComputeGraph,
+        condition::InputNodeTypes, true_choice::InputNodeTypes, false_choice::InputNodeTypes,
+        output::OutputNodeTypes
+    )
+    node = get_node(graph, condition)
+    if is_initialized(node)
+        node.value[] isa Bool || error("Condition node $(node.name) must contain an Bool, but is initialized to $(node.value[])")
+    else
+        ComputePipeline.set_type!(node, Bool)
+    end
+    inputs = Computed[node, get_node(graph, true_choice), get_node(graph, false_choice)]
+    map!(ifelse, graph, inputs, output)
+
+    return
+end
+
+export select!
