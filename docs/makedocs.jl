@@ -4,6 +4,7 @@ Pkg.activate(".")
 Pkg.instantiate()
 Pkg.precompile()
 
+using FFMPEG_jll
 using CairoMakie
 using GLMakie
 using WGLMakie
@@ -172,7 +173,7 @@ pages = [
         "Ecosystem" => "ecosystem.md",
     ],
     "Dev Docs" => [
-        "devdocs/render_pipeline.md",
+        "devdocs/rendergraph.md",
     ],
 ]
 

@@ -1,10 +1,10 @@
 using Makie
 using Makie: BufferFormat, N0f8, is_compatible, BFT
 using Makie: RenderStage, get_input_format, get_output_format
-using Makie: RenderPipeline, connect!
+using Makie: RenderGraph, connect!
 using Makie: generate_buffers, default_pipeline
 
-@testset "Render RenderPipeline" begin
+@testset "Render RenderGraph" begin
 
     @testset "BufferFormat" begin
         @testset "Constructors" begin
@@ -208,7 +208,7 @@ using Makie: generate_buffers, default_pipeline
     function check_lowered_representation(pipeline, buffers, mapping)
         # lowered representation applies the mapping so that backends don't
         # have to deal with it
-        lp = Makie.LoweredRenderPipeline(pipeline)
+        lp = Makie.LoweredRenderGraph(pipeline)
         @test lp.formats == buffers
         @test length(lp.stages) == length(pipeline.stages)
 
@@ -255,8 +255,8 @@ using Makie: generate_buffers, default_pipeline
         return
     end
 
-    @testset "RenderPipeline & Connections" begin
-        pipeline = RenderPipeline()
+    @testset "RenderGraph & Connections" begin
+        pipeline = RenderGraph()
 
         @test isempty(pipeline.stages)
         @test isempty(pipeline.stageio2idx)
@@ -367,10 +367,10 @@ using Makie: generate_buffers, default_pipeline
         check_lowered_representation(pipeline, buffers, remap)
     end
 
-    @testset "RenderPipeline resolution" begin
+    @testset "RenderGraph resolution" begin
         @testset "sanity checks" begin
             # Nothing to generate in an empty pipeline
-            pipeline = RenderPipeline()
+            pipeline = RenderGraph()
             buffers, mapping = generate_buffers(pipeline)
             @test isempty(buffers)
             @test isempty(mapping)
@@ -383,7 +383,7 @@ using Makie: generate_buffers, default_pipeline
             @test isempty(mapping)
 
             # direct connection between two stages without any type changes or reuse
-            pipeline = RenderPipeline()
+            pipeline = RenderGraph()
             render = push!(pipeline, Makie.PlotRenderStage())
             display = push!(pipeline, Makie.DisplayStage())
             connect!(pipeline, render, display)
@@ -401,7 +401,7 @@ using Makie: generate_buffers, default_pipeline
         end
 
         @testset "Verify complete-output-usage check" begin
-            pipeline = RenderPipeline()
+            pipeline = RenderGraph()
             stage1 = Makie.RenderStage(
                 :first,
                 outputs = [:dropped => BufferFormat(3, N0f8), :color => BufferFormat(3, N0f8)]
@@ -417,7 +417,7 @@ using Makie: generate_buffers, default_pipeline
         end
 
         function build_pipeline(connections...)
-            pipeline = RenderPipeline()
+            pipeline = RenderGraph()
 
             stages = [Makie.RenderStage(:stage1, outputs = first(connections))]
             for i in 2:length(connections)

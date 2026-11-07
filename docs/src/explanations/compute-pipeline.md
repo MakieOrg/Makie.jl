@@ -41,7 +41,10 @@ The callback function of the computation always takes 3 arguments:
 2. `changed::NamedTuple{input_names, Bool}` which contains information on which inputs have changed since the computation was last triggered.
 3. `cached::Union{Nothing, Tuple}` which contains the data of the previous output(s) in order, or nothing if no previous output exists.
 
-The output should be either a tuple with equal size to the output names set in `register_computations!()`, or `nothing` if the result is the same as the previous.
+The output should be either a tuple with equal size to the output names set in `register_computations!()`, or `skip_update` if the result is the same as the previous.
+
+!!! note
+    Returning `nothing` or `(..., nothing, ...)` to skip updates of outputs has been deprecated in ComputePipeline 0.2 (Makie 0.25) to allow outputs to update to `nothing`. As a replacement `skip_update` has been introduced.
 
 Alternatively to `register_computation!(f, graph, inputs, outputs)` you can also use `map!(f, graph, inputs, outputs)`.
 `map!()` simplifies the structure of the callback function `f` by passing the inputs directly as arguments, without `changed` or `cached`.
@@ -300,3 +303,85 @@ graph.deny_output[] # 1
 
 Note that if you want a node to work with plain values and values wrapped in `ExplicitUpdate` you will need to initialize its type to a union.
 For example `set_type!(node, Union{Int64, ExplicitUpdate{Int64}})`.
+
+## Selective/Lazy Resolve
+
+Let's say we have a generic compute edge defined by `map!(callback, graph, inputs, outputs)`.
+If any of outputs is requested and not up to date, the edge will be resolved.
+This then resolves every input in `inputs` that is dirty, causing more edges to resolve recursively.
+
+```@example
+using ComputePipeline
+
+graph = ComputeGraph()
+add_input!(graph, :user_choice, 1) do x
+    @info "user choice"
+    return x
+end
+
+add_input!(graph, :x, 5) do x
+    @info "x"
+    return x
+end
+add_input!(graph, :y, -1) do y
+    @info "y"
+    return y
+end
+
+map!(graph, :x, :input1) do x
+    @info "input 1"
+    return x
+end
+map!(graph, :y, :input2) do y
+    @info "input 2"
+    return y
+end
+map!(graph, [:x, :y], :input3) do x, y
+    @info "input 3"
+    return x + y
+end
+
+map!(graph, [:user_choice, :input1, :input2, :input3], :output) do i, choices...
+    return choices[i]
+end
+
+graph.output[]
+```
+
+If the inputs nodes are expensive to resolve it would be nice to skip them if they are ultimately not selected by `user_choice`.
+This can be done with `select!(graph, selector, choices, output)` where the `selector` node returns an index selecting which of the `choices` should forward to the `output`:
+
+```@example
+using ComputePipeline # hide
+graph = ComputeGraph()
+add_input!(graph, :user_choice, 1) do x
+    @info "user choice"
+    return x
+end
+
+add_input!(graph, :x, 5) do x
+    @info "x"
+    return x
+end
+add_input!(graph, :y, -1) do y
+    @info "y"
+    return y
+end
+
+map!(graph, :x, :input1) do x
+    @info "input 1"
+    return x
+end
+map!(graph, :y, :input2) do y
+    @info "input 2"
+    return y
+end
+map!(graph, [:x, :y], :input3) do x, y
+    @info "input 3"
+    return x + y
+end
+
+select!(graph, :user_choice, [:input1, :input2, :input3], :output)
+
+graph.output[]
+```

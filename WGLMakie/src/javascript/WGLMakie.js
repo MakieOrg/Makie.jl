@@ -19,43 +19,26 @@ import {get_texture_atlas} from "./TextureAtlas.js";
 
 window.THREE = THREE;
 
-const orderedExecutor = {
-    tasks: new Map(),
-    nextExpected: 1,
-
-    insert(f, order) {
-        if (this.tasks.has(order)) {
-            throw new Error(`Duplicate task for order ${order}`);
-        }
-        this.tasks.set(order, f);
-        this.flush();
-    },
-
-    flush() {
-        while (this.tasks.has(this.nextExpected)) {
-            const f = this.tasks.get(this.nextExpected);
-            f();
-            this.tasks.delete(this.nextExpected);
-            this.nextExpected += 1;
-        }
-    },
-};
-
-export function execute_in_order(order, f) {
-    if (order < 1 || !Number.isInteger(order)) {
-        throw new Error(`Invalid order: ${order}`);
-    }
-    orderedExecutor.insert(f, order);
+// Glyph delivery is independent of the order in which figures mount.
+export function insert_glyphs(batch) {
+    get_texture_atlas().insert_glyphs(batch);
 }
 
-export function dispose_screen(screen) {
+export function set_glyph_request(request_obs) {
+    get_texture_atlas().request_obs = request_obs;
+}
+
+export function dispose_screen(screen, notify_close = true) {
     if (Object.keys(screen).length === 0) {
         return;
     }
     const { renderer, picking_target, root_scene, comm } = screen;
-    // this usually doesn't get through, since the session may already be closed
-    // in that case, window_open gets set from session.on_close
-    comm.notify({ window_open: false });
+    screen.request_render = undefined;
+    if (notify_close) {
+        // this usually doesn't get through, since the session may already be closed
+        // in that case, window_open gets set from session.on_close
+        comm.notify({ window_open: false });
+    }
     if (renderer) {
         const canvas = renderer.domElement;
         if (canvas.parentNode) {
@@ -80,6 +63,10 @@ export function dispose_screen(screen) {
     if (screen.resizeObserver) {
         screen.resizeObserver.disconnect();
         screen.resizeObserver = undefined;
+    }
+    if (screen.paste_listener) {
+        document.removeEventListener("paste", screen.paste_listener);
+        screen.paste_listener = undefined;
     }
     Object.keys(screen).forEach((key) => delete screen[key]);
     return;
@@ -128,16 +115,32 @@ export function render_scene(scene, picking = false) {
 }
 
 function start_renderloop(three_scene) {
-    // extract the first scene for screen, which should be shared by all scenes!
-    const { fps } = three_scene.screen;
+    const screen = three_scene.screen;
+    const { fps } = screen;
     const time_per_frame = (1 / fps) * 1000; // default is 30 fps
     // make sure we immediately render the first frame and dont wait 30ms
     let last_time_stamp = performance.now();
-    function renderloop(timestamp) {
-        if (!check_screen(three_scene.screen)) {
-            return false;
+    // Each scene owns its pending frame, including during a resync.
+    let scheduled = false;
+
+    function schedule() {
+        if (scheduled || three_scene.disposed || !check_screen(screen)) {
+            return;
         }
-        if (timestamp - last_time_stamp > time_per_frame) {
+        scheduled = true;
+        requestAnimationFrame(renderloop);
+    }
+
+    function renderloop(timestamp) {
+        scheduled = false;
+        if (three_scene.disposed || !check_screen(screen)) {
+            return;
+        }
+        const due = timestamp - last_time_stamp > time_per_frame;
+        if (due && (!screen.render_on_demand || screen.requires_update)) {
+            // An update during rendering must be able to request another frame.
+            screen.requires_update = false;
+            screen.frame_count++;
             const all_rendered = render_scene(three_scene);
             if (!all_rendered) {
                 // if scenes don't render it means they're not displayed anymore
@@ -146,23 +149,34 @@ function start_renderloop(three_scene) {
             }
             last_time_stamp = performance.now();
         }
-        requestAnimationFrame(renderloop);
+        if (!screen.render_on_demand || screen.requires_update) {
+            schedule();
+        }
     }
+
+    // Always target the newest scene after resync.
+    screen.request_render = () => {
+        screen.requires_update = true;
+        schedule();
+    };
+
     function _check_screen() {
         // make sure we delete the screen if the canvas is not in the DOM anymore
-        if (!check_screen(three_scene.screen)){
+        if (three_scene.disposed || !check_screen(screen)) {
             return;
         }
-        // this can't happen via requestAnimationFrame
-        // since it may not be called after the canvas got removed.
-        // So we need another check outside the renderloop (which can run a lot slower)
+        // rAF may stop when the canvas leaves the DOM.
         setTimeout(_check_screen, 1000);
     }
 
-    // render one time before starting loop, so that we don't wait 30ms before first render
+    // Draw the initial or replacement scene immediately.
+    screen.frame_count++;
     render_scene(three_scene);
+    screen.requires_update = false;
     _check_screen();
-    renderloop();
+    if (!screen.render_on_demand) {
+        schedule();
+    }
 }
 
 /**
@@ -412,16 +426,47 @@ function add_canvas_events(screen, comm, resize_to) {
     }
     canvas.addEventListener("wheel", wheel);
 
+    // Ctrl/Cmd shortcuts don't type their character. AltGr reports as Ctrl+Alt
+    // on Windows, but types characters like "@".
+    function is_shortcut(event) {
+        return (
+            (event.ctrlKey || event.metaKey) &&
+            !event.getModifierState("AltGraph")
+        );
+    }
+
     function keydown(event) {
+        // Leave paste to the browser, which reads the clipboard of the machine
+        // it runs on, not the one Julia runs on, and fires `paste` below.
+        if (is_shortcut(event) && event.key.toLowerCase() === "v") {
+            return;
+        }
         // Prevent the default browser behavior for `Space`, which is to scroll.
         event.preventDefault();
         comm.notify({
-            keydown: [event.code, event.key],
+            keydown: [event.code, is_shortcut(event) ? "" : event.key],
         });
         return false;
     }
 
     canvas.addEventListener("keydown", keydown);
+
+    // Chromium fires `paste` at the body rather than at a focused canvas, so
+    // listen on the document and only take it while this canvas has focus.
+    function paste(event) {
+        if (canvas.getRootNode().activeElement !== canvas) {
+            return;
+        }
+        event.preventDefault();
+        const text = event.clipboardData.getData("text/plain");
+        if (text) {
+            comm.notify({ paste: text });
+        }
+    }
+
+    document.addEventListener("paste", paste);
+    // Store listener in screen for cleanup
+    screen.paste_listener = paste;
 
     function keyup(event) {
         event.preventDefault();
@@ -488,17 +533,19 @@ function add_canvas_events(screen, comm, resize_to) {
 }
 
 function threejs_module(canvas) {
-
-    let context = canvas.getContext("webgl2", {
+    // `failIfMajorPerformanceCaveat: false` keeps the browser from returning a
+    // null context when it would otherwise refuse the hardware path (e.g. a missconfigured GPU) — it falls back to
+    // a software context instead of handing us `null`.
+    const context_options = {
         preserveDrawingBuffer: true,
-    });
+        failIfMajorPerformanceCaveat: false,
+    };
+    let context = canvas.getContext("webgl2", context_options);
     if (!context) {
         console.warn(
             "WebGL 2.0 not supported by browser, falling back to WebGL 1.0 (Volume plots will not work)"
         );
-        context = canvas.getContext("webgl", {
-            preserveDrawingBuffer: true,
-        });
+        context = canvas.getContext("webgl", context_options);
     }
     if (!context) {
         // Sigh, safari or something
@@ -541,6 +588,10 @@ function set_render_size(screen, width, height) {
 
     renderer.setViewport(0, 0, real_pixel_width, real_pixel_height);
     add_picking_target(screen);
+    // A resize changes the framebuffer, so we need to redraw. Guarded because
+    // set_render_size also runs once during setup, before the loop (and thus
+    // request_render) exists; that initial frame is covered by start_renderloop.
+    screen.request_render?.();
     return;
 }
 
@@ -591,7 +642,9 @@ export function initialize_canvas_size(canvas, resize_to, width, height, px_per_
     return [initial_width, initial_height];
 }
 
-export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, done_init) {
+export function setup_scene_init(session_id, wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, render_on_demand, done_init) {
+    // A notebook cell may disappear while its module or scene snapshot loads.
+    if (!wrapper || !canvas) return;
     const spinner = wrapper.querySelector('.wglmakie-spinner');
     try {
         // Calculate and apply the correct canvas size based on resize_to setting
@@ -617,21 +670,49 @@ export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_p
         real_size.notify([final_width, final_height]);
 
         const init_scene = (scene_data) => {
+            if (!canvas.isConnected) return;
+            // Resync replaces the scene graph while keeping the renderer and canvas.
+            const screen = canvas.wglmakie_screen;
+            const is_resync = !!(screen && screen.renderer);
             try {
-                const renderer = create_scene(
-                    wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height,
-                    framerate, resize_to, px_per_unit, scalefactor
-                );
-                // Remove spinner after successful initialization
-                done_init.notify(true);
-                spinner?.remove();
+                if (is_resync) {
+                    const old_scene = screen.root_scene;
+                    if (old_scene) {
+                        delete_three_scene(old_scene);
+                    }
+                    const three_scene = deserialize_scene(scene_data, screen);
+                    screen.root_scene = three_scene;
+                    start_renderloop(three_scene);
+                } else {
+                    const renderer = create_scene(
+                        wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height,
+                        framerate, render_on_demand, resize_to, px_per_unit, scalefactor
+                    );
+                    // The first frame is drawn — reveal it now (the spinner removal and
+                    // the drawn content composite together on the next frame, so there's
+                    // no blank flash).
+                    spinner?.remove();
+                    // Bonito frees the session once its DOM left the document. Release
+                    // the WebGL context then: Julia can no longer reach the session, and
+                    // waiting for the garbage collector lets Chromium evict live contexts
+                    // after sixteen of them.
+                    Bonito.Sessions.on_free(session_id, () => {
+                        const screen = canvas.wglmakie_screen;
+                        if (screen && !canvas.isConnected) dispose_screen(screen, false);
+                    });
+                    // Signal init-done only after the browser has actually painted that
+                    // frame (two rAFs), so Julia's `wait_for_display` means "on screen".
+                    requestAnimationFrame(() => requestAnimationFrame(() => done_init.notify(true)));
+                }
             } catch (e) {
                 Bonito.Connection.send_error("error initializing scene", e);
-                done_init.notify(e);
-                spinner?.remove();
+                if (!is_resync) {
+                    done_init.notify(e);
+                    spinner?.remove();
+                }
                 return;
             }
-            return false; // Deregister callback after first successful run
+            // stays registered: `scene_serialized` delivers resync snapshots
         };
         if (scene_serialized.value) {
             // If scene is already serialized, initialize immediately
@@ -685,6 +766,7 @@ function create_scene(
     width,
     height,
     fps,
+    render_on_demand,
     resize_to,
     px_per_unit,
     scalefactor
@@ -699,9 +781,14 @@ function create_scene(
     const renderer = threejs_module(canvas);
 
     if (!renderer) {
+        // The browser refused a WebGL context (returns `null`). Show the
+        // WebGL-error message and bail — continuing with an undefined renderer
+        // throws `Cannot set properties of undefined (setting '_width')` in
+        // set_render_size and takes down the whole page init.
         const warning = getWebGLErrorMessage();
         // wrapper.removeChild(canvas)
         wrapper.appendChild(warning);
+        return;
     }
 
     const camera = new THREE.PerspectiveCamera(45, 1, 0, 100);
@@ -719,6 +806,10 @@ function create_scene(
         winscale,
         comm,
         texture_atlas: undefined,
+        // Shared across scene replacements; request_render wakes an idle loop.
+        render_on_demand: render_on_demand !== false,
+        requires_update: true,
+        frame_count: 0,
     };
     canvas.wglmakie_screen = screen;
 
@@ -733,11 +824,25 @@ function create_scene(
     canvas_width.on((w_h) => {
         // `renderer.setSize` correctly updates `canvas` dimensions
         set_render_size(screen, ...w_h);
+        // Setting `canvas.width/height` clears the drawing buffer. Without an
+        // immediate redraw the canvas stays blank until the next renderloop
+        // tick (up to ~1/fps later), which shows up as flicker / black frames
+        // while continuously resizing (e.g. dragging a split-pane divider).
+        // Re-render right after the resize. Deferred to a microtask so sibling
+        // observable updates from the same message (notably the scene viewport,
+        // which `resize!` updates alongside the canvas size) are applied first;
+        // the microtask still runs before the browser paints, so no blank frame
+        // reaches the screen.
+        queueMicrotask(() => {
+            if (screen.root_scene) {
+                render_scene(screen.root_scene);
+            }
+        });
     });
     const gl = renderer.getContext();
     const err = gl.getError();
     if (err != gl.NO_ERROR) {
-        throw new Error("WebGL error: " + WGL.wglerror(gl, err));
+        throw new Error("WebGL error: " + wglerror(gl, err));
     }
     return renderer;
 }
@@ -1068,7 +1173,6 @@ window.WGL = {
     convert_to_makie_size,
     initialize_canvas_size,
     setup_scene_init,
-    execute_in_order,
 };
 
 export {

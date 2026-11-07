@@ -1,15 +1,15 @@
-function add_attributes!(T::Type{<:PolarAxis}, graph, attributes)
-    rlimits = pop!(attributes, :rlimits)
+function add_attributes!(T::Type{<:PolarAxis}, graph, flattened_defaults)
+    attr = documented_attributes(PolarAxis)
+
+    _, rlimits = get_typed_default(attr, flattened_defaults, :rlimits)
     add_input!(graph, :rlimits, rlimits)
     ComputePipeline.set_type!(graph.rlimits, Any)
     graph.inputs[:rlimits].force_update = true
 
-    thetalimits = pop!(attributes, :thetalimits)
+    _, thetalimits = get_typed_default(attr, flattened_defaults, :thetalimits)
     add_input!(graph, :thetalimits, thetalimits)
     ComputePipeline.set_type!(graph.thetalimits, Any)
     graph.inputs[:thetalimits].force_update = true
-
-    _add_attributes!(T, graph, attributes)
     return
 end
 
@@ -17,6 +17,7 @@ end
 ### Main Block Initialization
 ################################################################################
 
+block_kwargs(::Type{PolarAxis}) = Set([:palette])
 function initialize_block!(po::PolarAxis; palette = nothing)
     # Setup Scenes
     cb = po.layoutobservables.computedbbox
@@ -25,13 +26,14 @@ function initialize_block!(po::PolarAxis; palette = nothing)
     end
 
     po.scene = Scene(
-        po.blockscene, scenearea, backgroundcolor = po.backgroundcolor, clear = true
+        po.blockscene, scenearea, backgroundcolor = po.backgroundcolor,
+        clear = true
     )
     map!(to_color, po.scene, po.scene.backgroundcolor, po.backgroundcolor)
 
     po.overlay = Scene(
         po.scene, scenearea, clear = false, backgroundcolor = :transparent,
-        transformation = Transformation(po.scene, transform_func = identity)
+        transformation = Transformation(po.scene, transform_func = identity),
     )
 
     if !isnothing(palette)
@@ -56,7 +58,7 @@ function initialize_block!(po::PolarAxis; palette = nothing)
     rticklabelplot, thetaticklabelplot = draw_axis!(po)
 
     # Calculate fraction of screen usable after reserving space for theta ticks
-    # OPT: only update on relevant text attributes rather than glyphcollection
+    # OPT: only update on relevant text attributes rather than the whole layout
     onany(
         po.blockscene,
         fast_string_boundingboxes_obs(thetaticklabelplot), thetaticklabelplot.visible,
@@ -590,8 +592,7 @@ function _tick_angle(theta_0, dir, ps, mirror)
 end
 
 function draw_axis!(po::PolarAxis)
-    _, sample_labels = get_ticks(po.rticks[], identity, po.rtickformat[], po.target_rlims[]...)
-    rtick_pos_lbl = Observable(Tuple{eltype(sample_labels), Point2f}[])
+    rtick_pos_lbl = Observable(Tuple{Any, Point2f}[])
     rticklabelalign = Observable{Point2f}()
     rticklabeloffset = Observable{Point2f}()
     rticklabelrotation = Observable{Float32}()
@@ -688,8 +689,7 @@ function draw_axis!(po::PolarAxis)
     end
 
 
-    _, sample_labels = get_ticks(po.thetaticks[], identity, po.thetatickformat[], po.target_thetalims[]...)
-    thetatick_pos_lbl = Observable(Tuple{eltype(sample_labels), Point2f}[])
+    thetatick_pos_lbl = Observable(Tuple{Any, Point2f}[])
     thetaticklabelalign = Point2f[]
     thetaticklabeloffset = Point2f[]
     thetagridpoints = Observable{Vector{Point2f}}()

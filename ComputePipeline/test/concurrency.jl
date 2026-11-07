@@ -3,6 +3,14 @@ function delay(v)
     return v
 end
 
+function wait_for_task(task)
+    for _ in 1:10
+        sleep(0.1)
+        istaskdone(task) && break
+    end
+    return
+end
+
 @testset "resolve world age" begin
     @testset "protected input" begin
         graph = ComputeGraph()
@@ -86,9 +94,7 @@ end
             fetch(subtask)
         end
 
-        for _ in 1:5
-            sleep(0.1)
-        end
+        wait_for_task(task)
 
         if istaskdone(task)
             @test isdirty(graph.ab.parent)
@@ -126,9 +132,7 @@ end
             fetch(subtask)
         end
 
-        for _ in 1:5
-            sleep(0.1)
-        end
+        wait_for_task(task)
 
         if istaskdone(task)
             @test isdirty(graph.merge1.parent)
@@ -152,9 +156,7 @@ end
         map!(identity, graph1, graph2.b, :c)
 
         task = @async graph1.c[]
-        for _ in 1:3
-            sleep(0.1)
-        end
+        wait_for_task(task)
         @test istaskdone(task)
     end
 
@@ -178,9 +180,7 @@ end
             fetch(subtask)
         end
 
-        for _ in 1:3
-            sleep(0.1)
-        end
+        wait_for_task(task)
 
         if istaskdone(task)
             @test !isdirty(graph1.y.parent)
@@ -213,9 +213,7 @@ end
                 fetch(subtask)
             end
 
-            for _ in 1:3
-                sleep(0.1)
-            end
+            wait_for_task(task)
 
             if istaskdone(task)
                 @test fetch(task) == 1
@@ -245,9 +243,7 @@ end
                 fetch(subtask)
             end
 
-            for _ in 1:3
-                sleep(0.1)
-            end
+            wait_for_task(task)
 
             if istaskdone(task)
                 @test fetch(task) == 1
@@ -278,9 +274,7 @@ end
                 fetch(subtask)
             end
 
-            for _ in 1:3
-                sleep(0.1)
-            end
+            wait_for_task(task)
 
             if istaskdone(task)
                 @test fetch(task) == 1
@@ -311,9 +305,7 @@ end
                 fetch(subtask)
             end
 
-            for _ in 1:3
-                sleep(0.1)
-            end
+            wait_for_task(task)
 
             if istaskdone(task)
                 @test fetch(task) == 1
@@ -367,7 +359,7 @@ end
         end
 
         task = @async graph.b[]
-        yield()
+        wait_for_task(task)
 
         if istaskdone(task)
             @test fetch(task) == 1
@@ -393,7 +385,7 @@ end
         map!(+, graph, [:b, :c], :d)
 
         task = @async graph.d[]
-        yield()
+        wait_for_task(task)
 
         if istaskdone(task)
             @test fetch(task) == 2
@@ -515,7 +507,7 @@ end
 
         results = Int[]
         task = @async on(x -> push!(results, x), graph.b, update = true)
-        yield()
+        wait_for_task(task)
 
         if istaskdone(task)
             @test !isdirty(graph.a.parent)
@@ -538,7 +530,7 @@ end
 
         results = Int[]
         task = @async on(x -> push!(results, x), graph.b, update = true)
-        yield()
+        wait_for_task(task)
 
         if istaskdone(task)
             @test !isdirty(graph.a.parent)
@@ -563,7 +555,7 @@ end
 
         results = Int[]
         task = @async on(x -> push!(results, x), graph.d, update = true)
-        yield()
+        wait_for_task(task)
 
         if istaskdone(task)
             @test !isdirty(graph.a.parent)
@@ -591,7 +583,7 @@ end
 
         results = Int[]
         task = @async on(x -> push!(results, x), graph.d, update = true)
-        yield()
+        wait_for_task(task)
 
         if istaskdone(task)
             @test !isdirty(graph.a.parent)
@@ -618,7 +610,7 @@ end
 
         results = Int[]
         task = @async on(x -> push!(results, x), graph.d, update = true)
-        yield()
+        wait_for_task(task)
 
         if istaskdone(task)
             @test !isdirty(graph.a.parent)
@@ -644,7 +636,7 @@ end
 
         results = Int[]
         task = @async on(x -> push!(results, x), graph.e, update = true)
-        yield()
+        wait_for_task(task)
 
         if istaskdone(task)
             @test !isdirty(graph.a.parent)

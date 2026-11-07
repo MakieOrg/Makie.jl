@@ -16,31 +16,6 @@ function boundingbox(plot::Text, target_space::Symbol)
 end
 
 @deprecate string_boundingbox(plot::Text) full_boundingbox(plot::Text)
-# @deprecate unchecked_boundingbox string_boundingboxes
-
-# Utility
-function text_bb(str, font, size)
-    rot = Quaternionf(0, 0, 0, 1)
-    layout = glyph_collection(str, font, size, 0.0f0, 0.0f0, 0.0f0, 0.0f0, -1, rot)
-    return unchecked_boundingbox(layout.glyphindices, layout.char_origins, size, layout.glyph_extents, rot)
-end
-
-function unchecked_boundingbox(glyphs, origins, scales, extents, rotation)
-    isempty(glyphs) && return Rect3d(Point3d(0), Vec3d(0))
-    glyphbbs = gl_bboxes(glyphs, scales, extents)
-    bb_ref = Ref(Rect3d())
-    broadcast_foreach(origins, glyphbbs, rotation) do charo, glyphbb, rotation
-        glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
-        charbb = rotate_bbox(glyphbb3, rotation) + charo
-        current_bb = bb_ref[]
-        bb_ref[] = if !isfinite_rect(current_bb)
-            charbb
-        else
-            union(current_bb, charbb)
-        end
-    end
-    return bb_ref[]
-end
 
 function gl_bboxes(glyphs, scales, extents)
     return broadcast(glyphs, extents, scales) do c, ext, scale

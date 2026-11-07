@@ -288,7 +288,7 @@ function apply_model(model::Mat4, transformed::Rect{N, T}) where {N, T}
         b = scale .* maximum(transformed) .+ trans
         return Rect{N, T}(min.(a, b), abs.(a .- b))
     else
-        for input in corners(transformed)
+        for input in coordinates(transformed)
             output = apply_model(model, input)
             bb = update_boundingbox(bb, output)
         end
@@ -489,6 +489,13 @@ If only one argument is given, `lower` is set to `-upper`, and the linear region
 
 WARNING: The gradient of this transformation is discontinuous at `lower` and `upper`, which may lead to visual artifacts in the data. Other scales such as `AsinhScale` or `pseudolog10` are smooth and do not have this issue.
 """
+struct Symlog10{S <: ReversibleScale} <: Function
+    lower::Float64
+    upper::Float64
+    linscale::Float64
+    scale::S
+end
+
 Symlog10(upper; kwargs...) = Symlog10(-upper, upper; kwargs...)
 function Symlog10(lower, upper; linscale = 1)
 
@@ -514,8 +521,14 @@ function Symlog10(lower, upper; linscale = 1)
         return x
     end
 
-    return ReversibleScale(forward, inverse; limits = (-3.0f0, 3.0f0), name = :Symlog10)
+    rs = ReversibleScale(forward, inverse; limits = (-3.0f0, 3.0f0), name = :Symlog10)
+    return Symlog10(Float64(lower), Float64(upper), Float64(linscale), rs)
 end
+
+(s::Symlog10)(x) = s.scale(x)
+inverse_transform(s::Symlog10) = inverse_transform(s.scale)
+Base.show(io::IO, s::Symlog10) = print(io, "Symlog10($(s.lower), $(s.upper); linscale = $(s.linscale))")
+Base.show(io::IO, ::MIME"text/plain", s::Symlog10) = show(io, s)
 
 """
     AsinhScale(a=0.1)

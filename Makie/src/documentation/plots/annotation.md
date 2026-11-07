@@ -69,6 +69,22 @@ annotation!(-200, 0, 0, -3, style = Ann.Styles.LineArrow(tail = Ann.Arrows.Line(
 fig
 ```
 
+```@figure
+fig = Figure()
+ax = Axis(fig[1, 1])
+A, B = Point2f(1, 2), Point2f(5, 5)
+scatter!(ax, [A, B], markersize = 10, color = :black)
+text!(ax, [A, B], text = ["A", "B"],
+    align = (:right, :top), offset = (-6, -4))
+annotation!(ax, [A], [B];
+    text = [""],
+    path = Ann.Paths.Arc(height = 0.4),
+    style = Ann.Styles.WithText(Ann.Styles.LineArrow();
+        text = "from A to B", fontsize = 14),
+    color = :steelblue, labelspace = :data, shrink = (5.0, 5.0))
+fig
+```
+
 ### `path`
 
 ```@figure

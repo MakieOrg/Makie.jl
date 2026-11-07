@@ -1,22 +1,3 @@
-################################################################################
-#                              DocStringExtension                              #
-################################################################################
-
-############################################################
-#                        Attributes                        #
-############################################################
-
-# This only exists for Axis3D/axis3d!() (aka OldAxis) now...
-
-struct DocThemer <: DocStringExtensions.Abbreviation end
-
-const ATTRIBUTES = DocThemer()
-
-function DocStringExtensions.format(::DocThemer, buf, doc)
-    binding = doc.data[:binding] |> Docs.resolve
-    return help_attributes(buf, binding; extended = true)
-end
-
 ############################################################
 #                        Instances                         #
 ############################################################

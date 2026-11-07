@@ -103,7 +103,6 @@
     @testset "`default_attribute` with Attributes containing Attributes" begin
         foo = Attributes(; bar = 1)
         @test propertynames(foo) == (:bar,)
-        @test Dict(Makie.default_attribute(Attributes(; foo), :foo => Attributes())) == Dict(foo)
 
         pl = Scatter((1:4,), Dict{Symbol, Any}(:force_dimconverts => true))
         @test Set(propertynames(pl)) == keys(pl.attributes.outputs)
@@ -116,11 +115,53 @@
         values = collect(1:8)
         menu.options[] = zip(labels, values)
         p = menu.blockscene.children[1].plots[2]
+        glyphs = p.plots[1]
         # should not error
         p.positions_transformed_f32c[]
-        p.quad_offset[]
-        p.sdf_marker_shape[]
-        p.sdf_uv[]
+        glyphs.quad_offset[]
+        glyphs.sdf_marker_shape[]
+        glyphs.sdf_uv[]
         @test true
+    end
+
+    @testset "#5744 to_rotation resolution" begin
+        v = normalize(Vec3f(0.001, 0, -1))
+        @assert v !== Vec3f(0, 0, -1)
+        @test to_rotation(v) !== to_rotation(Vec3f(0, 0, -1))
+    end
+
+    @testset "#5024 no Linestyle warning in SpecApi" begin
+        f, a, p = plotlist(S.Lines(rand(10), linestyle = :dash))
+        @test_logs p.plots[1].linestyle[]
+    end
+
+    @testset "#5858 x/y/zlims! with dim convert values, #5859 DateTime in Axis3 lims!" begin
+        x = DateTime(2026, 1, 1):Day(1):DateTime(2026, 1, 10)
+        f, a, p = lines(x, x)
+        # shouldn't error
+        xlims!(first(x), last(x))
+        ylims!(first(x), last(x))
+        lines!(Axis3(f[1, 2]), x, x, x)
+        xlims!(first(x), last(x))
+        ylims!(first(x), last(x))
+        zlims!(first(x), last(x))
+    end
+
+    @testset "#5349, no type pinning of cycle-able attributes passed to recipes" begin
+        color = Observable{Any}(:red)
+        f, a, p = textlabel(0, 0, text = "Abc", background_color = color)
+        @test p.plots[2].plots[1].scaled_color[] == to_color(:red)
+        # type-pinning would error with this because we change Symbol -> Tuple
+        color[] = (:blue, 0.5)
+        @test p.plots[2].plots[1].scaled_color[] == to_color((:blue, 0.5))
+    end
+
+    @testset "#5499 reactive scene backgroundcolor" begin
+        bgcol = Observable(colorant"green")
+        fig = Figure(backgroundcolor = bgcol)
+        @test fig.scene.backgroundcolor[] == to_color(bgcol[])
+        bgcol[] = colorant"red"
+        @test fig.scene.backgroundcolor[] == to_color(bgcol[])
+        @assert !haskey(fig.scene.compute, :backgroundcolor) "May need to update test?"
     end
 end

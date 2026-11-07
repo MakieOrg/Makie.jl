@@ -8,8 +8,8 @@ Plots `scatter` markers with `lines` between them.
             :color, :colormap, :colorrange, :colorscale, :lowclip, :highclip, :alpha,
             :nan_color,
             :fxaa, :visible, :transparency, :space, :clip_planes, :ssao, :overdraw,
-            :cycle, :transformation, :model, :depth_shift,
-            :inspector_clear, :inspector_hover, :inspector_label, :inspectable,
+            :cycle, :transformation, :model, :depth_shift, :rasterize,
+            :inspector_label, :inspectable,
         )
     )...
     "The color of the line, and by default also of the scatter markers."

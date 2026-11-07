@@ -1,0 +1,48 @@
+name: Relocatability
+on:
+  workflow_call:
+
+jobs:
+  test:
+    name: Relocatability ${{ matrix.backend }}
+    env:
+      MODERNGL_DEBUGGING: "true"
+      JULIA_NUM_THREADS: 1
+      JULIA_IMAGE_THREADS: 2
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # WGLMakie's v5 stack (Bonito 5) needs Julia 1.11+; the others stay on
+        # the LTS. Fully explicit so each backend pins its own Julia version.
+        include:
+          - {os: ubuntu-latest, arch: x64, backend: GLMakie, version: '1.10'}
+          - {os: ubuntu-latest, arch: x64, backend: WGLMakie, version: '1.11'}
+          - {os: ubuntu-latest, arch: x64, backend: CairoMakie, version: '1.10'}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v3
+      - name: Install dependencies for GPU backends
+        if: matrix.backend != 'CairoMakie'
+        run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
+      # The sysimage compile peaks near the runner's 16GB; without extra swap the
+      # runner intermittently dies with "The runner has received a shutdown signal"
+      - name: Increase swap space
+        run: |
+          sudo fallocate -l 8G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
+          swapon --show
+      - name: Relocatability test
+        run: |
+          if [ "${{ matrix.backend }}" != "CairoMakie" ]; then
+            DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes ./relocatability.jl ${{ matrix.backend }}
+          else
+            julia --color=yes ./relocatability.jl ${{ matrix.backend }}
+          fi

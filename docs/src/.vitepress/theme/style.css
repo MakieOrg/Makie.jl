@@ -7,7 +7,7 @@ https://github.com/vuejs/vitepress/blob/main/src/client/theme-default/styles/var
 
   /* Layouts */
 
-/* 
+/*
  :root {
   --vp-layout-max-width: 1440px;
 } */
@@ -30,9 +30,9 @@ https://github.com/vuejs/vitepress/blob/main/src/client/theme-default/styles/var
 }
 
 .mono {
-  /* 
-  Disable contextual alternates (kind of like ligatures but different) in monospace, 
-  which turns `/>` to an up arrow and `|>` (the Julia pipe symbol) to an up arrow as well.  
+  /*
+  Disable contextual alternates (kind of like ligatures but different) in monospace,
+  which turns `/>` to an up arrow and `|>` (the Julia pipe symbol) to an up arrow as well.
   This is pretty bad for Julia folks reading even though copy+paste retains the same text.
   */
   font-feature-settings: 'calt' 0;
@@ -113,7 +113,7 @@ https://github.com/vuejs/vitepress/blob/main/src/client/theme-default/styles/var
     --vp-c-gray-dark-3: hsl(220 12% 23%);
     --vp-c-gray-dark-4: hsl(220 14% 17%);
     --vp-c-gray-dark-5: hsl(220 16% 13%);
-  
+
     /* // Backgrounds */
     /* --vp-c-bg: hsl(240, 2%, 11%); */
     --vp-custom-block-info-bg: hsl(220 14% 17%);

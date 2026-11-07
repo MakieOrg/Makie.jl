@@ -35,6 +35,7 @@ function register_voxel_conversions!(attr)
     map!(attr, [:chunk, :updated_indices, :colorrange, :is_air], :value_limits) do chunk, (is, js, ks), colorrange, is_air
         colorrange !== automatic && return colorrange
         eltype(chunk) <: native_types && return (1, 255)
+        isempty(chunk) && return (0.0, 1.0)
 
         mini, maxi = (Inf, -Inf)
         for k in ks, j in js, i in is
@@ -49,40 +50,25 @@ function register_voxel_conversions!(attr)
         return (mini, maxi)
     end
 
-    return register_computation!(
-        attr, [:value_limits, :is_air, :colorscale, :chunk, :updated_indices],
-        [:chunk_u8]
-    ) do (lims, is_air, scale, chunk, (is, js, ks)), changed, last
+    T = typeof(attr.chunk[])
+    if T <: Array{UInt8, 3}
+        # no need to convert to native type
+        ComputePipeline.alias!(attr, :chunk, :chunk_u8)
 
-        # No conversions necessary so no new array necessary. Should still
-        # propagate updates though
-        if chunk isa Array{UInt8, 3}
-            output = isnothing(last) ? ShaderAbstractions.Sampler(chunk, minfilter = :nearest) : last.chunk_u8
+    elseif T <: ShaderAbstractions.Sampler
+        # user managed sampler
+        ComputePipeline.alias!(attr, :chunk, :chunk_u8)
+        ComputePipeline.alias!(attr, :chunk_u8, :chunk_sampler)
+        return
 
-            # notify sampler
-            if chunk === ShaderAbstractions.data(output)
-                # in place update so we just need to tell the Sampler which
-                # indices it needs to forward to Textures
-                data = if is == axes(chunk, 1) && js == axes(chunk, 2) && ks == axes(chunk, 3)
-                    chunk
-                else
-                    view(chunk, is, js, ks)
-                end
-                ShaderAbstractions.updater(output).update[] = (setindex!, (data, is, js, ks))
-            else
-                # array got replaced
-                # ShaderAbstractions.update!(output, chunk) # errors :)
-                ShaderAbstractions.setfield!(output, :data, chunk)
-                Nx, Ny, Nz = size(chunk)
-                ShaderAbstractions.updater(output).update[] = (setindex!, (chunk, 1:Nx, 1:Ny, 1:Nz))
-            end
+    else
+        register_computation!(
+            attr, [:value_limits, :is_air, :colorscale, :chunk, :updated_indices],
+            [:chunk_u8]
+        ) do (lims, is_air, scale, chunk, (is, js, ks)), changed, last
 
-            return (output,)
-        elseif chunk isa Sampler
-            return (chunk,)
-        else
-            output = if isnothing(last)
-                ShaderAbstractions.Sampler(Array{UInt8, 3}(undef, size(chunk)), minfilter = :nearest)
+            output = if isnothing(last) || size(last.chunk_u8) != size(chunk)
+                Array{UInt8, 3}(undef, size(chunk))
             else
                 last.chunk_u8
             end
@@ -91,16 +77,35 @@ function register_voxel_conversions!(attr)
             maxi = max(mini + 10eps(float(mini)), maxi)
             norm = 252.99998 / (maxi - mini)
             @inbounds for k in ks, j in js, i in is
-                _update_voxel_data!(ShaderAbstractions.data(output), chunk, CartesianIndex(i, j, k), is_air, scale, mini, norm)
+                _update_voxel_data!(output, chunk, CartesianIndex(i, j, k), is_air, scale, mini, norm)
             end
-
-            # notify sampler
-            x = view(ShaderAbstractions.data(output), is, js, ks)
-            ShaderAbstractions.updater(output).update[] = (setindex!, (x, is, js, ks))
 
             return (output,)
         end
     end
+
+    register_computation!(
+        attr, [:chunk_u8, :updated_indices], [:chunk_sampler]
+    ) do (chunk, (is, js, ks)), changed, last
+
+        if isnothing(last)
+            return (ShaderAbstractions.Sampler(chunk, minfilter = :nearest),)
+        else
+            output = last.chunk_sampler
+
+            if ShaderAbstractions.data(output) !== chunk
+                # resize or full replace
+                ShaderAbstractions.update!(output, chunk)
+            else
+                # notify sampler of update in view defined by is, js, ks
+                ShaderAbstractions.update!(output, is, js, ks)
+            end
+
+            return (output,)
+        end
+    end
+
+    return
 end
 
 # TODO: Does have some overlap with the normal version...
@@ -108,7 +113,9 @@ function register_voxel_colormapping!(attr)
     # TODO: Is resolving this immediately fine?
     add_constant!(attr, :fetch_pixel, false) # for CairoMakie
     if isnothing(attr[:color][])
-        register_computation!(attr, [:colormap, :alpha, :lowclip, :highclip], [:voxel_colormap]) do (cmap, alpha, lowclip, highclip), changed, cached_load
+        map!(
+            attr, [:colormap, :alpha, :lowclip, :highclip], :voxel_colormap
+        ) do cmap, alpha, lowclip, highclip
             N = 253 + (lowclip === automatic) + (highclip === automatic)
             cm = add_alpha.(resample_cmap(cmap, N), alpha)
             if lowclip !== automatic
@@ -117,10 +124,10 @@ function register_voxel_colormapping!(attr)
             if highclip !== automatic
                 cm = [cm; to_color(highclip)]
             end
-            return (cm,)
+            return cm
         end
     else
-        register_computation!(attr, [:color, :alpha], [:voxel_color]) do (color, alpha), changed, cached
+        map!(attr, [:color, :alpha], :voxel_color) do color, alpha
             if color isa AbstractVector # one color per id
                 output = Vector{RGBAf}(undef, 255)
                 @inbounds for i in 1:min(255, length(color))
@@ -129,14 +136,14 @@ function register_voxel_colormapping!(attr)
                 for i in (min(255, length(color)) + 1):255
                     output[i] = RGBAf(0, 0, 0, 0)
                 end
-                return (output,)
+                return output
             elseif color isa AbstractArray # image/texture
                 output = add_alpha.(to_color.(color), alpha)
-                return (output,)
+                return output
             elseif color isa Colorant # static
                 c = add_alpha(to_color(color), alpha)
                 output = [c for _ in 1:255]
-                return (output,)
+                return output
             else
                 error("Invalid color type $(typeof(color))")
             end
@@ -272,7 +279,7 @@ function voxel_size(p::Voxels)
 end
 
 function voxel_positions(p::Voxels)
-    voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
+    voxel_id = p.chunk_u8[]::Array{UInt8, 3}
     _size = size(voxel_id)
     return [
         voxel_position(p, i, j, k)
@@ -283,13 +290,13 @@ end
 
 function voxel_position(p::Voxels, i, j, k)
     mini, maxi = extrema(data_limits(p))
-    _size = size(p.chunk_u8[].data::Array{UInt8, 3})
+    _size = size(p.chunk_u8[]::Array{UInt8, 3})
     step = (maxi .- mini) ./ _size
     return Point3f(mini .+ step .* (i - 0.5, j - 0.5, k - 0.5))
 end
 
 function voxel_colors(p::Voxels)
-    voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
+    voxel_id = p.chunk_u8[]::Array{UInt8, 3}
     uv_map = p.uvmap[]
     color = if !isnothing(uv_map)
         @warn "Voxel textures are not implemented in this backend!"

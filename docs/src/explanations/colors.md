@@ -25,13 +25,18 @@ Alternatively, one can make partially transparent colors or colormaps by passing
 Some plot types (e.g. mesh, surface, ...) allow you to sample colors from an image.
 The sampling can happen based on texture coordinates (uv coordinates), pixel coordinates or normals.
 
-The first case is used when an image `Matrix` is passed directly as the `color` attribute.
+The first case (uv based sampling) is used when an image `Matrix` is passed directly as the `color` attribute.
 Note that texture coordinates need to be available to get a well defined result.
 
-The second case is used when a `Makie.AbstractPattern` is passed as the `color`.
+The second case (pixel based sampling) is used when a `Makie.AbstractPattern` is passed as the `color`.
 This is typically used for hatching.
 For example a hatching pattern with diagonal lines can be set with `color = Pattern('/')`.
 More generally, you can define a line pattern with `Makie.LinePattern()` or use an image as a pattern with `Pattern(image)`.
+
+!!! note
+    CairoMakie handles line patterns differently from other backends to avoid rasterization.
+    As a result lines don't replace the background but draw on top of it, which causes the final render to have different colors and opacities when lines are semi-transparent.
+    If this is not desired one can force the use of an image pattern by passing `Pattern(Makie.to_image(line_pattern))` instead.
 
 The last case is used when an image is passed with the `matcap` attribute.
 The image is then interpreted as going from (-1, 1) to (1, 1) so that normals can be mapped to it.
@@ -111,17 +116,20 @@ with_theme(theme) do
     text!(ax, 2.5, -3, text = "color = [1, 2, 3, 4, NaN, 6, 7, 8, 9, 10]\ncolormap = :viridis\ncolorrange = (2, 9)\nnan_color = :red, highclip = :magenta, lowclip = :cyan")
     scatter!(ax, range(1, 4, length = 10), fill(-3, 10), color = [1, 2, 3, 4, NaN, 6, 7, 8, 9, 10], colormap = :viridis, colorrange = (2, 9), nan_color = :red, highclip = :magenta, lowclip = :cyan)
 
-    text!(ax, 2.5, -4, text = "color = HSV.(range(0, 360, 10), 50, 50)")
-    scatter!(ax, range(1, 4, length = 10), fill(-4, 10), color = HSV.(range(0, 360, 10), 50, 50))
+    text!(ax, 2.5, -4, text = "color = [1, 2, 3, 4, NaN, 6, 7, 8, 9, 10]\ncolormap = :viridis\ncolorrange = (3, automatic)\nnan_color = :red, highclip = :magenta, lowclip = :cyan")
+    scatter!(ax, range(1, 4, length = 10), fill(-4, 10), color = [1, 2, 3, 4, NaN, 6, 7, 8, 9, 10], colormap = :viridis, colorrange = (3, Makie.automatic), nan_color = :red, highclip = :magenta, lowclip = :cyan)
 
-    text!(ax, 2.5, -5, text = "color = 1:10\ncolormap = (:viridis, 0.5)\ncolorrange = automatic")
-    scatter!(ax, range(1, 4, length = 10), fill(-5, 10), color = 1:10, colormap = (:viridis, 0.5))
+    text!(ax, 2.5, -5, text = "color = HSV.(range(0, 360, 10), 50, 50)")
+    scatter!(ax, range(1, 4, length = 10), fill(-5, 10), color = HSV.(range(0, 360, 10), 50, 50))
 
-    text!(ax, 2.5, -6, text = "color = 1:10\ncolormap = [:red, :orange, :brown]\ncolorrange = automatic")
-    scatter!(ax, range(1, 4, length = 10), fill(-6, 10), color = 1:10, colormap = [:red, :orange, :brown])
+    text!(ax, 2.5, -6, text = "color = 1:10\ncolormap = (:viridis, 0.5)\ncolorrange = automatic")
+    scatter!(ax, range(1, 4, length = 10), fill(-6, 10), color = 1:10, colormap = (:viridis, 0.5))
 
-    text!(ax, 2.5, -7, text = "color = 1:10\ncolormap = Reverse(:viridis)\ncolorrange = automatic")
-    scatter!(ax, range(1, 4, length = 10), fill(-7, 10), color = 1:10, colormap = Reverse(:viridis))
+    text!(ax, 2.5, -7, text = "color = 1:10\ncolormap = [:red, :orange, :brown]\ncolorrange = automatic")
+    scatter!(ax, range(1, 4, length = 10), fill(-7, 10), color = 1:10, colormap = [:red, :orange, :brown])
+
+    text!(ax, 2.5, -8, text = "color = 1:10\ncolormap = Reverse(:viridis)\ncolorrange = automatic")
+    scatter!(ax, range(1, 4, length = 10), fill(-8, 10), color = 1:10, colormap = Reverse(:viridis))
 
     f
 end
@@ -211,4 +219,3 @@ ColorTable(getkeys("seaborn")) # hide
 ```@example colors
 ColorTable(getkeys("general")) # hide
 ```
-

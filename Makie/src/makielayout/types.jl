@@ -8,36 +8,68 @@ end
 struct DataAspect end
 
 struct Cycle
-    cycle::Vector{Pair{Vector{Symbol}, Symbol}}
+    attribute_lookup::Dict{Symbol, Int}
+    palette_keys::Vector{Symbol}
     covary::Bool
 end
-Base.:(==)(a::Cycle, b::Cycle) = a.covary == b.covary && a.cycle == b.cycle
+
+function Base.:(==)(a::Cycle, b::Cycle)
+    return a.covary == b.covary &&
+        a.palette_keys == b.palette_keys &&
+        a.attribute_lookup == b.attribute_lookup
+end
 
 Cycle(cycle::Cycle) = cycle
-Cycle(cycle; covary = false) = Cycle(to_cycle(cycle), covary)
+Cycle(cycle; covary = false) = Cycle(cycle, covary)
+function Cycle(cycle, covary)
+    attribute_lookup = Dict{Symbol, Int}()
+    palette_keys = Symbol[] # keep order
+    flatten_cycle!(attribute_lookup, palette_keys, cycle)
+    return Cycle(attribute_lookup, palette_keys, covary)
+end
 
-palettesyms(cycle::Cycle) = [c[2] for c in cycle.cycle]
-attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
+# convert input to internal format
+function unique_push!(vec, val)
+    idx = findfirst(==(val), vec)
+    if isnothing(idx)
+        push!(vec, val)
+        return length(vec)
+    else
+        return idx
+    end
+end
 
-to_cycle(single) = [to_cycle_single(single)]
-to_cycle(::Nothing) = []
-to_cycle(symbolvec::Vector) = map(to_cycle_single, symbolvec)
-to_cycle_single(sym::Symbol) = [sym] => sym
-to_cycle_single(pair::Pair{Symbol, Symbol}) = [pair[1]] => pair[2]
-to_cycle_single(pair::Pair{Vector{Symbol}, Symbol}) = pair
+flatten_cycle!(lookup, keys, ::Nothing) = nothing
+function flatten_cycle!(lookup, keys, s::Symbol)
+    lookup[s] = unique_push!(keys, s)
+    return
+end
+function flatten_cycle!(lookup, keys, p::Pair{Symbol, Symbol})
+    lookup[p[1]] = unique_push!(keys, p[2])
+    return
+end
+function flatten_cycle!(lookup, keys, p::Pair{Vector{Symbol}, Symbol})
+    idx = unique_push!(keys, p[2])
+    foreach(k -> lookup[k] = idx, first(p))
+    return
+end
+flatten_cycle!(lookup, keys, v::Vector) = foreach(x -> flatten_cycle!(lookup, keys, x), v)
+
+attrsyms(cycle::Cycle) = keys(cycle.attribute_lookup)
+palettesyms(cycle::Cycle) = cycle.palette_keys
 
 function get_cycle_attribute(palettes, attribute::Symbol, index::Int, cycle::Cycle)
-    cyclepalettes = [palettes[sym][] for sym in palettesyms(cycle)]
-    isym = findfirst(syms -> attribute in syms, attrsyms(cycle))
-    palette = cyclepalettes[isym]
+    palette_idx = cycle.attribute_lookup[attribute]
+    palette_key = cycle.palette_keys[palette_idx]
+    palette = to_value(palettes[palette_key])
     if cycle.covary
         return palette[mod1(index, length(palette))]
     else
-        cis = CartesianIndices(Tuple(length(p) for p in cyclepalettes))
+        cis = CartesianIndices(Tuple(length(to_value(palettes[s])) for s in palettesyms(cycle)))
         n = length(cis)
         k = mod1(index, n)
         idx = Tuple(cis[k])
-        return palette[idx[isym]]
+        return palette[idx[palette_idx]]
     end
 end
 
@@ -144,6 +176,31 @@ struct LogTicks{T}
 end
 
 """
+    PseudologTicks(n_ideal::Int = 5)
+
+Tick finder for axes using `Makie.pseudolog10`. Picks decade ticks (`±10ᵏ`) with a step
+chosen so that roughly `n_ideal` ticks are produced overall, anchors zero when it is in the
+visible range, and falls back to `WilkinsonTicks` when no decade fits the window.
+"""
+struct PseudologTicks
+    n_ideal::Int
+end
+PseudologTicks() = PseudologTicks(5)
+
+"""
+    SymlogTicks(n_ideal::Int = 5)
+
+Tick finder for axes using `Makie.Symlog10`. Picks decade ticks (`±10ᵏ`) outside the scale's
+linear region, anchors zero when it is in the visible range, and falls back to
+`WilkinsonTicks` inside the linear region. The `n_ideal` parameter is a soft target for the
+total number of ticks produced.
+"""
+struct SymlogTicks
+    n_ideal::Int
+end
+SymlogTicks() = SymlogTicks(5)
+
+"""
     IntervalsBetween(n::Int, mirror::Bool = true)
 
 Indicates to create n-1 minor ticks between every pair of adjacent major ticks.
@@ -158,6 +215,8 @@ struct IntervalsBetween
 end
 IntervalsBetween(n) = IntervalsBetween(n, true)
 
+include("ticklocators/linear.jl")
+include("ticklocators/wilkinson.jl")
 
 mutable struct LineAxis
     parent::Scene
@@ -166,7 +225,10 @@ mutable struct LineAxis
     elements::Dict{Symbol, Any}
 end
 
-struct LimitReset end
+struct LimitReset
+    prev_pressed::Vector{Bool}
+end
+LimitReset() = LimitReset(fill(false, 3))
 
 mutable struct RectangleZoom
     callback::Function
@@ -177,37 +239,40 @@ mutable struct RectangleZoom
     to::Union{Nothing, Point2d}
     rectnode::Observable{Rect2d}
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
+    # The selection rectangle mesh is created lazily on the first drag:
+    # it costs a Scene + mesh plot per Axis but is rarely ever used.
+    mesh_initialized::Bool
 end
 
 function RectangleZoom(callback::Function; restrict_x = false, restrict_y = false, modifier = true)
     return RectangleZoom(
         callback, Observable(false), restrict_x, restrict_y,
-        nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier
+        nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier, false
     )
 end
 
+mutable struct TicklabelspaceReset
+    delay::Float64
+    idle_time::Float64
+    tick_listener::Union{Nothing, Observables.ObserverFunction}
+    prev_xticklabelspace::Union{Automatic, Symbol, Float64}
+    prev_yticklabelspace::Union{Automatic, Symbol, Float64}
+end
+
+TicklabelspaceReset(delay) = TicklabelspaceReset(delay, 0.0, nothing, 0.0, 0.0)
+
 struct ScrollZoom
     speed::Float32
-    reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    reset_delay::Float32
+    ticklabelspace_reset::TicklabelspaceReset
 end
 
-function ScrollZoom(speed, reset_delay)
-    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
-end
+ScrollZoom(speed, reset_delay::Real) = ScrollZoom(speed, TicklabelspaceReset(reset_delay))
 
 struct DragPan
-    reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
-    reset_delay::Float32
+    ticklabelspace_reset::TicklabelspaceReset
 end
 
-function DragPan(reset_delay)
-    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
-end
+DragPan(reset_delay::Real) = DragPan(TicklabelspaceReset(reset_delay))
 
 
 struct DragRotate
@@ -218,7 +283,7 @@ mutable struct FocusOnCursor
     timeout::Float64
     skip::Int64
 end
-FocusOnCursor(skip, timeout = 0.1) = FocusOnCursor(time(), timeout, skip)
+FocusOnCursor(skip, timeout = 0.1) = FocusOnCursor(1.0e-9 * time_ns(), timeout, skip)
 
 struct ScrollEvent
     x::Float32
@@ -304,21 +369,17 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         """
         Formatter for the xlabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         xlabel_suffix = "[{}]"
         """
         Formatter for the ylabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         ylabel_suffix = "[{}]"
-        "Switches between short and long x units, e.g. \"s\" vs \"Second\""
-        use_short_x_units::Bool = true
-        "Switches between short and long y units, e.g. \"s\" vs \"Second\""
-        use_short_y_units::Bool = true
 
         """
         The content of the x axis label.
@@ -608,6 +669,11 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         yzoomkey::IsPressedInputType = Makie.Keyboard.y
         "Button that needs to be pressed to allow scroll zooming."
         zoombutton::IsPressedInputType = true
+        "The key (and button) combination for triggering a limit reset (equivalent to `reset_limits!(ax)`)"
+        resetlimitskey::IsPressedInputType = Exclusively((Keyboard.left_control | Keyboard.right_control) & Mouse.left)
+        "The key (and button) combination for triggering a limit recalculation (equivalent to `autolimits!(ax)`)"
+        recomputelimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
@@ -753,8 +819,11 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     end
 end
 
-function RectangleZoom(f::Function, ax::Axis; kw...)
-    r = RectangleZoom(f; kw...)
+RectangleZoom(f::Function, ax::Axis; kw...) = RectangleZoom(f; kw...)
+
+function initialize_selection_mesh!(r::RectangleZoom, ax::Axis)
+    r.mesh_initialized && return r
+    r.mesh_initialized = true
     rect_scene = Scene(ax.scene)
     selection_vertices = lift(
         _selection_vertices, rect_scene, Observable(ax.scene), ax.finallimits,
@@ -775,11 +844,20 @@ function RectangleZoom(f::Function, ax::Axis; kw...)
     return r
 end
 
+function _axis_limits_are_valid(ax::Axis, lims::Rect)
+    mi, ma = extrema(lims)
+    return all(isfinite, mi) && all(isfinite, ma) && all(>(0), widths(lims)) &&
+        validate_limits_for_scale((mi[1], ma[1]), ax.xscale[]) &&
+        validate_limits_for_scale((mi[2], ma[2]), ax.yscale[])
+end
+
 function RectangleZoom(ax::Axis; kw...)
     return RectangleZoom(ax; kw...) do newlims
-        if !(0 in widths(newlims))
+        if _axis_limits_are_valid(ax, newlims)
             ax.localxlimits[] = (left(newlims), right(newlims))
             ax.localylimits[] = (bottom(newlims), top(newlims))
+        else
+            @warn "Rectangle zoom ignored: selected limits are invalid for this axis scale" selected_limits = newlims visible_limits = ax.finallimits[] xscale = ax.xscale[] yscale = ax.yscale[] maxlog = 1
         end
         return
     end
@@ -887,16 +965,24 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
         "The colormap that the colorbar uses."
         colormap = @inherit(:colormap, :viridis)
+        "Deprecated in favor of `colorrange`. (The range of values depicted in the colorbar.)"
+        limits = automatic
         "The range of values depicted in the colorbar."
-        limits = nothing
-        "The range of values depicted in the colorbar."
-        colorrange = nothing
+        colorrange = automatic
+        """
+        Sets the color values of the Colorbar. The number of unique color values will set the number
+        of categories for a categorical colormap. If `colorrange` is not given, this will set a
+        default colorrange.
+        """
+        values = [0, 1]
         "The color of the high clip triangle."
-        highclip = nothing
+        highclip = automatic
         "The color of the low clip triangle."
-        lowclip = nothing
+        lowclip = automatic
         "The axis scale"
         scale = identity
+        "Sets the alpha value of the colormap."
+        alpha = 1.0
 
 
         "The align mode of the colorbar in its parent GridLayout."
@@ -919,6 +1005,13 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
         size = 12
     end
+end
+
+# TODO: not used
+function deprecated_attributes(::Type{Colorbar})
+    return (
+        (; attribute = :limits, message = "`limits` has been removed in favor of `colorrange` in Makie v0.25.", error = true),
+    )
 end
 
 @Block Label begin
@@ -1035,67 +1128,6 @@ end
     end
 end
 
-"""
-A grid of one or more horizontal `Slider`s, where each slider has a
-name label on the left and a value label on the right.
-
-Each `NamedTuple` you pass specifies one `Slider`. You always have to pass `range`
-and `label`, and optionally a `format` for the value label. Beyond that, you can set
-any keyword that `Slider` takes, such as `startvalue`.
-
-The `format` keyword can be a `String` with Format.jl style, such as "{:.2f}Hz", or
-a function.
-
-## Constructors
-
-```julia
-SliderGrid(fig_or_scene, nts::NamedTuple...; kwargs...)
-```
-
-## Examples
-
-```julia
-sg = SliderGrid(fig[1, 1],
-    (label = "Amplitude", range = 0:0.1:10, startvalue = 5),
-    (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
-    (label = "Phase", range = 0:0.01:2pi,
-        format = x -> string(round(x/pi, digits = 2), "π"))
-)
-```
-
-Working with slider values:
-
-```julia
-on(sg.sliders[1].value) do val
-    # do something with `val`
-end
-```
-"""
-@Block SliderGrid begin
-    @forwarded_layout
-    sliders::Vector{Slider}
-    valuelabels::Vector{Label}
-    labels::Vector{Label}
-    @attributes begin
-        "The horizontal alignment of the block in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the block in its suggested bounding box."
-        valign = :center
-        "The width setting of the block."
-        width = Auto()
-        "The height setting of the block."
-        height = Auto()
-        "Controls if the parent layout can adjust to this block's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this block's height"
-        tellheight::Bool = true
-        "The align mode of the block in its parent GridLayout."
-        alignmode = Inside()
-        "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
-        value_column_width = automatic
-    end
-end
-
 @Block IntervalSlider begin
     selected_indices::Observable{Tuple{Int, Int}}
     displayed_sliderfractions::Observable{Tuple{Float64, Float64}}
@@ -1132,6 +1164,72 @@ end
         alignmode = Inside()
         "Controls if the buttons snap to valid positions or move freely"
         snap::Bool = true
+    end
+end
+
+"""
+A grid of one or more horizontal `Slider`s or `IntervalSlider`s, where each slider has a
+name label on the left and a value label on the right.
+
+Each `NamedTuple` you pass specifies one slider. You always have to pass `range`
+and `label`, and optionally a `format` for the value label. By default, a `Slider` is
+created. Pass `type = IntervalSlider` to create an `IntervalSlider` instead. Beyond that,
+you can set any keyword that the chosen slider type takes, such as `startvalue` for
+`Slider` or `startvalues` for `IntervalSlider`.
+
+The `format` keyword can be a `String` with Format.jl style, such as "{:.2f}Hz", or
+a function.
+
+## Constructors
+
+```julia
+SliderGrid(fig_or_scene, nts::NamedTuple...; kwargs...)
+```
+
+## Examples
+
+```julia
+sg = SliderGrid(fig[1, 1],
+    (label = "Amplitude", range = 0:0.1:10, startvalue = 5.0),
+    (label = "Band", type = IntervalSlider, range = 0:0.1:10, startvalues = (2.0, 8.0)),
+    (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10.0),
+)
+```
+
+Working with slider values:
+
+```julia
+on(sg.sliders[1].value) do val
+    # do something with `val`
+end
+
+on(sg.sliders[2].interval) do interval
+    # do something with `interval`
+end
+```
+"""
+@Block SliderGrid begin
+    @forwarded_layout
+    sliders::Vector{Union{Slider, IntervalSlider}}
+    valuelabels::Vector{Label}
+    labels::Vector{Label}
+    @attributes begin
+        "The horizontal alignment of the block in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the block in its suggested bounding box."
+        valign = :center
+        "The width setting of the block."
+        width = Auto()
+        "The height setting of the block."
+        height = Auto()
+        "Controls if the parent layout can adjust to this block's width"
+        tellwidth::Bool = true
+        "Controls if the parent layout can adjust to this block's height"
+        tellheight::Bool = true
+        "The align mode of the block in its parent GridLayout."
+        alignmode = Inside()
+        "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
+        value_column_width = automatic
     end
 end
 
@@ -1345,6 +1443,21 @@ on(menu2.selection) do selected_function
     # do something with the selected function
 end
 ```
+
+By default the menu is searchable: while it is open, its selection box acts as a
+text box and typing filters the visible options. The filter predicate is the
+`filter` attribute and defaults to a case-insensitive substring match on the
+option label. Set `searchable = false` for a plain dropdown; the attribute is
+only honored at construction time. `i_selected` and `selection` always reference
+the original options, not the visible subset.
+
+```julia
+menu3 = Menu(fig[1, 1], options = ["Apple", "Apricot", "Banana", "Cherry"],
+             search_placeholder = "filter fruit...")
+# custom filter: prefix match instead of substring
+menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
+             filter = (q, label) -> startswith(label, q))
+```
 """
 @Block Menu begin
     @attributes begin
@@ -1369,15 +1482,15 @@ end
         "Is the menu showing the available options"
         is_open = false
         "Cell color when hovered"
-        cell_color_hover = COLOR_ACCENT_DIMMED[]
+        cell_color_hover::RGBAf = COLOR_ACCENT_DIMMED[]
         "Cell color when active"
-        cell_color_active = COLOR_ACCENT[]
+        cell_color_active::RGBAf = COLOR_ACCENT[]
         "Cell color when inactive even"
-        cell_color_inactive_even = RGBf(0.97, 0.97, 0.97)
+        cell_color_inactive_even::RGBAf = RGBf(0.97, 0.97, 0.97)
         "Cell color when inactive odd"
-        cell_color_inactive_odd = RGBf(0.97, 0.97, 0.97)
+        cell_color_inactive_odd::RGBAf = RGBf(0.97, 0.97, 0.97)
         "Selection cell color when inactive"
-        selection_cell_color_inactive = RGBf(0.94, 0.94, 0.94)
+        selection_cell_color_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
         "Color of the dropdown arrow"
         dropdown_arrow_color = (:black, 0.2)
         "Size of the dropdown arrow"
@@ -1389,13 +1502,23 @@ end
         "Padding of entry texts"
         textpadding = (8, 10, 8, 8)
         "Color of entry texts"
-        textcolor = :black
+        textcolor::RGBAf = :black
+        "Color of the text of the entry that is the current selection"
+        textcolor_active::RGBAf = :white
+        "Color of the text of the entry that is hovered"
+        textcolor_hover::RGBAf = :black
         "The opening direction of the menu (:up or :down)"
         direction = automatic
         "The default message prompting a selection when i == 0"
         prompt = "Select..."
         "Speed of scrolling in large Menu lists."
         scroll_speed = 15.0
+        "If `true`, the open menu's selection box acts as a text box that filters options by `filter(query, label)`. Honored only at construction time."
+        searchable = true
+        "Placeholder text for the search box when `searchable = true`."
+        search_placeholder = "Search..."
+        "Predicate `(query::String, label::String) -> Bool` deciding whether an option matches the search. Used only when `searchable = true`."
+        filter = (q, s) -> occursin(lowercase(q), lowercase(s))
     end
 end
 
@@ -1423,6 +1546,10 @@ struct MeshElement <: LegendElement
 end
 
 struct MeshScatterElement <: LegendElement
+    attributes::Attributes
+end
+
+struct SurfaceElement <: LegendElement
     attributes::Attributes
 end
 
@@ -1528,6 +1655,10 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         linecolorrange = automatic
         "The default line style used for LineElements"
         linestyle = :solid
+        "The default line cap used for LineElements"
+        linecap = theme(scene, :linecap)
+        "The default join style used for LineElements"
+        joinstyle = theme(scene, :joinstyle)
 
         "The default marker color for MarkerElements"
         markercolor = theme(scene, :markercolor)
@@ -1671,8 +1802,9 @@ end
 end
 
 @Block Textbox begin
-    cursorindex::Observable{Int}
-    cursoranimtask
+    # `editor` exposes the embedded `EditableText` recipe so tests / advanced
+    # consumers can drive cursor and selection state directly. Internal.
+    editor::Any
     @attributes begin
         "The height setting of the textbox."
         height = Auto()
@@ -1692,8 +1824,6 @@ end
         placeholder = "Click to edit..."
         "The currently stored string."
         stored_string = nothing
-        "The currently displayed string (for internal use)."
-        displayed_string = nothing
         "Controls if the displayed text is reset to the stored text when defocusing the textbox without submitting."
         reset_on_defocus = false
         "Controls if the textbox is defocused when a string is submitted."
@@ -1737,7 +1867,7 @@ end
         "Restricts the allowed unicode input via is_allowed(char, restriction)."
         restriction = nothing
         "The color of the cursor."
-        cursorcolor = :transparent
+        cursorcolor = COLOR_ACCENT[]
     end
 end
 
@@ -1779,30 +1909,24 @@ end
         """
         Formatter for the xlabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         xlabel_suffix = "[{}]"
         """
         Formatter for the ylabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         ylabel_suffix = "[{}]"
         """
         Formatter for the zlabel suffix generated from dim_converts. Can be a
         Format.jl format string or a callback function acting acting on the
-        string or rich text generated from the dim convert.
+        label suffix generated from the dim convert.
         Can also be a plain String replacing an active dim_convert label.
         """
         zlabel_suffix = "[{}]"
-        "Switches between short and long x units, e.g. \"s\" vs \"Second\""
-        use_short_x_units::Bool = true
-        "Switches between short and long y units, e.g. \"s\" vs \"Second\""
-        use_short_y_units::Bool = true
-        "Switches between short and long z units, e.g. \"s\" vs \"Second\""
-        use_short_z_units::Bool = true
 
         "The height setting of the scene."
         height = nothing
@@ -2043,11 +2167,11 @@ end
         """
         protrusions = 30
         "The x ticks"
-        xticks = WilkinsonTicks(5; k_min = 3)
+        xticks = automatic
         "The y ticks"
-        yticks = WilkinsonTicks(5; k_min = 3)
+        yticks = automatic
         "The z ticks"
-        zticks = WilkinsonTicks(5; k_min = 3)
+        zticks = automatic
         "The x tick format"
         xtickformat = Makie.automatic
         "The y tick format"
@@ -2117,6 +2241,13 @@ end
         for zooming centered approximately where the cursor is. This is disabled with `viewmode = :free`.
         """
         zoommode::Symbol = :center
+        "The key (and button) combination for triggering a limit reset (equivalent to `reset_limits!(ax)`)"
+        resetlimitskey::IsPressedInputType = Exclusively((Keyboard.left_control | Keyboard.right_control) & Mouse.left)
+        "The key (and button) combination for triggering a rotation reset (sets `elevation` and `azimuth` to its default values)"
+        resetrotationkey::IsPressedInputType = (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+        "The key (and button) combination for triggering a limit recalculation (equivalent to `autolimits!(ax)`)"
+        recomputelimitskey::IsPressedInputType = (Keyboard.left_control | Keyboard.right_control) & (Keyboard.left_shift | Keyboard.right_shift) & Mouse.left
+
 
         "Locks interactive translation in the x direction."
         xtranslationlock::Bool = false
@@ -2207,7 +2338,7 @@ end
         # Spine
 
         "The width of the spine."
-        spinewidth::Float32 = 2
+        spinewidth::Float32 = 1
         "The color of the spine."
         spinecolor = :black
         "Controls whether the spine is visible."
@@ -2252,7 +2383,7 @@ end
         "The fontsize of the `r` tick labels."
         rticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `r` tick labels."
-        rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, "default"))
         "The color of the `r` tick labels."
         rticklabelcolor = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
         "The width of the outline of `r` ticks. Setting this to 0 will remove the outline."
@@ -2314,7 +2445,7 @@ end
         "The fontsize of the `theta` tick labels."
         thetaticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `theta` tick labels."
-        thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
+        thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, "default"))
         "The color of the `theta` tick labels."
         thetaticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
         "Padding of the `theta` ticks label."
@@ -2334,7 +2465,7 @@ end
         gridz::Float32 = -100
 
         "The color of the `r` grid."
-        rgridcolor = inherit(scene, (:Axis, :xgridcolor), (:black, 0.5))
+        rgridcolor = inherit(scene, (:Axis, :xgridcolor), RGBAf(0, 0, 0, 0.12))
         "The linewidth of the `r` grid."
         rgridwidth::Float32 = inherit(scene, (:Axis, :xgridwidth), 1)
         "The linestyle of the `r` grid."
@@ -2343,7 +2474,7 @@ end
         rgridvisible::Bool = inherit(scene, (:Axis, :xgridvisible), true)
 
         "The color of the `r` minor grid."
-        rminorgridcolor = inherit(scene, (:Axis, :xminorgridcolor), (:black, 0.2))
+        rminorgridcolor = inherit(scene, (:Axis, :xminorgridcolor), RGBAf(0, 0, 0, 0.05))
         "The linewidth of the `r` minor grid."
         rminorgridwidth::Float32 = inherit(scene, (:Axis, :xminorgridwidth), 1)
         "The linestyle of the `r` minor grid."
@@ -2354,7 +2485,7 @@ end
         # Theta minor and major grid
 
         "The color of the `theta` grid."
-        thetagridcolor = inherit(scene, (:Axis, :ygridcolor), (:black, 0.5))
+        thetagridcolor = inherit(scene, (:Axis, :ygridcolor), RGBAf(0, 0, 0, 0.12))
         "The linewidth of the `theta` grid."
         thetagridwidth::Float32 = inherit(scene, (:Axis, :ygridwidth), 1)
         "The linestyle of the `theta` grid."
@@ -2364,7 +2495,7 @@ end
 
 
         "The color of the `theta` minor grid."
-        thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
+        thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), RGBAf(0, 0, 0, 0.05))
         "The linewidth of the `theta` minor grid."
         thetaminorgridwidth::Float32 = inherit(scene, (:Axis, :yminorgridwidth), 1)
         "The linestyle of the `theta` minor grid."
@@ -2377,13 +2508,13 @@ end
         "The title of the plot"
         title = ""
         "The gap between the title and the top of the axis"
-        titlegap::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> x / 2, inherit(scene, :fontsize, 16)))
+        titlegap::Float32 = inherit(scene, (:Axis, :titlegap), 4)
         "The alignment of the title.  Can be any of `:center`, `:left`, or `:right`."
         titlealign = :center
         "The fontsize of the title."
-        titlesize::Float32 = inherit(scene, (:Axis, :titlesize), map(x -> 1.2x, inherit(scene, :fontsize, 16)))
+        titlesize::Float32 = inherit(scene, (:Axis, :titlesize), inherit(scene, :fontsize, 16))
         "The font of the title."
-        titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, Makie.defaultfont()))
+        titlefont = inherit(scene, (:Axis, :titlefont), :bold)
         "The color of the title."
         titlecolor = inherit(scene, (:Axis, :titlecolor), inherit(scene, :textcolor, :black))
         "Controls if the title is visible."

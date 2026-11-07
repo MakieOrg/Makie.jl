@@ -1,13 +1,11 @@
 module Formatters
-    using Showoff
+    import ..Makie: format_ticks_plain, format_ticks_scientific_string
 
-    function scientific(ticks::AbstractVector)
-        return Showoff.showoff(ticks, :scientific)
-    end
+    scientific(ticks::AbstractVector) = format_ticks_scientific_string(ticks)
 
     function plain(ticks::AbstractVector)
         return try
-            Showoff.showoff(ticks, :plain)
+            format_ticks_plain(ticks; minus_sign = false)
         catch e
             bt = Base.catch_backtrace()
             Base.showerror(stderr, e)
@@ -28,131 +26,102 @@ to_2tuple(x) = ntuple(i -> x, Val(2))
 to_2tuple(x::NTuple{2, Any}) = x
 
 """
-    $(SIGNATURES)
-
 Plots a 3-dimensional OldAxis.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Axis3D) do scene
+@recipe Axis3D begin
+    "Controls the visibility of the axis as whole."
+    visible = true
+    "Controls the visibility of (x, y, z) ticks."
+    showticks = (true, true, true)
+    "Controls the visibility of axis (x, y, z) axis lines."
+    showaxis = (true, true, true)
+    "Controls the visibility of axis (x, y, z) axis grids."
+    showgrid = (true, true, true)
+    # scale = Vec3f(1) unused?
+    "Sets the fractional padding for the axis relative to the current limits."
+    padding = 0.1
+    "Sets whether the axis can be picked by DataInspector"
+    inspectable = false
+    clip_planes = Plane3f[]
+    "Sets the font name lookup for the axis. This sets what :regular, :bold, etc. lowers to."
+    fonts = @inherit :fonts
+    "The text handler used to lay out the axis labels, see `text`."
+    text_handler = @inherit text_handler
 
-    q1 = qrotation(Vec3f(1, 0, 0), -0.5f0 * pi)
-    q2 = qrotation(Vec3f(0, 0, 1), 1.0f0 * pi)
-    tickrotations3d = (
-        qrotation(Vec3f(0, 0, 1), -1.5pi),
-        q2,
-        qrotation(Vec3f(1, 0, 0), -0.5pi) * q2,
-    )
-    axisnames_rotation3d = tickrotations3d
-    tickalign3d = (
-        (:left, :center), # x axis
-        (:right, :center), # y axis
-        (:right, :center), # z axis
-    )
-    axisnames_align3d = tickalign3d
-    tick_color = RGBAf(0.5, 0.5, 0.5, 0.6)
-    grid_color = RGBAf(0.5, 0.5, 0.5, 0.4)
-    grid_thickness = 1
-    axis_linewidth = 1.5
-    gridthickness = ntuple(x -> 1.0f0, Val(3))
-    axislinewidth = ntuple(x -> 1.5f0, Val(3))
-    tsize = 5 # in percent
-    return Attributes(
-        visible = true,
-        showticks = (true, true, true),
-        showaxis = (true, true, true),
-        showgrid = (true, true, true),
-        scale = Vec3f(1),
-        padding = 0.1,
-        inspectable = false,
-        clip_planes = Plane3f[],
-        fonts = theme(scene, :fonts),
-        names = Attributes(
-            axisnames = ("x", "y", "z"),
-            textcolor = (:black, :black, :black),
-            rotation = axisnames_rotation3d,
-            fontsize = (6.0, 6.0, 6.0),
-            align = axisnames_align3d,
-            font = lift(to_3tuple, theme(scene, :font)),
-            gap = 3
-        ),
-
-        ticks = Attributes(
-            ranges_labels = (automatic, automatic),
-            formatter = Formatters.plain,
-
-            textcolor = (tick_color, tick_color, tick_color),
-
-            rotation = tickrotations3d,
-            fontsize = (tsize, tsize, tsize),
-            align = tickalign3d,
-            gap = 3,
-            font = lift(to_3tuple, theme(scene, :font)),
-        ),
-
-        frame = Attributes(
-            linecolor = (grid_color, grid_color, grid_color),
-            linewidth = (grid_thickness, grid_thickness, grid_thickness),
-            axislinewidth = (axis_linewidth, axis_linewidth, axis_linewidth),
-            axiscolor = (:black, :black, :black),
+    "Controls the displayed axis labels."
+    names = @attributes begin
+        "Sets the displayed strings for (x, y, z) axis labels."
+        axisnames = ("x", "y", "z")
+        "Sets the color for the (x, y, z) axis labels"
+        textcolor = (:black, :black, :black)
+        "Sets the rotation of the (x, y, z) axis label. The starting orientation uses +y as up and +x as right."
+        rotation = (
+            qrotation(Vec3f(0, 0, 1), -1.5pi),
+            qrotation(Vec3f(0, 0, 1), 1.0f0 * pi),
+            qrotation(Vec3f(1, 0, 0), -0.5pi) * qrotation(Vec3f(0, 0, 1), 1.0f0 * pi),
         )
-    )
-end
-
-################################################################################
-
-# TODO: This blob of code only exists to support the old recipe syntax which is
-# currently only used by Axis3D. Clean it up and remove this. (And also the
-# $ATTRIBUTES thing from documentation/docstringextension.jl)
-
-function help_attributes(io::IO, func::Function; extended = false)
-    return help_attributes(io, to_plot_type(func); extended = extended)
-end
-
-"""
-    print_rec(io::IO, dict, indent::Int = 1[; extended = false])
-
-Traverses a dictionary `dict` and recursively print out its keys and values
-in a nicely-indented format.
-
-Use the optional `extended = true` keyword argument to see more details.
-"""
-function print_rec(io::IO, dict, indent::Int = 1; extended = false)
-    for (k, v) in dict
-        print(io, " "^(indent * 4), k)
-        if isa(to_value(v), Makie.Attributes)
-            print(io, ": ")
-            println(io)
-            print_rec(io, v.attributes, indent + 1; extended = extended)
-        elseif isa(v, Observable)
-            if extended
-                print(io, ": ")
-                println(io, isnothing(to_value(v)) ? "nothing" : to_value(v))
-            else
-                println(io)
-            end
-        else
-            println(io, v)
-        end
+        "Sets the fontsize of (x, y, z) axis labels as a percentage of (padded) limits"
+        fontsize = (6.0, 6.0, 6.0)
+        "Sets the alignment of (x, y, z) axis labels"
+        align = (
+            (:left, :center), # x axis
+            (:right, :center), # y axis
+            (:right, :center), # z axis
+        )
+        "Sets the font used for all axis labels"
+        font = @inherit :font
+        "Sets the gap between ticks and axis labels as a percentage of (padded) axis limits."
+        gap = 3
     end
-    return
-end
 
-
-function help_attributes(io::IO, Typ::Type{T}; extended = false) where {T <: Axis3D}
-    if extended
-        println(io, "OldAxis attributes and their defaults for `$Typ` are: \n")
-    else
-        println(io, "OldAxis attributes for `$Typ` are: \n")
+    "Controls the displayed tick labels"
+    ticks = @attributes begin
+        """
+        Sets the positions of (x, y, z) ticks as an iterable of absolute values. E.g.
+        ((0, 5, 10), 0:10:30, [1,2,3]). This also sets the grid positions.
+        """
+        ranges = automatic
+        "Sets the labels of (x, y, z) ticks as an iterable corresponding to `ranges`. E.g. ((\"0\", \"5\", \"10\"), string.(0:10:30), [\"1\", \"2\", \"3\"])."
+        labels = automatic
+        """
+        Sets the string formatter for ticks. This is used for formatting default tick labels.
+        Can be `Makie.Formatters.plain`, `Makie.Formatters.scientific` or a callback `format(::Vector{<:Real})` producing strings.
+        """
+        formatter = Formatters.plain
+        "Sets the color of (x, y, z) tick labels"
+        textcolor = (RGBAf(0.5, 0.5, 0.5, 0.6), RGBAf(0.5, 0.5, 0.5, 0.6), RGBAf(0.5, 0.5, 0.5, 0.6))
+        "Sets the rotation fo (x, y, z) tick labels. The starting orientation uses +y as up and +x as right."
+        rotation = (
+            qrotation(Vec3f(0, 0, 1), -1.5pi),
+            qrotation(Vec3f(0, 0, 1), 1.0f0 * pi),
+            qrotation(Vec3f(1, 0, 0), -0.5pi) * qrotation(Vec3f(0, 0, 1), 1.0f0 * pi),
+        )
+        "Sets the fontsize of (x, y, z) tick labels as a percentage of (padded) tick labels"
+        fontsize = (5, 5, 5)
+        "Sets the align of tick labels"
+        align = (
+            (:left, :center), # x axis
+            (:right, :center), # y axis
+            (:right, :center), # z axis
+        )
+        "Sets the gap between the axis frame and ticks as a percentage of the (padded) limits"
+        gap = 3
+        "Sets the font of axis ticks."
+        font = @inherit :font
     end
-    attributes = default_theme(nothing, Typ)
-    println(io, "```")
-    print_rec(io, attributes, 1; extended = extended)
-    return println(io, "```")
-end
 
-################################################################################
+    "Controls the displayed axis frame and grid"
+    frame = @attributes begin
+        "Sets the color of the (x, y, z) grid lines"
+        linecolor = (RGBAf(0.5, 0.5, 0.5, 0.4), RGBAf(0.5, 0.5, 0.5, 0.4), RGBAf(0.5, 0.5, 0.5, 0.4))
+        "Sets the linewidth of the (x, y, z) grid lines"
+        linewidth = (1.0f0, 1.0f0, 1.0f0)
+        "Sets the linewidth of the (x, y, z) frame line"
+        axislinewidth = (1.5f0, 1.5f0, 1.5f0)
+        "Sets the color of the (x, y, z) frame line"
+        axiscolor = (:black, :black, :black)
+    end
+end
 
 argument_dim_kwargs(::Type{<:Axis3D}) = tuple()
 argument_dims(::Type{<:Axis3D}, args...) = nothing
@@ -333,14 +302,14 @@ function draw_axis3d(plot)
             :fonts, attr.ticks.font, :tickfontsize, :titlegap, attr.ticks.textcolor,
             attr.ticks.rotation, attr.ticks.align,
             :axisnames_fontsize, attr.names.textcolor, attr.names.rotation,
-            attr.names.align, attr.names.font, :scene_scale,
+            attr.names.align, attr.names.font, :scene_scale, :text_handler,
         ],
         [:text_positions, :text_strings, :text_color, :text_rotation, :text_fontsize, :text_align, :text_font]
     ) do lims, showticks, ranges, tgap, ticklabels, axisnames,
             fonts, tfont, tfontsize, titlegap, ttextcolor,
             trotation, talign,
             axisnames_size, axisnames_color, axisrotation,
-            axisalign, axisnames_font, scale
+            axisalign, axisnames_font, scale, text_handler
 
         positionbuffer = Point3f[]
         textbuffer = String[]
@@ -380,8 +349,9 @@ function draw_axis3d(plot)
 
                 if !isempty(svtuple_getindex(axisnames, i))
                     font = to_font(fonts, svtuple_getindex(tfont, i))
+                    attrs = TextAttributes(; font, fonts, fontsize = tfontsize[i])
                     tick_widths = maximum(ticklabels[i]) do label
-                        widths(text_bb(label, font, tfontsize[i]))[1]
+                        widths(layout_text(text_handler, label, attrs).bbox)[1]
                     end / scale[j]
                     pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
                     push!(textbuffer, UnicodeFun.to_latex(svtuple_getindex(axisnames, i)))
@@ -401,12 +371,11 @@ function draw_axis3d(plot)
     text!(
         plot, plot.text_positions, text = plot.text_strings, color = plot.text_color,
         rotation = plot.text_rotation, fontsize = plot.text_fontsize,
-        align = plot.text_align, font = plot.text_font,
+        align = plot.text_align, font = plot.text_font, text_handler = plot.text_handler,
         transparency = true, markerspace = :data, inspectable = plot.inspectable,
         visible = plot.visible
     )
 
-    # TODO: linesegments
     map!(
         attr,
         [
@@ -473,5 +442,5 @@ end
 
 
 function axis3d!(scene::Scene, lims = boundingbox(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
-    return axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
+    return axis3d!(scene, Attributes(), lims; kw...)
 end

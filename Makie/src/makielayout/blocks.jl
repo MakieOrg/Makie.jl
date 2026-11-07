@@ -2,64 +2,150 @@
 ### Block Macro
 ################################################################################
 
-function is_attribute end
-function default_attribute_values end
-function attribute_types end
-function attribute_default_expressions end
-function _attribute_docs end
 function has_forwarded_layout end
 
 symbol_to_block(symbol::Symbol) = symbol_to_block(Val(symbol))
 symbol_to_block(::Val) = nothing
 
 """
+    @Block BlockName begin ... end
+
 Creates a new `Block` implementation which represents content within a layout.
-The content may draw to the slot in the layout directly, or represent a layout
+The content may draw to the layout slot directly, or represent a layout
 itself, containing more blocks.
 
 ## Usage
 
+The absolute minimum required to define a block is:
+
 ```
-@Block TypeName <: OptionalParent optional_args begin
-    optional_field1::OptionalType
-    optional_field2
+@Bock MyBlock
+Makie.initialize_block!(::MyBlock) = nothing
+```
+
+This will define `MyBlock` as a new empty block containing no visual or functional
+components, no attributes, no arguments, no internal layout.
+In contrast, this is a `@Block` definition containing all optional components:
+
+```
+@Block MyBlock <: OptionalParent (optional_arg1::OptionalType1, ...) begin
+    optional_field::OptionalType
     @attributes begin
-        "docstring"
-        attribute1::OptionalType = value1
-        attribute2 = value2
+        "optional docstring"
+        attribute::OptionalType = value
     end
 end
 ```
 
-The macro generates a `mutable struct` with the name `TypeName`, which always
-needs to be given in the macro. If a parent type `<: OptionalParent` is given,
-the struct will inherit from that type. Otherwise it will inherit from `Block`.
-Note that the parent should also inherit from `Block`.
+The optional components include:
 
-The content of the struct **always** includes:
-- `parent::Union{Figure, Scene, Nothing}` which refers back to the figure or
-    scene the block is placed in
-- `layoutobservables::Makie.LayoutObservables{GridLayout}` which handle the
-    placement into the parent layout
-- `attributes::Makie.ComputeGraph` which contains the attributes and
-    computations that use them
-- `blockscene::Scene` which acts as a container for the inner layout and can be
-    used for decoration plots
-- `layout::GridLayout` which represents an optional internal layout used when
-    implementing a `Block` as a container for more blocks.
+- `<: OptionalParent` a parent type for the block, i.e. `struct MyBlock <: OptionalParent`.
+    The parent type must inherit from `Block`. If not given, `Block` is used as a parent type.
+- `(optional_arg1::OptionalType1, ...)` an optional tuple of input arguments for the block.
+    This is required for blocks that process arguments, i.e. complex recipes. Types are
+    optional.
+- `optional_field::OptionalType` an optional field named `optional_field` added to the block
+    struct. This can optionally be typed, much like a normal struct field definition. Fields
+    are generally initialized in `initialize_block!()`.
+- `attribute::OptionalType = value` defines an attribute called `attribute` within a
+    `@attributes begin ... end` block. The block is required to separate fields from
+    attributes. Each attribute is required to define a default `value`. It may optionally
+    include a type `OptionalType` and it may optionally include a docstring above it.
 
-Optionally you may also add fields by declaring them in the `begin ... end`
-block, outside the `@attributes begin ... end` block. Each line will be treated
-as a new field to add, with an optional type. You can have any number of fields.
-Note that you will need to initialize them yourself in `initialize_block!()`.
+If the `@Block` definition includes arguments they are processed using almost the same pipeline
+as plots. The only difference is the exclusion of dim converts. This means that blocks can use:
 
-The `@attributes begin ... end` block is also optional. When given, each entry
-needs to have at least a name and value given as `name = value`. Optionally, the
-attribute can be typed by adding a type annotation `name::Type`. Also
-optionally, the attribute can be given a docstring by adding a string in the
-line above. This can also be a triple-quoted multiline string.
+- `conversion_trait(::Type{MyBlock}, args...)` to define a conversion trait used for the
+    conversion of arguments.
+- `convert_arguments(::Type{MyBlock}, args...)` to define a conversion method for arguments.
+- `used_attributes(::Type{MyBlock}, args...)` to mark which attributes should be passed to
+        `convert_arguments()` as keyword arguments.
+- `expand_dimensions(::ConversionTrait, args...)` to fill out missing arguments
 
-Note that some layouting attributes are always defined. These include:
+The final output of the conversion pipeline will be saved to the names defined in the `@Block`
+definition.
+
+Any block eventually calls `initialize_block!(b::MyBlock; kwargs...)` to set up its visual
+and functional aspects, similar to how plot recipes call `plot!(plot::MyPlot)`. The keyword
+arguments passed here are any keyword arguments passed to `MyBlock()` which have not been
+mapped to attributes.
+
+For a complex recipes, the implementation of `initialize_block!(::MyBlock)` involves adding
+blocks to the internal layout of `MyBlock`. For example:
+
+```
+function Makie.initialize_block!(b::MyBlock)
+    ax = Axis(b[1, 1])
+    # with @Block MyBlock (positions,) ...
+    scatter!(ax, b.positions, label = "plot")
+    Legend(b[1, 2], ax)
+    return
+end
+```
+
+For primitive blocks (e.g. `Axis` or `Label`) the definition is more free. They
+generally don't involve other blocks and instead directly plot to `b.blockscene`
+or create a child scene of `b.blockscene` to plot to. They may communicate with
+`b.layoutobservables` and may react to events.
+
+## BlockSpec
+
+Similar to how a plot can defined by returning a `PlotSpec` from `convert_arguments`, a
+`Block` can be defined by a `BlockSpec` or `GridLayoutSpec`. In this case the internal
+layout of the block will be built based on the block spec. `initialize_block!(::MyBlock)`
+will not be called, and the arguments section of the `@Block` macro will be ignored and
+thus isn't required.
+
+```
+@Block SpecBlock
+convert_arguments(::Type{<:SpecBlock}, ...) = SpecApi.Axis(...) # BlockSpec
+convert_arguments(::Type{<:SpecBlock}, ...) = SpecApi.GridLayout(...) # GridLayoutSpec
+```
+
+## User Interface
+
+- Arguments are accessible with `block.arg1` etc.
+- Converted arguments are accessible using the names defined in `@Block`, e.g. `block.optional_arg1`
+- Attributes are accessible with `block.attribute`
+- Blocks contained within a complex recipe style block are listed in `block.blocks`
+- If initialized with a layout, layout positions can be accessed with `block[i, j]`
+- Plots can be accessed indirectly from an axis by retrieving it from `block.blocks` first
+
+# Extended help
+
+## `@Block`
+
+The minimal example generates the following mutable struct:
+
+```
+mutable struct MyBlock <: Block
+    parent::Union{Nothing, Figure, Scene}
+    layoutobservables::LayoutObservables{GridLayout}
+    attributes::ComputePipeline.ComputeGraph
+    blockscene::Scene
+    layout::Union{Nothing, GridLayout}
+end
+```
+
+This includes:
+- `parent` which refers back to the figure or scene the block is placed in
+- `layoutobservables` which handles the placement of this block in the parent layout
+- `attributes` which contain the attributes defined in `@attributes` block in the `@Block`
+    macro. It also contains the computations based on those attributes and, if present,
+    arguments and their computations.
+- `blockscene` which is a pixel space scene owned by the Block. It may be used for
+    decoration plots and as the base for child scenes owned by the block.
+- `layout` which represents an optional internal layout used when implementing a `Block`
+    as a container for more blocks, i.e. a complex recipe. It is initially `nothing`
+    and may change to a `GridLayout` when accessed through `block[i, j]` during
+    initialization. After initialization it is fixed to either a `GridLayout` or `nothing`
+
+Any fields included in the `@Block` macro will be added directly to the struct.
+
+## Attributes
+
+There are a few layouting attributes that are always added, even when no `@attributes`
+block is specified. These include:
 - `halign = :center` The horizontal alignment of the block in its suggested bounding box.
 - `valign = :center` The vertical alignment of the block in its suggested bounding box.
 - `width = Auto()` The width setting of the block.
@@ -68,53 +154,29 @@ Note that some layouting attributes are always defined. These include:
 - `tellheight::Bool = true` Controls if the parent layout can adjust to this block's height
 - `alignmode = Inside()` The align mode of the block in its parent GridLayout.
 
-All attributes are automatically collected and added to `attributes` ComputeGraph.
+## Attribute Conversions
 
-## `initialize_block!(block::TypeName, args...; kwargs...)`
-
-The `initialize_block!` function is necessary unless the block is purely used
-as container for a `BlockSpec` or `GridLayoutSpec` (SpecApi). Otherwise the
-function is called to handle the non-generic parts of the block initialization.
-This includes initializing the fields declared in the macro, handling keyword
-arguments outside of attributes and building the visual aspects of the block.
-
-If `optional_args` are given in `@Block` as a tuple `(name1, name2, ...)` the
-default `initialize_block!(block, args...; kwargs...)` will handle attributes.
-They are handled more or less the same as with plots. Arguments are added as
-inputs `:arg1, :arg2, ...` to the compute graph. They then go through a few
-computations, calling `expand_dimensions(...)` and `convert_arguments(...)`,
-before writing the converted arguments to `:name1, :name2, ...`. These can then
-be grabbed from the block as `block.name1` etc.
-
-If `optional_args` are not given the Block can be constructed with no arguments.
-If arguments are given and should be handled without convert_arguments, a method
-of `initialize_block!()` needs to be defined to handle them.
-
-Other than that, the `initialize_block!()` function typically comes in one of
-two forms. One is used by self-contained blocks like `Label` or `Axis`. They
-don't have child blocks and instead directly define their visuals and
-functionality. This may include adding plots and scenes to `block.blockscene`
-and setting up interactivity. These kinds of blocks typically do not have
-arguments, or handle them explicitly.
-
-The other type defines its content through child blocks, which are added to the
-parent block as if it was a figure. Plots may also be added to the child blocks.
-For this, the conversion pipeline may be helpful. The blocks may also connect
-to each other, e.g. with a Slider controlling a plot.
+Attributes may optionally define a type `attr::T = value`. This effectively results in
 
 ```
-function Makie.initialize_block!(block::TypeName, x, y)
-    ax = Axis(block[1, 1], title = block.title)
-    p = scatter!(ax, x, y, color = block.color, label = "scatter 1")
-    Legend(block[0, 1], ax, nbanks = 5)
-    return
+add_input!(x -> convert_for_attribute(T, x), block.attributes, :attr, value)
+```
+
+being used to create the attribute. Every time the attribute is set, the value
+will be converted by `convert_for_attribute`. In the default case this will perform a type
+assertion `new::T` but it can also perform a conversion. For example, if `T <: Number` a
+type cast `T(new)` is performed and for `RGBAf` `to_color(new)` is called.
+
+## Arguments
+
+Strictly speaking arguments only need to be defined in `@Block` if the default argument
+processing is used. It can be skipped/done manually by implementing
+```
+function initialize_block!(block::MyBlock, arg, args...; kwargs...)
+    # process args...
+    return initialize_block!(block; kwargs...)
 end
 ```
-
-The blocks and plots added this way are automatically tracked in `block` and
-can be queried with `block.blocks` and `block.plots` respectively. After the
-block is constructed further plots can be added to the axis by plotting to its
-layout slot `block[1, 1]`.
 """
 macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
     return block_macro_internal(_name, nothing, body)
@@ -159,12 +221,6 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
     # append remaining fields
     append!(fields_vector, body.args)
 
-    attr_type_writes = Expr(
-        :block, map(attrs) do a
-            :(types[$(QuoteNode(a.symbol))] = $(a.type))
-        end...
-    )
-
     constructor = quote
         function $name($(basefields...))
             return new($(basefields...))
@@ -184,7 +240,7 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
         end
         names = map(x -> x isa Symbol ? x : x.args[1], args.args)
         types = map(x -> x isa Symbol ? :Any : x.args[2], args.args)
-        argument_names_expr = :($(Makie).argument_names(::Type{$name}) = $names)
+        argument_names_expr = esc(:($(Makie).argument_names(::Type{$name}) = $names))
         # TODO: This is broken but also not used
         # argument_types_expr = quote
         #     $(Makie).block_argument_types(::Type{$name}) = tuple( $(esc.(types)...) )
@@ -192,6 +248,9 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
     end
 
     docs_placeholder = Symbol("#__", name, "_docs_placeholder")
+    attr_placeholder = Symbol("#__", name, "_attr_placeholder")
+
+    BlockType = esc(name)
 
     q = quote
         # This part is as far as I know the only way to modify the docstring on top of the
@@ -202,7 +261,7 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
         # of the @recipe invocation. From there, it can then be retrieved, modified, and later
         # attached to plotting function by using @doc again. We also delete the binding to the
         # temporary variable so no unnecessary docstrings stay in place.
-        Core.@__doc__ $(docs_placeholder) = nothing
+        Core.@__doc__ $(esc(docs_placeholder)) = nothing
         binding = Docs.Binding(@__MODULE__, $(QuoteNode(docs_placeholder)))
         user_docstring = if haskey(Docs.meta(@__MODULE__), binding)
             _docstring = @doc($docs_placeholder)
@@ -212,66 +271,27 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
             "No docstring defined.\n"
         end
 
-        $structdef
+        $(esc(structdef))
 
-        export $name
-        $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $name
-        function $(Makie).is_attribute(::Type{$(name)}, sym::Symbol)
-            return sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
-        end
+        export $BlockType
+        $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $BlockType
 
-        function $(Makie).default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
-            sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = $(Makie).fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
-            $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
-        end
+        const $attr_placeholder = $attrs
+        $(Makie).documented_attributes(::Type{<:$(BlockType)}) = $attr_placeholder
 
-        function $(Makie).attribute_types(::Type{$(name)})
-            types = Dict{Symbol, Any}()
-            $attr_type_writes
-            return types
-        end
-
-        function $(Makie).attribute_default_expressions(::Type{$name})
-            $(
-                if attrs === nothing
-                    Dict{Symbol, String}()
-                else
-                    Dict{Symbol, String}([a.symbol => _defaultstring(a.default) for a in attrs])
-                end
-            )
-        end
-
-        function $(Makie)._attribute_docs(::Type{$(name)})
-            return Dict(
-                $(
-                    (
-                        attrs !== nothing ?
-                            [Expr(:call, :(=>), QuoteNode(a.symbol), a.docs) for a in attrs] :
-                            []
-                    )...
-                )
-            )
-        end
-
-        $(Makie).has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
+        $(Makie).has_forwarded_layout(::Type{$BlockType}) = $has_forwarded_layout
 
         $argument_names_expr
 
-        docstring_modified = Makie.make_block_docstring($name, user_docstring)
+        docstring_modified = Makie.make_block_docstring($BlockType, user_docstring)
         @doc docstring_modified $name
-        export $name
     end
 
-    return esc(q)
+    return q
 end
 
 _defaultstring(x) = string(MacroTools.striplines(x))
 _defaultstring(x::String) = repr(x)
-
-function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
-    return :(Dict())
-end
 
 function make_block_docstring(T::Type{<:Block}, docstring)
     return """
@@ -283,72 +303,14 @@ function make_block_docstring(T::Type{<:Block}, docstring)
 
     (type `?$T.x` in the REPL for more information about attribute `x`)
 
-    $(_attribute_list(T))
+    $(get_attribute_docs(T))
     """
 end
 
-function _attribute_list(T)
-    ks = sort(collect(keys(_attribute_docs(T))))
-    return join(("`$k`" for k in ks), ", ")
-end
+attribute_groups(::Type{<:Block}) = Pair{String, Vector{Symbol}}[]
 
-function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
-
-    exprs = map(attrs) do a
-
-        d = a.default
-        if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
-            if length(d.args) != 4
-                error("@inherit works with exactly 2 arguments, expression was $d")
-            end
-            if !(d.args[3] isa QuoteNode)
-                error("Argument 1 of @inherit must be a :symbol, got $(d.args[3])")
-            end
-            key, default = d.args[3:4]
-            # first check scene theme
-            # then current_default_theme
-            # then default value
-            d = quote
-                if haskey($sceneattrsym, $key)
-                    to_value($sceneattrsym[$key]) # only use value of theme entry
-                elseif haskey($curthemesym, $key)
-                    to_value($curthemesym[$key]) # only use value of theme entry
-                else
-                    $default
-                end
-            end
-        end
-
-        :(d[$(QuoteNode(a.symbol))] = $d)
-    end
-
-    return quote
-        d = Dict{Symbol, Any}()
-        $(exprs...)
-        d
-    end
-end
-
-function extract_attributes!(body)
-    i = findfirst(
-        (
-            x -> x isa Expr && x.head === :macrocall && x.args[1] == Symbol("@attributes") &&
-                x.args[3] isa Expr && x.args[3].head === :block
-        ),
-        body.args
-    )
-
-    if i === nothing
-        attrs = Vector{Any}()
-    else
-        macroexpr = splice!(body.args, i)
-        attrs_block = macroexpr.args[3]
-        args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
-        attrs::Vector{Any} = map(extract_attribute_metadata, args)
-    end
-
-
-    layout_related_attribute_block = quote
+function mixin_block_layout_attributes()
+    return @DocumentedAttributes begin
         "The horizontal alignment of the block in its suggested bounding box."
         halign = :center
         "The vertical alignment of the block in its suggested bounding box."
@@ -364,21 +326,33 @@ function extract_attributes!(body)
         "The align mode of the block in its parent GridLayout."
         alignmode = Inside()
     end
-    layout_related_attributes = filter(
-        x -> !(x isa LineNumberNode),
-        layout_related_attribute_block.args
+end
+
+function extract_attributes!(body)
+    i = findfirst(
+        expr -> MacroTools.@capture(expr, @attributes blockexpr_),
+        body.args
     )
 
-    lras = map(extract_attribute_metadata, layout_related_attributes)
-
-    for lra in lras
-        i = findfirst(x -> x.symbol == lra.symbol, attrs)
-        if i === nothing
-            push!(attrs, lra)
-        end
+    attr_input_expr = if i === nothing
+        Expr(:block)
+    else
+        macroexpr = splice!(body.args, i)
+        MacroTools.@capture(macroexpr, @attributes blockexpr_)
+        blockexpr
     end
 
-    return attrs
+    # Make sure layout inputs exist by adding a mixin for them.
+    # Only do this if the mixin doesn't already exist, since mixins error if
+    # any of their entries already exists. Also add it as the first thing to
+    # avoid this error.
+    # Note that later entries can still overwrite the metadata of mixin entries
+    # so custom defaults can still be set
+    if !MacroTools.@capture(attr_input_expr, Makie.mixin_block_layout_attributes()...)
+        pushfirst!(attr_input_expr.args, :(Makie.mixin_block_layout_attributes()...))
+    end
+
+    return build_documented_attributes(attr_input_expr)
 end
 
 
@@ -412,7 +386,7 @@ function _block(
 end
 
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args...; bbox = nothing, kwargs...)
-    return _block(T, fig_or_scene, Any[args...], Dict{Symbol, Any}(kwargs), bbox)
+    return _block(T, fig_or_scene, Any[args...], to_dict(kwargs), bbox)
 end
 
 function _block(T::Type{<:Block}, args...; bbox = nothing, kwargs...)
@@ -423,62 +397,32 @@ function _block(T::Type{<:Block}, args...; bbox = nothing, kwargs...)
     return FigureBlock(figure, b)
 end
 
-function block_defaults(blockname::Symbol, attribute_kwargs::Dict, scene::Union{Nothing, Scene})
-    return block_defaults(getfield(Makie, blockname), attribute_kwargs, scene)
-end
-function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing, Scene}) where {B <: Block}
-    default_attrs = default_attribute_values(B, scene)
-    blockname = nameof(B)
-    typekey_scene_attrs = get(theme(scene), blockname, Attributes())
-    typekey_attrs = theme(blockname; default = Attributes())::Attributes
-    attributes = Dict{Symbol, Any}()
-    # make a final attribute dictionary using different priorities
-    # for the different themes
-    for (key, val) in default_attrs
-        # give kwargs priority
-        if haskey(attribute_kwargs, key)
-            attributes[key] = attribute_kwargs[key]
-            # otherwise scene theme
-        elseif haskey(typekey_scene_attrs, key)
-            attributes[key] = typekey_scene_attrs[key]
-            # otherwise global theme
-        elseif haskey(typekey_attrs, key)
-            attributes[key] = typekey_attrs[key]
-            # otherwise its the value from the type default theme
-        else
-            attributes[key] = val
-        end
-    end
-    return attributes
-end
-
 function InvalidAttributeError(::Type{BT}, attributes::Set{Symbol}) where {BT <: Block}
     return InvalidAttributeError(BT, "block", attributes)
 end
 
-function attribute_names(::Type{T}) where {T <: Block}
-    attrs = _attribute_docs(T)
-    # Some blocks have keyword arguments that are not attributes.
-    # TODO: Refactor intiailize_block! to just not use kwargs?
-    (T <: Axis || T <: PolarAxis) && (attrs[:palette] = "")
-    T <: Legend && (attrs[:entrygroups] = "")
-    T <: Menu && (attrs[:default] = "")
-    T <: LScene && (attrs[:scenekw] = "")
-    return keys(attrs)
-end
+"""
+    block_kwargs(BlockType)
 
+Returns a set of kwargs used by `BlockType <: Block`. Any kwargs given to the
+constructor that are not listed here or in the blocks attributes will trigger
+`InvalidAttributeError`s.
+"""
+block_kwargs(::Type{<:Block}) = Set{Symbol}()
+
+# TODO: Should probably run recursively
 function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
-    badnames = setdiff(keys(kwdict), attribute_names(T))
+    badnames = setdiff(keys(kwdict), block_kwargs(T))
     if !isempty(badnames)
         throw(InvalidAttributeError(T, badnames))
     end
     return
 end
 
-function init_layout!(b)
+function init_layout!(b, args...; kwargs...)
     # create the gridlayout and set its parent to blockscene so that
     # one can create objects in the layout and scene more easily
-    b.layout = GridLayout()
+    b.layout = GridLayout(args...; kwargs...)
     b.layout.parent = b.blockscene
 
     lobservables = b.layoutobservables
@@ -535,78 +479,70 @@ function connect_block_layoutobservables!(@nospecialize(block), layout_width, la
     return
 end
 
+# Should this be allowed?
+convert_for_attribute(::UnionAll, x) = x
+
+# If a concrete union is given, try each conversion option until one work
+function convert_for_attribute(t::Union, x)
+    try
+        y1 = convert_for_attribute(t.a, x)
+        (y1 isa t.a) && return y1
+    catch e
+    end
+
+    try
+        y2 = convert_for_attribute(t.b, x)
+        (y2 isa t.b) && return y2
+    catch e
+    end
+
+    return x
+end
+
+convert_for_attribute(::Any, x) = x
+convert_for_attribute(::Type{T}, x) where {T <: VecTypes} = convert(T, x)
+convert_for_attribute(::Type{T}, x) where {T <: Number} = convert(T, x)
+convert_for_attribute(::Type{RGBAf}, x) = to_color(x)::RGBAf
+convert_for_attribute(::Type{FreeTypeAbstraction.FTFont}, x) = to_font(x)
+
 """
-    BlockAttributeConvert{TargetType}()
+    add_attributes(::Type{<:Block}, compute_graph, flattened_defaults)
 
-When a block attribute has a type assigned this callable struct is used to
-convert the data of that attribute to the assigned type.
+This method may provide custom initialization of compute graph inputs (attributes)
+of a block. This may be useful if the default conversions are inappropriate for
+some inputs, i.e. if a different input callback is needed for a specific type
+(including `Any` from entries without type annotations).
 
-For example:
-```julia
-@Block ... begin
-    @attributes begin
-        attrib1::RGBAf = :black
-    end
-end
+A custom implementation should use
+`Makie.get_typed_default(Makie.documented_attributes(BlockType), flattened_defaults, keys...)`
+to get the type defined in `@Block` as well as the initial value derived from
+user kwargs, themes and the `@Block` definition. These should then be used to
+initialize the input/attribute. (This is not enforced.)
+
+After this, the default initialization will run to make sure that every attribute
+defined by `@Block` has an input.
+
+Example:
 ```
-will generate a `converter = BlockAttributeConvert{RGBAf}()` and use it as a
-callback for the compute graph input `add_input!(converter, :attrib1, :black)`.
-Updating the input will then call
-```julia
-(::BlockAttributeConvert{RGBAf})(x) = to_color(x)::RGBAf
-```
-before setting a compute node strictly typed to `RGBAf`.
+function Makie.add_attributes!(::Type{MyBlock}, graph, flattened_defaults)
+    attr = Makie.documented_attributes(MyBlock)
+    _, default = Makie.get_typed_default(attr, flattened_defaults, :colorname)
+    Makie.add_input!(to_colorname, graph, :colorname, default)
 
-If no method exists for a specific target type, no conversions happen. This
-means the attribute only accepts values of the given type (and its subtypes).
-If no type is given `Any` is used.
-"""
-struct BlockAttributeConvert{Target} end
-struct MultiBlockAttributeConvert{T}
-    converts::T
-end
+    _, default = Makie.get_typed_default(attr, flattened_defaults, :nested, :attribute)
+    Makie.add_input!(foo, graph, :nested, :attribute, default)
+    Makie.ComputePipeline.set_type!(graph.nested.attribute, Any)
 
-Base.eltype(::BlockAttributeConvert{T}) where {T} = T
-union_to_tuple(u::Union) = (u.a, union_to_tuple(u.b)...)
-union_to_tuple(T) = (T,)
-
-function BlockAttributeConvert(Target::Union)
-    converts = map(T -> BlockAttributeConvert{T}(), union_to_tuple(Target))
-    return MultiBlockAttributeConvert{typeof(converts)}(converts)
-end
-BlockAttributeConvert(Target) = BlockAttributeConvert{Target}()
-
-(::BlockAttributeConvert{<:Any})(x) = x
-function (mbac::MultiBlockAttributeConvert)(x)
-    y = x
-    for bac in mbac.converts
-        x isa eltype(bac) && return x
-        try
-            _y = bac(x)
-            if _y isa eltype(bac)
-                y = _y
-            end
-        catch e
-        end
-    end
-    return y
-end
-(::BlockAttributeConvert{T})(x) where {T <: Number} = T(x)
-(::BlockAttributeConvert{<:RGBAf})(x) = to_color(x)::RGBAf
-(::BlockAttributeConvert{<:Makie.FreeTypeAbstraction.FTFont})(x) = to_font(x)
-
-function add_attributes!(T::Type{<:Block}, graph, attributes)
-    return _add_attributes!(T, graph, attributes)
-end
-
-function _add_attributes!(T::Type{<:Block}, graph::AbstractComputeGraph, attributes)
-    typedict = attribute_types(T)
-    for (key, attrib) in attributes
-        type = get(typedict, key, Any)
-        add_input!(BlockAttributeConvert(type), graph, key, attrib)
-        ComputePipeline.set_type!(graph[key], type)
-    end
     return
+end
+```
+"""
+add_attributes!(::Type{<:Block}, graph, flattened_defaults...) = nothing
+
+struct BlockAttributeConvert{T} <: Function end
+(::BlockAttributeConvert{T})(x) where {T} = convert_for_attribute(T, x)
+function (::BlockAttributeConvert{T})(x, @nospecialize(changed), @nospecialize(cached)) where {T}
+    return (convert_for_attribute(T, x[1]),)
 end
 
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdict::Dict, bbox; kwdict_complete = false)
@@ -614,27 +550,23 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     # first sort out all user kwargs that correspond to block attributes
     check_textsize_deprecation(kwdict)
 
-    attribute_kwargs = Dict{Symbol, Any}()
-    for (key, value) in kwdict
-        if is_attribute(T, key)
-            attribute_kwargs[key] = pop!(kwdict, key)
-        end
-    end
+    graph = ComputeGraph()
+
+    topscene = get_topscene(fig_or_scene)
+    blockname = nameof(T)
+    attr = documented_attributes(T)
+    flattened_defaults = resolve_defaults(attr, topscene, blockname, kwdict, tuple(), true)
+
+    # User overwrites
+    add_attributes!(T, graph, flattened_defaults)
+
+    # prepare after user overwrites so users can use `add_input!()`
+    prepare_graph_for_attributes!(graph, attr, is_block = true)
+    add_remaining_block_inputs!(graph, attr, flattened_defaults)
+
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
     _check_remaining_kwargs(T, non_attribute_kwargs)
-
-    topscene = get_topscene(fig_or_scene)
-    # retrieve the default attributes for this block given the scene theme
-    # and also the `Block = (...` style attributes from scene and global theme
-    if kwdict_complete
-        attributes = attribute_kwargs
-    else
-        attributes = block_defaults(T, attribute_kwargs, topscene)
-    end
-
-    graph = ComputeGraph()
-    add_attributes!(T, graph, attributes)
 
     # create basic layout observables and connect attribute observables further down
     # after creating the block with its observable fields
@@ -714,6 +646,12 @@ end
 
 # allow this to be overwritten for explicit argument handling (without args in @Block)
 function initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block}
+    return _initialize_block!(block, arg, _args...; kwargs...)
+end
+
+# defer to a different name so it's possible to return to when implementing a custom
+# initialize_block!() method
+function _initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block}
     args = (arg, _args...)
     kw_dict = Dict{Symbol, Any}(kwargs)
 
@@ -745,7 +683,7 @@ function initialize_block_arguments!(
     # adds inputs :arg1, :arg2, ...
     arg_names = _register_input_arguments!(attr, args)
     # applies expand_dimensions and merges :arg1, ... into one :args tuple
-    _register_expand_arguments!(T, attr, arg_names)
+    expanded = _register_expand_arguments!(T, attr, arg_names, to_value.(args))
     # We probably don't want dim_converts here, so we don't use
     # _register_argument_conversions!(T, attr, kw_dict)
 
@@ -753,7 +691,7 @@ function initialize_block_arguments!(
     add_convert_kwargs!(attr, kw_dict, T, args)
 
     # apply convert_arguments
-    converted = convert_arguments(T, attr.args[]...; attr.convert_kwargs[]...)
+    converted = convert_arguments(T, expanded...; attr.convert_kwargs[]...)
 
     # Special case SpecApi
     if converted isa Union{BlockSpec, GridLayoutSpec} ||
@@ -787,11 +725,21 @@ function initialize_block_arguments!(
     end
 
     if length(converted_names) != length(attr.converted[])
-        error(
-            "Failed to construct Block: Number of arguments returned by \
-            `convert_arguments` ($(length(attr.converted[]))) does not match the \
-            number of expected arguments ($(length(converted_names)))."
-        )
+        if length(converted_names) == 0
+            error(
+                "Failed to construct Block: Expected no arguments but got: $(attr.converted[]). \
+                If $T is a primitive block, a workaround method $T(fig_or_scene, args...) maybe \
+                missing or failed to be called. If $T is a Complex/Block recipe, it is likely not \
+                declaring its arguments in `@Block Name (args...)."
+            )
+        else
+            error(
+                "Failed to construct Block: Expected $(length(converted_names)) converted \
+                argument(s) to map to `$converted_names` but got $(length(attr.converted[])): \
+                $(attr.converted[]). This means that `$T` did not correctly convert the given \
+                arguments."
+            )
+        end
     end
 
     # splat to defined names
@@ -834,7 +782,7 @@ function Base.getproperty(block::T, name::Symbol) where {T <: Block}
 end
 
 function Base.propertynames(::T) where {T <: Block}
-    return (fieldnames(T)..., :blocks, attribute_names(T)...)
+    return (fieldnames(T)..., :blocks, root_keys(documented_attributes(T))...)
 end
 function Base.hasproperty(block::T, name::Symbol) where {T <: Block}
     return hasfield(T, name) || (name === :block) || haskey(block.attributes, name)
@@ -899,8 +847,7 @@ end
                     setfield!(x, key, value)
                 end
             else
-                TargetType = observable_type(fieldtype(T, key))
-                getfield(x, key)[] = BlockAttributeConvert{TargetType}()(value)
+                getfield(x, key)[] = value
             end
         else
             setfield!(x, key, value)
@@ -1060,33 +1007,6 @@ function Base.show(io::IO, example::Example)
     return nothing
 end
 
-function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing, String}, examples::Vector{Example}, default_str)
-    io = IOBuffer()
-
-    println(io, "Default value: `$default_str`")
-    println(io)
-
-    if docs === nothing
-        println(io, "No docstring defined for `$attr`.")
-    else
-        println(io, docs)
-    end
-    println(io)
-
-    for (i, example) in enumerate(examples)
-        println(io, "**Example $i**")
-        println(io, "```julia")
-        # println(io)
-        # println(io, "# run in the REPL via Makie.example($type, :$attr, $i)")
-        # println(io)
-        println(io, example.code)
-        println(io, "```")
-        println(io)
-    end
-
-    return Markdown.parse(String(take!(io)))
-end
-
 # Fallback for Block types (not yet moved to markdown)
 function attribute_examples(::Type{BT}) where {BT <: Block}
     return Dict{Symbol, Vector{Example}}()
@@ -1094,24 +1014,26 @@ end
 
 attribute_examples(::Type{T}, attr::Symbol) where {T <: Union{Block, Plot}} = get(attribute_examples(T), attr, Example[])
 
-# overrides `?Axis.xticks` and similar lookups in the REPL
-function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
-    if !is_attribute(t, s)
-        return Markdown.parse("`$s` is not an attribute of type `$t`. Type `?$t` in the REPL to see the list of available attributes.")
-    end
-    docs = get(_attribute_docs(t), s, nothing)
-    examples = get(attribute_examples(t), s, Example[])
-    default_str = Makie.attribute_default_expressions(t)[s]
-    return repl_docstring(nameof(t), s, docs, examples, default_str)
-end
-
 # collect() doesn't seem to be necessary but the propertynames docstring says
 # "tuple or vector" so lets not return a KeySet
-Base.propertynames(::Type{T}) where {T <: Block} = collect(keys(_attribute_docs(T)))
+Base.propertynames(::Type{T}) where {T <: Block} = collect(root_keys(documented_attributes(T)))
 
 function ComputePipeline.register_computation!(f, b::Block, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, b.attributes, inputs, outputs)
 end
+
+function Base.map!(f, b::Block, inputs::Union{Vector, ComputePipeline.InputNodeTypes}, outputs::Union{Vector, ComputePipeline.OutputNodeTypes})
+    return map!(f, b.attributes, inputs, outputs)
+end
+
+function ComputePipeline.add_input!(f, b::Block, args...; kwargs...)
+    return add_input!(f, b.attributes, args...; kwargs...)
+end
+
+function ComputePipeline.add_input!(b::Block, args...; kwargs...)
+    return add_input!(b.attributes, args...; kwargs...)
+end
+
 function ComputePipeline.update!(b::Block, args...; kwargs...)
     return ComputePipeline.update!(b.attributes, args...; kwargs...)
 end

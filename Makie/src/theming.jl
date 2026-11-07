@@ -39,6 +39,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     ),
     fontsize = 14,
     textcolor = :black,
+    text_handler = nothing,
     padding = Vec3f(0.05),
     figure_padding = 16,
     rowgap = 18,
@@ -132,6 +133,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         max_light_parameters = 5 * 64
     ), WGLMakie = Attributes(
         framerate = 30.0,
+        render_on_demand = true,
         resize_to = nothing,
         # DEPRECATED in favor of resize_to
         # still needs to be here to gracefully deprecate it

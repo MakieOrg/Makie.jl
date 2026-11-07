@@ -25,8 +25,8 @@ function _help(io::IO, plot::Type{T}) where {T <: AbstractPlot}
     return
 end
 
-function _help(io::IO, plot::Type{T}, name::Symbol) where {T <: AbstractPlot}
-    println(io, field_docs(plot, name))
+function _help(io::IO, plot::Type{T}, name::Symbol, names::Symbol...) where {T <: AbstractPlot}
+    println(io, field_docs(plot, name, names...))
     return
 end
 

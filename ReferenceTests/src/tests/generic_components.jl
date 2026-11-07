@@ -11,6 +11,7 @@
     l2 = lines!(scene, [20, 50, NaN, 20, 50], [200, 200, NaN, 230, 230], linewidth = 20, linecap = :round)
     ls = linesegments!(scene, [20, 50, NaN, NaN, 20, 50], [260, 260, NaN, NaN, 290, 290], linewidth = 20, linecap = :square)
     tp = text!(scene, Point2f[(15, 320), (NaN, NaN), (15, 350)], text = ["█ ●", "hi", "●"], fontsize = 20, align = (:left, :center))
+    gp = tp.plots[1]
 
     i = image!(scene, 80 .. 140, 20 .. 50, to_color.([:red :blue; :green :orange; :black :lightblue]), interpolate = false)
     s = surface!(scene, 80 .. 140, 80 .. 110, [1 2; 3 4; 5 6], interpolate = false)
@@ -110,18 +111,18 @@
         end
 
         @testset "text" begin
-            @test pick(scene, 15, 320) == (tp, 1)
+            @test pick(scene, 15, 320) == (gp, 1)
             @test pick(scene, 13, 320) == (nothing, 0)
             # edge checks, further outside due to AA
             @test pick(scene, 20, 306) == (nothing, 0)
-            @test pick(scene, 20, 320) == (tp, 1)
+            @test pick(scene, 20, 320) == (gp, 1)
             @test pick(scene, 20, 333) == (nothing, 0)
             # space is counted
-            @test pick(scene, 43, 320) == (tp, 3)
-            @test pick(scene, 48, 324) == (tp, 3)
+            @test pick(scene, 43, 320) == (gp, 3)
+            @test pick(scene, 48, 324) == (gp, 3)
             @test pick(scene, 49, 326) == (nothing, 0)
             # characters at nan position are counted
-            @test pick(scene, 20, 350) == (tp, 6)
+            @test pick(scene, 20, 350) == (gp, 6)
         end
 
         @testset "image" begin
@@ -305,8 +306,8 @@
             @test pick(scene, 5, 280, 10) == (ls, 6)
         end
         @testset "text" begin
-            @test pick(scene, 32, 320, 10) == (tp, 1)
-            @test pick(scene, 35, 320, 10) == (tp, 3)
+            @test pick(scene, 32, 320, 10) == (gp, 1)
+            @test pick(scene, 35, 320, 10) == (gp, 3)
         end
         @testset "image" begin
             @test pick(scene, 98, 15, 10) == (i, 1)
@@ -689,9 +690,10 @@ end
     f = Figure(size = (400, 400))
     a, p = scatter(f[1, 1], xy, markersize = 20)
     di = Makie.DataInspector(a)
-    st = Makie.Stepper(f)
-
     e = events(f)
+    f
+
+    st = Makie.Stepper(f)
 
     # Make 3 persistent tooltips
     mps = [(135, 290), (213, 209), (291, 130)]
@@ -704,6 +706,9 @@ end
         e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
     end
     e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.release)
+    wait_for_data_inspector(f, di) do
+        e.mouseposition[] = (80, 340) # keep the mouse away from markers
+    end
 
     Makie.step!(st)
 
@@ -721,6 +726,9 @@ end
     e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
     e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
     e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.release)
+    wait_for_data_inspector(f, di) do
+        e.mouseposition[] = (80, 340) # keep the mouse away from markers
+    end
 
     Makie.step!(st)
 
@@ -781,7 +789,7 @@ end
         (570, 300),
     ]
     indicator_indices = [5, 8, 11, 12, 13, 15]
-    states = Any[(Point{3, Float64}[[-2.0, 0.16136800223497494, 0.0]], "0.700 .. 2.200", true, :right, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.853871964321762, 0.146128035678238, 0.0]], "±0.700", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.698970014043257, 0.0937603555436011, 0.0]], "(0.020000, 1.241)\n(0, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.5228787549875757, 0.0937603555436011, 0.0]], "(0.030000, 1.241)\n(0, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.25527250510330607, 0.0]], "(0.050000, 1.800)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.09691001300805642, 0.0]], "(0.050000, 1.250)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.04139268515822508, 0.0]], "(0.050000, 1.100)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.0, 0.0]], "(0.050000, 1.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.0969100130080565, 0.175988612545332, 0.0]], "(0.080000, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.9208187539523752, 0.175988612545332, 0.0]], "(0.120, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.438039094209671, 0.2768024802207947, 0.0]], "4.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.4919283092021942, 0.14109061658382416, 0.0]], "2.913", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.6197887659072876, 0.0791812613606453, 0.0]], "2.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.49192829634113217, -0.04037907175276083, 0.01135124173015356]], "(0.322, 0.911, 0.011351)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.4919283092021942, -0.12413430958986282, 0.0]], "(0.322, 0.751)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[0.10839772969484329, 0.14109061658382416, 0.0]], "0.687", true, :left, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data)]
+    states = Any[(Point{3, Float64}[[-2.0, 0.16136800223497494, 0.0]], "0.700 .. 2.200", true, :right, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.853871964321762, 0.146128035678238, 0.0]], "±0.700", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.698970014043257, 0.0937603555436011, 0.0]], "(0.020000, 1.241)\n(0, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.5228787549875757, 0.0937603555436011, 0.0]], "(0.030000, 1.241)\n(0, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.25527250510330607, 0.0]], "(0.050000, 1.800)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.09691001300805642, 0.0]], "(0.050000, 1.250)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.04139268515822508, 0.0]], "(0.050000, 1.100)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.0, 0.0]], "(0.050000, 1.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.0969100130080565, 0.17598864218819055, 0.0]], "(0.080000, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.9208187539523752, 0.17598864218819055, 0.0]], "(0.120, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.438039094209671, 0.2768024802207947, 0.0]], "4.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.4919283092021942, 0.14109061658382416, 0.0]], "2.913", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.6197887659072876, 0.0791812613606453, 0.0]], "2.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.49192829634113217, -0.04037907175276083, 0.01135124173015356]], "(0.322, 0.911, 0.011351)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.4919283092021942, -0.12413430958986282, 0.0]], "(0.322, 0.751)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[0.10839772969484329, 0.14109061658382416, 0.0]], "0.687", true, :left, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data)]
 
     st = Makie.Stepper(f)
 
@@ -820,7 +828,11 @@ function create_test_plot()
     # Text with uncommon chars (no custom fonts)
     text!(ax, 5, 6, text = "∫∂∇αβγ←→€¥", fontsize = 40, align = (:center, :center))
     text!(ax, 5, 4, text = "◆●▲½⅓∞≈", fontsize = 40, color = :darkred, strokewidth = 2, strokecolor = :white, align = (:center, :center))
-    text!(ax, 5, 2, text = "abcdefg", color = 1:8, colormap = :turbo, fontsize = 60, align = (:center, :center), font = assetpath("fonts", "blkchcry.ttf"))
+    str = "abcdefg"
+    # one more sample than glyphs: the stored reference mapped `color = 1:8` over 7 chars
+    cols = resample_cmap(:turbo, length(str) + 1)
+    per_char = rich((rich(string(c); color = col) for (c, col) in zip(str, cols))...)
+    text!(ax, 5, 2, text = per_char, fontsize = 60, align = (:center, :center), font = assetpath("fonts", "blkchcry.ttf"))
     return f
 end
 

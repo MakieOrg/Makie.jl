@@ -10,12 +10,7 @@ macro compile(block)
 end
 
 precompile(Makie.initialize_block!, (Axis,))
-precompile(
-    Makie.apply_alignment_and_justification!, (
-        Vector{Vector{Makie.GlyphInfo}}, Automatic,
-        Tuple{Symbol, Symbol},
-    )
-)
+precompile(Makie.apply_justification!, (Vector{Vector{Makie.GlyphInfo}}, Float32))
 
 precompile(convert_arguments, (Type{Scatter}, UnitRange{Int64}))
 precompile(Makie.assemble_colors, (UnitRange{Int64}, Any, Any))
@@ -25,9 +20,7 @@ let
         logo()
         f = Figure()
         ax = Axis(f[1, 1])
-        base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
-        shared_precompile = joinpath(base_path, "shared-precompile.jl")
-        include(shared_precompile)
+        foreach(include, shared_precompile_paths())
         # Cleanup globals to avoid serializing stale state (fonts, figures, tasks)
         # Note: __init__ doesn't run during precompilation, so we must always clean up here
         cleanup_globals()

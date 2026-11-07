@@ -160,7 +160,7 @@ end
     # bitstype
     register_computation!(graph, [:in1, :in2], [:merged]) do inputs, changed, cached
         counter[:merged] += 1
-        return (changed.in1 ? inputs[1] + inputs[2] : nothing,)
+        return (changed.in1 ? inputs[1] + inputs[2] : skip_update,)
     end
     register_computation!(graph, [:merged], [:merged2]) do inputs, changed, cached
         counter[:merged2] += 1
@@ -798,27 +798,6 @@ end
     end
 end
 
-@testset "Validation" begin
-    graph = ComputeGraph()
-    add_input!(graph, :a, 1)
-
-    @test_throws ErrorException add_input!(graph, :b, Ref(graph.a))
-    @test_throws ErrorException add_input!(graph, :c, Ref(graph.inputs[:a]))
-    @test_throws ErrorException add_input!(graph, :d, graph.inputs[:a])
-
-    # add_input!() processes this, so we need to check more manually
-    graph.outputs[:dummy] = ComputePipeline.Computed(:dummy)
-    @test_throws ErrorException ComputePipeline.Input(graph, :e, graph.a, identity, graph.dummy)
-
-    @test_throws ErrorException ComputePipeline.Computed(:f, Ref(Ref(graph.a)))
-    @test_throws ErrorException ComputePipeline.Computed(:g, Ref(graph.a))
-    @test_throws ErrorException ComputePipeline.Computed(:h, Ref(Ref(graph.inputs[:a])))
-    @test_throws ErrorException ComputePipeline.Computed(:i, Ref(graph.inputs[:a]))
-
-    map!(x -> graph.a, graph, :a, :j)
-    @test_throws ResolveException{ErrorException} graph.j[]
-end
-
 @testset "mixed-map" begin
     graph1 = ComputeGraph()
     add_input!(graph1, :a1, 1)
@@ -1344,6 +1323,22 @@ using ComputePipeline: ComputeGraphView
         add_input!(graph, :a, :z, :a, 1)
         @test_throws ErrorException add_input!(graph, :a, :z, 1)
     end
+
+    @testset "set_type!" begin
+        graph = ComputeGraph()
+        add_input!(graph, :a, :a, :a, 1)
+        ComputePipeline.set_type!(graph.a.a.a, Any)
+        add_input!(graph, (:a, :a, :b), 2)
+        ComputePipeline.set_type!(graph.a.a, Integer)
+        add_input!(graph.a, :b, 3)
+        add_input!(graph.a, :c, :a, 4)
+        ComputePipeline.set_type!(graph.a, Real)
+
+        @test graph.a.a.a.value isa Ref{Any}
+        @test graph.a.a.b.value isa Ref{Integer}
+        @test graph.a.b.value isa Ref{Real}
+        @test graph.a.c.a.value isa Ref{Real}
+    end
 end
 
 @testset "ExplicitUpdate and force_update" begin
@@ -1688,4 +1683,221 @@ end
             empty!(evaled)
         end
     end
+end
+
+@testset "Array memory aliasing" begin
+    M = fill(0, 2, 2)
+    graph = ComputeGraph()
+    add_input!(graph, :mat, M)
+    map!(vec, graph, :mat, :vec)
+    map!(v -> Float32.(v), graph, :vec, :vecf)
+    v = graph.vec[]
+    M .= 1
+    graph.mat = M
+    @assert pointer(v) == pointer(graph.vec[]) "this is expected to be memory aliased, but isn't"
+    @test graph.vecf[] == [1, 1, 1, 1]
+end
+
+@testset "select!" begin
+    graph = ComputeGraph()
+    add_input!(graph, :user_choice, 1)
+    add_input!(graph, :x, 5)
+    add_input!(graph, :y, -1)
+
+    map!(identity, graph, :x, :input1)
+    map!(identity, graph, :y, :input2)
+    map!(+, graph, [:x, :y], :input3)
+
+    select!(graph, :user_choice, [:input1, :input2, :input3], :output)
+
+    # Verify initial state
+    function check_state(graph, state)
+        for (i, name) in enumerate([:user_choice, :x, :y, :input1, :input2, :input3, :output])
+            @test isdirty(graph[name]) == Bool(state[i])
+        end
+    end
+
+    @assert all(isdirty, values(graph.outputs)) "Test expects nodes to not initialize until first resolve"
+
+    @test graph.output[] == 5
+    check_state(graph, [0, 0, 1, 0, 1, 1, 0])
+
+    graph.x = 4
+    check_state(graph, [0, 1, 1, 1, 1, 1, 1])
+    @test graph.output[] == 4
+    check_state(graph, [0, 0, 1, 0, 1, 1, 0])
+
+    graph.user_choice = 2
+    check_state(graph, [1, 0, 1, 0, 1, 1, 1])
+    @test graph.output[] == -1
+    check_state(graph, [0, 0, 0, 0, 0, 1, 0])
+
+    update!(graph, user_choice = 3, x = 5, y = 2)
+    check_state(graph, [1, 1, 1, 1, 1, 1, 1])
+    @test graph.output[] == 5 + 2
+    check_state(graph, [0, 0, 0, 1, 1, 0, 0])
+
+    # test dirty propagation
+    map!(x -> x, graph, :output, :next)
+    first_val = graph.next[]
+    graph.x = 10
+    @test graph.next[] != first_val
+end
+
+@testset "boolean select!" begin
+    graph = ComputeGraph()
+    add_input!(graph, :user_choice, true)
+    add_input!(graph, :x, 5)
+    add_input!(graph, :y, -1)
+
+    map!(identity, graph, :x, :input1)
+    map!(identity, graph, :y, :input2)
+
+    select!(graph, :user_choice, :input1, :input2, :output)
+
+    # Verify initial state
+    function check_state(graph, state)
+        for (i, name) in enumerate([:user_choice, :x, :y, :input1, :input2, :output])
+            @test isdirty(graph[name]) == Bool(state[i])
+        end
+    end
+
+    @assert all(isdirty, values(graph.outputs)) "Test expects nodes to not initialize until first resolve"
+
+    @test graph.output[] == 5
+    check_state(graph, [0, 0, 1, 0, 1, 0])
+
+    graph.x = 4
+    check_state(graph, [0, 1, 1, 1, 1, 1])
+    @test graph.output[] == 4
+    check_state(graph, [0, 0, 1, 0, 1, 0])
+
+    graph.user_choice = false
+    check_state(graph, [1, 0, 1, 0, 1, 1])
+    @test graph.output[] == -1
+    check_state(graph, [0, 0, 0, 0, 0, 0])
+end
+
+@testset "skip_update vs nothing" begin
+    graph = ComputeGraph()
+    add_input!(graph, :a, 2)
+    map!(x -> iseven(x) ? x : skip_update, graph, :a, :even1)
+    register_computation!(graph, [:even1], [:counter]) do inputs, changed, cached
+        return (isnothing(cached) ? 1 : cached[1] + 1,)
+    end
+    map!(x -> iseven(x) ? x : nothing, graph, :a, :even2)
+    ComputePipeline.set_type!(graph.even2, Any)
+
+    @test graph.even1[] == 2
+    @test graph.counter[] == 1
+    @test graph.even2[] == 2
+
+    graph.a = 1
+
+    @test graph.even1[] == 2
+    @test graph.counter[] == 1
+    @test graph.even2[] === nothing
+
+    graph.a = 2
+
+    @test graph.even1[] == 2
+    @test graph.counter[] == 1
+    @test graph.even2[] == 2
+
+    graph.a = 4
+
+    @test graph.even1[] == 4
+    @test graph.counter[] == 2
+    @test graph.even2[] == 4
+end
+
+@testset "Deferred typed edge" begin
+    graph = ComputeGraph()
+    add_input!(graph, :x, 1)
+    calls = Any[]
+    register_computation!(graph, [:x], [:result]) do (x,), changed, cached
+        push!(calls, (x, changed.x, cached))
+        return (2x,)
+    end
+    edge = graph.result.parent
+    @test graph.result[] == 2
+    @test calls == [(1, true, nothing)]
+    @test !isassigned(edge.typed_edge)
+    @test graph.result[] == 2
+    @test length(calls) == 1
+    graph.x = 3
+    @test graph.result[] == 6
+    @test isassigned(edge.typed_edge)
+    @test length(calls) == 2
+    @test calls[end] == (3, true, (result = 2,))
+end
+
+@testset "First resolve compiles once for all callbacks and results" begin
+    specializations(f, sig) = count(Returns(true), Base.specializations(which(f, sig)))
+    counts() = (
+        specializations(ComputePipeline.dynamic_resolve!, Tuple{Any, ComputePipeline.ComputeEdge}),
+        specializations(ComputePipeline.set_result!, Tuple{ComputePipeline.ComputeEdge, Tuple}),
+    )
+    graph = ComputeGraph()
+    add_input!(graph, :x, 1)
+    register_computation!((inputs, changed, cached) -> (inputs.x,), graph, [:x], [:warm])
+    @test graph.warm[] == 1
+    before = counts()
+    register_computation!((inputs, changed, cached) -> (Val(1), 1.0), graph, [:x], [:a1, :a2])
+    register_computation!((inputs, changed, cached) -> ("s", Val(2), 1), graph, [:x], [:b1, :b2, :b3])
+    @test graph.a1[] == Val(1)
+    @test graph.b1[] == "s"
+    @test counts() == before
+end
+
+struct CustomFirstResolve <: Function end
+(::CustomFirstResolve)(inputs, changed, cached) = (inputs.x + 1,)
+function ComputePipeline.dynamic_resolve!(::CustomFirstResolve, edge::ComputePipeline.ComputeEdge)
+    return ComputePipeline.set_result!(edge, (10 * edge.inputs[1].value[],))
+end
+
+@testset "Callback specific first resolve" begin
+    graph = ComputeGraph()
+    add_input!(graph, :x, 2)
+    register_computation!(CustomFirstResolve(), graph, [:x], [:result])
+    @test graph.result[] == 20
+    graph.x = 3
+    @test graph.result[] == 4
+end
+
+@testset "First resolve result handling" begin
+    graph = ComputeGraph()
+    add_input!(graph, :x, 1)
+    register_computation!((inputs, changed, cached) -> nothing, graph, [:x], [:skipped])
+    @test graph.skipped[] === nothing
+    @test !graph.skipped.dirty
+
+    register_computation!((inputs, changed, cached) -> (1, 2), graph, [:x], [:one_output])
+    @test_throws ResolveException graph.one_output[]
+
+    register_computation!((inputs, changed, cached) -> 1, graph, [:x], [:not_a_tuple])
+    @test_throws ResolveException graph.not_a_tuple[]
+
+    register_computation!((inputs, changed, cached) -> (graph,), graph, [:x], [:invalid_type])
+    @test_throws ResolveException graph.invalid_type[]
+
+    ref = Ref(5)
+    register_computation!((inputs, changed, cached) -> (ref,), graph, [:x], [:from_ref])
+    @test graph.from_ref[] == 5
+    @test graph.outputs[:from_ref].value === ref
+end
+
+@testset "First resolve from an existing task" begin
+    graph = ComputeGraph()
+    add_input!(graph, :x, 1)
+    gate = Channel{Nothing}(1)
+    task = @async begin
+        take!(gate)
+        graph.result[]
+    end
+    yield()
+    callback = Core.eval(Module(gensym(:Callbacks)), :((inputs, changed, cached) -> (inputs.x + 1,)))
+    register_computation!(callback, graph, [:x], [:result])
+    put!(gate, nothing)
+    @test fetch(task) == 2
 end

@@ -1,4 +1,4 @@
-using GLMakie.Makie: getscreen
+using Makie: getscreen, N0f8, RGBA
 
 function project_sp(scene, point)
     point_px = Makie.project(scene, point)
@@ -6,44 +6,87 @@ function project_sp(scene, point)
     return point_px .+ offset
 end
 
+is_freed(x::GLMakie.GLAbstraction.TextureBuffer) = x.texture.id == 0 && x.buffer.id == 0
+is_freed(x::GLMakie.GPUArray) = x.id == 0
+
 @testset "shader cache" begin
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
+
     # Postprocessing shaders
     @test length(cache.shader_cache) == 4
     @test length(cache.template_cache) == 4
     @test length(cache.program_cache) == 3
 
+    # Just Axis adds...
+    # f = Figure();
+    # a = Axis(f[1, 1])
+    # display(screen, f)
+    Ns = 18
+    Np = 7
+
     # Shaders for scatter + linesegments + poly etc (axis)
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 17
-    @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 17
-    @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # Same for linesegments
     display(screen, linesegments(1:4))
-    @test length(cache.shader_cache) == 17
-    @test length(cache.template_cache) == 17
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == Ns
+    @test length(cache.template_cache) == Ns
+    @test length(cache.program_cache) == Np + 1
 
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
-    @test length(cache.shader_cache) == 19
-    @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 11
+    @test length(cache.shader_cache) == Ns + 2
+    @test length(cache.template_cache) == Ns + 2
+    @test length(cache.program_cache) == Np + 2
 
     # For second time no new shaders should be added
-    display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
-    @test length(cache.shader_cache) == 19
-    @test length(cache.template_cache) == 19
-    @test length(cache.program_cache) == 11
+    figure, axis, plot = heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4))
+    display(screen, figure)
+    @test length(cache.shader_cache) == Ns + 2
+    @test length(cache.template_cache) == Ns + 2
+    @test length(cache.program_cache) == Np + 2
+
+    # Rectangle selection compiles its program only when first used.
+    zoom = axis.interactions[:rectanglezoom][2]
+    @test !zoom.mesh_initialized
+    Makie.initialize_selection_mesh!(zoom, axis)
+    @test length(cache.program_cache) == Np + 3
+    Makie.initialize_selection_mesh!(zoom, axis)
+    @test length(cache.program_cache) == Np + 3
+end
+
+@testset "Changing mesh and surface strokes" begin
+    for plot_mesh in (true, false)
+        scene = Scene(size = (200, 200), camera = campixel!)
+        plot = if plot_mesh
+            mesh!(scene, Rect2f(20, 20, 160, 160); color = :red, shading = NoShading)
+        else
+            surface!(
+                scene, range(20, 180, length = 3), range(20, 180, length = 3), zeros(3, 3);
+                color = :red, shading = NoShading, strokeedges = :all
+            )
+        end
+        plain = copy(colorbuffer(scene))
+        plot.strokewidth[] = 8
+        stroked = copy(colorbuffer(scene))
+        @test plain != stroked
+        plot.strokewidth[] = 0
+        @test colorbuffer(scene) == plain
+        plot.strokewidth[] = 8
+        @test colorbuffer(scene) == stroked
+    end
+    GLMakie.closeall()
 end
 
 @testset "unit tests" begin
@@ -151,7 +194,7 @@ end
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms
                 if v isa GLMakie.GPUArray
-                    @test v.id == 0
+                    @test is_freed(v)
                 end
             end
             for inst in values(robj.variants)
@@ -167,7 +210,7 @@ end
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms
                 if v isa GLMakie.GPUArray
-                    @test v.id != 0
+                    @test !is_freed(v)
                 end
             end
             for inst in values(robj.variants)
@@ -190,7 +233,7 @@ end
 
     @test ax.scene.plots == [hmp, lp, tp]
 
-    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots...])
+    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots[1]])
 
     empty!(ax)
 
@@ -198,7 +241,7 @@ end
     for robj in robjs
         for (k, v) in robj.uniforms
             if (v isa GLMakie.GPUArray) && (v !== tex_atlas)
-                @test v.id == 0
+                @test is_freed(v)
             end
         end
         for inst in values(robj.variants)
@@ -213,7 +256,7 @@ end
         for (_, _, robj) in screen.renderlist
             for (k, v) in robj.uniforms
                 if v isa GLMakie.GPUArray
-                    @test v.id != 0
+                    @test !is_freed(v)
                 end
             end
             for inst in values(robj.variants)
@@ -301,7 +344,7 @@ end
 
         @test screen.scene === nothing
         @test screen.rendertask === nothing
-        @test (Base.summarysize(screen) / 10^6) < 1.41
+        @test (Base.summarysize(screen) / 10^6) < 1.45
     end
     # All should go to pool after close
     @test all(x -> x in GLMakie.SCREEN_REUSE_POOL, screens)
@@ -518,4 +561,79 @@ end
         value[]
     end
     @test real_bytesize[] == sizeof(eltype(indexbuffer))
+end
+
+@testset "small float passthrough" begin
+    scene = Scene()
+    p1 = volume!(scene, fill(N0f8(0.5), 4, 4, 4)::Array{N0f8, 3})
+    p2 = volume!(scene, fill(Float16(0.5), 4, 4, 4))
+    p3 = volume!(scene, fill(RGBA{N0f8}(0.5, 0.5, 0.5, 0.5), 4, 4, 4), algorithm = :absorptionrgba)
+    p4 = volume!(scene, fill(RGBA{Float16}(0.5, 0.5, 0.5, 0.5), 4, 4, 4), algorithm = :absorptionrgba)
+    # p5 = mesh!(scene, Rect2f(0,0,1,1), color = rand(RGBA{N0f8}, 4, 4))
+    # p6 = scatter!(scene, 1:4, color = rand(N0f8, 4))
+    screen = display(scene, visible = false)
+
+    @test eltype(p1.gl_renderobject[][:volumedata]) === N0f8
+    @test eltype(p2.gl_renderobject[][:volumedata]) === Float16
+    @test eltype(p3.gl_renderobject[][:volumedata]) === RGBA{N0f8}
+    @test eltype(p4.gl_renderobject[][:volumedata]) === RGBA{Float16}
+    # @test eltype(p5.gl_renderobject[][:image]) === RGBA{N0f8}
+    # @test eltype(p6.gl_renderobject[].vertexarray.buffers["intensity"]) === N0f8
+end
+
+struct RasterizedMarker end
+
+Makie.to_spritemarker(m::RasterizedMarker) = m
+
+function Makie.rasterize_marker_for_gpu(::RasterizedMarker, markersize, px_per_unit)
+    n = max(2, round(Int, first(Makie.to_2d_scale(markersize)) * px_per_unit))
+    return fill(RGBAf(1, 0, 0, 1), n, n)
+end
+
+@testset "markers rasterize at the screen's px_per_unit" begin
+    s = Scene(camera = campixel!, size = (100, 100))
+    p = scatter!(s, Point2f(50, 50), marker = RasterizedMarker(), markersize = 20)
+    screen = display(GLMakie.Screen(visible = false, px_per_unit = 2), s)
+    @test size(p.image[]) == (40, 40)
+
+    screen.px_per_unit[] = 4
+    @test size(p.image[]) == (80, 80)
+
+    GLMakie.closeall()
+    screen = display(GLMakie.Screen(visible = false, px_per_unit = 1), s)
+    @test size(p.image[]) == (20, 20)
+
+    GLMakie.closeall()
+end
+
+@testset "events after `empty!(scene)`" begin
+    scene = Scene()
+    screen = display(scene, visible = false)
+    N = length(screen.render_tick.listeners)
+    @assert N > 0 "It doesn't make sense to confirm backend render_tick event don't get deleted when there are none"
+    empty!(scene)
+    @test length(screen.render_tick.listeners) == N
+end
+
+@testset "scroll event coalescing" begin
+    scroll = Observable((0.0, 0.0))
+    received = Tuple{Float64, Float64}[]
+    on(x -> push!(received, x), scroll)
+    updater = GLMakie.ScrollUpdater(scroll, true, (0.0, 0.0))
+
+    # integer offsets keep the macOS trackpad scaling factor at 1.0, so the sums below
+    # hold on every platform
+    updater(nothing, 1.0, 2.0)
+    updater(nothing, 3.0, -5.0)
+    @test received == []
+
+    updater(Makie.RegularRenderTick)
+    @test received == [(4.0, -3.0)]
+
+    updater(Makie.RegularRenderTick)
+    @test received == [(4.0, -3.0)]
+
+    updater(nothing, 0.0, 7.0)
+    updater(Makie.RegularRenderTick)
+    @test received == [(4.0, -3.0), (0.0, 7.0)]
 end

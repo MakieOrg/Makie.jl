@@ -1,6 +1,31 @@
 bar_label_formatter(value::Number) = string(round(value; digits = 3))
 bar_label_formatter(label::String) = label
 bar_label_formatter(label::LaTeXString) = label
+bar_label_formatter(label::RichText) = label
+
+"""
+    clamp_stack_to_fillto!(from, to, fillto)
+
+Clamps the stack boundaries `from`/`to` so that stacks of positive values never
+extend below `fillto` and stacks of negative values never extend above it. This
+makes `fillto` the baseline of the stack and, for a log scaled axis, replaces the
+zeros that would otherwise map to `-Inf` (dropping the whole segment).
+"""
+function clamp_stack_to_fillto!(from, to, _fillto)
+    for i in eachindex(from, to)
+        # We need to adjust values if:
+        # - the bar starts a stack (from == 0)
+        # - a negative stacked bar (from or to < 0) starts above fillto (from > fillto)
+        # - a positive stacked bar (from or to > 0) starts below fillto (from < fillto)
+        fillto = sv_getindex(_fillto, i)
+        if iszero(from[i]) || ifelse(from[i] < 0, from[i] > fillto, from[i] < fillto)
+            from[i] = fillto
+            mini, maxi = minmax(fillto, to[i])
+            to[i] = ifelse(to[i] < 0, mini, maxi)
+        end
+    end
+    return from, to
+end
 
 """
 Plots bars of the given heights at the given positions.
@@ -20,6 +45,11 @@ Plots bars of the given heights at the given positions.
     Controls the baseline of the bars. This is zero in the default `automatic` case
     unless the barplot is in a log-scaled `Axis`. With a log scale, the automatic
     default is half the minimum value because zero is an invalid value for a log scale.
+
+    When `stack` is used, `fillto` must be a single number and acts as the baseline
+    of each stack: positive stacks never extend below it and negative stacks never
+    extend above it. With a log scale, the automatic default is half the minimum
+    positive stack total.
     """
     fillto = automatic
     "Offsets all bars by the given real value. Can also be set per-bar."
@@ -140,7 +170,7 @@ function add_slow_limits!(plot::Plot)
             mini = minimum(lims)
             return (Rect2d(mini - 100ws, 201ws),)
         else
-            return nothing
+            return skip_update
         end
     end
     add_input!(plot.attributes, :slow_limits_transformed, scene.compute.slow_limits_transformed)
@@ -318,7 +348,8 @@ function barplot_labels(
                 color_over_bar, label_offset, label_rotation, label_align, label_position
             )
             label_pos = broadcast(xpositions, ypositions, offset, computed_labels, label_position, fillto) do x, y, off, l, lpos, fto
-                str = string(label_formatter(l))
+                formatted = label_formatter(l)
+                str = formatted isa Union{AbstractString, RichText} ? formatted : string(formatted)
                 p = if in_y_direction
                     if lpos == :end
                         Point2d(x, y + off)
@@ -378,11 +409,11 @@ function plot!(p::BarPlot)
     # stack
     map!(
         p, [:stack, :fillto, :x, :raw_y, :offset], [:y, :computed_fillto]
-    ) do stack, fillto, x, y, offset
+    ) do stack, _fillto, x, y, offset
+        fillto = ifelse(_fillto === automatic, offset, _fillto)
         if stack === automatic
-            return y, ifelse(fillto === automatic, offset, fillto)
+            return y, fillto
         elseif eltype(stack) <: Integer
-            fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
             if !iszero(offset)
                 @warn "Ignore keyword offset when keyword stack is provided"
                 offset = 0.0
@@ -390,6 +421,7 @@ function plot!(p::BarPlot)
             i_stack = stack
 
             from, to = stack_grouped_from_to(i_stack, y, (x = x,))
+            iszero(fillto) || clamp_stack_to_fillto!(from, to, fillto)
             return to, from
         else
             throw(ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`"))
@@ -458,10 +490,10 @@ is_log_transform(t::Tuple) = any(is_log_transform, t)
 is_log_transform(::LogFunctions) = true
 is_log_transform(::Base.Fix1{<:LogFunctions}) = true
 
-function boundingbox(p::BarPlot, space::Symbol = :data)
+function _transformed_bbox(p::BarPlot)
     if isempty(p.x[])
         # no data should result in empty limits
-        bb = Rect2d()
+        return Rect2d()
 
     elseif is_identity_transform(p.transform_func[])
         # bit of a fast path for untransformed data
@@ -469,8 +501,9 @@ function boundingbox(p::BarPlot, space::Symbol = :data)
         x1 = maximum(p.x[] .+ 0.5 .* p.barwidth[])
         y0 = minimum(min.(p.y[] .+ p.offset[], p.computed_fillto[]))
         y1 = maximum(max.(p.y[] .+ p.offset[], p.computed_fillto[]))
+        y0 = ifelse(y0 == -Inf, 0, y0)
         bb = Rect2d(x0, y0, x1 - x0, y1 - y0)
-        bb = ifelse(p.in_y_direction[], bb, flip(bb))
+        return ifelse(p.in_y_direction[], bb, flip(bb))
 
     elseif is_log_transform(p.transform_func[])
         # log transformed data needs to dodge log(0).
@@ -489,7 +522,7 @@ function boundingbox(p::BarPlot, space::Symbol = :data)
             mini = ifelse.(isfinite.(p0) .&& (mini .> p0), p0, mini)
             maxi = ifelse.(isfinite.(p1) .&& (maxi .< p1), p1, maxi)
         end
-        bb = isfinite(mini) && isfinite(maxi) ? Rect2d(mini, maxi .- mini) : Rect2d()
+        return isfinite(mini) && isfinite(maxi) ? Rect2d(mini, maxi .- mini) : Rect2d()
 
     else
         # In the general transformed case all the (un-clamped) poly vertices need
@@ -509,10 +542,28 @@ function boundingbox(p::BarPlot, space::Symbol = :data)
             mini = min.(mini, p00, p01, p11, p10)
             maxi = max.(maxi, p00, p01, p11, p10)
         end
-        bb = isfinite(mini) && isfinite(maxi) ? Rect2d(mini, maxi .- mini) : Rect2d()
+        return isfinite(mini) && isfinite(maxi) ? Rect2d(mini, maxi .- mini) : Rect2d()
+    end
+end
+
+function data_limits(p::BarPlot)
+    # needs to be implemented, since the child plots use post-transform_func data
+    bb2 = _transformed_bbox(p)
+    itf = inverse_transform(transform_func(p))
+    bb3 = apply_transform(itf, Rect3d(bb2))
+
+    # add optional text subplot
+    if length(p.plots) > 1
+        tbb = data_limits(p.plots[2])
+        bb3 = update_boundingbox(bb3, tbb)
     end
 
-    bb3 = apply_model(transformationmatrix(p)[], Rect3d(bb))
+    return bb3
+end
+
+function boundingbox(p::BarPlot, space::Symbol = :data)
+    bb2 = _transformed_bbox(p)
+    bb3 = apply_model(transformationmatrix(p)[], Rect3d(bb2))
 
     # add optional text subplot
     if length(p.plots) > 1

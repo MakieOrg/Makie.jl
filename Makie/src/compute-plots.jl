@@ -23,46 +23,8 @@ function ComputePipeline.add_input!(
     return x
 end
 
-function ComputePipeline.add_input!(
-        attr::ComputeGraph, key::Symbol, values::Attributes
-    )
-    if key === :fonts
-        return ComputePipeline._add_input!(identity, attr, key, values)
-    else
-        return add_input!(attr, (key,), values)
-    end
-end
-
-function ComputePipeline.add_input!(
-        attr::ComputeGraph, keys::Tuple, values::Attributes
-    )
-    for (child_key, child_value) in values
-        add_input!(attr, (keys..., child_key), child_value)
-    end
-    return attr[first(keys)]
-end
-
-function ComputePipeline.add_input!(
-        conversion_func, attr::ComputePipeline.ComputeGraph,
-        key::Symbol, values::Attributes
-    )
-    if key === :fonts
-        return ComputePipeline._add_input!(conversion_func, attr, key, values)
-    else
-        return add_input!(conversion_func, attr, (key,), values)
-    end
-end
-
-function ComputePipeline.add_input!(
-        conversion_func, attr::ComputePipeline.ComputeGraph,
-        keys::Tuple, values::Attributes
-    )
-    for (child_key, child_value) in values
-        add_input!(conversion_func, attr, (keys..., child_key), child_value)
-    end
-    return attr[first(keys)]
-end
-
+ComputePipeline.add_input!(f, p::Plot, args...; kwargs...) = add_input!(f, p.attributes, args...; kwargs...)
+ComputePipeline.add_input!(p::Plot, args...; kwargs...) = add_input!(p.attributes, args...; kwargs...)
 
 Base.haskey(x::Plot, key) = haskey(x.attributes, key)
 Base.get(f::Function, x::Plot, key::Symbol) = haskey(x.attributes, key) ? x.attributes[key] : f()
@@ -130,6 +92,8 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     attr = plot.attributes
     if haskey(attr.inputs, key)
         setproperty!(attr, key, val)
+    elseif ComputePipeline.has_nested_key(attr, key)
+        nested_update!(plot, key, val)
     else
         add_input!(attr, key, val)
         # maybe best to not make assumptions about user attributes?
@@ -139,16 +103,25 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     return plot
 end
 
-# temp fix axis selection
-args_preferred_axis(::Type{<:Voxels}, attr::ComputeGraph) = LScene
-function args_preferred_axis(::Type{<:Surface}, attr::ComputeGraph)
-    lims = attr[:data_limits][]
-    return widths(lims)[3] == 0 ? Axis : LScene
+function nested_update!(plot::P, key::Symbol, val) where {P}
+    doc_attr = documented_attributes(P)
+    updates = Pair{Symbol, Any}[]
+    prepare_nested_update!(updates, doc_attr, doc_attr.nesting.keytables[1][key], val)
+    update!(plot.attributes, updates)
+    return
 end
-function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
-    result = args_preferred_axis(PT, attr[:positions][])
-    isnothing(result) && return Axis
-    return result
+
+function prepare_nested_update!(updates, attr, layer, val)
+    @assert layer > 0 # Should be given since we check `has_nested_key` in setproperty
+    for (key, idx) in attr.nesting.keytables[layer]
+        haskey(val, key) || continue
+        if idx > 0
+            prepare_nested_update!(updates, attr, idx, to_value(val[key]))
+        else
+            push!(updates, attr.merged_keys[-idx] => to_value(val[key]))
+        end
+    end
+    return
 end
 
 # This is data_limits(), not boundingbox()
@@ -214,9 +187,8 @@ function meshscatter_boundingbox(_positions, model, transform_marker, marker_bb,
 end
 
 
-function add_alpha(color, alpha)
-    return RGBAf(Colors.color(color), alpha * Colors.alpha(color))
-end
+add_alpha(color, alpha) = add_alpha(Colors.color(color), Colors.alpha(color), alpha)
+add_alpha(rgb, a::T, alpha) where {T} = RGBA(rgb, a * T(alpha))
 
 function register_colormapping_without_color!(attr::ComputeGraph)
     map!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]) do icm, a
@@ -241,7 +213,7 @@ function register_colormapping_without_color!(attr::ComputeGraph)
     for key in (:lowclip, :highclip)
         sym = Symbol(key, :_color)
         map!(attr, [key, :alpha_colormap], sym) do input, cmap
-            if input === automatic
+            if input === automatic || input === nothing
                 return ifelse(key == :lowclip, first(cmap), last(cmap))
             else
                 return to_color(input)
@@ -249,6 +221,27 @@ function register_colormapping_without_color!(attr::ComputeGraph)
         end
     end
     return
+end
+
+function process_color_value(scale, value, auto)
+    if value === automatic
+        return auto
+    elseif value isa Real
+        return apply_scale(scale, value)
+    end
+end
+
+# calculated_colorrange is assumed to already be scaled
+function combined_colorrange(colorscale, user_colorrange, calculated_colorrange)
+    if user_colorrange === automatic
+        return calculated_colorrange
+    else
+        low = process_color_value(colorscale, first(user_colorrange), first(calculated_colorrange))
+        high = process_color_value(colorscale, last(user_colorrange), last(calculated_colorrange))
+        low == high || return Vec2f(low, high)
+        delta = max(0.5f0, abs(Float32(low)))
+        return Vec2f(low - delta, high + delta)
+    end
 end
 
 function register_colormapping!(attr::ComputeGraph, colorname = :color)
@@ -261,9 +254,10 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     ) do color, colorscale, alpha
         auto_colorrange = nothing
         if color isa Union{AbstractArray{<:Real}, Real}
-            scaled = el32convert(apply_scale(colorscale, color))
+            scaled = smallfloat_convert.(apply_scale(colorscale, color))
             auto_colorrange = Vec2f(distinct_extrema_nan(scaled))
-            val = clamp.(scaled, -floatmax(Float32), floatmax(Float32))
+            T = eltype(scaled)
+            val = clamp.(scaled, -floatmax(T), floatmax(T))
         elseif color isa AbstractPattern
             val = ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
@@ -282,10 +276,8 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     ) do colorrange, colorscale, autorange
         if isnothing(autorange) # colors are actual colors, so no colormapping
             return nothing
-        elseif colorrange === automatic
-            return autorange
         else
-            return Vec2f(apply_scale(colorscale, colorrange))
+            return combined_colorrange(colorscale, colorrange, autorange)
         end
     end
 end
@@ -367,12 +359,12 @@ function register_positions_transformed_f32c!(
 
     register_computation!(
         attr, [input_name, :model, :f32c, :space], [output_name]
-    ) do (positions, model, f32c, space), changed, last
+    ) do (positions, model, f32c, space), changed, @nospecialize(last)
 
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
-            pos = changed[1] ? el32convert(positions) : nothing
+            pos = changed[1] ? el32convert(positions) : skip_update
             return (pos,)
         elseif false # is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
@@ -419,8 +411,8 @@ end
 # Split for text compat
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args) where {P}
     inputs = _register_input_arguments!(attr, input_args)
-    _register_expand_arguments!(P, attr, inputs)
-    _register_argument_conversions!(P, attr, user_kw)
+    expanded_args = _register_expand_arguments!(P, attr, inputs, to_value.(input_args))
+    _register_argument_conversions!(P, attr, user_kw, expanded_args)
     return
 end
 
@@ -434,31 +426,23 @@ function _register_input_arguments!(attr::ComputeGraph, input_args::Tuple)
     return inputs
 end
 
-function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false) where {P}
+function _register_expand_arguments!(::Type{P}, attr, inputs, input_args, is_merged = false) where {P}
     # is_merged = true means that multiple arguments are collected in one input, i.e.:
     #   true:   one input where attr[input][] = (arg1, arg2, ...)
     #   false:  multiple inputs where map(k -> attr[k][], inputs) = [arg1, arg2, ...]
     # this is used in text
 
-    # Only 2 and 3d conversions are supported, and only
-    PTrait = if is_merged
-        @assert length(inputs) == 1
-        conversion_trait(P, attr[inputs[1]][]...)
-    else
-        conversion_trait(P, map(k -> attr[k][], inputs)...)
-    end
+    PTrait = conversion_trait(P, input_args...)
+    expanded = something(expand_dimensions(PTrait, input_args...), input_args)
     # call it args for backwards compatibility (plot.args)
     map!(attr, inputs, :args) do input_args...
         args = values(is_merged ? input_args[1] : input_args)
         args_exp = expand_dimensions(PTrait, args...)
-        if isnothing(args_exp)
-            # This can change types, so force Any type in Compute node
-            return Ref{Any}(args)
-        else
-            return Ref{Any}(args_exp)
-        end
+        return something(args_exp, args)
     end
-    return
+    # This can change types, so force Any type in Compute node
+    ComputePipeline.unsafe_init!(attr.args, Ref{Any}(expanded))
+    return expanded
 end
 
 # Julia 1.10 compat
@@ -469,20 +453,22 @@ function _filter(f, xs::NamedTuple)
     return NamedTuple{fkeys}(map(k -> xs[k], fkeys))
 end
 
-function add_convert_kwargs!(attr, user_kw, P, args)
+function add_convert_kwargs!(graph, user_kw, P, args)
     conv_attributes = used_attributes(P, args...)
-    intrinsics = default_theme(nothing)
     conv_attr_input = Symbol[]
     for key in conv_attributes
-        if !haskey(attr.inputs, key) && !haskey(intrinsics, key) # can be added from plot attributes
-            default = key === :space ? :data : nothing
-            add_input!(attr, key, pop!(user_kw, key, default))
+        if !haskey(graph.inputs, key)
+            default = pop!(user_kw, key, key === :space ? :data : nothing)
+            add_input!(graph, key, default)
+            ComputePipeline.set_type!(graph[key], Any)
             push!(conv_attr_input, key)
         end
     end
-    return register_computation!(attr, conv_attr_input, [:convert_kwargs]) do inputs, changed, last
+    register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, @nospecialize(changed), @nospecialize(last)
         return (_filter(!isnothing, inputs),)
     end
+    ComputePipeline.set_type!(graph[:convert_kwargs], Any)
+    return
 end
 
 function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, args_converted, user_kw) where {P}
@@ -491,11 +477,12 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     kwarg_names = argument_dim_kwargs(P)
 
     # initialize the necessary attributes early
-    defaults = default_theme(nothing, P)
     for key in kwarg_names
         if !haskey(attr.inputs, key)
-            haskey(defaults, key) || error("Cannot use `argument_dim_kwargs(::$P) = (:$key, ...)` as it is not a valid recipe Attribute.")
-            add_input!(attr, key, pop!(user_kw, key, defaults[key]))
+            default = lookup_default(P, nothing, user_kw, key)
+            default isa Inherit && error("$key must be initialized without `@inherit` to be used as a argument_dims kwarg.")
+            # haskey(defaults, key) || error("Cannot use `argument_dim_kwargs(::$P) = (:$key, ...)` as it is not a valid recipe Attribute.")
+            add_input!(attr, key, default)
         end
     end
 
@@ -504,8 +491,8 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
 
     if dim_tuple === nothing
         # args declared not dim-convertible by argument_dims().
-        map!(args -> Ref{Any}(args), attr, :args, :dim_converted)
-        return
+        ComputePipeline.alias!(attr, :args, :dim_converted)
+        return args
 
     elseif !(dim_tuple isa Tuple)
         # Format check
@@ -518,6 +505,7 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
         map!(attr, [:args, :convert_kwargs], :recursive_convert) do args, kwargs
             return convert_arguments(P, args...; kwargs...)
         end
+        ComputePipeline.unsafe_init!(attr.recursive_convert, args_converted)
         input = :recursive_convert
     else
         input = :args
@@ -608,10 +596,10 @@ function error_check_convert_arguments(P, args, user_kw, args_converted)
     end
 end
 
-function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
-    dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
+function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw, args) where {P}
+    dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))::DimConversions
+    add_input!(attr, :dim_conversions, dim_converts)
 
-    args = attr.args[]
     add_convert_kwargs!(attr, user_kw, P, args)
     kw = attr.convert_kwargs[]
     args_converted = convert_arguments(P, args...; kw...)
@@ -621,27 +609,31 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     # Controls whether the plot is forced to apply dim converts or allowed to
     # use plain data in a dim_convert scene. Typically true for plots to scenes
     # and false for plots to other plots
-    force_dimconverts = pop!(user_kw, :force_dimconverts)
-    defaults = default_theme(nothing, P)
-    space = to_value(get(user_kw, :space, get(defaults, :space, :data)))
+    force_dimconverts = pop!(user_kw, :force_dimconverts)::Bool
+    doc_attr = documented_attributes(P)
+    space::Symbol = if haskey(user_kw, :space)
+        to_value(user_kw[:space])
+    else
+        default = get_flat_default(doc_attr, :space, :data)
+        default isa Symbol ? default : :data
+    end
 
-    if !is_data_space(space)
+    # TODO: Can't infer types here because dim_conversions[i] are of unknown type
+    dim_converted = if !is_data_space(space)
         # dim converts do not apply in relative, pixel or clip space
-        map!(attr, :args, :dim_converted) do args
-            return Ref{Any}(args)
-        end
+        ComputePipeline.alias!(attr, :args, :dim_converted)
+        args
     elseif force_dimconverts && needs_dimconvert(dim_converts)
         add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
     elseif (status === true || status === SpecApi)
         # Nothing needs to be done, since we can just use convert_arguments without dim_converts
         # And just pass the arguments through
-        map!(attr, :args, :dim_converted) do args
-            return Ref{Any}(args)
-        end
+        ComputePipeline.alias!(attr, :args, :dim_converted)
+        args
     elseif isnothing(status) || status === false # we don't know (e.g. recipes) or incomplete conversion
         add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
     end
-    #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
+    # backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
 
     map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
         val = convert_arguments(P, dim_converted...; convert_kwargs...)
@@ -688,329 +680,130 @@ function register_marker_computations!(attr::ComputeGraph)
 end
 
 const PrimitivePlotTypes = Union{
-    Scatter, Lines, LineSegments, Text, Mesh,
+    Scatter, Lines, LineSegments, Glyphs, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume,
 }
 
+"""
+    uses_convert_attribute(::Type{<:Plot})
+
+Returns true for plot types that opt in to using `convert_attribute`
+infrastructure. This is `false` by default for recipes.
+"""
+uses_convert_attribute(::Type{<:PrimitivePlotTypes}) = true
+uses_convert_attribute(::Type{<:AbstractPlot}) = false
 
 function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, p.attributes, inputs, outputs)
 end
-
-function Base.map!(f, p::Plot, inputs::Union{Vector{Symbol}, Vector{Computed}, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
+function Base.map!(f, p::Plot, inputs::Union{Vector, ComputePipeline.InputNodeTypes}, outputs::Union{Vector, ComputePipeline.OutputNodeTypes})
     return map!(f, p.attributes, inputs, outputs)
 end
+ComputePipeline.select!(f, p::Plot, args...) = select!(f, p.attributes, args...)
+ComputePipeline.select!(p::Plot, args...) = select!(p.attributes, args...)
 
-# from DocumentedAttributes
-function default_attribute(user_attributes, kv::Pair{Symbol, AttributeMetadata})
-    return default_attribute(user_attributes, kv[1], kv[2].default_value)
-end
-
-# from Attributes
-function default_attribute(user_attributes, kv::Pair)
-    return default_attribute(user_attributes, kv...)
-end
-
-function default_attribute(user_attributes, key::Symbol, value)
-    if haskey(user_attributes, key)
-        if value isa Attributes
-            # The back and forth casting from Attributes -> Dict -> Attributes
-            # is to prevent overwriting values in the default plot attributes
-            # (and the observables it contains)
-            output = Dict{Symbol, Any}(value)
-            recursive_attr_merge!(output, user_attributes[key])
-            return Attributes(output)
-        else
-            val = user_attributes[key]
-            val isa NamedTuple && return Attributes(val)
-            return val
-        end
-    elseif value isa Inherit
-        return value.fallback
-    else
-        return to_value(value)
-    end
-end
-
-function recursive_attr_merge!(target::Dict{Symbol, Any}, user_attr)
-    for (k, v) in pairs(user_attr)
-        if v isa Union{ComputePipeline.ComputeGraphView, Attributes}
-            inner = if haskey(target, k)
-                Dict{Symbol, Any}(target[k])
-            else
-                Dict{Symbol, Any}()
-            end
-            recursive_attr_merge!(inner, user_attr[k])
-            target[k] = Attributes(inner)
-        else
-            target[k] = v
-        end
-    end
-    return target
-end
-
-struct AttributeConvert{Key, Plot} end
+struct AttributeConvert{Key, Plot} <: Function end
 @inline AttributeConvert(key, plot) = AttributeConvert{key, plot}()
 Base.nameof(::AttributeConvert{Key, Plot}) where {Key, Plot} = "AttributeConvert{$(Key), $(Plot)}"
 function (::AttributeConvert{key, plot})(value) where {key, plot}
     return convert_attribute(value, Key{key}(), Key{plot}())
 end
+function (::AttributeConvert{key, plot})(value, @nospecialize(changed), @nospecialize(cached)) where {key, plot}
+    return (convert_attribute(value[1], Key{key}(), Key{plot}()),)
+end
 function ComputePipeline.get_callback_info(::AttributeConvert{key, plot}, value) where {key, plot}
     return ComputePipeline.get_callback_info(convert_attribute, value, Key{key}(), Key{plot}())
 end
 
-to_recipe_attribute(x) = Ref{Any}(x) # Make sure it can change type
-to_recipe_attribute(attr::Attributes) = attr
-function to_recipe_attribute(value::NamedTuple)
-    return Attributes(value)
+struct CycleConvert{F} <: Function
+    callback::F
+    palettes::Attributes
+    graph::ComputeGraph
+    key::Symbol
 end
 
-function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
-    documented_attr = plot_attributes(nothing, T)
-    name = plotkey(T)
-    is_primitive = T <: PrimitivePlotTypes
-    inputs = Dict((kv[1] => default_attribute(kwargs, kv) for kv in documented_attr))
-
-    delete!(inputs, :cycle)
-    if !haskey(attr.inputs, :cycle)
-        _cycle = to_value(
-            get(kwargs, :cycle) do
-                lookup_default(T, nothing, :cycle)
-            end
-        )
-        add_input!(AttributeConvert(:cycle, name), attr, :cycle, _cycle)
-    end
-    # Cycle attributes are get set to plot, and then set in connect_plot!
-    add_input!(attr, :cycle_index, 0)
-    add_input!(attr, :palettes, nothing)
-
-    cycle = attr.cycle[]
-    if !isnothing(cycle)
-        asc = attrsyms(cycle)
-        ps = palettesyms(cycle)
-        # flatten to attribute -> palette
-        lookup = Dict([sym => p for (syms, p) in zip(asc, ps) for sym in syms])
-        add_input!(attr, :palette_lookup, lookup)
-        for (k, p) in lookup
-            # If user explicitly passes values, we should not do anything
-            let plotcycle = cycle
-                add_input!(attr, k, get(kwargs, k, nothing)) do value
-                    palettes = attr.palettes[]
-                    if value isa Cycled
-                        value = get_cycle_attribute(palettes, k, value.i, plotcycle)
-                    end
-                    if !isnothing(value)
-                        if is_primitive
-                            return convert_attribute(value, Key{k}(), Key{name}())
-                        else
-                            return to_recipe_attribute(value)
-                        end
-                    end
-                    pos = attr.cycle_index[]
-                    cyc = get_cycle_attribute(palettes, k, pos, plotcycle)
-                    return convert_attribute(cyc, Key{k}(), Key{name}())
-                end
-                delete!(inputs, k)
-            end
-        end
-    end
-
-    # this is handled through plot.kw, not plot.attributes. Keeping it in the
-    # compute graph may cause double application of user set transformations,
-    # e.g. #4789
-    delete!(inputs, :transformation)
-
-    for (k, v) in inputs
-        # primitives use convert_attributes, recipe plots don't
-        if !haskey(attr.outputs, k)
-            if is_primitive
-                add_input!(AttributeConvert(k, name), attr, k, v)
-            elseif v isa Union{Attributes, NamedTuple}
-                add_input!(to_recipe_attribute, attr, k, v)
-            else
-                # Probably better for performance because this more or less
-                # skips the callback
-                add_input!(attr, k, v)
-                ComputePipeline.set_type!(attr[k], Any)
-            end
-        end
-    end
-    if !haskey(attr, :model)
-        add_input!(attr, :model, Mat4d(I))
-    end
-    return
-end
-
-# TODO: This implies the recipe has, e.g. `kwargs = Attributes(a = 1)` but the user
-# supplied `; kwargs = Attributes(a = Attributes(...))`
-function contains_nested_attr(user_kw::Dict, keytuple::Tuple{})
-    @warn "User keywords contains Attributes more deeply nested than expected."
-    return true
-end
-
-# reached end of nested Attributes before resolving key -> not found
-contains_nested_attr(user_kw, keytuple::Tuple{Symbol, Vararg{Symbol}}) = false
-# reached end and resolve key -> found
-contains_nested_attr(user_kw, keytuple::Tuple{}) = true
-
-function contains_nested_attr(user_kw::Dict, keytuple::Tuple{Symbol, Vararg{Symbol}})
-    if haskey(user_kw, first(keytuple))
-        return contains_nested_attr(user_kw[first(keytuple)], Base.tail(keytuple))
+(cc::CycleConvert)(val, @nospecialize(changed), @nospecialize(cached)) = (cc(val[1]),)
+function (cc::CycleConvert)(value)
+    if value isa Cycled
+        cycle = cc.graph.cycle[]::Cycle
+        x = get_cycle_attribute(cc.palettes, cc.key, value.i, cycle)
+        return cc.callback(x)
+    elseif value === :cycled
+        cycle = cc.graph.cycle[]::Cycle
+        cycle_index = cc.graph.cycle_index[]::Int
+        x = get_cycle_attribute(cc.palettes, cc.key, cycle_index, cycle)
+        return cc.callback(x)
     else
-        return false
+        return cc.callback(value)
     end
 end
 
-function add_or_update_nested_attribute!(graph, updates, keytuple, attr::Attributes, user_kw)
-    for (k, v) in attr
-        add_or_update_nested_attribute!(graph, updates, (keytuple..., k), v, user_kw)
-    end
-    return
-end
-
-function add_or_update_nested_attribute!(graph, updates, keytuple, value, user_kw)
-    if haskey(graph, keytuple)
-        if contains_nested_attr(user_kw, keytuple)
-            # user set, nothing to do
-        else
-            # defaulted, update from theme
-            combined = ComputePipeline.merged_key(keytuple)
-            push!(updates, combined => value)
-        end
-    else
-        # value comes from the scene theme which can't have an @inherit
-        add_input!(graph, keytuple, value)
-    end
-    return
-end
-
-function add_theme_inner!(updates, key, inherit::Inherit, user_kw, graph, scene_theme)
-    # dont set theme values for cycled attributes
-    if haskey(graph, :palette_lookup) && haskey(graph.palette_lookup[], key)
-        return
-    end
-
-    value = if haskey(scene_theme, inherit.key)
-        to_value(scene_theme[inherit.key])
-    elseif !isnothing(inherit.fallback)
-        default.fallback
-    else
-        error("No fallback + theme for $(key)")
-    end
-
-    if key === :fonts
-        # want to merge regardless of user_kw if :fonts is an Input
-        # if it's a passthrough (i.e. no Input) this should happen at a higher layer
-        if haskey(graph.inputs, :fonts)
-            given = graph.inputs[:fonts].value # avoid resolve
-            new = isnothing(given) ? value : merge(given, value) # TODO: wrong order
-            push!(updates, :fonts => new)
-        end
-    else
-        add_or_update_nested_attribute!(graph, updates, (key,), value, user_kw)
-    end
-
-    return
-end
-
-# This method should be hit for the generic case where attributes are set by
-# solely by the plot. This should have been handled by add_attributes!() already
-# so we should not need to do anything here.
-function add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
-    if !haskey(graph, key)
-        error(":$key should have already been added to the plot.")
-    end
-    return
-end
-
-function inherit_theme_from_scene!(updates, plot_attr::Dict{Symbol, AttributeMetadata}, user_kw, graph, scene_theme)
-    for (key, meta) in plot_attr
-        if key in (:transformation, :model, :transform_func)
-            continue
-        end
-        value = meta.default_value
-        add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
-    end
-    return
-end
-
-function inherit_theme_from_scene!(updates, plot_attr::Attributes, user_kw, graph, scene_theme)
-    for (key, value) in plot_attr
-        if key in (:transformation, :model, :transform_func)
-            continue
-        end
-        add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
-    end
-    return
-end
-
-
-# User set keyword case, don't update. (Reached when the keys in plot_scene_theme
-# continue to appear in user_kw)
-overwrite_plot_defaults!(updates, graph, user_kw, plot_scene_theme) = nothing
-
-# We stopped finding nested keys in user passed kwargs, so we will update.
-# Here we have not reached the end of nesting yet
-function overwrite_plot_defaults!(updates, graph::ComputeGraphView, plot_scene_theme::Attributes)
-    for (k, v) in plot_scene_theme
-        if haskey(graph, key)
-            overwrite_plot_defaults!(updates, graph[k], v)
-        end
-    end
-    return
-end
-
-# reached end
-function overwrite_plot_defaults!(updates, node::Computed, value)
-    push!(updates, node.name => to_value(value))
-    return
-end
-
-# nesting mismatch
-function overwrite_plot_defaults!(updates, graph::ComputeGraphView, value)
-    error("Could not use theme default $value for $graph due to inconsistent nesting")
-end
-function overwrite_plot_defaults!(updates, node::Computed, value::Attributes)
-    error("Could not use theme default $value for $(node.name) due to inconsistent nesting")
-end
-
-function overwrite_plot_defaults!(
-        updates, graph::AbstractComputeGraph,
-        user_kw::Union{Dict, Attributes, NamedTuple},
-        plot_scene_theme::Attributes
-    )
-    for (k, v) in plot_scene_theme
-        if haskey(graph, k)
-            if k === :fonts
-                push!(updates, :fonts => merge(v, graph.fonts[]))
-            elseif haskey(user_kw, k)
-                overwrite_plot_defaults!(updates, graph[k], user_kw[k], v)
-            else
-                # maybe nested, do update
-                overwrite_plot_defaults!(updates, graph[k], v)
-            end
-        end
-    end
-    return
+function get_next_cycle_index(scene, name)
+    lookup = scene.compute[:cycle_counters][]::Dict{Symbol, Int}
+    cycle_index = get(lookup, name, 0) + 1
+    lookup[name] = cycle_index
+    return cycle_index
 end
 
 function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where {T <: Plot}
-    plot_attr = plot_attributes(scene, T)
-    scene_theme = theme(scene)
-    updates = Pair{Symbol, Any}[]
+    # So far we have set attributes based on the plot defaults and keyword
+    # arguments. In this function we now resolve `@inherit`ed attributes and
+    # apply `theme[plotsym(T)]` if it exists.
 
-    # Go through all @recipe attributes again. If the attribute is an @inherit
-    # and it is not set by the user (and it exists in the scenes theme) replace
-    # it with the theme value.
-    # If inherited attribute is nested, merge every nested layer.
-    inherit_theme_from_scene!(updates, plot_attr, user_kw, graph, scene_theme)
+    attr = documented_attributes(T)
+    name = plotsym(T)
 
-    # Overwrite defaults from the plot @recipe with defaults set in the scenes
-    # theme specifically for the plot, i.e. `:Scatter => Attributes(...)`
-    plot_scene_theme = get(scene_theme, plotsym(T), Attributes())
-    overwrite_plot_defaults!(updates, graph, user_kw, plot_scene_theme)
+    # Handle cycling
+    if has_flat_key(attr, :cycle)
+        # This will increment the scenes cycle counter for this plot type (plotsym)
+        # when the first CycleConvert uses it. After that it will just grab the
+        # cached cycle index.
+        map!(() -> get_next_cycle_index(scene, name), graph, Symbol[], :cycle_index)
 
-    update!(graph, updates)
+        if !haskey(user_kw, :cycle)
+            _cycle = to_value(lookup_default(attr, scene, name, NamedTuple(), :cycle))
+            graph.cycle = _cycle
+        end
+    else
+        add_constant!(graph, :cycle_index, 0)
+        graph.cycle = Cycle([])
+    end
+
+    cycle = graph.cycle[]::Cycle
+
+    # Because we only adjust the callbacks of inputs that are in Cycle at this
+    # point in time, adding more attributes to cycle after creating the plot does
+    # not work. Adjusting which palettes are used for each attribute works though
+    for name in attrsyms(cycle)
+        # Should passthroughs be able to cycle?
+        # (i.e. should we change graph[name].parent instead?)
+        if haskey(graph.inputs, name)
+            input = graph.inputs[name]
+            input.f = CycleConvert(input.f, scene.theme.palette, graph, name)
+
+        end
+    end
+
+    exclude = Set{Symbol}([:transformation, :model, :transform_func])
+
+    # TODO: Should add_theme!() be allowed to set used_attributes?
+    # That would require add_convert_kwargs!() to not delete them from kwargs
+    # so that user input doesn't get overwritten here
+    conv_attributes = used_attributes(T, graph.args[]...)
+    union!(exclude, conv_attributes)
+
+    add_theme!(graph, attr, T, scene, exclude, user_kw, cycle)
+
+    # not resolving this during init can rarely change ordering.
+    # E.g. in "annotation manual", where ylims! somehow resolves cycled
+    # attributes of the annotations without the lines plot through
+    # plotlist updates, causing lines to get a different cycled color
+    for name in attrsyms(cycle)
+        if haskey(graph.inputs, name)
+            graph[name][]
+        end
+    end
+
     return
 end
 
@@ -1036,8 +829,7 @@ function argument_error(PTrait, P, attr, user_kw, converted)
         prevent early conversions.
         """
     else
-        defaults = default_theme(nothing, P)
-        space = to_value(get(user_kw, :space, get(defaults, :space, :data)))
+        space = haskey(attr, :space) ? attr[:space][] : :data
         """
         (Dim converts were not applied. This happens if `space = $space` \
         is not in data space or if the target type of the conversion is reachable \
@@ -1063,93 +855,77 @@ function argument_error(PTrait, P, attr, user_kw, converted)
     )
 end
 
-function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
+function Plot{Func}(user_args::Tuple, user_attributes::Union{Dict, NamedTuple}) where {Func}
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
-
-    # Handle plot!(plot, attributes::Attributes, args...) here
-    if !isempty(user_args) && first(user_args) isa Attributes
-        # This should keep user_args[1] unchanged, in case they get reused.
-        attr = convert(Dict{Symbol, Any}, attributes(first(user_args)))
-        foreach(p -> get!(user_attributes, p[1], p[2]), pairs(attr))
-        return Plot{Func}(Base.tail(user_args), user_attributes)
-    end
 
     P = Plot{Func}
 
-    # And also plot!(plot, ::ComputeGraph, args...)
-    if !isempty(user_args) && first(user_args) isa ComputePipeline.AbstractComputeGraph
-        # shallow copy user_attributes to isolate user Dict from changes
-        merged_attr = copy(user_attributes)
+    if first(user_args) isa Attributes
+        # This should keep user_args[1] unchanged, in case they get reused.
+        attr = convert(Dict{Symbol, Any}, attributes(first(user_args)))
+        foreach(p -> get!(user_attributes, p[1], p[2]), pairs(attr))
+        return build_plot(P, nothing, Base.tail(user_args), user_attributes)
+    elseif first(user_args) isa AbstractComputeGraph
+        return build_plot(P, user_args[1], Base.tail(user_args), user_attributes)
+    else
+        return build_plot(P, nothing, user_args, user_attributes)
+    end
+end
 
-        # Add all keys that are valid for this plot.
-        # Iterating through passthrough_attr is inconvenient with nested attributes,
-        # as those are saved with keys like `Symbol("outer.inner")`. These would
-        # need to be split and checked against valid_keys. Going the other way
-        # and checking if a key from valid_keys is in passthrough_attr doesn't
-        # require this
-        valid_keys = keys(plot_attributes(nothing, P))
-        passthrough_attr = first(user_args)
-        for key in valid_keys
-            # existing attributes (from kwargs) take priority
-            if haskey(passthrough_attr, key) && !haskey(merged_attr, key)
-                merged_attr[key] = passthrough_attr[key]
-            end
-        end
+function init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent)
+    exclude = (:transformation, :transform_func)
+    prepare_graph_for_attributes!(graph, attr, exclude, is_primitive = is_primitive)
+    add_from_kwargs!(build_callback, graph, attr, kwargs, exclude)
+    if !isnothing(parent)
+        exclude_from_parent = (:model, :transformation, :transform_func, :model_f32c)
+        connect_parent!(build_callback, graph, parent, attr, exclude_from_parent)
+    end
+    add_remaining_inputs!(build_callback, graph, attr, exclude)
+    return
+end
 
-        # these are handled by TRansformations()
-        filter!(kv -> !in(kv[1], [:model, :transform_func]), merged_attr)
+function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
+    attr = documented_attributes(P)
+    name = Makie.plotkey(P)
 
-        return Plot{Func}(Base.tail(user_args), merged_attr)
+    # Cycle is added here to allow `plot(..., cycle = Observable(...))`. Updating
+    # cycle may only change which attribute maps to which, not which attributes
+    # are cycled (see add_theme!())
+    if !haskey(graph, :cycle)
+        _cycle = get(kwargs, :cycle, :uninitialized)
+        add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
     end
 
-    attr = ComputeGraph()
+    if uses_convert_attribute(P)
+        init_graph!(key -> AttributeConvert(key, name), graph, attr, true, kwargs, parent)
+    else
+        init_graph!(key -> compute_identity, graph, attr, false, kwargs, parent)
+    end
 
-    register_arguments!(P, attr, user_attributes, user_args)
-    converted = attr.converted[]
-    PTrait = conversion_trait(P, attr.args[]...)
+    if !haskey(graph, :model)
+        add_input!(graph, :model, Mat4d(I))
+    end
+
+    return
+end
+
+function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
+    graph = ComputeGraph()
+
+    register_arguments!(P, graph, user_attributes, user_args)
+    converted = graph.converted[]
+    PTrait = conversion_trait(P, graph.args[]...)
     if got_converted(P, PTrait, converted) == false
-        argument_error(PTrait, P, attr, user_attributes, converted)
+        argument_error(PTrait, P, graph, user_attributes, converted)
     end
+
+    # compiler can't infer this, but FinalPlotFunc may differ (e.g. qqnorm -> qqplot)
     ArgTyp = typeof(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
 
-    add_attributes!(Plot{FinalPlotFunc}, attr, user_attributes)
+    add_attributes!(Plot{FinalPlotFunc}, graph, parent, user_attributes)
 
-    return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
-end
-
-# Count cycling position of `plot` among the top-level plots in `plot_iter`.
-# PlotList entries are expanded into their children so they participate in cycling.
-function _cycle_position(plot::Plot, plot_iter)
-    cycle = plot.cycle[]
-    isnothing(cycle) && return 0
-    syms = [s for ps in attrsyms(cycle) for s in ps]
-    pos = 1
-    for p in plot_iter
-        children = p isa PlotList ? p.plots : (p,)
-        for cp in children
-            cp === plot && return pos
-            if haskey(cp, :cycle) && !isnothing(cp.cycle[]) && plotfunc(cp) === plotfunc(plot)
-                is_cycling = any(syms) do x
-                    return haskey(cp.attributes.inputs, x) && isnothing(cp.attributes.inputs[x].value)
-                end
-                if is_cycling
-                    pos += 1
-                end
-            end
-        end
-    end
-    # not inserted yet
-    return pos
-end
-
-function plot_cycle_index(scene::Scene, plot::Plot)
-    return _cycle_position(plot, scene.plots)
-end
-
-# For recipes we use the recipes position?
-function plot_cycle_index(parent::Plot, ::Plot)
-    return plot_cycle_index(get_scene(parent), parent)
+    return Plot{FinalPlotFunc, ArgTyp}(user_attributes, graph)
 end
 
 # should this just be connect_plot?
@@ -1171,26 +947,26 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         end
     end
 
-    plot.cycle_index = plot_cycle_index(parent, plot)
-    plot.palettes = get_scene(parent).theme.palette
     handle_transformation!(plot, parent)
 
     if plot isa PrimitivePlotTypes
         register_camera!(scene, plot)
     end
     calculated_attributes!(Plot{Func}, plot)
+    add_resolved_shading!(plot, scene)
+
+    if !haskey(plot, :rasterize)
+        # just always convert for for simplicity
+        convert = AttributeConvert(:rasterize, plotsym(typeof(plot)))
+        add_input!(convert, plot.attributes, :rasterize, get(plot.kw, :rasterize, false))
+    end
 
     plot!(plot)
 
-
-    documented_attr = plot_attributes(scene, Plot{Func})
+    # Used to add things like `label` for Legend
     for (k, v) in plot.kw
         if !haskey(plot.attributes, k)
-            if haskey(documented_attr, k)
-                error("User Attribute $k did not get registered.")
-            else
-                add_input!(plot.attributes, k, v)
-            end
+            add_input!(plot.attributes, k, v)
         end
     end
 
@@ -1208,16 +984,6 @@ function collect_all_connected_nodes(computed::ComputePipeline.Computed, tracked
 end
 
 Observables.to_value(computed::ComputePipeline.Computed) = computed[]
-function Base.notify(computed::ComputePipeline.Computed)
-    nodes = collect_all_connected_nodes(computed)
-    graph = computed.parent.graph
-    to_notify = intersect(nodes, keys(graph.observables))
-    foreach(to_notify) do key
-        notify(graph.observables[key])
-    end
-    return
-end
-
 
 function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
     return map!(attr, [attribute, :positions], output_name) do vec, positions
@@ -1260,18 +1026,284 @@ function register_mesh_decomposition!(attr)
     end
 
     return map!(
-        attr, [:arg1, :mesh, :color], [:mesh_color, :interpolate_in_fragment_shader]
+        attr, [:arg1, :mesh, :color],
+        [:mesh_color, :interpolate_in_fragment_shader, :has_per_mesh_colors]
     ) do meshes, merged, color
 
         if hasproperty(merged, :color)
-            return (merged.color, true)
+            return (merged.color, true, false)
         elseif meshes isa Vector{<:AbstractGeometry} && color isa Vector && length(color) == length(meshes)
             _color = color_per_mesh(color, map(x -> length(coordinates(x)), meshes))
-            return (_color, false)
+            return (_color, false, true)
         else
-            return (color, true)
+            return (color, true, false)
         end
     end
+end
+
+# Note: bit-exact matching means duplicated vertices with float noise stay separate,
+# e.g. a UV sphere seam evaluated at both 0 and 2pi gets classified as two boundary
+# edges. Such meshes should be fixed at generation time to share seam positions exactly.
+function canonical_vertex_ids(positions)
+    canonical = Dict{eltype(positions), Int}()
+    return Int[get!(canonical, p, i) for (i, p) in enumerate(positions)]
+end
+
+function count_mesh_edges(faces, canonical_ids)
+    counts = Dict{NTuple{2, Int}, Int}()
+    for f in faces
+        n = length(f)
+        for i in 1:n
+            edge = minmax(canonical_ids[f[i]], canonical_ids[f[mod1(i + 1, n)]])
+            edge[1] == edge[2] && continue
+            counts[edge] = get(counts, edge, 0) + 1
+        end
+    end
+    return counts
+end
+
+# Picks up to two wing edges for the corner `v` of a triangle whose other corners are
+# `o1` and `o2`, and writes them into `indices`/`widths` at `slot` and `slot + 1`
+# (index 0 marks an unused slot). The two candidates closest in angle to the triangle's
+# own edges are kept, tracked in a single pass so that no intermediate list is built.
+function corner_wings!(indices, widths, slot, incident_edges, positions, v, o1, o2, own_min_width)
+    at(u) = to_ndim(Point3d, positions[u], 0)
+    direction(u) = normalize(Vec3d(at(u) - at(v)))
+    d1 = direction(o1)
+    d2 = direction(o2)
+    plane_normal = normalize(cross(d1, d2))
+
+    best_u = 0
+    best_w = 0.0f0
+    best_score = -Inf
+    second_u = 0
+    second_w = 0.0f0
+    second_score = -Inf
+
+    for (u, width) in incident_edges
+        (u == o1 || u == o2) && continue
+        # A wing band can only enter this triangle by crossing one of the triangle's own
+        # edges at the corner. If those are themselves stroked at least as wide, the
+        # junction is already covered and the wing would only risk painting stray bands
+        # on curved surfaces (e.g. a triangle sphere with strokeedges = :all).
+        width > own_min_width || continue
+        du = direction(u)
+        # A wing that leaves the triangle's plane belongs to a face seen at an angle, so
+        # its stroke band should not continue onto this triangle (it would project as a
+        # stray band across the face). Slight non-planarity is allowed for curved surfaces.
+        out_of_plane = abs(dot(plane_normal, du))
+        (!isnan(out_of_plane) && out_of_plane < 0.3) || continue
+
+        score = max(dot(du, d1), dot(du, d2))
+        isnan(score) && (score = -Inf)
+        # `*_u == 0` keeps empty slots fillable when every candidate scores -Inf
+        if best_u == 0 || score > best_score
+            second_u, second_w, second_score = best_u, best_w, best_score
+            best_u, best_w, best_score = u, width, score
+        elseif second_u == 0 || score > second_score
+            second_u, second_w, second_score = u, width, score
+        end
+    end
+
+    indices[slot] = best_u
+    widths[slot] = best_w
+    indices[slot + 1] = second_u
+    widths[slot + 1] = second_w
+    return
+end
+
+"""
+    stroke_edge_data(mesh, gl_faces, strokeedges)
+
+Computes the per-triangle edge information needed to stroke visible mesh edges in a
+backend shader. A stroked edge gets a width multiplier of 1 if it lies on the mesh
+boundary (belongs to exactly one face of `mesh`) and 0.5 if it is shared between faces
+and `strokeedges === :all` (so both adjacent faces together render one full stroke width).
+Edges that do not appear in `faces(mesh)`, i.e. those introduced by triangulating
+non-triangular faces, are never stroked. Vertices are matched by position, so edges
+remain shared even if faces reference duplicated vertices.
+
+Returns three vectors with one element per triangle in `gl_faces`:
+
+- `edge_widths::Vector{Vec3f}`: width multipliers of the triangle's own edges,
+  ordered 1-2, 2-3, 3-1, with 0 for edges that are not stroked.
+- `wing_indices::Vector{Vec{6, Int32}}` and `wing_widths::Vector{Vec{6, Float32}}`:
+  per corner (two slots each), stroked edges that are incident to the corner vertex but
+  are not edges of the triangle itself, given as the vertex index of the other edge
+  endpoint and the edge's width multiplier. Index 0 marks an unused slot. Without these
+  "wings", a stroke band that continues past a corner into a neighboring triangle would
+  be cut off at the triangulation edge, leaving notches. Only edges roughly coplanar with
+  the triangle qualify, and if more than two remain, the two closest in angle to the
+  triangle's own edges at that corner are kept, since those are the ones whose bands can
+  reach into the triangle.
+"""
+function stroke_edge_data(mesh, gl_faces, strokeedges::Symbol)
+    positions = coordinates(mesh)
+    canonical_ids = canonical_vertex_ids(positions)
+    counts = count_mesh_edges(faces(mesh), canonical_ids)
+    shared_width = strokeedges === :all ? 0.5f0 : 0.0f0
+    edge_width(count) = count == 0 ? 0.0f0 : (count == 1 ? 1.0f0 : shared_width)
+
+    incident = Dict{Int, Vector{Tuple{Int, Float32}}}()
+    for (edge, count) in counts
+        width = edge_width(count)
+        width == 0.0f0 && continue
+        push!(get!(Vector{Tuple{Int, Float32}}, incident, edge[1]), (edge[2], width))
+        push!(get!(Vector{Tuple{Int, Float32}}, incident, edge[2]), (edge[1], width))
+    end
+
+    no_wings = Tuple{Int, Float32}[]
+    edge_widths = Vector{Vec3f}(undef, length(gl_faces))
+    wing_indices = Vector{Vec{6, Int32}}(undef, length(gl_faces))
+    wing_widths = Vector{Vec{6, Float32}}(undef, length(gl_faces))
+    indices = zeros(Int32, 6)
+    widths = zeros(Float32, 6)
+
+    for (t, f) in enumerate(gl_faces)
+        corners = (canonical_ids[f[1]], canonical_ids[f[2]], canonical_ids[f[3]])
+        edge_widths[t] = Vec3f(
+            ntuple(3) do i
+                edge_width(get(counts, minmax(corners[i], corners[mod1(i + 1, 3)]), 0))
+            end
+        )
+
+        for i in 1:3
+            v = corners[i]
+            o1 = corners[mod1(i + 1, 3)]
+            o2 = corners[mod1(i + 2, 3)]
+            own_min_width = min(edge_widths[t][i], edge_widths[t][mod1(i + 2, 3)])
+            corner_wings!(
+                indices, widths, 2 * (i - 1) + 1, get(incident, v, no_wings),
+                positions, v, o1, o2, own_min_width
+            )
+        end
+        wing_indices[t] = Vec{6, Int32}(indices)
+        wing_widths[t] = Vec{6, Float32}(widths)
+    end
+
+    return edge_widths, wing_indices, wing_widths
+end
+
+# The edge data only depends on whether stroking is on, not on how wide the stroke is.
+# Depending on this flag rather than on :strokewidth keeps width changes from
+# recomputing the mesh adjacency, which is by far the most expensive part of stroking.
+function register_stroke_enabled!(attr)
+    haskey(attr, :stroke_enabled) && return
+    map!(!iszero, attr, :strokewidth, :stroke_enabled)
+    return
+end
+
+function register_mesh_stroke!(attr)
+    register_stroke_enabled!(attr)
+    return map!(
+        attr, [:mesh, :faces, :strokeedges, :stroke_enabled],
+        [:stroke_edge_widths, :stroke_wing_indices, :stroke_wing_widths]
+    ) do mesh, gl_faces, strokeedges, stroke_enabled
+        if !stroke_enabled
+            return (Vec3f[], Vec{6, Int32}[], Vec{6, Float32}[])
+        end
+        return stroke_edge_data(mesh, gl_faces, strokeedges)
+    end
+end
+
+# Packs stroke data into 9 texture texels per triangle for backend shaders: 3x the corner
+# positions with the width multiplier of the edge from that corner to the next, then per
+# corner 2x wing edge endpoints with their width multipliers (width 0 = unused slot).
+function register_stroke_data!(attr)
+    haskey(attr, :stroke_data_packed) && return attr[:stroke_data_packed]
+    return map!(
+        attr,
+        [:positions_transformed_f32c, :faces, :stroke_edge_widths, :stroke_wing_indices, :stroke_wing_widths],
+        :stroke_data_packed
+    ) do positions, faces, edge_widths, wing_indices, wing_widths
+        isempty(edge_widths) && return fill(Vec4f(0), 9)
+        at(idx) = to_ndim(Point3f, positions[idx], 0.0f0)
+        data = Vector{Vec4f}(undef, 9 * length(faces))
+        for (t, f) in enumerate(faces)
+            base = 9 * (t - 1)
+            for i in 1:3
+                p = at(f[i])
+                data[base + i] = Vec4f(p[1], p[2], p[3], edge_widths[t][i])
+            end
+            for k in 1:6
+                idx = wing_indices[t][k]
+                if idx == 0
+                    data[base + 3 + k] = Vec4f(0)
+                else
+                    p = at(idx)
+                    data[base + 3 + k] = Vec4f(p[1], p[2], p[3], wing_widths[t][k])
+                end
+            end
+        end
+        return data
+    end
+end
+
+# Computes stroke edge data for the quad grid of a surface. The quad mesh is built
+# inside the computation and only when stroking is active, so unstroked surfaces do
+# not pay for CPU mesh construction. :stroke_faces lists the triangles the edge data
+# refers to, matching the triangulation order of the surface_as_mesh :faces node.
+function register_surface_stroke!(attr)
+    haskey(attr, :stroke_edge_widths) && return
+    haskey(attr, :positions_transformed_f32c) || add_surface_vertex_positions!(attr)
+    register_stroke_enabled!(attr)
+    map!(
+        attr, [:positions_transformed_f32c, :z, :strokeedges, :stroke_enabled],
+        [:stroke_edge_widths, :stroke_wing_indices, :stroke_wing_widths, :stroke_faces]
+    ) do positions, z, strokeedges, stroke_enabled
+        if !stroke_enabled
+            return (Vec3f[], Vec{6, Int32}[], Vec{6, Float32}[], GLTriangleFace[])
+        end
+        m = surface2mesh(positions, size(z))
+        gl_faces = decompose(GLTriangleFace, m)
+        return (stroke_edge_data(m, gl_faces, strokeedges)..., gl_faces)
+    end
+    return
+end
+
+# Packs surface stroke data in grid cell (GPU instance) order with two triangle slots per
+# cell, so that a shader rendering the surface as one instanced quad per cell can fetch
+# the data at `2 * instance + primitive`. Cells removed for containing NaN get zero
+# entries. Each triangle's cell is identified by its smallest vertex index, the cell's
+# lower-left corner, which both triangles of a quad contain; the triangle containing the
+# lower-right corner is the first slot, matching the triangulation of the unit rect.
+function register_surface_stroke_data!(attr)
+    register_surface_stroke!(attr)
+    haskey(attr, :stroke_data_packed) && return
+    map!(
+        attr,
+        [:positions_transformed_f32c, :z, :stroke_faces, :stroke_edge_widths, :stroke_wing_indices, :stroke_wing_widths],
+        :stroke_data_packed
+    ) do positions, z, faces, edge_widths, wing_indices, wing_widths
+        isempty(edge_widths) && return fill(Vec4f(0), 9)
+        nx = size(z, 1)
+        ncells = (size(z, 1) - 1) * (size(z, 2) - 1)
+        data = fill(Vec4f(0), 9 * 2 * ncells)
+        at(idx) = to_ndim(Point3f, positions[idx], 0.0f0)
+        for (t, f) in enumerate(faces)
+            fi = (Base.to_index(f[1]), Base.to_index(f[2]), Base.to_index(f[3]))
+            corner = minimum(fi)
+            i0 = (corner - 1) % nx
+            j0 = (corner - 1) ÷ nx
+            slot = (corner + 1) in fi ? 0 : 1
+            base = 9 * (2 * (i0 + j0 * (nx - 1)) + slot)
+            for i in 1:3
+                p = at(f[i])
+                data[base + i] = Vec4f(p[1], p[2], p[3], edge_widths[t][i])
+            end
+            for k in 1:6
+                idx = wing_indices[t][k]
+                if idx == 0
+                    data[base + 3 + k] = Vec4f(0)
+                else
+                    p = at(idx)
+                    data[base + 3 + k] = Vec4f(p[1], p[2], p[3], wing_widths[t][k])
+                end
+            end
+        end
+        return data
+    end
+    return
 end
 
 # optionally converts uv_transform to the one used with patterns (different defaults)
@@ -1293,7 +1325,7 @@ function register_pattern_uv_transform!(attr; modelname = :model_f32c, colorname
                 return (uvt,)
             end
         else
-            return nothing
+            return skip_update
         end
     end
     return
@@ -1357,14 +1389,22 @@ function calculated_attributes!(::Type{MeshScatter}, plot::Plot)
     register_colormapping!(attr)
     register_position_transforms!(attr)
     register_pattern_uv_transform!(attr)
+    map!(attr, :marker, [:vertex_position, :faces, :normal, :uv]) do mesh
+        faces = decompose(GLTriangleFace, mesh)
+        normals = decompose_normals(mesh)
+        texturecoordinates = decompose_uv(mesh)
+        positions = decompose(Point3f, mesh)
+        return (positions, faces, normals, texturecoordinates)
+    end
     map!(Rect3d, attr, :marker, :marker_bb)
     map!(meshscatter_data_limits, attr, [:positions, :marker_bb, :markersize, :rotation], :data_limits)
-    return map!(
+    map!(
         meshscatter_boundingbox, attr, [
             :positions_transformed, :model,
             :transform_marker, :marker_bb, :markersize, :rotation,
         ], :boundingbox
     )
+    return
 end
 
 
@@ -1395,6 +1435,7 @@ end
 function calculated_attributes!(::Type{Mesh}, plot::Plot)
     attr = plot.attributes
     register_mesh_decomposition!(attr)
+    register_mesh_stroke!(attr)
     register_colormapping!(attr, :mesh_color)
     calculated_attributes!(PointBased(), plot)
     return register_pattern_uv_transform!(attr, colorname = :mesh_color)
@@ -1415,12 +1456,20 @@ get_colormapping(plot::Plot) = get_colormapping(plot, plot.attributes)
 function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     isnothing(attr[:scaled_colorrange][]) && return nothing
     haskey(attr, :cb_colormapping) && return attr[:cb_colormapping][]
-
     map!(attr, [:colorrange, :raw_color], :unscaled_colorrange) do colorrange, color
         if colorrange === automatic
             return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
+        elseif first(colorrange) == automatic
+            lastcolor = last(colorrange)
+            return Vec2f(min(first(distinct_extrema_nan(color)), lastcolor), lastcolor)
+        elseif last(colorrange) == automatic
+            firstcolor = first(colorrange)
+            return Vec2f(firstcolor, max(firstcolor, last(distinct_extrema_nan(color))))
         else
-            return Vec2f(colorrange)
+            lo, hi = Vec2f(colorrange)
+            lo == hi || return Vec2f(lo, hi)
+            delta = max(0.5f0, abs(lo))
+            return Vec2f(lo - delta, hi + delta)
         end
     end
 

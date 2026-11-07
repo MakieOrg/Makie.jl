@@ -121,13 +121,14 @@ function compute_protrusions(
     return GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
 end
 
+block_kwargs(::Type{Axis}) = Set([:palette])
 function initialize_block!(ax::Axis; palette = nothing)
     blockscene = ax.blockscene
     elements = Dict{Symbol, Any}()
     ax.elements = elements
 
     scene = Scene(blockscene, viewport = Rect2i(0, 0, 0, 0), visible = false)
-    add_input!(ax.attributes, :viewport, scene.viewport)
+    add_input!(ax, :viewport, scene.viewport)
     # Hide to block updates, will be unhidden! in constructor who calls this!
     @assert !scene.visible[]
     ax.scene = scene
@@ -139,8 +140,8 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     initialize_limit_computations!(ax)
 
-    add_input!(ax.attributes, :computedbbox, ax.layoutobservables.computedbbox)
-    map!(calculate_scenearea, ax.attributes, [:computedbbox, :finallimits, :aspect], :scenearea)
+    add_input!(ax, :computedbbox, ax.layoutobservables.computedbbox)
+    map!(calculate_scenearea, ax, [:computedbbox, :finallimits, :aspect], :scenearea)
     connect!(scene.viewport, ax.scenearea)
 
     if !isnothing(palette)
@@ -158,7 +159,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(background, 0, 0, -100)
     elements[:background] = background
 
-    map!(ax.attributes, [:xaxisposition, :viewport], :xaxis_endpoints) do xaxisposition, area
+    map!(ax, [:xaxisposition, :viewport], :xaxis_endpoints) do xaxisposition, area
         if xaxisposition === :bottom
             return bottomline(Rect2f(area))
         elseif xaxisposition === :top
@@ -168,7 +169,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    map!(ax.attributes, [:yaxisposition, :viewport], :yaxis_endpoints) do yaxisposition, area
+    map!(ax, [:yaxisposition, :viewport], :yaxis_endpoints) do yaxisposition, area
         if yaxisposition === :left
             return leftline(Rect2f(area))
         elseif yaxisposition === :right
@@ -178,36 +179,36 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    map!(x -> x === :top, ax.attributes, :xaxisposition, :xaxis_flipped)
-    map!(x -> x === :right, ax.attributes, :yaxisposition, :yaxis_flipped)
+    map!(x -> x === :top, ax, :xaxisposition, :xaxis_flipped)
+    map!(x -> x === :right, ax, :yaxisposition, :yaxis_flipped)
 
     map!(
         (flip, bv, tv) -> ifelse(flip, (tv, bv), (bv, tv)),
-        ax.attributes,
+        ax,
         [:xaxis_flipped, :bottomspinevisible, :topspinevisible],
         [:xspinevisible, :xoppositespinevisible]
     )
     map!(
         (flip, lv, rv) -> ifelse(flip, (rv, lv), (lv, rv)),
-        ax.attributes,
+        ax,
         [:yaxis_flipped, :leftspinevisible, :rightspinevisible],
         [:yspinevisible, :yoppositespinevisible]
     )
     map!(
         (flip, bc, tc) -> ifelse(flip, (tc, bc), (bc, tc)),
-        ax.attributes,
+        ax,
         [:xaxis_flipped, :bottomspinecolor, :topspinecolor],
         [:xspinecolor, :xoppositespinecolor]
     )
     map!(
         (flip, lc, rc) -> ifelse(flip, (rc, lc), (lc, rc)),
-        ax.attributes,
+        ax,
         [:yaxis_flipped, :leftspinecolor, :rightspinecolor],
         [:yspinecolor, :yoppositespinecolor]
     )
 
-    map!(xlimits, ax.attributes, :finallimits, :finalxlimits)
-    map!(ylimits, ax.attributes, :finallimits, :finalylimits)
+    map!(xlimits, ax, :finallimits, :finalxlimits)
+    map!(ylimits, ax, :finallimits, :finalylimits)
 
     xaxis = LineAxis(
         blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :xaxis),
@@ -223,7 +224,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
         minorticksused = ax.xminorgridvisible,
         unit_in_ticklabel = ax.x_unit_in_ticklabel, unit_in_label = ax.x_unit_in_label,
-        suffix_formatter = ax.xlabel_suffix, use_short_unit = ax.use_short_x_units
+        suffix_formatter = ax.xlabel_suffix
     )
 
     ax.xaxis = xaxis
@@ -242,13 +243,13 @@ function initialize_block!(ax::Axis; palette = nothing)
         minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
         minorticksused = ax.yminorgridvisible,
         unit_in_ticklabel = ax.y_unit_in_ticklabel, unit_in_label = ax.y_unit_in_label,
-        suffix_formatter = ax.ylabel_suffix, use_short_unit = ax.use_short_y_units
+        suffix_formatter = ax.ylabel_suffix
     )
 
     ax.yaxis = yaxis
 
     map!(
-        ax.attributes,
+        ax,
         [:viewport, :spinewidth, :xaxisposition],
         :xoppositelinepoints
     ) do r, sw, xaxpos
@@ -266,7 +267,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        ax.attributes,
+        ax,
         [:viewport, :spinewidth, :yaxisposition],
         :yoppositelinepoints
     ) do r, sw, yaxpos
@@ -284,11 +285,11 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        mirror_xticks, ax.attributes,
+        mirror_xticks, ax,
         [(:xaxis, :tickpositions), :xticksize, :xtickalign, :viewport, :xaxisposition, :spinewidth],
         :xticksmirrored_points
     )
-    map!((a, b) -> a && b, ax.attributes, [:xticksmirrored, :xticksvisible], :mirroredxticksvisible)
+    map!((a, b) -> a && b, ax, [:xticksmirrored, :xticksvisible], :mirroredxticksvisible)
     xticksmirrored_lines = linesegments!(
         blockscene, ax.xticksmirrored_points, visible = ax.mirroredxticksvisible,
         linewidth = ax.xtickwidth, color = ax.xtickcolor
@@ -296,11 +297,11 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(xticksmirrored_lines, 0, 0, 10)
 
     map!(
-        mirror_yticks, ax.attributes,
+        mirror_yticks, ax,
         [(:yaxis, :tickpositions), :yticksize, :ytickalign, :viewport, :yaxisposition, :spinewidth],
         :yticksmirrored_points
     )
-    map!((a, b) -> a && b, ax.attributes, [:yticksmirrored, :yticksvisible], :mirroredyticksvisible)
+    map!((a, b) -> a && b, ax, [:yticksmirrored, :yticksvisible], :mirroredyticksvisible)
     yticksmirrored_lines = linesegments!(
         blockscene, ax.yticksmirrored_points, visible = ax.mirroredyticksvisible,
         linewidth = ax.ytickwidth, color = ax.ytickcolor
@@ -308,11 +309,11 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(yticksmirrored_lines, 0, 0, 10)
 
     map!(
-        mirror_xticks, ax.attributes,
+        mirror_xticks, ax,
         [(:xaxis, :minortickpositions), :xminorticksize, :xminortickalign, :viewport, :xaxisposition, :spinewidth],
         :xminorticksmirrored
     )
-    map!((a, b) -> a && b, ax.attributes, [:xticksmirrored, :xminorticksvisible], :mirroredxminorticksvisible)
+    map!((a, b) -> a && b, ax, [:xticksmirrored, :xminorticksvisible], :mirroredxminorticksvisible)
     xminorticksmirrored_lines = linesegments!(
         blockscene, ax.xminorticksmirrored, visible = ax.mirroredxminorticksvisible,
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor
@@ -320,11 +321,11 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(xminorticksmirrored_lines, 0, 0, 10)
 
     map!(
-        mirror_yticks, ax.attributes,
+        mirror_yticks, ax,
         [(:yaxis, :minortickpositions), :yminorticksize, :yminortickalign, :viewport, :yaxisposition, :spinewidth],
         :yminorticksmirrored
     )
-    map!((a, b) -> a && b, ax.attributes, [:yticksmirrored, :yminorticksvisible], :mirroredyminorticksvisible)
+    map!((a, b) -> a && b, ax, [:yticksmirrored, :yminorticksvisible], :mirroredyminorticksvisible)
     yminorticksmirrored_lines = linesegments!(
         blockscene, ax.yminorticksmirrored, visible = ax.mirroredyminorticksvisible,
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor
@@ -350,7 +351,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(yoppositeline, 0, 0, 20)
 
     map!(
-        ax.attributes,
+        ax,
         [(:xaxis, :tickpositions), :xaxisposition, :viewport],
         :xgrid_points
     ) do tickpos, axispos, area
@@ -360,7 +361,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        ax.attributes,
+        ax,
         [(:yaxis, :tickpositions), :yaxisposition, :viewport],
         :ygrid_points
     ) do tickpos, axispos, area
@@ -370,7 +371,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        ax.attributes,
+        ax,
         [(:xaxis, :minortickpositions), :xaxisposition, :viewport],
         :xminorgrid_points
     ) do tickpos, axispos, area
@@ -380,7 +381,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        ax.attributes,
+        ax,
         [(:yaxis, :minortickpositions), :yaxisposition, :viewport],
         :yminorgrid_points
     ) do tickpos, axispos, area
@@ -422,7 +423,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:yminorgridlines] = yminorgridlines
 
     map!(
-        ax.attributes,
+        ax,
         [:viewport, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion)],
         :subtitlepos
     ) do a, titlegap, align, xaxisposition, xaxisprotrusion
@@ -435,7 +436,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         return Point2f(x, yoffset)
     end
 
-    map!(align -> (align, :bottom), ax.attributes, :titlealign, :titlealign_tuple)
+    map!(align -> (align, :bottom), ax, :titlealign, :titlealign_tuple)
 
     subtitlet = text!(
         blockscene,
@@ -453,7 +454,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     subtitle_bbox = register_raw_string_boundingboxes!(subtitlet)
     map!(
-        ax.attributes, [subtitle_bbox, :subtitlevisible, :subtitlegap], :subtitle_height
+        ax, [subtitle_bbox, :subtitlevisible, :subtitlegap], :subtitle_height
     ) do bboxes, visible, gap
         bb = reduce(update_boundingbox, bboxes, init = Rect3f())
         height = widths(bb)[2]
@@ -461,7 +462,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        calculate_title_position, ax.attributes,
+        calculate_title_position, ax,
         [:viewport, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion), :subtitle_height],
         :titlepos
     )
@@ -482,7 +483,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     title_bbox = register_raw_string_boundingboxes!(titlet)
     map!(
-        ax.attributes, [title_bbox, :titlevisible, :titlegap], :title_height
+        ax, [title_bbox, :titlevisible, :titlegap], :title_height
     ) do bboxes, visible, gap
         bb = reduce(update_boundingbox, bboxes, init = Rect3f())
         height = widths(bb)[2]
@@ -490,7 +491,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        compute_protrusions, ax.attributes,
+        compute_protrusions, ax,
         [
             :title_height, :subtitle_height,
             :xaxisposition, (:xaxis, :protrusion),
@@ -531,11 +532,11 @@ end
 ################################################################################
 # Limits
 
-function add_attributes!(T::Type{<:Axis}, graph, attributes)
-    limits = pop!(attributes, :limits)
-    add_input!(convert_limit_attribute, graph, :limits, limits)
+function add_attributes!(::Type{<:Axis}, graph, flattened_defaults)
+    attr = documented_attributes(Axis)
+    _, default = get_typed_default(attr, flattened_defaults, :limits)
+    add_input!(convert_limit_attribute, graph, :limits, default)
     ComputePipeline.set_type!(graph.limits, Any)
-    _add_attributes!(T, graph, attributes)
     return
 end
 
@@ -585,7 +586,7 @@ function initialize_limit_computations!(ax)
         attr,
         [:limits, :_limit_update_rule, :transform_func, :inverse_transform_func, :xautolimitmargin, :yautolimitmargin],
         [:localxlimits, :localylimits],
-    ) do (limits, rule, tf, itf, xmargins, ymargins), changed, cached
+    ) do (limits, rule, tf, itf, xmargins, ymargins), changed, @nospecialize(cached)
         lims = calculate_local_limits(ax, limits, tf, itf, xmargins, ymargins)
         if changed._limit_update_rule
             # The update comes from (x/y)lims!() which explicitly set update rules
@@ -813,7 +814,7 @@ end
 function update_xlims_locally!(ax, xlims, xreversed)
     # update xlims if they changed, keep ylims
     update!(
-        ax.attributes,
+        ax,
         limits = (xlims, ax.limits[][2]),
         _limit_update_rule = (:force, :deny),
         xreversed = xreversed
@@ -824,7 +825,7 @@ end
 function update_ylims_locally!(ax, ylims, yreversed)
     # update ylims if they changed, keep xlims
     update!(
-        ax.attributes,
+        ax,
         limits = (ax.limits[][1], ylims),
         _limit_update_rule = (:deny, :force),
         yreversed = yreversed
@@ -862,7 +863,7 @@ function _limits!(ax, lims)
 
     # update xlims if they changed, keep ylims
     update!(
-        ax.attributes,
+        ax,
         limits = (xlims, ylims),
         xreversed = xreversed,
         yreversed = yreversed
@@ -1121,33 +1122,31 @@ linkyaxes!(axes::Vector{Axis}) = linkaxes!(:y, axes)
 linkyaxes!(a::Axis, others...) = linkaxes!(:y, [a, others...])
 
 """
-Keeps the ticklabelspace static for a short duration and then resets it to its previous
-value. If that value is Makie.automatic, the reset will trigger new
-protrusions for the axis and the layout will adjust. This is so the layout doesn't
-immediately readjust during interaction, which would let the whole layout jitter around.
+Keeps the ticklabelspace static until no interaction has happened for `reset.delay`
+seconds of tick time and then resets it to its previous value. If that value is
+Makie.automatic, the reset will trigger new protrusions for the axis and the layout
+will adjust. This is so the layout doesn't immediately readjust during interaction,
+which would let the whole layout jitter around.
 """
-function timed_ticklabelspace_reset(
-        ax::Axis, reset_timer::Ref,
-        prev_xticklabelspace::Ref, prev_yticklabelspace::Ref, threshold_sec::Real
-    )
+function freeze_ticklabelspace_until_idle!(ax::Axis, reset::TicklabelspaceReset)
+    reset.idle_time = 0.0
+    isnothing(reset.tick_listener) || return
 
-    if !isnothing(reset_timer[])
-        close(reset_timer[])
-    else
-        prev_xticklabelspace[] = ax.xticklabelspace[]
-        prev_yticklabelspace[] = ax.yticklabelspace[]
+    reset.prev_xticklabelspace = ax.xticklabelspace[]
+    reset.prev_yticklabelspace = ax.yticklabelspace[]
+    ax.xticklabelspace = Float64(ax.attributes.xaxis.actual_ticklabelspace[])
+    ax.yticklabelspace = Float64(ax.attributes.yaxis.actual_ticklabelspace[])
 
-        ax.xticklabelspace = Float64(ax.attributes.xaxis.actual_ticklabelspace[])
-        ax.yticklabelspace = Float64(ax.attributes.yaxis.actual_ticklabelspace[])
+    reset.tick_listener = on(events(ax.scene).tick) do tick
+        reset.idle_time += tick.delta_time
+        reset.idle_time >= reset.delay || return
+        Observables.off(reset.tick_listener)
+        reset.tick_listener = nothing
+        ax.xticklabelspace = reset.prev_xticklabelspace
+        ax.yticklabelspace = reset.prev_yticklabelspace
+        return
     end
-
-    return reset_timer[] = Timer(threshold_sec) do t
-        reset_timer[] = nothing
-
-        ax.xticklabelspace = prev_xticklabelspace[]
-        ax.yticklabelspace = prev_yticklabelspace[]
-    end
-
+    return
 end
 
 
@@ -1340,7 +1339,7 @@ Set the x-axis limits of the current axis to `low` and `high`. If the limits
 are ordered high-low, this reverses the axis orientation. A limit set to
 `nothing` will be determined automatically from the plots in the axis.
 """
-Makie.xlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.xlims!(current_axis(), low, high)
+Makie.xlims!(low, high) = Makie.xlims!(current_axis(), low, high)
 """
     ylims!(low, high)
     ylims!(; low = nothing, high = nothing)
@@ -1349,7 +1348,7 @@ Set the y-axis limits of the current axis to `low` and `high`. If the limits
 are ordered high-low, this reverses the axis orientation. A limit set to
 `nothing` will be determined automatically from the plots in the axis.
 """
-Makie.ylims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.ylims!(current_axis(), low, high)
+Makie.ylims!(low, high) = Makie.ylims!(current_axis(), low, high)
 """
     zlims!(low, high)
     zlims!(; low = nothing, high = nothing)
@@ -1358,7 +1357,7 @@ Set the z-axis limits of the current axis to `low` and `high`. If the limits
 are ordered high-low, this reverses the axis orientation. A limit set to
 `nothing` will be determined automatically from the plots in the axis.
 """
-Makie.zlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.zlims!(current_axis(), low, high)
+Makie.zlims!(low, high) = Makie.zlims!(current_axis(), low, high)
 
 """
     xlims!(ax = current_axis())
@@ -1444,6 +1443,7 @@ defaultlimits(limits::Tuple{Nothing, Real}, scale) = (defaultlimits(scale)[1], l
 defaultlimits(limits::Tuple{Nothing, Nothing}, scale) = defaultlimits(scale)
 
 defaultlimits(scale::ReversibleScale) = inverse_transform(scale).(scale.limits)
+defaultlimits(scale::Makie.Symlog10) = defaultlimits(scale.scale)
 defaultlimits(scale::LogFunctions) = let inv_scale = inverse_transform(scale)
     (inv_scale(0.0), inv_scale(3.0))
 end
@@ -1452,6 +1452,7 @@ defaultlimits(::typeof(sqrt)) = (0.0, 100.0)
 defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
 
 defined_interval(scale::ReversibleScale) = scale.interval
+defined_interval(scale::Makie.Symlog10) = defined_interval(scale.scale)
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
 defined_interval(::LogFunctions) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed, :open}(0, Inf)
@@ -1845,8 +1846,7 @@ function attribute_examples(::Type{Axis})
 
                 ax3 = Axis(f[3, 1],
                     yscale = Makie.pseudolog10,
-                    title = "Pseudolog scale with LogTicks",
-                    yticks = LogTicks(-2:2)
+                    title = "Pseudolog scale with automatic decade ticks"
                 )
 
                 for ax in [ax1, ax2, ax3]

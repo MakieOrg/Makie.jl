@@ -97,6 +97,12 @@ mutable struct Scene <: AbstractScene
     "The plots contained in the Scene."
     plots::Vector{Plot}
 
+    """
+    Observable that triggers with `true => plot` after a plot is added to the
+    scene and `false => plot` after one is deleted.
+    """
+    onplot::Observable{Pair{Bool, AbstractPlot}}
+
     theme::Attributes
 
     "Children of the Scene inherit its transformation."
@@ -148,6 +154,7 @@ mutable struct Scene <: AbstractScene
             transformation,
             nothing,
             plots,
+            Observable{Pair{Bool, AbstractPlot}}(),
             theme,
             children,
             current_screens,
@@ -164,6 +171,7 @@ mutable struct Scene <: AbstractScene
         add_light_computation!(scene.compute, scene, lights)
         add_input!(scene.compute, :transform_func, transformation.transform_func)
         ComputePipeline.set_type!(scene.compute.transform_func, Any)
+        add_input!(scene.compute, :cycle_counters, Dict{Symbol, Int}())
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true
@@ -290,7 +298,11 @@ function Scene(;
     global_theme = merge_without_obs!(copy(theme), current_default_theme())
     m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
 
-    bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values = true)
+    bg = if haskey(theme_kw, :backgroundcolor)
+        map(to_color, convert(Observable{Any}, theme_kw[:backgroundcolor]), ignore_equal_values = true)
+    else
+        Observable{RGBAf}(to_color(to_value(m_theme[:backgroundcolor])))
+    end
 
     wasnothing = isnothing(viewport)
     scene_viewport = if wasnothing
@@ -581,6 +593,8 @@ end
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
 
+    scene.onplot[] = false => plot
+
     # Remove references to the plot compute graph from any parent compute graph.
     # (E.g. the scene compute graph)
     # This is meant to make the plot graph GC-able.
@@ -704,6 +718,12 @@ not_in_data_space(p) = !is_data_space(p)
 function center!(scene::Scene, padding = 0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
     w = widths(bb)
+    # An empty scene (or one whose data hasn't laid out yet) has an undefined
+    # bounding box - boundingbox falls back to a zero-width / Inf-width Rect.
+    # Re-centering off that produces an Inf near/far plane and crashes
+    # perspectiveprojection. Skip silently; once the scene has data a later
+    # camera/limit update will recenter properly.
+    (any(!isfinite, w) || any(!isfinite, minimum(bb)) || iszero(w)) && return scene
     pad = w .* padding
     bb = Rect3d(minimum(bb) .- pad, w .+ 2pad)
     update_cam!(scene, bb)
@@ -712,6 +732,7 @@ end
 
 parent_scene(x) = parent_scene(get_scene(x))
 parent_scene(x::Plot) = parent_scene(parent(x))::Scene
+parent_scene(x::Block) = parent_scene(x.blockscene)::Scene
 parent_scene(x::Scene) = x
 parent_scene(::Nothing) = nothing
 
@@ -773,8 +794,6 @@ Backends may have a different definition of what is considered an atomic plot,
 but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
 """
 is_atomic_plot(plot::Plot) = isempty(plot.plots)
-# Text is special, since it contains lines for latexstrings, but is still atomic itself
-is_atomic_plot(plot::Text) = true
 
 """
     collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
@@ -791,15 +810,6 @@ function collect_atomic_plots(xplot::Plot, plots = AbstractPlot[]; is_atomic_plo
         for elem in xplot.plots
             collect_atomic_plots(elem, plots; is_atomic_plot = is_atomic_plot)
         end
-    end
-    return plots
-end
-
-# Text is atomic but contains another atomic (lines for latexstrings)
-function collect_atomic_plots(xplot::Text, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
-    push!(plots, xplot)
-    for elem in xplot.plots
-        collect_atomic_plots(elem, plots; is_atomic_plot = is_atomic_plot)
     end
     return plots
 end

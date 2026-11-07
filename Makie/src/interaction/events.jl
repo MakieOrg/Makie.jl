@@ -272,8 +272,8 @@ expression with `&`, `|` and `!`. For example, you can have
 `ispressed(parent, Keyboard.left_control & Keyboard.c)` to avoid triggering both
 cases at the same time.
 
-Furthermore you can also make any button, button collection or boolean
-expression exclusive by wrapping it in `Exclusively(...)`. With that `ispressed`
+Furthermore you can make any button, button collection or boolean expression
+exclusive by wrapping it in `Exclusively(...)`. With that `ispressed`
 will only return true if the currently pressed buttons match the request exactly.
 
 For cases where you want to react to a release event you can optionally add

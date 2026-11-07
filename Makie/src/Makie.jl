@@ -75,16 +75,10 @@ using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
 
-# Import FilePaths for invalidations
-# When loading Electron for WGLMakie, which depends on FilePaths
-# It invalidates half of Makie. Simplest fix is to load it early on in Makie
-# So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
-import FilePaths
 using Pkg.Artifacts # load early to cut down REPLExt init time
 using LaTeXStrings
 using MathTeXEngine
 using Random
-using FFMPEG_jll # get FFMPEG on any system!
 using Observables
 using GeometryBasics
 using PlotUtils
@@ -112,7 +106,7 @@ using ComputePipeline
 
 import Unitful
 import UnicodeFun
-import RelocatableFolders
+using RelocatableFolders: @path
 import StatsBase
 import Distributions
 import KernelDensity
@@ -126,6 +120,7 @@ import TriplotBase
 import DelaunayTriangulation as DelTri
 import REPL
 import MacroTools
+import Preferences
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints, leftendpoint, rightendpoint
 using FixedPointNumbers: N0f8
@@ -147,7 +142,7 @@ import InverseFunctions
 
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
-export Pixel, px, Unit, plotkey, attributes, used_attributes
+export plotkey, attributes, used_attributes
 export Linestyle
 assetpath(files...) = normpath(joinpath(artifact"MakieAssets", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))
@@ -174,6 +169,7 @@ include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")
 include("coretypes.jl")
 include("attributes.jl")
+include("DocumentedAttributes.jl")
 include("recipes.jl")
 include("basic_plots.jl")
 include("conversion.jl")
@@ -181,6 +177,8 @@ include("documentation/argument_docs.jl")
 include("documentation/recipe_docs.jl")
 include("bezier.jl")
 include("types.jl")
+include("richtext.jl")
+include("tick_format.jl")
 include("utilities/Plane.jl")
 include("utilities/timing.jl")
 include("utilities/texture_atlas.jl")
@@ -193,12 +191,12 @@ include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
 
 # Note: This file could easily be moved out into a mini-package.
-include("RenderPipeline/BufferFormat.jl")
-include("RenderPipeline/RenderPipeline.jl")
-include("RenderPipeline/LoweredPipeline.jl")
-include("RenderPipeline/io.jl")
-include("RenderPipeline/defaults.jl")
-include("RenderPipeline/gui.jl")
+include("RenderGraph/BufferFormat.jl")
+include("RenderGraph/RenderGraph.jl")
+include("RenderGraph/LoweredRenderGraph.jl")
+include("RenderGraph/io.jl")
+include("RenderGraph/defaults.jl")
+include("RenderGraph/gui.jl")
 
 include("dim-converts/dim-converts.jl")
 include("dim-converts/unitful-integration.jl")
@@ -212,7 +210,6 @@ include("float32-scaling.jl")
 
 include("interfaces.jl")
 include("compute-plots.jl")
-include("units.jl")
 include("shorthands.jl")
 
 # camera types + functions
@@ -221,6 +218,7 @@ include("camera/camera.jl")
 include("camera/camera2d.jl")
 include("camera/camera3d.jl")
 include("camera/old_camera3d.jl")
+include("camera/stagecamera.jl")
 
 include("utilities/projection_utils.jl")
 
@@ -251,6 +249,7 @@ include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/tricontourf.jl")
+include("basic_recipes/tricontour.jl")
 include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/voronoiplot.jl")
@@ -258,6 +257,7 @@ include("basic_recipes/voxels.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/textlabel.jl")
+include("basic_recipes/editabletext.jl")
 include("basic_recipes/tooltip.jl")
 
 # conversions: need to be after plot recipes
@@ -312,6 +312,104 @@ include("DataInspector/extension.jl")
 # documentation and help functions
 include("documentation/documentation.jl")
 include("display.jl")
+const _ffmpeg_path = Ref{Union{Nothing, String}}(nothing)
+const _FFMPEG_JLL_PKGID = Base.PkgId(Base.UUID("b22a6f82-2f65-5046-a5b2-351ab43fb4e5"), "FFMPEG_jll")
+
+"""
+    Makie.ffmpeg_path() -> Union{Nothing, String}
+
+Return the user-configured path to the `ffmpeg` executable, or `nothing`
+if none has been set. When `nothing`, video recording functions try to
+load `FFMPEG_jll` automatically to obtain a binary.
+
+See also [`Makie.ffmpeg_path!`](@ref).
+"""
+ffmpeg_path() = _ffmpeg_path[]
+
+"""
+    Makie.ffmpeg_path!(path::Union{Nothing, AbstractString})
+
+Set the path to the `ffmpeg` executable that Makie should use for video
+recording, overriding any binary that would be loaded from `FFMPEG_jll`.
+
+Pass `nothing` to clear the override, in which case Makie falls back to
+loading `FFMPEG_jll` automatically.
+
+This change only affects the current Julia session. To persist a path
+across sessions, use [Preferences.jl](https://github.com/JuliaPackaging/Preferences.jl):
+
+    using Preferences
+    set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")
+"""
+function ffmpeg_path!(path::Union{Nothing, AbstractString})
+    _ffmpeg_path[] = path === nothing ? nothing : String(path)
+    return _ffmpeg_path[]
+end
+
+# A method for this is added by the MakieFFMPEGExt package extension.
+function _ffmpeg_jll_path end
+
+_ffmpeg_help_message(reason::AbstractString) = """
+Video recording requires FFMPEG_jll, $reason.
+
+Starting with Makie v0.25, FFMPEG_jll is no longer a hard dependency of Makie
+because it pulls in GPL-licensed libraries (e.g. libx264). Either:
+
+  • add FFMPEG_jll to your environment:
+        using Pkg; Pkg.add("FFMPEG_jll"); using FFMPEG_jll
+  • or point Makie at an existing ffmpeg binary for this session:
+        Makie.ffmpeg_path!("/path/to/ffmpeg")
+  • or persist that override across sessions via Preferences.jl:
+        using Preferences
+        set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")"""
+
+# Internal: returns a `Cmd` for the ffmpeg binary, attempting to load
+# FFMPEG_jll on demand if no path has been configured. Called by
+# VideoStream, record, convert_video, extract_frames.
+function get_ffmpeg_path()
+    user = _ffmpeg_path[]
+    if user !== nothing
+        return `$user`
+    end
+
+    # Fast path when the extension is already loaded.
+    hasmethod(_ffmpeg_jll_path, Tuple{}) && return _ffmpeg_jll_path()
+
+    # Don't even attempt `Base.require` if FFMPEG_jll isn't available in the
+    # active env, so the user gets a clean error instead of a load failure.
+    already_loaded = haskey(Base.loaded_modules, _FFMPEG_JLL_PKGID)
+    if !already_loaded && Base.locate_package(_FFMPEG_JLL_PKGID) === nothing
+        error(_ffmpeg_help_message("but it is not in the active environment"))
+    end
+
+    # FFMPEG_jll is available — try to load it. The MakieFFMPEGExt extension
+    # will be triggered as a side effect.
+    try
+        Base.require(_FFMPEG_JLL_PKGID)
+        # `Base.require` doesn't always auto-trigger extension loading for
+        # newly-loaded triggers, so do it explicitly.
+        Base.retry_load_extensions()
+    catch err
+        error(
+            _ffmpeg_help_message("and Makie failed to load it from the active environment") *
+                "\n\nThe underlying load error was:\n$(sprint(showerror, err))"
+        )
+    end
+
+    # Use `invokelatest` to step into the new world age in which the method
+    # added by the extension is visible.
+    try
+        return Base.invokelatest(_ffmpeg_jll_path)
+    catch err
+        err isa MethodError && err.f === _ffmpeg_jll_path || rethrow()
+        error(
+            """
+            FFMPEG_jll was loaded but the MakieFFMPEGExt extension did not register
+            a method for `Makie._ffmpeg_jll_path`. Please report this as a bug."""
+        )
+    end
+end
+
 include("ffmpeg-util.jl")
 include("recording.jl")
 include("event-recorder.jl")
@@ -367,13 +465,9 @@ export DateTimeTicks
 export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, data_limits
 
-# Spaces for widths and markers
-const PixelSpace = Pixel
-export SceneSpace, PixelSpace, Pixel
-
 # camera related
-export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
-export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!
+export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, StageCamera, cam2d!, cam2d
+export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!, stage_cam!
 export update_cam!, rotate_cam!, translate_cam!, zoom!
 export viewport, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
@@ -475,6 +569,8 @@ function __init__()
     end
     # fonts aren't cacheable by precompilation, so we need to empty it on load!
     empty!(FONT_CACHE)
+    # Load any user-configured ffmpeg path from Preferences
+    _ffmpeg_path[] = Preferences.load_preference(@__MODULE__, "ffmpeg_path", nothing)
     cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
     if isfile(cfg_path)
         @warn "The global configuration file is no longer supported." *
@@ -493,7 +589,9 @@ export resize_to_layout!
 include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
+include("basic_recipes/glyphs.jl")
 include("basic_recipes/text.jl")
+include("basic_recipes/pathtext.jl")
 include("basic_recipes/raincloud.jl")
 
 include("deprecated.jl")
@@ -524,10 +622,35 @@ function cleanup_globals()
     empty!(FONT_CACHE)
     empty!(DEFAULT_FONT)
     empty!(ALTERNATIVE_FONTS)
+    empty!(TEXTURE_ATLASES)
     return
 end
 
 export cleanup_globals
+
+import PrecompileTools
+
+const SHARED_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile.jl")
+const SHARED_PRECOMPILE_FULL_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile-full.jl")
+
+"""
+    shared_precompile_paths()
+
+Returns the workload files Makie and the backends include during
+precompilation. Controlled by the Makie preference
+`precompile_workload_level`:
+
+- `"default"`: the standard workload (`shared-precompile.jl`)
+- `"full"`: additionally covers the long tail of common recipes
+  (`shared-precompile-full.jl`) for a near compile-free first plot of most
+  plot types, at the cost of longer package precompilation.
+"""
+function shared_precompile_paths()
+    level = PrecompileTools.Preferences.@load_preference("precompile_workload_level", "default")
+    paths = String[SHARED_PRECOMPILE_PATH]
+    level == "full" && push!(paths, SHARED_PRECOMPILE_FULL_PATH)
+    return paths
+end
 
 include("precompiles.jl")
 

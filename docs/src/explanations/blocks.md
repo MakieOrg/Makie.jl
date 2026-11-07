@@ -91,10 +91,10 @@ function Makie.initialize_block!(block::DualView)
 end
 ```
 
-As you can see blocks can be added the same way as they would to a figure.
-Doing so will add them to the layout of the `DualView`.
-Plots can then be added to any axis added to the parent block.
-Much like plot recipe, all the attributes and arguments can be accessed from the parent block.
+Blocks can be added in the same way as they would be added to a figure.
+Doing so will add them to the internal layout of the `DualView`.
+Plots can then be added to any axis created this way.
+Much like plot recipes, all the attributes and arguments can be accessed from the parent block.
 Any attributes that are not set will default like usual.
 
 !!! note

@@ -26,7 +26,7 @@ mutable struct RamStepper
 end
 
 function Stepper(figlike::FigureLike; backend = current_backend(), format = :png, visible = false, connect = false, screen_kw...)
-    config = Dict{Symbol, Any}(screen_kw)
+    config = to_dict(screen_kw)
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)
     screen = getscreen(backend, get_scene(figlike), config, JuliaNative)
@@ -35,7 +35,7 @@ function Stepper(figlike::FigureLike; backend = current_backend(), format = :png
 end
 
 function Stepper(figlike::FigureLike, path::String, step::Int; format = :png, backend = current_backend(), visible = false, connect = false, screen_kw...)
-    config = Dict{Symbol, Any}(screen_kw)
+    config = to_dict(screen_kw)
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)
     screen = getscreen(backend, get_scene(figlike), config, JuliaNative)
@@ -94,6 +94,12 @@ extension.
 
 Under the hood, `record` is just `video_io = Record(func, figurelike, [iter]; same_kw...); save(path, video_io)`.
 `Record` can be used directly as well to do the saving at a later point, or to inline a video directly into a Notebook (the video supports, `show(video_io, "text/html")` for that purpose).
+
+!!! compat "Makie 0.25"
+    Starting with Makie v0.25, `FFMPEG_jll` is no longer a hard dependency because it pulls in
+    GPL-licensed libraries. `record` will try to load `FFMPEG_jll` automatically when first called,
+    so as long as `FFMPEG_jll` is in your environment it works without further setup.
+    To use a custom ffmpeg binary, call [`Makie.ffmpeg_path!`](@ref).
 
 # Options one can pass via `kwargs...`:
 

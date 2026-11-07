@@ -15,53 +15,6 @@ function setup_clip_planes(N::Integer)
     return
 end
 
-# Note: context required in renderloop, not per renderobject here
-
-# """
-# When rendering a specialised list of Renderables, we can do some optimizations
-# """
-# function render(list::Vector{RenderObject{Pre}}) where {Pre}
-#     error("I'm not dead yet!")
-#     isempty(list) && return nothing
-#     first(list).prerender()
-#     vertexarray = first(list).vertexarray
-#     program = vertexarray.program
-#     glUseProgram(program.id)
-#     bind(vertexarray)
-#     for renderobject in list
-#         renderobject.visible || continue # skip invisible
-#         setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
-#         # make sure we only bind new programs and vertexarray when it is actually
-#         # different from the previous one
-#         if renderobject.vertexarray != vertexarray
-#             vertexarray = renderobject.vertexarray
-#             if vertexarray.program != program
-#                 program = renderobject.vertexarray.program
-#                 glUseProgram(program.id)
-#             end
-#             bind(vertexarray)
-#         end
-#         for (key, value) in program.uniformloc
-#             if haskey(renderobject.uniforms, key)
-#                 if length(value) == 1
-#                     gluniform(value[1], renderobject.uniforms[key])
-#                 elseif length(value) == 2
-#                     gluniform(value[1], value[2], renderobject.uniforms[key])
-#                 else
-#                     error("Uniform tuple too long: $(length(value))")
-#                 end
-#             end
-#         end
-#         renderobject.postrender(instructions.vertexarray)
-#     end
-#     # we need to assume, that we're done here, which is why
-#     # we need to bind VertexArray to 0.
-#     # Otherwise, every glBind(::GLBuffer) operation will be recorded into the state
-#     # of the currently bound vertexarray
-#     glBindVertexArray(0)
-#     return
-# end
-
 """
 Renders a RenderObject
 Note, that this function is not optimized at all!
@@ -160,6 +113,10 @@ function render(mode::GLenum, indices::Int, ::Nothing, N_verts)
     return nothing
 end
 
+# Empirically bisected: GL_LINE_STRIP_ADJACENCY breaks at count >= 2_418_341.
+# Picked with ~17% headroom since the exact driver-side cutoff may drift.
+const MAC_LINE_STRIP_CHUNK = 2_000_000
+
 # using indexbuffer (faces)
 function render(mode::GLenum, indices::GLBuffer{T}, ::Nothing, N_verts) where {T <: Union{Integer, AbstractFace}}
     # Note: not discarding draw calls with 0 indices may cause segfaults even if
@@ -173,7 +130,26 @@ function render(mode::GLenum, indices::GLBuffer{T}, ::Nothing, N_verts) where {T
         N_addressed = GeometryBasics.raw(mapreduce(maximum, max, data))
         vao_boundscheck(N_verts, N_addressed)
     end
-    glDrawElements(mode, N, julia2glenum(T), C_NULL)
+    if Sys.isapple() && mode == GL_LINE_STRIP_ADJACENCY && N > MAC_LINE_STRIP_CHUNK
+        # macOS workaround for Makie#5491. Apple's OpenGL geometry-shader emulation emits
+        # one phantom segment between the first and last vertex when a single draw call
+        # exceeds ~2.42M indices. Splitting into chunks below the threshold sidesteps the
+        # bug per chunk. Consecutive chunks overlap by 3 indices to give the joints at the
+        # chunk boundary the same adjacency context they would have in a single draw; with
+        # LINE_STRIP_ADJACENCY a primitive (p, q, r, s) only draws segment q→r and uses
+        # p and s as joint hints, so this is adjacency-only overlap, not overdraw - every
+        # segment is drawn exactly once.
+        elt_size = sizeof(T)
+        glenum = julia2glenum(T)
+        offset = 0
+        while offset < N - 3
+            count = min(MAC_LINE_STRIP_CHUNK, N - offset)
+            glDrawElements(mode, count, glenum, Ptr{Cvoid}(offset * elt_size))
+            offset += MAC_LINE_STRIP_CHUNK - 3
+        end
+    else
+        glDrawElements(mode, N, julia2glenum(T), C_NULL)
+    end
     return nothing
 end
 

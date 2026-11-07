@@ -1,20 +1,18 @@
 using FreeTypeAbstraction: hadvance, leftinkbound, inkwidth, get_extent, ascender, descender
 
-function justification2float(justification, halign)
-    if justification === automatic
-        if halign === :left || halign == 0
-            return 0.0f0
-        elseif halign === :right || halign == 1
-            return 1.0f0
-        elseif halign === :center || halign == 0.5
-            return 0.5f0
-        else
-            return 0.5f0
-        end
-    else
-        msg = "Invalid justification $justification. Valid values are <:Real, :left, :center and :right."
-        return halign2num(justification, msg)
-    end
+"""
+    justification2float(justification, halign)
+
+Resolves `justification` to the fraction of a line's unused width that is added
+to its glyph origins. `automatic` follows `halign`, so a text block's alignment
+and its justification are resolved together, before layout.
+"""
+function justification2float(justification, halign)::Float32
+    justification === automatic || return halign2num(
+        justification,
+        "Invalid justification $justification. Valid values are <:Real, :left, :center and :right."
+    )
+    return halign2num(halign)
 end
 
 function create_lineinfos(charinfos, word_wrap_width)
@@ -76,38 +74,43 @@ function create_lineinfos(charinfos, word_wrap_width)
         end
     end
 
+    # If the input ends with '\n' (or word-wrap newlines), the loop pushes a new
+    # empty `Float32[]` to `xs` but never the matching empty view to `lineinfos`,
+    # so a trailing newline contributes no vertical space. Append empty views so
+    # lengths match — the trailing empty line then takes part in alignment and
+    # bounding box computations.
+    while length(lineinfos) < length(xs)
+        n = length(charinfos)
+        push!(lineinfos, view(charinfos, (n + 1):n))
+    end
+
     return lineinfos, xs
 end
 
 """
-    glyph_collection(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation, color, word_wrap_width)
+    layout_string(str::AbstractString, font_per_char, fontscale_px, lineheight_factor, justification, word_wrap_width)
 
-Calculate the positions for each glyph in a string given a certain font, font size, alignment, etc.
-This layout in text coordinates, relative to the anchor point [0,0] can then be translated and
-rotated to wherever it is needed in the plot.
+Calculate the position of each glyph in a string given a certain font, font size,
+line height etc. The origins are in the layout frame: the first line's baseline
+sits at y = 0 and the left edge of the layout box at x = 0. `bbox` and `baseline`
+describe that frame so alignment, rotation and offset can be applied afterwards.
 """
-function glyph_collection(
-        str::AbstractString, font_per_char, fontscale_px, (halign, valign),
-        lineheight_factor, justification, word_wrap_width, rotation
-    )
-    return glyph_collection(
-        str, font_per_char, fontscale_px, halign, valign,
-        lineheight_factor, justification, word_wrap_width, rotation
-    )
-end
-
-function glyph_collection(
-        str::AbstractString, font_per_char, fontscale_px, halign, valign,
-        lineheight_factor, justification, word_wrap_width, rotation
+function layout_string(
+        str::AbstractString, font_per_char, fontscale_px,
+        lineheight_factor, justification::Real, word_wrap_width
     )
     isempty(str) && return (
         glyphindices = UInt64[],
-        font_per_char = NativeFont[],
-        char_origins = Point3f[],
-        glyph_extents = FreeTypeAbstraction.FontExtent{Float32}[],
+        fonts = NativeFont[],
+        origins = Point3f[],
+        extents = GlyphExtent[],
+        bbox = Rect2f(0, 0, 0, 0),
+        baseline = 0.0f0,
     )
     # collect information about every character in the string
-    charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, _font, scale
+    # Ref: the font and the scale are one value for the whole string, and a `Vec2`
+    # fontsize would otherwise broadcast as a two-element container
+    charinfos = broadcast((c for c in str), Ref(font_per_char), Ref(fontscale_px)) do char, _font, scale
         font = find_font_for_char(char, _font)
         (
             char = char,
@@ -121,9 +124,15 @@ function glyph_collection(
     # split the character info vector into lines after every \n
     lineinfos, xs = create_lineinfos(charinfos, word_wrap_width)
 
+    # For an empty trailing line (caused by a terminating '\n'), borrow metrics
+    # from the '\n' that ended the previous line so it still occupies vertical
+    # space and contributes to alignment / bounding boxes.
+    metric_char(i) = isempty(lineinfos[i]) ? last(lineinfos[i - 1]) : last(lineinfos[i])
+
     # calculate linewidths as the last origin plus hadvance for each line
     linewidths = map(lineinfos, xs) do line, xx
         nchars = length(line)
+        nchars == 0 && return 0.0f0  # empty trailing line (after a final '\n')
         # if the last and not the only character is \n, take the previous one
         # to compute the width
         i = (nchars > 1 && line[end].char == '\n') ? nchars - 1 : nchars
@@ -136,63 +145,51 @@ function glyph_collection(
     # how much each line differs from the maximum width for justification correction
     width_differences = maxwidth .- linewidths
 
-    # shift all x values by the justification amount needed for each line
-    # if justification is automatic it depends on alignment
-    float_justification = justification2float(justification, halign)
-
     xs_justified = map(xs, width_differences) do xsgroup, wd
-        xsgroup .+ wd * float_justification
+        xsgroup .+ wd * justification
     end
 
     # each character carries a "lineheight" metric given its font and scale and a lineheight scaling factor
-    # make each line's height the maximum of these values in the line
-    lineheights = map(lineinfos) do line
-        maximum(l -> l.lineheight, line)
+    # make each line's height the maximum of these values in the line.
+    lineheights = map(eachindex(lineinfos)) do i
+        line = lineinfos[i]
+        isempty(line) ? metric_char(i).lineheight : maximum(l -> l.lineheight, line)
     end
 
     # compute y values by adding up lineheights in negative y direction
     ys = cumsum([0.0; -lineheights[2:end]])
 
-    # compute x values after left/center/right alignment
-    halign = halign2num(halign)
-    xs_aligned = [xsgroup .- halign * maxwidth for xsgroup in xs_justified]
-
-    # for y alignment, we need the largest ascender of the first line
-    # and the largest descender of the last line
+    # the layout box spans the largest ascender of the first line down to the
+    # largest descender of the last line
     first_line_ascender = maximum(lineinfos[1]) do l
         last(l.scale) * l.extent.ascender
     end
 
-    last_line_descender = minimum(lineinfos[end]) do l
-        last(l.scale) * l.extent.descender
-    end
-
-    # compute the height of all lines together
-    overall_height = first_line_ascender - ys[end] - last_line_descender
-
-    # compute y values after top/center/bottom/baseline alignment
-    ys_aligned = if valign === :baseline
-        ys .- first_line_ascender .+ overall_height .+ last_line_descender
+    last_line_descender = if isempty(lineinfos[end])
+        c = metric_char(length(lineinfos))
+        last(c.scale) * c.extent.descender
     else
-        va = valign2num(valign, "Invalid valign $valign. Valid values are <:Number, :bottom, :baseline, :top, and :center.")
-        ys .- first_line_ascender .+ (1 - va) .* overall_height
+        minimum(lineinfos[end]) do l
+            last(l.scale) * l.extent.descender
+        end
     end
 
-    # compute the origins for each character by rotating each character around the common origin
-    # which is the alignment anchor and now [0, 0]
-    # use 3D coordinates already because later they will be required in that format anyway
-    charorigins = [Ref(rotation) .* Point3f.(xsgroup, y, 0) for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
+    bottom = ys[end] + last_line_descender
 
-    # return a GlyphCollection, which contains each character's origin, height-insensitive
-    # boundingbox and horizontal advance value
-    # these values should be enough to draw characters correctly,
-    # compute boundingboxes without relayouting and maybe implement
-    # interactive features that need to know where characters begin and end
+    # use 3D coordinates already because later they will be required in that format anyway
+    charorigins = [Point3f.(xsgroup, y, 0) for (xsgroup, y) in zip(xs_justified, ys)]
+
+    # each character's origin, height-insensitive boundingbox and horizontal
+    # advance value should be enough to draw characters correctly, compute
+    # boundingboxes without relayouting and maybe implement interactive features
+    # that need to know where characters begin and end
     return (
         glyphindices = map(x -> glyph_index(x.font, x.char), charinfos),
-        font_per_char = map(x -> x.font, charinfos),
-        char_origins = reduce(vcat, charorigins),
-        glyph_extents = map(x -> x.extent, charinfos),
+        fonts = map(x -> x.font, charinfos),
+        origins = reduce(vcat, charorigins),
+        extents = map(x -> x.extent, charinfos),
+        bbox = Rect2f(0, bottom, maxwidth, first_line_ascender - bottom),
+        baseline = Float32(ys[end]),
     )
 end
 
@@ -216,5 +213,3 @@ end
 
 _offset_to_vec(o::VecTypes) = to_ndim(Vec3f, o, 0)
 _offset_to_vec(o::Vector) = to_ndim.(Vec3f, o, 0)
-Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
-Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1

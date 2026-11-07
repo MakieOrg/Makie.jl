@@ -1,8 +1,11 @@
 import { defineConfig } from 'vitepress'
 import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
-import mathjax3 from "markdown-it-mathjax3";
+import { mathjaxPlugin } from './mathjax-plugin'
+import { juliaReplTransformer } from './julia-repl-transformer'
 import footnote from "markdown-it-footnote";
 import path from 'path'
+
+const mathjax = mathjaxPlugin()
 
 
 const baseTemp = {
@@ -35,8 +38,11 @@ export default defineConfig({
     ['noscript', {}, '<img alt="" referrerpolicy="no-referrer-when-downgrade" src="https://api.makie.org/noscript.gif"/>'],
     ['script', {src: `${baseTemp.base}siteinfo.js`}],
   ],
-  
+
   vite: {
+    plugins: [
+      mathjax.vitePlugin,
+    ],
     define: {
       __DEPLOY_ABSPATH__: JSON.stringify('REPLACE_ME_DOCUMENTER_VITEPRESS_DEPLOY_ABSPATH'),
     },
@@ -46,26 +52,26 @@ export default defineConfig({
       }
     },
     optimizeDeps: {
-      exclude: [ 
+      exclude: [
         '@nolebase/vitepress-plugin-enhanced-readabilities/client',
         'vitepress',
         '@nolebase/ui',
-      ], 
-    }, 
-    ssr: { 
-      noExternal: [ 
+      ],
+    },
+    ssr: {
+      noExternal: [
         // If there are other packages that need to be processed by Vite, you can add them here.
         '@nolebase/vitepress-plugin-enhanced-readabilities',
         '@nolebase/ui',
-      ], 
+      ],
     },
   },
   markdown: {
-    math: true,
+    codeTransformers: [juliaReplTransformer()],
     config(md) {
-      md.use(tabsMarkdownPlugin),
-      md.use(mathjax3),
-      md.use(footnote)
+      md.use(tabsMarkdownPlugin);
+      md.use(footnote);
+      mathjax.markdownConfig(md);
     },
     theme: {
       light: "github-light",

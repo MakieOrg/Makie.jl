@@ -3,6 +3,8 @@ ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Test
 using LinearAlgebra
 using Markdown
+using Compat # allequal(f, itr) on Julia < 1.11
+
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics
@@ -36,6 +38,8 @@ end
         include("isolated/texture_atlas.jl")
         include("isolated/datetime_ticks.jl")
         include("isolated/argument_docs.jl")
+        include("isolated/recipes.jl") # @recipe, @Block generated code
+        include("isolated/showoff.jl")
     end
 
     @testset "Plots" begin
@@ -43,9 +47,18 @@ end
         include("plots/generic_attributes.jl")
         include("plots/text.jl")
         include("plots/barplot.jl")
+        include("plots/bracket.jl")
         include("plots/hist.jl")
         include("plots/poly.jl")
+        include("plots/mesh_stroke.jl")
+        include("plots/arrows.jl")
+        include("plots/contour.jl")
+        include("plots/contourf.jl")
+        include("plots/tricontour.jl")
         include("plots/voronoiplot.jl")
+        include("plots/datashader.jl")
+        include("plots/deterministic_order.jl")
+        include("plots/volumeslices.jl")
     end
 
     @testset "Scenes, Blocks & Figures" begin
@@ -78,6 +91,7 @@ end
         include("interactivity/Axis.jl")
         include("interactivity/Axis3.jl")
         include("interactivity/DataInspector.jl")
+        include("interactivity/EditableText.jl")
     end
 
     include("boundingboxes.jl")
