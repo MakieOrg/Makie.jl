@@ -2274,6 +2274,7 @@ end
 @Block PolarAxis <: AbstractAxis begin
     scene::Scene
     overlay::Scene
+    background::Scene
     target_rlims::Observable{Tuple{Float64, Float64}}
     target_thetalims::Observable{Tuple{Float64, Float64}}
     target_theta_0::Observable{Float32}
@@ -2463,7 +2464,7 @@ end
 
         # r minor and major grid
 
-        "Sets the z value of grid lines. To place the grid above plots set this to a value between 1 and 8999."
+        "Controls whether grid lines draw below (`gridz <= 0`) or above (`gridz > 0`) plots. Above plots, grid lines order with the other axis decorations by z value, so values between 1 and 8999 keep them below the clip, spine and ticks."
         gridz::Float32 = -100
 
         "The color of the `r` grid."

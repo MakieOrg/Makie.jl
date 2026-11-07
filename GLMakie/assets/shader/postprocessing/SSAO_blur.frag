@@ -2,25 +2,27 @@
 
 // occlusion.w is the occlusion value
 uniform sampler2D occlusion_buffer;
-uniform sampler2D color_buffer;
+uniform sampler2D normal_buffer;
 uniform usampler2D objectid_buffer;
 uniform vec2 inv_texel_size;
 // Settings/Attributes
 uniform int blur_range;
 
 in vec2 frag_uv;
+// Multiplied onto the color buffer by blending (color.rgb *= fragment_color.rgb)
 out vec4 fragment_color;
 
 void main(void)
 {
-    // occlusion blur
-    uvec2 id0 = texture(objectid_buffer, frag_uv).xy;
-    if (id0.x == uint(0)){
-        fragment_color = texture(color_buffer, frag_uv);
-        // fragment_color = vec4(1,0,1,1); // show discarded
-        return;
+    // The normal buffer is cleared before the SSAO plots of a scene render, so
+    // a zero normal means this pixel does not belong to one of them. Leave the
+    // color (e.g. from previous scenes) as is.
+    if (texture(normal_buffer, frag_uv).xyz == vec3(0)) {
+        discard;
     }
 
+    // occlusion blur
+    uvec2 id0 = texture(objectid_buffer, frag_uv).xy;
     float blurred_occlusion = 0.0;
     float weight = 0;
 
@@ -39,7 +41,5 @@ void main(void)
         }
     }
     blurred_occlusion = 1.0 - blurred_occlusion / weight;
-    fragment_color = texture(color_buffer, frag_uv) * blurred_occlusion;
-    // Display occlusion instead:
-    // fragment_color = vec4(vec3(blurred_occlusion), 1.0);
+    fragment_color = vec4(vec3(blurred_occlusion), 1.0);
 }

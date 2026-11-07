@@ -223,7 +223,6 @@ function serialize_scene(session::Session, scene::Scene, ::Nothing = nothing)
         :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor; ignore_equal_values = true),
         :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor; ignore_equal_values = true),
         :clearscene => scene.clear,
-        :cleardepth => scene.clear_depth,
         :camera => serialize_camera(scene),
         :light_direction => light_dir,
         :camera_relative_light => cam_rel,

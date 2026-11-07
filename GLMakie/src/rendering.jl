@@ -12,7 +12,8 @@ function prepare_frame(screen, resize_buffers)
         resize!(screen.render_pipeline, new_size...)
     end
 
-    # Clear stencil, depth, objectid (and color, but that should not be needed)
+    # Clear everything in case the root scene doesn't clear. Scenes clear their
+    # own viewport (color, depth, objectid) as they are drawn.
     fb = display_framebuffer(screen)
     wh = size(fb)
     glDisable(GL_SCISSOR_TEST)
@@ -20,12 +21,7 @@ function prepare_frame(screen, resize_buffers)
     set_draw_buffers(fb)
     glViewport(0, 0, wh[1], wh[2])
     glClearColor(0, 0, 0, 0)
-    glClearStencil(0)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
-
-    # prepare for stencil being used
-    glEnable(GL_STENCIL_TEST)
-    glStencilFunc(GL_EQUAL, 0, 0xff)
 
     return
 end
@@ -66,12 +62,11 @@ function stage_output(
 
     prepare_frame(screen, false)
 
-    # Render up to target stage
-    for idx in 1:stage_index
-        stage = screen.render_pipeline.stages[idx]
-        require_context(screen.glscreen)
-        run_stage(screen, nothing, stage)
-    end
+    # Render up to target stage. Note that this splits per-scene stages at
+    # `stage_index`, i.e. all scenes run up to the target stage first.
+    stages = screen.render_pipeline.stages
+    glscenes = screen.render_context.scenes
+    run_stages!(screen, glscenes, view(stages, 1:stage_index))
 
     glFinish()
 
@@ -80,12 +75,8 @@ function stage_output(
     end
     fast_color_data!(screen.framecache, ctex)
 
-    # Render remainign stages
-    for idx in (stage_index + 1):length(screen.render_pipeline.stages)
-        stage = screen.render_pipeline.stages[idx]
-        require_context(screen.glscreen)
-        run_stage(screen, nothing, stage)
-    end
+    # Render remaining stages
+    run_stages!(screen, glscenes, view(stages, (stage_index + 1):length(stages)))
 
     if screen.config.visible
         GLFW.SwapBuffers(to_native(screen))

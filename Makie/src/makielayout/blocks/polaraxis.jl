@@ -25,15 +25,32 @@ function initialize_block!(po::PolarAxis; palette = nothing)
         return Rect(round.(Int, minimum(cb)), round.(Int, widths(cb)))
     end
 
-    po.scene = Scene(
-        po.blockscene, scenearea, backgroundcolor = po.backgroundcolor,
-        clear = true
-    )
+    # Scenes draw strictly above each other: background (clear, grid lines below
+    # plots) -> scene (plots) -> overlay (clip, spine, ticks, grid lines above plots)
+    # The plot scene doesn't clear, the background scene below it does. Its color
+    # still follows `po.scene.backgroundcolor`, which follows `po.backgroundcolor`
+    po.scene = Scene(po.blockscene, scenearea, backgroundcolor = po.backgroundcolor, clear = false)
     map!(to_color, po.scene, po.scene.backgroundcolor, po.backgroundcolor)
 
     po.overlay = Scene(
         po.scene, scenearea, clear = false, backgroundcolor = :transparent,
         transformation = Transformation(po.scene, transform_func = identity),
+    )
+
+    # Shares camera and transformation with overlay so grid lines can go in either.
+    # Like Axis, only opaque backgrounds clear. Clearing replaces pixels, so
+    # transparent backgrounds are drawn as a (blending) poly instead.
+    bgcolor = po.scene.backgroundcolor
+    is_opaque = map(c -> alpha(c) == 1, po.blockscene, bgcolor)
+    po.background = Scene(
+        po.blockscene, scenearea, clear = is_opaque, backgroundcolor = bgcolor,
+        camera = po.overlay.camera, transformation = po.overlay.transformation,
+        zindex = -1
+    )
+    poly!(
+        po.background, map(area -> Rect2f(0, 0, widths(area)...), po.blockscene, scenearea);
+        space = :pixel, color = bgcolor, strokecolor = :transparent,
+        shading = NoShading, inspectable = false, visible = map(!, po.blockscene, is_opaque)
     )
 
     if !isnothing(palette)
@@ -771,38 +788,41 @@ function draw_axis!(po::PolarAxis)
 
     # plot using the created observables
 
-    # major grids
-    rgridplot = lines!(
-        po.overlay, rgridpoints;
-        color = po.rgridcolor,
-        linestyle = po.rgridstyle,
-        linewidth = po.rgridwidth,
-        visible = po.rgridvisible,
-    )
-
-    thetagridplot = linesegments!(
-        po.overlay, thetagridpoints;
-        color = po.thetagridcolor,
-        linestyle = po.thetagridstyle,
-        linewidth = po.thetagridwidth,
-        visible = po.thetagridvisible,
-    )
-    # minor grids
-    rminorgridplot = lines!(
-        po.overlay, rminorgridpoints;
-        color = po.rminorgridcolor,
-        linestyle = po.rminorgridstyle,
-        linewidth = po.rminorgridwidth,
-        visible = po.rminorgridvisible,
-    )
-
-    thetaminorgridplot = linesegments!(
-        po.overlay, thetaminorgridpoints;
-        color = po.thetaminorgridcolor,
-        linestyle = po.thetaminorgridstyle,
-        linewidth = po.thetaminorgridwidth,
-        visible = po.thetaminorgridvisible,
-    )
+    # Scenes draw strictly above each other, so grid lines exist in the background
+    # (below plots) and the overlay (above plots). gridz selects which set shows.
+    grid_above_plots = map(>(0), po.blockscene, po.gridz)
+    gridplots = map((po.background, po.overlay), (false, true)) do scene, above
+        shown(visible) = map((v, a) -> v && (a == above), po.blockscene, visible, grid_above_plots)
+        rgridplot = lines!(
+            scene, rgridpoints;
+            color = po.rgridcolor,
+            linestyle = po.rgridstyle,
+            linewidth = po.rgridwidth,
+            visible = shown(po.rgridvisible),
+        )
+        thetagridplot = linesegments!(
+            scene, thetagridpoints;
+            color = po.thetagridcolor,
+            linestyle = po.thetagridstyle,
+            linewidth = po.thetagridwidth,
+            visible = shown(po.thetagridvisible),
+        )
+        rminorgridplot = lines!(
+            scene, rminorgridpoints;
+            color = po.rminorgridcolor,
+            linestyle = po.rminorgridstyle,
+            linewidth = po.rminorgridwidth,
+            visible = shown(po.rminorgridvisible),
+        )
+        thetaminorgridplot = linesegments!(
+            scene, thetaminorgridpoints;
+            color = po.thetaminorgridcolor,
+            linestyle = po.thetaminorgridstyle,
+            linewidth = po.thetaminorgridwidth,
+            visible = shown(po.thetaminorgridvisible),
+        )
+        return (rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot)
+    end
 
     # Clipping
 
@@ -970,8 +990,9 @@ function draw_axis!(po::PolarAxis)
     translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 9000)
     translate!(spineplot, 0, 0, 9001)
     translate!.((rticklabelplot, thetaticklabelplot, rtickplot, thetatickplot, rminortickplot, thetaminortickplot), 0, 0, 9002)
+    # orders grid lines relative to the other overlay decorations when above plots
     on(po.blockscene, po.gridz, update = true) do depth
-        translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot), 0, 0, depth)
+        foreach(plots -> translate!.(plots, 0, 0, depth), gridplots)
     end
 
     return rticklabelplot, thetaticklabelplot

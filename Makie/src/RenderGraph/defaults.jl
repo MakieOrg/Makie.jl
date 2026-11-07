@@ -11,12 +11,19 @@ SortStage() = RenderStage(:ZSort)
 """
     SceneClearStage()
 
-Clears the color and depth buffer based on the `clear` values of scenes.
+Prepares the viewport of each scene before its plots are drawn. Scenes with
+`clear = true` fill their viewport with their background color and reset the
+objectid buffer (so covered plots can't be picked). Every scene resets the depth
+buffer so that its plots draw strictly above the scenes before it.
 """
 function SceneClearStage()
     return RenderStage(
         :SceneClear,
-        outputs = [:color => BufferFormat(4, N0f8), :depth => BufferFormat(1, BFT.depth24)]
+        outputs = [
+            :color => BufferFormat(4, N0f8),
+            :depth => BufferFormat(1, BFT.depth24),
+            :objectid => BufferFormat(2, UInt32),
+        ]
     )
 end
 
@@ -91,7 +98,8 @@ end
     SSAOStage()
 
 Applies Screen Space Ambient Occlusion to the color buffer using a position and
-normal inputs.
+normal inputs. The occlusion is multiplied onto the color buffer in place and
+only affects pixels covered by plots with `ssao = true` (i.e. with a normal).
 """
 function SSAOStage(; kwargs...)
     inputs = [
@@ -117,8 +125,8 @@ function SSAOStage(; kwargs...)
 
     inputs = [
         :occlusion => BufferFormat(1, N0f8),
-        :color => BufferFormat(4, N0f8),
         :objectid => BufferFormat(2, UInt32),
+        :normal => BufferFormat(3, Float16),
     ]
     stage2 = RenderStage(:SSAO2, inputs, [:color => BufferFormat()]; kwargs...)
 
@@ -234,17 +242,20 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
     display = push!(pipeline, DisplayStage())
 
 
+    # All stages draw into the same color buffer (scene by scene in the backend)
+    final = fxaa ? _fxaa : display
     if ssao
         connect!(pipeline, render1, _ssao)
-        connect!(pipeline, _ssao, fxaa ? _fxaa : display, :color)
+        connect!(pipeline, render1, final)
+        connect!(pipeline, _ssao, final, :color)
     end
-    connect!(pipeline, clear, ssao ? _ssao : (fxaa ? _fxaa : display))
-    connect!(pipeline, render2, fxaa ? _fxaa : display)
+    connect!(pipeline, clear, final)
+    connect!(pipeline, render2, final)
     if oit
         connect!(pipeline, render3, _oit)
-        connect!(pipeline, _oit, fxaa ? _fxaa : display, :color)
+        connect!(pipeline, _oit, final, :color)
     else
-        connect!(pipeline, render3, fxaa ? _fxaa : display, :color)
+        connect!(pipeline, render3, final, :color)
     end
     if fxaa
         connect!(pipeline, _fxaa, display, :color)
