@@ -259,11 +259,15 @@ unmapped(sc; kw...) = Makie.colorbuffer(raster_screen(sc; tonemap = nothing, gam
 
     @testset "$kind with `fxaa = true`" for kind in (:lines, :scatter)
         if kind === :scatter
-            # A non-power-of-two viewport exposes normalized sampler roundoff
-            # in the edge search. Establish identical hard edges first.
-            hard_gl = Makie.colorbuffer(stroke_scene(kind; fxaa = true); backend = GLMakie, px_per_unit = 1, fxaa = false)
-            hard_rm = unmapped(stroke_scene(kind; fxaa = true); fxaa = false)
-            @test RGBf.(hard_rm) == RGBf.(hard_gl)
+            # With the screen's FXAA off, GLMakie leaves the plot's hard edge
+            # aliased; RayMakie falls back to the marker's analytic edge, as it
+            # does for text (`test_text_antialiasing.jl`). This compared the two
+            # as equal hard edges until that fallback, 2026-11-01.
+            hard = (RGBf(1, 1, 1), RGBf(0, 0, 0), RGBf(1, 0, 0))
+            partial(img) = count(c -> RGBf(c) ∉ hard, img)
+            @test partial(Makie.colorbuffer(stroke_scene(kind; fxaa = true); backend = GLMakie,
+                                            px_per_unit = 1, fxaa = false)) == 0
+            @test partial(unmapped(stroke_scene(kind; fxaa = true); fxaa = false)) > 50
         end
         gl = Makie.colorbuffer(stroke_scene(kind; fxaa = true); backend = GLMakie, px_per_unit = 1)
         d = disagreement(gl, unmapped(stroke_scene(kind; fxaa = true)); tol = 0.02)
