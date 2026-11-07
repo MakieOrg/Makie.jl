@@ -113,12 +113,13 @@ same axis can use column and row indices directly as x and y.
 
 ```@figure
 using FileIO
-img = load(assetpath("cow.png"))
-fig, ax, _ = image(img; axis = (; aspect = DataAspect()))
-eyes = [(139, 144), (139, 272)] # (row, column) of each eye
-scatter!(ax, [Point2f(j, i) for (i, j) in eyes];
-    marker = Circle, markersize = 30, color = :transparent,
-    strokecolor = :red, strokewidth = 3)
+img = load(assetpath("cow.png"))[1:25:end, 1:25:end]
+fig, ax, _ = image(img; interpolate = false, axis = (;
+    aspect = DataAspect(), xticks = 1:size(img, 2), yticks = 1:size(img, 1)))
+i, j = Tuple(argmax(Makie.Colors.Gray.(img)))
+scatter!(ax, j, i; color = :red)
+text!(ax, j, i; text = "brightest pixel [$i, $j]", align = (:right, :center),
+    offset = (-10, 0), color = :red)
 fig
 ```
 
