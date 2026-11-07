@@ -62,7 +62,7 @@ function setup_project(name, checkout)
     project = make_project_folder(name)
     Pkg.activate(project)
     Pkg.develop([(; path = joinpath(checkout, pkg)) for pkg in ["ComputePipeline", "Makie", Package]])
-    Pkg.add(Package == "WGLMakie" ? ["JSON", "SnoopCompileCore", "Electron"] : ["JSON", "SnoopCompileCore"])
+    Pkg.add(Package == "WGLMakie" ? ["JSON", "SnoopCompileCore", "ElectronCall"] : ["JSON", "SnoopCompileCore"])
     @time Pkg.precompile()
     return project
 end

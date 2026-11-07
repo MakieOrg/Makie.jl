@@ -1,4 +1,4 @@
-using Electron, WGLMakie, Bonito, Test
+using ElectronCall, WGLMakie, Bonito, Test
 
 
 @testset "HTML Widgets" begin

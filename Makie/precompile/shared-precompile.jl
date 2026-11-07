@@ -24,6 +24,14 @@ end
 
 @compile heatmap(rand(50, 50), colormap = (:RdBu, 0.2))
 
+@compile image(rand(Float32, 32, 32))
+
+@compile barplot(rand(10), color = rand(10))
+
+@compile mesh(Rect2f(0, 0, 1, 1), color = :red)
+
+@compile violin(fill(1, 50), rand(Float32, 50))
+
 @compile contour(randn(100, 90), levels = 3)
 @compile contour(randn(33, 30), levels = [0.1, 0.5, 0.9], color = [:black, :green, (:blue, 0.4)], linewidth = 2)
 

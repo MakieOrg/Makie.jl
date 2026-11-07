@@ -38,7 +38,7 @@ end
 record!("using", () -> @eval using $Package)
 
 if Package === :WGLMakie
-    import Electron
+    import ElectronCall
     # Backwards compatibility for master
     Bonito = isdefined(WGLMakie, :Bonito) ? WGLMakie.Bonito : WGLMakie.JSServe
     Bonito.use_electron_display()
