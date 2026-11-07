@@ -24645,7 +24645,19 @@ function check_screen(screen) {
     }
     return true;
 }
-function render_scene(scene, picking = false) {
+function intersect_rects([ax, ay, aw, ah], [bx, by, bw, bh]) {
+    const x1 = Math.max(ax, bx);
+    const y1 = Math.max(ay, by);
+    const w = Math.max(0, Math.min(ax + aw, bx + bw) - x1);
+    const h = Math.max(0, Math.min(ay + ah, by + bh) - y1);
+    return [
+        x1,
+        y1,
+        w,
+        h
+    ];
+}
+function render_scene(scene, picking = false, clip = null) {
     const { renderer , camera , px_per_unit  } = scene.screen;
     if (!check_screen(scene.screen)) {
         return false;
@@ -24657,8 +24669,19 @@ function render_scene(scene, picking = false) {
     const area = scene.viewport.value;
     if (area) {
         const [x1, y1, w, h] = area.map((x1)=>x1 * px_per_unit);
+        clip = clip ? intersect_rects(clip, [
+            x1,
+            y1,
+            w,
+            h
+        ]) : [
+            x1,
+            y1,
+            w,
+            h
+        ];
         renderer.setViewport(x1, y1, w, h);
-        renderer.setScissor(x1, y1, w, h);
+        renderer.setScissor(...clip);
         renderer.setScissorTest(true);
         if (picking) {
             renderer.setClearAlpha(0);
@@ -24669,7 +24692,7 @@ function render_scene(scene, picking = false) {
         }
         renderer.render(scene, camera);
     }
-    return scene.scene_children.every((x1)=>render_scene(x1, picking));
+    return scene.scene_children.every((x1)=>render_scene(x1, picking, clip));
 }
 function start_renderloop(three_scene) {
     const { fps  } = three_scene.screen;

@@ -593,7 +593,11 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, graph)
 
-    b.blockscene = Scene(topscene, clear = false, camera = campixel!)
+    # Layout bboxes are in window coordinates, so the blockscene spans the window. Backends
+    # and `is_mouseinside` still restrict it to the viewports of its ancestors.
+    window_area = Observable(Rect2i(0, 0, 0, 0); ignore_equal_values = true)
+    b.blockscene = Scene(topscene; viewport = window_area, clear = false, camera = campixel!)
+    map!(identity, b.blockscene, window_area, viewport(root(topscene)))
 
     if has_forwarded_layout(T)
         init_layout!(b)

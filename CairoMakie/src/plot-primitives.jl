@@ -32,7 +32,7 @@ function cairo_draw(screen::Screen, scene::Scene)
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
         pparent = Makie.parent_scene(p)::Scene
-        pparent.visible[]::Bool || continue
+        Makie.scene_visible(pparent) || continue
         if pparent != last_scene
             Cairo.restore(screen.context)
             Cairo.save(screen.context)
@@ -97,23 +97,27 @@ function prepare_for_scene(screen::Screen, scene::Scene)
 
     # get the root area to correct for its size when translating
     root_area_height = widths(Makie.root(scene))[2]
-    scene_area = viewport(scene)[]
-    scene_height = widths(scene_area)[2]
-    scene_x_origin, scene_y_origin = scene_area.origin
+
+    # clip the scene to the part of its viewport inside all ancestor viewports
+    cairo_rectangle(screen.context, Makie.effective_clip(scene), root_area_height)
+    Cairo.clip(screen.context)
 
     # we need to translate x by the origin, so distance from the left
     # but y by the distance from the top, which is not the origin, but can
     # be calculated using the parent's height, the scene's height and the y origin
     # this is because y goes downwards in Cairo and upwards in Makie
-
-    top_offset = root_area_height - scene_height - scene_y_origin
-    Cairo.translate(screen.context, scene_x_origin, top_offset)
-
-    # clip the scene to its viewport
-    Cairo.rectangle(screen.context, 0, 0, widths(scene_area)...)
-    Cairo.clip(screen.context)
+    scene_area = viewport(scene)[]
+    top_offset = root_area_height - widths(scene_area)[2] - origin(scene_area)[2]
+    Cairo.translate(screen.context, origin(scene_area)[1], top_offset)
 
     return
+end
+
+# Adds a Makie rect in root scene pixel coordinates (origin bottom left) as a Cairo rectangle
+function cairo_rectangle(ctx, r::Rect2, root_h)
+    x, y = origin(r)
+    w, h = widths(r)
+    return Cairo.rectangle(ctx, x, root_h - y - h, w, h)
 end
 
 function draw_background(screen::Screen, scene::Scene)
@@ -122,16 +126,13 @@ function draw_background(screen::Screen, scene::Scene)
 end
 
 function draw_background(screen::Screen, scene::Scene, root_h)
+    scene.visible[] || return # hides all children as well
     cr = screen.context
     Cairo.save(cr)
     if scene.clear[]
         bg = scene.backgroundcolor[]
         Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg))
-        r = viewport(scene)[]
-        # Makie has (0,0) at bottom left, Cairo at top left. Makie extends up,
-        # Cairo down. Negative height breaks other backgrounds
-        x, y = origin(r); w, h = widths(r)
-        Cairo.rectangle(cr, x, root_h - y - h, w, h) # background
+        cairo_rectangle(cr, Makie.effective_clip(scene), root_h)
         fill(cr)
     end
     Cairo.restore(cr)
