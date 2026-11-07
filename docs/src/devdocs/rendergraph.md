@@ -227,6 +227,6 @@ img = colorbuffer(f) # hide
 GLMakie.activate!(render_pipeline = Makie.default_pipeline()) # hide
 GLMakie.closeall() # hide
 scene = Scene() # hide
-image!(scene, -1..1, -1..1, img) # hide
+image!(scene, -1..1, -1..1, img, orientation = (:up, :right)) # hide
 scene # hide
 ```
