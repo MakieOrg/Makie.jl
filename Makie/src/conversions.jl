@@ -598,8 +598,8 @@ function convert_arguments(
         orientation = nothing, kw...
     )
     nx_cells, ny_cells = image_rect_cells(orientation, size(data)...)
-    x = (0.0f0, Float32(nx_cells))
-    y = (0.0f0, Float32(ny_cells))
+    x = (0.5f0, Float32(nx_cells) + 0.5f0)
+    y = (0.5f0, Float32(ny_cells) + 0.5f0)
     return convert_arguments(ImageLike(), x, y, data; orientation = orientation, kw...)
 end
 

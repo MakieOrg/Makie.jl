@@ -158,7 +158,7 @@ AxNoTicks(; kw...) = S.Axis(;
 
     imgs = hcat(rotr90.((cb1, cb2, cb3))...)
     s = Scene(; size = size(imgs))
-    image!(s, imgs; space = :pixel, orientation = (:right, :down))
+    image!(s, 0 .. size(imgs, 1), 0 .. size(imgs, 2), imgs; space = :pixel, orientation = (:right, :down))
     s
 end
 
@@ -201,7 +201,7 @@ end
 
     imgs = hcat(rotr90.((img3, img2, img1))...)
     s = Scene(; size = size(imgs))
-    image!(s, imgs; space = :pixel, orientation = (:right, :down))
+    image!(s, 0 .. size(imgs, 1), 0 .. size(imgs, 2), imgs; space = :pixel, orientation = (:right, :down))
     s
 end
 
@@ -230,7 +230,7 @@ end
     img2 = rotr90(colorbuffer(f; update = false))
     large = hcat(img2, img1)
     s = Scene(; size = size(large))
-    image!(s, large; space = :pixel, orientation = (:right, :down))
+    image!(s, 0 .. size(large, 1), 0 .. size(large, 2), large; space = :pixel, orientation = (:right, :down))
     s
 end
 

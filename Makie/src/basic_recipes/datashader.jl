@@ -774,7 +774,7 @@ end
 
 function convert_arguments(::Type{<:Image}, image::Resampler; orientation = nothing)
     nx, ny = image_rect_cells(orientation, size(image.data)...)
-    return (EndPoints{Float32}(0, nx), EndPoints{Float32}(0, ny), image)
+    return (EndPoints{Float32}(0.5, nx + 0.5), EndPoints{Float32}(0.5, ny + 0.5), image)
 end
 
 function convert_arguments(::Type{<:Image}, x, y, image::Resampler; orientation = nothing)

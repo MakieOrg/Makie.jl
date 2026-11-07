@@ -379,7 +379,7 @@ end
     @testset "ImageLike conversion" begin
         # Convert returns the user matrix unchanged (orientation is applied by backends).
         # Rect extents follow orientation: default `(:down, :right)` puts ncols along x, nrows along y.
-        @test convert_arguments(Image, m3) == ((0.0f0, 6.0f0), (0.0f0, 10.0f0), o3)
+        @test convert_arguments(Image, m3) == ((0.5f0, 6.5f0), (0.5f0, 10.5f0), o3)
         @test convert_arguments(Image, i1, i2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
         @test convert_arguments(Image, i1, t2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
         @test convert_arguments(Image, t1, t2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
@@ -390,7 +390,7 @@ end
         @test_throws ErrorException convert_arguments(Image, v1, i3, m3)
 
         # Legacy `(:right, :down)` swaps which dim sizes which axis.
-        @test convert_arguments(Image, m3; orientation = (:right, :down)) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
+        @test convert_arguments(Image, m3; orientation = (:right, :down)) == ((0.5f0, 10.5f0), (0.5f0, 6.5f0), o3)
         @test convert_arguments(Image, i1, i2, m3; orientation = (:right, :down)) == ((1.0, 10.0), (1.0, 6.0), o3)
         @test_throws ErrorException convert_arguments(Image, m3; orientation = (:up, :up))
         @test_throws ErrorException convert_arguments(Image, m3; orientation = :bogus)
@@ -457,19 +457,19 @@ end
         for s in ((:down, :right), (:up, :left), (:right, :down), (:left, :up))
             x, y, data = convert_arguments(Image, mat; orientation = s)
             @test data === mat
-            @test x == Makie.EndPoints(0.0f0, 2.0f0)
-            @test y == Makie.EndPoints(0.0f0, 2.0f0)
+            @test x == Makie.EndPoints(0.5f0, 2.5f0)
+            @test y == Makie.EndPoints(0.5f0, 2.5f0)
         end
     end
 
     @testset "default extents follow orientation" begin
         rect_mat = rand(Float32, 3, 5)
         x_yx, y_yx, _ = convert_arguments(Image, rect_mat)
-        @test x_yx == Makie.EndPoints(0.0f0, 5.0f0)
-        @test y_yx == Makie.EndPoints(0.0f0, 3.0f0)
+        @test x_yx == Makie.EndPoints(0.5f0, 5.5f0)
+        @test y_yx == Makie.EndPoints(0.5f0, 3.5f0)
         x_xy, y_xy, _ = convert_arguments(Image, rect_mat; orientation = (:right, :down))
-        @test x_xy == Makie.EndPoints(0.0f0, 3.0f0)
-        @test y_xy == Makie.EndPoints(0.0f0, 5.0f0)
+        @test x_xy == Makie.EndPoints(0.5f0, 3.5f0)
+        @test y_xy == Makie.EndPoints(0.5f0, 5.5f0)
     end
 
     @testset "axis hint and orientation attribute" begin

@@ -423,7 +423,7 @@
 
     scene2 = Scene(size = 2.0 .* widths(scene.viewport[]))
     campixel!(scene2)
-    image!(scene2, full_screen, colormap = :viridis, orientation = (:right, :down))
+    image!(scene2, 0 .. size(full_screen, 1), 0 .. size(full_screen, 2), full_screen, colormap = :viridis, orientation = (:right, :down))
     scene2
 end
 

@@ -140,7 +140,8 @@ See also: [`CellGrid`](@ref), [`VertexGrid`](@ref)
     defining colors through color mapping.
 * `x, y, image` Defines the boundary of the image rectangle along with the image data. `x` and `y`
     can be a `Tuple{<:Real, <:Real}` or `ClosedInterval{<:Real}`. When omitted they default to
-    `0 .. size(image, 2)` along x and `0 .. size(image, 1)` along y (under the default
+    `0.5 .. size(image, 2) + 0.5` along x and `0.5 .. size(image, 1) + 0.5` along y, so
+    that pixel centers lie on integer coordinates (under the default
     `orientation = (:down, :right)`; non-default `orientation`s swap which array dim sizes
     which axis).
 """
