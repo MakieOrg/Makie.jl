@@ -223,6 +223,10 @@ export class MakieCamera {
                 console.error("Error during camera update callback:", e);
             }
         }
+        // On-demand rendering: this is the single funnel for every camera change
+        // (server-driven via update_cam, and interactive OrbitControls), so request
+        // a redraw here. `screen` is wired up in deserialize_scene_recursive.
+        this.screen?.request_render?.();
     }
 
     recalculate_light_dir() {

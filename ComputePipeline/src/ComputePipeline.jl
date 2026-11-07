@@ -269,6 +269,12 @@ struct ComputeEdge{T} <: AbstractEdge
     # edges, that rely on outputs from this edge
     # Mainly needed for mark_dirty!(edge) to propagate to all dependents
     dependents::Vector{ComputeEdge{T}}
+    # whether the edge has been resolved at least once (unlike got_resolved
+    # this is never reset). The first resolve runs the callback dynamically;
+    # the TypedEdge island is only built on the first re-resolve, so edges
+    # that never update (most plots are static) never pay for inferring the
+    # typed resolve chain.
+    resolved_once::RefValue{Bool}
     typed_edge::RefValue{TypedEdge}
 end
 
@@ -285,7 +291,7 @@ end
 function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
     return ComputeEdge{ComputeGraph}(
         graph, f, [input], [true], [output], RefValue(false),
-        ComputeEdge[], RefValue{TypedEdge}()
+        ComputeEdge[], RefValue(false), RefValue{TypedEdge}()
     )
 end
 
@@ -324,6 +330,28 @@ Base.@nospecializeinfer @noinline function throw_invalid_result(@nospecialize(re
     error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output. Value: $result")
 end
 
+@noinline function warn_nothing_init(edge::ComputeEdge)
+    if LOG_NOTHING_SPLAT
+        if should_log(logging_id(edge))
+            @warn(
+                "Initializing multiple outputs with `return nothing` is deprecated. " *
+                    "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
+                    source_info_str(edge)
+            )
+        end
+    else
+        # This only triggers once, so it's not very useful for actually fixing
+        # upstream map!/register_computation! methods
+        Base.depwarn(
+            "Initializing multiple outputs with `return nothing` is deprecated. " *
+                "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
+                source_info_str(edge),
+            :warn_nothing_init
+        )
+    end
+    return
+end
+
 function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
 
@@ -346,24 +374,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
 
     elseif isnothing(result)
 
-        if LOG_NOTHING_SPLAT
-            if should_log(logging_id(edge))
-                @warn(
-                    "Initializing multiple outputs with `return nothing` is deprecated. " *
-                        "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
-                        source_info_str(edge)
-                )
-            end
-        else
-            # This only triggers once, so it's not very useful for actually fixing
-            # upstream map!/register_computation! methods
-            Base.depwarn(
-                "Initializing multiple outputs with `return nothing` is deprecated. " *
-                    "Use a tuple `(nothing, nothing, ...)` to initialize each individually. " *
-                    source_info_str(edge),
-                :TypedEdge
-            )
-        end
+        warn_nothing_init(edge)
 
         outputs = ntuple(length(edge.outputs)) do i
             if isdefined(edge.outputs[i], :value)
@@ -513,8 +524,8 @@ end
 # ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
     return ComputeEdge{ComputeGraph}(
-        graph, f, inputs, fill(true, length(inputs)), Computed[],
-        RefValue(false), ComputeEdge[], RefValue{TypedEdge}()
+        graph, f, inputs, fill(true, length(inputs)), Computed[], RefValue(false),
+        ComputeEdge[], RefValue(false), RefValue{TypedEdge}()
     )
 end
 
@@ -1204,7 +1215,17 @@ function locked_resolve!(edge::ComputeEdge)
     else
         foreach(locked_resolve!, edge.inputs)
         if !isassigned(edge.typed_edge)
-            edge.typed_edge[] = TypedEdge(edge)
+            if edge.resolved_once[]
+                # First re-resolve: build the typed island from the values the
+                # dynamic first resolve produced (without calling back), then
+                # resolve it normally so the callback sees correct changed
+                # flags and cached values (incl. `skip_update` semantics).
+                edge.typed_edge[] = TypedEdge_no_call(edge)
+                locked_resolve!(edge.typed_edge[])
+            else
+                dynamic_resolve!(edge)
+                edge.resolved_once[] = true
+            end
         else
             locked_resolve!(edge.typed_edge[])
         end
@@ -1229,6 +1250,53 @@ function resolve!(computed::Computed)
     end
     return computed.value[]
 end
+
+# Resolve once without specializing the typed update path for a static plot.
+# Dispatching on the callback lets a callback bring its own first resolve.
+dynamic_resolve!(edge::ComputeEdge) = dynamic_resolve!(edge.callback, edge)
+
+function dynamic_resolve!(@nospecialize(callback), edge::ComputeEdge)
+    names = Tuple(Symbol[input.name for input in edge.inputs])
+    values = Tuple(Any[input.value[] for input in edge.inputs])
+    dirty = Tuple(Bool[d for d in edge.inputs_dirty])
+    result = Base.invokelatest(callback, NamedTuple{names}(values), NamedTuple{names}(dirty), nothing)
+    return set_result!(edge, result)
+end
+
+# These run for every result type, so they must not specialize on it. That is
+# also why validity isn't checked with `all`, which compiles per tuple type.
+function set_result!(edge::ComputeEdge, @nospecialize(result::Tuple))
+    for value in result
+        is_node_value_valid(value) || throw_invalid_result_types(edge, result)
+    end
+    length(result) == length(edge.outputs) || throw_length_mismatch(edge, result)
+    for i in eachindex(edge.outputs)
+        r = result[i]
+        node = edge.outputs[i]
+        if isdefined(node, :value)
+            node.value[] = deref(r) # set value of existing node (e.g. from set_type!)
+        else
+            node.value = r isa RefValue ? r : RefValue(r)
+        end
+        node.dirty = true
+    end
+    return
+end
+
+function set_result!(edge::ComputeEdge, ::Nothing)
+    warn_nothing_init(edge)
+    for node in edge.outputs
+        if isdefined(node, :value)
+            node.value[] = nothing
+        else
+            node.value = RefValue(nothing)
+        end
+        node.dirty = false
+    end
+    return
+end
+
+set_result!(::ComputeEdge, @nospecialize(result)) = throw_invalid_result(result)
 
 function resolve!(edge::AbstractEdge)
     @lock GLOBAL_LOCK begin
@@ -1409,6 +1477,19 @@ function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
     end
 
     return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs)
+end
+
+function dynamic_resolve!(::typeof(compute_identity), edge::ComputeEdge)
+    if length(edge.inputs) != length(edge.outputs)
+        error("A `compute_identity` callback requires the length of inputs and outputs to match.")
+    end
+
+    # use input refs as output refs like the typed edge above
+    for i in eachindex(edge.inputs)
+        edge.outputs[i].value = edge.inputs[i].value
+        edge.outputs[i].dirty = true
+    end
+    return
 end
 
 function locked_resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}
@@ -2216,6 +2297,8 @@ function unsafe_init!(edge::ComputeEdge)
         foreach(locked_resolve!, edge.inputs)
         edge.typed_edge[] = TypedEdge_no_call(edge)
         edge.got_resolved[] = true
+        edge.resolved_once[] = true
+        fill!(edge.inputs_dirty, false)
         for dep in edge.dependents
             mark_input_dirty!(edge, dep)
         end
