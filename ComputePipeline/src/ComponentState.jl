@@ -13,6 +13,7 @@ function component(state::ComponentState)
         isnothing(parent) && return state
         state = parent
     end
+    return
 end
 
 function lock_component(graph)
@@ -23,17 +24,20 @@ function lock_component(graph)
         isnothing(@atomic :acquire state.parent) && return state
         unlock(state.lock)
     end
+    return
 end
 
 macro graphlock(graph, state, body)
-    return esc(quote
-        local $state = lock_component($graph)
-        try
-            $body
-        finally
-            unlock($state.lock)
+    return esc(
+        quote
+            local $state = lock_component($graph)
+            try
+                $body
+            finally
+                unlock($state.lock)
+            end
         end
-    end)
+    )
 end
 
 function connect_components!(graph, source)
@@ -60,6 +64,7 @@ function connect_components!(graph, source)
             unlock(first.lock)
         end
     end
+    return
 end
 
 function finish_resolve!(state)

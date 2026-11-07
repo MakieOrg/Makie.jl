@@ -752,12 +752,14 @@ end
 
 function set_input_locked!(state, input::Input, @nospecialize(value))
     if state.depth > 0
-        push!(state.pending, () -> begin
-            apply_input!(input, value)
-            for obs in take_updates!(input.graph)
-                obs in state.notifications || push!(state.notifications, obs)
+        push!(
+            state.pending, () -> begin
+                apply_input!(input, value)
+                for obs in take_updates!(input.graph)
+                    obs in state.notifications || push!(state.notifications, obs)
+                end
             end
-        end)
+        )
     else
         apply_input!(input, value)
     end
