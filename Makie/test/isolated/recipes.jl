@@ -255,7 +255,7 @@ end
         flattened[Symbol("shading.", name)] = (
             docstring = mixin.leaf_docstring[i],
             default = mixin.defaults[i],
-            expr = mixin.default_expr[i]
+            expr = mixin.default_expr[i],
         )
     end
 
