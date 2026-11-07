@@ -724,7 +724,16 @@ calculated_attributes!(::Type{Heatmap}, ::HeatmapShader) = nothing
 extract_colormap(plot::ImageShader) = extract_colormap(plot.plots[1])
 extract_colormap(plot::HeatmapShader) = extract_colormap(plot.plots[1])
 
-function resample_image(x, y, image, max_resolution, limits)
+function sample_oriented(interpolant, orientation, x_index_range, y_index_range)
+    swap = image_orientation_swap(orientation)
+    flip_x, flip_y = image_orientation_flips(orientation)
+    nx, ny = image_rect_cells(orientation, size(interpolant)...)
+    xs = flip_x ? (nx + 1) .- x_index_range : x_index_range
+    ys = flip_y ? (ny + 1) .- y_index_range : y_index_range
+    return swap ? permutedims(interpolant(ys, xs)) : interpolant(xs, ys)
+end
+
+function resample_image(x, y, image, max_resolution, limits, orientation)
     # extent of the image in data coordinates (same as limits)
     xmin, xmax = x
     ymin, ymax = y
@@ -741,7 +750,7 @@ function resample_image(x, y, image, max_resolution, limits)
     # scaling from data coordinates to indices
     data_min = (xmin, ymin)
     data_width = (xmax - xmin, ymax - ymin)
-    imgsize = size(image)
+    imgsize = image_rect_cells(orientation, size(image)...)
     x_index_range, y_index_range = ntuple(2) do i
         nrange = ranges[i]
         si = imgsize[i]
@@ -753,17 +762,27 @@ function resample_image(x, y, image, max_resolution, limits)
     if isempty(x_index_range) || isempty(y_index_range)
         return skip_nothing
     end
-    interpolated = image(x_index_range, y_index_range)
+    interpolated = sample_oriented(image, orientation, x_index_range, y_index_range)
     return EndPoints{Float32}(ranges[1]), EndPoints{Float32}(ranges[2]), interpolated
 end
 
 
-function convert_arguments(::Type{<:Union{Image, Heatmap}}, image::Resampler)
+function convert_arguments(::Type{<:Heatmap}, image::Resampler)
     x, y, _ = convert_arguments(Heatmap, image.data)
     return (x, y, image)
 end
 
-function convert_arguments(::Type{<:Union{Image, Heatmap}}, x, y, image::Resampler)
+function convert_arguments(::Type{<:Image}, image::Resampler; orientation = nothing)
+    nx, ny = image_rect_cells(orientation, size(image.data)...)
+    return (EndPoints{Float32}(0, nx), EndPoints{Float32}(0, ny), image)
+end
+
+function convert_arguments(::Type{<:Image}, x, y, image::Resampler; orientation = nothing)
+    image_orientation_swap(orientation)
+    return convert_arguments(Heatmap, x, y, image)
+end
+
+function convert_arguments(::Type{<:Heatmap}, x, y, image::Resampler)
     x, y, _ = convert_arguments(Heatmap, x, y, image.data)
     x = to_endpoints_with_range(x, "x", HeatmapShaderConversion)
     y = to_endpoints_with_range(y, "y", HeatmapShaderConversion)
@@ -790,6 +809,9 @@ function calculate_colorrange(img, crange)
         return automatic # Matrix{<:Colorant}
     end
 end
+
+resample_orientation!(p::HeatmapShader) = add_constant!(p.attributes, :resample_orientation, (:right, :down))
+resample_orientation!(p::ImageShader) = map!(_image_orientation, p.attributes, :orientation, :resample_orientation)
 
 function Makie.plot!(p::Union{HeatmapShader, ImageShader})
     scene = Makie.parent_scene(p)
@@ -819,14 +841,15 @@ function Makie.plot!(p::Union{HeatmapShader, ImageShader})
     end
 
     map!(xy_to_rect, p.attributes, [:x, :y], :data_limits)
+    resample_orientation!(p)
 
     T = eltype(p.image[].data) <: Colors.Colorant ? RGB{Float32} : Float32
     map!(
         p.attributes,
-        [:image, :x, :y, :max_resolution, :data_limits, :colorrange],
+        [:image, :x, :y, :max_resolution, :data_limits, :colorrange, :resample_orientation],
         [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]
-    ) do image, x, y, max_resolution, image_area, crange
-        x, y, img = resample_image(x, y, image.data, max_resolution, image_area)
+    ) do image, x, y, max_resolution, image_area, crange, orientation
+        x, y, img = resample_image(x, y, image.data, max_resolution, image_area, orientation)
         cr = calculate_colorrange(img, crange)
         if image.lowres_background
             val = cr isa Vec2 ? mean(cr) : 0.0f0 # TODO color mean?
@@ -839,11 +862,11 @@ function Makie.plot!(p::Union{HeatmapShader, ImageShader})
 
     ComputePipeline.map!(
         p.attributes,
-        [:image, :x, :y, :max_resolution, :slow_limits],
+        [:image, :x, :y, :max_resolution, :slow_limits, :resample_orientation],
         [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible],
         init = (p.x[], p.x[], fill(zero(T), 2, 2), false)
-    ) do image, x, y, max_resolution, limits
-        xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
+    ) do image, x, y, max_resolution, limits, orientation
+        xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits, orientation)
         xe_ye_oimg === skip_update && return skip_update
         return (xe_ye_oimg..., true)
     end

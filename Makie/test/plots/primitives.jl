@@ -217,6 +217,17 @@ end
     @test p.plots[1] isa Image
     @test p.plots[2] isa Image
 
+    m = [1 2 3; 4 5 6]
+    f, a, p = image(Resampler(m; lowres_background = false))
+    @test p.x[] == Makie.EndPoints{Float32}(0, 3)
+    @test p.y[] == Makie.EndPoints{Float32}(0, 2)
+    @test p.plots[1].image[] == [1 4; 3 6]
+
+    p.orientation = (:left, :up)
+    @test p.x[] == Makie.EndPoints{Float32}(0, 2)
+    @test p.y[] == Makie.EndPoints{Float32}(0, 3)
+    @test p.plots[1].image[] == [6 4; 3 1]
+
     f, a, p = heatmap((0, 1), 0 .. 1, Resampler([1 2; 3 4]))
     @test p isa Makie.HeatmapShader
     @test p.plots[1] isa Image
