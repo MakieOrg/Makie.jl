@@ -22,7 +22,7 @@ end
 let
     @compile_workload begin
         WGLMakie.activate!()
-        foreach(include, Makie.shared_precompile_paths())
+        foreach(include, Makie.shared_precompile_paths(; interactive = true))
         # Cover binary messages and the first interaction/resize after display.
         let
             figlike = Makie.scatter(1:4; color = rand(4))
