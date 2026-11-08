@@ -9,6 +9,9 @@ draw_atomic(::Screen, ::Scene, ::PlotList) = nothing
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     gl_switch_context!(screen.glscreen)
     add_scene!(screen, scene)
+    if haskey(x.attributes, :zorder)
+        on(_ -> screen.requires_update = true, x, x.zorder)
+    end
     # poll inside functions to make wait on compile less prominent
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
@@ -217,6 +220,9 @@ function construct_robj(constructor!, screen, scene, attr, args, uniforms, input
         :fxaa => attr[:fxaa][],
         :overdraw => attr[:overdraw][],
         :num_clip_planes => 0, # default for in-shader resolution of clip planes
+        :scene_frame => Mat4f(I),
+        :device_to_figure_px => Mat3f(I),
+        :scene_clip_count => Int32(0),
         # TODO: integrate this into the OIT Render Stage
         :oit_scale => screen.config.transparency_weight_scale,
     )
