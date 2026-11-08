@@ -27,6 +27,7 @@ function initialize_block!(ax::Axis3)
     end
 
     onany(blockscene, scenearea, ax.clip_decorations) do area, clip
+        blockscene.clip[] = clip ? automatic : nothing
         if clip
             blockscene.viewport[] = area
         elseif blockscene.viewport[] != root(blockscene).viewport[]
