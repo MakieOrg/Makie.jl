@@ -38,7 +38,7 @@ function triangle_robj(screen, fragment_shader, uniforms::Dict{Symbol, Any})
     return robj
 end
 
-function construct(::Val{:Render}, screen, framebuffer, inputs, parent)
+function construct(::Val{:SceneTree}, screen, framebuffer, inputs, parent)
     fill = triangle_robj(screen, "scene_tree/fill.frag", Dict{Symbol, Any}(:color => Vec4f(1)))
     composite = triangle_robj(
         screen, "scene_tree/composite.frag",
@@ -155,6 +155,15 @@ function push_analytic_clip!(stack::ClipStack, scene::Scene, region, ppu)
     return push!(stack, Mat3f(device_to_local), shape, Vec4f(θcenter, half_angle, kind, px_scale))
 end
 
+"""
+Inverse of the scene's cumulative frame transform expressed in device pixels,
+so `gl_FragCoord / px_per_unit` after it gives untransformed figure pixels.
+"""
+function device_px_inverse_frame(scene::Scene, ppu)
+    M = Makie.cumulative_frame_transform(scene)
+    return Mat3f(Makie.frame_scaling(ppu) * inv(M) * Makie.frame_scaling(1 / ppu))
+end
+
 mutable struct TreeTraversal
     target::GLFramebuffer
     stencil_level::Int
@@ -189,16 +198,29 @@ function write_stencil!(stage, corners, frame, level, op)
     return
 end
 
-function fill_background!(stage, state, corners, frame, color)
-    enable_scene_blending()
+function fill_far_depth!(stage, state, corners, frame)
     glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_ALWAYS)
     glDepthMask(GL_TRUE)
-    stage.fill[:color] = Vec4f(red(color), green(color), blue(color), alpha(color))
     stage.fill[:depth] = 1.0f0
     set_clip_uniforms!(stage.fill, state.clips)
     draw_triangles!(stage.fill, corners, frame)
     stage.fill[:depth] = 0.0f0
+    glDepthFunc(GL_LEQUAL)
+    return
+end
+
+function fill_background!(stage, state, corners, frame, color)
+    enable_scene_blending()
+    stage.fill[:color] = Vec4f(red(color), green(color), blue(color), alpha(color))
+    fill_far_depth!(stage, state, corners, frame)
+    return
+end
+
+function reset_depth!(stage, state, corners, frame)
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)
+    fill_far_depth!(stage, state, corners, frame)
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     return
 end
 
@@ -220,7 +242,8 @@ function render_scene_tree!(screen, stage::SceneTreeRender, scene::Scene, state:
     scene.visible[] || return
     any(iszero, widths(Makie.viewport(scene)[])) && return
     frame = Mat4f(Makie.scene_frame_matrix(scene))
-    region = Makie.isroot(scene) ? nothing : Makie.clip_region(scene)
+    device_to_figure_px = device_px_inverse_frame(scene, state.ppu)
+    region = Makie.isroot(scene) && scene.clip[] === Makie.automatic ? nothing : Makie.clip_region(scene)
 
     analytic = !isnothing(region) && Makie.is_analytic_clip(region) && !isfull(state.clips)
     stencil_corners = !isnothing(region) && !analytic ? Makie.clip_triangles(region, scene) : nothing
@@ -247,8 +270,11 @@ function render_scene_tree!(screen, stage::SceneTreeRender, scene::Scene, state:
     end
     stencil_test(state.stencil_level)
 
+    isolates_depth = scene.clear_depth[] && !Makie.isroot(scene)
     if scene.clear[]
         fill_background!(stage, state, background_cover, frame, scene.backgroundcolor[])
+    elseif isolates_depth
+        reset_depth!(stage, state, background_cover, frame)
     end
 
     for child in Makie.render_order(scene)
@@ -257,8 +283,12 @@ function render_scene_tree!(screen, stage::SceneTreeRender, scene::Scene, state:
             bind_target(state.target)
             stencil_test(state.stencil_level)
         else
-            render_plot_tree!(screen, child, frame, state.clips)
+            render_plot_tree!(screen, child, frame, state.clips, device_to_figure_px)
         end
+    end
+
+    if isolates_depth
+        reset_depth!(stage, state, background_cover, frame)
     end
 
     if uses_layer
@@ -278,15 +308,16 @@ function render_scene_tree!(screen, stage::SceneTreeRender, scene::Scene, state:
     return
 end
 
-function render_plot_tree!(screen, plot::Plot, frame::Mat4f, clips::ClipStack)
+function render_plot_tree!(screen, plot::Plot, frame::Mat4f, clips::ClipStack, device_to_figure_px::Mat3f)
     robj = get(screen.cache, objectid(plot), nothing)
     if isnothing(robj)
-        foreach(child -> render_plot_tree!(screen, child, frame, clips), Makie.render_order(plot))
+        foreach(child -> render_plot_tree!(screen, child, frame, clips, device_to_figure_px), Makie.render_order(plot))
         return
     end
     (robj.visible && haskey(robj.variants, :forward_render_objectid)) || return
     robj[:px_per_unit] = screen.px_per_unit[]
     robj[:scene_frame] = frame
+    robj[:device_to_figure_px] = device_to_figure_px
     set_clip_uniforms!(robj, clips)
     StandardPrerender()(robj[:overdraw]::UInt8)
     enable_scene_blending()

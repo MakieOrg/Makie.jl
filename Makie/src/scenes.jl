@@ -133,6 +133,8 @@ mutable struct Scene <: AbstractScene
     alpha::Observable{Float32}
     "Sort key among the siblings in the parent's `draw_order`. Ties keep insertion order."
     zorder::Observable{Float32}
+    "Whether the scene starts with fresh depth in its area and is then flattened into its parent. `false` shares depth with the parent."
+    clear_depth::Observable{Bool}
     "Plots and child scenes in insertion order, which determines the draw order."
     draw_order::Vector{Union{AbstractPlot, Scene}}
 
@@ -181,6 +183,7 @@ mutable struct Scene <: AbstractScene
             Observable{Any}(automatic),
             Observable(1.0f0),
             Observable(0.0f0),
+            Observable(true),
             Union{AbstractPlot, Scene}[]
         )
         add_camera_computation!(scene.compute, scene)
@@ -308,6 +311,11 @@ function Scene(;
         lights = automatic,
         theme = Attributes(),
         deregister_callbacks = Observables.ObserverFunction[],
+        clip = automatic,
+        alpha = 1.0f0,
+        zorder = 0.0f0,
+        frame_transform = Mat3f(I),
+        clear_depth = true,
         theme_kw...
     )
 
@@ -362,7 +370,7 @@ function Scene(;
 
     # if we have an opaque background, automatically set clear to true!
     if clear isa Automatic
-        clear = Observable(alpha(bg[]) == 1 ? true : false)
+        clear = Observable(ColorTypes.alpha(bg[]) == 1 ? true : false)
     else
         clear = convert(Observable{Bool}, clear)
     end
@@ -373,6 +381,11 @@ function Scene(;
         deregister_callbacks = deregister_callbacks
     )
     camera isa Function && camera(scene)
+    connect_frame_attribute!(scene, scene.clip, clip)
+    connect_frame_attribute!(scene, scene.alpha, alpha)
+    connect_frame_attribute!(scene, scene.zorder, zorder)
+    connect_frame_attribute!(scene, scene.frame_transform, frame_transform)
+    connect_frame_attribute!(scene, scene.clear_depth, clear_depth)
 
     if wasnothing
         on(events.window_area, priority = typemax(Int)) do w_area
@@ -395,10 +408,6 @@ function Scene(
         visible = parent.visible,
         camera_controls = parent.camera_controls,
         transformation = Transformation(parent),
-        clip = automatic,
-        alpha = 1.0f0,
-        zorder = 0.0f0,
-        frame_transform = Mat3f(I),
         kw...
     )
 
@@ -447,10 +456,6 @@ function Scene(
     push!(parent.children, child)
     push!(parent.draw_order, child)
     child.parent = parent
-    connect_frame_attribute!(child, child.clip, clip)
-    connect_frame_attribute!(child, child.alpha, alpha)
-    connect_frame_attribute!(child, child.zorder, zorder)
-    connect_frame_attribute!(child, child.frame_transform, frame_transform)
     return child
 end
 
