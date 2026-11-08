@@ -22,7 +22,8 @@ function triangle_robj(screen, fragment_shader, uniforms::Dict{Symbol, Any})
     shader = LazyShader(
         screen.shader_cache,
         loadshader("scene_tree/clip.vert"),
-        loadshader(fragment_shader)
+        loadshader(fragment_shader),
+        loadshader("scene_tree/clip_coverage.frag")
     )
     data = Dict{Symbol, Any}(
         :position => GLBuffer(screen.glscreen, FULLSCREEN_TRIANGLES),
@@ -98,6 +99,70 @@ function enable_scene_blending()
     return
 end
 
+const MAX_SCENE_CLIPS = 4
+
+"""
+Analytic clips of the scenes enclosing the current draw. The vectors have a
+fixed length and are shared by reference with every render object's uniforms,
+so pushing and popping only changes `count`.
+"""
+mutable struct ClipStack
+    count::Int32
+    frames::Vector{Mat3f}
+    shapes::Vector{Vec4f}
+    params::Vector{Vec4f}
+end
+ClipStack() = ClipStack(0, fill(Mat3f(I), MAX_SCENE_CLIPS), zeros(Vec4f, MAX_SCENE_CLIPS), zeros(Vec4f, MAX_SCENE_CLIPS))
+
+isfull(stack::ClipStack) = stack.count >= MAX_SCENE_CLIPS
+
+function Base.push!(stack::ClipStack, frame::Mat3f, shape::Vec4f, params::Vec4f)
+    stack.count += 1
+    stack.frames[stack.count] = frame
+    stack.shapes[stack.count] = shape
+    stack.params[stack.count] = params
+    return stack
+end
+Base.pop!(stack::ClipStack) = (stack.count -= 1; stack)
+
+function set_clip_uniforms!(robj::RenderObject, stack::ClipStack)
+    robj[:scene_clip_count] = stack.count
+    robj[:scene_clip_frames] = stack.frames
+    robj[:scene_clip_shapes] = stack.shapes
+    robj[:scene_clip_params] = stack.params
+    return
+end
+
+const SECTOR_FULL_CIRCLE = Float32(pi) + 1.0f0
+
+function clip_shape_uniforms(r::Rect2)
+    return Vec4f((minimum(r) .+ widths(r) ./ 2)..., (widths(r) ./ 2)...), 0.0f0, 0.0f0, 0.0f0
+end
+
+function clip_shape_uniforms(s::Makie.AnnularSector)
+    θmin, θmax = extrema(s.angles)
+    half_angle = (θmax - θmin) / 2
+    half_angle = half_angle >= pi - 1.0e-4 ? SECTOR_FULL_CIRCLE : Float32(half_angle)
+    return Vec4f(s.center..., s.radii...), Float32((θmin + θmax) / 2), half_angle, 1.0f0
+end
+
+function push_analytic_clip!(stack::ClipStack, scene::Scene, region, ppu)
+    M = Makie.cumulative_frame_transform(scene)
+    origin = Vec2f(minimum(Makie.viewport(scene)[]))
+    device_to_local = Makie.frame_translation(-origin) * inv(M) * Makie.frame_scaling(1 / ppu)
+    px_scale = Float32(ppu * sqrt(abs(M[1, 1] * M[2, 2] - M[1, 2] * M[2, 1])))
+    shape, θcenter, half_angle, kind = clip_shape_uniforms(region)
+    return push!(stack, Mat3f(device_to_local), shape, Vec4f(θcenter, half_angle, kind, px_scale))
+end
+
+mutable struct TreeTraversal
+    target::GLFramebuffer
+    stencil_level::Int
+    layer_depth::Int
+    clips::ClipStack
+    ppu::Float32
+end
+
 function draw_triangles!(robj::RenderObject, corners::Vector{Point2f}, frame::Mat4f)
     GLAbstraction.update!(robj.buffers[:position], corners)
     robj.indices = length(corners)
@@ -117,19 +182,21 @@ function write_stencil!(stage, corners, frame, level, op)
     glDepthMask(GL_FALSE)
     glDisable(GL_DEPTH_TEST)
     stencil_test(level, op)
+    stage.fill[:scene_clip_count] = Int32(0)
     draw_triangles!(stage.fill, corners, frame)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     stencil_test(op == GL_INCR ? level + 1 : level - 1)
     return
 end
 
-function fill_background!(stage, corners, frame, color)
+function fill_background!(stage, state, corners, frame, color)
     enable_scene_blending()
     glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_ALWAYS)
     glDepthMask(GL_TRUE)
     stage.fill[:color] = Vec4f(red(color), green(color), blue(color), alpha(color))
     stage.fill[:depth] = 1.0f0
+    set_clip_uniforms!(stage.fill, state.clips)
     draw_triangles!(stage.fill, corners, frame)
     stage.fill[:depth] = 0.0f0
     return
@@ -147,66 +214,80 @@ function composite_layer!(stage, layer, corners, frame, scene_alpha)
     return
 end
 
-function render_scene_tree!(screen, stage::SceneTreeRender, scene::Scene, target::GLFramebuffer, level::Int, layer_depth::Int)
+viewport_triangles(scene) = Makie.clip_triangles(Rect2f(0, 0, widths(Makie.viewport(scene)[])...), scene)
+
+function render_scene_tree!(screen, stage::SceneTreeRender, scene::Scene, state::TreeTraversal)
     scene.visible[] || return
+    any(iszero, widths(Makie.viewport(scene)[])) && return
     frame = Mat4f(Makie.scene_frame_matrix(scene))
-    clip_corners = Makie.clip_triangles(scene)
-    clips = !isnothing(clip_corners)
-    clips && isempty(clip_corners) && return
-    coverage, coverage_frame = clips ? (clip_corners, frame) : (FULLSCREEN_TRIANGLES, Mat4f(I))
+    region = Makie.isroot(scene) ? nothing : Makie.clip_region(scene)
 
-    if clips
-        write_stencil!(stage, clip_corners, frame, level, GL_INCR)
-        level += 1
+    analytic = !isnothing(region) && Makie.is_analytic_clip(region) && !isfull(state.clips)
+    stencil_corners = !isnothing(region) && !analytic ? Makie.clip_triangles(region, scene) : nothing
+    if analytic
+        push_analytic_clip!(state.clips, scene, region, state.ppu)
+        cover = Makie.clip_cover_triangles(region, scene; pad = 3)
+    elseif !isnothing(stencil_corners)
+        write_stencil!(stage, stencil_corners, frame, state.stencil_level, GL_INCR)
+        state.stencil_level += 1
+        cover = stencil_corners
     end
+    background_cover = isnothing(region) ? viewport_triangles(scene) : cover
+    composite_cover, composite_frame = isnothing(region) ? (FULLSCREEN_TRIANGLES, Mat4f(I)) : (cover, frame)
 
+    parent_target = state.target
     scene_alpha = scene.alpha[]
     uses_layer = scene_alpha < 1
-    content_target = target
     if uses_layer
-        layer_depth += 1
-        content_target = layer!(stage, layer_depth)
-        bind_target(content_target)
+        state.layer_depth += 1
+        state.target = layer!(stage, state.layer_depth)
+        bind_target(state.target)
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT)
     end
-    stencil_test(level)
+    stencil_test(state.stencil_level)
 
     if scene.clear[]
-        fill_background!(stage, coverage, coverage_frame, scene.backgroundcolor[])
+        fill_background!(stage, state, background_cover, frame, scene.backgroundcolor[])
     end
 
     for child in Makie.render_order(scene)
         if child isa Scene
-            render_scene_tree!(screen, stage, child, content_target, level, layer_depth)
-            bind_target(content_target)
-            stencil_test(level)
+            render_scene_tree!(screen, stage, child, state)
+            bind_target(state.target)
+            stencil_test(state.stencil_level)
         else
-            render_plot_tree!(screen, child, frame)
+            render_plot_tree!(screen, child, frame, state.clips)
         end
     end
 
     if uses_layer
-        bind_target(target)
-        stencil_test(level)
-        composite_layer!(stage, content_target, coverage, coverage_frame, scene_alpha)
+        state.target = parent_target
+        state.layer_depth -= 1
+        bind_target(parent_target)
+        stencil_test(state.stencil_level)
+        composite_layer!(stage, layer!(stage, state.layer_depth + 1), composite_cover, composite_frame, scene_alpha)
     end
 
-    if clips
-        write_stencil!(stage, clip_corners, frame, level, GL_DECR)
+    if analytic
+        pop!(state.clips)
+    elseif !isnothing(stencil_corners)
+        write_stencil!(stage, stencil_corners, frame, state.stencil_level, GL_DECR)
+        state.stencil_level -= 1
     end
     return
 end
 
-function render_plot_tree!(screen, plot::Plot, frame::Mat4f)
+function render_plot_tree!(screen, plot::Plot, frame::Mat4f, clips::ClipStack)
     robj = get(screen.cache, objectid(plot), nothing)
     if isnothing(robj)
-        foreach(child -> render_plot_tree!(screen, child, frame), Makie.render_order(plot))
+        foreach(child -> render_plot_tree!(screen, child, frame, clips), Makie.render_order(plot))
         return
     end
     (robj.visible && haskey(robj.variants, :forward_render_objectid)) || return
     robj[:px_per_unit] = screen.px_per_unit[]
     robj[:scene_frame] = frame
+    set_clip_uniforms!(robj, clips)
     StandardPrerender()(robj[:overdraw]::UInt8)
     enable_scene_blending()
     render(robj, robj.variants[:forward_render_objectid])
@@ -222,8 +303,9 @@ function run_stage(screen, glscene, stage::SceneTreeRender)
     glClearStencil(0)
     glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
     glEnable(GL_STENCIL_TEST)
+    state = TreeTraversal(stage.framebuffer, 0, 0, ClipStack(), screen.px_per_unit[])
     try
-        render_scene_tree!(screen, stage, root, stage.framebuffer, 0, 0)
+        render_scene_tree!(screen, stage, root, state)
     finally
         glDisable(GL_STENCIL_TEST)
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)

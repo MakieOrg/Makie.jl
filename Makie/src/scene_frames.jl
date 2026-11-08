@@ -66,28 +66,87 @@ end
 
 has_identity_frame(scene::Scene) = cumulative_frame_transform(scene) ≈ Mat3f(I)
 
+"""
+    AnnularSector(center, radii, angles)
+
+A clip shape covering the ring between `radii = (rmin, rmax)` around `center`,
+limited to the angular range `angles = (θmin, θmax)` (radians, counterclockwise
+from +x). Coordinates are viewport-relative pixels. A full circle is
+`AnnularSector(center, (0, r), (0, 2pi))`.
+"""
+struct AnnularSector
+    center::Point2f
+    radii::Vec2f
+    angles::Vec2f
+    AnnularSector(center, radii, angles) = new(Point2f(center), Vec2f(radii), Vec2f(angles))
+end
+
 function triangle_corners(shape)
     mesh = GeometryBasics.triangle_mesh(shape)
     positions = decompose(Point2f, mesh)
     return [positions[i] for face in faces(mesh) for i in face]
 end
 
-clip_shape_corners(::Automatic, widths) = triangle_corners(Rect2f(0, 0, widths...))
+function sector_polygon(s::AnnularSector, n = 120)
+    θs = LinRange(s.angles..., n)
+    on_circle(r, θ) = s.center + r * Point2f(cos(θ), sin(θ))
+    outer = on_circle.(s.radii[2], θs)
+    inner = s.radii[1] > 0 ? on_circle.(s.radii[1], reverse(θs)) : [s.center]
+    return Polygon(vcat(outer, inner))
+end
+
+clip_region(::Automatic, widths) = Rect2f(0, 0, widths...)
+clip_region(shape, widths) = shape
+
+is_analytic_clip(::Union{Rect2, AnnularSector}) = true
+is_analytic_clip(_) = false
+
+clip_shape_corners(r::Rect2, widths) = triangle_corners(Rect2f(r))
+clip_shape_corners(s::AnnularSector, widths) = triangle_corners(sector_polygon(s))
 clip_shape_corners(points::AbstractVector{<:VecTypes{2}}, widths) = triangle_corners(Polygon(Point2f.(points)))
 clip_shape_corners(shape, widths) = triangle_corners(shape)
 
-"""
-    clip_triangles(scene)::Union{Nothing, Vector{Point2f}}
+clip_bounds(r::Rect2) = Rect2f(r)
+clip_bounds(s::AnnularSector) = Rect2f(s.center .- s.radii[2], Vec2f(2 * s.radii[2]))
+clip_bounds(shape) = Rect2f(coordinates(shape))
 
-Triangle corners of the clip region of `scene` in its local clip space, or
-`nothing` if the scene does not clip.
 """
-function clip_triangles(scene::Scene)
+    clip_region(scene)
+
+The clip shape of `scene` in viewport-relative pixels (`nothing` if the scene
+does not clip). `Rect2` and `AnnularSector` regions can be clipped
+analytically (antialiased), other shapes fall back to a polygon mask.
+"""
+function clip_region(scene::Scene)
     shape = scene.clip[]
     isnothing(shape) && return nothing
+    return clip_region(shape, widths(viewport(scene)[]))
+end
+
+to_scene_ndc(points, widths) = map(p -> Point2f(2 .* p ./ widths .- 1), points)
+
+"""
+    clip_triangles(region, scene)::Vector{Point2f}
+
+Triangle corners covering `region` in the scene's clip space, for a polygon mask.
+"""
+function clip_triangles(region, scene::Scene)
     w = widths(viewport(scene)[])
     any(iszero, w) && return Point2f[]
-    return map(p -> Point2f(2 .* p ./ w .- 1), clip_shape_corners(shape, w))
+    return to_scene_ndc(clip_shape_corners(region, w), w)
+end
+
+"""
+    clip_cover_triangles(region, scene; pad)
+
+Triangles in the scene's clip space covering the bounds of `region`, grown by
+`pad` pixels so antialiased edges are rasterized on both sides.
+"""
+function clip_cover_triangles(region, scene::Scene; pad = 2)
+    w = widths(viewport(scene)[])
+    any(iszero, w) && return Point2f[]
+    bounds = clip_bounds(region)
+    return to_scene_ndc(triangle_corners(Rect2f(minimum(bounds) .- pad, widths(bounds) .+ 2pad)), w)
 end
 
 zorder(scene::Scene) = scene.zorder[]

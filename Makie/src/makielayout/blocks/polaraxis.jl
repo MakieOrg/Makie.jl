@@ -588,18 +588,12 @@ function _polar_clip_polygon(
 end
 
 
-function polar_clip_shape(rlims, thetalims, r0, dir, theta_0, N, pv, area_widths)
+function polar_clip_shape(rlims, thetalims, r0, dir, theta_0, pv, area_widths)
     to_px(p) = Point2f(((pv * Vec4f(p[1], p[2], 0, 1))[Vec(1, 2)] .+ 1) ./ 2 .* area_widths)
-    rmin = (rlims[1] - r0) / (rlims[2] - r0)
-    thetamin, thetamax = dir .* (thetalims .+ theta_0)
-    full_circle = abs(thetamax - thetamin) >= 2pi - 1.0e-6
-    outer = [to_px(polar2cartesian(1.0, t)) for t in LinRange(thetamin, thetamax, N)]
-    inner = [to_px(polar2cartesian(rmin, t)) for t in LinRange(thetamax, thetamin, N)]
-    if full_circle
-        return rmin > 0 ? Polygon(outer[1:(end - 1)], [inner[1:(end - 1)]]) : Polygon(outer[1:(end - 1)])
-    else
-        return Polygon(vcat(outer, rmin > 0 ? inner : [to_px(Point2f(0))]))
-    end
+    center = to_px(Point2f(0))
+    rmax_px = norm(to_px(Point2f(1, 0)) - center)
+    rmin_px = rmax_px * (rlims[1] - r0) / (rlims[2] - r0)
+    return AnnularSector(center, (rmin_px, rmax_px), dir .* (thetalims .+ theta_0))
 end
 
 function _tick_angle(theta_0, dir, ps, mirror)
@@ -873,10 +867,10 @@ function draw_axis!(po::PolarAxis)
 
     onany(
         po.blockscene, po.clip, po.target_rlims, po.target_thetalims, po.target_r0,
-        po.direction, po.target_theta_0, po.sample_density,
+        po.direction, po.target_theta_0,
         po.overlay.camera.projectionview, po.overlay.viewport; update = true
-    ) do clip, rlims, thetalims, r0, dir, theta_0, N, pv, area
-        po.scene.clip[] = clip ? polar_clip_shape(rlims, thetalims, r0, dir, theta_0, N, pv, widths(area)) : automatic
+    ) do clip, rlims, thetalims, r0, dir, theta_0, pv, area
+        po.scene.clip[] = clip ? polar_clip_shape(rlims, thetalims, r0, dir, theta_0, pv, widths(area)) : automatic
         return
     end
 
