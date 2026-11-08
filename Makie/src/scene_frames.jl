@@ -104,6 +104,7 @@ is_analytic_clip(_) = false
 clip_shape_corners(r::Rect2, widths) = triangle_corners(Rect2f(r))
 clip_shape_corners(s::AnnularSector, widths) = triangle_corners(sector_polygon(s))
 clip_shape_corners(points::AbstractVector{<:VecTypes{2}}, widths) = triangle_corners(Polygon(Point2f.(points)))
+clip_shape_corners(shapes::MultiPolygon, widths) = reduce(vcat, (triangle_corners(p) for p in shapes.polygons); init = Point2f[])
 clip_shape_corners(shape, widths) = triangle_corners(shape)
 
 clip_bounds(r::Rect2) = Rect2f(r)
