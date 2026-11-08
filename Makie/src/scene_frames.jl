@@ -96,6 +96,7 @@ function sector_polygon(s::AnnularSector, n = 120)
 end
 
 clip_region(::Automatic, widths) = Rect2f(0, 0, widths...)
+clip_region(c::Circle, widths) = AnnularSector(origin(c), (0, radius(c)), (0, 2pi))
 clip_region(shape, widths) = shape
 
 is_analytic_clip(::Union{Rect2, AnnularSector}) = true

@@ -127,7 +127,7 @@ mutable struct Scene <: AbstractScene
 
     "2D affine transform (in figure pixel space) applied to this scene and its descendants on top of the parent's frame transform."
     frame_transform::Observable{Mat3f}
-    "Clip region: `automatic` (the viewport), `nothing` (no own clipping) or a shape in viewport-relative pixel coordinates."
+    "Clip region: `automatic` (the viewport), `nothing` (no own clipping) or a shape in viewport-relative pixel coordinates (`Rect2`, `Circle`, `AnnularSector`, polygons)."
     clip::Observable{Any}
     "Opacity of the scene as a whole. Values below 1 render the scene into an offscreen buffer which is then composited."
     alpha::Observable{Float32}
