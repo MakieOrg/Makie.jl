@@ -554,7 +554,7 @@ function ComputeGraph()
                 intersect!(changeset, keys(graph.observables))
                 for key in changeset
                     node = graph.outputs[key]
-                    locked_resolve!(node)
+                    locked_resolve!(node, state)
                     val = node.value[]
                     obs = graph.observables[key]
                     if !(key in graph.should_deepcopy)
@@ -628,7 +628,7 @@ function mark_resolved!(edge::ComputeEdge)
     if !edge.got_resolved[]
         @graphlock edge.graph state begin
             state.depth == 0 || throw(ArgumentError("Cannot mark a computation resolved from a computation callback."))
-            foreach(locked_resolve!, edge.inputs)
+            foreach(input -> locked_resolve!(input, state), edge.inputs)
             edge.got_resolved[] = true
             fill!(edge.inputs_dirty, false)
         end
@@ -1198,9 +1198,15 @@ function apply_results!(edge::TypedEdge, result)
     return
 end
 
-function locked_resolve!(input::Input)
+function locked_resolve!(input::Input, state)
     input.dirty || return
-    value = input.f(input.value)
+    isnothing(state.active_callback) || check_callback_cycle(state, input.output)
+    previous = enter_callback!(state, input.output)
+    value = try
+        input.f(input.value)
+    finally
+        leave_callback!(state, previous)
+    end
     if isdefined(input.output, :value)
         input.output.value[] = deref(value)
     else
@@ -1215,9 +1221,9 @@ function locked_resolve!(input::Input)
     return
 end
 
-function locked_resolve!(computed::Computed)
+function locked_resolve!(computed::Computed, state)
     if hasparent(computed)
-        locked_resolve!(computed.parent)
+        locked_resolve!(computed.parent, state)
     end
     return
 end
@@ -1236,14 +1242,15 @@ directly, but doesn't pay the cost of resolving unused inputs.
 """
 select(i::Int, choices...) = choices[i]
 
-function locked_resolve!(edge::ComputeEdge)
+function locked_resolve!(edge::ComputeEdge, state)
     edge.got_resolved[] && return
+    isnothing(state.active_callback) || check_callback_cycle(state, edge.outputs)
 
     # special case to resolve just one of many options
     # Note: dispatching on callback type is much slower than ===
     if edge.callback === select || edge.callback === ifelse
         # resolve selected index
-        locked_resolve!(edge.inputs[1])
+        locked_resolve!(edge.inputs[1], state)
         edge.inputs_dirty[1] = false
 
         # resolve and forward picked choice
@@ -1265,7 +1272,7 @@ function locked_resolve!(edge::ComputeEdge)
             )
         end
 
-        locked_resolve!(edge.inputs[idx])
+        locked_resolve!(edge.inputs[idx], state)
         edge.inputs_dirty[idx] = false
         new_value = edge.inputs[idx].value[]
 
@@ -1278,21 +1285,26 @@ function locked_resolve!(edge::ComputeEdge)
             output.value = RefValue(new_value)
         end
     else
-        foreach(locked_resolve!, edge.inputs)
-        if !isassigned(edge.typed_edge)
-            if edge.resolved_once[]
-                # First re-resolve: build the typed island from the values the
-                # dynamic first resolve produced (without calling back), then
-                # resolve it normally so the callback sees correct changed
-                # flags and cached values (incl. `skip_update` semantics).
-                edge.typed_edge[] = TypedEdge_no_call(edge)
-                locked_resolve!(edge.typed_edge[])
+        foreach(input -> locked_resolve!(input, state), edge.inputs)
+        previous = enter_callback!(state, edge.outputs)
+        try
+            if !isassigned(edge.typed_edge)
+                if edge.resolved_once[]
+                    # First re-resolve: build the typed island from the values the
+                    # dynamic first resolve produced (without calling back), then
+                    # resolve it normally so the callback sees correct changed
+                    # flags and cached values (incl. `skip_update` semantics).
+                    edge.typed_edge[] = TypedEdge_no_call(edge)
+                    locked_resolve!(edge.typed_edge[])
+                else
+                    dynamic_resolve!(edge)
+                    edge.resolved_once[] = true
+                end
             else
-                dynamic_resolve!(edge)
-                edge.resolved_once[] = true
+                locked_resolve!(edge.typed_edge[])
             end
-        else
-            locked_resolve!(edge.typed_edge[])
+        finally
+            leave_callback!(state, previous)
         end
         fill!(edge.inputs_dirty, false)
     end
@@ -1317,10 +1329,9 @@ function resolve_computed!(computed::Computed, parent::AbstractEdge)
         if !isdirty(parent)
             return computed.value[]
         end
-        state.depth == 0 || throw(ArgumentError("Cannot resolve a dirty node from a computation callback; declare it as an input."))
         state.depth += 1
         try
-            locked_resolve!(parent)
+            locked_resolve!(parent, state)
             value = computed.value[]
         catch e
             rethrow(ResolveException(computed, e))
@@ -1385,10 +1396,9 @@ set_result!(::ComputeEdge, @nospecialize(result)) = throw_invalid_result(result)
 
 function resolve!(edge::AbstractEdge)
     @graphlock edge.graph state begin
-        state.depth == 0 || !isdirty(edge) || throw(ArgumentError("Cannot resolve a dirty node from a computation callback; declare it as an input."))
         state.depth += 1
         try
-            locked_resolve!(edge)
+            locked_resolve!(edge, state)
         finally
             finish_resolve!(state)
         end
@@ -1714,8 +1724,8 @@ get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callbac
     register_computation!(callback, compute_graph, input_names, output_names)
 
 Callbacks may update or notify inputs; those changes are deferred until the current
-resolution finishes. Dirty nodes must be declared as dependencies rather than
-resolved inside the callback. Overwriting computed outputs inside callbacks is
+resolution finishes. Callbacks may resolve other nodes, but resolving a computation already executing
+its callback raises an error. Overwriting computed outputs inside callbacks is
 not supported and raises an error.
 
 Registers a new computation which transforms the given inputs to a new set of
@@ -2406,7 +2416,7 @@ function unsafe_init!(edge::ComputeEdge)
     end
 
     @graphlock edge.graph state begin
-        foreach(locked_resolve!, edge.inputs)
+        foreach(input -> locked_resolve!(input, state), edge.inputs)
         edge.typed_edge[] = TypedEdge_no_call(edge)
         edge.got_resolved[] = true
         edge.resolved_once[] = true

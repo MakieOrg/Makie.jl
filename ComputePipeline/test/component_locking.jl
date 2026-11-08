@@ -226,7 +226,6 @@ end
     end
 
 
-
     @testset "Set reused Input from indirect dependent" begin
         graph = ComputeGraph()
         add_input!(graph, :a, 1)
@@ -255,8 +254,6 @@ end
     end
 
 
-
-
 end
 
 @testset "Deferred initialization through observable bindings" begin
@@ -280,5 +277,43 @@ end
             connect!(result, graph.b)
             @test result[] == 2
         end
+    end
+end
+
+@testset "Nested reads and actual callback cycles" begin
+    @testset "Input conversion reads dirty palette inputs" begin
+        graph = ComputeGraph()
+        add_input!(graph, :palette, [:red, :blue])
+        add_input!(graph, :cycle_index, 1)
+        add_input!(graph, :color, :cycled) do value
+            return value === :cycled ? graph.palette[][graph.cycle_index[]] : value
+        end
+        @test graph.color[] === :red
+        graph.cycle_index = 2
+        notify(graph.color)
+        @test graph.color[] === :blue
+        @test isempty(getfield(graph, :state).active_callbacks)
+        @test isnothing(getfield(graph, :state).active_callback)
+    end
+
+    @testset "Mutually recursive input conversions" begin
+        graph = ComputeGraph()
+        add_input!(_ -> graph.b[], graph, :a, 1)
+        add_input!(_ -> graph.a[], graph, :b, 1)
+        @test_throws r"Recursive resolution" graph.a[]
+        @test isempty(getfield(graph, :state).active_callbacks)
+        @test isnothing(getfield(graph, :state).active_callback)
+        @test getfield(graph, :state).depth == 0
+    end
+
+    @testset "Recursive read through a dependent computation" begin
+        graph = ComputeGraph()
+        add_input!(graph, :a, 1)
+        map!(_ -> graph.c[], graph, :a, :b)
+        map!(identity, graph, :b, :c)
+        @test_throws r"Recursive resolution" graph.b[]
+        @test isempty(getfield(graph, :state).active_callbacks)
+        @test isnothing(getfield(graph, :state).active_callback)
+        @test getfield(graph, :state).depth == 0
     end
 end

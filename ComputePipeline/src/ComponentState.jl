@@ -3,10 +3,12 @@ mutable struct ComponentState
     # Union-find parent for lock groups, independent of compute dependencies.
     @atomic parent::Union{Nothing, ComponentState}
     depth::Int
+    active_callback::Any
+    active_callbacks::Vector{Any}
     pending::Vector{Function}
     notifications::Vector{Observable}
 end
-ComponentState() = ComponentState(ReentrantLock(), nothing, 0, Function[], Observable[])
+ComponentState() = ComponentState(ReentrantLock(), nothing, 0, nothing, Any[], Function[], Observable[])
 
 function component(state::ComponentState)
     while true
@@ -76,5 +78,24 @@ function finish_resolve!(state)
         empty!(state.pending)
         foreach(f -> f(), pending)
     end
+    return
+end
+
+function check_callback_cycle(state, output)
+    (state.active_callback === output || any(active -> active === output, state.active_callbacks)) &&
+        throw(ArgumentError("Recursive resolution of a computation already executing its callback."))
+    return
+end
+
+@inline function enter_callback!(state, output)
+    previous = state.active_callback
+    isnothing(previous) || push!(state.active_callbacks, previous)
+    state.active_callback = output
+    return previous
+end
+
+@inline function leave_callback!(state, previous)
+    state.active_callback = previous
+    isnothing(previous) || pop!(state.active_callbacks)
     return
 end
