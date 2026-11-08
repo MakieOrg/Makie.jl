@@ -71,19 +71,24 @@ end
         5.0 15.0
     ]
 
-    # X-axis sqrt-scaled. The resampled matrix has the same values in the "corners"
-    # as without rescaling. The first row is still uniform (identity) but the 
-    # first column is non-uniform. 
-    image_area = Rect2f(0, 0, 4, 4) 
+    # X-axis sqrt-scaled. Samples must be uniform in sqrt-transformed *data* space:
+    # sqrt.(x) = 0, 2/3, 4/3, 2  =>  x = 0, 4/9, 16/9, 4  =>  index = x + 1.
+    # Since matrix[i, j] = i * j, linear interpolation is exact.
+    image_area = Rect2f(0, 0, 4, 4)
     x, y, resampled = resample_image((0,4), (0, 4), rs.data, (100, 100), image_area, (sqrt, identity))
     @test x == [0,4]
     @test y == [0,4]
-    @test resampled ≈ Float32[
-        1.0 2.3333333 3.6666667 5.0; 
-        1.9938082 4.652219 7.3106303 9.969041; 
-        3.3271413 7.7633295 12.199518 16.635706; 
-        5.0 11.666666 18.333334 25.0
-    ]
+    x_inds = [1, 13 / 9, 25 / 9, 5]
+    y_inds = [1, 7 / 3, 11 / 3, 5]
+    @test resampled ≈ x_inds .* y_inds'
+
+    # Same with an offset data range, where transforming indices instead of data
+    # coordinates would give a different result.
+    image_area = Rect2f(4, 0, 5, 4)
+    x, y, resampled = resample_image((4, 9), (0, 4), rs.data, (100, 100), image_area, (sqrt, identity))
+    xdata = LinRange(2, 3, 4) .^ 2 # 4 .. 9 uniform in sqrt space
+    x_inds = (xdata .- 4) ./ 5 .* 4 .+ 1
+    @test resampled[:, 1] ≈ x_inds
 end
 
 @testset "changing input types" begin
