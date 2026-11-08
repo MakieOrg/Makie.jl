@@ -28,7 +28,7 @@ float annular_sector_sdf(vec2 p, vec4 shape, vec4 params) {
         q = vec2(ca * q.x + sa * q.y, -sa * q.x + ca * q.y);
         q.x = abs(q.x);
         vec2 c = vec2(sin(half_angle), cos(half_angle));
-        float m = length(q - c * max(dot(q, c), 0.0));
+        float m = length(q - c * clamp(dot(q, c), 0.0, shape.w));
         d = max(d, m * sign(c.y * q.x - c.x * q.y));
     }
     return d;
