@@ -1,5 +1,6 @@
 mutable struct ComponentState
     lock::ReentrantLock
+    # Union-find parent for lock groups, independent of compute dependencies.
     @atomic parent::Union{Nothing, ComponentState}
     depth::Int
     pending::Vector{Function}
@@ -21,6 +22,7 @@ function lock_component(graph)
     while true
         state = component(state)
         lock(state.lock)
+        # A merge may have moved this root while we waited for its lock.
         isnothing(@atomic :acquire state.parent) && return state
         unlock(state.lock)
     end

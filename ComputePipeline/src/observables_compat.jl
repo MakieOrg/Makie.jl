@@ -1,10 +1,45 @@
 function Observables.on(f, x::Computed; kwargs...)
     obs = get_observable!(x)
-    return on(f, obs; kwargs...)
+    listener = on(f, obs; kwargs...)
+    refresh_initial_observable!(x)
+    return listener
+end
+
+function refresh_initial_observable!(x)
+    x isa Computed && refresh_initial_observable!(x, x.parent)
+    return
+end
+
+function refresh_initial_observable!(x::Computed, parent::AbstractEdge)
+    # Initial resolution can queue a newer input before the observable exists.
+    graph = parent.graph
+    local pending
+    @graphlock graph state begin
+        if isdirty(parent)
+            push!(graph.onchange.val, x.name)
+            graph.onchange in graph.obs_to_update || push!(graph.obs_to_update, graph.onchange)
+        end
+        pending = take_updates!(graph)
+        if state.depth > 0
+            for obs in pending
+                obs in state.notifications || push!(state.notifications, obs)
+            end
+            return
+        end
+    end
+    foreach(notify, pending)
+    return
+end
+
+function finish_observable_binding!(result, args)
+    foreach(refresh_initial_observable!, args)
+    return result
 end
 
 function Observables.connect!(target::Observables.AbstractObservable, source::Computed)
-    return Observables.connect!(target, get_observable!(source))
+    result = Observables.connect!(target, get_observable!(source))
+    refresh_initial_observable!(source)
+    return result
 end
 
 Base.convert(::Type{T}, c::Computed) where {T <: Observable} = get_observable!(c)
@@ -33,21 +68,21 @@ open(@__FILE__, "a") do file
             $arg_tuple
             obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
             @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-            return onany(f, obsies...; kwargs...)
+            return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
         end
 
         function Observables.map!(f, target::Observable, $args; kwargs...)
             $arg_tuple
             obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
             @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-            return map!(f, target, obsies...; kwargs...)
+            return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
         end
 
         function Observables.map(f, $args; kwargs...)
             $arg_tuple
             obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
             @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-            return map(f, obsies...; kwargs...)
+            return finish_observable_binding!(map(f, obsies...; kwargs...), args)
         end
         """
 
@@ -60,229 +95,229 @@ function Observables.onany(f, arg1::Computed, rest::Union{AbstractObservable, Co
     args = tuple(arg1, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
+    return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
 end
 
 function Observables.map!(f, target::Observable, arg1::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map!(f, target, obsies...; kwargs...)
+    return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
 end
 
 function Observables.map(f, arg1::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map(f, obsies...; kwargs...)
+    return finish_observable_binding!(map(f, obsies...; kwargs...), args)
 end
 
 function Observables.onany(f, arg1::AbstractObservable, arg2::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
+    return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
 end
 
 function Observables.map!(f, target::Observable, arg1::AbstractObservable, arg2::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map!(f, target, obsies...; kwargs...)
+    return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
 end
 
 function Observables.map(f, arg1::AbstractObservable, arg2::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map(f, obsies...; kwargs...)
+    return finish_observable_binding!(map(f, obsies...; kwargs...), args)
 end
 
 function Observables.onany(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
+    return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
 end
 
 function Observables.map!(f, target::Observable, arg1::AbstractObservable, arg2::AbstractObservable, arg3::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map!(f, target, obsies...; kwargs...)
+    return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
 end
 
 function Observables.map(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map(f, obsies...; kwargs...)
+    return finish_observable_binding!(map(f, obsies...; kwargs...), args)
 end
 
 function Observables.onany(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
+    return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
 end
 
 function Observables.map!(f, target::Observable, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map!(f, target, obsies...; kwargs...)
+    return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
 end
 
 function Observables.map(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map(f, obsies...; kwargs...)
+    return finish_observable_binding!(map(f, obsies...; kwargs...), args)
 end
 
 function Observables.onany(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
+    return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
 end
 
 function Observables.map!(f, target::Observable, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map!(f, target, obsies...; kwargs...)
+    return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
 end
 
 function Observables.map(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map(f, obsies...; kwargs...)
+    return finish_observable_binding!(map(f, obsies...; kwargs...), args)
 end
 
 function Observables.onany(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
+    return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
 end
 
 function Observables.map!(f, target::Observable, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map!(f, target, obsies...; kwargs...)
+    return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
 end
 
 function Observables.map(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map(f, obsies...; kwargs...)
+    return finish_observable_binding!(map(f, obsies...; kwargs...), args)
 end
 
 function Observables.onany(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
+    return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
 end
 
 function Observables.map!(f, target::Observable, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map!(f, target, obsies...; kwargs...)
+    return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
 end
 
 function Observables.map(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map(f, obsies...; kwargs...)
+    return finish_observable_binding!(map(f, obsies...; kwargs...), args)
 end
 
 function Observables.onany(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
+    return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
 end
 
 function Observables.map!(f, target::Observable, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map!(f, target, obsies...; kwargs...)
+    return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
 end
 
 function Observables.map(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map(f, obsies...; kwargs...)
+    return finish_observable_binding!(map(f, obsies...; kwargs...), args)
 end
 
 function Observables.onany(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::AbstractObservable, arg9::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
+    return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
 end
 
 function Observables.map!(f, target::Observable, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::AbstractObservable, arg9::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map!(f, target, obsies...; kwargs...)
+    return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
 end
 
 function Observables.map(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::AbstractObservable, arg9::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map(f, obsies...; kwargs...)
+    return finish_observable_binding!(map(f, obsies...; kwargs...), args)
 end
 
 function Observables.onany(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::AbstractObservable, arg9::AbstractObservable, arg10::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
+    return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
 end
 
 function Observables.map!(f, target::Observable, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::AbstractObservable, arg9::AbstractObservable, arg10::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map!(f, target, obsies...; kwargs...)
+    return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
 end
 
 function Observables.map(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::AbstractObservable, arg9::AbstractObservable, arg10::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map(f, obsies...; kwargs...)
+    return finish_observable_binding!(map(f, obsies...; kwargs...), args)
 end
 
 function Observables.onany(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::AbstractObservable, arg9::AbstractObservable, arg10::AbstractObservable, arg11::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
+    return finish_observable_binding!(onany(f, obsies...; kwargs...), args)
 end
 
 function Observables.map!(f, target::Observable, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::AbstractObservable, arg9::AbstractObservable, arg10::AbstractObservable, arg11::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map!(f, target, obsies...; kwargs...)
+    return finish_observable_binding!(map!(f, target, obsies...; kwargs...), args)
 end
 
 function Observables.map(f, arg1::AbstractObservable, arg2::AbstractObservable, arg3::AbstractObservable, arg4::AbstractObservable, arg5::AbstractObservable, arg6::AbstractObservable, arg7::AbstractObservable, arg8::AbstractObservable, arg9::AbstractObservable, arg10::AbstractObservable, arg11::Computed, rest::Union{AbstractObservable, Computed}...; kwargs...)
     args = tuple(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, rest...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return map(f, obsies...; kwargs...)
+    return finish_observable_binding!(map(f, obsies...; kwargs...), args)
 end

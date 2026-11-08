@@ -627,6 +627,7 @@ end
 function mark_resolved!(edge::ComputeEdge)
     if !edge.got_resolved[]
         @graphlock edge.graph state begin
+            state.depth == 0 || throw(ArgumentError("Cannot mark a computation resolved from a computation callback."))
             foreach(locked_resolve!, edge.inputs)
             edge.got_resolved[] = true
             fill!(edge.inputs_dirty, false)
@@ -634,7 +635,13 @@ function mark_resolved!(edge::ComputeEdge)
     end
     return
 end
-mark_resolved!(edge::Input) = edge.dirty = false
+function mark_resolved!(edge::Input)
+    @graphlock edge.graph state begin
+        state.depth == 0 || throw(ArgumentError("Cannot mark an input resolved from a computation callback."))
+        edge.dirty = false
+    end
+    return
+end
 
 function mark_dirty!(computed::Computed)
     hasparent(computed) || return
@@ -647,6 +654,11 @@ function mark_dirty!(computed::Computed, obs_to_update)
     # case we need to set `computed.dirty` so `resolve!()` knows the node has
     # changed even though the computation has not marked it.
     @graphlock computed.parent.graph state begin
+        if state.depth > 0
+            computed.parent isa Input || throw(ArgumentError("Cannot mark a computed result dirty from a computation callback; notify its input instead."))
+            defer_update!(state, computed.parent.graph, () -> locked_mark_dirty!(computed.parent, obs_to_update))
+            return
+        end
         computed.dirty = true
         locked_mark_dirty!(computed.parent, obs_to_update)
     end
@@ -655,7 +667,12 @@ end
 mark_dirty!(x::AbstractEdge) = mark_dirty!(x, x.graph.obs_to_update)
 function mark_dirty!(x, obs_to_update)
     @graphlock x.graph state begin
-        locked_mark_dirty!(x, obs_to_update)
+        if state.depth > 0
+            x isa Input || throw(ArgumentError("Cannot mark a computation dirty from a computation callback; notify its input instead."))
+            defer_update!(state, x.graph, () -> locked_mark_dirty!(x, obs_to_update))
+        else
+            locked_mark_dirty!(x, obs_to_update)
+        end
     end
     return
 end
@@ -705,7 +722,15 @@ end
 
 function update_observables!(graph::ComputeGraph)
     local pending
-    @graphlock graph state pending = take_updates!(graph)
+    @graphlock graph state begin
+        pending = take_updates!(graph)
+        if state.depth > 0
+            for obs in pending
+                obs in state.notifications || push!(state.notifications, obs)
+            end
+            return
+        end
+    end
     foreach(notify, pending)
     return
 end
@@ -730,6 +755,7 @@ function Base.setindex!(computed::Computed, @nospecialize(value))
         return setindex!(computed.parent, value)
     else
         @graphlock computed.parent.graph state begin
+            state.depth == 0 || throw(ArgumentError("Cannot overwrite a computed result from a computation callback; update its input instead."))
             computed.value[] = value
             mark_dirty!(computed)
         end
@@ -750,16 +776,21 @@ function apply_input!(input::Input, @nospecialize(value))
     return
 end
 
+function defer_update!(state, graph, update)
+    push!(
+        state.pending, () -> begin
+            update()
+            for obs in take_updates!(graph)
+                obs in state.notifications || push!(state.notifications, obs)
+            end
+        end
+    )
+    return
+end
+
 function set_input_locked!(state, input::Input, @nospecialize(value))
     if state.depth > 0
-        push!(
-            state.pending, () -> begin
-                apply_input!(input, value)
-                for obs in take_updates!(input.graph)
-                    obs in state.notifications || push!(state.notifications, obs)
-                end
-            end
-        )
+        defer_update!(state, input.graph, () -> apply_input!(input, value))
     else
         apply_input!(input, value)
     end
@@ -1286,6 +1317,7 @@ function resolve_computed!(computed::Computed, parent::AbstractEdge)
         if !isdirty(parent)
             return computed.value[]
         end
+        state.depth == 0 || throw(ArgumentError("Cannot resolve a dirty node from a computation callback; declare it as an input."))
         state.depth += 1
         try
             locked_resolve!(parent)
@@ -1353,6 +1385,7 @@ set_result!(::ComputeEdge, @nospecialize(result)) = throw_invalid_result(result)
 
 function resolve!(edge::AbstractEdge)
     @graphlock edge.graph state begin
+        state.depth == 0 || !isdirty(edge) || throw(ArgumentError("Cannot resolve a dirty node from a computation callback; declare it as an input."))
         state.depth += 1
         try
             locked_resolve!(edge)
@@ -1679,6 +1712,11 @@ get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callbac
 
 """
     register_computation!(callback, compute_graph, input_names, output_names)
+
+Callbacks may update or notify inputs; those changes are deferred until the current
+resolution finishes. Dirty nodes must be declared as dependencies rather than
+resolved inside the callback. Overwriting computed outputs inside callbacks is
+not supported and raises an error.
 
 Registers a new computation which transforms the given inputs to a new set of
 outputs. Both the inputs and outputs are referred to by name. The inputs must
