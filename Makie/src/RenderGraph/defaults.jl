@@ -19,7 +19,7 @@ default any value passes.
 """
 function PlotRenderStage(; kwargs...)
     outputs = [
-        :depth => BufferFormat(1, BFT.depth24),
+        :depth => BufferFormat(1, BFT.depth24_stencil),
         :color => BufferFormat(4, N0f8),
         :objectid => BufferFormat(2, UInt32),
     ]
@@ -164,7 +164,7 @@ function DisplayStage()
     return RenderStage(
         :Display,
         inputs = [
-            :depth => BufferFormat(1, BFT.depth24),
+            :depth => BufferFormat(1, BFT.depth24_stencil),
             :color => BufferFormat(4, N0f8),
             :objectid => BufferFormat(2, UInt32),
         ],
@@ -238,6 +238,28 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
     connect!(pipeline, :objectid)
     connect!(pipeline, :depth)
 
+    return pipeline
+end
+
+"""
+    scene_tree_pipeline([; fxaa = true])
+
+Renders the scene tree in a single pass (plots and child scenes in draw order,
+with clipping, frame transforms and scene alpha) followed by optional FXAA.
+"""
+function scene_tree_pipeline(; fxaa = true)
+    pipeline = RenderGraph()
+    render = push!(pipeline, PlotRenderStage())
+    if fxaa
+        _fxaa = push!(pipeline, FXAAStage(filter_in_shader = true))
+    end
+    display = push!(pipeline, DisplayStage())
+    connect!(pipeline, render, fxaa ? _fxaa : display)
+    if fxaa
+        connect!(pipeline, _fxaa, display, :color)
+    end
+    connect!(pipeline, :objectid)
+    connect!(pipeline, :depth)
     return pipeline
 end
 

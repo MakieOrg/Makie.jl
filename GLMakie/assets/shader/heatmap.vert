@@ -8,6 +8,7 @@ in vec2 vertices;
 uniform mat4 projection, view, model;
 uniform uint objectid;
 uniform float depth_shift;
+uniform mat4 scene_frame;
 
 out vec2 o_uv;
 flat out uvec2 o_objectid;
@@ -58,4 +59,5 @@ void main(){
     process_clip_planes(world_pos.xyz);
     gl_Position = projection * view * world_pos;
     gl_Position.z += gl_Position.w * depth_shift;
+    gl_Position = scene_frame * gl_Position;
 }

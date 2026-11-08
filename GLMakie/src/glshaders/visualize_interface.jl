@@ -163,6 +163,13 @@ function initialize_renderobject!(screen, stage::RenderPlots, robj, plot)
     return
 end
 
+function initialize_renderobject!(screen, ::SceneTreeRender, robj, plot)
+    view = Dict{String, String}("TARGET_STAGE" => "#define DEFAULT_TARGET")
+    lazy_shader = default_shader(screen, robj, plot, view)::GLVisualizeShader
+    add_instructions!(robj, :forward_render_objectid, lazy_shader, pre = get_prerender(plot), post = get_postrender(plot))
+    return
+end
+
 # TODO: consider splitting RenderPlots stages and dispatch this on them instead
 # of using the runtime name?
 get_prerender(::Plot) = GLAbstraction.EmptyPrerender()

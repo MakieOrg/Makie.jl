@@ -62,7 +62,7 @@ function render_pipeline_compat!(target, source, defaults)
         ssao = to_value(get(source, :ssao, defaults[:ssao]))
         fxaa = to_value(get(source, :fxaa, defaults[:fxaa]))
         oit = to_value(get(source, :oit, defaults[:oit]))
-        target[:render_pipeline] = default_pipeline(; ssao, fxaa, oit)
+        target[:render_pipeline] = scene_tree_pipeline(; fxaa)
     else
         target[:render_pipeline] = to_value(defaults[:render_pipeline])
     end

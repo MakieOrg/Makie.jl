@@ -9,6 +9,7 @@ in vec3 vertices;
 out vec3 frag_vert;
 
 uniform mat4 projectionview, model;
+uniform mat4 scene_frame;
 uniform mat4 modelinv;
 
 // SSAO
@@ -31,7 +32,7 @@ void main()
     vec4 world_vert = model * vec4(vertices, 1);
     frag_vert = world_vert.xyz;
 
-    gl_Position = projectionview * world_vert;
+    gl_Position = scene_frame * projectionview * world_vert;
 
 #ifdef ENABLE_DEPTH
     gl_Position.z = 0.0;

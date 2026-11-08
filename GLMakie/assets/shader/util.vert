@@ -274,6 +274,7 @@ vec3 safe_normalize(vec3 v) {
 }
 
 uniform float depth_shift;
+uniform mat4 scene_frame;
 
 // TODO maybe ifdef SSAO this stuff?
 // transpose(inv(view * model))
@@ -309,6 +310,7 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
     // o_ndc before depth_shift so stroke depth comparisons match unshifted positions
     o_ndc = gl_Position.xyz / gl_Position.w;
     gl_Position.z += gl_Position.w * depth_shift;
+    gl_Position = scene_frame * gl_Position;
 
     // for lighting
 #if defined(FAST_SHADING) || defined(MULTI_LIGHT_SHADING)
@@ -337,6 +339,7 @@ void render(vec4 position_world, Nothing normal, mat4 view, mat4 projection)
     // o_ndc before depth_shift so stroke depth comparisons match unshifted positions
     o_ndc = gl_Position.xyz / gl_Position.w;
     gl_Position.z += gl_Position.w * depth_shift;
+    gl_Position = scene_frame * gl_Position;
 
     // lighting is irrelevant without normals
 
