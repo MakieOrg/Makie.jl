@@ -1568,6 +1568,7 @@ function _update_refs_in_dependents!(edge::ComputeEdge)
             dep.typed_edge[] = _recreate_typed_edge(dep.typed_edge[], dep.inputs)
         end
     end
+    return
 end
 
 function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
@@ -2041,6 +2042,8 @@ Base.@nospecializeinfer function register_computation!(
         end
     end
 
+    is_compute_identity = f === compute_identity
+
     # use order of namedtuple, which should not change!
     for (i, symbol) in enumerate(outputs)
         # Either grab the existing node or create a new uinitialized node
@@ -2050,6 +2053,14 @@ Base.@nospecializeinfer function register_computation!(
         output.parent_idx = i
         output.dirty = true
         push!(new_edge.outputs, output)
+        # needs === refs in input and output
+        if is_compute_identity && is_initialized(inputs[i])
+            output.value = inputs[i].value
+        end
+    end
+
+    if is_compute_identity # changing output refs may affect dependents
+        _update_refs_in_dependents!(new_edge)
     end
 
     update_observables!(attr)

@@ -188,16 +188,17 @@ end
 
     @testset "Edge" begin
         graph = ComputeGraph()
-        add_input!(graph, :input, 1)
+        add_input!(graph, :input, 2)
         to_tuple(x) = (x, x)
         map!(to_tuple, graph, :input, [:a, :b])
         map!(identity, graph, :a, :out1)
         map!(identity, graph, :b, :out2)
         map!(+, graph, [:out1, :out2], :final)
 
-        @test graph.out1[] == 1
-
         e = graph.out1.parent
+        @test e.resolved_once[] == false
+        @test graph.out1[] == 2
+
         @test e.graph == graph
         @test e.callback == ComputePipeline.MapFunctionWrapper(identity)
         @test e.inputs == [graph.a]
@@ -205,10 +206,15 @@ end
         @test e.outputs == [graph.out1]
         @test e.got_resolved[] == true
         @test e.dependents == [graph.final.parent]
-        @test isassigned(e.typed_edge)
+        @test !isassigned(e.typed_edge)
+        @test e.resolved_once[] == true
         @test graph.a.parent.dependents == [e, graph.out2.parent]
         @test graph.out1.parent === e
         @test graph.out1.parent_idx == 1
+
+        graph.input = 1
+        @test graph.out1[] == 1
+        @test isassigned(e.typed_edge)
 
         delete!(e)
         @test graph.out1[] == 1 # no error
@@ -776,47 +782,94 @@ end
         ComputePipeline.alias!(graph, :in2, :out2)
         map!(+, graph, [:out1, :out2], :out)
 
-        function check_compute_identity(e, result = true)
-            @test result == (e.callback === ComputePipeline.compute_identity)
-            # result == true: all refs should be identical
-            # result == false: not any ref should be indentical
-            compose = result ? (a, b) -> a && b : (a, b) -> a || b
-            # edge input .=== output
-            @test result == mapreduce((a, b) -> a.value === b.value, compose, e.inputs, e.outputs)
-            # typed edge inputs .=== outputs
-            te = e.typed_edge[]
-            @test result == mapreduce(===, compose, values(te.inputs), te.outputs)
+        function check_compute_identity(e; first_resolve, reuse_refs = true)
+            # reuse_refs:
+            # compute_identity should be reusing the same ref object from input to output
+            # anything must have different objects
+            # in ComputeEdge:
+            # (branches instead of == reuse_refs to make failures more readable)
+            if reuse_refs
+                @test e.callback === ComputePipeline.compute_identity
+                for (in, out) in zip(e.inputs, e.outputs)
+                    @test in.value === out.value
+                end
+            else
+                @test e.callback !== ComputePipeline.compute_identity
+                for (in, out) in zip(e.inputs, e.outputs)
+                    @test in.value !== out.value
+                end
+            end
+
+            @test e.resolved_once[] == true
+            if first_resolve
+                @test !isassigned(e.typed_edge)
+            else
+                # In type edge (if it exists)
+                te = e.typed_edge[]
+                if reuse_refs
+                    for (in, out) in zip(values(te.inputs), values(te.outputs))
+                        @test in === out
+                    end
+                else
+                    for (in, out) in zip(values(te.inputs), values(te.outputs))
+                        @test in !== out
+                    end
+                end
+            end
+
             # dependents not corrupted (same input refs as parent edge)
             for dep in e.dependents
-                te = dep.typed_edge[]
-                @test mapreduce((a, b) -> a === b.value, (a, b) -> a && b, values(te.inputs), dep.inputs)
+                @test dep.resolved_once[] == true
+                if isassigned(dep.typed_edge)
+                    te = dep.typed_edge[]
+                    for (typed_edge_input_ref, edge_input) in zip(values(te.inputs), dep.inputs)
+                        @test typed_edge_input_ref === edge_input.value
+                    end
+                end
             end
         end
 
         @test graph.out[] == 3
-        check_compute_identity(graph.out1.parent)
-        check_compute_identity(graph.out2.parent)
+        check_compute_identity(graph.out1.parent, first_resolve = true)
+        check_compute_identity(graph.out2.parent, first_resolve = true)
+
+        update!(graph, in1 = 2, in2 = 3)
+        @test graph.out[] == 5
+        check_compute_identity(graph.out1.parent, first_resolve = false)
+        check_compute_identity(graph.out2.parent, first_resolve = false)
 
         ComputePipeline.modify_edge!(
             graph.out1.parent, callback = identity, wrap_callback = true
         )
-        @test graph.out[] == 3
-        check_compute_identity(graph.out1.parent, false)
-        check_compute_identity(graph.out2.parent, true)
+        @test graph.out[] == 5
+        check_compute_identity(graph.out1.parent, first_resolve = true, reuse_refs = false)
+        check_compute_identity(graph.out2.parent, first_resolve = false, reuse_refs = true)
+
+        graph.in1 = 1
+        @test graph.out[] == 4
+        check_compute_identity(graph.out1.parent, first_resolve = false, reuse_refs = false)
 
         ComputePipeline.modify_edge!(
             graph.out2.parent, callback = identity, wrap_callback = true
         )
+        @test graph.out[] == 4
+        check_compute_identity(graph.out1.parent, first_resolve = false, reuse_refs = false)
+        check_compute_identity(graph.out2.parent, first_resolve = true, reuse_refs = false)
+
+        graph.in2 = 2
         @test graph.out[] == 3
-        check_compute_identity(graph.out1.parent, false)
-        check_compute_identity(graph.out2.parent, false)
+        check_compute_identity(graph.out2.parent, first_resolve = false, reuse_refs = false)
 
         ComputePipeline.modify_edge!(
             graph.out2.parent, callback = ComputePipeline.compute_identity,
         )
         @test graph.out[] == 3
-        check_compute_identity(graph.out1.parent, false)
-        check_compute_identity(graph.out2.parent, true)
+        check_compute_identity(graph.out1.parent, first_resolve = false, reuse_refs = false)
+        check_compute_identity(graph.out2.parent, first_resolve = true, reuse_refs = true)
+
+        graph.in2 = 1
+        @test graph.out[] == 2
+        check_compute_identity(graph.out2.parent, first_resolve = false, reuse_refs = true)
 
         # This should work too
         ComputePipeline.modify_edge!(
@@ -824,9 +877,13 @@ end
             inputs = [graph.in1, graph.in2],
             outputs = [graph.out1, graph.out2],
         )
-        @test graph.out[] == 3
+        @test graph.out[] == 2
         @test graph.out1.parent === graph.out2.parent
-        check_compute_identity(graph.out1.parent, true)
+        check_compute_identity(graph.out1.parent, first_resolve = true, reuse_refs = true)
+
+        graph.in2 = 2
+        @test graph.out[] == 3
+        check_compute_identity(graph.out1.parent, first_resolve = false, reuse_refs = true)
     end
 
     @testset "preserved callbacks" begin

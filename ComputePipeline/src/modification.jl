@@ -390,7 +390,7 @@ function _disconnect_node_from_parent!(node::Computed, edge::AbstractEdge, callb
     node.parent = ComputeEdge(
         edge.graph::ComputeGraph, callback,
         Computed[], Bool[], [node],
-        Ref(true), dependents, Ref{TypedEdge}()
+        Ref(true), dependents, Ref(false), Ref{TypedEdge}()
     )
     node.parent_idx = 1
     return
@@ -479,11 +479,11 @@ function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
         edge.callback
     end
 
-    # got_resolved should initialize as false so mark_dirty doesn't stop immediately
+    # got_resolved should initialize as true so mark_dirty doesn't stop immediately
     new_edge = ComputeEdge(
         graph, callback,
         inputs, inputs_dirty, outputs,
-        Ref(true), edge.dependents, Ref{TypedEdge}()
+        Ref(true), edge.dependents, Ref(false), Ref{TypedEdge}()
     )
 
     @lock GLOBAL_LOCK begin
@@ -520,6 +520,14 @@ function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
             for node in new_edge.outputs
                 node.parent = new_edge
             end
+        end
+
+        if new_edge.callback === compute_identity
+            # create (input_ref === out_ref) state
+            for (input, output) in zip(new_edge.inputs, new_edge.outputs)
+                output.value = input.value
+            end
+            _update_refs_in_dependents!(new_edge)
         end
 
         # Everything depending on this node may now be out of date
@@ -565,14 +573,7 @@ function modify_edge!(edge::Input; kwargs...)
             end
 
             # disconnect output
-            # to keep track of dependencies we create dummy edges
-            node = edge.output
-            node.parent = ComputeEdge(
-                graph, invalid_callback,
-                Computed[], Bool[], [node],
-                Ref(true), copy(node.parent.dependents), Ref{TypedEdge}()
-            )
-            node.parent_idx = 1
+            _disconnect_node_from_parent!(edge.output, edge)
 
             # replace and connect outputs
             empty!(edge.dependents)
@@ -756,7 +757,7 @@ function move!(target::ComputeGraph, node::Computed)
     new_edge = ComputeEdge(
         target, edge.callback,
         edge.inputs, edge.inputs_dirty, edge.outputs,
-        edge.got_resolved, edge.dependents, edge.typed_edge
+        edge.got_resolved, edge.dependents, edge.resolved_once, edge.typed_edge
     )
 
     _replace_edge!(edge, new_edge)
