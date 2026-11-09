@@ -9,8 +9,12 @@ draw_atomic(::Screen, ::Scene, ::PlotList) = nothing
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     gl_switch_context!(screen.glscreen)
     add_scene!(screen, scene)
+    invalidate_render_order!(screen)
     if haskey(x.attributes, :zorder)
-        on(_ -> screen.requires_update = true, x, x.zorder)
+        on(x, x.zorder) do _
+            invalidate_render_order!(screen)
+            screen.requires_update = true
+        end
     end
     # poll inside functions to make wait on compile less prominent
     if isempty(x.plots) # if no plots inserted, this truly is an atomic

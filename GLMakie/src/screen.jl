@@ -575,6 +575,7 @@ function add_scene!(screen::Screen, scene::Scene)
             scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview,
             scene.camera.resolution
         )
+        on(_ -> invalidate_render_order!(screen), scene, scene.zorder)
         return id
     end
     return
@@ -684,6 +685,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     delete!(screen.cache, objectid(plot))
 
     haskey(plot, :gl_renderobject) && delete!(plot.attributes, :gl_renderobject)
+    invalidate_render_order!(screen)
     screen.requires_update = true
     return
 end

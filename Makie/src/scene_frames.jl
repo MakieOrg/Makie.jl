@@ -87,6 +87,12 @@ function triangle_corners(shape)
     return [positions[i] for face in faces(mesh) for i in face]
 end
 
+# viewports and rect clips are triangulated every frame, skip the generic mesh path
+function triangle_corners(r::Rect2)
+    (x0, y0), (x1, y1) = minimum(r), maximum(r)
+    return Point2f[(x0, y0), (x1, y0), (x1, y1), (x0, y0), (x1, y1), (x0, y1)]
+end
+
 function sector_polygon(s::AnnularSector, n = 120)
     θs = LinRange(s.angles..., n)
     on_circle(r, θ) = s.center + r * Point2f(cos(θ), sin(θ))
@@ -169,9 +175,14 @@ function render_order(scene::Scene)
     for x in Iterators.flatten((scene.plots, scene.children))
         x in listed || push!(items, x)
     end
-    return sort!(items; by = zorder, alg = Base.Sort.DEFAULT_STABLE)
+    return sort_by_zorder(items)
 end
 
-function render_order(plot::AbstractPlot)
-    return sort(plot.plots; by = zorder, alg = Base.Sort.DEFAULT_STABLE)
+render_order(plot::AbstractPlot) = sort_by_zorder(copy(plot.plots))
+
+# `zorder` goes through the compute graph, so look it up once per item, not per comparison
+function sort_by_zorder(items::AbstractVector)
+    keys = map(zorder, items)
+    allequal(keys) && return items
+    return items[sortperm(keys; alg = Base.Sort.DEFAULT_STABLE)]
 end
