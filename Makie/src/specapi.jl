@@ -902,7 +902,15 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
     end
 
     updates = Pair{Symbol, Any}[]
-    batch_update_arguments!(updates, old_spec.args, spec.args)
+    if haskey(block.attributes, :args)
+        # Blocks may or may not use the convert_arguments pipeline for argument
+        # processing. When they don't they may process arguments explicitly in
+        # their constructor, which means they can't be updated like this.
+        batch_update_arguments!(updates, old_spec.args, spec.args)
+    else
+        # TODO: replace layoutable if args need to update but can't update dynamically
+        @warn "Skipped args update for $T"
+    end
     batch_update_attributes!(updates, block, old_kw, new_kw)
     update!(block.attributes, updates)
 

@@ -222,6 +222,7 @@ function unsafe_init!(edge::ComputeEdge)
         foreach(locked_resolve!, edge.inputs)
         edge.typed_edge[] = TypedEdge_no_call(edge)
         edge.got_resolved[] = true
+        fill!(edge.inputs_dirty, false)
         for dep in edge.dependents
             mark_input_dirty!(edge, dep)
         end

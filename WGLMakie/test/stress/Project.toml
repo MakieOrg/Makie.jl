@@ -1,0 +1,28 @@
+# Browser stress suite for WGLMakie (see runtests.jl in this folder). Not part of
+# the CI test env: it drives Electron through ElectronCall's testing helpers and
+# exercises Pluto, IJulia and BonitoBook, which the regular tests do not need.
+[deps]
+Bonito = "824d6782-a2ef-11e9-3a09-e5662e0c26f8"
+BonitoBook = "b416d416-7a6e-4336-8c1a-1f8a8cd59518"
+ComputePipeline = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
+ElectronCall = "8ddd578f-0c94-4c64-8c65-f083f291b266"
+IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+Pluto = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
+Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
+
+[sources]
+ComputePipeline = {path = "../../../ComputePipeline"}
+Makie = {path = "../../../Makie"}
+WGLMakie = {path = "../.."}
+# The testing helpers (TestContext, screenshot, wait_for) are only on this branch.
+ElectronCall = {url = "https://github.com/JuliaWeb/ElectronCall.jl.git", rev = "sd/testsuite"}
+BonitoBook = {url = "https://github.com/SimonDanisch/BonitoBook.jl.git"}
+
+[compat]
+Bonito = "5.3"
+julia = "1.11"
