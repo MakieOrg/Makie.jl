@@ -29,3 +29,4 @@ benchmark_results
 WGLMakie/test/electron.log
 reference_images_site/build/
 .scratch/
+WGLMakie/test/stress/results/
