@@ -360,8 +360,8 @@
         e.scroll[] = (0.0, 1.0)
         frozen_x = ax.xticklabelspace[]
         frozen_y = ax.yticklabelspace[]
-        @test frozen_x == Float64(ax.xaxis.attributes.actual_ticklabelspace[])
-        @test frozen_y == Float64(ax.yaxis.attributes.actual_ticklabelspace[])
+        @test frozen_x == Float64(ax.attributes.xaxis.actual_ticklabelspace[])
+        @test frozen_y == Float64(ax.attributes.yaxis.actual_ticklabelspace[])
 
         tick!(0.15, 0.15)
         @test ax.xticklabelspace[] == frozen_x

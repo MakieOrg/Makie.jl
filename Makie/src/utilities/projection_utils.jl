@@ -338,8 +338,8 @@ function local_basis_transformation_matrix(M, p)
     #=
     A projection matrix is applied as
     f(p) = (M * p)[1:3] / (M * p)[4]
-    Because of the division (perpsective projection), the local basis may change
-    in space. To calulate it, we need to calculate the jacobian and evaluate it
+    Because of the division (perspective projection), the local basis may change
+    in space. To calculate it, we need to calculate the jacobian and evaluate it
     at the given position.
     =#
     p3d = to_ndim(Point3d, p, 0)

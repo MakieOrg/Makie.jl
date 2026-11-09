@@ -273,13 +273,14 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                             Tuple{EndPoints{Float32}, EndPoints{Float32}, Matrix{Float32}}
 
                         RT = typeof(T_out(0):T_out(2):T_out(5))
+                        MT = CT isa CellGrid ? T_in : Float32
 
                         @test apply_conversion(CT, xs, ys, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         @test apply_conversion(CT, xs, r, m) isa Tuple{Vector{T_out}, RT, Matrix{Float32}}
                         @test apply_conversion(CT, r, ys, +) isa Tuple{RT, Vector{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, r, m) isa Tuple{RT, RT, Matrix{Float32}}
                         @test apply_conversion(CT, i, i, m) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, r, i, m) isa Tuple{RT, RT, Matrix{Float32}}
+                        @test apply_conversion(CT, i, r, m) isa Tuple{RT, RT, Matrix{MT}}
+                        @test apply_conversion(CT, r, i, m) isa Tuple{RT, RT, Matrix{MT}}
                         @test apply_conversion(CT, xgridvec, ygridvec, xgridvec) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         # TODO OffsetArray
                     end
@@ -299,10 +300,11 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                             @test apply_conversion(CT, xs, r, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                             @test apply_conversion(CT, r, ys, +) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         end
+                        MT = CT isa VertexGrid ? T_in : Float32
                         @test apply_conversion(CT, m) isa Tuple{AbstractRange{Float32}, AbstractRange{Float32}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, r, m) isa Tuple{AbstractRange{T_out}, AbstractRange{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, i, r, m) isa Tuple{AbstractRange{T_out}, AbstractRange{T_out}, Matrix{MT}}
                         @test apply_conversion(CT, i, i, m) isa Tuple{AbstractRange{T_out}, AbstractRange{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, r, i, m) isa Tuple{AbstractRange{T_out}, AbstractRange{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, r, i, m) isa Tuple{AbstractRange{T_out}, AbstractRange{T_out}, Matrix{MT}}
                         @test apply_conversion(CT, xgridvec, ygridvec, xgridvec) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         # TODO OffsetArray
                     end
@@ -457,8 +459,25 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 end
 
                 @testset "Tooltip" begin
-                    @test apply_conversion(Tooltip, xs[1], ys[1], str) isa Tuple{Point2{T_out}, String}
-                    @test apply_conversion(Tooltip, xs[1], ys[1]) isa Tuple{Point2{T_out}}
+                    @test apply_conversion(Tooltip, ps2[1]) isa Tuple{Vector{Point2{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, ps3[1]) isa Tuple{Vector{Point3{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, xs[1], ys[1]) isa Tuple{Vector{Point2{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, xs[1], ys[1], zs[1]) isa Tuple{Vector{Point3{T_out}}, Nothing}
+
+                    @test apply_conversion(Tooltip, ps2) isa Tuple{Vector{Point2{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, ps3) isa Tuple{Vector{Point3{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, xs, ys) isa Tuple{Vector{Point2{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, xs, ys, zs) isa Tuple{Vector{Point3{T_out}}, Nothing}
+
+                    @test apply_conversion(Tooltip, ps2[1], str) isa Tuple{Vector{Point2{T_out}}, Vector{String}}
+                    @test apply_conversion(Tooltip, ps3[1], str) isa Tuple{Vector{Point3{T_out}}, Vector{String}}
+                    @test apply_conversion(Tooltip, xs[1], ys[1], str) isa Tuple{Vector{Point2{T_out}}, Vector{String}}
+                    @test apply_conversion(Tooltip, xs[1], ys[1], zs[1], str) isa Tuple{Vector{Point3{T_out}}, Vector{String}}
+
+                    @test apply_conversion(Tooltip, ps2, strings) isa Tuple{Vector{Point2{T_out}}, Vector{String}}
+                    @test apply_conversion(Tooltip, ps3, strings) isa Tuple{Vector{Point3{T_out}}, Vector{String}}
+                    @test apply_conversion(Tooltip, xs, ys, strings) isa Tuple{Vector{Point2{T_out}}, Vector{String}}
+                    @test apply_conversion(Tooltip, xs, ys, zs, strings) isa Tuple{Vector{Point3{T_out}}, Vector{String}}
                 end
 
                 @testset "Tricontourf" begin
@@ -500,7 +519,6 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
         @testset "Text" begin
             @test apply_conversion(Makie.Text, str) isa Tuple{String}
             @test apply_conversion(Makie.Text, strings) isa Tuple{Vector{String}}
-            # TODO glyphcollection
         end
     end
 end

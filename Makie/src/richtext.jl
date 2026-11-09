@@ -12,6 +12,8 @@ Base.:(==)(a::RichText, b::RichText) = a.type == b.type && a.children == b.child
 
 Base.hash(a::RichText, b::UInt) = hash(a.type, hash(a.children, hash(a.attributes, b)))
 
+Base.isempty(r::RichText) = isempty(r.children) || all(isempty, r.children)
+
 function Base.print(io::IO, r::RichText)
     return foreach(child -> print(io, child), r.children)
 end

@@ -17,11 +17,13 @@ function convert_arguments(P::Type{<:AbstractPlot}, d::KernelDensity.BivariateKD
 end
 
 """
-    density(values)
+Plots a kernel density estimate of values.
 
-Plot a kernel density estimate of `values`.
+## Arguments
+
+* `values` An `AbstractVector{<:Real}` of values to estimate the density distribution from.
 """
-@recipe Density begin
+@recipe Density (values::RealVector,) begin
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
     """
@@ -62,9 +64,12 @@ Plot a kernel density estimate of `values`.
     cycle = [:color => :patchcolor]
 end
 
-function plot!(plot::Density{<:Tuple{<:AbstractVector}})
+argument_dim_kwargs(::Type{<:Density}) = (:direction,)
+argument_dims(::Type{<:Density}, vals; direction) = (ifelse(direction === :x, 1, 2),)
+
+function plot!(plot::Density{<:Tuple{<:RealVector}})
     map!(
-        plot, [:converted_1, :direction, :boundary, :offset, :npoints, :bandwidth, :weights],
+        plot, [:values, :direction, :boundary, :offset, :npoints, :bandwidth, :weights],
         [:lower, :upper]
     ) do x, dir, bound, offs, n, bw, weights
 
@@ -93,7 +98,7 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
             ps = copy(upper)
             push!(ps, lower[end])
             push!(ps, lower[1])
-            push!(ps, lower[2])
+            push!(ps, upper[1])
             return ps
         else
             return upper

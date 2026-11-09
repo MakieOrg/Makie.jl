@@ -41,8 +41,8 @@ using WGLMakie, Bonito, Test
         )
     end
     function wait_for_text(text)
-        Bonito.wait_for(() -> textbox.displayed_string[] == text; timeout = 10)
-        return textbox.displayed_string[]
+        Bonito.wait_for(() -> textbox.editor.arg1[] == text; timeout = 10)
+        return textbox.editor.arg1[]
     end
 
     @testset "typing" begin
@@ -77,7 +77,7 @@ using WGLMakie, Bonito, Test
     @testset "paste is one edit without character input" begin
         edits = String[]
         characters = Char[]
-        on(text -> push!(edits, text), textbox.displayed_string)
+        on(text -> push!(edits, text), textbox.editor.arg1)
         on(char -> push!(characters, char), events(fig).unicode_input; priority = 100)
         content = repeat("x", 3000)
         run(edisplay.window.app, """require("electron").clipboard.writeText("$content"); true""")
