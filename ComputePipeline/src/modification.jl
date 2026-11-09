@@ -274,7 +274,9 @@ function set_type!(node::Computed, T::Type)
     # safer to only work with not-yet-defined node.value's because otherwise
     # there is a ref that could be used somewhere already.
     if isdefined(node, :value)
-        error("Node already initialized.")
+        if eltype(node.value) !== T
+            error("Node :$(node.name) already initialized to `$(node.value)`.")
+        end
     else
         node.value = Ref{T}()
     end
