@@ -23,8 +23,6 @@ ComputePipeline = {path = "../../ComputePipeline"}
 Makie = {path = "../../Makie"}
 GLMakie = {path = "../../GLMakie"}
 RayMakie = {path = ".."}
-Vulkan = {url = "https://github.com/JuliaGPU/Vulkan.jl", rev = "sd/vk1.4"}
-VulkanCore = {url = "https://github.com/JuliaGPU/VulkanCore.jl", rev = "sd/vk1.4"}
 Hikari = {url = "https://github.com/JuliaGraphics/Hikari.jl", rev = "sd/lava-refactor"}
 KernelAbstractions = {url = "https://github.com/SimonDanisch/KernelAbstractions.jl", rev = "sd/lava-refactor"}
 KernelInterface = {url = "https://github.com/SimonDanisch/KernelAbstractions.jl", rev = "sd/lava-refactor", subdir = "lib/KernelInterface"}
@@ -35,3 +33,5 @@ Raycore = {url = "https://github.com/JuliaGeometry/Raycore.jl", rev = "sd/with-t
 
 [compat]
 julia = "1.12"
+Vulkan = "0.7"
+VulkanCore = "2"
