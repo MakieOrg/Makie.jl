@@ -518,8 +518,9 @@ end
 
 function Base.empty!(scene::Scene; reset_theme = true)
     foreach(empty!, copy(scene.children))
-    # clear plots of this scene
-    for plot in copy(scene.plots)
+    # clear plots of this scene, newest first so that removing their compute
+    # edges from the scene graph finds them at the end of the dependents
+    for plot in reverse(scene.plots)
         delete!(scene, plot)
     end
 
@@ -589,6 +590,15 @@ function free(plot::AbstractPlot)
     return
 end
 
+# Recipe children connect to the scene graph as well (camera, space conversions),
+# so disconnect the whole plot tree. Children are created after their parent, so
+# go in reverse creation order.
+function disconnect_from_parent_graphs!(plot::AbstractPlot)
+    foreach(disconnect_from_parent_graphs!, Iterators.reverse(plot.plots))
+    ComputePipeline.unsafe_disconnect_from_parents!(plot.attributes)
+    return
+end
+
 # Note: can be called from scene finalizer
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
@@ -598,7 +608,7 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
     # Remove references to the plot compute graph from any parent compute graph.
     # (E.g. the scene compute graph)
     # This is meant to make the plot graph GC-able.
-    ComputePipeline.unsafe_disconnect_from_parents!(plot.attributes)
+    disconnect_from_parent_graphs!(plot)
 
     # TODO, if we want to delete a subplot of a plot,
     # It won't be in scene.plots directly, but will still be deleted

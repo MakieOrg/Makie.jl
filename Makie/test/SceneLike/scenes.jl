@@ -126,3 +126,23 @@ end
     @test Pair(false, p3) in buffer
     @test length(buffer) == 2
 end
+
+@testset "Deleting plots disconnects them from the scene graph" begin
+    # Plots, including the children of recipes, register edges on scene nodes
+    # like the camera matrices. Deleting a plot needs to remove all of them.
+    n_dependents(scene) = sum(values(scene.compute.outputs)) do node
+        return Makie.ComputePipeline.hasparent(node) ? length(node.parent.dependents) : 0
+    end
+    scene = Scene()
+    n_empty = n_dependents(scene)
+    scatter!(scene, rand(10))
+    n_scatter = n_dependents(scene)
+    p2 = scatterlines!(scene, rand(10))
+    p3 = barplot!(scene, 1:3, rand(3))
+    delete!(scene, p2)
+    delete!(scene, p3)
+    @test n_dependents(scene) == n_scatter
+    scatterlines!(scene, rand(10))
+    empty!(scene)
+    @test n_dependents(scene) == n_empty
+end

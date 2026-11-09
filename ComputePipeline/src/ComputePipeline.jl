@@ -1846,7 +1846,10 @@ Base.@nospecializeinfer function register_computation!(@nospecialize(f::Function
         # come from the same edge
         parent_edge = input.parent::AbstractEdge
         dependents = parent_edge.dependents::Vector{ComputeEdge{ComputeGraph}}
-        if !in(new_edge, dependents)
+        # `new_edge` can only be in `dependents` already if an earlier input
+        # shares this parent edge, and then it was pushed last. Checking the
+        # whole vector would make creating many plots in one scene quadratic.
+        if isempty(dependents) || last(dependents) !== new_edge
             push!(dependents, new_edge)
         end
     end
@@ -2226,33 +2229,37 @@ connecting this graph to parent graphs still exist with references to parent
 graphs, but they can no longer be triggered.
 """
 function unsafe_disconnect_from_parents!(attr::ComputeGraph)
+    # an edge with several outputs is the parent of each of them, visit it once
+    visited = Base.IdSet{AbstractEdge}()
     for comp in values(attr.outputs)
-        if hasparent(comp)
-            unsafe_disconnect_parent_graph_nodes!(attr, comp.parent)
-        end
+        hasparent(comp) || continue
+        edge = comp.parent
+        edge in visited && continue
+        push!(visited, edge)
+        unsafe_disconnect_parent_graph_nodes!(attr, edge)
     end
     return
 end
 
 unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::Input) = nothing
 function unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::ComputeEdge)
-    for input in edge.inputs
-        if !haskey(attr.outputs, input.name) || !(input in values(attr.outputs))
-            unsafe_atomic_delete!(edge)
-        end
+    for (i, input) in enumerate(edge.inputs)
+        # only inputs from other graphs reference `edge` from outside of `attr`
+        get(attr.outputs, input.name, nothing) === input && continue
+        hasparent(input) || continue
+        parent_edge = input.parent
+        # inputs sharing a parent edge registered `edge` with it only once
+        any(j -> hasparent(edge.inputs[j]) && edge.inputs[j].parent === parent_edge, 1:(i - 1)) && continue
+        remove_dependent!(parent_edge.dependents, edge)
     end
     return
 end
 
-function unsafe_atomic_delete!(edge::ComputeEdge)
-    # deregister this edge as a dependency of its parents
-    for computed in edge.inputs
-        if hasparent(computed)
-            parent_edge = computed.parent
-            filter!(e -> e !== edge, parent_edge.dependents)
-        end
-    end
-
+# Dependents are pushed on creation, so search from the end. Deleting in reverse
+# creation order (like `empty!(scene)` does) then finds them right away.
+function remove_dependent!(dependents::Vector, edge::ComputeEdge)
+    i = findlast(e -> e === edge, dependents)
+    isnothing(i) || deleteat!(dependents, i)
     return
 end
 
