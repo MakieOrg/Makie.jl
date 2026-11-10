@@ -87,7 +87,7 @@ format_complexity(f1::BufferFormat, f2::BufferFormat) = max(f1.dims, f2.dims) * 
 function validate_pipeline(pipeline::RenderGraph)
     for (i, stage) in enumerate(pipeline.stages)
         # Confirm that all outputs have the same number of samples
-        if !mapreduce(format -> format.samples, ==, stage.output_formats, init = true)
+        if !allequal(format.samples for format in stage.output_formats)
             error("RenderStage $stage does not have a consistent sample count for all outputs.")
         end
 
