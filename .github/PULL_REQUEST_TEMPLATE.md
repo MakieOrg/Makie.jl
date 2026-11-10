@@ -38,7 +38,7 @@ Delete options that do not apply:
 
 ## Checklist
 
-- [ ] Added an entry in CHANGELOG.md (for new features and breaking changes)
+- [ ] Added `changelog/<PR number>.md` with one or more `- ` entries (see `changelog/README.md`)
 - [ ] Added or changed relevant sections in the documentation
 - [ ] Added unit tests for new algorithms, conversion methods, etc.
 - [ ] Added reference image tests for new plotting functions, recipes, visual options, etc.

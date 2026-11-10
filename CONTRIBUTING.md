@@ -22,7 +22,7 @@ Add PRs in draft mode if you want to discuss your approach first.
 
 Please add tests for any new functionality that you want to add.
 Makie uses both reference tests that check for visual regressions, and unit tests that check correctness of functions etc.
-It is also appreciated if you add docstrings or documentation, and add an entry to the NEWS file.
+It is also appreciated if you add docstrings or documentation, and add a changelog entry file as described in `changelog/README.md`.
 
 ### Tests
 
