@@ -368,6 +368,17 @@ end
     end
 end
 
+@testset "precompile_plot" begin
+    fig, ax, plt = scatter(1:10)
+    @test isnothing(WGLMakie.precompile_plot(fig))
+    called = Ref(false)
+    WGLMakie.precompile_plot(fig) do
+        plt.color = :red
+        called[] = true
+    end
+    @test called[]
+end
+
 println("###########################")
 println("WGLMakie tests DONE")
 println("Open Tasks: ", length(Makie.TRACKED_TASKS))

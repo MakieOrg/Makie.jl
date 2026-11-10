@@ -348,3 +348,14 @@ end
         end
     end
 end
+
+@testset "precompile_plot" begin
+    fig, ax, plt = scatter(1:10)
+    @test isnothing(CairoMakie.precompile_plot(fig))
+    called = Ref(false)
+    CairoMakie.precompile_plot(fig) do
+        plt.color = :red
+        called[] = true
+    end
+    @test called[]
+end

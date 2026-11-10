@@ -184,6 +184,7 @@ pages = [
                 "latex.md",
                 "observables.md",
                 "plot_method_signatures.md",
+                "precompilation.md",
                 "recipes.md",
                 "scenes.md",
                 "specapi.md",

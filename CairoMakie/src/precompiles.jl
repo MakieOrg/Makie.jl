@@ -11,6 +11,36 @@ macro compile(block)
     end
 end
 
+"""
+    CairoMakie.precompile_plot(figlike)
+    CairoMakie.precompile_plot(f, figlike)
+
+Render `figlike`, so that rendering such plots gets compiled. Meant to be called inside a
+package's precompile workload, e.g. in a package extension for CairoMakie:
+
+```julia
+using PrecompileTools, CairoMakie
+
+@compile_workload begin
+    CairoMakie.precompile_plot(my_plot_function(data))
+end
+```
+
+With `f`, `f()` is called after the first render and the figure is rendered again afterwards, to
+also compile the updates `f` causes, e.g. changing attributes. CairoMakie can't pick, so hovers
+(e.g. for `DataInspector`) don't do anything.
+"""
+precompile_plot(figlike) = precompile_plot(Returns(nothing), figlike)
+
+function precompile_plot(f, figlike)
+    Makie.colorbuffer(figlike; backend = CairoMakie)
+    f()
+    Makie.colorbuffer(figlike; backend = CairoMakie)
+    # don't leave tasks or caches behind in the package image
+    PrecompileTools.is_generating_output() && Makie.cleanup_globals()
+    return
+end
+
 let
     @compile_workload begin
         CairoMakie.activate!()

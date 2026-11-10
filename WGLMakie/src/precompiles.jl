@@ -3,20 +3,55 @@ using PrecompileTools
 macro compile(block)
     return quote
         let
-            figlike = $(esc(block))
-            # Exercise rendering without starting Electron during precompilation.
-            session = Session()
-            app = App(() -> DOM.div(figlike))
-            dom = Bonito.session_dom(session, app)
-            show(IOBuffer(), dom)
-            Makie.second_resolve(figlike, :wgl_renderobject)
-            serialize_scene(session, Makie.get_scene(figlike))
-            WGLMakie.poll_all_plots(Makie.get_scene(figlike))
-            close(session)
-            yield()
+            render_for_precompile($(esc(block)))
             return nothing
         end
     end
+end
+
+# Exercise rendering without starting Electron during precompilation.
+function render_for_precompile(figlike)
+    session = Session()
+    app = App(() -> DOM.div(figlike))
+    dom = Bonito.session_dom(session, app)
+    show(IOBuffer(), dom)
+    Makie.second_resolve(figlike, :wgl_renderobject)
+    serialize_scene(session, Makie.get_scene(figlike))
+    WGLMakie.poll_all_plots(Makie.get_scene(figlike))
+    close(session)
+    yield()
+    return
+end
+
+"""
+    WGLMakie.precompile_plot(figlike)
+    WGLMakie.precompile_plot(f, figlike)
+
+Serialize `figlike` the way displaying it does (without starting a browser), so that displaying
+such plots gets compiled. Meant to be called inside a package's precompile workload, e.g. in a
+package extension for WGLMakie:
+
+```julia
+using PrecompileTools, WGLMakie
+
+@compile_workload begin
+    WGLMakie.precompile_plot(my_plot_function(data))
+end
+```
+
+With `f`, `f()` is called after the first serialization and the figure is serialized again
+afterwards, to also compile the updates `f` causes, e.g. changing attributes. Picking needs the
+browser, so hovers (e.g. for `DataInspector`) don't do anything.
+"""
+precompile_plot(figlike) = precompile_plot(Returns(nothing), figlike)
+
+function precompile_plot(f, figlike)
+    render_for_precompile(figlike)
+    f()
+    render_for_precompile(figlike)
+    # don't leave tasks or caches behind in the package image
+    PrecompileTools.is_generating_output() && Makie.cleanup_globals()
+    return
 end
 
 let

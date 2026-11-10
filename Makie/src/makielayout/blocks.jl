@@ -244,6 +244,8 @@ end
 
 can_be_current_axis(x) = false
 
+pixel_bbox(block::Block) = Rect2d(block.layoutobservables.computedbbox[])
+
 get_top_parent(gp::GridLayout) = GridLayoutBase.top_parent(gp)
 get_top_parent(gp::GridPosition) = GridLayoutBase.top_parent(gp.layout)
 get_top_parent(gp::GridSubposition) = get_top_parent(gp.parent)

@@ -297,6 +297,7 @@ export to_world
 
 # picking + interactive use cases + events
 export mouseover, onpick, pick, Events, Keyboard, Mouse, is_mouseinside
+export pixel_position
 export ispressed, Exclusively
 export connect_screen
 export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,

@@ -18,6 +18,65 @@ function is_context_unavailable(err)
     )
 end
 
+"""
+    GLMakie.precompile_plot(figlike)
+    GLMakie.precompile_plot(f, figlike)
+
+Render `figlike` in a hidden window, so that displaying such plots gets compiled. Meant to be
+called inside a package's precompile workload, e.g. in a package extension for GLMakie:
+
+```julia
+using PrecompileTools, GLMakie
+
+@compile_workload begin
+    GLMakie.precompile_plot(my_plot_function(data))
+end
+```
+
+With `f`, `f()` is called after the first frame while the window is still open, so interactions
+can be precompiled by sending events. Afterwards the figure is rendered again, to also compile the
+updates the interaction caused. For example a `DataInspector` hover:
+
+```julia
+fig, ax, plt = scatter(rand(10))
+DataInspector(fig)
+GLMakie.precompile_plot(fig) do
+    events(fig).mouseposition[] = Tuple(pixel_position(plt, 1))
+end
+```
+
+If no OpenGL context can be created (e.g. on a headless machine), nothing is rendered and `f` is
+not called.
+"""
+precompile_plot(figlike) = precompile_plot(Returns(nothing), figlike)
+
+function precompile_plot(f, figlike)
+    previous_backend = Makie.current_backend()
+    # colorbuffer and picking (e.g. for DataInspector) use the current backend
+    Makie.set_active_backend!(GLMakie)
+    try
+        try
+            Makie.colorbuffer(figlike; px_per_unit = 1, visible = false)
+        catch err
+            is_context_unavailable(err) || rethrow()
+            @info "Skipping `GLMakie.precompile_plot` because no usable OpenGL context is available." exception = err
+            return
+        end
+        f()
+        Makie.process_pending_hover!(figlike)
+        Makie.colorbuffer(figlike; px_per_unit = 1, visible = false)
+        Makie.second_resolve(figlike, :gl_renderobject)
+    finally
+        Makie.set_active_backend!(previous_backend)
+    end
+    if PrecompileTools.is_generating_output()
+        # don't leave windows, tasks or caches behind in the package image
+        closeall()
+        Makie.cleanup_globals()
+    end
+    return
+end
+
 function precompile_screen()
     try
         return singleton_screen(false)
