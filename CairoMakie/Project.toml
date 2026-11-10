@@ -26,7 +26,7 @@ FreeType = "3, 4.0"
 FreeType2_jll = "2 - 2.14"
 GeometryBasics = "0.5"
 LinearAlgebra = "1.0, 1.6"
-Makie = "=0.25.0"
+Makie = "=0.24.17"
 PrecompileTools = "1.0"
 julia = "1.10"
 
