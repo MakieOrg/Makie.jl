@@ -453,6 +453,10 @@ import PrecompileTools
 const SHARED_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile.jl")
 const SHARED_PRECOMPILE_FULL_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile-full.jl")
 
+# True while a package is being precompiled. `PrecompileTools.is_generating_output`
+# does the same, but isn't available in the PrecompileTools versions for older Julia.
+is_precompiling() = ccall(:jl_generating_output, Cint, ()) == 1
+
 """
     shared_precompile_paths()
 

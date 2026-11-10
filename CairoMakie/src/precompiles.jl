@@ -37,7 +37,7 @@ function precompile_plot(f, figlike)
     f()
     Makie.colorbuffer(figlike; backend = CairoMakie)
     # don't leave tasks or caches behind in the package image
-    PrecompileTools.is_generating_output() && Makie.cleanup_globals()
+    Makie.is_precompiling() && Makie.cleanup_globals()
     return
 end
 

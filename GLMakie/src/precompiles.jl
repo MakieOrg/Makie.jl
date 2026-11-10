@@ -69,7 +69,7 @@ function precompile_plot(f, figlike)
     finally
         Makie.set_active_backend!(previous_backend)
     end
-    if PrecompileTools.is_generating_output()
+    if Makie.is_precompiling()
         # don't leave windows, tasks or caches behind in the package image
         closeall()
         Makie.cleanup_globals()
