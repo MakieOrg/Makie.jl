@@ -18,6 +18,7 @@ using ComputePipeline.Observables
 
     @testset "general" failfast = false begin
         include("unit_tests.jl")
+        include("modification.jl")
         include("system_tests.jl")
     end
 end

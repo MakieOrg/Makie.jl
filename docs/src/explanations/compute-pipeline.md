@@ -385,3 +385,22 @@ select!(graph, :user_choice, [:input1, :input2, :input3], :output)
 
 graph.output[]
 ```
+
+## Modifying edges (experimental)
+
+Existing compute edges, i.e. the connections between nodes created with `map!` and `register_computation!`, can be modified with the following internal functions.
+
+- `replace_output!(edges, pairs)` replaces outputs of an edge based on their names in the compute graph. This errors if a replacement would create a loop. E.g. `replace_output!(graph.x.parent, :x => :y)`
+- `push_input!(edge, node)` adds a node to the inputs of an edge. This errors if the added node would create a loop. E.g. `push_input!(graph.x.parent, graph.b)`
+- `delete_input!(edge, node)` removes a node from the inputs of an edge. E.g. `delete_input!(graph.x.parent, graph.b)`
+- `delete_output!(edge, node)` removes a node from the output of an edge. E.g. `delete_output!(graph.x.parent, graph.y)`
+- `move!(target_graph, node)` moves a node and all of its siblings (i.e. other outputs of `node.parent`) into another compute graph. E.g. `move!(other, graph.x)`.
+- `modify_edge!(edge; [callback, inputs, outputs])` allows you to edit the callback, inputs and/or outputs of an edge, depending on which keyword arguments are passed. This does not check for loops.
+
+`replace_output` and `modify_edge!` can also be used with compute graph inputs.
+
+!!! danger
+    The ComputeGraph does not support loops, i.e. nodes/edges that feed back into themselves.
+    Creating them may lock up the graph, error or produce unexpected/wrong results on resolve.
+    Be mindful of this when using `modify_edge!` as it does not check for loops.
+    You can check for them yourself with `is_child_of(potential_child, potential_parent)` before or `is_part_of_loop(node)` after completing a potential loop.

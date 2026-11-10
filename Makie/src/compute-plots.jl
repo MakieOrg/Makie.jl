@@ -420,7 +420,11 @@ function _register_input_arguments!(attr::ComputeGraph, input_args::Tuple)
     inputs = map(enumerate(input_args)) do (i, arg)
         sym = Symbol(:arg, i)
         add_input!(attr, sym, arg)
-        ComputePipeline.set_type!(attr[sym], Any)
+        # If `arg` is a Computed then the type restrictions of arg will automatically
+        # pass down here. (There is no point in loosening them and it's also currently
+        # not allowed. `arg` could still be Any and if it is it would transfer to "sym")
+        # If `arg` is not a Computed node, then we fix the type to Any to allow type changes
+        isa(arg, Computed) || ComputePipeline.set_type!(attr[sym], Any)
         return sym
     end
     return inputs

@@ -282,3 +282,45 @@ end
     @test all(_ -> ComputePipeline.get_observable!(graph, :value) === obs, 1:20)
     @test comparisons[] == 0
 end
+
+@testset "Graph modification keeps component locks" begin
+    source, graph, other = ComputeGraph(), ComputeGraph(), ComputeGraph()
+    add_input!(source, :x, 10)
+    add_input!(graph, :x, 1)
+    add_input!(other, :y, 100)
+    map!(+, graph, :x, :result)
+    @test graph.result[] == 1
+    ComputePipeline.modify_edge!(graph.result.parent; inputs = [source.x])
+    root(g) = ComputePipeline.component(getfield(g, :state))
+    @test root(source) === root(graph)
+    @test graph.result[] == 10
+    ComputePipeline.push_input!(graph.result.parent, other.y)
+    @test root(other) === root(graph)
+    @test graph.result[] == 110
+    source.x = 20
+    @test graph.result[] == 120
+
+    target = ComputeGraph()
+    ComputePipeline.move!(target, graph.result)
+    @test root(target) === root(graph)
+    other.y = 200
+    @test target.result[] == 220
+
+    ComputePipeline.modify_edge!(source.x.parent; callback = x -> x + 1)
+    @test target.result[] == 221
+end
+
+@testset "Explicit notifications run after unlocking" begin
+    for operation in (notify, ComputePipeline.mark_dirty!)
+        graph = ComputeGraph()
+        add_input!(graph, :x, 1)
+        obs = ComputePipeline.get_observable!(graph.x; use_deepcopy = false)
+        locks = Bool[]
+        listener = on(obs) do _
+            push!(locks, islocked(ComputePipeline.component(getfield(graph, :state)).lock))
+        end
+        operation(graph.x)
+        @test locks == [false]
+        off(listener)
+    end
+end
