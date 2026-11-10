@@ -593,7 +593,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, graph)
 
-    b.blockscene = Scene(topscene, clear = false, camera = campixel!)
+    b.blockscene = Scene(topscene, clear = false, camera = campixel!, clip = nothing)
 
     if has_forwarded_layout(T)
         init_layout!(b)

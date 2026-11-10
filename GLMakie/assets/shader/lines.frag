@@ -26,6 +26,7 @@ flat in uvec2 f_id;
 flat in float f_cumulative_length;
 flat in ivec2 f_capmode;
 flat in vec4 f_linepoints;
+in vec2 f_local_px;
 flat in vec4 f_miter_vecs;
 
 {{pattern_type}} pattern;
@@ -151,8 +152,8 @@ void main(){
 // #ifndef DEBUG
 if (!debug) {
     // discard fragments that are other side of the truncated joint
-    float discard_sdf1 = dot(gl_FragCoord.xy - f_linepoints.xy, f_miter_vecs.xy);
-    float discard_sdf2 = dot(gl_FragCoord.xy - f_linepoints.zw, f_miter_vecs.zw);
+    float discard_sdf1 = dot(f_local_px - f_linepoints.xy, f_miter_vecs.xy);
+    float discard_sdf2 = dot(f_local_px - f_linepoints.zw, f_miter_vecs.zw);
     if ((f_quad_sdf.x > 0.0 && discard_sdf1 > 0.0) ||
         (f_quad_sdf.y > 0.0 && discard_sdf2 >= 0.0))
         discard;
@@ -243,8 +244,8 @@ if (!debug) {
     color.rgb -= vec3(0.4) * step(0.0, sdf);
 
     // Mark discarded space in red/blue
-    float discard_sdf1 = dot(gl_FragCoord.xy - f_linepoints.xy, f_miter_vecs.xy);
-    float discard_sdf2 = dot(gl_FragCoord.xy - f_linepoints.zw, f_miter_vecs.zw);
+    float discard_sdf1 = dot(f_local_px - f_linepoints.xy, f_miter_vecs.xy);
+    float discard_sdf2 = dot(f_local_px - f_linepoints.zw, f_miter_vecs.zw);
     if (f_quad_sdf.x > 0.0 && discard_sdf1 > 0.0)
         color.r += 0.5;
     if (f_quad_sdf.y > 0.0 && discard_sdf2 >= 0.0)

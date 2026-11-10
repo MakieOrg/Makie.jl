@@ -111,6 +111,7 @@ struct GLVisualizeShader <: AbstractLazyShader
         args = Dict{Symbol, Any}(kw_args)
         args[:view] = view
         args[:fragdatalocation] = [(0, "fragment_color"), (1, "fragment_groupid")]
+        "fragment_output.frag" in paths && push!(paths, "scene_tree/clip_coverage.frag")
         return new(screen, map(x -> loadshader(x), paths), args)
     end
 end
@@ -160,6 +161,13 @@ function initialize_renderobject!(screen, stage::RenderPlots, robj, plot)
     pre = get_prerender(plot)
     post = get_postrender(plot)
     add_instructions!(robj, name, lazy_shader, pre = pre, post = post)
+    return
+end
+
+function initialize_renderobject!(screen, ::SceneTreeRender, robj, plot)
+    view = Dict{String, String}("TARGET_STAGE" => "#define DEFAULT_TARGET")
+    lazy_shader = default_shader(screen, robj, plot, view)::GLVisualizeShader
+    add_instructions!(robj, :forward_render_objectid, lazy_shader, pre = get_prerender(plot), post = get_postrender(plot))
     return
 end
 

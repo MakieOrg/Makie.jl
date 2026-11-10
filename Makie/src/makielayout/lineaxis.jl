@@ -328,7 +328,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         linestyle = nothing, visible = ticksvisible, inspectable = false
     )
     decorations[:ticklines] = ticklines
-    translate!(ticklines, 0, 0, 10)
+    ticklines.zorder = 10
 
     ######################################
     ### Minor Ticks
@@ -351,7 +351,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         linestyle = nothing, visible = minorticksvisible, inspectable = false
     )
     decorations[:minorticklines] = minorticklines
-    translate!(minorticklines, 0, 0, 10)
+    minorticklines.zorder = 10
 
     ######################################
     ### Axis Line
@@ -367,7 +367,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         parent, graph.linepoints, linewidth = spinewidth, visible = spinevisible,
         color = spinecolor, inspectable = false, linestyle = nothing
     )
-    translate!(decorations[:axisline], 0, 0, 20)
+    decorations[:axisline].zorder = 20
 
     ######################################
     ### Tick Labels
