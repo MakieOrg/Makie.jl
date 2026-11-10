@@ -725,7 +725,7 @@ function attach_editabletext_events!(
                 if plot.manage_focus[]
                     # Auto-focus on clicks within the text bbox; auto-defocus
                     # on clicks outside.
-                    if !is_click_inside_text(text_plot, plot, mpos)
+                    if !(is_mouseinside(parent) && is_click_inside_text(text_plot, plot, mpos))
                         if plot.focused[]
                             plot.focused[] = false
                         end

@@ -428,7 +428,7 @@ function initialize_block!(leg::Legend; entrygroups)
     sevents = events(blockscene)
     on(scene, sevents.mousebutton, priority = 1) do event
         mpos = sevents.mouseposition[]
-        if (event.action == Mouse.release) && in(mpos, legend_area[])
+        if event.action == Mouse.release && is_mouseinside(scene) && in(mpos, legend_area[])
             if event.button == Mouse.left
                 # Find hovered entry and toggle visibility for all connected plots
                 _toggle_hovered_legend_visibilities!(mpos, entry_groups[], entryshades)
