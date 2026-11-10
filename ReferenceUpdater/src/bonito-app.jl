@@ -496,6 +496,20 @@ function failed_recordings_section(root_path)
     )
 end
 
+function unrecorded_pins_section(paths)
+    return DOM.div(
+        DOM.h2("Pin files without recorded images", class = "section-header"),
+        DOM.div(
+            "These pin files approve images that no test recorded, usually because the test " *
+                "was renamed or turned into a stepper test. Delete them from " *
+                "ReferenceTests/refimage_updates, otherwise promoting the images fails after merge.",
+            class = "section-description"
+        ),
+        DOM.ul((DOM.li(path) for path in paths), class = "failed-list"),
+        class = "section",
+    )
+end
+
 function media_element(img_name, local_path, additional_classes = ""; kw...)
     filetype = split(img_name, ".")[end]
     css_class = additional_classes == "" ? "" : " $additional_classes"
@@ -544,7 +558,11 @@ function build_card_grid(img_names, backends, should_include, card_builder)
     return cards
 end
 
-function create_simple_grid_content(root_path, filename, image_folder, backends; extra_paths = String[], review_only::Bool = false, pinned_paths = nothing)
+function create_simple_grid_content(
+        root_path, filename, image_folder, backends;
+        extra_paths = String[], review_only::Bool = false, pinned_paths = nothing
+    )
+
     path = joinpath(root_path, filename)
     files = unique(vcat(isfile(path) ? readlines(path) : String[], collect(extra_paths)))
     filter!(!isempty, files)
@@ -788,12 +806,11 @@ and no tool controls. Used for the self-contained `export_static` per-PR page.
 function review_content(root_path, backends, score_thresholds; display_threshold = 0.05)
     # inert pin files (their reference changed since the pin was taken) are left out
     # entirely, since they neither exempt an image nor need any action
-    classified = classify_entries(read_manifest(joinpath(root_path, "refimage_updates")), joinpath(root_path, "reference"))
+    classified = classify_pins(root_path)
     pinned_paths = union(classified.exempt_changed, classified.exempt_new, classified.to_delete)
     pinned_names = Set(replace(path, r"(GLMakie|CairoMakie|WGLMakie)/" => "") for path in pinned_paths)
-    pinned_new = filter(path -> isfile(joinpath(root_path, "recorded", path)), sort!(collect(classified.exempt_new)))
 
-    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends; extra_paths = pinned_new, review_only = true, pinned_paths)
+    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends; extra_paths = recorded_pinned_new(root_path, classified), review_only = true, pinned_paths)
     missing_cards = create_simple_grid_content(root_path, "missing_files.txt", "reference", backends; review_only = true, pinned_paths)
 
     scores_imgs = readdlm(joinpath(root_path, "scores.tsv"), '\t')
@@ -814,12 +831,13 @@ function review_content(root_path, backends, score_thresholds; display_threshold
     updated_cards = build_card_grid(imgs_with_score, backends, file -> haskey(lookup, file), review_card)
 
     cov = approval_coverage(root_path)
-    summary = if total_images(cov) == 0
-        coverage_summary(cov)
+    approval = if total_images(cov) == 0
+        approval_summary(cov)
     else
-        coverage_summary(cov) * " by pin files" *
-            (fully_approved(cov) ? "" : ", the rest still need to be added before merge")
+        approval_summary(cov) * " by pin files" *
+            (images_approved(cov) ? "" : ", the rest still need to be added before merge")
     end
+    summary = isempty(cov.unrecorded) ? approval : approval * ". " * unrecorded_summary(cov) * ", see below"
 
     cycle_controls = DOM.div(
         DOM.input(type = "checkbox", class = "cycle-checkbox"),
@@ -855,6 +873,7 @@ function review_content(root_path, backends, score_thresholds; display_threshold
     )
     failed_section = failed_recordings_section(root_path)
     isnothing(failed_section) || push!(sections, failed_section)
+    isempty(cov.unrecorded) || push!(sections, unrecorded_pins_section(cov.unrecorded))
     isempty(sections) && push!(sections, DOM.div("No differing or pinned reference images.", class = "section-description"))
 
     header = DOM.div(
@@ -880,7 +899,7 @@ function create_app_content(session::Session, root_path::String)
     session.connection isa Bonito.NoConnection && return review_content(root_path, backends, score_thresholds)
 
     # Newly added Images
-    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends)
+    new_cards = create_simple_grid_content(root_path, "new_files.txt", "recorded", backends; extra_paths = recorded_pinned_new(root_path))
 
     # Deleted/Missing Images
     missing_cards = create_simple_grid_content(root_path, "missing_files.txt", "reference", backends)

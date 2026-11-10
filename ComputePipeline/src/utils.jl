@@ -47,3 +47,82 @@ unwrap_explicit_update(x) = x
 unwrap_explicit_update(x::ComputePipeline.ExplicitUpdate) = x.data
 
 export ExplicitUpdate, unwrap_explicit_update
+
+"""
+    select!(graph, selector, choices, output)
+    select!(callback, graph, selection_inputs, choices, output)
+
+Selects one of the `choices` nodes based on the index given in the `selector`
+node and forwards it to the `output` node without resolving the other `choices`.
+
+Alternatively, a `callback` and one or more `selection_inputs` can be given to
+define the selected index based on the result of `callback(selection_inputs...)`.
+
+This calls `map!(select, graph, [selector, choices...], output)` internally. If
+a callback is given, it will generate a `selector` node beforehand.
+"""
+function select!(graph::AbstractComputeGraph, selector::InputNodeTypes, choices::Vector, output::OutputNodeTypes)
+    node = get_node(graph, selector)
+    if is_initialized(node)
+        node.value[] isa Int || error("Selector node $(node.name) must contain an Int, but is initialized to $(node.value[])")
+    else
+        ComputePipeline.set_type!(node, Int)
+    end
+    inputs = Computed[node, get_node.(Ref(graph), choices)...]
+    map!(select, graph, inputs, output)
+    return
+end
+
+function select!(callback, graph::AbstractComputeGraph, selection_inputs, choices::Vector, output::OutputNodeTypes)
+    selector = Symbol(output, :_selector)
+    map!(callback, graph, selection_inputs, selector)
+    select!(callback, graph, selector, choices, output)
+    return
+end
+
+"""
+    select!(graph, condition, true_choice, false_choice, output)
+
+Selects one of the two choices based on the boolean value of `condition` without
+resolving the other. This is equivalent to
+`map!(ifelse, graph, [condition, true_choice, false_choice], output)`.
+"""
+function select!(
+        graph::AbstractComputeGraph,
+        condition::InputNodeTypes, true_choice::InputNodeTypes, false_choice::InputNodeTypes,
+        output::OutputNodeTypes
+    )
+    node = get_node(graph, condition)
+    if is_initialized(node)
+        node.value[] isa Bool || error("Condition node $(node.name) must contain an Bool, but is initialized to $(node.value[])")
+    else
+        ComputePipeline.set_type!(node, Bool)
+    end
+    inputs = Computed[node, get_node(graph, true_choice), get_node(graph, false_choice)]
+    map!(ifelse, graph, inputs, output)
+
+    return
+end
+
+export select!
+
+collect_all_parents(node::Computed, buffer = Set{Computed}()) = collect_all_parents!(buffer, node)
+function collect_all_parents!(buffer, node::Computed, iter = 0)
+    was_present = node in buffer
+    push!(buffer, node)
+    if iter > 100
+        @warn "Stopping collection at $node after reaching a recursion depth of 100. Is $node part of a loop?"
+    elseif !was_present
+        collect_all_parents!(buffer, node.parent, iter + 1)
+    end
+    return buffer
+end
+function collect_all_parents!(buffer, e::ComputeEdge, iter = 0)
+    for node in e.inputs
+        collect_all_parents!(buffer, node, iter + 1)
+    end
+    return buffer
+end
+collect_all_parents!(buffer, ::Input, iter = 0) = buffer
+
+siblings(node::Computed) = node.parent.outputs

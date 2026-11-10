@@ -41,4 +41,5 @@ RPRMakie = {path = "../RPRMakie"}
 WGLMakie = {path = "../WGLMakie"}
 
 [compat]
-DocumenterVitepress = "0.2.4"
+Documenter = "1.20"
+DocumenterVitepress = "0.3.8"

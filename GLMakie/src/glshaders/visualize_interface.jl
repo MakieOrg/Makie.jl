@@ -85,6 +85,29 @@ struct GLVisualizeShader <: AbstractLazyShader
             view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
             view["SUPPORTED_EXTENSIONS"] = "#define DEPTH_LAYOUT"
         end
+        # The geometry stage forwards these vertex outputs under their original names.
+        view["vertex_output_aliases"] = if "mesh.geom" in paths
+            """
+            #define MESH_GEOMETRY_SHADER
+            #define o_view_pos vo_view_pos
+            #define o_view_normal vo_view_normal
+            #define o_ndc vo_ndc
+            #define o_world_pos vo_world_pos
+            #define o_world_normal vo_world_normal
+            #define o_camdir vo_camdir
+            #define o_id vo_id
+            #define o_InstanceID vo_InstanceID
+            #define o_uv vo_uv
+            #define o_color vo_color
+            out gl_PerVertex {
+                vec4 gl_Position;
+                float gl_PointSize;
+                float gl_ClipDistance[8];
+            };
+            """
+        else
+            ""
+        end
         args = Dict{Symbol, Any}(kw_args)
         args[:view] = view
         args[:fragdatalocation] = [(0, "fragment_color"), (1, "fragment_groupid")]
