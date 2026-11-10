@@ -197,3 +197,79 @@ end
     end
     @test attr.nested_docstring == [nothing, "a doc", nothing]
 end
+
+@testset "external mixin" begin
+    external_mixin() = Makie.@DocumentedAttributes begin
+        "documented"
+        x = 1
+        "nested"
+        nested = @attributes begin
+            a = 1
+            "b"
+            b = 2
+        end
+    end
+
+    attr = Makie.@DocumentedAttributes begin
+        external_mixin()...
+        z = 1
+    end
+
+    flattened = Dict{Symbol, NamedTuple}(
+        Symbol("x") => (docstring = "documented", default = 1, expr = "1"),
+        Symbol("nested.a") => (docstring = nothing, default = 1, expr = "1"),
+        Symbol("nested.b") => (docstring = "b", default = 2, expr = "2"),
+        Symbol("z") => (docstring = nothing, default = 1, expr = "1"),
+    )
+
+    @test issetequal(attr.merged_keys, keys(flattened))
+    for i in eachindex(attr.merged_keys)
+        key = attr.merged_keys[i]
+        meta = flattened[key]
+        @test attr.defaults[i] == meta.default
+        @test attr.default_expr[i] == meta.expr
+        @test attr.leaf_docstring[i] == meta.docstring
+        @test attr.types[attr.type_index[i]] == Any
+        if meta.default isa Makie.Inherit
+            @test i in attr.inherit
+        end
+    end
+    @test attr.nested_docstring == [nothing, "nested"]
+end
+
+@testset "Makie owned mixin" begin
+    attr = Makie.@DocumentedAttributes begin
+        "shading"
+        shading = @attributes begin
+            Makie.mixin_shading_attributes()...
+        end
+        z = 1
+    end
+
+    flattened = Dict{Symbol, NamedTuple}(
+        Symbol("z") => (docstring = nothing, default = 1, expr = "1"),
+    )
+
+    mixin = Makie.mixin_shading_attributes()
+    for (i, name) in enumerate(Makie.flattened_keys(mixin))
+        flattened[Symbol("shading.", name)] = (
+            docstring = mixin.leaf_docstring[i],
+            default = mixin.defaults[i],
+            expr = mixin.default_expr[i],
+        )
+    end
+
+    @test issetequal(attr.merged_keys, keys(flattened))
+    for i in eachindex(attr.merged_keys)
+        key = attr.merged_keys[i]
+        meta = flattened[key]
+        @test attr.defaults[i] == meta.default
+        @test attr.default_expr[i] == meta.expr
+        @test attr.leaf_docstring[i] == meta.docstring
+        @test attr.types[attr.type_index[i]] == Any
+        if meta.default isa Makie.Inherit
+            @test i in attr.inherit
+        end
+    end
+    @test attr.nested_docstring == [nothing, "shading"]
+end

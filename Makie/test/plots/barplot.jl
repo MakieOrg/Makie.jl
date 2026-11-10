@@ -168,4 +168,69 @@
         whs = widths.(Rect2d.(coordinates.(p.bar_rectangles[])))
         @test all(wh -> wh ≈ Vec2d(0.0, 0), whs)
     end
+
+    @testset "stack fillto" begin
+        # https://github.com/MakieOrg/Makie.jl/issues/4549
+        rects(p) = p.bar_rectangles[]
+        bottoms(p) = [minimum(Rect2(poly))[2] for poly in rects(p)]
+        tops(p) = [maximum(Rect2(poly))[2] for poly in rects(p)]
+
+        x = [1, 2, 3, 1, 2, 3]
+        y = [1, 2, 3, 1, 2, 3]
+        stack = [1, 1, 1, 2, 2, 2]
+
+        # explicit fillto is the baseline of the stack
+        f, ax, p = barplot(x, y; stack, fillto = 0.5)
+        @test bottoms(p) == [0.5, 0.5, 0.5, 1.0, 2.0, 3.0]
+        @test tops(p) == [1.0, 2.0, 3.0, 2.0, 4.0, 6.0]
+
+        # log scale transforms the default fillto = 0 to -Inf. This transformed
+        # value gets clamped when creating the bar polygons, in this case to
+        # -300. (This value can change in the future. It should just remain
+        # (far) below the transformed axis y limits)
+        f, ax, p = barplot(x, y; stack, axis = (; yscale = log10))
+        @test bottoms(p) ≈ [-300.0, -300.0, -300.0, log10(1.0), log10(2.0), log10(3.0)]
+        @test tops(p) ≈ log10.([1.0, 2.0, 3.0, 2.0, 4.0, 6.0])
+
+        # zeros anywhere in the stack must not produce a 0 (-> -Inf) boundary
+        x = [1, 2, 3, 4, 1, 2, 3, 4]
+        y = [0, 2, 3, 0, 1, 0, 3, 0]
+        stack = [1, 1, 1, 1, 2, 2, 2, 2]
+        f, ax, p = barplot(x, y; stack, axis = (; yscale = log10))
+        @test bottoms(p) ≈ [-300.0, -300.0, -300.0, -300.0, -300.0, log10(2.0), log10(3.0), -300.0]
+        @test tops(p) ≈ [-300.0, log10(2.0), log10(3.0), -300.0, log10(1.0), log10(2.0), log10(6.0), -300.0]
+
+        # log scale in x direction
+        f, ax, p = barplot(x, y; stack, direction = :x, axis = (; xscale = log10))
+        @test [minimum(r)[1] for r in rects(p)] == [-300.0, -300.0, -300.0, -300.0, -300.0, log10(2.0), log10(3.0), -300.0]
+
+        # linear scale is unchanged by default
+        f, ax, p = barplot(x, y; stack)
+        @test bottoms(p) == [0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 3.0, 0.0]
+
+        # negative stacks are clamped symmetrically
+        f, ax, p = barplot([1, 1, 2, 2], [-1, -2, 1, 2]; stack = [1, 2, 1, 2], fillto = -0.5)
+        @test bottoms(p) == [-1.0, -3.0, -0.5, 1.0]
+        @test tops(p) == [-0.5, -1.0, 1.0, 3.0]
+
+        # bars fully within 0 .. fillto should become 0 width (top == bottom)
+        f, ax, p = barplot([1, 1], [1, 2]; stack = [1, 1], fillto = 2)
+        @test bottoms(p) == [2.0, 2.0]
+        @test tops(p) == [2.0, 3.0]
+
+        f, ax, p = barplot([1, 1], [-1, -2]; stack = [1, 1], fillto = -2)
+        @test bottoms(p) == [-2.0, -3.0]
+        @test tops(p) == [-2.0, -2.0]
+
+        # Maybe mixing positive and negative heights within a stack is nonsensical,
+        # but let's test this so we're at least aware when the behavior changes
+        f, ax, p = barplot([1, 1, 1, 1], [1, -2, 3, -4]; stack = [1, 1, 1, 1], fillto = 1.5)
+        @test bottoms(p) == [1.5, -2.0, 1.5, -6.0]
+        @test tops(p) == [1.5, 1.5, 4.0, -2.0]
+
+        # TODO: probably needs more work...
+        f, a, p = barplot(x, y; stack, fillto = 0.1:0.1:0.8)
+        @test bottoms(p) == [0.1, 0.2, 0.3, 0.4, 0.5, 2.0, 3.0, 0.8]
+        @test tops(p) == [0.1, 2.0, 3.0, 0.4, 1.0, 2.0, 6.0, 0.8]
+    end
 end

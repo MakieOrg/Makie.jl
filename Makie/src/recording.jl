@@ -26,7 +26,7 @@ mutable struct RamStepper
 end
 
 function Stepper(figlike::FigureLike; backend = current_backend(), format = :png, visible = false, connect = false, screen_kw...)
-    config = Dict{Symbol, Any}(screen_kw)
+    config = to_dict(screen_kw)
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)
     screen = getscreen(backend, get_scene(figlike), config, JuliaNative)
@@ -35,7 +35,7 @@ function Stepper(figlike::FigureLike; backend = current_backend(), format = :png
 end
 
 function Stepper(figlike::FigureLike, path::String, step::Int; format = :png, backend = current_backend(), visible = false, connect = false, screen_kw...)
-    config = Dict{Symbol, Any}(screen_kw)
+    config = to_dict(screen_kw)
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)
     screen = getscreen(backend, get_scene(figlike), config, JuliaNative)

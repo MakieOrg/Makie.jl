@@ -298,7 +298,11 @@ function Scene(;
     global_theme = merge_without_obs!(copy(theme), current_default_theme())
     m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
 
-    bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values = true)
+    bg = if haskey(theme_kw, :backgroundcolor)
+        map(to_color, convert(Observable{Any}, theme_kw[:backgroundcolor]), ignore_equal_values = true)
+    else
+        Observable{RGBAf}(to_color(to_value(m_theme[:backgroundcolor])))
+    end
 
     wasnothing = isnothing(viewport)
     scene_viewport = if wasnothing
@@ -594,7 +598,7 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
     # Remove references to the plot compute graph from any parent compute graph.
     # (E.g. the scene compute graph)
     # This is meant to make the plot graph GC-able.
-    ComputePipeline.unsafe_disconnect_from_parents!(plot.attributes)
+    ComputePipeline.disconnect!(plot.attributes)
 
     # TODO, if we want to delete a subplot of a plot,
     # It won't be in scene.plots directly, but will still be deleted
@@ -636,7 +640,7 @@ function move_to!(plot::Plot, scene::Scene)
 
     # TODO: This requires surgery, disconnecting the plot from the old scene
     # compute graph and connecting it to the new scene compute graph.
-    # unsafe_disconnect_from_parents!() + register_computation!() is not enough
+    # disoconnect!() + register_computation!() is not enough
 
     if is_space_compatible(plot, scene)
         obsfunc = connect!(transformation(scene), transformation(plot))

@@ -110,7 +110,7 @@ function plot_updates(args, changed)
                 # Check if value is an array with all identical elements
                 if Makie.is_vector_attribute(value) && length(value) > 1 && all(x -> x == value[1], value)
                     # Use compressed format for arrays with identical elements
-                    Dict("value" => serialize_three(value[1]), "length" => length(value))
+                    Dict{String, Any}("value" => serialize_three(value[1]), "length" => length(value))
                 else
                     serialize_three(value)
                 end
@@ -123,7 +123,7 @@ function plot_updates(args, changed)
     return new_values
 end
 
-function create_wgl_renderobject(callback, attr, inputs)
+function create_wgl_renderobject(callback, attr, inputs; rename_updates = nothing)
     # default case
     haskey(attr, :uniform_clip_planes) || Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
@@ -133,12 +133,23 @@ function create_wgl_renderobject(callback, attr, inputs)
             return (program, Observable{Any}([]))
         else
             updates = plot_updates(args, changed)
+            if !isnothing(rename_updates)
+                for update in updates
+                    update[1] = get(rename_updates, update[1], update[1])
+                end
+            end
             last.wgl_renderobject[:visible] = args.visible
             update_values!(last.wgl_update_obs, Bonito.LargeUpdate(updates))
             return skip_update
         end
     end
-    return attr[:wgl_renderobject][]
+    try
+        return attr[:wgl_renderobject][]
+    catch e
+        delete!(attr, :wgl_renderobject, force = true)
+        rethrow(e)
+        return nothing
+    end
 end
 
 function handle_color_getter!(uniform_dict)
@@ -213,7 +224,7 @@ function scatter_program(attr)
     dfield = attr.sdf_marker_shape === Cint(Makie.DISTANCEFIELD)
     atlas = attr.atlas
     distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : false
-    data = Dict(
+    data = Dict{Symbol, Any}(
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),
@@ -263,8 +274,10 @@ function create_shader(scene::Scene, plot::Scatter)
     Makie.all_marker_computations!(attr, markersym)
     map!(attr, [:sdf_marker_shape, :marker, :font], :glyph_data) do shape, markers, fonts
         shape != 3 && return nothing
-        data = get_scatter_data(scene, markers, fonts)
-        dict = Dict(:atlas_updates => data)
+        hashes = glyph_hashes(markers, fonts)
+        # Scatter's uv/quad buffers are computed Julia-side; JS only needs the
+        # atlas TEXTURE regions present. The hashes let it await/pull them.
+        dict = Dict{Symbol, Any}(:glyph_hashes => hashes)
         return dict
     end
 
@@ -302,48 +315,135 @@ function create_shader(scene::Scene, plot::Scatter)
     return create_wgl_renderobject(scatter_program, attr, inputs)
 end
 
-function get_atlas_tracker(f, scene::Scene)
-    screen = Makie.getscreen(scene, WGLMakie)
-    if isnothing(screen) || isnothing(screen.session)
-        @warn "No session found, returning empty atlas tracker"
-        # TODO, it's not entirely clear in which case this can happen,
-        # which is why we don't just error, but just assume there isn't anything tracked
-        return f(Set{UInt32}())
-    end
-    session = screen.session
-    atlas = Bonito.get_metadata(session, :wglmakie_scene_atlas, nothing)
-    if isnothing(atlas)
-        atlas = Set{UInt32}()
-        Bonito.set_metadata!(session, :wglmakie_scene_atlas, atlas)
-    end
-    return f(atlas)
+# Plots carry glyph hashes. Each root sends new atlas entries separately;
+# the browser requests any entries it missed when a figure mounts later.
+mutable struct GlyphSync
+    lock::ReentrantLock
+    shipped::Set{UInt32}
+    bbox::Dict{UInt32, Tuple{Vec2f, Vec2f}}
+    # Any: the JS notify delivers plain numbers; the responder converts.
+    request::Observable{Any}
+end
+GlyphSync() = GlyphSync(
+    ReentrantLock(), Set{UInt32}(), Dict{UInt32, Tuple{Vec2f, Vec2f}}(),
+    Observable{Any}(UInt32[])
+)
+
+# A loaded module applies the batch right in the message handler. The scene snapshot
+# sent after it builds its meshes in the handler too, so `$(WGL).then` could land late.
+function glyph_batch_js(batch::Dict{UInt32, Any})
+    wire = Dict{String, Any}(string(h) => v for (h, v) in batch)
+    return js"""
+        const batch = $(wire);
+        if (window.WGL) {
+            window.WGL.get_texture_atlas().insert_glyphs(batch);
+        } else {
+            $(WGL).then(WGL => WGL.insert_glyphs(batch));
+        }
+    """
 end
 
-function get_scatter_data(scene::Scene, markers, fonts)
-    return get_atlas_tracker(Makie.root(scene)) do tracker
-        atlas = Makie.get_texture_atlas()
-        _, new_glyphs = Makie.get_glyph_data(atlas, tracker, markers, fonts)
-        return new_glyphs
+function send_glyph_batch!(root::Bonito.Session, batch::Dict{UInt32, Any})
+    isempty(batch) && return
+    Bonito.evaljs(root, glyph_batch_js(batch))
+    return
+end
+
+# Get-or-create the sync for `session`'s root; wires the pull responder once.
+function glyph_sync!(session::Bonito.Session)
+    root = Bonito.root_session(session)
+    return lock(root.deletion_lock) do
+        sync = Bonito.get_metadata(root, :wglmakie_glyph_sync, nothing)
+        sync isa GlyphSync && return sync
+        sync = GlyphSync()
+        Bonito.set_metadata!(root, :wglmakie_glyph_sync, sync)
+        on(root, sync.request) do hashes
+            atlas = Makie.get_texture_atlas()
+            batch = lock(sync.lock) do
+                out = Dict{UInt32, Any}()
+                for h in hashes
+                    h32 = UInt32(h)
+                    idx = get(atlas.mapping, h32, nothing)
+                    bounds = get(sync.bbox, h32, nothing)
+                    if idx === nothing || bounds === nothing
+                        @warn "Glyph pull request for an unregistered glyph" hash = h32 maxlog = 5
+                        continue
+                    end
+                    uv = atlas.uv_rectangles[idx]
+                    w, mini = bounds
+                    out[h32] = [uv, Makie.get_glyph_sdf(atlas, h32), w, mini]
+                end
+                return out
+            end
+            send_glyph_batch!(root, batch)
+            return
+        end
+        return sync
     end
 end
 
-function get_glyph_data(scene::Scene, glyphs, fonts)
-    return get_atlas_tracker(Makie.root(scene)) do tracker
-        atlas = Makie.get_texture_atlas()
-        glyph_hashes, new_glyphs = Makie.get_glyph_data(atlas, tracker, glyphs, fonts)
-        return glyph_hashes, new_glyphs
-    end
+# Contains every hash, so `Makie.get_glyph_data` returns hashes without reading any SDFs.
+struct AllGlyphs end
+Base.in(hash, ::AllGlyphs) = true
+
+# Plot data only carries hashes, and those are the same on every page.
+function glyph_hashes(glyphs, fonts)
+    hashes, _ = Makie.get_glyph_data(Makie.get_texture_atlas(), AllGlyphs(), glyphs, fonts)
+    return hashes
 end
 
-function register_glyph_computation!(attr, scene)
+plot_glyphs(::Plot) = nothing
+plot_glyphs(plot::Makie.Glyphs) = (plot.glyph_indices[], plot.font[])
+plot_glyphs(plot::Scatter) = plot.sdf_marker_shape[] == 3 ? (plot.marker[], plot.font[]) : nothing
+
+# Ship the glyphs of `plot` that the page of `session` is still missing. The batch
+# travels on the plot's own session: it is queued ahead of the scene snapshot that
+# needs it, and in an offline export that session's script is the one that imports
+# the WGL module, which the batch refers to.
+function sync_glyphs!(session::Bonito.Session, plot::Plot)
+    glyph_data = plot_glyphs(plot)
+    isnothing(glyph_data) && return
+    glyphs, fonts = glyph_data
+    sync = glyph_sync!(session)
+    wire_batch = lock(sync.lock) do
+        # Raw atlas hashes have no font metrics; later text must still register them.
+        tracker = glyphs isa AbstractVector{UInt32} ? Set(keys(sync.bbox)) : sync.shipped
+        _, new_glyphs = Makie.get_glyph_data(Makie.get_texture_atlas(), tracker, glyphs, fonts)
+        for (h, v) in new_glyphs
+            sync.bbox[h] = (Vec2f(v[3]), Vec2f(v[4]))
+        end
+        return Dict{UInt32, Any}(new_glyphs)
+    end
+    send_glyph_batch!(session, wire_batch)
+    return
+end
+
+# Keep the page's glyphs current when the plot's glyphs change.
+watch_glyphs!(::Bonito.Session, ::Plot) = nothing
+function watch_glyphs!(session::Bonito.Session, plot::Union{Makie.Glyphs, Scatter})
+    updater = plot.attributes[:wgl_update_obs][]
+    lock(Bonito.deletion_lock(session)) do
+        Bonito.isclosed(session) && return
+        any(listener -> listener.observable === updater, session.deregister_callbacks) && return
+        # Owned by the session showing the plot, so closing it releases the plot.
+        # The priority makes new glyphs reach the browser before the update using them.
+        listener = on(updater; priority = 1) do update
+            any(value -> first(value) === :glyph_data, update.data) && sync_glyphs!(session, plot)
+            return
+        end
+        push!(session.deregister_callbacks, listener)
+    end
+    return
+end
+
+function register_glyph_computation!(attr)
     map!(attr, [:scale, :glyph_indices], :glyph_scales) do scale, gi
         return Vec2f[Vec2f(Makie.to_2d_scale(Makie.sv_getindex(scale, i))) for i in eachindex(gi)]
     end
     map!(attr, [:glyph_indices, :font, :glyph_scales], :glyph_data) do glyphs, fonts, glyph_scales
-        hashes, updates = get_glyph_data(scene, glyphs, fonts)
-        dict = Dict(
+        hashes = glyph_hashes(glyphs, fonts)
+        dict = Dict{Symbol, Any}(
             :glyph_hashes => hashes,
-            :atlas_updates => updates,
             :scales => serialize_three(glyph_scales)
         )
         return dict
@@ -357,7 +457,7 @@ function create_shader(scene::Scene, plot::Makie.Glyphs)
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr, :color)
-    register_glyph_computation!(attr, scene)
+    register_glyph_computation!(attr)
 
     ComputePipeline.alias!(attr, :rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)
@@ -388,7 +488,7 @@ to_3x3(M::Mat{2, 3}) = Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
 to_3x3(xs::Vector{Vec2f}) = Sampler(xs) # already has appropriate format
 
 function meshscatter_program(args)
-    instance = Dict(
+    instance = Dict{Symbol, Any}(
         :vertex_position => args.vertex_position,
         :faces => args.faces,
         :normal => args.normal,
@@ -411,6 +511,11 @@ function meshscatter_program(args)
         :f32c_scale => args.f32c_scale,
         # Note: uv needs to be generated via register_computation! to allow updates
         :uv => Vec2f(0),
+        # mesh.frag references the stroke uniforms, but only meshes support stroking
+        :strokewidth => 0.0f0,
+        :strokecolor => Vec4f(0),
+        :stroke_data => Sampler(fill(Vec4f(0), 1, 1), minfilter = :nearest),
+        :viewport_origin => Vec2f(0),
     )
     per_instance, uniforms = assemble_particle_robj!(args, data)
     return create_instanced_shader(
@@ -497,9 +602,14 @@ function add_uv_mesh!(attr)
     end
 end
 
+# Meshes render de-indexed (one vertex per triangle corner with a trivial index buffer)
+# so that gl_VertexID / 3 recovers the primitive index for edge stroking, which WebGL
+# cannot provide as gl_PrimitiveID. Image, Heatmap and Surface share this program and
+# keep their indexed geometry with inactive stroke uniforms.
 function mesh_program(attr)
+    deindexed = hasproperty(attr, :wgl_mesh_positions)
 
-    data = Dict(
+    data = Dict{Symbol, Any}(
         :shading => attr.use_shading,
         :diffuse => attr.diffuse,
         :specular => attr.specular,
@@ -515,28 +625,144 @@ function mesh_program(attr)
     )
 
     handle_color!(data, attr)
-    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    # id + picking + px_per_unit get filled in JS, need to be here to emit the correct
+    # shader uniforms
     data[:picking] = false
     data[:object_id] = UInt32(0)
+    data[:px_per_unit] = 0.0f0
+
+    if deindexed
+        data[:vertex_color] = attr.wgl_mesh_vertex_color
+        data[:vertex_index] = attr.wgl_mesh_vertex_index
+        data[:strokewidth] = attr.strokewidth
+        data[:strokecolor] = attr.strokecolor
+        data[:stroke_data] = attr.wgl_stroke_data
+        data[:viewport_origin] = attr.wgl_viewport_origin
+        positions = attr.wgl_mesh_positions
+        normals = attr.wgl_mesh_normals
+        texturecoordinates = attr.wgl_mesh_uv
+        faces = attr.wgl_mesh_faces
+    else
+        data[:vertex_index] = -1.0f0
+        data[:strokewidth] = 0.0f0
+        data[:strokecolor] = Vec4f(0)
+        data[:stroke_data] = Sampler(fill(Vec4f(0), 1, 1), minfilter = :nearest)
+        data[:viewport_origin] = Vec2f(0)
+        positions = attr.positions_transformed_f32c
+        normals = attr.normals
+        texturecoordinates = attr.texturecoordinates
+        faces = attr.faces
+    end
+
     is_vertex((_, x)) = begin
-        (x isa AbstractVector) && !Makie.is_scalar_attribute(x) && (length(x) == length(attr.positions_transformed_f32c))
+        (x isa AbstractVector) && !Makie.is_scalar_attribute(x) && (length(x) == length(positions))
     end
     uniforms = filter(!is_vertex, data)
     buffers = filter(is_vertex, data)
-    if !isnothing(attr.normals)
-        buffers[:normals] = attr.normals
+    if !isnothing(normals)
+        buffers[:normals] = normals
     else
         uniforms[:normals] = Vec3f(0)
     end
-    if !isnothing(attr.texturecoordinates)
-        buffers[:texturecoordinates] = attr.texturecoordinates
+    if !isnothing(texturecoordinates)
+        buffers[:texturecoordinates] = texturecoordinates
     else
         uniforms[:texturecoordinates] = Vec2f(0)
     end
-    buffers[:positions_transformed_f32c] = attr.positions_transformed_f32c
-    buffers[:faces] = attr.faces
+    buffers[:positions_transformed_f32c] = positions
+    buffers[:faces] = faces
 
-    return create_shader(buffers, uniforms, lasset("mesh.vert"), lasset("mesh.frag"))
+    frag = deindexed ? "#define MESH_STROKE\n" * lasset("mesh.frag") : lasset("mesh.frag")
+    return create_shader(buffers, uniforms, lasset("mesh.vert"), frag)
+end
+
+function register_wgl_mesh_expansion!(attr)
+    return map!(
+        attr,
+        [:positions_transformed_f32c, :faces, :normals, :texturecoordinates, :vertex_color],
+        [
+            :wgl_mesh_positions, :wgl_mesh_faces, :wgl_mesh_vertex_index,
+            :wgl_mesh_normals, :wgl_mesh_uv, :wgl_mesh_vertex_color,
+        ]
+    ) do positions, faces, normals, texturecoordinates, vertex_color
+        expand(v::AbstractVector) = [v[f[i]] for f in faces for i in 1:3]
+        expand(v) = v
+        expanded_color = if vertex_color isa AbstractVector && length(vertex_color) == length(positions)
+            expand(vertex_color)
+        else
+            vertex_color
+        end
+        trivial_faces = collect(UInt32, 0:(3 * length(faces) - 1))
+        vertex_index = Float32[Base.to_index(f[i]) - 1 for f in faces for i in 1:3]
+        return (
+            expand(positions), trivial_faces, vertex_index,
+            expand(normals), expand(texturecoordinates), expanded_color,
+        )
+    end
+end
+
+function register_wgl_mesh_stroke!(attr)
+    Makie.register_stroke_data!(attr)
+    map!(attr, :stroke_data_packed, :wgl_stroke_data) do packed
+        width = min(length(packed), 2048)
+        height = cld(length(packed), width)
+        texel_data = fill(Vec4f(0), width, height)
+        for (i, texel) in enumerate(packed)
+            i0 = i - 1
+            texel_data[i0 % width + 1, i0 ÷ width + 1] = texel
+        end
+        return Sampler(texel_data, minfilter = :nearest)
+    end
+    map!(viewport -> Vec2f(minimum(viewport)), attr, :viewport, :wgl_viewport_origin)
+    return
+end
+
+# Inputs of the de-indexed (stroked) mesh and surface programs.
+function deindexed_mesh_inputs()
+    return [
+        # Special
+        :space,
+        # Needs explicit handling
+        :uniform_colormap, :uniform_color, :uniform_colorrange, :pattern,
+        :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :wgl_uv_transform, :fetch_pixel, :use_shading, :color_mapping_type,
+        :depth_shift,
+        :wgl_mesh_positions, :wgl_mesh_faces, :wgl_mesh_vertex_index,
+        :wgl_mesh_normals, :wgl_mesh_uv, :wgl_mesh_vertex_color,
+        :strokewidth, :strokecolor, :wgl_stroke_data, :wgl_viewport_origin,
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
+    ]
+end
+
+# JS buffers and uniforms keep the standard names, so updates of the de-indexed
+# buffers have to be renamed to reach them
+function deindexed_mesh_renames()
+    return Dict(
+        :wgl_mesh_positions => :positions_transformed_f32c,
+        :wgl_mesh_faces => :faces,
+        :wgl_mesh_vertex_index => :vertex_index,
+        :wgl_mesh_normals => :normals,
+        :wgl_mesh_uv => :texturecoordinates,
+        :wgl_mesh_vertex_color => :vertex_color,
+        :wgl_stroke_data => :stroke_data,
+        :wgl_viewport_origin => :viewport_origin,
+    )
+end
+
+# Inputs of the regular indexed mesh and surface programs.
+function indexed_mesh_inputs()
+    return [
+        # Special
+        :space,
+        # Needs explicit handling
+        :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
+        :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :wgl_uv_transform, :fetch_pixel, :use_shading, :color_mapping_type,
+        :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
+    ]
 end
 
 function create_shader(::Scene, plot::Union{Heatmap, Image})
@@ -567,18 +793,19 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     Makie.register_world_normalmatrix!(attr)
     map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
     backend_colors!(attr)
-    inputs = [
-        # Special
-        :space,
-        # Needs explicit handling
-        :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
-        :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
-        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :wgl_uv_transform, :fetch_pixel, :use_shading, :color_mapping_type,
-        :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
-    ]
-    return create_wgl_renderobject(mesh_program, attr, inputs)
+
+    # Stroking needs the de-indexed mesh path, which replaces the shared vertices by one
+    # per triangle corner, so it is only taken when stroking is enabled at plot creation.
+    if plot.stroke_enabled[]::Bool
+        register_wgl_mesh_expansion!(attr)
+        register_wgl_mesh_stroke!(attr)
+        return create_wgl_renderobject(
+            mesh_program, attr, deindexed_mesh_inputs();
+            rename_updates = deindexed_mesh_renames()
+        )
+    end
+
+    return create_wgl_renderobject(mesh_program, attr, indexed_mesh_inputs())
 end
 
 
@@ -619,18 +846,20 @@ function create_shader(scene::Scene, plot::Surface)
         return to_3x3(uvt) * Makie.uv_transform(trans, scale)
     end
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
-    inputs = [
-        # Special
-        :space,
-        # Needs explicit handling
-        :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
-        :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
-        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :wgl_uv_transform, :fetch_pixel, :use_shading, :color_mapping_type,
-        :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
-    ]
-    return create_wgl_renderobject(mesh_program, attr, inputs)
+
+    # Stroking needs the de-indexed mesh path, at the cost of losing vertex sharing,
+    # so it is only taken when stroking is enabled at plot creation.
+    if !iszero(plot.strokewidth[])
+        Makie.register_surface_stroke!(attr)
+        register_wgl_mesh_expansion!(attr)
+        register_wgl_mesh_stroke!(attr)
+        return create_wgl_renderobject(
+            mesh_program, attr, deindexed_mesh_inputs();
+            rename_updates = deindexed_mesh_renames()
+        )
+    end
+
+    return create_wgl_renderobject(mesh_program, attr, indexed_mesh_inputs())
 end
 
 function create_volume_shader(attr)
@@ -683,7 +912,7 @@ end
 
 
 function create_lines_data(islines, attr)
-    uniforms = Dict(
+    uniforms = Dict{Symbol, Any}(
         :model_f32c => attr.model_f32c,
         :depth_shift => attr.depth_shift,
         :picking => false,
@@ -714,7 +943,7 @@ function create_lines_data(islines, attr)
         end
     end
 
-    return Dict(
+    return Dict{Symbol, Any}(
         :plot_type => "Lines",
         :visible => attr.visible,
         :is_segments => !islines,

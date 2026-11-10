@@ -71,7 +71,7 @@ struct BlockSpec
     then_observers::Set{ObserverFunction}
 
     function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec} = PlotSpec[], kw...)
-        attr = Dict{Symbol, Any}(kw)
+        attr = to_dict(kw)
         if typ == :Colorbar && !isempty(args)
             if length(args) == 1 && args[1] isa PlotSpec
                 attr[:plotspec] = args[1]
@@ -678,7 +678,19 @@ function diff_plotlist!(
     # And at some point we may be able to optimize notify(list_of_observables)
     scores = IdDict{Any, Float64}()
     reusable_plots_sorted = [Pair{PlotSpec, Plot}(k, v) for (k, v) in reusable_plots]
-    sort!(reusable_plots_sorted, by = ((k, v),) -> v.cycle_index[], rev = true)
+    # Ties in cycle_index are broken by each plot's position in its parent, so that a spec
+    # reuses the plot at its own position. Iterating the IdDict alone gives an order that
+    # depends on object addresses, which made reuse, and with it the draw order, differ
+    # between otherwise identical runs (#5814).
+    parent_plots = isnothing(plotlist) ? scene.plots : plotlist.plots
+    position = IdDict{Plot, Int}(p => i for (i, p) in enumerate(parent_plots))
+    function sortby((k, v))
+        # The plot did not cycle any attributes if cycle_index has not been initialized
+        cycle_idx = ComputePipeline.is_initialized(v.cycle_index) ? v.cycle_index[] : 0
+        return (cycle_idx, -get(position, v, 0))
+    end
+    sort!(reusable_plots_sorted, by = sortby, rev = true)
+
     for (i, plotspec) in enumerate(plotspecs)
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         reused_plot, old_spec, idx = find_reusable_plot(scene, plotspec, reusable_plots_sorted, scores)
@@ -890,7 +902,15 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
     end
 
     updates = Pair{Symbol, Any}[]
-    batch_update_arguments!(updates, old_spec.args, spec.args)
+    if haskey(block.attributes, :args)
+        # Blocks may or may not use the convert_arguments pipeline for argument
+        # processing. When they don't they may process arguments explicitly in
+        # their constructor, which means they can't be updated like this.
+        batch_update_arguments!(updates, old_spec.args, spec.args)
+    else
+        # TODO: replace layoutable if args need to update but can't update dynamically
+        @warn "Skipped args update for $T"
+    end
     batch_update_attributes!(updates, block, old_kw, new_kw)
     update!(block.attributes, updates)
 
