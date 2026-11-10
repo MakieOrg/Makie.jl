@@ -80,11 +80,13 @@ function Makie.plot!(p::Union{HLines, VLines})
 end
 
 function data_limits(p::HLines)
+    isempty(p[1][]) && return Rect3d(Point3d(NaN, NaN, 0), Vec3d(0, 0, 0))
     ymin, ymax = extrema(p[1][])
     return Rect3d(Point3d(NaN, ymin, 0), Vec3d(NaN, ymax - ymin, 0))
 end
 
 function data_limits(p::VLines)
+    isempty(p[1][]) && return Rect3d(Point3d(NaN, NaN, 0), Vec3d(0, 0, 0))
     xmin, xmax = extrema(p[1][])
     return Rect3d(Point3d(xmin, NaN, 0), Vec3d(xmax - xmin, NaN, 0))
 end

@@ -124,6 +124,33 @@
         @test true
     end
 
+    @testset "Menu search filter matching nothing" begin
+        # A query that matched nothing emptied the per-option color vectors. The
+        # next query that DID match then resolved the option text plot against
+        # them and threw a BoundsError inside the compute graph, which takes the
+        # whole render loop down with it — the menu was dead from then on.
+        fig = Figure()
+        menu = Menu(
+            fig[1, 1]; options = ["Brightness", "Color balance", "Stabilization"],
+            searchable = true, default = nothing
+        )
+        Makie.update_state_before_display!(fig)
+        menu.is_open[] = true
+        texts = menu.blockscene.children[1].plots[2]
+
+        foreach(c -> events(fig).unicode_input[] = c, "zq")   # matches nothing
+        @test isempty(texts.text[])
+        @test isempty(texts.color[])
+
+        events(fig).keyboardbutton[] = Makie.KeyEvent(Keyboard.backspace, Keyboard.press)
+        @test texts.text[] == ["Stabilization"]               # one match again
+        @test length(texts.color[]) == 1                      # …and it has a color
+        texts.positions_transformed_f32c[]                    # resolves: must not throw
+
+        events(fig).keyboardbutton[] = Makie.KeyEvent(Keyboard.backspace, Keyboard.press)
+        @test length(texts.text[]) == length(texts.color[]) == 3
+end
+
     @testset "#5744 to_rotation resolution" begin
         v = normalize(Vec3f(0.001, 0, -1))
         @assert v !== Vec3f(0, 0, -1)

@@ -78,9 +78,12 @@ pages = [
                 "legend.md",
                 "lscene.md",
                 "menu.md",
+                "paramform.md",
                 "polaraxis.md",
+                "scrollarea.md",
                 "slider.md",
                 "slidergrid.md",
+                "table.md",
                 "textbox.md",
                 "toggle.md",
             ]
@@ -150,6 +153,7 @@ pages = [
             "explanations", "theming", [
                 "themes.md",
                 "predefined_themes.md",
+                "block_colors.md",
             ]
         ),
         joinpath.(
