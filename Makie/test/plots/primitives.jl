@@ -106,10 +106,13 @@ end
     @test sl.scaled_colorrange[] == Vec2f(1, 100)
     f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (Makie.automatic, -10))
     cb = Colorbar(f[1, 2], sl)
+    # TODO: Is this the expected result? The automatic minimum of the colorrange
+    # not using the minimum of the data but the maximum of the colorrange, which
+    # happens to be lower?
     @test_broken cb.resolved_colorrange[] == Vec2f(-10, -10)
     f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (110, Makie.automatic))
     cb = Colorbar(f[1, 2], sl)
-    @test_broken cb.resolved_colorrange[] == Vec2f(110, 110)
+    @test cb.resolved_colorrange[] == Vec2f(110, 110)
 end
 
 @recipe MaybeDict (data,) begin
