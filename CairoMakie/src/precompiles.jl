@@ -5,8 +5,8 @@ macro compile(block)
         # Run the workload inside a `let` body, to avoid storing
         # f, ax, pl as module level globals that get stored in package images
         let
-            figlike = $(esc(block))
-            Makie.colorbuffer(figlike)
+            Makie.render_for_precompile(Screen, $(esc(block)))
+            nothing
         end
     end
 end
@@ -30,16 +30,8 @@ With `f`, `f()` is called after the first render and the figure is rendered agai
 also compile the updates `f` causes, e.g. changing attributes. CairoMakie can't pick, so hovers
 (e.g. for `DataInspector`) don't do anything.
 """
-precompile_plot(figlike) = precompile_plot(Returns(nothing), figlike)
-
-function precompile_plot(f, figlike)
-    Makie.colorbuffer(figlike; backend = CairoMakie)
-    f()
-    Makie.colorbuffer(figlike; backend = CairoMakie)
-    # don't leave tasks or caches behind in the package image
-    Makie.is_precompiling() && Makie.cleanup_globals()
-    return
-end
+precompile_plot(figlike) = Makie.precompile_plot(CairoMakie, figlike)
+precompile_plot(f, figlike) = Makie.precompile_plot(CairoMakie, f, figlike)
 
 let
     @compile_workload begin

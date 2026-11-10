@@ -3,9 +3,7 @@ using PrecompileTools
 macro compile(block)
     return quote
         let
-            figlike = $(esc(block))
-            Makie.colorbuffer(figlike; px_per_unit = 1)
-            Makie.second_resolve(figlike, :gl_renderobject)
+            Makie.render_for_precompile(Screen, $(esc(block)))
             return nothing
         end
     end
@@ -48,32 +46,26 @@ end
 If no OpenGL context can be created (e.g. on a headless machine), nothing is rendered and `f` is
 not called.
 """
-precompile_plot(figlike) = precompile_plot(Returns(nothing), figlike)
+precompile_plot(figlike) = Makie.precompile_plot(GLMakie, figlike)
+precompile_plot(f, figlike) = Makie.precompile_plot(GLMakie, f, figlike)
 
-function precompile_plot(f, figlike)
-    previous_backend = Makie.current_backend()
-    # colorbuffer and picking (e.g. for DataInspector) use the current backend
-    Makie.set_active_backend!(GLMakie)
+function Makie.render_for_precompile(::Type{<:Screen}, figlike)
     try
-        try
-            Makie.colorbuffer(figlike; px_per_unit = 1, visible = false)
-        catch err
-            is_context_unavailable(err) || rethrow()
-            @info "Skipping `GLMakie.precompile_plot` because no usable OpenGL context is available." exception = err
-            return
-        end
-        f()
-        Makie.process_pending_hover!(figlike)
-        Makie.colorbuffer(figlike; px_per_unit = 1, visible = false)
-        Makie.second_resolve(figlike, :gl_renderobject)
-    finally
-        Makie.set_active_backend!(previous_backend)
+        Makie.colorbuffer(figlike; backend = GLMakie, px_per_unit = 1, visible = false)
+    catch err
+        is_context_unavailable(err) || rethrow()
+        @info "Skipping GLMakie rendering for precompilation because no usable OpenGL context is available." exception = err
+        return false
     end
-    if Makie.is_precompiling()
-        # don't leave windows, tasks or caches behind in the package image
-        closeall()
-        Makie.cleanup_globals()
-    end
+    Makie.second_resolve(figlike, :gl_renderobject)
+    return true
+end
+
+Makie.handle_precompile_interactions(::Type{<:Screen}, figlike) = Makie.process_pending_hover!(figlike)
+
+function Makie.cleanup_after_precompile(::Type{<:Screen})
+    closeall()
+    Makie.cleanup_globals()
     return
 end
 

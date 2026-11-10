@@ -3,14 +3,14 @@ using PrecompileTools
 macro compile(block)
     return quote
         let
-            render_for_precompile($(esc(block)))
+            Makie.render_for_precompile(Screen, $(esc(block)))
             return nothing
         end
     end
 end
 
 # Exercise rendering without starting Electron during precompilation.
-function render_for_precompile(figlike)
+function Makie.render_for_precompile(::Type{<:Screen}, figlike)
     session = Session()
     app = App(() -> DOM.div(figlike))
     dom = Bonito.session_dom(session, app)
@@ -20,6 +20,12 @@ function render_for_precompile(figlike)
     WGLMakie.poll_all_plots(Makie.get_scene(figlike))
     close(session)
     yield()
+    return true
+end
+
+function Makie.cleanup_after_precompile(::Type{<:Screen})
+    Bonito.cleanup_globals()
+    Makie.cleanup_globals()
     return
 end
 
@@ -43,16 +49,8 @@ With `f`, `f()` is called after the first serialization and the figure is serial
 afterwards, to also compile the updates `f` causes, e.g. changing attributes. Picking needs the
 browser, so hovers (e.g. for `DataInspector`) don't do anything.
 """
-precompile_plot(figlike) = precompile_plot(Returns(nothing), figlike)
-
-function precompile_plot(f, figlike)
-    render_for_precompile(figlike)
-    f()
-    render_for_precompile(figlike)
-    # don't leave tasks or caches behind in the package image
-    Makie.is_precompiling() && Makie.cleanup_globals()
-    return
-end
+precompile_plot(figlike) = Makie.precompile_plot(WGLMakie, figlike)
+precompile_plot(f, figlike) = Makie.precompile_plot(WGLMakie, f, figlike)
 
 let
     @compile_workload begin
