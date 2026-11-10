@@ -36,7 +36,7 @@ default_key_expr(x::Symbol) = :(($(QuoteNode(x)),))
 default_key_expr(x::QuoteNode) = :(($x,))
 function default_key_expr(expr::Expr)
     if !(expr.head == :tuple && all(x -> x isa QuoteNode, expr.args))
-        error("$expr is not a valid inheritance key")
+        error("$expr is not a valid. Should be a Symbol (`:var`), name (`var`) or tuple thereof (`(outer, inner)`).")
     end
     for i in eachindex(expr.args)
         expr.args[i] = ifelse(expr.args[i] isa Symbol, QuoteNode(expr.args[i]), expr.args[i])
@@ -197,6 +197,9 @@ struct DocumentedAttributes
 
     # leaf node indices of every inherited attribute
     inherit::Vector{Int}
+
+    # index into merged_keys marking deprecated attributes
+    deprecation_indices::Vector{Pair{Int, Int}}
 end
 
 function DocumentedAttributes()
@@ -206,7 +209,8 @@ function DocumentedAttributes()
         String[], Union{Nothing, String}[], # per leaf expr, docstrings
         Union{Nothing, String}[nothing], # nested docstrings
         Int[], Type[], Vector{Int}[], # types
-        Int[] # inherit
+        Int[], # inherit
+        Pair{Int, Int}[] # indices of deprecated keys
     )
 end
 
@@ -264,6 +268,16 @@ Attributes can be marked with a type by annotating their name. This is controls
 the conversions in **Blocks** but is irrelevant to plots.
 
     color::RGBAf = :red
+
+Attributes can be marked as deprecated using
+
+    @deprecate old new
+
+where `old` is the deprecated name and `new` is the replacement. They can also
+be tuples denoting a path to a nested attributes, e.g. `(outer, inner)`. When
+creating a plot or Block, both `old` and `new` will be added as inputs and merge
+into `new` node. If `old` is changed, a deprecation warning is shown. This
+warning can be set by adding a string before the `@deprecate` entry (like docstrings).
 
 ## Macro Examples
 
@@ -432,6 +446,18 @@ function build_documented_attributes!(output::Vector, expr::Expr, local_vars)
             end
             push!(output, mixin_expr)
 
+        elseif MacroTools.@capture(attr, @deprecate old_ new_)
+            dep = quote
+                Makie._add_deprecated_attribute!(
+                    attr, state,
+                    $(default_key_expr(old)),
+                    $(default_key_expr(new)),
+                    $(default_expr_string(attr)),
+                    $docs
+                )
+            end
+            push!(output, dep)
+
         else
             error("Could not parse line:\n $line")
         end
@@ -585,6 +611,40 @@ function _merge_attributes_rec!(target, state, source, _trace, current_layer)
             end
         end
     end
+    return
+end
+
+function _add_deprecated_attribute!(attr, state, old::Tuple, new::Tuple, default_expr, docs)
+    layers, keys = state
+    current_layer = last(layers)
+
+    oldstr = join([keys..., old...], '.')
+    newstr = join([keys..., new...], '.')
+
+    if has_nested_key(attr, current_layer, new)
+        new_idx = nested_key_to_index(attr, new, current_layer)
+
+        default_value = attr.defaults[new_idx]
+        docstring = something(docs, "$old has been deprecated in favor of $new.")
+        type = attr.types[attr.type_index[new_idx]]
+
+        for key in Base.front(old)
+            _begin_nesting_layer!(attr, state, key)
+        end
+        _add_attribute!(
+            attr, state, last(old),
+            type, default_value, default_expr, docstring
+        )
+        for _ in Base.front(old)
+            _end_nesting_layer!(state)
+        end
+
+        old_idx = nested_key_to_index(attr, old, current_layer)
+        push!(attr.deprecation_indices, old_idx => new_idx)
+    else
+        error("Could not add deprecation `@deprecated $oldstr $newstr` because the replacement attribute does not exist. Make sure you add it before calling `@deprecate`.")
+    end
+
     return
 end
 
@@ -755,9 +815,13 @@ function show_documented_attributes(io, attr, layer = 1, tab = 1)
         else
             idx = -idx
             _print_attribute_docstring(io, attr.leaf_docstring[idx], tabstr)
-            T = attr.types[attr.type_index[idx]]
-            Tstr = T === Any ? "" : "::$T"
-            println(io, tabstr, "$key$Tstr = $(attr.default_expr[idx])")
+            if any(p -> p[1] == idx, attr.deprecation_indices)
+                println(io, tabstr, attr.default_expr[idx])
+            else
+                T = attr.types[attr.type_index[idx]]
+                Tstr = T === Any ? "" : "::$T"
+                println(io, tabstr, "$key$Tstr = $(attr.default_expr[idx])")
+            end
         end
     end
     return
@@ -772,9 +836,9 @@ function is_attribute(T::Type, name::Symbol)
     return has_flat_key(attr, name) || has_nested_key(attr, name)
 end
 
-has_nested_key(attr::DocumentedAttributes, keys::Tuple) = has_nested_key(attr, keys...)
-function has_nested_key(attr::DocumentedAttributes, keys::Symbol...)
-    idx = 1
+has_nested_key(attr::DocumentedAttributes, keys::Symbol...) = has_nested_key(attr, keys)
+has_nested_key(attr::DocumentedAttributes, keys::Tuple) = has_nested_key(attr, 1, keys)
+function has_nested_key(attr::DocumentedAttributes, idx::Int, keys::Tuple)
     for key in keys
         if idx < 0 || !haskey(attr.nesting.keytables[idx], key)
             return false
@@ -845,8 +909,8 @@ Returns the flattened index of a single, potentially nested attribute defined by
 further nesting.
 """
 nested_key_to_index(attr::DocumentedAttributes, keys::Symbol...) = nested_key_to_index(attr, keys)
-function nested_key_to_index(attr::DocumentedAttributes, keys::Tuple)
-    idx = unchecked_nested_key_to_index(attr, keys)
+function nested_key_to_index(attr::DocumentedAttributes, keys::Tuple, layer::Integer = 1)
+    idx = unchecked_nested_key_to_index(attr, keys, layer)
     idx > 0 && error("Nested keys $keys point to another nesting layer instead of a value.")
     return -idx
 end
@@ -1571,6 +1635,69 @@ function inherit_default(theme, fallback, key::Symbol, keys::Symbol...)
     return haskey(theme, key) ? inherit_default(theme[key], fallback, keys...) : fallback
 end
 inherit_default(theme, fallback, key::Symbol) = get(theme, key, fallback)
+
+# collect every old and new attribute involved in deprecations that has been set by kwargs
+function collect_changed_deprecated_attributes(attr, kwargs, level = 1, buffer = Int[])
+    for (key, val) in pairs(kwargs)
+        ComputePipeline.has_key_in_level(attr.nesting, level, key) || continue
+        idx = attr.nesting.keytables[level][key]
+        if idx > 0
+            collect_changed_deprecated_attributes(attr, val, idx, buffer)
+        elseif any(p -> p[1] == -idx || p[2] == -idx, attr.deprecation_indices)
+            push!(buffer, -idx)
+        end
+    end
+    return buffer
+end
+
+struct DeprecatedAttributeCallback <: Function
+    depmsg::String
+end
+function (cb::DeprecatedAttributeCallback)((old, new), changed, @nospecialize(cached))
+    if changed[2]
+        return (new,)
+    else
+        @warn cb.depmsg
+        return (old,)
+    end
+end
+
+function process_attribute_deprecations!(graph, attr::DocumentedAttributes, kwargs)
+    isempty(attr.deprecation_indices) && return
+
+    set_by_user = collect_changed_deprecated_attributes(attr, kwargs)
+
+    for (old_idx, new_idx) in attr.deprecation_indices
+        old_key = attr.merged_keys[old_idx]
+        new_key = attr.merged_keys[new_idx]
+        depmsg = attr.leaf_docstring[old_idx]
+
+        intermediate = Symbol(:_, new_key)
+        ComputePipeline.add_node!(graph, intermediate)
+        edge = graph[new_key].parent
+        if edge isa ComputePipeline.Input
+            ComputePipeline.modify_edge!(edge, output = graph[intermediate])
+        else
+            ComputePipeline.modify_edge!(edge, outputs = [graph[intermediate]])
+        end
+        register_computation!(
+            DeprecatedAttributeCallback(depmsg), graph, [old_key, intermediate], [new_key]
+        )
+
+        # On init both old and new would be considered changed
+        init = graph[intermediate][]
+        oldval = graph[old_key][]
+        # trigger depwarn if user set deprecated attribute
+        if old_idx in set_by_user
+            @warn depmsg
+            # only prioritize deprecated attribute if replacement has not been set
+            if !in(new_idx, set_by_user)
+                init = oldval
+            end
+        end
+        ComputePipeline.unsafe_init!(graph, new_key, init)
+    end
+end
 
 ########################################
 # Block Infrastructure (merged init)

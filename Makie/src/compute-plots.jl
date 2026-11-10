@@ -808,6 +808,8 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
         end
     end
 
+    process_attribute_deprecations!(graph, attr, user_kw)
+
     return
 end
 
