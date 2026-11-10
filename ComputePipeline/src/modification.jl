@@ -22,7 +22,7 @@ If either exists without the respective option being true an error will be throw
 """
 function Base.delete!(attr::ComputeGraph, key::Symbol; force::Bool = false, recursive::Bool = false)
     haskey(attr.outputs, key) || throw(KeyError(key))
-    @lock GLOBAL_LOCK begin
+    @graphlock attr state begin
         _delete!(attr, attr.outputs[key], force, recursive)
     end
     return attr
@@ -218,10 +218,11 @@ function unsafe_init!(edge::ComputeEdge)
         return false
     end
 
-    @lock GLOBAL_LOCK begin
-        foreach(locked_resolve!, edge.inputs)
+    @resolvelock edge.graph state begin
+        foreach(input -> locked_resolve!(input, state), edge.inputs)
         edge.typed_edge[] = TypedEdge_no_call(edge)
         edge.got_resolved[] = true
+        edge.resolved_once[] = true
         fill!(edge.inputs_dirty, false)
         for dep in edge.dependents
             mark_input_dirty!(edge, dep)
@@ -432,16 +433,6 @@ orphaned by replacing the edge outputs is considered invalid and will error when
 resolved.
 """
 function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
-    # `compute_identity` sets the output refs directly to input refs, so that
-    # computations can be skipped entirely. When editing this edge we need to
-    # make sure that inputs and outputs can actually hold different values.
-    if edge.callback === compute_identity
-        for node in edge.outputs
-            node.value = Ref{eltype(node.value)}(node.value[])
-        end
-        _update_refs_in_dependents!(edge)
-    end
-
     graph = edge.graph
 
     inputs, inputs_dirty = if haskey(kwargs, :inputs)
@@ -488,7 +479,25 @@ function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
         Ref(true), edge.dependents, Ref(false), Ref{TypedEdge}()
     )
 
-    @lock GLOBAL_LOCK begin
+    for node in inputs
+        connect_components!(graph, node.parent.graph)
+    end
+    for node in outputs
+        connect_components!(graph, node.parent.graph)
+    end
+
+    @graphlock graph state begin
+        state.depth == 0 || throw(ArgumentError("Cannot modify an edge from a computation callback."))
+        # `compute_identity` sets the output refs directly to input refs, so that
+        # computations can be skipped entirely. When editing this edge we need to
+        # make sure that inputs and outputs can actually hold different values.
+        if edge.callback === compute_identity
+            for node in edge.outputs
+                node.value = Ref{eltype(node.value)}(node.value[])
+            end
+            _update_refs_in_dependents!(edge)
+        end
+
         # remove all references to `edge` that exist via edge.inputs
         # (i.e. edge.input.parent.dependents -> edge)
         _disconnect_edge_from_inputs!(edge)
@@ -563,8 +572,12 @@ resolved.
 """
 function modify_edge!(edge::Input; kwargs...)
     graph = edge.graph::ComputeGraph
+    if haskey(kwargs, :output) && kwargs[:output] isa Computed
+        connect_components!(graph, kwargs[:output].parent.graph)
+    end
 
-    @lock GLOBAL_LOCK begin
+    @graphlock graph state begin
+        state.depth == 0 || throw(ArgumentError("Cannot modify an edge from a computation callback."))
         # Note: This is quite unsafe when orphaned outputs have computations depending
         # on them. If those are pulled without the output being attached to something
         # no reasonable result can be produced.
@@ -740,29 +753,33 @@ i.e. output of `node.parent`, will also be moved.
 function move!(target::ComputeGraph, node::Computed)
     edge = node.parent
     source = edge.graph
+    connect_components!(target, source)
+    @graphlock target state begin
+        state.depth == 0 || throw(ArgumentError("Cannot move a node from a computation callback."))
 
-    # Moving siblings destroys the assumption that all edge outputs are in the
-    # same graph, the graph specified by edge.graph. This might need special
-    # care to not break things.
-    # if move_siblings
-    for _node in edge.outputs
-        _validate_node_move(target, source, _node)
+        # Moving siblings destroys the assumption that all edge outputs are in the
+        # same graph, the graph specified by edge.graph. This might need special
+        # care to not break things.
+        # if move_siblings
+        for _node in edge.outputs
+            _validate_node_move(target, source, _node)
+        end
+        for _node in edge.outputs
+            _move_node!(target, source, _node)
+        end
+        # else
+        # _validate_node_move(target, source, node)
+        # _move_node!(target, source, node)
+        # end
+
+        new_edge = ComputeEdge(
+            target, edge.callback,
+            edge.inputs, edge.inputs_dirty, edge.outputs,
+            edge.got_resolved, edge.dependents, edge.resolved_once, edge.typed_edge
+        )
+
+        _replace_edge!(edge, new_edge)
+
+        return
     end
-    for _node in edge.outputs
-        _move_node!(target, source, _node)
-    end
-    # else
-    # _validate_node_move(target, source, node)
-    # _move_node!(target, source, node)
-    # end
-
-    new_edge = ComputeEdge(
-        target, edge.callback,
-        edge.inputs, edge.inputs_dirty, edge.outputs,
-        edge.got_resolved, edge.dependents, edge.resolved_once, edge.typed_edge
-    )
-
-    _replace_edge!(edge, new_edge)
-
-    return
 end

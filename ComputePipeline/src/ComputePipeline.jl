@@ -159,7 +159,7 @@ using Base: RefValue, tail
 
 include("nesting.jl")
 
-const GLOBAL_LOCK = ReentrantLock()
+include("ComponentState.jl")
 
 deref(r::RefValue) = r[]
 deref(x) = x
@@ -248,6 +248,12 @@ struct TypedEdge{InputTuple, OutputTuple, F}
     inputs_dirty::Vector{Bool}
     outputs::OutputTuple
     output_nodes::Vector{Computed}
+end
+
+function TypedEdge(callback::F, inputs::IT, dirty::Vector{Bool}, outputs::OT, nodes::Vector{Computed}) where {F, IT, OT <: Tuple}
+    names = Tuple(node.name for node in nodes)
+    named_outputs = NamedTuple{names}(outputs)
+    return TypedEdge{IT, typeof(named_outputs), F}(callback, inputs, dirty, named_outputs, nodes)
 end
 
 """
@@ -482,6 +488,7 @@ struct ComputeGraph <: AbstractComputeGraph
     should_deepcopy::Set{Symbol}
     observerfunctions::Vector{Observables.ObserverFunction}
     obs_to_update::Vector{Observable}
+    state::ComponentState
 end
 
 # This is used for typed edge initialization
@@ -492,6 +499,45 @@ function is_node_value_valid(::Union{T, RefValue{T}}) where {
         T <: Union{Computed, Input, ComputeGraph, ComputeEdge, SkipUpdate},
     }
     return false
+end
+
+function get_initial_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy = true)
+    # Because we allow output arrays to be reused it can be impossible to tell
+    # if the data has updated. In this case the data is marked as dirty/changed
+    # and added to the `onchange`. If this data is fed into an Observable which
+    # updates the graph it can lead to infinite loops.
+    # To prevent this we have to disambiguate the data and do == checks here.
+    # This requires us to copy data every time we update and we can't use
+    # `copy` because that is not always available (e.g. not for Rect)
+    return get!(attr.observables, key) do
+        if use_deepcopy
+            push!(attr.should_deepcopy, key)
+        end
+        # resolve first so eltype can work
+        val = attr.outputs[key]
+        initial_value = use_deepcopy ? deepcopy(val[]) : val[]
+        # The graph already does ignore_equal_values = true checks when data is
+        # not updated in-place, so it's useless to add it here
+        obs = Observable{eltype(val.value)}(initial_value)
+        # Remember a deferred initialization update even if another argument
+        # resolves this node before its listeners have been installed.
+        if isdirty(val)
+            @graphlock attr state begin
+                push!(attr.onchange.val, key)
+                attr.onchange in attr.obs_to_update || push!(attr.obs_to_update, attr.onchange)
+            end
+        end
+        return obs
+    end
+end
+
+@inline function get_initial_observable!(c::Computed; use_deepcopy = true)
+    if hasparent(c)
+        p = getparent(c)
+        return get_initial_observable!(p.graph, c.name; use_deepcopy = use_deepcopy)
+    else
+        error("Cannot get observable for Computed without parent")
+    end
 end
 
 """
@@ -515,34 +561,14 @@ Setting `use_deepcopy = false` will turn this safeguard off, removing both the
 deepcopy and the equality check. In this case in-place updates of the node will
 always trigger observable updates. Any other duplicate updates will be skipped.
 """
-function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy = true)
-    # Because we allow output arrays to be reused it can be impossible to tell
-    # if the data has updated. In this case the data is marked as dirty/changed
-    # and added to the `onchange`. If this data is fed into an Observable which
-    # updates the graph it can lead to infinite loops.
-    # To prevent this we have to disambiguate the data and do == checks here.
-    # This requires us to copy data every time we update and we can't use
-    # `copy` because that is not always available (e.g. not for Rect)
-    return get!(attr.observables, key) do
-        if use_deepcopy
-            push!(attr.should_deepcopy, key)
-        end
-        # resolve first so eltype can work
-        val = attr.outputs[key]
-        initial_value = use_deepcopy ? deepcopy(val[]) : val[]
-        # The graph already does ignore_equal_values = true checks when data is
-        # not updated in-place, so it's useless to add it here
-        return Observable{eltype(val.value)}(initial_value)
-    end
+@inline function get_observable!(graph::ComputeGraph, key::Symbol; use_deepcopy = true)::Observable
+    obs = get_initial_observable!(graph, key; use_deepcopy)
+    !isempty(graph.onchange.val) && key in graph.onchange.val && refresh_initial_observable!(graph.outputs[key])
+    return obs
 end
-
-function get_observable!(c::Computed; use_deepcopy = true)
-    if hasparent(c)
-        p = getparent(c)
-        return get_observable!(p.graph, c.name; use_deepcopy = use_deepcopy)
-    else
-        error("Cannot get observable for Computed without parent")
-    end
+@inline function get_observable!(node::Computed; use_deepcopy = true)::Observable
+    hasparent(node) || error("Cannot get observable for Computed without parent")
+    return get_observable!(getparent(node).graph, node.name; use_deepcopy)
 end
 
 # ComputeEdge(f) = ComputeEdge(f, Computed[])
@@ -559,55 +585,52 @@ function ComputeGraph()
         NestedSearchTree(),
         Observable(Set{Symbol}()), Set{Symbol}(),
         Dict{Symbol, Observable}(), Set{Symbol}(),
-        Observables.ObserverFunction[], Observable[]
+        Observables.ObserverFunction[], Observable[], ComponentState()
     )
 
     on(graph.onchange) do changeset
-        # Remove node names not backed by observables
-        intersect!(changeset, keys(graph.observables))
-        isempty(changeset) && return
-
-        obs_to_notify = graph.obs_to_notify
-
-        # update values without triggering observables and add all updated names
-        # to obs_to_notify
-        while !isempty(changeset)
-            # Remove the key before resolve so that if the resolve triggers the
-            # changeset again we don't try to resolve the same node twice.
-            # (This might not be reachable anymore)
-            key = pop!(changeset)
-
-            # Still necessary?
-            haskey(graph.observables, key) || continue
-
-            val = graph.outputs[key][]
-            obs = graph.observables[key]
-
-            # Trust the graph to discard equal values. This doesn't work for
-            # anything updated in-place
-            if !(key in graph.should_deepcopy)
-                obs.val = val
-                push!(obs_to_notify, key)
-            elseif !is_same(obs[], val) # treat in-place updates (use isequal to handle NaN correctly)
-                obs.val = deepcopy(val)
-                push!(obs_to_notify, key)
-            else # same value (with deepcopy), skip update
-                # delete!(changeset, key)
+        state = lock_component(graph)
+        local deferred
+        try
+            intersect!(changeset, keys(graph.observables))
+            if isempty(changeset) && isempty(graph.obs_to_notify) && isempty(state.notifications)
+                return Consume(false)
             end
+            if !isempty(changeset)
+                previous = begin_resolve!(state)
+                try
+                    while !isempty(changeset)
+                        key = pop!(changeset)
+                        node = graph.outputs[key]
+                        locked_resolve!(node, state)
+                        val = node.value[]
+                        obs = graph.observables[key]
+                        if !(key in graph.should_deepcopy)
+                            obs.val = val
+                            push!(graph.obs_to_notify, key)
+                        elseif !is_same(obs[], val)
+                            obs.val = deepcopy(val)
+                            push!(graph.obs_to_notify, key)
+                        end
+                    end
+                    empty!(changeset)
+                finally
+                    finish_resolve!(state, previous)
+                end
+            end
+            deferred = take_notifications!(state)
+        finally
+            unlock(state.lock)
         end
-
-
-        # trigger observables from obs_to_notify.
-        # Separating this from changeset allows notify to cause another
-        # on(onchange) to trigger without issues.
-        # - value setting & empty!(changeset) doesn't delete from obs_to_notify
-        # - the inner on(onchange) adds to the obs_to_notify Set, so no notifies
-        #   don't duplicate
-        while !isempty(obs_to_notify)
-            key = pop!(obs_to_notify)
-            notify(graph.observables[key])
+        while true
+            local obs
+            @graphlock graph state begin
+                isempty(graph.obs_to_notify) && break
+                obs = graph.observables[pop!(graph.obs_to_notify)]
+            end
+            notify(obs)
         end
-
+        foreach(notify, deferred)
         return Consume(false)
     end
 
@@ -651,15 +674,22 @@ function mark_resolved!(computed::Computed)
 end
 function mark_resolved!(edge::ComputeEdge)
     if !edge.got_resolved[]
-        @lock GLOBAL_LOCK begin
-            foreach(locked_resolve!, edge.inputs)
+        @resolvelock edge.graph state begin
+            state.depth == 1 || throw(ArgumentError("Cannot mark a computation resolved from a computation callback."))
+            foreach(input -> locked_resolve!(input, state), edge.inputs)
             edge.got_resolved[] = true
             fill!(edge.inputs_dirty, false)
         end
     end
     return
 end
-mark_resolved!(edge::Input) = edge.dirty = false
+function mark_resolved!(edge::Input)
+    @graphlock edge.graph state begin
+        state.depth == 0 || throw(ArgumentError("Cannot mark an input resolved from a computation callback."))
+        edge.dirty = false
+    end
+    return
+end
 
 """
     mark_dirty!(x)
@@ -671,6 +701,7 @@ instead of this function.
 function mark_dirty!(computed::Computed)
     hasparent(computed) || return
     mark_dirty!(computed, computed.parent.graph.obs_to_update)
+    update_observables!(computed)
     return
 end
 function mark_dirty!(computed::Computed, obs_to_update)
@@ -678,31 +709,40 @@ function mark_dirty!(computed::Computed, obs_to_update)
     # This is called if we do not start mark_dirty!() from an Input. In this
     # case we need to set `computed.dirty` so `resolve!()` knows the node has
     # changed even though the computation has not marked it.
-    @lock GLOBAL_LOCK begin
+    @graphlock computed.parent.graph state begin
+        if state.depth > 0
+            computed.parent isa Input || throw(ArgumentError("Cannot mark a computed result dirty from a computation callback; notify its input instead."))
+            defer_update!(state, computed.parent.graph, () -> locked_mark_dirty!(computed.parent, obs_to_update))
+            return
+        end
         computed.dirty = true
         locked_mark_dirty!(computed.parent, obs_to_update)
     end
-    update_observables!(obs_to_update)
     return
 end
 
-mark_dirty!(x::AbstractEdge) = mark_dirty!(x, x.graph.obs_to_update)
+function mark_dirty!(x::AbstractEdge)
+    mark_dirty!(x, x.graph.obs_to_update)
+    update_observables!(x)
+    return
+end
 function mark_dirty!(x::ComputeEdge, obs_to_update)
-    @lock GLOBAL_LOCK begin
-        if !any(x.inputs_dirty) # make sure the edge will actually resolve
-            x.inputs_dirty .= true
-        end
+    @graphlock x.graph state begin
+        state.depth == 0 || throw(ArgumentError("Cannot mark a computation dirty from a computation callback; notify its input instead."))
+        any(x.inputs_dirty) || fill!(x.inputs_dirty, true)
         locked_mark_dirty!(x, obs_to_update)
     end
-    update_observables!(obs_to_update)
     return
 end
 
 function mark_dirty!(x::Input, obs_to_update)
-    @lock GLOBAL_LOCK begin
-        locked_mark_dirty!(x, obs_to_update)
+    @graphlock x.graph state begin
+        if state.depth > 0
+            defer_update!(state, x.graph, () -> locked_mark_dirty!(x, obs_to_update))
+        else
+            locked_mark_dirty!(x, obs_to_update)
+        end
     end
-    update_observables!(obs_to_update)
     return
 end
 
@@ -762,7 +802,31 @@ end
 update_observables!(comp::Computed) = update_observables!(comp.parent)
 update_observables!(edge::Input) = update_observables!(edge.graph)
 update_observables!(edge::ComputeEdge) = update_observables!(edge.graph)
-update_observables!(graph::ComputeGraph) = update_observables!(graph.obs_to_update)
+function take_updates!(graph::ComputeGraph)
+    pending = graph.obs_to_update
+    n = length(pending)
+    n == 0 && return ()
+    n == 1 && return (pop!(pending),)
+    result = copy(pending)
+    empty!(pending)
+    return result
+end
+
+function update_observables!(graph::ComputeGraph)
+    local pending
+    @graphlock graph state begin
+        pending = take_updates!(graph)
+        if state.depth > 0
+            for obs in pending
+                obs in state.notifications || push!(state.notifications, obs)
+            end
+            return
+        end
+    end
+    foreach(notify, pending)
+    return
+end
+
 function update_observables!(obs_to_update::Vector{Observable})
     foreach(notify, obs_to_update)
     empty!(obs_to_update)
@@ -775,7 +839,8 @@ function Base.setindex!(computed::Computed, @nospecialize(value))
     if computed.parent isa Input
         return setindex!(computed.parent, value)
     else
-        @lock GLOBAL_LOCK begin
+        @graphlock computed.parent.graph state begin
+            state.depth == 0 || throw(ArgumentError("Cannot overwrite a computed result from a computation callback; update its input instead."))
             computed.value[] = value
             locked_mark_dirty!(computed)
         end
@@ -787,37 +852,53 @@ end
 # Inputs are strictly 1:1 edges (from input.value -> output), so we don't need
 # to worry about avoiding changes to input.value between multiple dependents.
 # However we do technically still need to protect it while the callback runs.
-Base.setindex!(input::Input, @nospecialize(value)) = _setindex!(input, value, input.force_update)
-function _setindex!(input::Input, @nospecialize(value), force_update = false)
-    if !force_update && is_same(input.value, value)
-        return value
+function apply_input!(input::Input, @nospecialize(value))
+    if !input.force_update && is_same(input.value, value)
+        return
     end
-    @lock GLOBAL_LOCK begin
-        input.value = value
-        locked_mark_dirty!(input)
+    input.value = value
+    locked_mark_dirty!(input, input.graph.obs_to_update)
+    return
+end
+
+function defer_update!(state, graph, update)
+    push!(
+        state.pending, () -> begin
+            update()
+            for obs in take_updates!(graph)
+                obs in state.notifications || push!(state.notifications, obs)
+            end
+        end
+    )
+    return
+end
+
+function set_input_locked!(state, input::Input, @nospecialize(value))
+    if state.depth > 0
+        defer_update!(state, input.graph, () -> apply_input!(input, value))
+    else
+        apply_input!(input, value)
     end
-    update_observables!(input)
+    return
+end
+
+function Base.setindex!(input::Input, @nospecialize(value))
+    local pending
+    @graphlock input.graph state begin
+        set_input_locked!(state, input, value)
+        pending = state.depth == 0 ? take_updates!(input.graph) : ()
+    end
+    foreach(notify, pending)
     return value
 end
 
 function _setproperty!(attr::ComputeGraph, key::Symbol, @nospecialize(value))
-    input = attr.inputs[key]
-    # Skip if the value is the same as before
-    if !input.force_update && is_same(input.value, value)
-        return value
-    end
-    @lock GLOBAL_LOCK begin
-        # can't notify observables immediately here, because update may call this
-        # multiple times for a synchronized update (would cause desync)
-        input.value = value
-        locked_mark_dirty!(input)
-    end
+    @graphlock attr state set_input_locked!(state, attr.inputs[key], value)
     return value
 end
 
 function Base.setproperty!(attr::ComputeGraph, key::Symbol, @nospecialize(value))
-    _setproperty!(attr, key, value)
-    update_observables!(attr)
+    setindex!(attr.inputs[key], value)
     return value
 end
 
@@ -838,23 +919,23 @@ update!(graph, first_node = 2)
 update!(graph, :first_node => 2)
 ```
 """
-update!(attr::AbstractComputeGraph; kwargs...) = update!(attr, [Pair{Symbol, Any}(k, v) for (k, v) in kwargs])
+update!(attr::AbstractComputeGraph; kwargs...) = _update!(attr, kwargs)
 update!(attr::AbstractComputeGraph, dict::Dict) = _update!(attr, dict)
-update!(attr::AbstractComputeGraph, pairs::Pair...) = _update!(attr, [Pair(k, v) for (k, v) in pairs])
+update!(attr::AbstractComputeGraph, pairs::Pair...) = _update!(attr, pairs)
 update!(attr::AbstractComputeGraph, pairs::AbstractVector{<:Pair}) = _update!(attr, pairs)
 
 function _update!(attr::ComputeGraph, values)
-    @lock GLOBAL_LOCK begin
-        for (_key, value) in values
-            key = merged_key(_key)
-            if haskey(attr.inputs, key)
-                _setproperty!(attr, key, value)
-            else
-                error("Attribute $key not found in ComputeGraph")
-            end
+    local pending
+    @graphlock attr state begin
+        for (key, _) in values
+            haskey(attr.inputs, merged_key(key)) || error("Attribute $key not found in ComputeGraph")
         end
+        for (key, value) in values
+            set_input_locked!(state, attr.inputs[merged_key(key)], value)
+        end
+        pending = state.depth == 0 ? take_updates!(attr) : ()
     end
-    update_observables!(attr)
+    foreach(notify, pending)
     return attr
 end
 
@@ -874,6 +955,7 @@ Base.keys(graph::ComputeGraph) = keys(graph.outputs)
 
 function Base.getproperty(attr::ComputeGraph, key::Symbol)
     # more efficient to hardcode?
+    key === :state && return getfield(attr, :state)
     key === :inputs && return getfield(attr, :inputs)
     key === :outputs && return getfield(attr, :outputs)
     key === :nesting && return getfield(attr, :nesting)
@@ -1009,8 +1091,9 @@ Base.eltype(::Type{ComputeGraphView}) = Union{Pair{Symbol, ComputeGraphView}, Pa
 Base.pairs(view::ComputeGraphView) = (p for p in view) # nested
 
 function Base.getindex(attr::ComputeGraph, key::Symbol)
-    if haskey(attr.outputs, key)
-        return attr.outputs[key]
+    node = get(attr.outputs, key, nothing)
+    if !isnothing(node)
+        return node
     else
         temp_result = attr.nesting[key]
         return ComputeGraphView(attr, temp_result)
@@ -1203,20 +1286,56 @@ end
 function locked_resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
-        vals = map(getindex, edge.outputs)
-        names = ntuple(Val(length(vals))) do i
-            edge.output_nodes[i].name
-        end
-        last = NamedTuple{names}(vals)
+        last = map(getindex, edge.outputs)
         result = edge.callback(map(getindex, edge.inputs), dirty, last)
-        set_result!(edge, result)
+        apply_results!(edge, result)
     end
     return
 end
 
-function locked_resolve!(input::Input)
+function apply_results!(edge::TypedEdge, result)
+    if result isa Tuple
+        length(result) == length(edge.outputs) || throw_length_mismatch(edge, result)
+        set_result!(edge, result)
+    elseif isnothing(result)
+        if LOG_NOTHING_SPLAT || LOG_NOTHING_SKIP
+            if should_log(logging_id(edge))
+                @warn(
+                    "Returning `nothing` in `map!` and `register_computation!` callbacks " *
+                        "has been deprecated in favor of returning `skip_update` to allow " *
+                        "outputs to update to `nothing`. Setting all outputs to `nothing` " *
+                        "should be done with a tuple. " * source_info_str(edge)
+                )
+            end
+        else
+            Base.depwarn(
+                "Returning `nothing` in `map!` and `register_computation!` callbacks " *
+                    "has been deprecated in favor of returning `skip_update` to allow " *
+                    "outputs to update to `nothing`.  Setting all outputs to `nothing` " *
+                    "should be done with a tuple. Use " *
+                    "`ComputePipeline.log_nothing_skip(true)` to find problematic methods.",
+                :locked_resolve!
+            )
+        end
+
+        foreach(x -> x.dirty = false, edge.output_nodes)
+    elseif result === skip_update
+        foreach(x -> x.dirty = false, edge.output_nodes)
+    else
+        throw_invalid_result(result)
+    end
+    return
+end
+
+function locked_resolve!(input::Input, state)
     input.dirty || return
-    value = input.f(input.value)
+    isnothing(state.active_callback) || check_callback_cycle(state, input.output)
+    previous = enter_callback!(state, input.output)
+    value = try
+        input.f(input.value)
+    finally
+        leave_callback!(state, previous)
+    end
     if isdefined(input.output, :value)
         input.output.value[] = deref(value)
     else
@@ -1231,9 +1350,9 @@ function locked_resolve!(input::Input)
     return
 end
 
-function locked_resolve!(computed::Computed)
+function locked_resolve!(computed::Computed, state)
     if hasparent(computed)
-        locked_resolve!(computed.parent)
+        locked_resolve!(computed.parent, state)
     end
     return
 end
@@ -1252,14 +1371,15 @@ directly, but doesn't pay the cost of resolving unused inputs.
 """
 select(i::Int, choices...) = choices[i]
 
-function locked_resolve!(edge::ComputeEdge)
+function locked_resolve!(edge::ComputeEdge, state)
     edge.got_resolved[] && return
+    isnothing(state.active_callback) || check_callback_cycle(state, edge.outputs)
 
     # special case to resolve just one of many options
     # Note: dispatching on callback type is much slower than ===
     if edge.callback === select || edge.callback === ifelse
         # resolve selected index
-        locked_resolve!(edge.inputs[1])
+        locked_resolve!(edge.inputs[1], state)
         edge.inputs_dirty[1] = false
 
         # resolve and forward picked choice
@@ -1281,7 +1401,7 @@ function locked_resolve!(edge::ComputeEdge)
             )
         end
 
-        locked_resolve!(edge.inputs[idx])
+        locked_resolve!(edge.inputs[idx], state)
         edge.inputs_dirty[idx] = false
         new_value = edge.inputs[idx].value[]
 
@@ -1294,21 +1414,26 @@ function locked_resolve!(edge::ComputeEdge)
             output.value = RefValue(new_value)
         end
     else
-        foreach(locked_resolve!, edge.inputs)
-        if !isassigned(edge.typed_edge)
-            if edge.resolved_once[]
-                # First re-resolve: build the typed island from the values the
-                # dynamic first resolve produced (without calling back), then
-                # resolve it normally so the callback sees correct changed
-                # flags and cached values (incl. `skip_update` semantics).
-                edge.typed_edge[] = TypedEdge_no_call(edge)
-                locked_resolve!(edge.typed_edge[])
+        foreach(input -> locked_resolve!(input, state), edge.inputs)
+        previous = enter_callback!(state, edge.outputs)
+        try
+            if !isassigned(edge.typed_edge)
+                if edge.resolved_once[]
+                    # First re-resolve: build the typed island from the values the
+                    # dynamic first resolve produced (without calling back), then
+                    # resolve it normally so the callback sees correct changed
+                    # flags and cached values (incl. `skip_update` semantics).
+                    edge.typed_edge[] = TypedEdge_no_call(edge)
+                    locked_resolve!(edge.typed_edge[])
+                else
+                    dynamic_resolve!(edge)
+                    edge.resolved_once[] = true
+                end
             else
-                dynamic_resolve!(edge)
-                edge.resolved_once[] = true
+                locked_resolve!(edge.typed_edge[])
             end
-        else
-            locked_resolve!(edge.typed_edge[])
+        finally
+            leave_callback!(state, previous)
         end
         fill!(edge.inputs_dirty, false)
     end
@@ -1322,18 +1447,36 @@ function locked_resolve!(edge::ComputeEdge)
 end
 
 function resolve!(computed::Computed)
-    if hasparent(computed)
+    hasparent(computed) || return computed.value[]
+    return resolve_computed!(computed, computed.parent)
+end
+
+function resolve_computed!(computed::Computed, parent::AbstractEdge)
+    state = lock_component(parent.graph)
+    if !isdirty(parent)
         try
-            resolve!(computed.parent)
-        catch e
-            if e isa ResolveException
-                rethrow(e)
-            else
-                rethrow(ResolveException(computed, e))
-            end
+            return computed.value[]
+        finally
+            unlock(state.lock)
         end
     end
-    return computed.value[]
+    notifications = ()
+    return try
+        previous = begin_resolve!(state)
+        try
+            locked_resolve!(parent, state)
+            return computed.value[]
+        catch e
+            e isa ResolveException && rethrow()
+            rethrow(ResolveException(computed, e))
+        finally
+            finish_resolve!(state, previous)
+            notifications = take_notifications!(state)
+        end
+    finally
+        unlock(state.lock)
+        foreach(notify, notifications)
+    end
 end
 
 # Resolve once without specializing the typed update path for a static plot.
@@ -1384,8 +1527,8 @@ end
 set_result!(::ComputeEdge, @nospecialize(result)) = throw_invalid_result(result)
 
 function resolve!(edge::AbstractEdge)
-    @lock GLOBAL_LOCK begin
-        locked_resolve!(edge)
+    @resolvelock edge.graph state begin
+        locked_resolve!(edge, state)
     end
     return
 end
@@ -1737,6 +1880,11 @@ get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callbac
 """
     register_computation!(callback, compute_graph, input_names, output_names)
 
+Callbacks may update or notify inputs; those changes are deferred until the current
+resolution finishes. Callbacks may resolve other nodes, but resolving a computation already executing
+its callback raises an error. Overwriting computed outputs inside callbacks is
+not supported and raises an error.
+
 Registers a new computation which transforms the given inputs to a new set of
 outputs. Both the inputs and outputs are referred to by name. The inputs must
 exist when the function is called. The outputs are usually created by this
@@ -1990,7 +2138,7 @@ function _maybe_transfer_dependents!(to::AbstractEdge, from::Computed)
     new_dependents = to.dependents
     if hasparent(from)
         # Don't trigger obs resolve here (don't use mark_dirty!)
-        @lock GLOBAL_LOCK locked_mark_dirty!(from)
+        @graphlock from.parent.graph state locked_mark_dirty!(from)
         for dep in (from.parent::ComputeEdge{ComputeGraph}).dependents
             if !in(dep, new_dependents)
                 push!(new_dependents, dep)
@@ -2000,9 +2148,10 @@ function _maybe_transfer_dependents!(to::AbstractEdge, from::Computed)
     return
 end
 
-Base.@nospecializeinfer function register_computation!(
-        @nospecialize(f::Function), attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol}
-    )
+Base.@nospecializeinfer function register_computation!(@nospecialize(f::Function), attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
+    for input in inputs
+        hasparent(input) && connect_components!(attr, input.parent.graph)
+    end
     @ifelse_enabled(check_boxed_values(f))
 
     if any(k -> haskey(attr.outputs, k), outputs)
@@ -2103,15 +2252,19 @@ function TypedEdge(edge::ComputeEdge, f::MapFunctionWrapper{pack}, inputs) where
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
 
-function locked_resolve!(edge::TypedEdge{Inputs, Outputs, <:MapFunctionWrapper{pack}}) where {Inputs, Outputs, pack}
-    if any(edge.inputs_dirty) # only call if inputs changed
-        args = map(getindex, edge.inputs)
-        _result = edge.callback.user_func(args...)
-        result = pack ? (_result,) : _result
-        set_result!(edge, result)
+function locked_resolve!(edge::TypedEdge{IT, OT, F}) where {IT, OT, F <: MapFunctionWrapper}
+    if any(edge.inputs_dirty)
+        # MapFunctionWrapper ignores the dirty flags and cached outputs.
+        result = edge.callback(map(getindex, edge.inputs), nothing, nothing)
+        apply_results!(edge, result)
     end
     return
 end
+
+function TypedEdge(callback::F, inputs::IT, dirty::Vector{Bool}, outputs::OT, nodes::Vector{Computed}) where {F <: MapFunctionWrapper, IT, OT <: Tuple}
+    return TypedEdge{IT, OT, F}(callback, inputs, dirty, outputs, nodes)
+end
+
 
 """
     map!(f, compute_graph, inputs, outputs; init=nothing)

@@ -10,8 +10,10 @@ using ComputePipeline.Observables
     # Sanity check for CI
     @test ComputePipeline.ENABLE_COMPUTE_CHECKS
 
-    @testset "Concurrency tests"  begin
+    @testset "Concurrency tests" begin
         include("concurrency.jl")
+        include("component_locking.jl")
+        include("resolution_scopes.jl")
     end
 
     @testset "general" failfast = false begin
