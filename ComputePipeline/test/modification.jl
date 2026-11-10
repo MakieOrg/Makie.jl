@@ -767,7 +767,7 @@ end
         end
 
         @testset "replace" begin
-            ComputePipeline.replace_output!(graph.c.parent, :c => :_c)
+            ComputePipeline.replace_output!(graph.c.parent, :_c)
             graph.c = 3
             @test graph.c[] == 4
             @test graph._c[] == 3
