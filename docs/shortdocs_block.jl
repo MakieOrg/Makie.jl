@@ -2,7 +2,7 @@ abstract type ShortDocsBlocks <: Documenter.Expanders.NestedExpanderPipeline end
 
 
 Documenter.Selectors.order(::Type{ShortDocsBlocks}) = 3.0 # like @docs
-Documenter.Selectors.matcher(::Type{ShortDocsBlocks}, node, page, doc) = Documenter.iscode(node, r"^@shortdocs")
+Documenter.Selectors.matcher(::Type{ShortDocsBlocks}, node, page, doc) = Documenter.iscodelang(node, "@shortdocs")
 
 function unlink_with_all_following_siblings!(node)
     next = node.next

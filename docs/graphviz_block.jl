@@ -1,7 +1,7 @@
 abstract type GraphvizBlocks <: Documenter.Expanders.NestedExpanderPipeline end
 
 Documenter.Selectors.order(::Type{GraphvizBlocks}) = 8.1 # like @example, but after FigureBlocks
-Documenter.Selectors.matcher(::Type{GraphvizBlocks}, node, page, doc) = Documenter.iscode(node, r"^@graphviz")
+Documenter.Selectors.matcher(::Type{GraphvizBlocks}, node, page, doc) = Documenter.iscodelang(node, "@graphviz")
 
 module GraphvizDocsHelpers
     import Graphviz_jll
