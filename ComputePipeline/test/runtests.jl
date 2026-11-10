@@ -13,6 +13,7 @@ using ComputePipeline.Observables
     @testset "Concurrency tests" begin
         include("concurrency.jl")
         include("component_locking.jl")
+        include("resolution_scopes.jl")
     end
 
     @testset "general" failfast = false begin

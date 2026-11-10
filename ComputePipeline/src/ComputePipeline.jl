@@ -477,6 +477,45 @@ function is_node_value_valid(::Union{T, RefValue{T}}) where {
     return false
 end
 
+function get_initial_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy = true)
+    # Because we allow output arrays to be reused it can be impossible to tell
+    # if the data has updated. In this case the data is marked as dirty/changed
+    # and added to the `onchange`. If this data is fed into an Observable which
+    # updates the graph it can lead to infinite loops.
+    # To prevent this we have to disambiguate the data and do == checks here.
+    # This requires us to copy data every time we update and we can't use
+    # `copy` because that is not always available (e.g. not for Rect)
+    return get!(attr.observables, key) do
+        if use_deepcopy
+            push!(attr.should_deepcopy, key)
+        end
+        # resolve first so eltype can work
+        val = attr.outputs[key]
+        initial_value = use_deepcopy ? deepcopy(val[]) : val[]
+        # The graph already does ignore_equal_values = true checks when data is
+        # not updated in-place, so it's useless to add it here
+        obs = Observable{eltype(val.value)}(initial_value)
+        # Remember a deferred initialization update even if another argument
+        # resolves this node before its listeners have been installed.
+        if isdirty(val)
+            @graphlock attr state begin
+                push!(attr.onchange.val, key)
+                attr.onchange in attr.obs_to_update || push!(attr.obs_to_update, attr.onchange)
+            end
+        end
+        return obs
+    end
+end
+
+@inline function get_initial_observable!(c::Computed; use_deepcopy = true)
+    if hasparent(c)
+        p = getparent(c)
+        return get_initial_observable!(p.graph, c.name; use_deepcopy = use_deepcopy)
+    else
+        error("Cannot get observable for Computed without parent")
+    end
+end
+
 """
     get_observable!(graph::ComputeGraph, key::Symbol[; use_deepcopy = true])
 
@@ -498,34 +537,14 @@ Setting `use_deepcopy = false` will turn this safeguard off, removing both the
 deepcopy and the equality check. In this case in-place updates of the node will
 always trigger observable updates. Any other duplicate updates will be skipped.
 """
-function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy = true)
-    # Because we allow output arrays to be reused it can be impossible to tell
-    # if the data has updated. In this case the data is marked as dirty/changed
-    # and added to the `onchange`. If this data is fed into an Observable which
-    # updates the graph it can lead to infinite loops.
-    # To prevent this we have to disambiguate the data and do == checks here.
-    # This requires us to copy data every time we update and we can't use
-    # `copy` because that is not always available (e.g. not for Rect)
-    return get!(attr.observables, key) do
-        if use_deepcopy
-            push!(attr.should_deepcopy, key)
-        end
-        # resolve first so eltype can work
-        val = attr.outputs[key]
-        initial_value = use_deepcopy ? deepcopy(val[]) : val[]
-        # The graph already does ignore_equal_values = true checks when data is
-        # not updated in-place, so it's useless to add it here
-        return Observable{eltype(val.value)}(initial_value)
-    end
+@inline function get_observable!(graph::ComputeGraph, key::Symbol; use_deepcopy = true)::Observable
+    obs = get_initial_observable!(graph, key; use_deepcopy)
+    !isempty(graph.onchange.val) && key in graph.onchange.val && refresh_initial_observable!(graph.outputs[key])
+    return obs
 end
-
-function get_observable!(c::Computed; use_deepcopy = true)
-    if hasparent(c)
-        p = getparent(c)
-        return get_observable!(p.graph, c.name; use_deepcopy = use_deepcopy)
-    else
-        error("Cannot get observable for Computed without parent")
-    end
+@inline function get_observable!(node::Computed; use_deepcopy = true)::Observable
+    hasparent(node) || error("Cannot get observable for Computed without parent")
+    return get_observable!(getparent(node).graph, node.name; use_deepcopy)
 end
 
 # ComputeEdge(f) = ComputeEdge(f, Computed[])
@@ -549,28 +568,32 @@ function ComputeGraph()
         state = lock_component(graph)
         local deferred
         try
-            state.depth += 1
-            try
-                intersect!(changeset, keys(graph.observables))
-                for key in changeset
-                    node = graph.outputs[key]
-                    locked_resolve!(node, state)
-                    val = node.value[]
-                    obs = graph.observables[key]
-                    if !(key in graph.should_deepcopy)
-                        obs.val = val
-                        push!(graph.obs_to_notify, key)
-                    elseif !isequal(val, obs[])
-                        obs.val = deepcopy(val)
-                        push!(graph.obs_to_notify, key)
-                    end
-                end
-                empty!(changeset)
-            finally
-                finish_resolve!(state)
+            intersect!(changeset, keys(graph.observables))
+            if isempty(changeset) && isempty(graph.obs_to_notify) && isempty(state.notifications)
+                return Consume(false)
             end
-            deferred = isempty(state.notifications) ? () : copy(state.notifications)
-            empty!(state.notifications)
+            if !isempty(changeset)
+                previous = begin_resolve!(state)
+                try
+                    for key in changeset
+                        node = graph.outputs[key]
+                        locked_resolve!(node, state)
+                        val = node.value[]
+                        obs = graph.observables[key]
+                        if !(key in graph.should_deepcopy)
+                            obs.val = val
+                            push!(graph.obs_to_notify, key)
+                        elseif !isequal(val, obs[])
+                            obs.val = deepcopy(val)
+                            push!(graph.obs_to_notify, key)
+                        end
+                    end
+                    empty!(changeset)
+                finally
+                    finish_resolve!(state, previous)
+                end
+            end
+            deferred = take_notifications!(state)
         finally
             unlock(state.lock)
         end
@@ -626,8 +649,8 @@ function mark_resolved!(computed::Computed)
 end
 function mark_resolved!(edge::ComputeEdge)
     if !edge.got_resolved[]
-        @graphlock edge.graph state begin
-            state.depth == 0 || throw(ArgumentError("Cannot mark a computation resolved from a computation callback."))
+        @resolvelock edge.graph state begin
+            state.depth == 1 || throw(ArgumentError("Cannot mark a computation resolved from a computation callback."))
             foreach(input -> locked_resolve!(input, state), edge.inputs)
             edge.got_resolved[] = true
             fill!(edge.inputs_dirty, false)
@@ -1324,27 +1347,29 @@ end
 
 function resolve_computed!(computed::Computed, parent::AbstractEdge)
     state = lock_component(parent.graph)
-    local value, notifications
-    try
-        if !isdirty(parent)
+    if !isdirty(parent)
+        try
             return computed.value[]
+        finally
+            unlock(state.lock)
         end
-        state.depth += 1
+    end
+    notifications = ()
+    return try
+        previous = begin_resolve!(state)
         try
             locked_resolve!(parent, state)
-            value = computed.value[]
+            return computed.value[]
         catch e
             rethrow(ResolveException(computed, e))
         finally
-            finish_resolve!(state)
+            finish_resolve!(state, previous)
+            notifications = take_notifications!(state)
         end
-        notifications = state.depth == 0 && !isempty(state.notifications) ? copy(state.notifications) : nothing
-        isnothing(notifications) || empty!(state.notifications)
     finally
         unlock(state.lock)
+        foreach(notify, notifications)
     end
-    isnothing(notifications) || foreach(notify, notifications)
-    return value
 end
 
 # Resolve once without specializing the typed update path for a static plot.
@@ -1395,13 +1420,8 @@ end
 set_result!(::ComputeEdge, @nospecialize(result)) = throw_invalid_result(result)
 
 function resolve!(edge::AbstractEdge)
-    @graphlock edge.graph state begin
-        state.depth += 1
-        try
-            locked_resolve!(edge, state)
-        finally
-            finish_resolve!(state)
-        end
+    @resolvelock edge.graph state begin
+        locked_resolve!(edge, state)
     end
     return
 end
@@ -2415,7 +2435,7 @@ function unsafe_init!(edge::ComputeEdge)
         return false
     end
 
-    @graphlock edge.graph state begin
+    @resolvelock edge.graph state begin
         foreach(input -> locked_resolve!(input, state), edge.inputs)
         edge.typed_edge[] = TypedEdge_no_call(edge)
         edge.got_resolved[] = true
