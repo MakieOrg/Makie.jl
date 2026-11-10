@@ -47,6 +47,8 @@ Plots a 3-dimensional OldAxis.
     fonts = @inherit :fonts
     "The text handler used to lay out the axis labels, see `text`."
     text_handler = @inherit text_handler
+    "Controls when the axis is drawn relative to other plots. Set to low value to draw it early in CairoMakie"
+    zorder_shift = -100
 
     "Controls the displayed axis labels."
     names = @attributes begin
@@ -373,7 +375,8 @@ function draw_axis3d(plot)
         rotation = plot.text_rotation, fontsize = plot.text_fontsize,
         align = plot.text_align, font = plot.text_font, text_handler = plot.text_handler,
         transparency = true, markerspace = :data, inspectable = plot.inspectable,
-        visible = plot.visible
+        visible = plot.visible,
+        zorder_shift = plot.zorder_shift
     )
 
     map!(
@@ -428,7 +431,8 @@ function draw_axis3d(plot)
 
     linesegments!(
         plot, plot.line_positions, color = plot.line_colors, linewidth = plot.line_widths,
-        transparency = true, inspectable = plot.inspectable, visible = plot.visible
+        transparency = true, inspectable = plot.inspectable, visible = plot.visible,
+        zorder_shift = plot.zorder_shift
     )
     return
 end

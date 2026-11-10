@@ -48,6 +48,7 @@ function cam2d!(scene::SceneLike; kw_args...)
 end
 
 get_space(::Camera2D) = :data
+is3D(::Camera2D) = false
 wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
 
@@ -320,7 +321,7 @@ end
 
 struct PixelCamera <: AbstractCamera end
 get_space(::PixelCamera) = :pixel
-
+is3D(::PixelCamera) = false
 
 struct UpdatePixelCam
     camera::Camera
@@ -357,6 +358,7 @@ end
 
 struct RelativeCamera <: AbstractCamera end
 get_space(::RelativeCamera) = :relative
+is3D(::RelativeCamera) = false
 
 """
     cam_relative!(scene)

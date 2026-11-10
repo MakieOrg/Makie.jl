@@ -1,32 +1,3 @@
-# Needs to run before first draw to opaque color buffers.
-# SSAO needs to run this between stages as it switches to a different color buffer
-function setup!(screen::Screen, fb)
-    GLAbstraction.bind(fb)
-
-    # clear color buffer
-    glDrawBuffer(get_attachment(fb, :color))
-    glClearColor(1, 1, 1, 1)
-    glClear(GL_COLOR_BUFFER_BIT)
-
-    # draw scene backgrounds
-    glEnable(GL_SCISSOR_TEST)
-    ppu = screen.px_per_unit[]
-    for (id, scene) in screen.screens
-        if scene.visible[] && scene.clear[]
-            a = viewport(scene)[]
-            rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-            glViewport(rt...)
-            glScissor(rt...)
-            c = scene.backgroundcolor[]
-            glClearColor(red(c), green(c), blue(c), alpha(c))
-            glClear(GL_COLOR_BUFFER_BIT)
-        end
-    end
-    glDisable(GL_SCISSOR_TEST)
-
-    return
-end
-
 function prepare_frame(screen, resize_buffers)
     # Make sure this context is active (for multi-window rendering)
     nw = to_native(screen)
@@ -41,22 +12,20 @@ function prepare_frame(screen, resize_buffers)
         resize!(screen.render_pipeline, new_size...)
     end
 
-    # TODO: Hacky, assumes our first draw is a `RenderPlots` (ZSort doesn't draw) and
-    #       no earlier stage uses color or objectid
-    #       Also assumes specific names
-    # TODO: Clearing should be a stage itself
-    fb = screen.framebuffer_manager.children[1]
-    GLAbstraction.bind(fb)
-    glViewport(0, 0, size(fb)...)
-
-    # clear objectid, depth and stencil
+    # Clear stencil, depth, objectid (and color, but that should not be needed)
+    fb = display_framebuffer(screen)
+    wh = size(fb)
+    glDisable(GL_SCISSOR_TEST)
+    glDisable(GL_STENCIL_TEST)
+    set_draw_buffers(fb)
+    glViewport(0, 0, wh[1], wh[2])
     glClearColor(0, 0, 0, 0)
-    if haskey(fb, :objectid)
-        glDrawBuffer(get_attachment(fb, :objectid))
-        glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
-    else
-        glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
-    end
+    glClearStencil(0)
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
+
+    # prepare for stencil being used
+    glEnable(GL_STENCIL_TEST)
+    glStencilFunc(GL_EQUAL, 0, 0xff)
 
     return
 end
@@ -73,14 +42,7 @@ function render_frame(screen::Screen; resize_buffers = true)
 
     prepare_frame(screen, resize_buffers)
 
-    # TODO: Is this a reasonable solution?
-    # Maybe we should have a setup stage instead? (Kinda annoying for SSAO though)
-    idx = findfirst(stage -> stage isa RenderPlots, screen.render_pipeline.stages)
-    if !isnothing(idx)
-        setup!(screen, screen.render_pipeline.stages[idx].framebuffer)
-    end
-
-    render_frame(screen, nothing, screen.render_pipeline)
+    render_frame(screen, screen.render_context.groups, screen.render_pipeline)
 
     GLAbstraction.require_context(to_native(screen))
 

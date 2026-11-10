@@ -1,4 +1,5 @@
 function serialize_three(scene::Scene, plot::Makie.Voxels)
+    Makie.add_computation!(plot, Val{:gl_zindex}())
 
     mesh = create_shader(scene, plot)
 
@@ -21,6 +22,7 @@ function serialize_three(scene::Scene, plot::Makie.Voxels)
 
     mesh[:uniforms][:uniform_clip_planes] = serialize_three(plot.uniform_clip_planes[])
     mesh[:uniforms][:uniform_num_clip_planes] = serialize_three(plot.uniform_num_clip_planes[])
+    mesh[:gl_zindex] = plot.gl_zindex[]
 
     return mesh
 end

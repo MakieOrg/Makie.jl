@@ -14,6 +14,7 @@ struct OldCamera3D <: AbstractCamera
     rotate_button::Observable{ButtonTypes}
     move_key::Observable{ButtonTypes}
 end
+is3D(::OldCamera3D) = true
 
 """
     old_cam3d_cad!(scene; kw_args...)

@@ -370,10 +370,8 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         shading = NoShading,
         # stroke_alpha = plot.stroke_alpha, # TODO: doesn't exist in poly
         alpha = plot.alpha,
-        stroke_depth_shift = plot.depth_shift,
-        # move poly slightly behind - this is unnecessary atm because we also
-        # translate!(). Maybe useful when generalizing to 3D though
-        depth_shift = map(x -> x + 2.0f-7, plot, plot.depth_shift),
+        stroke_depth_shift = map(x -> x - 1.0f-6, plot, plot.depth_shift),
+        depth_shift = plot.depth_shift,
         fxaa = plot.fxaa,
         visible = plot.visible,
         transparency = plot.transparency,
