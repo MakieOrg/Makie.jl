@@ -1672,20 +1672,27 @@ function process_attribute_deprecations!(graph, attr::DocumentedAttributes, kwar
         new_key = attr.merged_keys[new_idx]
         depmsg = attr.leaf_docstring[old_idx]
 
-        intermediate = Symbol(:_, new_key)
-        ComputePipeline.add_node!(graph, intermediate)
+        intermediate_name = Symbol(:_, new_key)
+        intermediate_node = ComputePipeline.add_node!(graph, intermediate_name)
+
         edge = graph[new_key].parent
         if edge isa ComputePipeline.Input
-            ComputePipeline.modify_edge!(edge, output = graph[intermediate])
+            ComputePipeline.modify_edge!(edge, output = intermediate_node)
+            ComputePipeline.set_type!(intermediate_node, Any)
         else
-            ComputePipeline.modify_edge!(edge, outputs = [graph[intermediate]])
+            ComputePipeline.modify_edge!(edge, outputs = [intermediate_node])
+            # Blocks: use user given type from `attribute::Type` annotation
+            # Plots: will be replaced by type of input because `compute_identity`
+            # is used (otherwise use Any which is the default type in attr.types)
+            T = attr.types[attr.type_index[new_idx]]
+            ComputePipeline.set_type!(intermediate_node, T)
         end
         register_computation!(
-            DeprecatedAttributeCallback(depmsg), graph, [old_key, intermediate], [new_key]
+            DeprecatedAttributeCallback(depmsg), graph, [old_key, intermediate_name], [new_key]
         )
 
         # On init both old and new would be considered changed
-        init = graph[intermediate][]
+        init = intermediate_node[]
         oldval = graph[old_key][]
         # trigger depwarn if user set deprecated attribute
         if old_idx in set_by_user
@@ -1695,7 +1702,8 @@ function process_attribute_deprecations!(graph, attr::DocumentedAttributes, kwar
                 init = oldval
             end
         end
-        ComputePipeline.unsafe_init!(graph, new_key, init)
+        T = eltype(intermediate_node.value) # Union of both? typejoin? always Any?
+        ComputePipeline.unsafe_init!(graph, new_key, Ref{T}(init))
     end
 end
 
