@@ -55,7 +55,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
     register_computation!(attr,
         [:mesh, :positions_transformed_f32c, :faces, :normals,
             :texturecoordinates, :uv_transform, :trace_color_tex, :model_f32c, :material, :material_fields,
-            :raster_path, :visible,
+            :raster_path, :visible, :ray_visibility,
         ],
         [:trace_renderobject]) do args, changed, last
         # `nothing` when this plot is not being traced — the slot still exists,
@@ -104,7 +104,7 @@ function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, la
     needs_rebuild = !is_trace_robj(last_robj) ||
                     changed.mesh || changed.positions_transformed_f32c ||
                     changed.faces || changed.normals ||
-                    changed.texturecoordinates || changed.uv_transform
+                    changed.texturecoordinates || changed.uv_transform || changed.ray_visibility
     # A material that carries its own geometry (metaballs) is geometry: a new one is a
     # rebuild into the same material slot, where swapping only the stored material
     # left the old surface standing.
@@ -1037,7 +1037,7 @@ function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, co
     uncovered == 0 || throw(ArgumentError(
         "MetaMesh views leave $uncovered of $n_faces faces without a material"))
 
-    handle = push!(hikari_scene, inner, per_face_materials; transform=transform)
+    handle = push!(hikari_scene, inner, per_face_materials; transform, visibility = ray_visibility(plot))
     return (handle=handle, instance_idx=Raycore.n_instances(hikari_scene.accel))
 end
 
@@ -1051,6 +1051,8 @@ function push_to_scene(mesh_val, hikari_scene, plot, color_tex,
         positions = positions, faces = faces, normals = normals_arg, uv = uv, owned, is_set
     )
 end
+
+ray_visibility(plot) = something(haskey(plot, :ray_visibility) ? plot.ray_visibility[] : nothing, Hikari.Visibility())
 
 # Internal: build GB.Mesh from decomposed data and push with single material.
 # When `reuse_mat_idx` is given, the pre-existing material slot is refreshed
@@ -1083,10 +1085,11 @@ function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform
     stored = stored_fields!(hikari_scene.materials, mat, owned, retained_material === nothing ? is_set : Returns(false))
     opaque = Hikari.opaque(mat)
     handle = if reuse_mat_idx === nothing
-        push!(hikari_scene, gb_mesh, stored; transform, opaque)
+        push!(hikari_scene, gb_mesh, stored; transform, opaque, visibility = ray_visibility(plot))
     else
         retained_material === nothing && Hikari.update_material!(hikari_scene, reuse_mat_idx, stored)
-        push!(hikari_scene, gb_mesh, reuse_mat_idx, stored; transform, area_lights, opaque)
+        push!(hikari_scene, gb_mesh, reuse_mat_idx, stored; transform, area_lights, opaque,
+              visibility = ray_visibility(plot))
     end
     state_instance_idx = Raycore.n_instances(hikari_scene.accel)
     return (handle = handle, mat_idx = handle.interface, material = mat, owned = owned, instance_idx = state_instance_idx)
