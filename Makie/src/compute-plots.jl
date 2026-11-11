@@ -296,6 +296,20 @@ function process_color_value(dim_convert, scale, value, auto)
     end
 end
 
+function combined_colorrange(dc, scale, colorrange, autorange)
+    colorrange === automatic && return Vec2f(autorange)
+    if colorrange[1] isa Real && colorrange[2] isa Real && colorrange[1] > colorrange[2]
+        error("colorrange = $colorrange must be sorted.")
+    end
+    low = process_color_value(dc, scale, first(colorrange), first(autorange))
+    high = process_color_value(dc, scale, last(colorrange), last(autorange))
+    if low ≈ high
+        delta = max(0.5f0, abs(Float32(low)))
+        return Vec2f(low - delta, high + delta)
+    end
+    return Vec2f(min(low, high), max(low, high))
+end
+
 function register_colorrange!(
         attr;
         colorrange = :colorrange, colorscale = :colorscale,
@@ -316,25 +330,7 @@ function register_colorrange!(
         isnothing(_autorange) && return nothing
 
         autorange = dc isa CategoricalConversion ? distinct_extrema_nan(first.(dc.int_to_category)) : _autorange
-        if colorrange === automatic
-            return Vec2f(autorange)
-        else
-            if colorrange[1] isa Real && colorrange[2] isa Real && colorrange[1] > colorrange[2]
-                error("colorrange = $colorrange must be sorted.")
-            end
-            # Checking that (automatic, value) or (value, automatic) is sorted
-            # is rather annoying since we need a pre-colorscale auto_colorrange
-            # for it. (Especially for reusing this function in recipes.)
-            low = process_color_value(dc, colorscale, first(colorrange), first(autorange))
-            high = process_color_value(dc, colorscale, last(colorrange), last(autorange))
-            if low ≈ high
-                delta = max(0.5f0, abs(Float32(low)))
-                return Vec2f(low - delta, high + delta)
-            else
-                # The colorscale could swap the meaning of low and high, e.g. -x, 1/x
-                return Vec2f(min(low, high), max(low, high))
-            end
-        end
+        return combined_colorrange(dc, colorscale, colorrange, autorange)
     end
 
     return

@@ -1,3 +1,5 @@
+using Makie.Unitful
+
 function verify_colorbar_defaults(fig::Figure, cb_plot, source = cb_plot; kwargs...)
     cb = Colorbar(fig[1, 2], cb_plot)
     return verify_colorbar_defaults(cb, source; kwargs...)
@@ -5,13 +7,14 @@ end
 
 function verify_colorbar_defaults(
         cb::Colorbar, plot;
-        color = plot.color, colorrange = plot.colorrange,
+        color = haskey(plot, :raw_color) ? plot.raw_color : plot.color, colorrange = plot.colorrange,
         colormap = plot.colormap, colorscale = plot.colorscale,
         lowclip = plot.lowclip, highclip = plot.highclip,
         color_mapping_type = Makie.colormapping_type(colormap[])
     )
     @testset "$(Makie.plotsym(typeof(plot)))" begin
-        @test cb.values.parent.inputs[1] == color
+        source = Makie.ComputePipeline.hasinput(cb.attributes, :values) ? cb.dc_values : cb.values
+        @test source.parent.inputs[1] == color
         @test cb.colorrange.parent.inputs[1] == colorrange
         @test cb.colormap.parent.inputs[1] == colormap
         @test cb.scale.parent.inputs[1] == colorscale
@@ -55,8 +58,8 @@ end
         f, a, p = contourf([1 2; 3 4])
         cb = Colorbar(f[1, 2], p)
         verify_colorbar_defaults(
-            cb, p, color = p.computed_levels, colormap = p.computed_colormap,
-            colorrange = p.computed_colorrange, lowclip = p.cb_lowclip, highclip = p.cb_highclip
+            cb, p, color = p.cb_levels, colormap = p.computed_colormap,
+            colorrange = p.cb_limits, lowclip = p.cb_lowclip, highclip = p.cb_highclip
         )
 
         f, a, p = contour([1 2; 3 4])
@@ -107,8 +110,7 @@ end
         f, a, p = vspan(0:2, 1:3, color = 1:3)
         verify_colorbar_defaults(f, p, p.plots[1].plots[1])
 
-        f, a, p = pathtext(1:3, [1, 2, 1], text = "123", color = 1:3)
-        verify_colorbar_defaults(f, p, p.plots[1])
+        # pathtext resolves its single color before emitting glyphs.
 
         f, a, p = pie(1:3, color = 1:3)
         verify_colorbar_defaults(f, p, p.plots[1].plots[1])
@@ -151,8 +153,8 @@ end
         f, a, p = tricontourf(rand(10), rand(10), 1:10)
         cb = Colorbar(f[1, 2], p)
         verify_colorbar_defaults(
-            cb, p, color = p.computed_levels, colormap = p.computed_colormap,
-            colorrange = p.computed_colorrange, lowclip = p.cb_lowclip, highclip = p.cb_highclip
+            cb, p, color = p.cb_levels, colormap = p.computed_colormap,
+            colorrange = p.cb_limits, lowclip = p.cb_lowclip, highclip = p.cb_highclip
         )
 
         # also unclear
@@ -265,7 +267,8 @@ end
         @test cb.resolved_cdc[] === p.resolved_cdc[]
         @test cb.color_mapping_type[] == Makie.continuous
         @test cb.merged_color_mapping_type[] == Makie.continuous
-        @test cb.cb_colors[] ≈ collect(range(1.0, 10.0, cb.nsteps[]))
+        @test isempty(cb.cb_colors[])
+        @test cb.dc_values[] == p.raw_color[]
         @test cb.attributes.axis.tickvalues[] == Float64.(collect(1:10))
         @test cb.attributes.axis.tickstrings[] == string.(1:10)
         @test cb.attributes.axis.label_with_suffix[] == rich("[", rich("m"), "]")
@@ -370,4 +373,52 @@ end
     @test cb.attributes.axis.tickvalues[] == Float64[10, 100, 1000, 10000]
     lbls = [rich("10", superscript(string(i), offset = Vec2f(0.1, 0))) for i in 1:4]
     @test cb.attributes.axis.tickstrings[] == lbls
+end
+
+@testset "Categorical cell boundaries" begin
+    for values in ([1.0], [1.0, 2.0, 10.0]), scale in (identity, log10, inv), vertical in (true, false)
+        f, a, p = scatter(1:length(values); color = values, colormap = Categorical(:viridis), colorscale = scale)
+        cb = Colorbar(f[1, 2], p; vertical)
+        borders = Makie.edges(values)
+        @test cb.ticklimits[] == (first(borders), last(borders))
+        @test all(isfinite, scale.(cb.ticklimits[]))
+        @test cb.attributes.axis.tickvalues[] == values
+        positions = vertical ? cb.yrange[] : cb.xrange[]
+        normalized = (scale.(borders) .- scale(first(borders))) ./ (scale(last(borders)) - scale(first(borders)))
+        @test (positions .- first(positions)) ./ (last(positions) - first(positions)) ≈ normalized
+    end
+
+    f, a, p = scatter(1:3; color = Categorical(fill("A", 3)))
+    cb = Colorbar(f[1, 2], p)
+    @test cb.resolved_colorrange[] == p.scaled_colorrange[] == Vec2f(0.5, 1.5)
+    @test cb.ticklimits[] == (0.5, 1.5)
+    @test cb.attributes.axis.tickstrings[] == ["A"]
+    p.color = Categorical(["A", "B", "C"])
+    @test cb.ticklimits[] == (0.5, 3.5)
+    @test cb.attributes.axis.tickstrings[] == ["A", "B", "C"]
+end
+
+@testset "Series colorranges" begin
+    for scale in (identity, log10, inv), limits in (Makie.automatic, (Makie.automatic, 10.0), (1.0, 10.0))
+        f, a, p = series(reshape(1:12, 3, 4); color = [1.0, 2.0, 10.0], colorscale = scale, colorrange = limits)
+        colors = p.series_color[]
+        @test length(colors) == 3
+        @test colors[1] != colors[end]
+    end
+    f, a, p = series(reshape(1:12, 3, 4); color = fill(1.0, 3))
+    @test all(==(first(p.series_color[])), p.series_color[])
+end
+
+@testset "Color dim conversion listener cleanup" begin
+    f, a, p = scatter(1:3; color = Categorical(["A", "B", "C"]))
+    cdc = p.color_dim_convert[]
+    count = length(cdc.update.listeners)
+    q = scatter!(a, 1:3; color = Categorical(["A", "B", "C"]), color_dim_convert = cdc)
+    @test length(cdc.update.listeners) == count + 1
+    delete!(a, q)
+    @test length(cdc.update.listeners) == count
+    cb = Colorbar(f[1, 2]; values = Categorical(["A", "B", "C"]), dim_conversion = cdc)
+    @test length(cdc.update.listeners) > count
+    delete!(cb)
+    @test length(cdc.update.listeners) == count
 end

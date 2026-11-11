@@ -287,7 +287,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         # passed along from another source (typically a plot) that (most likely)
         # initialized the conversion.
         # If it is an Input the setup still needs to happen:
-        on(_ -> notify(cb.dim_conversion), cdc.update)
+        on(_ -> notify(cb.dim_conversion), blockscene, cdc.update)
         update_dim_conversion!(cb.dim_conversion[], cb.values[])
     end
     # We need to pull the actual conversion in the computegraph either way
@@ -297,7 +297,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         # If extract_colormap() extracted :dim_converted we use that directly
         # rather than applying dim converts here
         map!(to_color, cb, kwargs[:dim_converted], :dc_values)
-        on(x -> @error("Colorbar values are controlled by a plot via :dc_values"), cb.values)
+        on(x -> @error("Colorbar values are controlled by a plot via :dc_values"), blockscene, cb.values)
     else
         # Otherwise we apply dim converts (if they do something)
         if cdc.dim_convert isa Union{Nothing, NoDimConversion}
@@ -311,7 +311,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
     end
 
     map!(cb, [:scale, :dc_values], :_derived_colorrange) do scale, values
-        scalable_values = filter(v -> isfinite(apply_scale(scale, v)), values)
+        scalable_values = Iterators.filter(v -> isfinite(apply_scale(scale, v)), values)
         return Vec2d(distinct_extrema_nan(scalable_values)...)
     end
 
@@ -327,7 +327,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
             _colorrange
         end
 
-        autorange = dc isa CategoricalConversion ? extrema(first.(dc.int_to_category)) : _autorange
+        autorange = dc isa CategoricalConversion ? distinct_extrema_nan(first.(dc.int_to_category)) : _autorange
         if colorrange === automatic || colorrange === nothing
             return (Vec2d(autorange),)
         else
@@ -438,7 +438,9 @@ function initialize_block!(cb::Colorbar; kwargs...)
     like a continuous one.
     =#
 
-    map!(cb, [:barbox, :vertical, :scale, :cb_colors], [:xrange, :yrange]) do bb, vertical, scale, colors
+    map!(colors -> isempty(colors) ? Float64[] : edges(colors), cb, :cb_colors, :color_edges)
+
+    map!(cb, [:barbox, :vertical, :scale, :color_edges], [:xrange, :yrange]) do bb, vertical, scale, colors
         xmin, ymin = minimum(bb)
         xmax, ymax = maximum(bb)
         if isempty(colors)
@@ -448,7 +450,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         # colors are sorted. We want to preserve that order even if scale inverts
         # it. So use first and last values to get the post-transform values of
         # the pre-transform extrema.
-        scaled = scale.(edges(colors))
+        scaled = scale.(colors)
         mini = first(scaled)
         maxi = last(scaled)
         scaled = mini ≈ maxi ? fill(0.5f0, length(scaled)) : (scaled .- mini) ./ (maxi - mini)
@@ -608,15 +610,8 @@ function initialize_block!(cb::Colorbar; kwargs...)
     end
     ComputePipeline.set_type!(cb.finalticks, Any)
 
-    map!(cb, [:cb_colors, :merged_color_mapping_type, :resolved_colorrange], :ticklimits) do cs, type, limits
-        if type === Makie.categorical
-            # padding for the center -> edge transformation of cb_colors
-            low, high = limits
-            cellsize = (high - low) / (length(cs) - 1)
-            return (low - 0.5cellsize, high + 0.5cellsize)
-        else
-            return limits
-        end
+    map!(cb, [:color_edges, :merged_color_mapping_type, :resolved_colorrange], :ticklimits) do borders, type, limits
+        return type === Makie.categorical && !isempty(borders) ? (first(borders), last(borders)) : limits
     end
 
     axis = LineAxis(
