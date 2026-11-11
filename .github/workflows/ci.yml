@@ -10,6 +10,7 @@ on:
       - master
       - 'release-*'
       - ff/breaking-0.25
+      - ff/color-dim-converts
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
