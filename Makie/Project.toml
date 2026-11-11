@@ -76,7 +76,7 @@ MakieDynamicQuantitiesExt = "DynamicQuantities"
 
 [compat]
 Animations = "0.4"
-Artifacts = "1.11"
+Artifacts = "1.10"
 Base64 = "1.0, 1.6"
 CRC32c = "1.0, 1.6"
 ColorBrewer = "0.4"
