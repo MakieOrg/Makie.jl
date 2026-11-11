@@ -10,6 +10,19 @@ Current backend
 const CURRENT_BACKEND = Ref{Union{Missing, Module}}(missing)
 current_backend() = CURRENT_BACKEND[]
 
+backend_or_error(backend::Module) = backend
+function backend_or_error(::Missing)
+    return error(
+        """
+        No backend available!
+        Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
+
+        If you imported GLMakie, it may have not built correctly.
+        In that case, try `]build GLMakie` and watch out for any warnings.
+        """
+    )
+end
+
 function set_active_backend!(backend::Union{Missing, Module})
     CURRENT_BACKEND[] = backend
     return
@@ -132,19 +145,13 @@ function Base.display(
         figlike::FigureLike; backend = current_backend(),
         inline = ALWAYS_INLINE_PLOTS[], update = true, screen_config...
     )
-    config = to_dict(screen_config)
-    if ismissing(backend)
-        error(
-            """
-            No backend available!
-            Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
+    return display_figure(figlike, backend_or_error(backend), inline, update, to_dict(screen_config))
+end
 
-            If you imported GLMakie, it may have not built correctly.
-            In that case, try `]build GLMakie` and watch out for any warnings.
-            """
-        )
-    end
-
+# The keyword methods of `display`, `save` and `colorbuffer` only collect the keywords and call
+# `display_figure`, `save_figure` and `colorbuffer_figure`, so the actual work is compiled once
+# instead of again for every combination of keywords.
+function display_figure(figlike::FigureLike, backend::Module, inline::Union{Automatic, Bool}, update::Bool, config::Dict{Symbol, Any})
     # We show inline if explicitly requested or if automatic and we can actually show something inline!
     scene = get_scene(figlike)
     if (inline === true || inline === automatic) && can_show_inline(backend)
@@ -314,17 +321,10 @@ function FileIO.save(
         update = true,
         screen_config...
     )
-    if ismissing(backend)
-        error(
-            """
-            No backend available!
-            Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
+    return save_figure(file, fig, size, resolution, backend_or_error(backend), update, to_dict(screen_config))
+end
 
-            If you imported GLMakie, it may have not built correctly.
-            In that case, try `]build GLMakie` and watch out for any warnings.
-            """
-        )
-    end
+function save_figure(file::FileIO.Formatted, fig::FigureLike, size, resolution, backend::Module, update::Bool, config::Dict{Symbol, Any})
     scene = get_scene(fig)
     if resolution !== nothing
         @warn "The keyword argument `resolution` for `save()` has been deprecated. Use `size` instead, which better reflects that this is a unitless size and not a pixel resolution."
@@ -350,7 +350,6 @@ function FileIO.save(
             # Else, we create a new scene and update the state of the fig
             update && update_state_before_display!(fig)
             visible = isvisible(getscreen(scene)) # if already has a screen, don't hide it!
-            config = to_dict(screen_config)
             get!(config, :visible, visible)
             screen = getscreen(backend, scene, config, io, mime)
             events(fig).tick[] = Tick(OneTimeRenderTick, 0, 0.0, 0.0)
@@ -476,12 +475,15 @@ or RGBA.
 - `figure=nothing`: Optional figure argument passed to backend-specific colorbuffer implementations.
 """
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update = true, backend = current_backend(), figure = nothing, screen_config...)
+    return colorbuffer_figure(fig, format, update, backend_or_error(backend), to_dict(screen_config))
+end
+
+function colorbuffer_figure(fig::FigureLike, format::ImageStorageFormat, update::Bool, backend::Module, config::Dict{Symbol, Any})
     return lock(COLORBUFFER_LOCK) do
         scene = get_scene(fig)
         update && update_state_before_display!(fig)
         # if already has a screen, use their visibility value, if no screen, returns false
         visible = isvisible(getscreen(scene))
-        config = to_dict(screen_config)
         get!(config, :visible, visible)
         get!(config, :start_renderloop, false)
         screen = getscreen(backend, scene, config)
