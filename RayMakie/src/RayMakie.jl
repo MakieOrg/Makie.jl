@@ -312,16 +312,24 @@ end
 function to_trace_camera(cc::Makie.Camera3D, scene::Makie.Scene, film; screen_window=nothing)
     aspect = film.resolution[1] / film.resolution[2]
     sw = isnothing(screen_window) ? Hikari.Bounds2(Point2f(-aspect, -1.0f0), Point2f(aspect, 1.0f0)) : screen_window
-    return lift(scene, cc.eyeposition, cc.lookat, cc.upvector, cc.fov, cc.lens_radius, cc.focal_distance) do eyeposition, lookat, upvector, fov, lens_radius, focal_distance
+    return lift(scene, cc.eyeposition, cc.lookat, cc.upvector, cc.fov, cc.fstop, cc.focus,
+                cc.aperture_blades, cc.aperture_rotation) do eyeposition, lookat, upvector, fov, fstop, focus, blades, rotation
         view = Hikari.look_at(
             Point3f(eyeposition), Point3f(lookat), Vec3f(upvector),
         )
+        focal_distance = Hikari.focus_distance(eyeposition, lookat, focus_target(focus))
         return Hikari.PerspectiveCamera(
             view, sw,
-            0.0f0, 1.0f0, Float32(lens_radius), Float32(focal_distance), Float32(fov),
-            film
+            0.0f0, 1.0f0, Hikari.lens_radius(fstop, fov, sw), Float32(focal_distance), Float32(fov),
+            film; aperture_blades = blades, aperture_rotation = rotation,
         )
     end
+end
+
+focus_target(focus) = focus
+function focus_target(plot::Makie.AbstractPlot)
+    bbox = Makie.boundingbox(plot)
+    return Point3f(minimum(bbox) .+ widths(bbox) ./ 2)
 end
 
 # Fallback: use scene.camera view/projection matrices (works with Axis3, etc.)

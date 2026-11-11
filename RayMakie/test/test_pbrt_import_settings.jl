@@ -47,10 +47,10 @@ end
 
 res = RayMakie.pbrt_to_makie(SCENE)
 
-@testset "camera lens reaches Camera3D" begin
-    cc = res.scene.camera_controls
-    @test cc.lens_radius[] ≈ 0.25
-    @test cc.focal_distance[] ≈ 7.5
+@testset "camera lens reaches the traced camera" begin
+    camera = RayMakie.to_trace_camera(res.scene, Hikari.Film(Point2f(64, 64)))[]
+    @test camera.core.lens_radius ≈ 0.25
+    @test camera.core.focal_distance ≈ 7.5
 end
 
 @testset "integrator settings are parsed" begin
@@ -107,7 +107,7 @@ end
     @test isinf(vp.max_component_value)
     @test vp.max_depth == 100
     # A silent camera is a pinhole, not Hikari's 1e6-focal placeholder leaking in.
-    @test r2.scene.camera_controls.lens_radius[] == 0.0
+    @test r2.scene.camera_controls.fstop[] == Inf
     rm(quiet; force=true)
 end
 
