@@ -156,7 +156,7 @@ end
             dc_args = Any[nothing, nothing, nothing]
             # UnitfulConversion only sees the first arg, so overwrite back to front
             for i in reverse(eachindex(dims))
-                dims[i] == 0 && continue
+                dims[i] in (0, 4) && continue
                 if dims[i] isa Integer
                     dc_args[dims[i]] = args[i]
                 else
@@ -203,8 +203,8 @@ end
 
     # TODO: Primitives
     @testset "Primitives" begin
-        test_plot(heatmap, (1:5) .* u"s", Categorical(["A", "B"]), rand(5, 2))
-        test_plot(image, 0u"m" .. 1u"m", 0 .. 1, rand(10, 10))
+        test_plot(heatmap, (1:5) .* u"s", Categorical(["A", "B"]), rand(5, 2), dims = (1, 2, 4))
+        test_plot(image, 0u"m" .. 1u"m", 0 .. 1, rand(10, 10), dims = (1, 2, 4))
         test_plot(
             surface, (1:5) .* u"m", (1:5) .* u"cm", rand(5, 5) .* u"W",
             dims = (1, 2, 3)
@@ -257,8 +257,8 @@ end
             bracket, 1u"m", 0u"s", 1u"m", 2u"s",
             dims = (1, 2, 1, 2)
         )
-        test_plot(contourf, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10))
-        test_plot(contour, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10))
+        test_plot(contourf, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10), dims = (1, 2, 4))
+        test_plot(contour, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10), dims = (1, 2, 4))
         test_plot(
             contour, 0u"m" .. 1u"m", 0u"s" .. 1u"s", 0 .. 1, rand(10, 10, 10),
             dims = (1, 2, 3)
@@ -301,7 +301,7 @@ end
         test_plot(poly, rand(10) .* u"m", rand(10) .* u"s")
         test_plot(scatterlines, rand(10) .* u"m", rand(10) .* u"s")
         test_plot(series, rand(10) .* u"m", rand(3, 10) .* u"s")
-        test_plot(spy, 1u"m" .. 10u"m", 1u"s" .. 10u"s", rand(10, 10))
+        test_plot(spy, 1u"m" .. 10u"m", 1u"s" .. 10u"s", rand(10, 10), dims = (1, 2, 4))
         test_plot(stairs, rand(10) .* u"m", rand(10) .* u"s")
         test_plot(stem, rand(10) .* u"m", rand(10) .* u"s")
         test_plot(
@@ -314,9 +314,9 @@ end
             dims = (2,)
         )
         test_plot(tooltip, 1, 2u"m", text = "woo")
-        test_plot(tricontourf, rand(10), rand(10) .* u"m", rand(10))
+        test_plot(tricontourf, rand(10), rand(10) .* u"m", rand(10), dims = (1, 2, 4))
         test_plot(voronoiplot, rand(10), rand(10) .* u"m")
-        test_plot(voronoiplot, rand(10), rand(10) .* u"m", rand(10))
+        test_plot(voronoiplot, rand(10), rand(10) .* u"m", rand(10), dims = (1, 2, 4))
         test_plot(waterfall, 1:10, rand(10) .* u"m")
         # test_plot(waterfall, rand(10) .* u"m") # test doesn't handle expand_arguments()
     end

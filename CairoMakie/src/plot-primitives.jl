@@ -18,6 +18,7 @@ function cairo_draw(screen::Screen, scene::Scene)
 
     allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
     sort!(allplots; by = Makie.zvalue2d)
+
     # If the backend is not a vector surface (i.e., PNG/ARGB),
     # then there is no point in rasterizing twice.
     should_rasterize = is_vector_backend(screen.surface)

@@ -186,6 +186,85 @@ Makie.DQConversion
 Makie.DateTimeConversion
 ```
 
+### Color dim_converts
+
+As of Makie 0.25 dim converts can also apply to colormapped data.
+The data is either given through the `color` attribute or as argument which `Makie.argument_dims` maps to `dim = 4`.
+The latter is used for the matrix input of `heatmap` which is used to determine the cell colors, for example.
+
+```@setup color_dim_converts
+using Makie.Unitful
+```
+
+```@figure color_dim_converts
+using Makie.Unitful
+
+f, a, p1 = heatmap(10 .* rand(10, 10) .* u"K", colormap = :blues)
+p2 = scatter!(
+    1:10,
+    color = Categorical(["A", "B", "B", "C", "C", "C", "A", "A", "B", "B"]),
+    colormap = :solar,
+    markersize = 20, strokewidth = 1, strokecolor = :white
+)
+Colorbar(f[1, 0], p1)
+Colorbar(f[1, 2], p2)
+
+f
+```
+
+Unlike other dim converts, color dim converts do not communicate with each other by default.
+The reason for this is that there are other attributes that would need to match to get the same colormapping.
+This includes `colormap`, `colorscale`, `colorrange` and potentially `lowclip`, `highclip` and `nan_color`.
+It is unclear how these attributes should be matched up, i.e. if it should be requirement or a side effect.
+
+To manually share color dim converts, the `plot.color_dim_convert` of one plot an simply be passed to another plot.
+The other plot will then reuse and update that dim convert when converting its color data.
+The above mentioned attributes are not synchronized, so they need to be set to the same values manually.
+
+```@figure color_dim_converts
+f = Figure()
+a = Axis(f[1, 1], title = "nothing shared")
+p = scatter!(a, 1:5, 1:5, color = (1:5) .* u"m")
+scatter!(a, 6:10, 6:10, color = (6:10) .* u"m")
+Colorbar(f[1, 2], p)
+
+a2 = Axis(f[2, 1], title = "dim convert & colorrange shared; colormap & colorscale match")
+p2 = scatter!(a2, 1:5, 1:5, color = (1:5) .* u"m", colorrange = (1, 10))
+scatter!(a2, 6:10, 6:10, color = (6:10) .* u"m"; p2.color_dim_convert, colorrange = (1, 10))
+Colorbar(f[2, 2], p2)
+
+f
+```
+
+Note that categorical conversions are an exception here.
+If the `colorrange` is not set by the user, the default colorrange is derived from the conversion itself.
+This means it considers the categories of all other linked plots.
+Keeping `colorscale`, `colormap` and potentially other attributes like `lowclip`, `highclip` and `nan_color` manually synchronized is still required.
+
+```@figure color_dim_converts
+f, a, p = scatter(
+    randn(50), randn(50),
+    color = Categorical(["A" for _ in 1:50]),
+    strokewidth = 1, strokecolor = :black, colormap = :heat
+)
+scatter!(
+    (2 .+ randn(50)), (2.5 .+ randn(50)),
+    color = Categorical(["B" for _ in 1:50]),
+    color_dim_convert = p.color_dim_convert,
+    strokewidth = 1, strokecolor = :black, colormap = :heat
+)
+scatter!(
+    (3 .+ randn(50)), (5 .+ randn(50)),
+    color = Categorical(["C" for _ in 1:50]),
+    color_dim_convert = p.color_dim_convert,
+    strokewidth = 1, strokecolor = :black, colormap = :heat
+)
+
+cb = Colorbar(f[1, 2], p)
+
+f
+```
+
 ## Developer docs
 
 ### Overview
@@ -277,9 +356,13 @@ end
 Makie.argument_dims(::MyPlot, unconvertible) = nothing
 ```
 
-Note that `argument_dims` handle `x, y`, `x, y, z` vectors as well as their point-like representations automatically.
-These cases also treat `direction` and `orientation` automatically if included via `argument_dim_kwargs()`.
-For this `direction == :y` and `orientation = :vertical` are treated as the neutral (no swap) case.
+!!! note
+    `argument_dims` handle `x, y`, `x, y, z` vectors as well as their point-like representations automatically.
+    These cases also treat `direction` and `orientation` automatically if included via `argument_dim_kwargs()`.
+    For this `direction == :y` and `orientation = :vertical` are treated as the neutral (no swap) case.
+
+!!! note
+    Colors are considered as dimension `4` in `argument_dims`.
 
 ### Creating a new dim convert
 
@@ -378,3 +461,46 @@ barplot([MyUnit(1), MyUnit(2), MyUnit(3)], 1:3)
 
 For more complex examples, you should look at the implementation in:
 `Makie/src/dim-converts`.
+
+### Color Dim Converts in Recipes
+
+Color dim converts can apply in two ways, as an argument conversion or as a `color` attribute conversion.
+
+The first case only requires the argument to marked as `dim = 4` by `Makie.argument_dims`.
+The conversion pipeline will then create and apply the color dim convert so that the convert color arguments are Real values.
+
+```julia
+@recipe MyPlot (position::Vector{Point2f}, color_data::Vector{Float32}) begin
+    ...
+end
+
+# As with other argument dim converts, generic methods like this apply before dim converts.
+Makie.convert_arguments(::Type{<:MyPlot}, xs, ys, colors) = (Point.(xs, ys), colors)
+
+# One might expect ::AbstractArray{<:VecTypes{2}}, ::AbstractVector here
+Makie.argument_dims(::Type{<:MyPlot}, ps, colors) = ((1, 2), 4)
+
+# And type restricted methods that do not match pre-dim-convert data apply after
+function Makie.convert_arguments(::Type{<:MyPlot}, ps::AbstractArray{<:VecTypes{2, <:Real}}, colors::AbstractVector{<:Reak})
+    ps = convert(Vector{Point2f}, vec(ps))
+    cs = convert(Vector{Float32}, colors)
+    return ps, cs
+end
+
+function Makie.plot!(p::MyPlot)
+    # p.color_data[] is required to match the type given in the recipe here, i.e. Vector{Float32}
+end
+```
+
+The second case is only relevant when colors are processed in the recipe in some way.
+Otherwise they can be passed down to child plots without further processing.
+To apply dim converts, you can use
+
+```julia
+Makie.register_dim_converted_color!(plot[; colorname, outputname])
+```
+
+This will update color dim converts with the color data identified by `colorname` and apply them in a computation producing `outputname`.
+If you have multiple color attributes that need conversion, you should call this function for each of them.
+Note that all color attributes need to use the same color dim conversion for this.
+Having multiple different color dim conversions in one plot is currently not supported.

@@ -60,12 +60,12 @@ end
         updated = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec
         @test updated == [:color => to_color(:red)]
-        @test s.plots[1].changed[] == Dict(:color => to_color(:red), :raw_color => to_color(:red), :scaled_color => to_color(:red))
+        @test s.plots[1].changed[] == Dict(:color => to_color(:red), :dc_color => to_color(:red), :raw_color => to_color(:red), :scaled_color => to_color(:red))
         newspec = S.Scatter(1:4; color = :green, cycle = [])
         updated = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec
         @test updated == [:color => to_color(:green)]
-        @test s.plots[1].changed[] == Dict(:color => to_color(:green), :raw_color => to_color(:green), :scaled_color => to_color(:green))
+        @test s.plots[1].changed[] == Dict(:color => to_color(:green), :dc_color => to_color(:green), :raw_color => to_color(:green), :scaled_color => to_color(:green))
         newspec = S.Scatter(1:5; color = :green, cycle = [])
         updates = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec

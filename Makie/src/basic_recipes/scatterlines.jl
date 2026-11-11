@@ -36,17 +36,11 @@ end
 
 function plot!(p::ScatterLines)
     # markercolor is the same as linecolor if left automatic
-    map!(p, [:color, :markercolor], :real_markercolor) do color, markercolor
-        return to_color(markercolor === automatic ? color : markercolor)
-    end
+    map!(default_automatic, p, [:markercolor, :color], :real_markercolor)
+    ComputePipeline.set_type!(p.real_markercolor, Any)
 
-    map!(p, [:colormap, :markercolormap], :real_markercolormap) do colormap, markercolormap
-        return markercolormap === automatic ? colormap : markercolormap
-    end
-
-    map!(p, [:colorrange, :markercolorrange], :real_markercolorrange) do colorrange, markercolorrange
-        return markercolorrange === automatic ? colorrange : markercolorrange
-    end
+    map!(default_automatic, p, [:markercolormap, :colormap], :real_markercolormap)
+    map!(default_automatic, p, [:markercolorrange, :colorrange], :real_markercolorrange)
 
     lines!(p, p.attributes, p.positions)
     scatter!(
