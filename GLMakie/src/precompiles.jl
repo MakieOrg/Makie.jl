@@ -51,7 +51,7 @@ precompile_plot(f, figlike) = Makie.precompile_plot(GLMakie, f, figlike)
 
 function Makie.render_for_precompile(::Type{<:Screen}, figlike)
     try
-        Makie.colorbuffer(figlike; backend = GLMakie, px_per_unit = 1, visible = false)
+        Makie.colorbuffer(figlike; px_per_unit = 1)
     catch err
         is_context_unavailable(err) || rethrow()
         @info "Skipping GLMakie rendering for precompilation because no usable OpenGL context is available." exception = err

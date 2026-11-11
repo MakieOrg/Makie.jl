@@ -477,9 +477,11 @@ function precompile_plot(backend::Module, f, figlike)
 end
 precompile_plot(backend::Module, figlike) = precompile_plot(backend, Returns(nothing), figlike)
 
-# Render `figlike` the way displaying it does, returns false if the backend can't render
-function render_for_precompile(S::Type{<:MakieScreen}, figlike)
-    colorbuffer(figlike; backend = parentmodule(S))
+# Render `figlike` the way displaying it does, returns false if the backend can't render.
+# The backend is active here. Keep the keywords of `colorbuffer` calls in sync with what
+# users call, other keywords compile a different specialization.
+function render_for_precompile(::Type{<:MakieScreen}, figlike)
+    colorbuffer(figlike)
     return true
 end
 
