@@ -30,7 +30,8 @@ struct RenderContext
     # Maps objectid of a Scene to its 1-based index in `scenes`.
     scene_to_gl_scene::Dict{UInt64, Int}
 
-    # Array of GLScene objects
+    # flattened scene tree represented as GLScenes containing renderobjects
+    # sorted back (root scene) to front
     scenes::Vector{GLScene}
 end
 

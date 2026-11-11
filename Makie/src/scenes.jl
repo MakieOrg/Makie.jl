@@ -94,15 +94,6 @@ mutable struct Scene <: AbstractScene
     clear::Observable{Bool}
 
     """
-    Controls where a scene clears the current content of the depth buffer within
-    its viewport. If this is `true` any plot within this scene will draw strictly
-    above plots of prior scenes. Otherwise plots of this scene may draw under
-    plots of a prior scene depending on their depth.
-    Note that is overwritten to be `true` when `clear = true`.
-    """
-    clear_depth::Observable{Bool}
-
-    """
     Affects the render order of the scene by controlling the position it occupies
     in `scene.parent.children`. A low z index (relative to sibling scenes) will
     move the scene to the back (start of parent.children) and a high z index
@@ -166,7 +157,6 @@ mutable struct Scene <: AbstractScene
             events::Events,
             viewport::Observable{Rect2i},
             clear::Observable{Bool},
-            clear_depth::Observable{Bool},
             zindex::Int64,
             camera::Camera,
             camera_controls::AbstractCamera,
@@ -187,7 +177,6 @@ mutable struct Scene <: AbstractScene
             events,
             viewport,
             clear,
-            clear_depth,
             zindex,
             camera,
             camera_controls,
@@ -346,7 +335,6 @@ function Scene(;
         viewport::Union{Observable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
         clear::Union{Automatic, Observable{Bool}, Bool} = automatic,
-        clear_depth::Union{Observable{Bool}, Bool} = true,
         zindex::Int64 = 0,
         transform_func = identity,
         camera::Union{Function, Camera, Nothing} = nothing,
@@ -421,7 +409,6 @@ function Scene(;
     end
     scene = Scene(
         parent, events, scene_viewport, clear,
-        convert(Observable{Bool}, clear_depth),
         zindex, cam, camera_controls,
         transformation, plots, m_theme,
         children, current_screens, bg, visible, ssao, _lights;

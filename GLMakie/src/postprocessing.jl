@@ -379,8 +379,19 @@ function run_stage(screen, glscenes, stage::RenderPlots)
         prepare_stencil!(stage.framebuffer)
 
         ppu = screen.px_per_unit[]
-        start = length(glscenes) + 1
 
+        # Why find blocks of scenes?
+        # When rendering back to front, we could draw in regions that are later
+        # cleared. These draws are a complete waste. To avoid them, we want to
+        # render scenes front to back. Scenes that don't clear, however, should
+        # still render back-to-front to have the correct layering.
+        # To avoid unnecessary draws but still keep the clearing correct, we
+        # search for clear = [true, false, ..., false] blocks of scenes in
+        # front-to-back order, draw the scenes of this block in back-to-front
+        # order (getting correct layering) and then mark the cleared area with
+        # the stencil buffer to avoid lower scenes from drawing there.
+
+        start = length(glscenes) + 1
         while start > 1
             # Find current clear = [true, false, ..., false] block
             stop = start - 1
@@ -398,6 +409,7 @@ function run_stage(screen, glscenes, stage::RenderPlots)
                 a = viewport(scene)[]
 
                 require_context(screen.glscreen)
+                glClear(GL_DEPTH_BUFFER_BIT)
                 glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
                 glScissor(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
 

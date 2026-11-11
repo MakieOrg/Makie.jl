@@ -338,7 +338,7 @@ GLMakie.activate!(render_pipeline = Makie.automatic)
     screen = display(scene, render_pipeline = Makie.default_pipeline(), visible = false)
     img2 = copy(colorbuffer(screen))
     # renderobjects should not get destroyed here, so ids should persist
-    @test id == screen.render_context.scenes[1].renderobjects[1][2].id
+    @test id == screen.render_context.scenes[1].renderobjects[1].id
 
     scene = Scene(size = (600, 300), camera = campixel!)
     image!(scene, 0 .. 300, 0 .. 300, img1)
