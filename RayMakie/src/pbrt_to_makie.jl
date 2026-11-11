@@ -105,10 +105,10 @@ function pbrt_to_makie(filename::AbstractString)
         rad2deg(2 * atan(tan(deg2rad(fov) / 2) / aspect))
     end
     scene.camera_controls.fov[] = Float64(makie_fov)
-    # Lens is in world units, so unlike fov it needs no aspect conversion.
-    # `to_trace_camera` lifts both into Hikari.PerspectiveCamera.
-    scene.camera_controls.lens_radius[] = Float64(lens_radius)
-    scene.camera_controls.focal_distance[] = Float64(focal_distance)
+    # `to_trace_camera` turns the f-stop back into this lens radius, over the same screen window.
+    screen = Hikari.Bounds2(Point2f(-aspect, -1f0), Point2f(aspect, 1f0))
+    scene.camera_controls.fstop[] = Float64(Hikari.focal_length(makie_fov, screen) / (2 * lens_radius))
+    scene.camera_controls.focus[] = Float64(focal_distance)
 
     # --- Build Hikari textures and materials from pbrt data ---
     hikari_textures = Hikari.build_pbrt_textures(pbrt)
