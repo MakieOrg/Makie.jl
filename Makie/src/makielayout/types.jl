@@ -535,6 +535,8 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         so that the axis aspect ratio width/height matches that of the data limits.
         For example, if the x limits range from 0 to 300 and the y limits from 100 to 250, `DataAspect()` will result
         in an aspect ratio of `(300 - 0) / (250 - 100) = 2`.
+        The limit widths are measured after applying `xscale` and `yscale`: with `log10` scales,
+        x limits from 1 to 100 and y limits from 1000 to 10000 result in an aspect ratio of `2 / 1 = 2`.
         This can be useful when plotting images, because the image will be displayed unsquished.
 
         `AxisAspect(ratio)` reduces the effective axis size within the available layout space
@@ -652,6 +654,8 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         the autolimits will also have a ratio of 1 to 2. The setting `autolimitaspect = 1`
         is the complement to `aspect = AxisAspect(1)`, but while `aspect` changes the axis
         size, `autolimitaspect` changes the limits to achieve the desired ratio.
+        The limit ratio is measured after applying `xscale` and `yscale`, so with `log10` scales
+        `autolimitaspect = 1` gives one decade the same length on both axes.
 
         !!! warning
             `autolimitaspect` can introduce cyclical updates which result in stack overflow errors.
