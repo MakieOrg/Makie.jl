@@ -222,6 +222,8 @@ function mixin_shading_attributes()
         "RPRMakie only attribute to set complex RadeonProRender materials.
         *Warning*, how to set an RPR material may change and other backends will ignore this attribute"
         material = nothing
+        "RayMakie only attribute: a `Hikari.Visibility` choosing which kinds of rays see the plot, e.g. `Hikari.Visibility(camera = false)` for an object that shows only in reflections. `nothing` means every ray sees it."
+        ray_visibility = nothing
     end
 end
 
