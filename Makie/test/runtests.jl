@@ -65,6 +65,7 @@ end
         include("SceneLike/scenes.jl")
         include("SceneLike/figures.jl")
         include("SceneLike/makielayout.jl")
+        include("SceneLike/Colorbar.jl")
         include("SceneLike/PolarAxis.jl")
     end
 
