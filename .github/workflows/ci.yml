@@ -3,6 +3,7 @@ on:
   pull_request:
     branches:
       - ff/breaking-0.25
+      - ff/scene-render-order
   push:
     tags:
       - '*'

@@ -408,7 +408,8 @@ function Scene(;
         clear = convert(Observable{Bool}, clear)
     end
     scene = Scene(
-        parent, events, scene_viewport, clear, zindex, cam, camera_controls,
+        parent, events, scene_viewport, clear,
+        zindex, cam, camera_controls,
         transformation, plots, m_theme,
         children, current_screens, bg, visible, ssao, _lights;
         deregister_callbacks = deregister_callbacks
