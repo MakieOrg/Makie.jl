@@ -12,7 +12,7 @@ using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
 
-using Pkg.Artifacts # load early to cut down REPLExt init time
+using Artifacts
 using LaTeXStrings
 using MathTeXEngine
 using Random
