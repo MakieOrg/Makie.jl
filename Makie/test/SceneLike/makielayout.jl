@@ -991,6 +991,48 @@ end
     end
 end
 
+# issue #5909
+@testset "Axis aspect with scales" begin
+    viewport_aspect(ax) = ((w, h) = ax.scene.viewport[].widths; w / h)
+    function scaled_aspect(ax)
+        fl = ax.finallimits[]
+        (x0, y0), (x1, y1) = minimum(fl), maximum(fl)
+        return Makie.scaled_width(ax.xscale[], x0, x1) / Makie.scaled_width(ax.yscale[], y0, y1)
+    end
+
+    # one decade on each axis is square
+    f = Figure(size = (400, 400))
+    ax = Axis(f[1, 1]; xscale = log10, yscale = log10, aspect = DataAspect(), limits = ((1, 10), (1000, 10000)))
+    Makie.update_state_before_display!(f)
+    @test viewport_aspect(ax) ≈ 1
+    # two decades in x, one decade in y
+    ax.limits = ((1, 100), (1000, 10000))
+    Makie.update_state_before_display!(f)
+    @test viewport_aspect(ax) ≈ 2 rtol = 0.02
+    # switching a scale after construction updates the viewport
+    ax.yscale = identity
+    ax.limits = ((1, 10), (0, 1))
+    Makie.update_state_before_display!(f)
+    @test viewport_aspect(ax) ≈ 1
+    ax.yscale = sqrt
+    ax.limits = ((1, 10), (0, 4))
+    Makie.update_state_before_display!(f)
+    @test viewport_aspect(ax) ≈ 0.5 rtol = 0.02
+
+    for (xscale, yscale, xlims, ylims) in (
+            (log10, log10, (1, 10), (1000, 10000)),    # expands x
+            (identity, log10, (0, 10), (1, 10)),        # expands y
+            (Makie.pseudolog10, identity, (0, 10), (0, 10)),
+            (identity, Makie.Symlog10(1.0), (0, 1), (-1000, 1000)),
+        )
+        f = Figure(size = (600, 400))
+        ax = Axis(f[1, 1]; xscale, yscale, autolimitaspect = 1, limits = (xlims, ylims))
+        Makie.update_state_before_display!(f)
+        @test scaled_aspect(ax) ≈ viewport_aspect(ax)
+        @test all(isfinite, (ax.finallimits[].origin..., ax.finallimits[].widths...))
+    end
+end
+
 @testset "Block attribute conversion observable cleanup" begin
     limits = Observable((-1.0, 1.0, -1.0, 1.0))
     for _ in 1:5
