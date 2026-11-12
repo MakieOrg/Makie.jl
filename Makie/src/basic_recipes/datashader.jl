@@ -748,8 +748,8 @@ function resample_image(x, y, image, max_resolution, limits, transform_func)
     xtf, ytf = transform_func
     # Without axis scaling, image(...) is called with LinRange{Float32} indices as before.
     # With at least one scaled axis, both axes use Vector{Float32} indices. Keeping Float32
-    # (rather than Float64) generally makes the interpolator return the same element type in 
-    # both branches. Callables that only support (::LinRange, ::LinRange), like Pyramid, error 
+    # (rather than Float64) generally makes the interpolator return the same element type in
+    # both branches. Callables that only support (::LinRange, ::LinRange), like Pyramid, error
     # on scaled axes.
     if xtf === identity && ytf === identity
         interpolated = image(x_index_range::LinRange{Float32}, y_index_range::LinRange{Float32})
@@ -839,8 +839,9 @@ function Makie.plot!(p::Union{HeatmapShader, ImageShader})
 
 
     T = eltype(p.image[].data) <: Colors.Colorant ? RGB{Float32} : Float32
-    map!(p.attributes, 
-        [:image, :x, :y, :max_resolution, :data_limits, :colorrange, :transform_func], 
+    map!(
+        p.attributes,
+        [:image, :x, :y, :max_resolution, :data_limits, :colorrange, :transform_func],
         [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]
     ) do image, x, y, max_resolution, image_area, crange, transform_func
         x, y, img = resample_image(x, y, image.data, max_resolution, image_area, transform_func)
