@@ -94,6 +94,9 @@ load_all_shaders(SHADER_DIR)
 WARN_ON_LOAD[] = true
 
 function __init__()
+    # Precompile workloads may display figures; each Julia session starts numbering at 1.
+    empty!(FIGURE_NUMBERS)
+    FIGURE_NUMBER_COUNTER[] = 0
     activate!()
     macos_set_dock_visible(false)
     # trigger OpenGL cleanup to avoid errors in debug mode
