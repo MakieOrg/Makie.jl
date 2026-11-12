@@ -37,36 +37,36 @@ end
     matrix = permutedims(1:5) .* (1:5)
     rs = Resampler(matrix)
 
-    # These tests are designed to catch regressions, not be an 
+    # These tests are designed to catch regressions, not be an
     # undisputable correct answer. They are added when adding
     # support for axis scalings of the resampler, such that
     # the behavior when scale = :identity is unaffected, which
-    # means that some suspicious off-by-one behavior is carried on. 
-    # This should not have any effect on the overall appearance of 
+    # means that some suspicious off-by-one behavior is carried on.
+    # This should not have any effect on the overall appearance of
     # an image, but it means we need to deal with non-integer numbers
-    # for unit tests and cannot test for simple properties of the result. 
+    # for unit tests and cannot test for simple properties of the result.
 
-    image_area = Rect2f(0, 0, 4, 4) 
-    _, _, resampled = resample_image((0,4), (0, 4), rs.data, (100, 100), image_area, (identity, identity))
+    image_area = Rect2f(0, 0, 4, 4)
+    _, _, resampled = resample_image((0, 4), (0, 4), rs.data, (100, 100), image_area, (identity, identity))
     @test resampled ≈ Float32[
-        1.0 2.3333333 3.6666667 5.0; 
-        2.3333333 5.444444 8.555555 11.666666; 
-        3.6666667 8.555555 13.444446 18.333334; 
+        1.0 2.3333333 3.6666667 5.0;
+        2.3333333 5.444444 8.555555 11.666666;
+        3.6666667 8.555555 13.444446 18.333334;
         5.0 11.666666 18.333334 25.0
     ]
 
-    image_area = Rect2f(0,0,2,4)
-    _, _, resampled = resample_image((0,4), (0, 4), rs.data, (100, 100), image_area, (identity, identity))
+    image_area = Rect2f(0, 0, 2, 4)
+    _, _, resampled = resample_image((0, 4), (0, 4), rs.data, (100, 100), image_area, (identity, identity))
     @test resampled ≈ Float32[
-        1.0 2.3333333 3.6666667 5.0; 
+        1.0 2.3333333 3.6666667 5.0;
         3.0 7.0 11.0 15.0
     ]
 
-    image_area = Rect2f(0,0,4, 2)
-    _, _, resampled = resample_image((0,4), (0, 4), rs.data, (100, 100), image_area, (identity, identity))
+    image_area = Rect2f(0, 0, 4, 2)
+    _, _, resampled = resample_image((0, 4), (0, 4), rs.data, (100, 100), image_area, (identity, identity))
     @test resampled ≈ Float32[
-        1.0 3.0; 
-        2.3333333 7.0; 
+        1.0 3.0;
+        2.3333333 7.0;
         3.6666667 11.0;
         5.0 15.0
     ]
@@ -75,9 +75,9 @@ end
     # sqrt.(x) = 0, 2/3, 4/3, 2  =>  x = 0, 4/9, 16/9, 4  =>  index = x + 1.
     # Since matrix[i, j] = i * j, linear interpolation is exact.
     image_area = Rect2f(0, 0, 4, 4)
-    x, y, resampled = resample_image((0,4), (0, 4), rs.data, (100, 100), image_area, (sqrt, identity))
-    @test x == [0,4]
-    @test y == [0,4]
+    x, y, resampled = resample_image((0, 4), (0, 4), rs.data, (100, 100), image_area, (sqrt, identity))
+    @test x == [0, 4]
+    @test y == [0, 4]
     x_inds = [1, 13 / 9, 25 / 9, 5]
     y_inds = [1, 7 / 3, 11 / 3, 5]
     @test resampled ≈ x_inds .* y_inds'
