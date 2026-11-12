@@ -450,10 +450,11 @@ export cleanup_globals
 import PrecompileTools
 
 const SHARED_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile.jl")
+const SHARED_INTERACTIVE_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile-interactive.jl")
 const SHARED_PRECOMPILE_FULL_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile-full.jl")
 
 """
-    shared_precompile_paths()
+    shared_precompile_paths(; interactive = false)
 
 Returns the workload files Makie and the backends include during
 precompilation. Controlled by the Makie preference
@@ -463,11 +464,14 @@ precompilation. Controlled by the Makie preference
 - `"full"`: additionally covers the long tail of common recipes
   (`shared-precompile-full.jl`) for a near compile-free first plot of most
   plot types, at the cost of longer package precompilation.
+
+Set `interactive = true` to also include the interactive widgets.
 """
-function shared_precompile_paths()
+function shared_precompile_paths(; interactive = false)
     level = PrecompileTools.Preferences.@load_preference("precompile_workload_level", "default")
     paths = String[SHARED_PRECOMPILE_PATH]
     level == "full" && push!(paths, SHARED_PRECOMPILE_FULL_PATH)
+    interactive && push!(paths, SHARED_INTERACTIVE_PRECOMPILE_PATH)
     return paths
 end
 
