@@ -231,6 +231,60 @@ function mouseposition_px(scene::Scene = hovered_scene())
 end
 
 """
+    pixel_position(plot, i)
+    pixel_position(scenelike, point)
+    pixel_position(scenelike, (rx, ry); relative = true)
+
+Return a position in figure pixels, the space of `events(fig).mouseposition`:
+
+- `pixel_position(plot, i)`: the `i`-th marker or vertex of a `scatter`, `meshscatter`, `lines`,
+  `linesegments` or `mesh` plot, including the plot's transformations.
+- `pixel_position(scenelike, point)`: the data point `point` of a `Scene`, `Axis`, `Axis3` or `LScene`.
+- `pixel_position(scenelike, (rx, ry); relative = true)`: the position at the fractions `(rx, ry)` of the
+  bounding box of a scene or block, with `(0, 0)` at its bottom left.
+
+This can be used to simulate interactions, for example hovering the first marker of a scatter plot:
+
+```julia
+events(fig).mouseposition[] = Tuple(pixel_position(scatterplot, 1))
+```
+
+Positions are only meaningful once the figure is laid out, e.g. after it has been displayed.
+"""
+function pixel_position(plot::Union{Scatter, MeshScatter, Lines, LineSegments, Mesh}, i::Integer)
+    scene = parent_scene(plot)
+    space = to_value(get(plot, :space, :data))
+    world = apply_transform_and_model(plot, element_position(plot, i))
+    return figure_pixel(scene, project(scene, space, :pixel, world))
+end
+
+function pixel_position(plot::AbstractPlot, ::Integer)
+    throw(ArgumentError("`pixel_position(plot, i)` is not implemented for $(typeof(plot).name.name), only for scatter, meshscatter, lines, linesegments and mesh. Use `pixel_position(axis, point)` with a data point instead."))
+end
+
+function pixel_position(scenelike, point::VecTypes; relative::Bool = false)
+    if relative
+        bbox = pixel_bbox(scenelike)
+        return Point2d(minimum(bbox) .+ point .* widths(bbox))
+    end
+    scene = get_scene(scenelike)
+    world = apply_transform_and_model(transformationmatrix(scene)[], transform_func(scene), point)
+    return figure_pixel(scene, project(scene, :data, :pixel, world))
+end
+
+element_position(plot::Union{Scatter, MeshScatter, Lines, LineSegments}, i) = plot[1][][i]
+element_position(plot::Mesh, i) = decompose(Point3d, plot.mesh[])[i]
+
+# `project` to `:pixel` is relative to the scene's viewport
+function figure_pixel(scene::Scene, scene_px::VecTypes)
+    o = origin(viewport(scene)[])
+    return Point2d(scene_px[1] + o[1], scene_px[2] + o[2])
+end
+
+pixel_bbox(scene::Scene) = Rect2d(viewport(scene)[])
+pixel_bbox(x) = pixel_bbox(get_scene(x))
+
+"""
     hovered_scene()
 
 Returns the `scene` that the mouse is currently hovering over.

@@ -297,6 +297,7 @@ export to_world
 
 # picking + interactive use cases + events
 export mouseover, onpick, pick, Events, Keyboard, Mouse, is_mouseinside
+export pixel_position
 export ispressed, Exclusively
 export connect_screen
 export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,
@@ -451,6 +452,43 @@ import PrecompileTools
 
 const SHARED_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile.jl")
 const SHARED_PRECOMPILE_FULL_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile-full.jl")
+
+# True while a package is being precompiled. `PrecompileTools.is_generating_output`
+# does the same, but isn't available in the PrecompileTools versions for older Julia.
+is_precompiling() = ccall(:jl_generating_output, Cint, ()) == 1
+
+# Shared implementation of the backends' public `precompile_plot`. Backends specialize the
+# functions below on their screen type.
+function precompile_plot(backend::Module, f, figlike)
+    previous_backend = current_backend()
+    # rendering and picking (e.g. for DataInspector) use the current backend
+    set_active_backend!(backend)
+    try
+        render_for_precompile(backend.Screen, figlike) || return
+        f()
+        handle_precompile_interactions(backend.Screen, figlike)
+        render_for_precompile(backend.Screen, figlike)
+    finally
+        set_active_backend!(previous_backend)
+    end
+    # don't leave windows, tasks or caches behind in the package image
+    is_precompiling() && cleanup_after_precompile(backend.Screen)
+    return
+end
+precompile_plot(backend::Module, figlike) = precompile_plot(backend, Returns(nothing), figlike)
+
+# Render `figlike` the way displaying it does, returns false if the backend can't render.
+# The backend is active here. Keep the keywords of `colorbuffer` calls in sync with what
+# users call, other keywords compile a different specialization.
+function render_for_precompile(::Type{<:MakieScreen}, figlike)
+    colorbuffer(figlike)
+    return true
+end
+
+# Process interaction work queued by `f`, only backends that can pick need this
+handle_precompile_interactions(::Type{<:MakieScreen}, figlike) = nothing
+
+cleanup_after_precompile(::Type{<:MakieScreen}) = cleanup_globals()
 
 """
     shared_precompile_paths()
