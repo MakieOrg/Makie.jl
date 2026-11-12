@@ -1,4 +1,4 @@
-using Pkg.Artifacts
+using Artifacts
 using Tar, CodecZlib, SHA
 using ghr_jll
 using LibGit2
