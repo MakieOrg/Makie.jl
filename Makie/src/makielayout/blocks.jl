@@ -563,6 +563,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     # prepare after user overwrites so users can use `add_input!()`
     prepare_graph_for_attributes!(graph, attr, is_block = true)
     add_remaining_block_inputs!(graph, attr, flattened_defaults)
+    process_attribute_deprecations!(graph, attr, kwdict)
 
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict

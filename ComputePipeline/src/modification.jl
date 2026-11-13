@@ -432,6 +432,11 @@ orphaned by replacing the edge outputs is considered invalid and will error when
 resolved.
 """
 function modify_edge!(edge::ComputeEdge{ComputeGraph}; kwargs...)
+    if !issubset(keys(kwargs), Set([:outputs, :inputs, :callback, :wrap_callback, :packed]))
+        invalid = setdiff(keys(kwargs), Set([:outputs, :inputs, :callback, :wrap_callback, :packed]))
+        error("`modify_edge!()` was called with invalid keyword arguments: $invalid")
+    end
+
     # `compute_identity` sets the output refs directly to input refs, so that
     # computations can be skipped entirely. When editing this edge we need to
     # make sure that inputs and outputs can actually hold different values.
@@ -562,6 +567,10 @@ orphaned by replacing the edge outputs is considered invalid and will error when
 resolved.
 """
 function modify_edge!(edge::Input; kwargs...)
+    if !issubset(keys(kwargs), Set([:output, :callback]))
+        invalid = setdiff(keys(kwargs), Set([:output, :callback]))
+        error("`modify_edge!()` was called with invalid keyword arguments: $invalid")
+    end
     graph = edge.graph::ComputeGraph
 
     @lock GLOBAL_LOCK begin
@@ -571,7 +580,7 @@ function modify_edge!(edge::Input; kwargs...)
         if haskey(kwargs, :output)
             new_output = kwargs[:output]
             if !isa(new_output, Computed)
-                error("`output` must be a `Computed` node.")
+                error("`output` must be a `Computed` node but is $(kwargs[:output]).")
             end
 
             # disconnect output
@@ -658,12 +667,10 @@ function replace_output!(edge::ComputeEdge, replacements::Pair{Symbol, Symbol}..
     return
 end
 
-function replace_output!(edge::Input, replacement::Pair{Symbol, Symbol})
+function replace_output!(edge::Input, replacement::Union{Tuple, Symbol, Computed})
     graph = edge.graph::ComputeGraph
-    if !in(edge.output.name, replacement)
-        error("Could not replace $(replacement[1]) as the given Input writes to $(edge.output.name).")
-    end
-    modify_edge!(edge; output = graph[replacement[2]])
+    node = get_node(graph, replacement)
+    modify_edge!(edge; output = node)
     return
 end
 

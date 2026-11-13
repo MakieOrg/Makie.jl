@@ -1004,14 +1004,10 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         minorticks = IntervalsBetween(5)
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
         size = 12
-    end
-end
 
-# TODO: not used
-function deprecated_attributes(::Type{Colorbar})
-    return (
-        (; attribute = :limits, message = "`limits` has been removed in favor of `colorrange` in Makie v0.25.", error = true),
-    )
+        "`limits` has been removed in favor of `colorrange` in Makie v0.25."
+        @deprecate limits colorrange
+    end
 end
 
 @Block Label begin
