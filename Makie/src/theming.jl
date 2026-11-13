@@ -77,7 +77,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # N_samples = 64,       # number of samples (requires shader reload)
     ),
     inspectable = true,
-    clip_planes = Vector{Plane3f}(),
+    clip_planes = Observable(Plane3f[]),
 
     # Vec is equivalent to 36° right/east, 39° up/north from camera position
     # The order here is Vec3f(right of, up from, towards) viewer/camera
