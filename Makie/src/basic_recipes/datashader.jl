@@ -532,8 +532,10 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     p._categories = [k => colors[k] for k in category_names]
     op = lift(total -> (x -> log10(x + 1) / log10(total + 1)), p, p.total_value)
 
-    for k in category_names
-        canv = canvases[k]
+    for (i, k) in enumerate(category_names)
+        canvas_key = Symbol(:category_canvas_, i)
+        map!(cs -> cs[k], p, :canvas_with_aggregation, canvas_key)
+        canv = p[canvas_key]
         color = colors[k]
         cmap = [(color, 0.0), (color, 1.0)]
         image!(p, canv, identity, op; colorrange = Vec2f(0, 1), colormap = cmap)
