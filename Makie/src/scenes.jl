@@ -295,8 +295,8 @@ function Scene(;
         theme_kw...
     )
 
-    global_theme = merge_without_obs!(copy(theme), current_default_theme())
-    m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
+    global_theme = merge_theme!(copy(theme), current_default_theme())
+    m_theme = merge_theme!(Attributes(theme_kw), global_theme)
 
     bg = let
         # prioritize kwargs over theme
@@ -533,9 +533,9 @@ function Base.empty!(scene::Scene; reset_theme = true)
     empty!(scene.plots)
     empty!(scene.theme)
 
-    # conditional, since in free we dont want this!
+    # conditional, since in free we don't want this!
     if reset_theme
-        merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
+        merge_theme!(scene.theme, CURRENT_DEFAULT_THEME)
     end
 
     disconnect!(scene.camera)
