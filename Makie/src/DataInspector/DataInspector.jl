@@ -156,7 +156,7 @@ function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...
     button_priority = pop!(kwarg_dict, :button_priority, 1_000)
 
     inspector_attr = Attributes(
-        range = pop!(kwarg_dict, :range, 10),
+        range = convert(Observable{Float32}, pop!(kwarg_dict, :range, 10)),
         persistent_tooltip_key = pop!(kwarg_dict, :persistent_tooltip_key, Keyboard.left_shift & Mouse.left),
         dodge_margins = to_lrbt_padding(pop!(kwarg_dict, :dodge_margins, 30)),
         formatter = pop!(kwarg_dict, :formatter, default_tooltip_formatter),
@@ -272,7 +272,7 @@ function update_tooltip!(di::DataInspector)
     end
 
 
-    for (plot, idx) in pick_sorted(di.parent, mp, di.inspector_attributes.range[])
+    for (plot, idx) in pick_sorted(di.parent, mp, to_value(di.inspector_attributes.range))
         # Areas of scenes can overlap so we need to make sure the plot is
         # actually in the correct scene
         if parent_scene(plot) == di.parent && plot.inspectable[]
@@ -294,7 +294,7 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
     function border_dodging_placement(di::DataInspector, proj_pos)
         wx, wy = widths(viewport(di.parent)[])
         px, py = proj_pos
-        l, r, b, t = di.inspector_attributes[:dodge_margins][]
+        l, r, b, t = to_value(di.inspector_attributes[:dodge_margins])
 
         placement = :above
         placement = ifelse(py > max(0.5wy, wy - t), :below, placement)
@@ -324,7 +324,7 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
 
     itf = inverse_transform(transform_func(di.parent))
     input_pos = apply_transform(itf, pos)
-    formatter = di.inspector_attributes[:formatter][]
+    formatter = to_value(di.inspector_attributes[:formatter])
     label = get_tooltip_label(formatter, element, input_pos)
 
     # maybe also allow kwargs changes from plots?
@@ -343,7 +343,7 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
     apply_tooltip_overwrites!(element, di.dynamic_tooltip)
 
     # TODO: Why not also allow plots to disable their indicator?
-    if di.inspector_attributes[:show_indicators][] && get(element, :show_indicator, true)
+    if to_value(di.inspector_attributes[:show_indicators]) && get(element, :show_indicator, true)
         update_indicator_internal!(di, element, pos)
     end
 
@@ -755,12 +755,12 @@ end
 function update_persistent_tooltips!(di::DataInspector)
     e = events(di.parent)
 
-    if !ispressed(e, di.inspector_attributes.persistent_tooltip_key[]) || !is_mouseinside(di.parent)
+    if !ispressed(e, to_value(di.inspector_attributes.persistent_tooltip_key)) || !is_mouseinside(di.parent)
         return Consume(false)
     end
 
     mp = e.mouseposition[]
-    for (plot, idx) in pick_sorted(di.parent, mp, di.inspector_attributes[:range][])
+    for (plot, idx) in pick_sorted(di.parent, mp, to_value(di.inspector_attributes[:range]))
         (parent_scene(plot) != di.parent) && continue
 
         if plot.inspectable[]
@@ -835,7 +835,7 @@ function add_persistent_tooltip!(di::DataInspector, element::PlotElement{PT}) wh
         update!(tt, arg1 = elements; di.tooltip_attributes...)
         apply_tooltip_overwrites!(element, tt)
     else
-        formatter = di.inspector_attributes[:formatter][]
+        formatter = to_value(di.inspector_attributes[:formatter])
         tt = datainspectortooltip!(
             di.parent, PlotElement{PT}[element],
             _formatter = formatter; di.tooltip_attributes...
