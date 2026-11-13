@@ -1,8 +1,14 @@
 # SliderGrid
 
-The column with the value labels is automatically set to a fixed width, so that the layout doesn't jitter when sliders are dragged and the value labels change their widths.
-This width is chosen by setting each slider to a few values and recording the maximum label width.
-Alternatively, you can set the width manually with attribute `value_column_width`.
+By default, `SliderGrid` stacks horizontal sliders in rows (name label | slider | value label).
+Set `horizontal = false` for a vertical grid: one column per slider with the name on top,
+a vertical `Slider`, and the value below.
+
+The value-label size is automatically fixed so the layout does not jitter when values change.
+For a horizontal grid this is a column width; for a vertical grid it is a row height.
+The size is chosen by setting each slider to a few values and recording the maximum label
+extent. Alternatively, set it manually with `value_column_width` (width when horizontal,
+height when vertical).
 
 ```@example slidergrid
 using GLMakie
@@ -69,6 +75,34 @@ interaction_record(fig, "slidergrid_example.mp4", events)
 
 ```@raw html
 <video autoplay loop muted playsinline src="./slidergrid_example.mp4" width="600"/>
+```
+
+## Vertical slider grid
+
+```@example slidergrid-vertical
+using CairoMakie
+
+fig = Figure(size = (500, 350))
+
+ax = Axis(fig[1, 1])
+
+sg = SliderGrid(
+    fig[1, 2],
+    (label = "X", range = 0:0.01:10, startvalue = 3),
+    (label = "Y", range = 0:0.01:10, startvalue = 6);
+    horizontal = false,
+    height = 250,
+    tellwidth = false,
+)
+
+point = lift(sg.sliders[1].value, sg.sliders[2].value) do x, y
+    Point2f(x, y)
+end
+
+scatter!(ax, point, color = :red, markersize = 20)
+limits!(ax, 0, 10, 0, 10)
+
+fig
 ```
 
 ## Attributes
