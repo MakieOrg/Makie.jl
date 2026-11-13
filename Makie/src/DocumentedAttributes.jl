@@ -1705,6 +1705,7 @@ function process_attribute_deprecations!(graph, attr::DocumentedAttributes, kwar
         T = eltype(intermediate_node.value) # Union of both? typejoin? always Any?
         ComputePipeline.unsafe_init!(graph, new_key, Ref{T}(init))
     end
+    return
 end
 
 ########################################
