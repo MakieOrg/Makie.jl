@@ -102,6 +102,34 @@ function test_cleanup(arg)
     return @test length(obs.listeners) == 0
 end
 
+@testset "best_unit" begin
+    meter(power) = Unitful.Unit{:Meter, Unitful.𝐋}(power, 1 // 1)
+
+    # the unit must only depend on the largest magnitude, not on the midpoint, which
+    # vanishes for a range symmetric around zero
+    for (mini, maxi) in [(-731.0u"m", 731.0u"m"), (-731.0u"m", 730.9u"m"), (-731.0u"m", -15.0u"m"), (15.0u"m", 731.0u"m")]
+        @test Makie.best_unit(mini, maxi) == meter(0)
+    end
+
+    # the largest unit that the maximum fills at least twice wins
+    @test Makie.best_unit(0.0u"m", 1500.0u"m") == meter(0)
+    @test Makie.best_unit(0.0u"m", 1.0u"m") == meter(-1)
+    @test Makie.best_unit(0.0u"m", 0.05u"m") == meter(-2)
+    # filling it exactly twice is enough
+    @test Makie.best_unit(0.0u"m", 2.0u"m") == meter(0)
+    @test Makie.best_unit(0.0u"m", 1.99u"m") == meter(-1)
+    # below every unit the smallest one is the best available
+    @test Makie.best_unit(0.0u"m", 1.0e-30u"m") == meter(-24)
+
+    # limits without a usable magnitude are ignored, resorting to the base unit
+    @test Makie.best_unit(-731.0u"m", NaN * u"m") == meter(0)
+    @test Makie.best_unit(0.0u"m", 0.0u"m") == meter(0)
+    @test Makie.best_unit(-Inf * u"m", Inf * u"m") == meter(0)
+
+    # time units are not a base 10 ladder
+    @test Makie.best_unit(0.0u"s", 4599.8u"s") == u"minute"
+end
+
 @testset "clean up observables" begin
     @testset "UnitfulConversion" begin
         test_cleanup([0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"])
