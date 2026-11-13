@@ -65,10 +65,7 @@ function capturebuffers(screen::Screen)
 end
 
 """An sRGB-encoded colour (a background) as the linear radiance the film holds."""
-function linearrgb(c)
-    linear(v) = v <= 0.04045f0 ? v / 12.92f0 : ((v + 0.055f0) / 1.055f0)^2.4f0
-    return RGB{Float32}(linear(Float32(red(c))), linear(Float32(green(c))), linear(Float32(blue(c))))
-end
+linearrgb(c) = RGB{Float32}(Hikari.srgb_gamma_to_linear.((Float32(red(c)), Float32(green(c)), Float32(blue(c))))...)
 
 """
 One traced scene's film into the capture planes, at its viewport (`row0`,

@@ -106,7 +106,7 @@ bcast_scalar(x)                       = x
 @inline as_vec3(s::Vec3f)   = s
 
 @inline function build_instance_mat3x4(p::Point3f, q::Vec4f, s)
-    Mantle.Mat3x4f(Mantle.build_4x3_pervec(Mantle.quat_to_rot3x3(q), as_vec3(s), p)...)
+    Mantle.build_4x3_pervec(Mantle.quat_to_rot3x3(q), as_vec3(s), p)
 end
 
 # `transforms` and `positions` must be the same length and on the same

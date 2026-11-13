@@ -419,7 +419,7 @@ for a thin one.
 @inline function glass_transmittance(m::RasterMaterial, base::Vec3f, n::Vec3f, v::Vec3f)
     nv = max(dot(n, v), 1f-4)
     material_kind(m) == MAT_THIN_DIELECTRIC && return 1f0 - thin_reflectance(nv, m.a[3])
-    lum = 0.2126f0 * base[1] + 0.7152f0 * base[2] + 0.0722f0 * base[3]
+    lum = Hikari.luminance(base)
     return (1f0 - fr_dielectric(nv, m.a[3])) * lum
 end
 
@@ -662,16 +662,21 @@ end
     return total > 0f0 ? open / total : 1f0
 end
 
+"""The nine real spherical-harmonic basis functions of bands 0 to 2 at the unit direction `d`."""
+@inline function sh_basis(d::Vec3f)
+    x = d[1]; y = d[2]; z = d[3]
+    return (0.282095f0, 0.488603f0 * y, 0.488603f0 * z, 0.488603f0 * x,
+            1.092548f0 * x * y, 1.092548f0 * y * z, 0.315392f0 * (3f0 * z * z - 1f0),
+            1.092548f0 * x * z, 0.546274f0 * (x * x - y * y))
+end
+
 # Irradiance over π from nine SH coefficients with the cosine lobe folded in
 # (Ramamoorthi and Hanrahan 2001), columns in the order `project_environment!` writes.
 @inline function env_irradiance(sh, n::Vec3f)
-    x = n[1]; y = n[2]; z = n[3]
+    b = sh_basis(n)
     col(k) = Vec3f(sh[1, k], sh[2, k], sh[3, k])
-    return col(1) * 0.282095f0 +
-           col(2) * (0.488603f0 * y) + col(3) * (0.488603f0 * z) + col(4) * (0.488603f0 * x) +
-           col(5) * (1.092548f0 * x * y) + col(6) * (1.092548f0 * y * z) +
-           col(7) * (0.315392f0 * (3f0 * z * z - 1f0)) + col(8) * (1.092548f0 * x * z) +
-           col(9) * (0.546274f0 * (x * x - y * y))
+    return col(1) * b[1] + col(2) * b[2] + col(3) * b[3] + col(4) * b[4] + col(5) * b[5] +
+           col(6) * b[6] + col(7) * b[7] + col(8) * b[8] + col(9) * b[9]
 end
 
 """

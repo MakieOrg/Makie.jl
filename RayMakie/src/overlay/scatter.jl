@@ -57,16 +57,10 @@ function get_scatter_pipeline!(screen)
 end
 
 # ─── Quaternion → rotation matrix ───
+# Mantle's rotation (row-major), as the homogeneous 4×4 the sprite transform takes.
 @inline function scatter_qmat(quat)
-    x, y, z, w = Float32(quat[1]), Float32(quat[2]), Float32(quat[3]), Float32(quat[4])
-    x2 = x * 2f0; y2 = y * 2f0; z2 = z * 2f0
-    xx = x * x2; yy = y * y2; zz = z * z2
-    xy = x * y2; xz = x * z2; yz = y * z2
-    wx = w * x2; wy = w * y2; wz = w * z2
-    Mat4f(1f0-(yy+zz), xy+wz, xz-wy, 0f0,
-          xy-wz, 1f0-(xx+zz), yz+wx, 0f0,
-          xz+wy, yz-wx, 1f0-(xx+yy), 0f0,
-          0f0, 0f0, 0f0, 1f0)
+    r = transpose(Mat3f(Mantle.quat_to_rot3x3(Vec4f(quat[1], quat[2], quat[3], quat[4]))...))
+    return Mat4f(vcat(hcat(r, zero(Vec3f)), Mat{1,4,Float32}(0f0, 0f0, 0f0, 1f0)))
 end
 
 # sprites.vert: mat3(model) * marker_offset (columns, not dot products

@@ -882,22 +882,9 @@ function refresh_guides!(screen::Screen, state::RayMakieState; guides::Bool = sc
     return
 end
 
-# Postprocess all scenes and composite into output buffer — shared by
-# colorbuffer() and interactive_window().
+# Postprocess every scene and composite it into the output buffer; returns the
+# device buffer, which a readback downloads on its own queue timeline.
 function postprocess_and_composite!(screen::Screen)
-    fill!(screen.output_buffer, scenebackground(screen.scene))
-    for scene_state in screen.scene_states
-        composites(scene_state) || continue
-        postprocess_scene_state!(screen, scene_state)
-        composite_scene!(screen.output_buffer, scene_state, screen.scene, screen.px_per_unit)
-    end
-
-    return Array(screen.output_buffer)
-end
-
-# GPU-only variant: same as postprocess_and_composite! but skips the CPU download.
-# Returns the GPU output_buffer directly (no Array() copy).
-function postprocess_and_composite_gpu!(screen::Screen)
     fill!(screen.output_buffer, scenebackground(screen.scene))
     for scene_state in screen.scene_states
         # Only RT scenes produce content in film.postprocess that needs compositing.
@@ -970,7 +957,7 @@ function composite_scene!(output::AbstractMatrix{RGBA{Float32}}, scene_state::Ra
         ndrange=ndrange
     )
     # No sync: whatever reads `output` next is submitted after this on the same
-    # queue. See `postprocess_and_composite_gpu!`.
+    # queue. See `postprocess_and_composite!`.
 end
 
 """
@@ -1575,7 +1562,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
 
                 screen.stop_renderloop[] && break
 
-                postprocess_and_composite_gpu!(screen)
+                postprocess_and_composite!(screen)
 
                 screen.stop_renderloop[] && break
 

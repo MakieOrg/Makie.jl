@@ -478,10 +478,7 @@ function project_equal_area!(sh, data, rotation, intensity::Float32)
     for j in 1:n, i in 1:n
         d = Hikari.uv_to_direction_equal_area(Point2f((i - 0.5f0) / n, (j - 0.5f0) / n), rotation)
         c = data[j, i].c
-        x, y, z = d[1], d[2], d[3]
-        basis = (0.282095f0, 0.488603f0 * y, 0.488603f0 * z, 0.488603f0 * x,
-                 1.092548f0 * x * y, 1.092548f0 * y * z, 0.315392f0 * (3f0 * z * z - 1f0),
-                 1.092548f0 * x * z, 0.546274f0 * (x * x - y * y))
+        basis = sh_basis(Vec3f(d))
         for k in 1:9, ch in 1:3
             sh[ch, k] += scale * c[ch] * basis[k]
         end

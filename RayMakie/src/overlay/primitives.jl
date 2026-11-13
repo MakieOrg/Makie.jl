@@ -144,37 +144,6 @@ end
 end
 
 # ============================================================================
-# Line Distance Functions
-# ============================================================================
-
-"""
-Distance from point p to line segment from a to b.
-All coordinates in screen space (pixels).
-"""
-@inline function line_segment_distance(p::Vec2f, a::Vec2f, b::Vec2f)
-    pa = p - a
-    ba = b - a
-    ba_len_sq = dot(ba, ba)
-    # Handle degenerate segment (point)
-    if ba_len_sq < 1f-10
-        return norm(pa)
-    end
-    t = clamp(dot(pa, ba) / ba_len_sq, 0f0, 1f0)
-    return norm(pa - t * ba)
-end
-
-"""
-Signed distance from point p to infinite line through a and b.
-Positive on one side, negative on the other.
-"""
-@inline function line_signed_distance(p::Vec2f, a::Vec2f, b::Vec2f)
-    ba = b - a
-    pa = p - a
-    # Cross product in 2D gives signed area
-    return (ba[1] * pa[2] - ba[2] * pa[1]) / norm(ba)
-end
-
-# ============================================================================
 # Shape Evaluation
 # ============================================================================
 

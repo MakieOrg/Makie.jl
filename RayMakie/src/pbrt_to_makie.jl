@@ -12,7 +12,7 @@ struct PBRTMakieResult
     integrator_settings::NamedTuple
     sensor::Hikari.PixelSensor
     sensor_name::String
-    exposure_time::Float32
+    filter::Hikari.AbstractFilter
 end
 
 """
@@ -28,33 +28,9 @@ in `to_trace_light` or the material conversion.
 function pbrt_to_makie(filename::AbstractString)
     pbrt = Hikari.parse_pbrt(filename)
 
-    # --- Film / sensor ---
-    xres = 512; yres = 512
-    sensor_name = "cie1931"
-    sensor_iso = 100f0
-    sensor_wb = 0f0
-    exposure_time = 1f0
-    if pbrt.film !== nothing
-        xres = Hikari.pbrt_get_int(pbrt.film, "xresolution", 512)
-        yres = Hikari.pbrt_get_int(pbrt.film, "yresolution", 512)
-        sensor_name = Hikari.pbrt_get_string(pbrt.film, "sensor", "cie1931")
-        sensor_iso = Float32(Hikari.pbrt_get_float(pbrt.film, "iso", 100.0))
-        sensor_wb = Float32(Hikari.pbrt_get_float(pbrt.film, "whitebalance", 0.0))
-        exposure_time = Float32(Hikari.pbrt_get_float(pbrt.film, "exposuretime", 1.0))
-    end
-
-    # --- Camera ---
-    # Defaults match pbrt-v4 cameras.cpp PerspectiveCamera::Create: a zero lens
-    # radius is a pinhole, and focaldistance is only consulted when the lens has
-    # area. Dropping these silently rendered every depth-of-field scene sharp.
-    fov = 90f0
-    lens_radius = 0f0
-    focal_distance = 1f6
-    if pbrt.camera !== nothing
-        fov = Float32(Hikari.pbrt_get_float(pbrt.camera, "fov", 90.0))
-        lens_radius = Float32(Hikari.pbrt_get_float(pbrt.camera, "lensradius", 0.0))
-        focal_distance = Float32(Hikari.pbrt_get_float(pbrt.camera, "focaldistance", 1.0e6))
-    end
+    settings = Hikari.pbrt_settings(pbrt)
+    xres, yres = settings.resolution
+    fov = settings.fov
     # Extract eye / target / up from the world-to-camera matrix.
     #
     # The DIRECTION must come from the matrix, not from the file's raw `LookAt`
@@ -77,19 +53,6 @@ function pbrt_to_makie(filename::AbstractString)
     target = eye + forward * (lookat_distance > 0f0 ? lookat_distance : 1f0)
     up = normalize(Vec3f(ctw[1,2], ctw[2,2], ctw[3,2]))
 
-    # --- Integrator settings ---
-    int_samples = 64; int_max_depth = 5
-    int_regularize = false; int_rr_depth = 1
-    int_max_component = Inf32
-    if pbrt.integrator !== nothing
-        int_samples = Hikari.pbrt_get_int(pbrt.integrator, "pixelsamples", 64)
-        int_max_depth = Hikari.pbrt_get_int(pbrt.integrator, "maxdepth", 5)
-        int_regularize = Hikari.pbrt_get_bool(pbrt.integrator, "regularize", false)
-    end
-    if pbrt.film !== nothing
-        int_max_component = Float32(Hikari.pbrt_get_float(pbrt.film, "maxcomponentvalue", Inf))
-    end
-
     # --- Create Makie Scene ---
     scene = Scene(size=(xres, yres); lights=Makie.AbstractLight[], ambient=RGBf(0, 0, 0))
     cam3d!(scene)
@@ -107,30 +70,13 @@ function pbrt_to_makie(filename::AbstractString)
     scene.camera_controls.fov[] = Float64(makie_fov)
     # Lens is in world units, so unlike fov it needs no aspect conversion.
     # `to_trace_camera` lifts both into Hikari.PerspectiveCamera.
-    scene.camera_controls.lens_radius[] = Float64(lens_radius)
-    scene.camera_controls.focal_distance[] = Float64(focal_distance)
+    scene.camera_controls.lens_radius[] = Float64(settings.lens_radius)
+    scene.camera_controls.focal_distance[] = Float64(settings.focal_distance)
 
-    # --- Build Hikari textures and materials from pbrt data ---
+    # --- Hikari textures, materials and media from pbrt data ---
     hikari_textures = Hikari.build_pbrt_textures(pbrt)
-    mat_cache = Dict{String, Hikari.Material}()
-    # Two passes: non-mix materials first so mix materials can find their dependencies
-    for pass in (false, true)
-        for (name, entity) in pbrt.named_materials
-            is_mix = lowercase(entity.type) == "mix"
-            is_mix == pass || continue
-            haskey(mat_cache, name) && continue
-            mat_cache[name] = Hikari.attach_bump(
-                Hikari.build_pbrt_material(entity, pbrt, hikari_textures, mat_cache),
-                entity, hikari_textures)
-        end
-    end
-
-    media_cache = Dict{String, Hikari.Medium}()
-    for (name, entity) in pbrt.named_media
-        transform = get(pbrt.media_transforms, name, Hikari.IDENTITY4)
-        med = Hikari.build_pbrt_medium(entity, pbrt, transform)
-        med !== nothing && (media_cache[name] = med)
-    end
+    mat_cache = Hikari.build_pbrt_materials(pbrt, hikari_textures)
+    media_cache = Hikari.build_pbrt_media(pbrt)
 
     # --- Add lights as Makie lights ---
     for lrec in pbrt.lights
@@ -166,15 +112,8 @@ function pbrt_to_makie(filename::AbstractString)
         end
     end
 
-    sensor = Hikari.PixelSensor(sensor=sensor_name, iso=sensor_iso,
-                                whitebalance=sensor_wb, exposure_time=exposure_time)
-
-    return PBRTMakieResult(
-        scene, (xres, yres), fov,
-        (samples=int_samples, max_depth=int_max_depth, regularize=int_regularize,
-         russian_roulette_depth=int_rr_depth, max_component_value=int_max_component),
-        sensor, sensor_name, exposure_time,
-    )
+    return PBRTMakieResult(scene, (xres, yres), fov, settings.integrator, settings.sensor,
+                           settings.sensor_name, settings.filter)
 end
 
 """
@@ -205,9 +144,10 @@ function Hikari.VolPath(res::PBRTMakieResult;
                         russian_roulette_depth::Int = res.integrator_settings.russian_roulette_depth,
                         max_component_value::Real = res.integrator_settings.max_component_value,
                         sensor::Hikari.PixelSensor = res.sensor,
+                        filter::Hikari.AbstractFilter = res.filter,
                         kwargs...)
     return Hikari.VolPath(; samples, max_depth, regularize, russian_roulette_depth,
-                          max_component_value, sensor, kwargs...)
+                          max_component_value, sensor, filter, kwargs...)
 end
 
 """
@@ -225,7 +165,7 @@ function screen_config(res::PBRTMakieResult)
     s = res.integrator_settings
     return (; samples = s.samples, max_depth = s.max_depth, regularize = s.regularize,
             russian_roulette_depth = s.russian_roulette_depth,
-            max_component_value = s.max_component_value, sensor = res.sensor)
+            max_component_value = s.max_component_value, sensor = res.sensor, filter = res.filter)
 end
 
 # ============================================================================
@@ -306,24 +246,5 @@ function pbrt_shape_to_makie!(scene, srec::Hikari.PBRTShapeRecord, pbrt,
                               mat_cache, media_cache, hikari_textures)
     geom = Hikari.build_pbrt_shape(srec, pbrt)
     geom === nothing && return
-
-    mat = Hikari.resolve_pbrt_material(srec, mat_cache, pbrt; textures=hikari_textures)
-
-    # Resolve media
-    inside_medium = get(media_cache, srec.medium_inner, nothing)
-    outside_medium = get(media_cache, srec.medium_outer, nothing)
-
-    # Area light: same construction Hikari's own scene builder uses, so the two
-    # importers cannot drift: the keyword constructor normalizes by the D65
-    # constant rather than by the emitter's own spectrum.
-    if srec.area_light !== nothing
-        emissive = Hikari.Emission(srec.area_light)
-        mesh!(scene, geom; material=Hikari.MediumInterface(mat;
-            emission=emissive, inside=inside_medium, outside=outside_medium))
-    elseif inside_medium !== nothing || outside_medium !== nothing
-        mesh!(scene, geom; material=Hikari.MediumInterface(mat;
-            inside=inside_medium, outside=outside_medium))
-    else
-        mesh!(scene, geom; material=mat)
-    end
+    mesh!(scene, geom; material = Hikari.pbrt_shape_material(srec, mat_cache, media_cache, pbrt, hikari_textures))
 end

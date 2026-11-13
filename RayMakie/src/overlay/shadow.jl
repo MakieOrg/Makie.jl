@@ -95,7 +95,7 @@ function shadow_light(types, colors, parameters)
     for i in eachindex(types)
         kind = Int32(types[i])
         c = RGBf(colors[i])
-        l = 0.2126f0 * c.r + 0.7152f0 * c.g + 0.0722f0 * c.b
+        l = Hikari.luminance(c)
         if kind == LIGHT_DIRECTIONAL
             if l > lum
                 best, lum = i, l

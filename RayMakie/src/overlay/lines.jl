@@ -883,14 +883,6 @@ function lines_sumlengths(points, resolution)
     return total .- atbreak
 end
 
-function sample_colormap(cmap, v::Float32, cmin::Float32, cmax::Float32, n_cmap::Int)
-    nv = cmax > cmin ? clamp((v - cmin) / (cmax - cmin), 0f0, 1f0) : 0.5f0
-    idx = clamp(nv * (n_cmap - 1) + 1, 1, n_cmap)
-    i0 = floor(Int, idx); i1 = min(i0 + 1, n_cmap); t = idx - i0
-    c0 = RGBA{Float32}(cmap[i0]); c1 = RGBA{Float32}(cmap[i1])
-    Vec4f(c0.r*(1-t)+c1.r*t, c0.g*(1-t)+c1.g*t, c0.b*(1-t)+c1.b*t, c0.alpha*(1-t)+c1.alpha*t)
-end
-
 """
     lines_resolve_colors(scaled_color, colormap, colorrange, n) -> Vector{Vec4f}
 

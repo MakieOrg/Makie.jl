@@ -35,6 +35,7 @@ open(SCENE, "w") do io
     Film "rgb" "integer xresolution" 64 "integer yresolution" 64
         "float maxcomponentvalue" 42
     Sampler "halton" "integer pixelsamples" 17
+    PixelFilter "mitchell" "float xradius" 1.75 "float yradius" 1.75
     Integrator "volpath" "integer maxdepth" 11 "bool regularize" true
     WorldBegin
     LightSource "point" "rgb I" [10 10 10] "point3 from" [0 0 3]
@@ -55,9 +56,19 @@ end
 
 @testset "integrator settings are parsed" begin
     s = res.integrator_settings
+    # pbrt-v4 puts the sample count on the Sampler; read only from the
+    # Integrator, as Hikari's importer did not, it came out as the default 64.
+    @test s.samples == 17
     @test s.max_depth == 11
     @test s.regularize == true
     @test s.max_component_value ≈ 42
+end
+
+@testset "the pixel filter is the file's" begin
+    # The same parse as Hikari's importer; this one used the Gaussian default.
+    @test res.filter isa Hikari.MitchellFilter
+    @test res.filter.radius == Point2f(1.75, 1.75)
+    @test RayMakie.screen_config(res).filter === res.filter
 end
 
 @testset "VolPath(res) applies them" begin
