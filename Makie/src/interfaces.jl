@@ -124,7 +124,7 @@ plottype(::MultiPoint) = Scatter
 
 
 clip_planes_obs(parent::AbstractPlot) = attributes(parent).clip_planes
-clip_planes_obs(parent::Scene) = parent.theme[:clip_planes]
+clip_planes_obs(parent::Scene) = convert(Observable{Vector{Plane3f}}, parent.theme[:clip_planes])
 
 # all the plotting functions that get a plot type
 const PlotFunc = Type{<:AbstractPlot}

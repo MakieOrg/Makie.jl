@@ -23,8 +23,8 @@ selections.
 - `selectionbutton = (Keyboard.space, Mouse.left)` sets the button used for rectangle selection. This must include a mouse button.
 """
 function cam2d!(scene::SceneLike; kw_args...)
-    cam_attributes = merged_get!(:cam2d, scene, Attributes(kw_args)) do
-        Attributes(
+    cam_attributes = merged_get!(:cam2d, scene, OAttributes(kw_args)) do
+        OAttributes(
             area = Observable(Rectd(0, 0, 1, 1)),
             zoomspeed = 0.1,
             zoombutton = true,

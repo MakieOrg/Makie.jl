@@ -295,22 +295,22 @@ function Scene(;
         theme_kw...
     )
 
-    global_theme = merge_without_obs!(copy(theme), current_default_theme())
-    m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
+    global_theme = merge_theme!(copy(theme), current_default_theme())
+    m_theme = merge_theme!(Attributes(theme_kw), global_theme)
 
-    bg = if haskey(theme_kw, :backgroundcolor)
-        map(to_color, convert(Observable{Any}, theme_kw[:backgroundcolor]), ignore_equal_values = true)
-    else
-        Observable{RGBAf}(to_color(to_value(m_theme[:backgroundcolor])))
+    bg = let
+        # prioritize kwargs over theme
+        init = get(theme_kw, :backgroundcolor, m_theme[:backgroundcolor])
+        map(to_color, convert(Observable{Any}, init), ignore_equal_values = true)
     end
 
     wasnothing = isnothing(viewport)
     scene_viewport = if wasnothing
         sz = if haskey(m_theme, :resolution)
             @warn "Found `resolution` in the theme when creating a `Scene`. The `resolution` keyword for `Scene`s and `Figure`s has been deprecated. Use `Figure(; size = ...` or `Scene(; size = ...)` instead, which better reflects that this is a unitless size and not a pixel resolution. The key could also come from `set_theme!` calls or related theming functions."
-            m_theme.resolution[]
+            to_value(m_theme.resolution)
         else
-            m_theme.size[]
+            to_value(m_theme.size)
         end
         Observable(Recti(0, 0, sz); ignore_equal_values = true)
     else
@@ -324,19 +324,20 @@ function Scene(;
         haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `light_direction` instead.")
 
         if haskey(m_theme, :lights)
-            copyto!(_lights, m_theme.lights[])
+            copyto!(_lights, to_value(m_theme.lights))
         else
             haskey(m_theme, :light_direction) || error("Theme must contain `light_direction::Vec3f` or an explicit `lights::Vector`!")
             haskey(m_theme, :light_color) || error("Theme must contain `light_color::RGBf` or an explicit `lights::Vector`!")
             haskey(m_theme, :camera_relative_light) || @warn("Theme should contain `camera_relative_light::Bool`.")
 
             if haskey(m_theme, :ambient)
-                push!(_lights, AmbientLight(m_theme[:ambient][]))
+                push!(_lights, AmbientLight(to_value(m_theme[:ambient])))
             end
 
             push!(
                 _lights, DirectionalLight(
-                    m_theme[:light_color][], m_theme[:light_direction][],
+                    to_value(m_theme[:light_color]),
+                    to_value(m_theme[:light_direction]),
                     to_value(get(m_theme, :camera_relative_light, false))
                 )
             )
@@ -366,6 +367,10 @@ function Scene(;
             return Consume(false)
         end
     end
+
+    # track ObserverFunctions that we are not tracking with on/map(f, scene, inputs...)
+    # TODO: Do we need to track more?
+    append!(scene.deregister_callbacks::Vector{Observables.ObserverFunction}, bg.inputs)
 
     return scene
 end
@@ -532,9 +537,9 @@ function Base.empty!(scene::Scene; reset_theme = true)
     empty!(scene.plots)
     empty!(scene.theme)
 
-    # conditional, since in free we dont want this!
+    # conditional, since in free we don't want this!
     if reset_theme
-        merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
+        merge_theme!(scene.theme, CURRENT_DEFAULT_THEME)
     end
 
     disconnect!(scene.camera)

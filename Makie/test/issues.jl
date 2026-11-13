@@ -11,17 +11,17 @@
         # See https://github.com/MakieOrg/Makie.jl/issues/1939
         a1 = Attributes(a = 1, b = 2)
         a2 = Attributes(a = 4, c = 3)
-        @test merge(a1, a2)[:a][] == 4
+        @test merge(a1, a2)[:a] == 4
 
         a1 = Attributes(a = 1, b = 2)
         a2 = Attributes(a = 4, c = 3)
         merge!(a1, a2)
-        @test a1[:a][] == 4 && haskey(a1, :c)
+        @test a1[:a] == 4 && haskey(a1, :c)
 
         a1 = Attributes(a = 1, b = 2)
         a2 = Attributes(a = 4, c = 3)
         Makie.mergeleft!(a1, a2)
-        @test a1[:a][] == 1 && haskey(a1, :c)
+        @test a1[:a] == 1 && haskey(a1, :c)
     end
 
     @testset "#3979 lossy matrix multiplication" begin
@@ -73,7 +73,7 @@
             p2 = lines!(a, rand(Float32, 10))
             p3 = lines!(a, rand(Float64, 10))
 
-            palette_colors = a.scene.theme.palette.color[]
+            palette_colors = a.scene.theme.palette.color
 
             @test p1.color[] == palette_colors[1]
             @test p2.color[] == palette_colors[2]
@@ -92,7 +92,7 @@
             p3 = poly!(a, multipoly1)
 
             # convert to RGBf here, because poly decreases alpha by 0.2
-            palette_colors = a.scene.theme.palette.patchcolor[]
+            palette_colors = a.scene.theme.palette.patchcolor
 
             @test p1.color[] == palette_colors[1]
             @test p2.color[] == palette_colors[2]

@@ -749,11 +749,14 @@ function get_next_cycle_index(scene, name)
     return cycle_index
 end
 
-function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where {T <: Plot}
+function add_theme!(plot::Plot{Func}, scene::Scene) where {Func}
     # So far we have set attributes based on the plot defaults and keyword
     # arguments. In this function we now resolve `@inherit`ed attributes and
     # apply `theme[plotsym(T)]` if it exists.
 
+    graph = plot.attributes
+    user_kw = plot.kw
+    T = Plot{Func}
     attr = documented_attributes(T)
     name = plotsym(T)
 
@@ -796,7 +799,7 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
     conv_attributes = used_attributes(T, graph.args[]...)
     union!(exclude, conv_attributes)
 
-    add_theme!(graph, attr, T, scene, exclude, user_kw, cycle)
+    add_theme!(plot, attr, scene, exclude, user_kw, cycle)
 
     # not resolving this during init can rarely change ordering.
     # E.g. in "annotation manual", where ylims! somehow resolves cycled
@@ -936,7 +939,7 @@ end
 function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     scene = parent_scene(parent)
     attr = plot.attributes
-    add_theme!(Plot{Func}, plot.kw, attr, scene)
+    add_theme!(plot, scene)
     plot.parent = parent
 
     if attr.inputs[:f32c].value !== :uninitialized
