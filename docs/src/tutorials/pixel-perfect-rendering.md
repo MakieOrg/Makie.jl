@@ -8,8 +8,13 @@ This tutorial will explain how to do this.
 
 To draw a matrix of values we can use `image` or `heatmap`.
 With their default setting `image` is interpolated and uses a grayscale colormap while `heatmap` is pixelated and uses a colorful colormap (viridis).
-They also differ in their placement of cells or "pixels".
-In `image` you can set where the plot starts and ends, i.e. you set where the left edge of the left most pixel and the right edge of right most pixel is.
+They also differ in how they read the matrix.
+`heatmap` reads it as `data[x, y]`, while `image` by default reads it like a picture, as `data[row, column]` with row 1 at the top (it reverses the y axis of the `Axis` it creates for that).
+The `orientation` attribute of `image` changes this, e.g. `orientation = (:right, :down)` makes the first index run along x and the second along increasing y, like in `heatmap`.
+
+Without explicit bounds, both put the center of each cell on its integer index.
+With explicit bounds, they differ in their placement of cells or "pixels".
+In `image` you set where the plot starts and ends, i.e. you set where the left edge of the left most pixel and the right edge of right most pixel is.
 (Same for the bottom and top pixels.)
 In `heatmap` you usually set where the cells centers are, though you can also set the edges by passing `size + 1` x and y values.
 With the right settings both can be made to look the same:
@@ -24,12 +29,14 @@ f = Figure()
 a1, p = image(f[1, 1], data)
 a2, p = heatmap(f[1, 2], data)
 
-# 0..3, 0..2 is the default, we could omit it
-a3, p = image(f[2, 1], 0..3, 0..2, data, colormap = :viridis, interpolate = false)
+a3, p = image(f[2, 1], 0..3, 0..2, data, colormap = :viridis, interpolate = false,
+    orientation = (:right, :down), axis = (; yreversed = false))
 a4, p = heatmap(f[2, 2], 0:3, 0:2, data, colormap = :viridis, interpolate = false)
 # Note that length(0:3), length(0:2) == size(data) .+ 1
 
-limits!.([a1, a2, a3, a4], -1, 4, -1, 3)
+for ax in (a1, a2, a3, a4)
+    ax.limits = (-1, 4, -1, 4)
+end
 
 f
 ```
@@ -48,7 +55,10 @@ scene = Scene(size = (200, 100), camera = campixel!)
 
 Here we explicitly set `camera = campixel!` so that the scene uses pixel units.
 More specifically, this sets the bottom left corner of the scene to (0, 0) and the top right corner to `size`.
-Using those limits we can now draw an `image` (or `heatmap`) plot filling the scene exactly:
+Using those limits we can now draw an `image` (or `heatmap`) plot filling the scene exactly.
+Our data is indexed as `data[x, y]`, so we pass `orientation = (:right, :down)` to `image`.
+(`:down` stands for increasing y, which points down on the y-reversed axes `image` creates, but up in this scene.)
+We also pass the scene's pixel boundaries `0..200, 0..100` as the edges of the image, since without them `image` would center the pixels on integer coordinates and be shifted by half a pixel:
 
 ```@figure
 using CairoMakie
@@ -57,8 +67,7 @@ data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in
 
 scene = Scene(size = (200, 100), camera = campixel!)
 
-# image will have the correct limits by default (0..200, 0..100)
-image!(scene, data, colormap = :viridis, interpolate = false)
+image!(scene, 0..200, 0..100, data, colormap = :viridis, interpolate = false, orientation = (:right, :down))
 
 # alternatively with heatmap:
 # heatmap!(scene, 0:200, 0:100, data)
@@ -76,7 +85,7 @@ using CairoMakie
 
 data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in 1:100]
 scene = Scene(size = (3 * 200, 2 * 100), camera = campixel!)
-image!(scene, 0..600, 0..200, data, colormap = :viridis, interpolate = false)
+image!(scene, 0..600, 0..200, data, colormap = :viridis, interpolate = false, orientation = (:right, :down))
 # heatmap!(scene, 0:3:600, 0:2:200, data)
 
 scene
@@ -101,7 +110,7 @@ using CairoMakie
 
 data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in 1:100]
 scene = Scene(size = (3 * 200, 2 * 100))
-image!(scene, -1..1, -1..1, data, colormap = :viridis, interpolate = false)
+image!(scene, -1..1, -1..1, data, colormap = :viridis, interpolate = false, orientation = (:right, :down))
 scene
 ```
 
@@ -118,7 +127,7 @@ using GLMakie
 
 data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in 1:100]
 scene = Scene(size = (3 * 200, 2 * 100))
-image!(scene, -1..1, -1..1, data, colormap = :viridis, interpolate = false, fxaa = false)
+image!(scene, -1..1, -1..1, data, colormap = :viridis, interpolate = false, fxaa = false, orientation = (:right, :down))
 scene
 ```
 
@@ -144,7 +153,7 @@ data = [x*y/1000 for x in -50:50, y in -50:50]
 fig = Figure()
 
 s1 = LScene(fig[1, 1], width = 101, height = 101, show_axis = false, scenekw = (camera = cam_relative!,))
-image!(s1, 0..1, 0..1, data, colormap = :viridis, interpolate = false)
+image!(s1, 0..1, 0..1, data, colormap = :viridis, interpolate = false, orientation = (:right, :down))
 
 s2 = LScene(fig[1, 2], width = 101, height = 101, show_axis = false, scenekw = (camera = campixel!,))
 heatmap!(s2, 0:101, 0:101, data)
@@ -168,7 +177,7 @@ data = [x*y/1000 for x in -50:50, y in -50:50]
 fig = Figure()
 
 a1 = Axis(fig[1, 1], width = 101, height = 101)
-image!(a1, data, colormap = :viridis, interpolate = false)
+image!(a1, data, colormap = :viridis, interpolate = false, orientation = (:right, :down))
 
 a2 = Axis(fig[1, 2], width = 101, height = 101)
 heatmap!(a2, data)
