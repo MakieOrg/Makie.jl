@@ -68,15 +68,15 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [weakdeps]
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 
-[sources]
-ComputePipeline = {path = "../ComputePipeline"}
+[sources.ComputePipeline]
+path = "../ComputePipeline"
 
 [extensions]
 MakieDynamicQuantitiesExt = "DynamicQuantities"
 
 [compat]
 Animations = "0.4"
-Artifacts = "1.10"
+Artifacts = "1.10, 1"
 Base64 = "1.0, 1.6"
 CRC32c = "1.0, 1.6"
 ColorBrewer = "0.4"
