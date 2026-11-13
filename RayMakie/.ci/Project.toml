@@ -23,7 +23,7 @@ ComputePipeline = {path = "../../ComputePipeline"}
 Makie = {path = "../../Makie"}
 GLMakie = {path = "../../GLMakie"}
 RayMakie = {path = ".."}
-Hikari = {url = "https://github.com/JuliaGraphics/Hikari.jl", rev = "sd/lava-refactor"}
+Hikari = {url = "https://github.com/JuliaGraphics/Hikari.jl", rev = "master"}
 KernelAbstractions = {url = "https://github.com/SimonDanisch/KernelAbstractions.jl", rev = "sd/lava-refactor"}
 KernelInterface = {url = "https://github.com/SimonDanisch/KernelAbstractions.jl", rev = "sd/lava-refactor", subdir = "lib/KernelInterface"}
 Lava = {url = "https://github.com/SimonDanisch/Lava.jl", rev = "sd/lava-refactor"}
