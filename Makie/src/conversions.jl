@@ -314,6 +314,16 @@ function edges(v::AbstractVector{T}) where {T}
     end
 end
 
+function edges(r::AbstractRange{T}) where {T}
+    # Assuming some kind of uniformly stepped range
+    T_out = float_type(T)
+    l = length(r)
+    a = first(r)
+    b = last(r)
+    half = l == 1 ? 0.5 : 0.5 * step(r)
+    return range(T_out(a - half), T_out(b + half), l + 1)
+end
+
 function adjust_axes(::CellGrid, x::RealVector, y::RealVector, z::AbstractMatrix)
     x̂, ŷ = map((x, y), size(z)) do v, sz
         return length(v) == sz ? edges(v) : v
@@ -348,7 +358,7 @@ convert_arguments(ct::VertexGrid, x::RealMatrix, y::RealMatrix) = convert_argume
 Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges
 with size(z, 1/2).
 """
-function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix{<:Union{Real, Colorant}})
+function convert_arguments(CT::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix{<:Union{Real, Colorant}})
     return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
@@ -368,9 +378,13 @@ function to_endpoints(x::Tuple{<:Real, <:Real})
 end
 to_endpoints(x::Interval) = to_endpoints(endpoints(x))
 to_endpoints(x::EndPoints) = x
+to_endpoints(x::AbstractRange) = to_endpoints((first(x), last(x)))
 
 to_endpoints(x::AbstractVector, side, trait) = throw_range_error(x, side, trait)
 to_endpoints(x::Union{Tuple, EndPoints, Interval}, side, trait) = to_endpoints(x)
+
+to_endpoints_with_range(x, side, trait) = to_endpoints(x, side, trait)
+to_endpoints_with_range(x::AbstractRange, side, trait) = to_endpoints(x)
 
 function throw_range_error(value::T, side, trait) where {T}
     error(
@@ -575,7 +589,10 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) wher
         n = normals(coordinates(mesh), faces(mesh), normaltype = Vec3f)
     end
 
-    mesh = GeometryBasics.mesh(mesh, facetype = GLTriangleFace, pointtype = Point{N, float_type(T)}, normal = n)
+    # The original face type is kept so that stroking can distinguish real mesh edges
+    # from edges introduced by triangulation. Triangulation happens in the backends
+    # via the decomposed :faces attribute.
+    mesh = GeometryBasics.mesh(mesh, facetype = eltype(faces(mesh)), pointtype = Point{N, float_type(T)}, normal = n)
     mesh = GeometryBasics.expand_faceviews(mesh) # TODO: can we do this (more) in-place?
 
     return (mesh,)
@@ -589,7 +606,14 @@ function convert_arguments(
     if isempty(meshes)
         return (GeometryBasics.Mesh(Point{DIM, Float32}[], GLTriangleFace[]),)
     end
-    converted = [convert_arguments(T, m)[1] for m in meshes]
+    converted = map(meshes) do maybe_mesh
+        mesh = convert_arguments(T, maybe_mesh)[1]
+        # remove views so that each view in the merged mesh corresponds to one
+        # of the input meshes. (If the input mesh has, for example, 2 ranges in
+        # mesh.views, these ranges will be transferred into the merged mesh.
+        # Then we can't match e.g. per-face colors to submeshes anymore.)
+        return GeometryBasics.Mesh(vertex_attributes(mesh), faces(mesh), UnitRange{UInt32}[])
+    end
     return (merge(converted),)
 end
 
@@ -725,6 +749,7 @@ end
 ################################################################################
 
 to_linspace(interval::Interval, N) = range(leftendpoint(interval), stop = rightendpoint(interval), length = N)
+to_linspace(x::AbstractRange{<:Real}, N) = range(first(x), stop = last(x), length = N)
 to_linspace(x::AbstractVector, N) = x
 to_linspace(x::EndPoints, N) = range(first(x), stop = last(x), length = N)
 to_linspace(x, N) = range(first(x), stop = last(x), length = N)
@@ -1224,8 +1249,9 @@ pattern:
 struct Linestyle
     value::Vector{Float32}
 end
+Base.:(==)(a::Linestyle, b::Linestyle) = a.value == b.value
 
-to_linestyle(style::Linestyle) = Float32[x - style.value[1] for x in style.value]
+to_linestyle(style::Linestyle) = Linestyle(Float32[x - style.value[1] for x in style.value])
 
 # TODO only use NTuple{2, <: Real} and not any other container
 const GapType = Union{Real, Symbol, Tuple, AbstractVector}
@@ -1239,7 +1265,7 @@ end
 
 function line_pattern(linestyle::Symbol, gaps::GapType)
     pattern = line_diff_pattern(linestyle, gaps)
-    return isnothing(pattern) ? pattern : Float32[0.0; cumsum(pattern)]
+    return isnothing(pattern) ? nothing : Linestyle(Float32[0.0; cumsum(pattern)])
 end
 
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."

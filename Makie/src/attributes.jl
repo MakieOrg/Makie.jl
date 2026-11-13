@@ -30,14 +30,19 @@ function OAttributes(args...; kwargs...)
     return attr
 end
 
-function build_nested_attr_dict(pairs)
+Base.@nospecializeinfer function build_nested_attr_dict(@nospecialize(pairs::NamedTuple))
+    d = Dict{Symbol, Any}()
+    T = typeof(nt)
+    for i in 1:nfields(nt)
+        val = getfield(nt, i)
+        d[fieldname(T, i)] = val isa NamedTuple ? Attributes(val) : val
+    end
+    return d
+end
+Base.@nospecializeinfer function build_nested_attr_dict(@nospecialize(pairs))
     d = Dict{Symbol, Any}()
     for (k, v) in pairs
-        if v isa NamedTuple
-            d[k] = Attributes(v)
-        else
-            d[k] = v
-        end
+        d[k] = v isa NamedTuple ? Attributes(v) : v
     end
     return d
 end

@@ -50,8 +50,19 @@ function _create_plot end
 function _create_plot! end
 
 
-plot(args...; kw...) = _create_plot(plot, Dict{Symbol, Any}(kw), args...)
-plot!(args...; kw...) = _create_plot!(plot, Dict{Symbol, Any}(kw), args...)
+Base.@nospecializeinfer function to_dict(@nospecialize(nt::NamedTuple))
+    d = Dict{Symbol, Any}()
+    for i in 1:nfields(nt)
+        d[fieldname(typeof(nt), i)] = getfield(nt, i)
+    end
+    return d
+end
+to_dict(@nospecialize(kws::Base.Pairs{Symbol, <:Any, <:Any, <:NamedTuple})) = to_dict(values(kws))
+to_dict(dict::Dict) = convert(Dict{Symbol, Any}, dict)
+to_dict(attr::Attributes) = attributes(attr)
+
+plot(args...; kw...) = _create_plot(plot, to_dict(kw), args...)
+plot!(args...; kw...) = _create_plot!(plot, to_dict(kw), args...)
 
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
@@ -262,11 +273,11 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname, $(esc(:ArgType))}
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
-        Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
-        ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
+        Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, to_dict(kw), args...)
+        ($funcname!)(args...; kw...) = _create_plot!($funcname, to_dict(kw), args...)
 
         const $attr_placeholder = $attr_expr
-        $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
+        $(Makie)._documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
@@ -283,8 +294,23 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     return expr
 end
 
-# this can be used for inheriting from other recipes
-documented_attributes(::Any) = DocumentedAttributes()
+"""
+    documented_attributes(::Type{<:Plot})
+    documented_attributes(::Type{<:Block})
+
+Returns the `DocumentedAttributes` of a plot or block type as they were generated
+from `@recipe`, `@Block` or `@DocumentedAttributes`.
+
+`DocumentedAttributes` can be used within the aforementioned macros as mixins.
+For example this will add all the attributes of `Scatter` to `MyPlot`
+```
+@recipe MyPlot begin
+    documented_attributes(Scatter)...
+end
+```
+"""
+documented_attributes(x) = _documented_attributes(x)
+_documented_attributes(::Any) = DocumentedAttributes()
 
 function create_args_type_expr(PlotType, args::Nothing)
     return [], :()
@@ -431,11 +457,11 @@ function create_recipe_expr(Tsym, args, attrblock, export_recipe = true)
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
 
         function ($funcname)(args...; kw...)
-            kwdict = Dict{Symbol, Any}(kw)
+            kwdict = to_dict(kw)
             return _create_plot($funcname, kwdict, args...)
         end
         function ($funcname!)(args...; kw...)
-            kwdict = Dict{Symbol, Any}(kw)
+            kwdict = to_dict(kw)
             return _create_plot!($funcname, kwdict, args...)
         end
 

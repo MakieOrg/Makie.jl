@@ -2,7 +2,6 @@ name: CI
 on:
   pull_request:
     branches:
-      - master
       - ff/breaking-0.25
   push:
     tags:
@@ -10,6 +9,7 @@ on:
     branches:
       - master
       - 'release-*'
+      - ff/breaking-0.25
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
