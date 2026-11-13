@@ -68,8 +68,8 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [weakdeps]
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 
-[sources]
-ComputePipeline = {path = "../ComputePipeline"}
+[sources.ComputePipeline]
+path = "../ComputePipeline"
 
 [extensions]
 MakieDynamicQuantitiesExt = "DynamicQuantities"
@@ -91,7 +91,7 @@ DocStringExtensions = "0.8, 0.9, 0.10"
 Downloads = "1, 1.6"
 DynamicQuantities = "1, 1.8"
 FFMPEG_jll = "4, 6, 7, 8, 9"
-FFTA = "< 0.3.2"
+FFTA = "< 0.3.2, 0.3"
 FastInterpolations = "0.4.16"
 FileIO = "1.6"
 FixedPointNumbers = "0.6, 0.7, 0.8"
