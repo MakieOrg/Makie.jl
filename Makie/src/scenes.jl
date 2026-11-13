@@ -368,6 +368,10 @@ function Scene(;
         end
     end
 
+    # track ObserverFunctions that we are not tracking with on/map(f, scene, inputs...)
+    # TODO: Do we need to track more?
+    append!(scene.deregister_callbacks::Vector{Observables.ObserverFunction}, bg.inputs)
+
     return scene
 end
 
