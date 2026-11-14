@@ -194,8 +194,9 @@ function merge_theme!(target::Attributes, source::Attributes, deepcopy_observabl
     return target
 end
 
-# Use copy with no obs to quickly deepcopy
-fast_theme_copy(attributes) = merge_theme!(Attributes(), attributes)
+function fast_theme_copy(attributes, deepcopy_observalues = true)
+    return merge_theme!(Attributes(), attributes, deepcopy_observalues)
+end
 
 current_default_theme() = CURRENT_DEFAULT_THEME
 
@@ -208,7 +209,7 @@ as keyword arguments.
 function set_theme!(new_theme = Attributes(); kwargs...)
     lock(THEME_LOCK) do
         empty!(CURRENT_DEFAULT_THEME)
-        resolved_theme = merge_theme!(fast_theme_copy(new_theme), MAKIE_DEFAULT_THEME)
+        resolved_theme = merge_theme!(fast_theme_copy(new_theme), MAKIE_DEFAULT_THEME, true)
         resolved_theme = mergeleft!(Theme(kwargs), resolved_theme)
         merge!(CURRENT_DEFAULT_THEME, resolved_theme)
     end
