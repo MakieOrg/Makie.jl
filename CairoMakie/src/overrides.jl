@@ -286,7 +286,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
     linecap = to_cairo_linecap(poly.linecap[])
 
     broadcast_foreach(projected_shapes, color, strokecolor, poly.strokewidth[]) do shape, c, sc, sw
-        shape isa Vector && isempty(shape) && return
+        shape isa Makie.BezierPath && isempty(shape.commands) && return
 
         if c isa Makie.LinePattern
             offset = linepattern_offset(scene, model)
