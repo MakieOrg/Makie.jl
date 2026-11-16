@@ -59,6 +59,7 @@ end
         include("plots/datashader.jl")
         include("plots/deterministic_order.jl")
         include("plots/volumeslices.jl")
+        include("plots/deprecations.jl")
     end
 
     @testset "Scenes, Blocks & Figures" begin
