@@ -12,9 +12,17 @@ function round_to_IRect2D(r::Rect{2})
     return Rect{2, Int}(newori, newwidth)
 end
 
-function sceneareanode!(finalbbox, limits, aspect)
+"""
+    scaled_width(scale, lo, hi)
+
+Width of the interval `(lo, hi)` after applying the axis scale `scale` (e.g. `log10`),
+which is the width it occupies on screen.
+"""
+scaled_width(scale, lo, hi) = abs(scale(hi) - scale(lo))
+
+function sceneareanode!(finalbbox, limits, aspect, xscale, yscale)
     area_obs = Observable(Rect2i(); ignore_equal_values = true)
-    onany(finalbbox, limits, aspect; update = true) do bbox, limits, aspect
+    onany(finalbbox, limits, aspect, xscale, yscale; update = true) do bbox, limits, aspect, xscale, yscale
         w = width(bbox)
         h = height(bbox)
         # as = mw / mh
@@ -24,7 +32,9 @@ function sceneareanode!(finalbbox, limits, aspect)
         if aspect isa AxisAspect
             aspect = aspect.aspect
         elseif aspect isa DataAspect
-            aspect = limits.widths[1] / limits.widths[2]
+            # issue #5909: the ratio is taken in scaled (e.g. log10) coordinates
+            (x0, y0), (x1, y1) = minimum(limits), maximum(limits)
+            aspect = scaled_width(xscale, x0, x1) / scaled_width(yscale, y0, y1)
         end
 
         if !isnothing(aspect)

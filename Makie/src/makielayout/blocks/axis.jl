@@ -173,7 +173,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         validate_limits_for_scales(lims, ax.xscale[], ax.yscale[])
     end
 
-    scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect)
+    scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect, ax.xscale, ax.yscale)
 
     scene = Scene(blockscene, viewport = scenearea, visible = false)
     # Hide to block updates, will be unhidden! in constructor who calls this!
@@ -956,9 +956,11 @@ function adjustlimits!(la)
 
     xlims = (left(target), right(target))
     ylims = (bottom(target), top(target))
+    xscale, yscale = la.xscale[], la.yscale[]
 
+    # issue #5909: aspect ratios and expansions are computed in scaled (e.g. log10) coordinates
     size_aspect = width(area) / height(area)
-    data_aspect = (xlims[2] - xlims[1]) / (ylims[2] - ylims[1])
+    data_aspect = scaled_width(xscale, xlims...) / scaled_width(yscale, ylims...)
 
     aspect_ratio = data_aspect / size_aspect
 
@@ -974,7 +976,7 @@ function adjustlimits!(la)
             (la.xautolimitmargin[] ./ marginsum)
         end
 
-        xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)..., identity) # don't use scale here?
+        xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)..., xscale)
     elseif correction_factor < 1
         # need to go taller
 
@@ -984,7 +986,7 @@ function adjustlimits!(la)
         else
             (la.yautolimitmargin[] ./ marginsum)
         end
-        ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., identity) # don't use scale here?
+        ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., yscale)
     end
 
     bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
