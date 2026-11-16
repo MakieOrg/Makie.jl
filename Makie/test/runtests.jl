@@ -22,6 +22,43 @@ function Base.isapprox(r1::Rect{D}, r2::Rect{D}; kwargs...) where {D}
     return all((isnan.(left) .& isnan.(right)) .| (left .≈ right))
 end
 
+function collect_files_rec(path = @__DIR__)
+    filepaths = String[]
+    for path_or_file in readdir(path)
+        if isfile(joinpath(path, path_or_file))
+            push!(filepaths, path_or_file)
+        else
+            result = collect_files_rec(joinpath(path, path_or_file))
+            append!(filepaths, joinpath.(path_or_file, result))
+        end
+    end
+    return filepaths
+end
+
+# Sanity check - are we including all test files?
+all_files = collect_files_rec()
+included = open(@__FILE__) do io
+    output = Set{String}()
+    for line in eachline(io)
+        m = match(r"include\(\"(.+)\"\)", line)
+        if !isnothing(m)
+            push!(output, only(m.captures))
+        end
+    end
+    return output
+end
+
+missing_includes = String[]
+for filepath in all_files
+    if endswith(filepath, ".jl") && filepath !== "runtests.jl"
+        if !in(filepath, included)
+            push!(missing_includes, filepath)
+        end
+    end
+end
+
+@test isempty(missing_includes)
+
 # COV_EXCL_STOP
 
 @testset "Unit tests" begin
