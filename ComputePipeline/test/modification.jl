@@ -545,6 +545,9 @@ end
 
     @testset "error on double init" begin
         @test_throws ErrorException ComputePipeline.unsafe_init!(graph.xy, 0)
+        # unless overwrites are allowed
+        ComputePipeline.unsafe_init!(graph.xy, 0, true)
+        @test graph.xy[] == 0
     end
 end
 
