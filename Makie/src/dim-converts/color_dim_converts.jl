@@ -31,6 +31,6 @@ end
 function register_color_dim_convert!(attr::ComputeGraph, cdc::ColorDimConvert)
     add_input!(attr, :color_dim_convert, cdc)
     map!(cdc -> cdc.dim_convert, attr, :color_dim_convert, :resolved_cdc)
-    on(_ -> notify(attr.color_dim_convert), cdc.update)
+    push!(attr.observerfunctions, on(_ -> notify(attr.color_dim_convert), cdc.update))
     return
 end
