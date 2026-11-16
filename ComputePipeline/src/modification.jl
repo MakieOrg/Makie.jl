@@ -185,18 +185,23 @@ end
 is_initialized(node::Computed) = isdefined(node, :value) && isassigned(node.value)
 
 """
-    unsafe_init!(node::Computed, value)
+    unsafe_init!(node::Computed, value[, force = false])
 
 Initializes a node to the given value. If this causes all outputs of the parent
 compute edge to be initialized, the edge will be initialized without calling its
-callback.
+callback. If `force = true` then an existing node value will be overwritten.
 
 This function makes no checks to confirm that the given value matches the type
 returned by the parent edge callback.
 """
-function unsafe_init!(node::Computed, value)
+function unsafe_init!(node::Computed, value, force = false)
     if is_initialized(node)
-        error("Node already initialized.")
+        if force
+            ref = value isa RefValue ? value : Ref{eltype(node.value)}(value)
+            overwrite_node_ref!(node, ref)
+        else
+            error("Node already initialized.")
+        end
     elseif is_node_value_valid(value)
         if isdefined(node, :value)
             # Defined, but no value. Probably caused by set_type!()
@@ -209,6 +214,22 @@ function unsafe_init!(node::Computed, value)
     end
 
     return unsafe_init!(node.parent)
+end
+
+function overwrite_node_ref!(node, ref)
+    node.value = ref
+    # For ComputeEdge we need to make sure that the captures Ref's
+    # are updated to the new ref
+    edge = node.parent
+    if edge isa ComputeEdge
+        # TODO: Could maybe speed this up by just swapping out the
+        # output node that got reassigned above...
+        if isassigned(edge.typed_edge)
+            edge.typed_edge[] = TypedEdge_no_call(edge)
+        end
+        _update_refs_in_dependents!(edge)
+    end
+    return
 end
 
 function unsafe_init!(edge::ComputeEdge)
@@ -260,22 +281,27 @@ function TypedEdge_no_call(edge::ComputeEdge)
 end
 
 """
-    set_type!(node::Computed, type)
+    set_type!(node::Computed, type[, force = false])
 
-Initialize a compute graph `node` to the given `type`.
+Initialize a compute graph `node` to the given `type`. If `force = true` an
+existing type will be replaced.
 
 ```
 map!(x -> rand([1, 1.0, "1"]), graph, :input, :output)
 set_type!(graph.output, Union{Int, Float64, String})
 ```
 """
-function set_type!(node::Computed, T::Type)
+function set_type!(node::Computed, T::Type, force = false)
     # Should be the same as is_initialized(node) in practice, but it's a little
     # safer to only work with not-yet-defined node.value's because otherwise
     # there is a ref that could be used somewhere already.
     if isdefined(node, :value)
         if eltype(node.value) !== T
-            error("Node :$(node.name) already initialized to `$(node.value)`.")
+            if force
+                overwrite_node_ref!(node, Ref{T}(node.value[]))
+            else
+                error("Node :$(node.name) already initialized to `$(node.value)`.")
+            end
         end
     else
         node.value = Ref{T}()
@@ -284,18 +310,18 @@ function set_type!(node::Computed, T::Type)
 end
 
 """
-    set_type!(view::ComputeGraphView, type)
+    set_type!(view::ComputeGraphView, type[, force = false])
 
 Initialize every uninitialized node in the view to the given `type`.
 """
-function set_type!(view::ComputeGraphView, T::Type)
+function set_type!(view::ComputeGraphView, T::Type, force = false)
     for (k, element) in view
-        maybe_set_type!(element, T)
+        set_type!(element, T, force)
     end
     return
 end
 
-maybe_set_type!(view::ComputeGraphView, T) = set_type!(view, T)
+maybe_set_type!(view::ComputeGraphView, T) = maybe_set_type!(view, T)
 function maybe_set_type!(node::Computed, T)
     if !isdefined(node, :value)
         set_type!(node, T)
