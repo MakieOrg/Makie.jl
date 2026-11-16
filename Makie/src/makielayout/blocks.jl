@@ -555,6 +555,11 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     topscene = get_topscene(fig_or_scene)
     blockname = nameof(T)
     attr = documented_attributes(T)
+
+    # Collect indices of user-set deprecated attributes before they get removed
+    # by resolve_defaults
+    user_set_deprecated_attr = collect_changed_deprecated_attributes(attr, kwdict)
+
     flattened_defaults = resolve_defaults(attr, topscene, blockname, kwdict, tuple(), true)
 
     # User overwrites
@@ -563,7 +568,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     # prepare after user overwrites so users can use `add_input!()`
     prepare_graph_for_attributes!(graph, attr, is_block = true)
     add_remaining_block_inputs!(graph, attr, flattened_defaults)
-    process_attribute_deprecations!(graph, attr, kwdict)
+    process_attribute_deprecations!(graph, attr, user_set_deprecated_attr)
 
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
