@@ -306,8 +306,10 @@ function combined_colorrange(dc, scale, colorrange, autorange)
     if low ≈ high
         delta = max(0.5f0, abs(Float32(low)))
         return Vec2f(low - delta, high + delta)
+    else
+        # The colorscale could swap the meaning of low and high, e.g. -x, 1/x
+        return Vec2f(min(low, high), max(low, high))
     end
-    return Vec2f(min(low, high), max(low, high))
 end
 
 function register_colorrange!(
