@@ -1577,7 +1577,7 @@ function resolve_overwrites!(flattened, attr, kwargs, skip, remove = false, leve
         ComputePipeline.has_key_in_level(attr.nesting, level, key) || continue
         idx = attr.nesting.keytables[level][key]
         if idx > 0
-            resolve_overwrites!(flattened, attr, val, skip, idx)
+            resolve_overwrites!(flattened, attr, val, skip, false, idx)
         elseif !isassigned(flattened, -idx) && !in(attr.merged_keys[-idx], skip)
             flattened[-idx] = val
         end

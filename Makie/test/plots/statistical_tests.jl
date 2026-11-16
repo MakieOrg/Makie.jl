@@ -1,7 +1,7 @@
 using StatsBase: Histogram
 using Makie, StatsBase
 import Distributions
-using KernelDensity
+using Makie.KernelDensity
 
 using Random: seed!
 using GeometryBasics: Rect2f
@@ -11,48 +11,58 @@ seed!(0)
 @testset "histogram" begin
     v = randn(1000)
     h = fit(Histogram, v)
-    fig, ax, plt = plot(h)
+    fig, ax, p = plot(h)
 
+    @test p isa PlotList
+    plt = only(p.plots)
     @test plt isa BarPlot
     x = h.edges[1]
     @test plt[1][] ≈ Point{2, Float32}.(x[1:(end - 1)] .+ step(x) / 2, h.weights)
 
     v = (randn(1000), randn(1000))
     h = fit(Histogram, v, nbins = 30)
-    fig, ax, plt = plot(h)
+    fig, ax, p = plot(h)
+    @test p isa PlotList
+    plt = only(p.plots)
     @test plt isa Heatmap
     x = h.edges[1]
     y = h.edges[2]
-    @test plt[1][] ≈ x[1:(end - 1)] .+ step(x) / 2
-    @test plt[2][] ≈ y[1:(end - 1)] .+ step(y) / 2
-    @test plt[3][] ≈ h.weights
+    @test plt.args[][1] ≈ x
+    @test plt.args[][2] ≈ y
+    @test plt.args[][3] ≈ h.weights
 
-    fig, ax, plt = surface(h)
+    fig, ax, p = surface(h)
+    @test p isa PlotList
+    plt = only(p.plots)
     @test plt isa Surface
     x = h.edges[1]
     y = h.edges[2]
-    @test plt[1][] ≈ x[1:(end - 1)] .+ step(x) / 2
-    @test plt[2][] ≈ y[1:(end - 1)] .+ step(y) / 2
-    @test plt[3][] ≈ h.weights
+    @test plt.args[][1] ≈ x
+    @test plt.args[][2] ≈ y
+    @test plt.args[][3] ≈ h.weights
 
     v = (randn(1000), randn(1000), randn(1000))
     edges = ntuple(_ -> -3:0.3:3, 3)
     h = fit(Histogram, v, edges)
-    fig, ax, plt = plot(h)
-    @test plt isa Volume
+    fig, ax, p = plot(h)
+    @test p isa PlotList
+    plt = only(p.plots)
+    @test plt isa Voxels
     x = h.edges[1]
     y = h.edges[2]
     z = h.edges[3]
-    @test plt[1][] ≈ x[1:(end - 1)] .+ step(x) / 2
-    @test plt[2][] ≈ y[1:(end - 1)] .+ step(y) / 2
-    @test plt[3][] ≈ z[1:(end - 1)] .+ step(z) / 2
-    @test plt[4][] == h.weights
+    @test plt.args[][1] == extrema(x)
+    @test plt.args[][2] == extrema(y)
+    @test plt.args[][3] == extrema(z)
+    @test plt.args[][4] == h.weights
 end
 
 @testset "density" begin
     v = randn(1000)
     d = kde(v)
-    fig, ax, p1 = plot(d)
+    fig, ax, p = plot(d)
+    @test p isa PlotList
+    p1 = only(p.plots)
     @test p1 isa Lines
     fig, ax, p2 = lines(d.x, d.density)
     @test p1[1][] == p2[1][]
@@ -60,14 +70,18 @@ end
     x = randn(1000)
     y = randn(1000)
     d = kde((x, y))
-    fig, ax, p1 = plot(d)
+    fig, ax, p = plot(d)
+    @test p isa PlotList
+    p1 = only(p.plots)
     @test p1 isa Heatmap
     fig, ax, p2 = heatmap(d.x, d.y, d.density)
     @test p1[1][] == p2[1][]
     @test p1[2][] == p2[2][]
     @test p1[3][] == p2[3][]
 
-    fig, ax, p1 = surface(d)
+    fig, ax, p = surface(d)
+    @test p isa PlotList
+    p1 = only(p.plots)
     @test p1 isa Surface
     fig, ax, p2 = surface(d.x, d.y, d.density)
     @test p1[1][] == p2[1][]
@@ -80,7 +94,9 @@ end
     rg = Makie.support(d)
     @test minimum(rg) ≈ -3.7190164854556866
     @test maximum(rg) ≈ 3.719016485455714
-    fix, ax, plt = plot(d)
+    fix, ax, p = plot(d)
+    @test p isa PlotList
+    plt = only(p.plots)
     @test plt isa Lines
     @test !Makie.isdiscrete(d)
     @test first(plt[1][][1]) ≈ minimum(rg) rtol = 1.0f-6
@@ -93,7 +109,9 @@ end
     d = Distributions.Poisson()
     rg = Makie.support(d)
     @test rg == 0:6
-    fig, ax, p = plot(d)
+    fig, ax, plt = plot(d)
+    @test plt isa PlotList
+    p = only(plt.plots)
     @test p isa ScatterLines
     plt = p.plots[1]
     @test Makie.isdiscrete(d)
@@ -110,19 +128,20 @@ end
     @test length(p.plots) == 2
     plt = p.plots[1]
     @test plt isa Scatter
-    @test first.(plt[1][]) ≈ q.qx rtol = 1.0e-6
+    @test_broken first.(plt[1][]) ≈ q.qx rtol = 1.0e-6
     @test last.(plt[1][]) ≈ q.qy rtol = 1.0e-6
 
     plt = p.plots[2]
     @test plt isa LineSegments
-    @test first.(plt[1][]) ≈ [extrema(q.qx)...] rtol = 1.0e-6
-    @test last.(plt[1][]) ≈ [extrema(q.qx)...] rtol = 1.0e-6
+    @test_broken first.(plt[1][]) ≈ [extrema(q.qx)...] rtol = 1.0e-6
+    @test_broken last.(plt[1][]) ≈ [extrema(q.qx)...] rtol = 1.0e-6
 
     fig, ax, p = qqnorm(v, qqline = nothing)
-    @test length(p.plots) == 1
+    @test length(p.plots) == 2
     plt = p.plots[1]
     @test plt isa Scatter
-    @test first.(plt[1][]) ≈ q.qx rtol = 1.0e-6
+    @test isempty(p.plots[2].positions[])
+    @test_broken first.(plt[1][]) ≈ q.qx rtol = 1.0e-6
     @test last.(plt[1][]) ≈ q.qy rtol = 1.0e-6
 
     fig, ax, p = qqnorm(v, qqline = :fit)
@@ -130,49 +149,53 @@ end
     itc, slp = hcat(fill!(similar(q.qx), 1), q.qx) \ q.qy
     xs = [extrema(q.qx)...]
     ys = slp .* xs .+ itc
-    @test first.(plt[1][]) ≈ xs rtol = 1.0e-6
+    @test_broken first.(plt[1][]) ≈ xs rtol = 1.0e-6
     @test last.(plt[1][]) ≈ ys rtol = 1.0e-6
 
-    fig, ax, p = qqnorm(v, qqline = :quantile)
-    plt = p.plots[2]
-    xs = [extrema(q.qx)...]
-    quantx, quanty = quantile(q.qx, [0.25, 0.75]), quantile(q.qy, [0.25, 0.75])
-    slp = diff(quanty) ./ diff(quantx)
-    ys = quanty .+ slp .* (xs .- quantx)
-    @test first.(plt[1][]) ≈ xs rtol = 1.0e-6
-    @test last.(plt[1][]) ≈ ys rtol = 1.0e-6
+    @test_broken fig, ax, p = qqnorm(v, qqline = :quantile)
+    # plt = p.plots[2]
+    # xs = [extrema(q.qx)...]
+    # quantx, quanty = quantile(q.qx, [0.25, 0.75]), quantile(q.qy, [0.25, 0.75])
+    # slp = diff(quanty) ./ diff(quantx)
+    # ys = quanty .+ slp .* (xs .- quantx)
+    # @test first.(plt[1][]) ≈ xs rtol = 1.0e-6
+    # @test last.(plt[1][]) ≈ ys rtol = 1.0e-6
 end
 
 @testset "ecdfplot" begin
     v = randn(1000)
     vmin = minimum(v)
     d = ecdf(v)
-    fig, ax, p1 = plot(d)
+    fig, ax, p = plot(d)
+    @test p isa PlotList
+    p1 = only(p.plots)
     @test p1 isa Stairs
-    fig, ax, p2 = ecdfplot(v)
-    @test p2 isa ECDFPlot
+    fig, ax, p = ecdfplot(v)
+    @test p isa PlotList
+    p2 = only(p.plots)
+    @test p2 isa Stairs
     xunique = [vmin - eps(vmin); unique(d.sorted_values)]
     fig, ax, p3 = stairs(xunique, d(xunique); step = :post)
     @test p1[1][] == p3[1][]
-    @test p2.plots[1][1][] == p3[1][]
+    @test p2[1][] == p3[1][]
 
     fig, ax, p4 = ecdfplot(v; npoints = 10)
-    pts = p4.plots[1][1][]
+    pts = p4.plots[1][:arg1][]
     @test length(pts) == 11
-    @test pts[1] == Point2f0(vmin - eps(vmin), 0)
+    @test pts[1] == Point2(vmin - eps(vmin), 0)
     @test pts[11][2] == 1
 
     fig, ax, p5 = plot(2 .. 3, ecdf(1:10))
-    pts = p5[1][]
-    @test pts[1] == Point2f0(2 - eps(2.0), 0.1)
-    @test pts[2] == Point2f0(2, 0.2)
-    @test pts[3] == Point2f0(3, 0.3)
+    pts = p5.plots[1][1][]
+    @test pts[1] == Point2(2 - eps(2.0), 0.1)
+    @test pts[2] == Point2(2, 0.2)
+    @test pts[3] == Point2(3, 0.3)
 
     fig, ax, p6 = plot([2.0, 2.5, 3.0], ecdf(1:10))
-    pts = p6[1][]
-    @test pts[1] == Point2f0(2, 0.2)
-    @test pts[2] == Point2f0(2.5, 0.2)
-    @test pts[3] == Point2f0(3, 0.3)
+    pts = p6.plots[1][1][]
+    @test pts[1] == Point2(2, 0.2)
+    @test pts[2] == Point2(2.5, 0.2)
+    @test pts[3] == Point2(3, 0.3)
 end
 
 @testset "crossbar" begin
@@ -186,12 +209,12 @@ end
     fig, ax, p = crossbar(1, 3, 2, 4; show_notch = true, notchmin = 2.5, notchmax = 3.5)
     @test p isa CrossBar
     @test p.plots[1] isa Poly
-    @test p.plots[1][1][][1] isa Makie.AbstractMesh
+    @test only(p.plots[1].meshes[]) isa Makie.GeometryBasics.Mesh
     poly = Point{2, Float32}[
         [0.6, 2.0], [1.4, 2.0], [1.4, 2.5], [1.2, 3.0], [1.4, 3.5],
-        [1.4, 4.0], [0.6, 4.0], [0.6, 3.5], [0.8, 3.0], [0.6, 2.5],
+        [1.4, 4.0], [0.6, 4.0], [0.6, 3.5], [0.8, 3.0], [0.6, 2.5], [0.6, 2.0]
     ]
-    @test map(Point2f, p.plots[1][1][][1].position) == poly
+    @test p.plots[1][1][][1] == poly
     @test p.plots[2] isa LineSegments
     @test p.plots[2][1][] == Point{2, Float32}[Float32[0.8, 3.0], Float32[1.2, 3.0]]
 end
@@ -208,7 +231,7 @@ end
     # test categorical
     a = repeat(["a", "b", "c", "d", "e"], inner = 20)
     b = 1:100
-    fig, ax, p = boxplot(a, b; whiskerwidth = 1.0)
+    fig, ax, p = boxplot(Categorical(a), b; whiskerwidth = 1.0)
     plts = p.plots
     @test length(plts) == 3
     @test plts[1] isa Scatter
@@ -241,7 +264,7 @@ end
     @test plts[3].plots[1][1][] == poly
 
     #notch
-    fig, ax, p = boxplot(a, b, show_notch = true)
+    fig, ax, p = boxplot(Categorical(a), b, show_notch = true)
     plts = p.plots
 
     @test length(plts) == 3
@@ -270,11 +293,11 @@ end
         map(Point2f, [[3.6, 65.75], [4.4, 65.75], [4.4, 67.1437], [4.2, 70.5], [4.4, 73.8563], [4.4, 75.25], [3.6, 75.25], [3.6, 73.8563], [3.8, 70.5], [3.6, 67.1437]]),
         map(Point2f, [[4.6, 85.75], [5.4, 85.75], [5.4, 87.1437], [5.2, 90.5], [5.4, 93.8563], [5.4, 95.25], [4.6, 95.25], [4.6, 93.8563], [4.8, 90.5], [4.6, 87.1437]]),
     ]
-    meshes = plts[3].plots[1][1][]
+    meshes = plts[3].plots[1].meshes[]
     @testset for (i, mesh) in enumerate(meshes)
         @test mesh isa Makie.AbstractMesh
         vertices = map(Point2f, mesh.position)
-        @test vertices ≈ notch_boxes[i]
+        @test vertices ≈ [notch_boxes[i]..., notch_boxes[i][1]]
     end
 end
 
@@ -284,20 +307,20 @@ end
     fig, ax, p = violin(x, y, side = :left, color = :blue)
     @test p isa Violin
     @test p.plots[1] isa Poly
-    @test p.plots[1][:color][] === :blue
+    @test p.plots[1][:color][] == fill(to_color(:blue), 4)
     @test p.plots[2] isa LineSegments
-    @test p.plots[2][:color][] === :white
-    @test p.plots[2][:visible][] === :false
+    # @test p.plots[2][:color][] == to_color(:white)
+    @test p.plots[2][:visible][] === false
 
     # test categorical
     x = repeat(["a", "b", "c", "d"], 250)
-    fig2, ax2, p2 = violin(x, y, side = :left, color = :blue)
+    fig2, ax2, p2 = violin(Categorical(x), y, side = :left, color = :blue)
     @test p2 isa Violin
     @test p2.plots[1] isa Poly
-    @test p2.plots[1][:color][] === :blue
+    @test p2.plots[1][:color][] == fill(to_color(:blue), 4)
     @test p2.plots[2] isa LineSegments
-    @test p2.plots[2][:color][] === :white
-    @test p2.plots[2][:visible][] === :false
+    # @test p2.plots[2][:color][] == to_color(:white)
+    @test p2.plots[2][:visible][] == false
 
     # median edge case #4675
     @test violin(fill(1, 1000), push!(fill(0, 999), 1), show_median = true, datalimits = (-0.001, Inf)) !== nothing

@@ -1,6 +1,6 @@
 function skipped_attributes(inheritor, parent)
-    target = Set(keys(Makie.documented_attributes(inheritor).d))
-    source = Set(keys(Makie.documented_attributes(parent).d))
+    target = Set(keys(Makie.documented_attributes(inheritor).merged_keys))
+    source = Set(keys(Makie.documented_attributes(parent).merged_keys))
     return setdiff(source, target)
 end
 

@@ -77,6 +77,7 @@ end
         include("isolated/argument_docs.jl")
         include("isolated/recipes.jl") # @recipe, @Block generated code
         include("isolated/showoff.jl")
+        include("isolated/patterns.jl")
     end
 
     @testset "Plots" begin
@@ -96,6 +97,9 @@ end
         include("plots/datashader.jl")
         include("plots/deterministic_order.jl")
         include("plots/volumeslices.jl")
+        include("plots/statistical_tests.jl")
+        include("plots/recipes.jl")
+        include("plots/inherited_attributes.jl")
         include("plots/deprecations.jl")
     end
 
@@ -104,6 +108,7 @@ end
         include("SceneLike/figures.jl")
         include("SceneLike/makielayout.jl")
         include("SceneLike/PolarAxis.jl")
+        include("SceneLike/Colorbar.jl")
     end
 
     @testset "Conversion & Projection Pipeline" begin
@@ -130,6 +135,7 @@ end
         include("interactivity/Axis3.jl")
         include("interactivity/DataInspector.jl")
         include("interactivity/EditableText.jl")
+        include("interactivity/pick_tracking.jl")
     end
 
     include("boundingboxes.jl")
