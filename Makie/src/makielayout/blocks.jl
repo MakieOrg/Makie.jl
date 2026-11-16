@@ -546,10 +546,7 @@ function (::BlockAttributeConvert{T})(x, @nospecialize(changed), @nospecialize(c
 end
 
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdict::Dict, bbox; kwdict_complete = false)
-
     # first sort out all user kwargs that correspond to block attributes
-    check_textsize_deprecation(kwdict)
-
     graph = ComputeGraph()
 
     topscene = get_topscene(fig_or_scene)

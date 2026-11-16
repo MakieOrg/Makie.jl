@@ -965,8 +965,6 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
         "The colormap that the colorbar uses."
         colormap = @inherit(:colormap, :viridis)
-        "Deprecated in favor of `colorrange`. (The range of values depicted in the colorbar.)"
-        limits = automatic
         "The range of values depicted in the colorbar."
         colorrange = automatic
         """
@@ -1046,6 +1044,8 @@ end
         alignmode = Inside()
         "Enable word wrapping to the suggested width of the Label."
         word_wrap::Bool = false
+        "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
+        @deprecate textsize fontsize
     end
 end
 
@@ -1275,6 +1275,8 @@ end
         clicks = 0
         "The align mode of the button in its parent GridLayout."
         alignmode = Inside()
+        "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
+        @deprecate textsize fontsize
     end
 end
 
@@ -1515,6 +1517,8 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
         search_placeholder = "Search..."
         "Predicate `(query::String, label::String) -> Bool` deciding whether an option matches the search. Used only when `searchable = true`."
         filter = (q, s) -> occursin(lowercase(q), lowercase(s))
+        "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
+        @deprecate textsize fontsize
     end
 end
 
@@ -1610,8 +1614,6 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         padding = (6.0f0, 6.0f0, 6.0f0, 6.0f0)
         "The additional space between the legend and its suggested boundingbox."
         margin = (0.0f0, 0.0f0, 0.0f0, 0.0f0)
-        "The background color of the legend. DEPRECATED - use `backgroundcolor` instead."
-        bgcolor = nothing
         "The background color of the legend."
         backgroundcolor = :white
         "The color of the legend border."
@@ -1759,6 +1761,9 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         gridsvalign = :center
         "The align mode of the legend in its parent GridLayout."
         alignmode = Inside()
+
+        "The background color of the legend. DEPRECATED - use `backgroundcolor` instead."
+        @deprecate bgcolor backgroundcolor
     end
 end
 
@@ -1864,6 +1869,8 @@ end
         restriction = nothing
         "The color of the cursor."
         cursorcolor = COLOR_ACCENT[]
+        "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
+        @deprecate textsize fontsize
     end
 end
 

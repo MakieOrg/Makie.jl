@@ -237,22 +237,14 @@ function initialize_block!(cb::Colorbar)
     # Run the normal color(map) processing. This either uses the inputs given
     # to `Colorbar()` explicitly, or the inputs extracted from a plot.
     register_colormapping_without_color!(cb.attributes)
-    register_computation!(
-        cb.attributes, [:values, :colorrange, :limits], [:resolved_colorrange]
-    ) do (values, _colorrange, limits), changed, @nospecialize(cached)
-        colorrange = if changed.limits && (limits !== automatic)
-            @warn("Colorbar :limits has been deprecated in favor of :colorrange.")
-            limits
-        else
-            _colorrange
-        end
+    map!(cb, [:values, :colorrange], :resolved_colorrange) do values, colorrange
         if colorrange === automatic || colorrange === nothing
-            return (Vec2d(distinct_extrema_nan(values)...),)
+            return Vec2d(distinct_extrema_nan(values)...)
         else
             low = colorrange[1] in (automatic, nothing) ? minimum(values) : colorrange[1]
             high = colorrange[2] in (automatic, nothing) ? maximum(values) : colorrange[2]
             low, high = minmax(low, high)
-            return (Vec2d(low, high),)
+            return Vec2d(low, high)
         end
     end
 

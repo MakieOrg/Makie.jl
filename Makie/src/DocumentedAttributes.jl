@@ -1650,6 +1650,14 @@ function collect_changed_deprecated_attributes(attr, kwargs, level = 1, buffer =
     return buffer
 end
 
+function process_attribute_deprecations!(graph, attr::DocumentedAttributes, kwargs)
+    if !isempty(attr.deprecation_indices)
+        set_by_user = collect_changed_deprecated_attributes(attr, kwargs)
+        process_attribute_deprecations!(graph, attr, set_by_user)
+    end
+    return
+end
+
 struct DeprecatedAttributeCallback <: Function
     depmsg::String
 end
@@ -1662,11 +1670,7 @@ function (cb::DeprecatedAttributeCallback)((old, new), changed, @nospecialize(ca
     end
 end
 
-function process_attribute_deprecations!(graph, attr::DocumentedAttributes, kwargs)
-    isempty(attr.deprecation_indices) && return
-
-    set_by_user = collect_changed_deprecated_attributes(attr, kwargs)
-
+function process_attribute_deprecations!(graph, attr::DocumentedAttributes, set_by_user::Vector{Int})
     for (old_idx, new_idx) in attr.deprecation_indices
         old_key = attr.merged_keys[old_idx]
         new_key = attr.merged_keys[new_idx]
