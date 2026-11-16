@@ -1675,18 +1675,27 @@ function process_attribute_deprecations!(graph, attr::DocumentedAttributes, kwar
         intermediate_name = Symbol(:_, new_key)
         intermediate_node = ComputePipeline.add_node!(graph, intermediate_name)
 
+        # If we init (old = ...) and resolve, the new input will use its default
+        # value. This may fix its type to something incompatible with old / the
+        # merged node and cause an error when changed later (incompatible type).
+        # To avoid, set Any here.
+        # TODO: Should this overwrite existing inits? What's even initializing
+        # this earlier?
         edge = graph[new_key].parent
         if edge isa ComputePipeline.Input
             ComputePipeline.modify_edge!(edge, output = intermediate_node)
-            ComputePipeline.set_type!(intermediate_node, Any)
+            ComputePipeline.maybe_set_type!(intermediate_node, Any)
         else
             ComputePipeline.modify_edge!(edge, outputs = [intermediate_node])
-            # Blocks: use user given type from `attribute::Type` annotation
-            # Plots: will be replaced by type of input because `compute_identity`
-            # is used (otherwise use Any which is the default type in attr.types)
-            T = attr.types[attr.type_index[new_idx]]
-            ComputePipeline.set_type!(intermediate_node, T)
+            # If parent is a ComputeEdge the type may already get fixed beforehand,
+            # in the parent graph. Let ComputePipeline use that type.
         end
+
+        # Same thing for the old node after new resolve
+        if graph[old_key].parent isa ComputePipeline.Input
+            ComputePipeline.maybe_set_type!(graph[old_key], Any)
+        end
+
         register_computation!(
             DeprecatedAttributeCallback(depmsg), graph, [old_key, intermediate_name], [new_key]
         )
@@ -1702,8 +1711,12 @@ function process_attribute_deprecations!(graph, attr::DocumentedAttributes, kwar
                 init = oldval
             end
         end
-        T = eltype(intermediate_node.value) # Union of both? typejoin? always Any?
-        ComputePipeline.unsafe_init!(graph, new_key, Ref{T}(init))
+
+        # TODO: What is initializing this early?
+        if !ComputePipeline.is_initialized(graph[new_key])
+            T = eltype(intermediate_node.value) # Union of both? typejoin? always Any?
+            ComputePipeline.unsafe_init!(graph, new_key, Ref{T}(init))
+        end
     end
     return
 end
