@@ -298,7 +298,8 @@ function set_type!(node::Computed, T::Type, force = false)
     if isdefined(node, :value)
         if eltype(node.value) !== T
             if force
-                overwrite_node_ref!(node, Ref{T}(node.value[]))
+                ref = isassigned(node.value) ? Ref{T}(node.value[]) : Ref{T}()
+                overwrite_node_ref!(node, ref)
             else
                 error("Node :$(node.name) already initialized to `$(node.value)`.")
             end

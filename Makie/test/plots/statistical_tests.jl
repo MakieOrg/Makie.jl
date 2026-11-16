@@ -212,7 +212,7 @@ end
     @test only(p.plots[1].meshes[]) isa Makie.GeometryBasics.Mesh
     poly = Point{2, Float32}[
         [0.6, 2.0], [1.4, 2.0], [1.4, 2.5], [1.2, 3.0], [1.4, 3.5],
-        [1.4, 4.0], [0.6, 4.0], [0.6, 3.5], [0.8, 3.0], [0.6, 2.5], [0.6, 2.0]
+        [1.4, 4.0], [0.6, 4.0], [0.6, 3.5], [0.8, 3.0], [0.6, 2.5], [0.6, 2.0],
     ]
     @test p.plots[1][1][][1] == poly
     @test p.plots[2] isa LineSegments
