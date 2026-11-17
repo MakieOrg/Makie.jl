@@ -35,6 +35,7 @@ WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 CairoMakie = {path = "../CairoMakie"}
 ComputePipeline = {path = "../ComputePipeline"}
 GLMakie = {path = "../GLMakie"}
+GeometryBasics = {url = "https://github.com/JuliaGeometry/GeometryBasics.jl", rev = "master"}
 Makie = {path = "../Makie"}
 RPRMakie = {path = "../RPRMakie"}
 WGLMakie = {path = "../WGLMakie"}
