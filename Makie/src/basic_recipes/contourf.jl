@@ -285,6 +285,16 @@ function _is_ring_contained(inner, outer)
     return false
 end
 
+# axis-aligned bounding box of a ring as `(xmin, ymin, xmax, ymax)`
+function _ring_bbox(ring)
+    xmin, xmax = extrema(p -> p[1], ring)
+    ymin, ymax = extrema(p -> p[2], ring)
+    return (xmin, ymin, xmax, ymax)
+end
+
+# whether bounding box `inner` lies within bounding box `outer` (boundaries may touch)
+_bbox_contains(outer, inner) = outer[1] <= inner[1] && outer[2] <= inner[2] && inner[3] <= outer[3] && inner[4] <= outer[4]
+
 """
     _group_polys(points, ids)
 
@@ -295,14 +305,25 @@ inner polygons which are holes in the outer polygon. It is possible that one
 group has multiple outer polygons with multiple holes each.
 """
 function _group_polys(points, ids)
-    polys = [points[ids .== i] for i in unique(ids)]
+    # split the points into rings in a single pass, keeping the order of first appearance
+    uids = unique(ids)
+    ringindex = Dict(id => k for (k, id) in enumerate(uids))
+    polys = [eltype(points)[] for _ in uids]
+    for (p, id) in zip(points, ids)
+        push!(polys[ringindex[id]], p)
+    end
 
     polys_lastdouble = [push!(p, first(p)) for p in polys]
 
-    # whether poly i is contained in j (marching squares yields no intersecting polys)
+    # whether poly i is contained in j (marching squares yields no intersecting polys).
+    # As the rings do not cross, ring i can only be inside ring j if its bounding box
+    # is inside that of ring j. Checking this first skips most of the (expensive)
+    # point-in-polygon tests when a band consists of many rings.
+    bboxes = map(_ring_bbox, polys_lastdouble)
     containment_matrix = [
-        p1 !== p2 && _is_ring_contained(p1, p2)
-            for p1 in polys_lastdouble, p2 in polys_lastdouble
+        i != j && _bbox_contains(bboxes[j], bboxes[i]) &&
+            _is_ring_contained(polys_lastdouble[i], polys_lastdouble[j])
+            for i in eachindex(polys_lastdouble), j in eachindex(polys_lastdouble)
     ]
 
     unclassified_polyindices = collect(1:size(containment_matrix, 1))

@@ -33,6 +33,40 @@ group_shape(groups) = (length(groups), map(g -> length(g) - 1, groups))
         tri2 = [(2, 0), (4, 0), (4, 2)]
         @test group_shape(Makie._group_polys(rings_to_points_ids([tri1, tri2])...)) == (2, [0, 0])
     end
+
+    @testset "ring in a concavity is not a hole (nested bounding boxes)" begin
+        cshape = [(0, 0), (4, 0), (4, 1), (1, 1), (1, 3), (4, 3), (4, 4), (0, 4)]
+        notch = [(2, 1.5), (3, 1.5), (3, 2.5), (2, 2.5)] # bbox inside cshape's bbox, but outside cshape
+        @test group_shape(Makie._group_polys(rings_to_points_ids([cshape, notch])...)) == (2, [0, 0])
+    end
+
+    @testset "island inside a hole" begin
+        hole = [(1, 1), (3, 1), (3, 3), (1, 3)]
+        island = [(1.5, 1.5), (2.5, 1.5), (2.5, 2.5), (1.5, 2.5)]
+        groups = Makie._group_polys(rings_to_points_ids([outer, hole, island])...)
+        @test group_shape(groups) == (2, [1, 0])
+        @test groups[1][1][1:4] == Point2f.(outer)
+        @test groups[1][2][1:4] == Point2f.(hole)
+        @test groups[2][1][1:4] == Point2f.(island)
+    end
+
+    @testset "many disjoint rings" begin
+        squares = [[(i, j), (i + 0.5, j), (i + 0.5, j + 0.5), (i, j + 0.5)] for i in 1:10 for j in 1:10]
+        @test group_shape(Makie._group_polys(rings_to_points_ids(squares)...)) == (100, zeros(Int, 100))
+        # with a ring around all of them, they all become holes
+        frame = [(0, 0), (12, 0), (12, 12), (0, 12)]
+        @test group_shape(Makie._group_polys(rings_to_points_ids([[frame]; squares])...)) == (1, [100])
+    end
+
+    @testset "interleaved ids" begin
+        hole = [(2, 2), (3, 2), (3, 3), (2, 3)]
+        points = Point2f.([outer[1], hole[1], outer[2], hole[2], outer[3], hole[3], outer[4], hole[4]])
+        ids = [5, 2, 5, 2, 5, 2, 5, 2]
+        groups = Makie._group_polys(points, ids)
+        @test group_shape(groups) == (1, [1])
+        @test groups[1][1] == Point2f.([outer; outer[1:1]])
+        @test groups[1][2] == Point2f.([hole; hole[1:1]])
+    end
 end
 
 @testset "_group_polys on shared-point Isoband output" begin
