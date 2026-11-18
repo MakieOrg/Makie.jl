@@ -46,7 +46,7 @@
     elseif Symbol(Makie.current_backend()) == :GLMakie
         screen = scene.current_screens[1]
         for plt in (hm, hm2)
-            robj = screen.cache[objectid(plt)]
+            robj = plt.gl_renderobject[]
             shaders = first(values(robj.variants)).program.shader
             names = [string(shader.name) for shader in shaders]
             @test any(name -> endswith(name, "heatmap.vert"), names) && any(name -> endswith(name, "heatmap.frag"), names)
@@ -866,4 +866,113 @@ end
         image!(s, -1 .. 1, -1 .. 1, rotr90(vals[idx]))
     end
     s
+end
+
+@reference_test "Scene render order and clearing" begin
+    scene = Scene(size = (600, 450), backgroundcolor = :darkblue, clear = true)
+    # trigger screen creation so we see what dynamically adding scenes does
+    colorbuffer(scene)
+
+    # TODO: plots trigger scene insertion, potentially causing order differences
+    # TODO: clear all first causes plots behind scenes to still render
+    scene2 = Scene(
+        scene, viewport = Observable(Rect2i(50, 50, 150, 150)),
+        backgroundcolor = :darkred, clear = true
+    )
+    scene3 = Scene(
+        scene, viewport = Observable(Rect2i(100, 100, 150, 150)),
+        backgroundcolor = :darkgreen, clear = true
+    )
+
+    scene4 = Scene(
+        scene, viewport = Observable(Rect2i(350, 50, 150, 150)),
+        backgroundcolor = :darkred, clear = true
+    )
+    scene5 = Scene(
+        scene, viewport = Observable(Rect2i(400, 100, 150, 150)),
+        backgroundcolor = :darkgreen, clear = true
+    )
+
+    text!(scene3, "scene3", color = RGBf(1, 0, 1), align = (:center, :center), fontsize = 32)
+    text!(scene2, "scene2", color = :cyan, align = (:center, :center), fontsize = 32)
+
+    text!(scene4, "scene4", color = :cyan, align = (:center, :center), fontsize = 32)
+    text!(scene5, "scene5", color = RGBf(1, 0, 1), align = (:center, :center), fontsize = 32)
+
+    # TODO: no insert on scene causes scenes to not display
+    scene6 = Scene(
+        scene, viewport = Observable(Rect2i(100, 300, 400, 100)),
+        backgroundcolor = :gray, clear = true
+    )
+    scene7 = Scene(
+        scene, viewport = Observable(Rect2i(150, 325, 300, 50)),
+        backgroundcolor = :black, clear = true
+    )
+
+    # TODO: insertion order:   scene7 plots first, scene8 second
+    #       depth-first order: scene8 plots first, scene7 second <- want this?
+    # TODO: Should this be allowed to spill out of scene6?
+    scene8 = Scene(
+        scene6, viewport = Observable(Rect2i(275, 275, 50, 150)),
+        backgroundcolor = :orange, clear = true
+    )
+
+    sleep(1) # for WGLMakie?
+    st = Makie.Stepper(scene)
+    Makie.step!(st)
+
+    # emptying a scene/deleting scenes from the scene tree should delete them
+    # from the backend screen too
+    empty!(scene)
+    Makie.step!(st)
+
+    st
+end
+
+@reference_test "plot sorting" begin
+    f = Figure(size = (500, 500))
+    a = Axis(f[1:2, 1], limits = (-5, 5, -8, 12))
+
+    # z based
+    scatter!(a, Point3f(0, 0, 0), color = :green, marker = Rect, markersize = 50)
+    scatter!(a, Point3f(-1, 0, -1), color = :red, marker = Rect, markersize = 50)
+    scatter!(a, Point3f(1, 0, 1), color = :blue, marker = Rect, markersize = 50)
+
+    scatter!(a, Point3f(1, -3, 1), color = :blue, marker = Rect, markersize = 50)
+    scatter!(a, Point3f(-1, -3, -1), color = :red, marker = Rect, markersize = 50)
+    scatter!(a, Point3f(0, -3, 0), color = :green, marker = Rect, markersize = 50)
+
+    # translation resistant
+    p = scatter!(a, Point3f(1, 3, 2), color = :blue, marker = Rect, markersize = 50)
+    translate!(p, 0, 0, -1)
+    p = scatter!(a, Point3f(-1, 3, -2), color = :red, marker = Rect, markersize = 50)
+    translate!(p, 0, 0, 1)
+    p = scatter!(a, Point3f(0, 3, -2), color = :green, marker = Rect, markersize = 50)
+    translate!(p, 0, 0, 2)
+
+    # translation based
+    p = scatter!(a, Point3f(0, 6, 0), color = :green, marker = Rect, markersize = 50)
+    p = scatter!(a, Point3f(1, 6, 1), color = :blue, marker = Rect, markersize = 50)
+    translate!(p, 0, 0, 1)
+    p = scatter!(a, Point3f(-1, 6, 0), color = :red, marker = Rect, markersize = 50)
+    translate!(p, 0, 0, -1)
+
+    # 3D
+    ls = LScene(f[1, 2])
+    mesh!(ls, Rect3f(Point3f(0, 0, 0), Vec3f(1)), color = :green)
+    mesh!(ls, Rect3f(Point3f(2, 2, 1), Vec3f(1)), color = :blue)
+    mesh!(ls, Rect3f(Point3f(-2, -2, -1), Vec3f(1)), color = :red)
+
+    # cross-scene sorting
+    ls = LScene(f[2, 2], show_axis = false)
+    bot = Scene(ls.scene, camera = campixel!, clear = true, backgroundcolor = :lightgray)
+    top = Scene(ls.scene, camera = campixel!)
+    scatter!(bot, Point3f(120, 50, 1), color = :blue, marker = Rect, markersize = 50)
+    scatter!(bot, Point3f(80, 50, 0), color = :green, marker = Rect, markersize = 50)
+    scatter!(bot, Point3f(40, 50, -1), color = :red, marker = Rect, markersize = 50)
+    scatter!(top, Point3f(100, 75, 0.5), color = :cyan, marker = Rect, markersize = 50)
+    scatter!(top, Point3f(60, 75, -0.5), color = :yellow, marker = Rect, markersize = 50)
+    scatter!(ls, Point3f(80, 100, 0), color = :black, marker = Rect, markersize = 50)
+
+    f
 end
