@@ -1861,7 +1861,7 @@ function handle_nested_outputs(attr::ComputeGraph, outputs::Vector)
     return added_nesting, _outputs
 end
 
-function register_computation!(f, attr::AbstractComputeGraph, inputs::Vector, outputs::Vector)
+function register_computation!(f::Base.Callable, attr::AbstractComputeGraph, inputs::Vector, outputs::Vector)
     _inputs = convert_to_nodes(attr, inputs)
     added_nesting, _outputs = handle_nested_outputs(attr, outputs)
 
@@ -1903,7 +1903,9 @@ function assert_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, o
     # Check this so we can type assert later
     if any(k -> haskey(attr.inputs, k), outputs)
         input_nodes = [k for k in outputs if haskey(attr.inputs, k)]
-        error("One or multiple edge outputs already exist as graph inputs: $input_nodes")
+        if any(name -> hasparent(attr.outputs[name]) && attr.outputs[name].parent isa Input, input_nodes)
+            error("One or multiple edge outputs already exist as graph inputs: $input_nodes")
+        end
     end
 
     idx = findfirst(name -> attr.outputs[name].parent.callback !== invalid_callback, outputs)
@@ -2001,7 +2003,8 @@ function _maybe_transfer_dependents!(to::AbstractEdge, from::Computed)
 end
 
 Base.@nospecializeinfer function register_computation!(
-        @nospecialize(f::Function), attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol}
+        @nospecialize(f::Base.Callable), attr::ComputeGraph,
+        inputs::Vector{Computed}, outputs::Vector{Symbol}
     )
     @ifelse_enabled(check_boxed_values(f))
 

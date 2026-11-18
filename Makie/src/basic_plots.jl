@@ -638,12 +638,8 @@ Plots a marker at each position.
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
     fxaa = false
-end
-
-function deprecated_attributes(::Type{<:Scatter})
-    return (
-        (; attribute = :rotations, message = "`rotations` has been renamed to `rotation` for consistency in Makie v0.21.", error = true),
-    )
+    "`rotations` has been renamed to `rotation` for consistency in Makie v0.21."
+    @deprecate rotations rotation
 end
 
 """
@@ -687,12 +683,8 @@ through attributes.
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
-end
-
-function deprecated_attributes(::Type{<:MeshScatter})
-    return (
-        (; attribute = :rotations, message = "`rotations` has been renamed to `rotation` for consistency in Makie v0.21.", error = true),
-    )
+    "`rotations` has been renamed to `rotation` for consistency in Makie v0.21."
+    @deprecate rotations rotation
 end
 
 """
@@ -778,12 +770,8 @@ Plots one or multiple texts passed via the `text` keyword.
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
     fxaa = false
-end
-
-function deprecated_attributes(::Type{<:Text})
-    return (
-        (; attribute = :textsize, message = "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.", error = true),
-    )
+    "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
+    @deprecate textsize fontsize
 end
 
 """

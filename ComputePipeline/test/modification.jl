@@ -545,6 +545,9 @@ end
 
     @testset "error on double init" begin
         @test_throws ErrorException ComputePipeline.unsafe_init!(graph.xy, 0)
+        # unless overwrites are allowed
+        ComputePipeline.unsafe_init!(graph.xy, 0, true)
+        @test graph.xy[] == 0
     end
 end
 
@@ -767,7 +770,7 @@ end
         end
 
         @testset "replace" begin
-            ComputePipeline.replace_output!(graph.c.parent, :c => :_c)
+            ComputePipeline.replace_output!(graph.c.parent, :_c)
             graph.c = 3
             @test graph.c[] == 4
             @test graph._c[] == 3

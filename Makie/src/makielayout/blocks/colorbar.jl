@@ -315,27 +315,20 @@ function initialize_block!(cb::Colorbar; kwargs...)
         return Vec2d(distinct_extrema_nan(scalable_values)...)
     end
 
-    register_computation!(
+    map!(
         cb.attributes,
-        [:resolved_cdc, :colorrange, :limits, :_derived_colorrange],
-        [:resolved_colorrange]
-    ) do (dc, _colorrange, limits, _autorange), changed, @nospecialize(cached)
-        colorrange = if changed.limits && (limits !== automatic)
-            @warn("Colorbar :limits has been deprecated in favor of :colorrange.")
-            limits
-        else
-            _colorrange
-        end
-
+        [:resolved_cdc, :colorrange, :_derived_colorrange],
+        :resolved_colorrange
+    ) do dc, colorrange, _autorange
         autorange = dc isa CategoricalConversion ? distinct_extrema_nan(first.(dc.int_to_category)) : _autorange
         if colorrange === automatic || colorrange === nothing
-            return (Vec2d(autorange),)
+            return Vec2d(autorange)
         else
             # colorscale is processed later
             low = process_color_value(dc, identity, first(colorrange), first(autorange))
             high = process_color_value(dc, identity, last(colorrange), last(autorange))
             low > high && @error("Colorbar failed to generated ordered colorrange. Generated ($low, $high) from $colorrange.")
-            return (Vec2d(low, max(low, high)),)
+            return Vec2d(low, max(low, high))
         end
     end
 
