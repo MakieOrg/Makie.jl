@@ -15,11 +15,11 @@ function verify_colorbar_defaults(
     @testset "$(Makie.plotsym(typeof(plot)))" begin
         source = Makie.ComputePipeline.hasinput(cb.attributes, :values) ? cb.dc_values : cb.values
         @test source.parent.inputs[1] == color
-        @test cb.colorrange.parent.inputs[1] == colorrange
-        @test cb.colormap.parent.inputs[1] == colormap
-        @test cb.scale.parent.inputs[1] == colorscale
-        @test cb.lowclip.parent.inputs[1] == lowclip
-        @test cb.highclip.parent.inputs[1] == highclip
+        @test only(cb._colorrange.parent.inputs) == colorrange
+        @test only(cb.colormap.parent.inputs) == colormap
+        @test only(cb.scale.parent.inputs) == colorscale
+        @test only(cb.lowclip.parent.inputs) == lowclip
+        @test only(cb.highclip.parent.inputs) == highclip
         @test cb.color_mapping_type[] == color_mapping_type
         # TODO: check color_dim_convert?
     end
