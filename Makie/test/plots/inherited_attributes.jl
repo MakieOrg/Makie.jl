@@ -18,7 +18,7 @@ function all_attributes_connect_to_children(
         plot::Plot, exclude = Set{Symbol}(
             [
                 :palettes, :dim_conversions, :cycle_index, :transform_func, :cycle,
-                :model, :palette_lookup, :f32c, :color_dim_convert
+                :model, :palette_lookup, :f32c, :color_dim_convert,
             ]
         )
     )
