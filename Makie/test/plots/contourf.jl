@@ -185,3 +185,10 @@ end
     @test !any(≈(c), p.computed_levels[])
     @test length(p.plots[1][1][]) == 1
 end
+
+@testset "contourf with large coordinate offsets" begin
+    xs = 1.0e3 .+ (0:49) .* 1.0e-4
+    zs = [sin(0.9i) * cos(1.3j) for i in 1:50, j in 1:50]
+    _, _, p = contourf(xs, xs, zs)
+    @test extrema(point[1] for poly in p.polys[] for point in Makie.coordinates(poly)) == (first(xs), last(xs))
+end

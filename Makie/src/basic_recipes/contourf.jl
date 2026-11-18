@@ -91,7 +91,7 @@ function calculate_contourf_polys!(
     levelcenters = (highs .+ lows) ./ 2
 
     for (i, (center, group)) in enumerate(zip(levelcenters, isos))
-        points = Point2f.(group.x, group.y)
+        points = Point2d.(group.x, group.y)
         polygroups = _group_polys(points, group.id)
         for polygroup in polygroups
             outline = polygroup[1]
@@ -130,13 +130,13 @@ function calculate_contourf_polys!(
     # Now, we construct a 2-D linear interpolation from the rectilinear grid space
     # to the curvilinear grid space (FastInterpolations; matches Interpolations to ulp).
     point_interp = Makie.FastInterpolations.interp(
-        axes(zs), Point2f.(xs, ys); method = Makie.FastInterpolations.LinearInterp()
+        axes(zs), Point2d.(xs, ys); method = Makie.FastInterpolations.LinearInterp()
     )
 
     levelcenters = (highs .+ lows) ./ 2
 
     for (i, (center, group)) in enumerate(zip(levelcenters, isos))
-        points = Point2f.(group.x, group.y)
+        points = Point2d.(group.x, group.y)
         polygroups = _group_polys(points, group.id)
         for rectilinear_polygroup in polygroups
             # NOTE: This is the only major change between the two versions
@@ -252,7 +252,7 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
         is_extended_low = !isnothing(_low)
         is_extended_high = !isnothing(_high)
         if isnothing(cached)
-            polys = Polygon{2, Float32}[]
+            polys = Polygon{2, Float64}[]
             colors = Float64[]
         else
             polys, colors = empty!.(values(cached))
