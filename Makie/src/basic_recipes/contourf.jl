@@ -275,12 +275,16 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
     )
 end
 
-# `inner` ⊆ `outer` iff any vertex or edge-midpoint is strictly inside (midpoints catch vertices shared on `outer`'s boundary, #5651)
+# As rings don't cross, the first vertex or edge midpoint not on `outer`'s boundary decides whether `inner` ⊆ `outer`
+# (midpoints catch rings whose vertices all lie on `outer`'s boundary, #5651)
 function _is_ring_contained(inner, outer)
-    any(p -> PolygonOps.inpolygon(p, outer) == 1, inner) && return true
+    for p in inner
+        location = PolygonOps.inpolygon(p, outer)
+        location == -1 || return location == 1
+    end
     @inbounds for i in firstindex(inner):(lastindex(inner) - 1)
-        mid = (inner[i] .+ inner[i + 1]) ./ 2
-        PolygonOps.inpolygon(mid, outer) == 1 && return true
+        location = PolygonOps.inpolygon((inner[i] .+ inner[i + 1]) ./ 2, outer)
+        location == -1 || return location == 1
     end
     return false
 end

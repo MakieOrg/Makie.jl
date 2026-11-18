@@ -28,6 +28,11 @@ group_shape(groups) = (length(groups), map(g -> length(g) - 1, groups))
         @test group_shape(Makie._group_polys(rings_to_points_ids([outer, hole])...)) == (1, [1])
     end
 
+    @testset "hole with all vertices on the outer ring's edges" begin
+        hole = [(2, 0), (4, 2), (2, 4), (0, 2)]
+        @test group_shape(Makie._group_polys(rings_to_points_ids([outer, hole])...)) == (1, [1])
+    end
+
     @testset "adjacent polygons sharing a boundary point" begin
         tri1 = [(0, 0), (2, 0), (0, 2)] # meets tri2 at (2, 0); neither contains the other
         tri2 = [(2, 0), (4, 0), (4, 2)]
