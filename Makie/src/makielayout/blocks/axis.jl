@@ -156,7 +156,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         blockscene, ax.viewport; color = ax.backgroundcolor, inspectable = false,
         shading = NoShading, strokecolor = :transparent
     )
-    translate!(background, 0, 0, -100)
+    background.zorder = -100
     elements[:background] = background
 
     map!(ax, [:xaxisposition, :viewport], :xaxis_endpoints) do xaxisposition, area
@@ -294,7 +294,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         blockscene, ax.xticksmirrored_points, visible = ax.mirroredxticksvisible,
         linewidth = ax.xtickwidth, color = ax.xtickcolor
     )
-    translate!(xticksmirrored_lines, 0, 0, 10)
+    xticksmirrored_lines.zorder = 10
 
     map!(
         mirror_yticks, ax,
@@ -306,7 +306,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         blockscene, ax.yticksmirrored_points, visible = ax.mirroredyticksvisible,
         linewidth = ax.ytickwidth, color = ax.ytickcolor
     )
-    translate!(yticksmirrored_lines, 0, 0, 10)
+    yticksmirrored_lines.zorder = 10
 
     map!(
         mirror_xticks, ax,
@@ -318,7 +318,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         blockscene, ax.xminorticksmirrored, visible = ax.mirroredxminorticksvisible,
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor
     )
-    translate!(xminorticksmirrored_lines, 0, 0, 10)
+    xminorticksmirrored_lines.zorder = 10
 
     map!(
         mirror_yticks, ax,
@@ -330,7 +330,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         blockscene, ax.yminorticksmirrored, visible = ax.mirroredyminorticksvisible,
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor
     )
-    translate!(yminorticksmirrored_lines, 0, 0, 10)
+    yminorticksmirrored_lines.zorder = 10
 
     xoppositeline = linesegments!(
         blockscene, ax.xoppositelinepoints, linewidth = ax.spinewidth,
@@ -339,7 +339,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         linestyle = nothing
     )
     elements[:xoppositeline] = xoppositeline
-    translate!(xoppositeline, 0, 0, 20)
+    xoppositeline.zorder = 20
 
     yoppositeline = linesegments!(
         blockscene, ax.yoppositelinepoints, linewidth = ax.spinewidth,
@@ -348,7 +348,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         linestyle = nothing
     )
     elements[:yoppositeline] = yoppositeline
-    translate!(yoppositeline, 0, 0, 20)
+    yoppositeline.zorder = 20
 
     map!(
         ax,
@@ -395,7 +395,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
-    translate!(xgridlines, 0, 0, -10)
+    xgridlines.zorder = -10
     elements[:xgridlines] = xgridlines
 
     xminorgridlines = linesegments!(
@@ -403,7 +403,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
-    translate!(xminorgridlines, 0, 0, -10)
+    xminorgridlines.zorder = -10
     elements[:xminorgridlines] = xminorgridlines
 
     ygridlines = linesegments!(
@@ -411,7 +411,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
-    translate!(ygridlines, 0, 0, -10)
+    ygridlines.zorder = -10
     elements[:ygridlines] = ygridlines
 
     yminorgridlines = linesegments!(
@@ -419,7 +419,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
-    translate!(yminorgridlines, 0, 0, -10)
+    yminorgridlines.zorder = -10
     elements[:yminorgridlines] = yminorgridlines
 
     map!(

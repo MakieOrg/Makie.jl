@@ -251,7 +251,7 @@ function (pre::OITPrerender)(overdraw::UInt8)
     return
 end
 
-function construct(::Val{:Render}, screen, framebuffer, inputs, parent, target = :forward_render_objectid)
+function construct(::Val{:Render}, screen, framebuffer, inputs, parent, target::Symbol = :forward_render_objectid)
     # can't do FilterOptions(::FilterOptions) ???
     ssao = FilterOptions(get(parent.attributes, :ssao, 2))
     fxaa = FilterOptions(get(parent.attributes, :fxaa, 2))

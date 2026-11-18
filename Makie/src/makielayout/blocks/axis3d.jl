@@ -27,6 +27,7 @@ function initialize_block!(ax::Axis3)
     end
 
     onany(blockscene, scenearea, ax.clip_decorations) do area, clip
+        blockscene.clip[] = clip ? automatic : nothing
         if clip
             blockscene.viewport[] = area
         elseif blockscene.viewport[] != root(blockscene).viewport[]
@@ -548,7 +549,7 @@ function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, tick
         topscene, endpoints, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false
+        visible = attr(:gridvisible), inspectable = false, zorder = -1
     )
 
     endpoints2 = lift(limits, tickvalues, min1, min2, xreversed, yreversed, zreversed) do lims, ticks, min1, min2, xrev, yrev, zrev
@@ -567,7 +568,7 @@ function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, tick
         topscene, endpoints2, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false
+        visible = attr(:gridvisible), inspectable = false, zorder = -1
     )
 
 
@@ -615,7 +616,7 @@ function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, tick
         topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         transparency = true, visible = attr(:spinesvisible), inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
-        clip_planes = Plane3f[]
+        clip_planes = Plane3f[], zorder = -1
     )
 
     front_framelines = linesegments!(
@@ -717,10 +718,8 @@ function add_ticks_and_ticklabels!(
         topscene, tick_segments,
         transparency = true, inspectable = false,
         color = attr(:tickcolor), linewidth = attr(:tickwidth),
-        space = :pixel, visible = attr(:ticksvisible)
+        space = :pixel, visible = attr(:ticksvisible), zorder = -1
     )
-    # move ticks behind plots, -10000 is the far value in campixel
-    translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()
     map!(
@@ -752,8 +751,6 @@ function add_ticks_and_ticklabels!(
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible),
         space = :pixel, inspectable = false
     )
-
-    translate!(ticklabels_text, 0, 0, 1000)
 
     label_position = Observable(Point2f(0))
     label_rotation = Observable(0.0f0)
@@ -895,7 +892,7 @@ function add_panel!(topscene, ax, dim1, dim2, dim3, limits, min3)
         xautolimits = false, yautolimits = false, zautolimits = false,
         color = attr(:panelcolor), visible = attr(:panelvisible),
         strokecolor = :transparent, strokewidth = 0,
-        transformation = (plane, 0), clip_planes = Plane3f[]
+        transformation = (plane, 0), clip_planes = Plane3f[], zorder = -1
     )
 
     on(plane_offset) do offset

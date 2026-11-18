@@ -125,6 +125,19 @@ mutable struct Scene <: AbstractScene
     # Can't type this, don't have the type yet
     data_inspector::Any
 
+    "2D affine transform (in figure pixel space) applied to this scene and its descendants on top of the parent's frame transform."
+    frame_transform::Observable{Mat3f}
+    "Clip region: `automatic` (the viewport), `nothing` (no own clipping) or a shape in viewport-relative pixel coordinates (`Rect2`, `Circle`, `AnnularSector`, polygons)."
+    clip::Observable{Any}
+    "Opacity of the scene as a whole. Values below 1 render the scene into an offscreen buffer which is then composited."
+    alpha::Observable{Float32}
+    "Sort key among the siblings in the parent's `draw_order`. Ties keep insertion order."
+    zorder::Observable{Float32}
+    "Whether the scene starts with fresh depth in its area and is then flattened into its parent. `false` shares depth with the parent."
+    clear_depth::Observable{Bool}
+    "Plots and child scenes in insertion order, which determines the draw order."
+    draw_order::Vector{Union{AbstractPlot, Scene}}
+
     function Scene(
             parent::Union{Nothing, Scene},
             events::Events,
@@ -165,7 +178,13 @@ mutable struct Scene <: AbstractScene
             ComputeGraph(),
             DimConversions(),
             false,
-            nothing
+            nothing,
+            Observable(Mat3f(I)),
+            Observable{Any}(automatic),
+            Observable(1.0f0),
+            Observable(0.0f0),
+            Observable(true),
+            Union{AbstractPlot, Scene}[]
         )
         add_camera_computation!(scene.compute, scene)
         add_light_computation!(scene.compute, scene, lights)
@@ -292,6 +311,11 @@ function Scene(;
         lights = automatic,
         theme = Attributes(),
         deregister_callbacks = Observables.ObserverFunction[],
+        clip = automatic,
+        alpha = 1.0f0,
+        zorder = 0.0f0,
+        frame_transform = Mat3f(I),
+        clear_depth = true,
         theme_kw...
     )
 
@@ -346,7 +370,7 @@ function Scene(;
 
     # if we have an opaque background, automatically set clear to true!
     if clear isa Automatic
-        clear = Observable(alpha(bg[]) == 1 ? true : false)
+        clear = Observable(ColorTypes.alpha(bg[]) == 1 ? true : false)
     else
         clear = convert(Observable{Bool}, clear)
     end
@@ -357,6 +381,11 @@ function Scene(;
         deregister_callbacks = deregister_callbacks
     )
     camera isa Function && camera(scene)
+    connect_frame_attribute!(scene, scene.clip, clip)
+    connect_frame_attribute!(scene, scene.alpha, alpha)
+    connect_frame_attribute!(scene, scene.zorder, zorder)
+    connect_frame_attribute!(scene, scene.frame_transform, frame_transform)
+    connect_frame_attribute!(scene, scene.clear_depth, clear_depth)
 
     if wasnothing
         on(events.window_area, priority = typemax(Int)) do w_area
@@ -425,6 +454,7 @@ function Scene(
         end
     end
     push!(parent.children, child)
+    push!(parent.draw_order, child)
     child.parent = parent
     return child
 end
@@ -526,10 +556,12 @@ function Base.empty!(scene::Scene; reset_theme = true)
     # clear all child scenes
     if !isnothing(scene.parent)
         filter!(x -> x !== scene, scene.parent.children)
+        filter!(x -> x !== scene, scene.parent.draw_order)
     end
 
     empty!(scene.children)
     empty!(scene.plots)
+    empty!(scene.draw_order)
     empty!(scene.theme)
 
     # conditional, since in free we dont want this!
@@ -559,6 +591,7 @@ end
 function Base.push!(scene::Scene, @nospecialize(plot::Plot))
     validate_attribute_keys(plot)
     push!(scene.plots, plot)
+    push!(scene.draw_order, plot)
     for screen in scene.current_screens
         Base.invokelatest(insert!, screen, scene, plot)
     end
@@ -592,6 +625,7 @@ end
 # Note: can be called from scene finalizer
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
+    filter!(x -> x !== plot, scene.draw_order)
 
     scene.onplot[] = false => plot
 
@@ -653,7 +687,9 @@ function move_to!(plot::Plot, scene::Scene)
     end
     current_parent = parent_scene(plot)
     filter!(x -> x !== plot, current_parent.plots)
+    filter!(x -> x !== plot, current_parent.draw_order)
     push!(scene.plots, plot)
+    push!(scene.draw_order, plot)
     plot.parent = scene
     return
 end

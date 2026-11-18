@@ -41,6 +41,7 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
                 axis3d!(ls.scene, limits)
                 # Make sure axis is always in pos 1
                 sort!(ls.scene.plots, by = !isaxis)
+                sort!(ls.scene.draw_order, by = x -> !(x isa AbstractPlot && isaxis(x)))
             else
                 ax.visible = true
             end

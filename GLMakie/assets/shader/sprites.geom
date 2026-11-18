@@ -39,6 +39,7 @@ uniform float glow_width;
 uniform int shape; // for RECTANGLE hack below
 uniform vec2 resolution;
 uniform float px_per_unit;
+uniform mat4 scene_frame;
 uniform float depth_shift;
 uniform mat4 preprojection, projection, view, model;
 uniform int num_clip_planes;
@@ -104,6 +105,7 @@ void emit_vertex(vec4 vertex, vec2 uv)
 {
     gl_Position       = vertex;
     gl_Position.z     += gl_Position.w * depth_shift;
+    gl_Position        = scene_frame * gl_Position;
     f_uv              = uv;
     f_uv_texture_bbox = g_uv_texture_bbox[0];
     f_primitive_index = g_primitive_index[0];

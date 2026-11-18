@@ -571,6 +571,7 @@ function add_scene!(screen::Screen, scene::Scene)
             (args...) -> screen.requires_update = true,
             scene,
             scene.visible, scene.backgroundcolor, scene.clear,
+            scene.alpha, scene.clip, scene.zorder, scene.frame_transform,
             scene.ssao.bias, scene.ssao.blur, scene.ssao.radius, scene.camera.projectionview,
             scene.camera.resolution
         )

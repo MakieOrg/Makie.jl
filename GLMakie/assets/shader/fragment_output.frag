@@ -21,7 +21,10 @@ uniform float oit_scale;
 in vec3 o_view_pos;
 in vec3 o_view_normal;
 
+float scene_clip_coverage();
+
 void write2framebuffer(vec4 color, uvec2 id){
+    color.a *= scene_clip_coverage();
     if(color.a <= 0.0)
         discard;
 
