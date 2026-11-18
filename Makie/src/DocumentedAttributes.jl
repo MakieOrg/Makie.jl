@@ -164,8 +164,11 @@ To more easily lookup the type for an attribute index there also is:
 - `attr.nested_docstring` contains a docstring or nothing for each positive
     index in `attr.nesting`, i.e. for each nesting layer. The base layer (1) is
     never documented
-- `attr.merged_key_to_index` a `Dict` mapping merged keys to attribute indices
-- `attr.inherit` a `Vector` of attribute indices that inherit
+- `attr.merged_key_to_index` is a `Dict` mapping merged keys to attribute indices
+- `attr.inherit` is a `Vector` of attribute indices that inherit
+- `attr.deprecation_indices` is a `Vector` of index Pairs, but indexing the
+    per-attribute fields. The first identifies a deprecated attribute, the latter
+    it's replacement.
 """
 struct DocumentedAttributes
     # This contains a collection of Dicts that trace nesting paths:
@@ -273,10 +276,10 @@ Attributes can be marked as deprecated using
 
     @deprecate old new
 
-where `old` is the deprecated name and `new` is the replacement. They can also
+where `old` is the deprecated name and `new` is the replacement. The names can also
 be tuples denoting a path to a nested attributes, e.g. `(outer, inner)`. When
 creating a plot or Block, both `old` and `new` will be added as inputs and merge
-into `new` node. If `old` is changed, a deprecation warning is shown. This
+into the `new` node. If `old` is changed, a deprecation warning is shown. This
 warning can be set by adding a string before the `@deprecate` entry (like docstrings).
 
 ## Macro Examples
