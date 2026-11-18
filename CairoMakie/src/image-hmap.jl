@@ -7,7 +7,7 @@ Heatmap:
 - renders through the same path as Image with the identity layout (:right, :down)
 =#
 
-function image_grid!(::typeof(heatmap), attr)
+function image_grid!(@nospecialize(::Heatmap), attr)
     Makie.add_computation!(attr, nothing, Val(:heatmap_transform))
     map!(attr, [:x_transformed_f32c, :y_transformed_f32c], [:grid_x, :grid_y, :is_regular_grid]) do x, y
         is_regularly_spaced_grid = is_regularly_spaced(x) && is_regularly_spaced(y)
@@ -16,8 +16,8 @@ function image_grid!(::typeof(heatmap), attr)
     return
 end
 
-function image_grid!(::typeof(image), attr)
-    return map!(
+function image_grid!(@nospecialize(::Heatmap), attr)
+    map!(
         attr, [:positions_transformed_f32c, :image, :orientation],
         [:grid_x, :grid_y, :is_regular_grid]
     ) do positions, image, orientation
@@ -37,8 +37,8 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, plot::Union{Heatmap, Imag
     prod(plot.image_size[]::Tuple{Int, Int}) == 0 && return
 
     attr = plot.attributes
-    image_grid!(Makie.plotfunc(plot), attr)
-    cairo_image_orientation!(Makie.plotfunc(plot), attr)
+    image_grid!(plot, attr)
+    cairo_image_orientation!(plot, attr)
     Makie.compute_colors!(attr)
     inputs = [
         :grid_x, :grid_y, :is_regular_grid, :cairo_orientation, :cairo_pattern_matrix,
@@ -51,13 +51,13 @@ end
 
 # Heatmap data runs dim 1 along x and dim 2 along y, which is the identity
 # layout (:right, :down) in orientation terms. It has no uv_transform support.
-function cairo_image_orientation!(::typeof(heatmap), attr)
+function cairo_image_orientation!(@nospecialize(::Heatmap), attr)
     add_constant!(attr, :cairo_orientation, (:right, :down))
     add_constant!(attr, :cairo_pattern_matrix, nothing)
     return
 end
 
-function cairo_image_orientation!(::typeof(image), attr)
+function cairo_image_orientation!(@nospecialize(::Image), attr)
     ComputePipeline.alias!(attr, :orientation, :cairo_orientation)
     # The user uv_transform acts in the matrix's own uv space. Expressed in the
     # source surface's pixel coordinates (which the CTM maps onto the rect) it
