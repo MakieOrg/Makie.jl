@@ -188,7 +188,7 @@ export class Plot {
                 `Uniform ${name} doesn't exist in Plot: ${this.name}`
             );
         }
-        update_uniform(uniform, new_data);
+        update_uniform(uniform, expand_compressed(new_data));
     }
 
     update_buffer(name, input_data) {
