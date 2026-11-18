@@ -61,6 +61,7 @@ end
         include("SceneLike/figures.jl")
         include("SceneLike/makielayout.jl")
         include("SceneLike/PolarAxis.jl")
+        include("SceneLike/theming.jl")
     end
 
     @testset "Conversion & Projection Pipeline" begin

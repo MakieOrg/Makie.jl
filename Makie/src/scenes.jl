@@ -492,7 +492,7 @@ function Base.empty!(scene::Scene; reset_theme = true)
 
     # conditional, since in free we dont want this!
     if reset_theme
-        merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
+        merge_without_obs!(scene.theme, current_default_theme())
     end
 
     disconnect!(scene.camera)

@@ -154,7 +154,13 @@ const MAKIE_DEFAULT_THEME = Attributes(
     )
 )
 
-const CURRENT_DEFAULT_THEME = deepcopy(MAKIE_DEFAULT_THEME)
+# Themes are replaced, never mutated, so readers on other threads always see a complete one.
+mutable struct ThemeSlot
+    @atomic theme::Attributes
+end
+
+const GLOBAL_THEME = ThemeSlot(deepcopy(MAKIE_DEFAULT_THEME))
+const SCOPED_THEME = ScopedValue(GLOBAL_THEME)
 const THEME_LOCK = Base.ReentrantLock()
 
 # Basically like deepcopy but while merging it into another Attribute dict
@@ -198,22 +204,23 @@ end
 fast_deepcopy(attributes) = merge_without_obs!(Attributes(), attributes)
 
 
-current_default_theme() = CURRENT_DEFAULT_THEME
+current_theme_slot() = SCOPED_THEME[]
+current_default_theme() = @atomic current_theme_slot().theme
 
+function resolve_theme(new_theme; kwargs...)
+    resolved_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
+    return merge!(Theme(kwargs), resolved_theme)
+end
 
 """
     set_theme!(theme; kwargs...)
 
 Set the global default theme to `theme` and add / override any attributes given
-as keyword arguments.
+as keyword arguments. Inside of `with_theme`, only the temporary theme is replaced.
 """
 function set_theme!(new_theme = Attributes(); kwargs...)
-    lock(THEME_LOCK) do
-        empty!(CURRENT_DEFAULT_THEME)
-        resolved_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
-        resolved_theme = merge!(Theme(kwargs), resolved_theme)
-        merge!(CURRENT_DEFAULT_THEME, resolved_theme)
-    end
+    resolved_theme = resolve_theme(new_theme; kwargs...)
+    lock(() -> @atomic(current_theme_slot().theme = resolved_theme), THEME_LOCK)
     return
 end
 
@@ -223,6 +230,9 @@ end
 Calls `f` with `theme` temporarily activated. Attributes in `theme`
 can be overridden or extended with `kwargs`. The previous theme is always
 restored afterwards, no matter if `f` succeeds or fails.
+
+The temporary theme applies to `f` and to tasks spawned within it, but not
+to other tasks running concurrently, so `with_theme` can be used from multiple threads.
 
 Example:
 
@@ -234,24 +244,15 @@ end
 ```
 """
 function with_theme(f, theme = Theme(); kwargs...)
-    return lock(THEME_LOCK) do
-        previous_theme = fast_deepcopy(CURRENT_DEFAULT_THEME)
-        try
-            set_theme!(theme; kwargs...)
-            f()
-        catch e
-            rethrow(e)
-        finally
-            set_theme!(previous_theme)
-        end
-    end
+    return @with SCOPED_THEME => ThemeSlot(resolve_theme(theme; kwargs...)) f()
 end
 
 theme(::Nothing, key::Symbol; default = nothing) = theme(key; default)
-theme(::Nothing) = CURRENT_DEFAULT_THEME
+theme(::Nothing) = current_default_theme()
 function theme(key::Symbol; default = nothing)
-    if haskey(CURRENT_DEFAULT_THEME, key)
-        val = to_value(CURRENT_DEFAULT_THEME[key])
+    current_theme = current_default_theme()
+    if haskey(current_theme, key)
+        val = to_value(current_theme[key])
         if val isa Union{NamedTuple, Attributes}
             return val
         else
@@ -286,7 +287,10 @@ update_theme!(Theme(colormap=:greys))
 function update_theme!(with_theme = Attributes(); kwargs...)
     return lock(THEME_LOCK) do
         new_theme = merge!(with_theme, Attributes(kwargs))
-        _update_attrs!(CURRENT_DEFAULT_THEME, new_theme)
+        slot = current_theme_slot()
+        updated_theme = fast_deepcopy(@atomic slot.theme)
+        _update_attrs!(updated_theme, new_theme)
+        @atomic slot.theme = updated_theme
         return
     end
 end
