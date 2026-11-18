@@ -16,7 +16,7 @@ function image_grid!(@nospecialize(::Heatmap), attr)
     return
 end
 
-function image_grid!(@nospecialize(::Heatmap), attr)
+function image_grid!(@nospecialize(::Image), attr)
     map!(
         attr, [:positions_transformed_f32c, :image, :orientation],
         [:grid_x, :grid_y, :is_regular_grid]
