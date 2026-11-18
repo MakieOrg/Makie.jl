@@ -84,7 +84,7 @@ function create_scene()
 end
 
 volpath_config = (
-    device = Raycore.KA.CPU(),
+    device = Hikari.Mantle.defaultbackend(),
     exposure = 0.8f0,
     samples = 20,
     max_depth = 8,

@@ -102,7 +102,7 @@ end
 #   But Makie y=0 (bottom) should map to NDC y=+1 (top of viewport), so we NEGATE.
 #   Formula: ndc_y = -(pos_y/res*2 - 1). Verified: screen_y=0 → ndc_y=+1, screen_y=h → ndc_y=-1.
 #
-# That negation is the ONLY one a shader here writes. `KernelInterface.clip_y` is
+# That negation is the ONLY one a shader here writes. `Lava.clip_y` is
 # NOT for this, and must not be called on the `position` these stages return: it
 # answers "this backend's clip y given the portable one", and the backend ALREADY
 # applies it to every position a stage writes. Calling it here applies the mirror

@@ -58,9 +58,10 @@ RayMakie.activate!(
     gamma = 2.2,
 )
 
-# CPU-only rendering (no GPU required)
-using KernelAbstractions
-RayMakie.activate!(device = KernelAbstractions.CPU())
+# CPU-only rendering (no GPU required): lavapipe, Mesa's Vulkan driver for the CPU.
+# Load Lavapipe_jll before anything creates the first device.
+using Lavapipe_jll, Mantle
+RayMakie.activate!(device = Mantle.Device("lavapipe"))
 
 # Enable AI denoising
 RayMakie.activate!(denoise = true)
@@ -84,7 +85,7 @@ from these settings. `automatic` keeps `Hikari.VolPath`'s default.
 | `exposure` | `1.0` | Exposure multiplier for HDR tonemapping |
 | `tonemap` | `:aces` | Tonemapping operator (`:aces`, `:reinhard`, `:reinhard_extended`, `:uncharted2`, `:filmic`, or `nothing`) |
 | `gamma` | `2.2` | Gamma correction value (`nothing` to skip) |
-| `device` | `automatic` | Compute backend: the best one loaded, or e.g. `KernelAbstractions.CPU()` |
+| `device` | `automatic` | The Mantle device to render on: the best one loaded (`Mantle.defaultbackend()`), or e.g. `Mantle.Device("lavapipe")` |
 | `denoise` | `false` | Enable AI denoising |
 | `denoise_config` | `nothing` | Denoiser configuration (`Hikari.DenoiseConfig(...)`) |
 | `accumulate` | `false` | Let samples build up across reads while the camera stands still |

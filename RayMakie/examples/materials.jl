@@ -194,7 +194,6 @@ end
 # Render
 sensor = Hikari.PixelSensor(; iso=50, exposure_time=1.0, whitebalance=0)
 device = Lava.LavaBackend()
-# device = KernelAbstractions.CPU()
 RayMakie.activate!(
     device=device,
     exposure=0.6f0,

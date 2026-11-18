@@ -74,7 +74,7 @@ const LINES_GEOM_OUT = (quad_sdf = Vec3f, truncation = Vec2f, linestart = Float3
 # not, `Mantle.lower_geometry_to_mesh` runs this body once per input vertex of a
 # primitive from ONE mesh invocation, at indices it computes out of the index
 # buffer — and a zero-argument builtin cannot answer differently on each of those
-# calls. `KernelInterface.VertexIndex`'s docstring has the rest.
+# calls. `Lava.VertexIndex`'s docstring has the rest.
 #
 # The fallback's arity is fixed rather than `args...`: at 16 it cannot match its
 # own forwarded call, so a signature that drifts out of step with

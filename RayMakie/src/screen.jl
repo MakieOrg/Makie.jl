@@ -61,10 +61,8 @@ Configuration for RayMakie rendering.
   - `:filmic` - Hejl-Dawson filmic
   - `nothing` - No tonemapping (linear clamp)
 * `gamma`: Gamma correction value (default: 2.2, use `nothing` to skip)
-* `device`: KernelAbstractions backend for rendering (default: `KA.CPU()`)
-  - `Raycore.KA.CPU()` - CPU rendering
-  - `AMDGPU.ROCBackend()` - AMD GPU via AMDGPU.jl
-  - `CUDA.CUDABackend()` - NVIDIA GPU via CUDA.jl
+* `device`: the Mantle device or backend to render on (default: `automatic`,
+  `Mantle.defaultbackend()`); lavapipe renders on the CPU
 * `denoise`: Enable denoising (default: false)
   - Requires auxiliary buffers (normals, depth) to be filled
   - Significantly reduces noise at low sample counts
@@ -121,7 +119,7 @@ struct ScreenConfig
     exposure::Float32
     tonemap::Union{Symbol, Nothing}
     gamma::Union{Float32, Nothing}
-    device::Any  # KA backend: KA.CPU(), ROCBackend(), CUDABackend()
+    device::Any  # the Mantle device or backend rendering runs on
     denoise::Bool
     denoise_config::Union{Hikari.Denoiser, Nothing}
     visible::Bool
@@ -160,7 +158,7 @@ struct ScreenConfig
 
     function ScreenConfig(samples, max_depth, hw_accel, regularize, russian_roulette_depth,
                           max_component_value, sensor, filter, exposure, tonemap, gamma,
-                          device=Raycore.KA.CPU(), denoise=false, denoise_config=nothing,
+                          device=Makie.automatic, denoise=false, denoise_config=nothing,
                           visible=true, title="RayMakie", vsync=true,
                           accumulate=false, rasterize=false, fxaa=true,
                           shadows=true, shadow_resolution=2048, shadow_distance=40f0,

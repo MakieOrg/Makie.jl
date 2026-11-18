@@ -16,7 +16,6 @@ using Extents: Extent
 using Oceananigans: FieldTimeSeries, interior
 using FileIO
 using AMDGPU
-using pocl_jll, OpenCL
 using Hikari
 
 
@@ -576,7 +575,6 @@ function render_rayshader(;
     return result, scene, screen
 end
 
-using pocl_jll, OpenCL
 
 # =============================================================================
 # Run Example
@@ -593,7 +591,7 @@ result, scene, screen = render_rayshader(;
     sun_azimuth=135.0,
     samples=1,
     max_depth=12,
-    backend=CLArray,
+    backend=Hikari.Mantle.defaultbackend(),
     exposure=0.8f0,
     figsize=(1024, 768),
 )
@@ -624,7 +622,7 @@ function render_rayshader_interactive(;
     sun_altitude=20.0,
     sun_azimuth=135.0,
     max_depth=12,
-    backend=Raycore.KA.CPU(),
+    backend=Hikari.Mantle.defaultbackend(),
     exposure=0.8f0,
     tonemap=:aces,
     gamma=2.2f0,

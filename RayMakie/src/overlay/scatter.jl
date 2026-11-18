@@ -97,7 +97,7 @@ end
 
 # The index is a PARAMETER, and the arg-less spelling below hands it the builtin.
 # Both are needed and they are the same number; see the same pair in
-# `overlay/lines.jl` for why, and `KernelInterface.VertexIndex` for the contract.
+# `overlay/lines.jl` for why, and `Lava.VertexIndex` for the contract.
 # The fallback's arity is `length(SCATTER_ARG_NAMES)`, fixed so it cannot match
 # its own forwarded call.
 scatter_vertex(args::Vararg{Any,26}) = scatter_vertex(VertexIndex(vertex_index()), args...)

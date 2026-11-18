@@ -227,7 +227,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         exposure = 1.0f0,
         tonemap = :aces,
         gamma = 2.2f0,
-        device = automatic,  # KA backend: CPU(), ROCBackend(), CUDABackend(); automatic → Lava
+        device = automatic,  # a Mantle device or backend; automatic → Mantle.defaultbackend()
         denoise = false,     # Enable à-trous wavelet denoising
         denoise_config = nothing,  # DenoiseConfig(iterations=5, sigma_color=4.0, ...)
         visible = true,      # Open a window with interactive render loop on display()

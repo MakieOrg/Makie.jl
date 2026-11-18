@@ -84,7 +84,7 @@ function render_nanovdb_bunny(nvdb_path::String;
     white_balance=4000f0,
     tonemap=:aces,
     gamma=2.2f0,
-    backend=Raycore.KA.CPU(),
+    backend=Hikari.Mantle.defaultbackend(),
     kwargs...
 )
     # pbrt-matching sensor settings

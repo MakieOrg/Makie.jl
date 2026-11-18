@@ -16,7 +16,7 @@ Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
 Raycore = "afc56b53-c9a9-482a-a956-d1d800e05559"
 
 # These packages are not all registered yet. Keep the test environment explicit:
-# transitive [sources] do not supply the matrix vocabulary in KernelInterface.
+# Pkg does not follow a dependency's [sources].
 [sources]
 CompilerCaching = {url = "https://github.com/maleadt/CompilerCaching.jl", rev = "bae1df4d098a62905496ee7afd95ce00d937ec6b"}
 ComputePipeline = {path = "../../ComputePipeline"}
@@ -24,9 +24,7 @@ Makie = {path = "../../Makie"}
 GLMakie = {path = "../../GLMakie"}
 RayMakie = {path = ".."}
 Hikari = {url = "https://github.com/JuliaGraphics/Hikari.jl", rev = "master"}
-KernelAbstractions = {url = "https://github.com/SimonDanisch/KernelAbstractions.jl", rev = "sd/lava-refactor"}
-KernelInterface = {url = "https://github.com/SimonDanisch/KernelAbstractions.jl", rev = "sd/lava-refactor", subdir = "lib/KernelInterface"}
-Lava = {url = "https://github.com/SimonDanisch/Lava.jl", rev = "sd/lava-refactor"}
+Lava = {url = "https://github.com/SimonDanisch/Lava.jl", rev = "main"}
 Mantle = {url = "https://github.com/SimonDanisch/Mantle.jl", rev = "sd/lava-refactor"}
 Metal = {url = "https://github.com/SimonDanisch/Metal.jl", rev = "sd/lava-refactor"}
 Raycore = {url = "https://github.com/JuliaGeometry/Raycore.jl", rev = "sd/with-texture"}

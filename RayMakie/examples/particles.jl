@@ -212,7 +212,7 @@ function record_particles(filename::String="particles.mp4";
         dt::Float32=1.0f0/30.0f0,
         samples_per_pixel::Int=8,
         preset="ultrafast",
-        backend=Raycore.KA.CPU(),
+        backend=Hikari.Mantle.defaultbackend(),
     )
 
     println("Creating particle scene with $n_particles particles...")

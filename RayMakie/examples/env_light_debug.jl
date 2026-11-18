@@ -36,7 +36,7 @@ function create_mirror_sphere_scene(; cam_pos, look_at, up=Vec3f(0,0,1), rotatio
 end
 
 volpath_config = (
-    device = Raycore.KA.CPU(),
+    device = Hikari.Mantle.defaultbackend(),
     samples = spp,
     max_depth = 5,
     exposure = 1.0f0,

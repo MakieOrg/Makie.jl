@@ -232,7 +232,7 @@ function render_killeroo_gold(;
     samples=64,
     max_depth=8,
     subdivision_levels=3,
-    backend=Raycore.KA.CPU()
+    backend=Hikari.Mantle.defaultbackend()
 )
     scene = create_killeroo_gold_scene(; resolution, subdivision_levels)
 

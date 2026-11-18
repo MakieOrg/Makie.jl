@@ -26,7 +26,7 @@ function tyler_renderer_app(;
 
     # Backend selection
     Label(controls[1, 1], "Backend:", halign=:right)
-    backend_menu = Menu(controls[1, 2], options=["CPU", "GPU (ROCArray)"], default="CPU")
+    backend_menu = Menu(controls[1, 2], options=["Default device", "GPU (ROCArray)"], default="Default device")
 
     # Samples
     Label(controls[2, 1], "Samples:", halign=:right)
@@ -111,7 +111,7 @@ function tyler_renderer_app(;
             end
 
             # Select backend
-            backend = backend_str == "CPU" ? Raycore.KA.CPU() : AMDGPU.ROCBackend()
+            backend = backend_str == "Default device" ? Hikari.Mantle.defaultbackend() : AMDGPU.ROCBackend()
 
             # Render using colorbuffer - handles scene conversion, rendering, and postprocessing
             status_label.text = "Rendering ($samples samples)..."
