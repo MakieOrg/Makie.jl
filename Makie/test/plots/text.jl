@@ -117,10 +117,6 @@ end
     text([L"text"], position = [Point2f(0, 0)])
     text([L"text", L"text"], position = [Point2f(0, 0), Point2f(1, 1)])
     text(collect(zip([L"text", L"text"], [Point2f(0, 0), Point2f(1, 1)])))
-
-    err = ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.")
-    @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
-    # @test_throws err text(1, 2, text = "hi", textsize = 30)
 end
 
 @testset "Text type changes" begin

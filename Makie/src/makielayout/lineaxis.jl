@@ -179,6 +179,11 @@ function compute_minor_ticks(
     end
 end
 
+# last arg comes from a trigger node. No useful content there
+function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label, _)
+    return build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label)
+end
+
 function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label)
     should_show = show_dim_convert_in_axis_label(dim_convert, show_unit_in_label)
     if should_show
@@ -244,20 +249,16 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
 
     map!(calculate_horizontal_extends, graph, endpoints, [:position, :extents, :horizontal])
 
-    # TODO: Does this have side effects on Axis, plots?
-    # TODO: Does this propagate enough on same value updates?
-    # make sure we update tick calculation when needed
-    obs = needs_tick_update_observable(dim_convert)
-    if !isnothing(obs)
-        on(x -> ComputePipeline.mark_dirty!(dim_convert), obs)
+    add_input!(graph, :dc_trigger, needs_tick_update_observable(dim_convert)) do _
+        return ExplicitUpdate(nothing, :force)
     end
 
     map!(
         graph,
         # TODO: Why was :pos_extents_horizontal in here?
-        [dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel],
+        [dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel, :dc_trigger],
         [:tickvalues_unfiltered, :tickstrings_unfiltered],
-    ) do dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel
+    ) do dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel, _
         should_show = show_dim_convert_in_ticklabel(dim_convert, unit_in_ticklabel)
         vals, strs = get_ticks(dim_convert, ticks, scale, tickformat, limits..., should_show)
         return vals, convert(Vector{Any}, strs)
@@ -305,7 +306,8 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         px_o = extents[1]
         px_width = extents[2] - extents[1]
         tickvalues_scaled = scale.(tickvalues)
-        tick_fractions = (tickvalues_scaled .- scale(limits[1])) ./ (scale(limits[2]) - scale(limits[1]))
+        low, high = minmax(scale(limits[1]), scale(limits[2]))
+        tick_fractions = (tickvalues_scaled .- low) ./ (high - low)
 
         tick_scenecoords = px_o .+ px_width .* tick_fractions
 
@@ -501,7 +503,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     # label + dim convert suffix
     map!(
         build_label_with_unit_suffix, graph,
-        [dim_convert, suffix_formatter, label, unit_in_label],
+        [dim_convert, suffix_formatter, label, unit_in_label, :dc_trigger],
         :label_with_suffix
     )
     ComputePipeline.set_type!(graph.label_with_suffix, Any)
