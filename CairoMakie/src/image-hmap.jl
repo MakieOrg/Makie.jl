@@ -63,13 +63,14 @@ function cairo_image_orientation!(@nospecialize(::Image), attr)
     # source surface's pixel coordinates (which the CTM maps onto the rect) it
     # becomes the pattern matrix S * T * S⁻¹ where S scales uv to pixels, so it
     # is independent of orientation.
-    return map!(attr, [:uv_transform, :image], :cairo_pattern_matrix) do T, img
-        (isnothing(T) || T == Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0)) && return nothing
+    map!(attr, [:uv_transform, :image], :cairo_pattern_matrix) do T, img
+        isnothing(T) && return nothing
         T3 = Mat3f(T[1], T[2], 0, T[3], T[4], 0, T[5], T[6], 1)
         S = Mat3f(size(img, 1), 0, 0, 0, size(img, 2), 0, 0, 0, 1)
         M = S * T3 * inv(S)
         return Cairo.CairoMatrix(M[1, 1], M[2, 1], M[1, 2], M[2, 2], M[1, 3], M[2, 3])
     end
+    return
 end
 
 # Compose two Cairo affine matrices: returns a * b (so applying the resulting matrix to a
