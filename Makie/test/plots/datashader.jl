@@ -1,5 +1,6 @@
 using Makie.Aggregation
 using Makie.Aggregation: Canvas, aggregate!, bin_scale, null, update, value
+using Random
 
 function reference_aggregation(points, bounds, resolution, op)
     (xmin, ymin), (xmax, ymax) = extrema(bounds)
@@ -145,4 +146,17 @@ end
     @test length(pl.plots) == 8
     @test first.(pl._categories[]) == string.(1:8)
     @test last.(pl._categories[]) == [palette; first(palette)]
+end
+
+@testset "datashader category images track canvas bounds (#5791)" begin
+    points = randn(Xoshiro(1), Point2f, 2000)
+    categories = Dict("a" => points .- (Point2f(1, 0),), "b" => points .+ (Point2f(1, 0),))
+    fig, ax, pl = datashader(categories; async = false)
+    Makie.update_state_before_display!(fig)
+    pmin, pmax = extrema(ax.finallimits[])
+    for image in pl.plots
+        xs, ys, _ = image.converted[]
+        @test collect(xs) ≈ [pmin[1], pmax[1]]
+        @test collect(ys) ≈ [pmin[2], pmax[2]]
+    end
 end
