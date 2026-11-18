@@ -9,10 +9,11 @@ Heatmap:
 
 function image_grid!(::typeof(heatmap), attr)
     Makie.add_computation!(attr, nothing, Val(:heatmap_transform))
-    return map!(attr, [:x_transformed_f32c, :y_transformed_f32c], [:grid_x, :grid_y, :is_regular_grid]) do x, y
+    map!(attr, [:x_transformed_f32c, :y_transformed_f32c], [:grid_x, :grid_y, :is_regular_grid]) do x, y
         is_regularly_spaced_grid = is_regularly_spaced(x) && is_regularly_spaced(y)
         return (collect(x), collect(y), is_regularly_spaced_grid)
     end
+    return
 end
 
 function image_grid!(::typeof(image), attr)
@@ -26,6 +27,7 @@ function image_grid!(::typeof(image), attr)
         ys = range(y0, y1, length = ny_cells + 1)
         return (xs, ys, true)
     end
+    return
 end
 
 
@@ -51,7 +53,8 @@ end
 # layout (:right, :down) in orientation terms. It has no uv_transform support.
 function cairo_image_orientation!(::typeof(heatmap), attr)
     add_constant!(attr, :cairo_orientation, (:right, :down))
-    return add_constant!(attr, :cairo_pattern_matrix, nothing)
+    add_constant!(attr, :cairo_pattern_matrix, nothing)
+    return
 end
 
 function cairo_image_orientation!(::typeof(image), attr)
@@ -118,7 +121,9 @@ function draw_image(ctx, not_svg, attr)
     orientation = attr.cairo_orientation
     pattern_matrix = attr.cairo_pattern_matrix
 
+    # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
+    # transform_func is already included in xs, ys, so we can see its effect in is_regular_grid
     is_identity_transform = Makie.is_translation_scale_matrix(model)
     is_regular_grid = attr.is_regular_grid
     is_xy_aligned = Makie.is_translation_scale_matrix(projectionview)
@@ -157,6 +162,8 @@ function draw_image(ctx, not_svg, attr)
         Cairo.set_source_surface(ctx, s, 0, 0)
         p = Cairo.get_source(ctx)
         if not_svg
+            # this is needed to avoid blurry edges in png renderings, however since Cairo 1.18 this
+            # setting seems to create broken SVGs
             Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
         end
         isnothing(pattern_matrix) || pattern_set_matrix(p, pattern_matrix)
@@ -164,11 +171,13 @@ function draw_image(ctx, not_svg, attr)
         Cairo.fill(ctx)
         Cairo.restore(ctx)
         isnothing(pattern_matrix) || pattern_set_matrix(p, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
-        Cairo.pattern_set_extend(p, Cairo.EXTEND_NONE)
-        Cairo.pattern_set_filter(p, Cairo.FILTER_FAST)
+        Cairo.pattern_set_extend(p, Cairo.EXTEND_NONE)  # Reset pattern extend mode
+        Cairo.pattern_set_filter(p, Cairo.FILTER_FAST)  # Reset to default filter
     else
         xys = let
             transformed = [Point2f(x, y) for x in xs, y in ys]
+            # This should transform to the coordinate system `transformed` is in,
+            # which is pre model_f32c application, not pre model application
             planes = if Makie.is_data_space(space)
                 to_model_space(model, clip_planes)
             else
@@ -206,7 +215,7 @@ function is_regularly_spaced(arr)
 end
 
 function _draw_grid_rects(ctx, xys, nx_cells, ny_cells, colors, indexer)
-    return @inbounds for cx in 1:nx_cells, cy in 1:ny_cells
+    @inbounds for cx in 1:nx_cells, cy in 1:ny_cells
         p1 = xys[cx, cy]
         p2 = xys[cx + 1, cy]
         p3 = xys[cx + 1, cy + 1]
@@ -214,6 +223,17 @@ function _draw_grid_rects(ctx, xys, nx_cells, ny_cells, colors, indexer)
         if isnan(p1) || isnan(p2) || isnan(p3) || isnan(p4)
             continue
         end
+
+        # Rectangles and polygons that are directly adjacent usually show
+        # white lines between them due to anti aliasing. To avoid this we
+        # increase their size slightly.
+        # For 3D compatibility (and rotation, inversion/mirror) we pad cells
+        # using directional vectors, not along x/y directions.
+        # To avoid shifting cells we only pad them on the +i, +j side, which
+        # gets covered by later cells.
+        # To avoid enlarging the final column and row of the heatmap, the
+        # last set of cells is not padded. (i != ni), (j != nj)
+
         color = colors[indexer(cx, cy)]
         if alpha(color) == 1
             v1 = normalize(p2 - p1)
@@ -222,6 +242,7 @@ function _draw_grid_rects(ctx, xys, nx_cells, ny_cells, colors, indexer)
             p3 += Float32(cx != nx_cells) * v1 + Float32(cy != ny_cells) * v2
             p4 += Float32(cy != ny_cells) * v2
         end
+
         Cairo.set_line_width(ctx, 0)
         Cairo.move_to(ctx, p1[1], p1[2])
         Cairo.line_to(ctx, p2[1], p2[2])
@@ -231,4 +252,5 @@ function _draw_grid_rects(ctx, xys, nx_cells, ny_cells, colors, indexer)
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
         Cairo.fill(ctx)
     end
+    return
 end

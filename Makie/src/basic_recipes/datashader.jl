@@ -769,12 +769,12 @@ end
 
 function convert_arguments(::Type{<:Heatmap}, image::Resampler)
     x, y, _ = convert_arguments(Heatmap, image.data)
-    return (x, y, image)
+    return x, y, image
 end
 
 function convert_arguments(::Type{<:Image}, image::Resampler; orientation = nothing)
     nx, ny = image_rect_cells(orientation, size(image.data)...)
-    return (EndPoints{Float32}(0.5, nx + 0.5), EndPoints{Float32}(0.5, ny + 0.5), image)
+    return EndPoints{Float32}(0.5, nx + 0.5), EndPoints{Float32}(0.5, ny + 0.5), image
 end
 
 function convert_arguments(::Type{<:Image}, x, y, image::Resampler; orientation = nothing)

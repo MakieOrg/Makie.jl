@@ -533,7 +533,7 @@ end
             to_mat = Makie.image_rect_uv_to_matrix_coords(orient, 3, 5)
             to_uv = Makie.image_matrix_coords_to_rect_uv(orient, 3, 5)
             for u in (0.0, 0.3, 1.0), v in (0.0, 0.7, 1.0)
-                @test to_uv(to_mat(u, v)...) ≈ Vec2d(u, v)
+                @test to_uv(to_mat(u, v)...) ≈ Vec2f(u, v)
             end
 
             cell_index = Makie.image_cell_to_matrix_index(orient, 3, 5)

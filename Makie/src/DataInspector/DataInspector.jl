@@ -437,7 +437,7 @@ function get_tooltip_position(element::PlotElement{<:Image})
     p00, _, p11, _ = plot.positions_transformed[]
     mat_size = size(plot.image[])
     m = continuous_matrix_coords(accessor(element))
-    uv = Makie.image_matrix_coords_to_rect_uv(plot.orientation[], mat_size...)(m...)
+    uv = image_matrix_coords_to_rect_uv(plot.orientation[], mat_size...)(m...)
     x = p00[1] + (p11[1] - p00[1]) * uv[1]
     y = p00[2] + (p11[2] - p00[2]) * uv[2]
     return Point2f(x, y)
@@ -737,6 +737,7 @@ function update_indicator!(di::DataInspector, element::PlotElement{<:Union{Image
         update!(indicator; arg1 = p3d, color = color, visible = true)
         return indicator
     else
+        # TODO: Should this be a function?
         i, j = Tuple(accessor(element).index)
 
         plot = get_plot(element)
@@ -748,8 +749,8 @@ function update_indicator!(di::DataInspector, element::PlotElement{<:Union{Image
         bbox = if plot isa Image
             orientation = plot.orientation[]
             mat_size = size(plot.image[])
-            cx, cy = Makie.image_matrix_to_cell_index(orientation, mat_size...)(i, j)
-            nx, ny = Makie.image_rect_cells(orientation, mat_size...)
+            cx, cy = image_matrix_to_cell_index(orientation, mat_size...)(i, j)
+            nx, ny = image_rect_cells(orientation, mat_size...)
             xs, ys = plot.x_transformed[], plot.y_transformed[]
             x0, x1 = extrema(xs); y0, y1 = extrema(ys)
             nw, nh = (x1 - x0) / nx, (y1 - y0) / ny

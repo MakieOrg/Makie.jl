@@ -20,8 +20,6 @@ In `heatmap` you usually set where the cells centers are, though you can also se
 With the right settings both can be made to look the same:
 
 ```@figure
-using CairoMakie
-
 data = [1 2; 3 4; 5 6]
 
 f = Figure()
@@ -48,8 +46,6 @@ In this case it is not useful to work with `Figure` and `Axis` as they both use 
 Instead, we use a `Scene` directly. An empty scene of a specific size can be created with
 
 ```@figure
-using CairoMakie
-
 scene = Scene(size = (200, 100), camera = campixel!)
 ```
 
@@ -61,8 +57,6 @@ Our data is indexed as `data[x, y]`, so we pass `orientation = (:right, :down)` 
 We also pass the scene's pixel boundaries `0..200, 0..100` as the edges of the image, since without them `image` would center the pixels on integer coordinates and be shifted by half a pixel:
 
 ```@figure
-using CairoMakie
-
 data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in 1:100]
 
 scene = Scene(size = (200, 100), camera = campixel!)
@@ -81,8 +75,6 @@ the 201 we need.
 To fix this we will need to explicitly include the size of each cell as the step of range.
 
 ```@figure
-using CairoMakie
-
 data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in 1:100]
 scene = Scene(size = (3 * 200, 2 * 100), camera = campixel!)
 image!(scene, 0..600, 0..200, data, colormap = :viridis, interpolate = false, orientation = (:right, :down))
@@ -106,8 +98,6 @@ With that the size of coordinates of the scene always range from -1 to 1.
 That may simplify plotting a bit, as you don't have to adjust the image limits when adjusting the scene limits:
 
 ```@figure
-using CairoMakie
-
 data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in 1:100]
 scene = Scene(size = (3 * 200, 2 * 100))
 image!(scene, -1..1, -1..1, data, colormap = :viridis, interpolate = false, orientation = (:right, :down))
@@ -123,8 +113,6 @@ That means it will interpolate and/or blur pixels with significant brightness di
 This is something we don't want here, so we should turn it off:
 
 ```@figure backend=GLMakie
-using GLMakie
-
 data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in 1:100]
 scene = Scene(size = (3 * 200, 2 * 100))
 image!(scene, -1..1, -1..1, data, colormap = :viridis, interpolate = false, fxaa = false, orientation = (:right, :down))
@@ -145,8 +133,6 @@ Here we will need to set the `width` and `height` instead of `size` to let layou
 `resize_to_layout!()` is also quite useful to fit the Figure to the size of the scenes:
 
 ```@figure
-using CairoMakie
-
 # length(50:50) = 101
 data = [x*y/1000 for x in -50:50, y in -50:50]
 
@@ -169,8 +155,6 @@ To control the white space the figure generates, you can adjust `Figure(figure_p
 If you want to plot to an `Axis` you can effectively just replace `LScene` in the example above:
 
 ```@figure
-using CairoMakie
-
 # length(50:50) = 101
 data = [x*y/1000 for x in -50:50, y in -50:50]
 

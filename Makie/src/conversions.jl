@@ -550,7 +550,7 @@ end
 """
     Makie.image_matrix_coords_to_rect_uv(orientation, nrows, ncols)
 
-Returns `f(m1, m2) -> Vec2d(u, v)` mapping continuous matrix coordinates in
+Returns `f(m1, m2) -> Vec2f(u, v)` mapping continuous matrix coordinates in
 cell units back to the rect's unit square. Inverse of
 [`image_rect_uv_to_matrix_coords`](@ref).
 """
@@ -562,7 +562,7 @@ function image_matrix_coords_to_rect_uv(orientation, nrows::Integer, ncols::Inte
         a1, a2 = swap ? (m2, m1) : (m1, m2)
         u = flip_x ? (nx - a1) / nx : a1 / nx
         v = flip_y ? (ny - a2) / ny : a2 / ny
-        return Vec2d(u, v)
+        return Vec2f(u, v)
     end
 end
 
