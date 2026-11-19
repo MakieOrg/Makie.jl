@@ -23156,7 +23156,10 @@ class Plot {
         this.uuid = data.uuid;
         this.parent = scene;
         this.update_observable = data.updater;
-        this.update_callback = (data)=>this.update(data);
+        this.update_callback = (data)=>this.update(data.map(([key, value])=>[
+                    key,
+                    expand_compressed(value)
+                ]));
         this.update_observable.on(this.update_callback);
     }
     init_mesh() {
@@ -23221,8 +23224,7 @@ class Plot {
         }
         update_uniform(uniform, new_data);
     }
-    update_buffer(name, input_data) {
-        const new_data = expand_compressed(input_data);
+    update_buffer(name, new_data) {
         const { geometry  } = this.mesh;
         let buffer = geometry.attributes[name];
         if (!buffer) {
@@ -24479,10 +24481,7 @@ class Lines extends Plot {
         this.init_mesh();
     }
     update(data_key_value_array) {
-        const dict = Object.fromEntries(data_key_value_array.map(([k, v])=>[
-                k,
-                expand_compressed(v)
-            ]));
+        const dict = Object.fromEntries(data_key_value_array);
         const line_attr = Object.entries(add_line_attributes(this, dict));
         super.update(line_attr);
     }
@@ -24660,7 +24659,6 @@ function approx_equal(a, b) {
     return Math.abs(a - b) < Number.EPSILON;
 }
 const mod1 = {
-    expand_compressed: expand_compressed,
     Plot: Plot,
     Lines: Lines,
     Mesh: Mesh,
