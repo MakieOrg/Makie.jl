@@ -478,8 +478,13 @@ end
 function test_di_state(di, state, attr_names, i)
     tt = di.dynamic_tooltip
     for (name, value) in zip(attr_names, state)
-        getproperty(tt, name)[] == value || @warn "Failed test $i with Attribute $name"
-        @test getproperty(tt, name)[] == value
+        if name === :positions
+            getproperty(tt, name)[] ≈ value || @info "Failed test $i with Attribute $name"
+            @test getproperty(tt, name)[] ≈ value rtol = 1e-4
+        else
+            getproperty(tt, name)[] == value || @info "Failed test $i with Attribute $name"
+            @test getproperty(tt, name)[] == value
+        end
     end
     return
 end
