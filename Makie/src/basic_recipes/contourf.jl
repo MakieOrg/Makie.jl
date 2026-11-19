@@ -91,7 +91,7 @@ function calculate_contourf_polys!(
     levelcenters = (highs .+ lows) ./ 2
 
     for (i, (center, group)) in enumerate(zip(levelcenters, isos))
-        points = Point2f.(group.x, group.y)
+        points = Point2d.(group.x, group.y)
         polygroups = _group_polys(points, group.id)
         for polygroup in polygroups
             outline = polygroup[1]
@@ -130,13 +130,13 @@ function calculate_contourf_polys!(
     # Now, we construct a 2-D linear interpolation from the rectilinear grid space
     # to the curvilinear grid space (FastInterpolations; matches Interpolations to ulp).
     point_interp = Makie.FastInterpolations.interp(
-        axes(zs), Point2f.(xs, ys); method = Makie.FastInterpolations.LinearInterp()
+        axes(zs), Point2d.(xs, ys); method = Makie.FastInterpolations.LinearInterp()
     )
 
     levelcenters = (highs .+ lows) ./ 2
 
     for (i, (center, group)) in enumerate(zip(levelcenters, isos))
-        points = Point2f.(group.x, group.y)
+        points = Point2d.(group.x, group.y)
         polygroups = _group_polys(points, group.id)
         for rectilinear_polygroup in polygroups
             # NOTE: This is the only major change between the two versions
@@ -252,7 +252,7 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
         is_extended_low = !isnothing(_low)
         is_extended_high = !isnothing(_high)
         if isnothing(cached)
-            polys = Polygon{2, Float32}[]
+            polys = Polygon{2, Float64}[]
             colors = Float64[]
         else
             polys, colors = empty!.(values(cached))
@@ -275,82 +275,81 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
     )
 end
 
-# `inner` ⊆ `outer` iff any vertex or edge-midpoint is strictly inside (midpoints catch vertices shared on `outer`'s boundary, #5651)
+# As rings don't cross, the first vertex or edge midpoint not on `outer`'s boundary decides whether `inner` ⊆ `outer`
+# (midpoints catch rings whose vertices all lie on `outer`'s boundary, #5651)
 function _is_ring_contained(inner, outer)
-    any(p -> PolygonOps.inpolygon(p, outer) == 1, inner) && return true
+    for p in inner
+        location = PolygonOps.inpolygon(p, outer)
+        location == -1 || return location == 1
+    end
     @inbounds for i in firstindex(inner):(lastindex(inner) - 1)
-        mid = (inner[i] .+ inner[i + 1]) ./ 2
-        PolygonOps.inpolygon(mid, outer) == 1 && return true
+        location = PolygonOps.inpolygon((inner[i] .+ inner[i + 1]) ./ 2, outer)
+        location == -1 || return location == 1
     end
     return false
 end
 
+# axis-aligned bounding box of a ring as `(xmin, ymin, xmax, ymax)`
+function _ring_bbox(ring)
+    xmin, xmax = extrema(p -> p[1], ring)
+    ymin, ymax = extrema(p -> p[2], ring)
+    return (xmin, ymin, xmax, ymax)
+end
+
+# whether bounding box `inner` lies within bounding box `outer` (boundaries may touch)
+_bbox_contains(outer, inner) = outer[1] <= inner[1] && outer[2] <= inner[2] && inner[3] <= outer[3] && inner[4] <= outer[4]
+
 """
     _group_polys(points, ids)
 
-Given a vector of polygon vertices, and one vector of group indices, which
-are assumed to be returned from the isoband algorithm, return
-a vector of groups, where each group has one outer polygon and zero or more
-inner polygons which are holes in the outer polygon. It is possible that one
-group has multiple outer polygons with multiple holes each.
+Group the closed rings of one isoband into polygons. `points` holds the vertices of all rings,
+`ids` the ring each vertex belongs to. Returns one vector of rings per polygon: its outer boundary
+first, then its holes.
+
+A ring enclosed by an even number of other rings (0, 2, ...) is an outer boundary, one enclosed by
+an odd number is a hole. A hole belongs to the polygon whose outer boundary directly encloses it,
+which is the enclosing ring with one less enclosing ring itself.
 """
 function _group_polys(points, ids)
-    polys = [points[ids .== i] for i in unique(ids)]
+    rings = _closed_rings_by_id(points, ids)
+    enclosing = _indices_of_enclosing_rings(rings)
+    nesting_depth = length.(enclosing)
+    is_outer_boundary(i) = iseven(nesting_depth[i])
 
-    polys_lastdouble = [push!(p, first(p)) for p in polys]
+    outer_boundaries = filter(is_outer_boundary, eachindex(rings))
+    polygon_of_outer_boundary = Dict(outer => k for (k, outer) in enumerate(outer_boundaries))
+    polygons = [[rings[outer]] for outer in outer_boundaries]
 
-    # whether poly i is contained in j (marching squares yields no intersecting polys)
-    containment_matrix = [
-        p1 !== p2 && _is_ring_contained(p1, p2)
-            for p1 in polys_lastdouble, p2 in polys_lastdouble
-    ]
-
-    unclassified_polyindices = collect(1:size(containment_matrix, 1))
-    # @show unclassified_polyindices
-
-    # each group has first an outer polygon, and then its holes
-    # TODO: don't specifically type this 2f0?
-    groups = Vector{Vector{Point2f}}[]
-
-    # a dict that maps index in `polys` to index in `groups` for outer polys
-    outerindex_groupdict = Dict{Int, Int}()
-
-    # all polys have to be classified
-    while !isempty(unclassified_polyindices)
-        to_keep = ones(Bool, length(unclassified_polyindices))
-
-        # go over unclassifieds and find outer polygons in the remaining containment matrix
-        for (ii, i) in enumerate(unclassified_polyindices)
-            # an outer polygon is not inside any other polygon of the matrix
-            if sum(containment_matrix[ii, :]) == 0
-                # an outer polygon
-                # println(i, " is an outer polygon")
-                push!(groups, [polys_lastdouble[i]])
-                outerindex_groupdict[i] = length(groups)
-                # delete this poly from further rounds
-                to_keep[ii] = false
-            end
-        end
-
-        # go over unclassifieds and find hole polygons
-        for (ii, i) in enumerate(unclassified_polyindices)
-            # the hole polygons can only be in one polygon from the current group
-            # if they are in more than one, they are "inner outer" or inner hole polys
-            # and will be handled in one of the following passes
-            if sum(containment_matrix[ii, :]) == 1
-                outerpolyindex_of_unclassified = findfirst(containment_matrix[ii, :])
-                outerpolyindex = unclassified_polyindices[outerpolyindex_of_unclassified]
-                # a hole
-                # println(i, " is an inner polygon of ", outerpolyindex)
-                groupindex = outerindex_groupdict[outerpolyindex]
-                push!(groups[groupindex], polys_lastdouble[i])
-                # delete this poly from further rounds
-                to_keep[ii] = false
-            end
-        end
-
-        unclassified_polyindices = unclassified_polyindices[to_keep]
-        containment_matrix = containment_matrix[to_keep, to_keep]
+    for hole in eachindex(rings)
+        is_outer_boundary(hole) && continue
+        outer = _directly_enclosing_ring(enclosing[hole], nesting_depth)
+        push!(polygons[polygon_of_outer_boundary[outer]], rings[hole])
     end
-    return groups
+    return polygons
+end
+
+function _closed_rings_by_id(points, ids)
+    unique_ids = unique(ids)
+    ring_index = Dict(id => k for (k, id) in enumerate(unique_ids))
+    rings = [eltype(points)[] for _ in unique_ids]
+    for (p, id) in zip(points, ids)
+        push!(rings[ring_index[id]], p)
+    end
+    return [push!(ring, first(ring)) for ring in rings]
+end
+
+# As marching squares rings don't cross, ring i can only be inside ring j if its bounding box is inside that of ring j
+function _indices_of_enclosing_rings(rings)
+    bboxes = map(_ring_bbox, rings)
+    return [
+        [j for j in eachindex(rings) if i != j && _bbox_contains(bboxes[j], bboxes[i]) && _is_ring_contained(rings[i], rings[j])]
+            for i in eachindex(rings)
+    ]
+end
+
+function _directly_enclosing_ring(enclosing, nesting_depth)
+    innermost_depth = length(enclosing) - 1
+    candidates = filter(j -> nesting_depth[j] == innermost_depth, enclosing)
+    length(candidates) == 1 || error("Could not find the outer ring of a contour hole, the contour rings seem to intersect.")
+    return only(candidates)
 end
