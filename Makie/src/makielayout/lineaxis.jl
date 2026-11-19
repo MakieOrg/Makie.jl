@@ -44,7 +44,7 @@ function create_linepoints(
     # The spine ends exactly at the axis corners (or the outer ticks when trimmed).
     # Corner coverage is handled by the :square linecap on the spine, which scales
     # correctly with the stroke width if the exported figure is restyled.
-    if trimspine == (false, false) || length(tickpositions) < 2
+    return if trimspine == (false, false) || length(tickpositions) < 2
         if horizontal
             y = position
             return [Point2f(extents[1], y), Point2f(extents[2], y)]
