@@ -583,16 +583,22 @@ function xy_to_rect(x, y)
 end
 
 """
-    Resampler(matrix; max_resolution=automatic, method=FastInterpolations.LinearInterp(), update_while_button_pressed=false)
+    Resampler(matrix; max_resolution=automatic, method=FastInterpolations.LinearInterp(), update_while_button_pressed=false, lowres_background=true)
 
 Creates a resampling type which can be used with `heatmap`, to display large images/heatmaps.
-Passed can be any array that supports `array(linrange, linrange)` (the resampling interface).
-Otherwise it is wrapped in an interpolation object built from `method`, which may be a
-`FastInterpolations` method (the default) or an `Interpolations` degree.
+Passed can be any array that supports `array(x_inds, y_inds)` (the resampling interface).
+With linear axes, it is called as `array(::LinRange, ::LinRange)`.
+When plotting on scaled axes (e.g. `xscale = log10`), it is instead called with non-uniformly spaced
+sample positions of the form `array(::AbstractVector, ::AbstractVector)`.
+If the array doesn't support `array(::LinRange, ::LinRange)`, it is wrapped in an interpolation object built
+from `method`, which may be a `FastInterpolations` method (the default) or an `Interpolations` degree.
 * `max_resolution` can be set to `automatic` to use the full resolution of the screen, or a tuple/integer of the desired resolution.
 * `method` is the interpolation method used, defaulting to `FastInterpolations.LinearInterp()`.
 * `update_while_button_pressed` will update the heatmap while a mouse button is pressed, useful for zooming/panning. Set it to false for e.g. WGLMakie to avoid updating while dragging.
 * `lowres_background` will always show a low resolution background while the high resolution image is being calculated.
+When plotting, `x` and `y` are typically omitted. To control the absolute coordinates, they can be given as
+2-tuples, intervals or `EndPoints`, e.g. `heatmap((xmin, xmax), (ymin, ymax), Resampler(data))`.
+As for `heatmap`, they refer to the centers of the first and last cells.
 """
 struct Resampler{T <: AbstractMatrix{<:Union{Real, Colorant}}}
     data::T
@@ -710,7 +716,7 @@ extract_colormap_recursive(plot::ImageShader) = extract_colormap_recursive(plot.
 extract_colormap_recursive(plot::HeatmapShader) = extract_colormap_recursive(plot.plots[1])
 
 
-function resample_image(x, y, image, max_resolution, limits)
+function resample_image(x, y, image, max_resolution, limits, transform_func)
     # extent of the image in data coordinates (same as limits)
     xmin, xmax = x
     ymin, ymax = y
@@ -739,10 +745,35 @@ function resample_image(x, y, image, max_resolution, limits)
     if isempty(x_index_range) || isempty(y_index_range)
         return nothing
     end
-    interpolated = image(x_index_range, y_index_range)
+    xtf, ytf = transform_func
+    # Without axis scaling, image(...) is called with LinRange{Float32} indices as before.
+    # With at least one scaled axis, both axes use Vector{Float32} indices. Keeping Float32
+    # (rather than Float64) generally makes the interpolator return the same element type in
+    # both branches. Callables that only support (::LinRange, ::LinRange), like Pyramid, error
+    # on scaled axes.
+    if xtf === identity && ytf === identity
+        interpolated = image(x_index_range::LinRange{Float32}, y_index_range::LinRange{Float32})
+    else
+        xinds = _scaled_indices(xtf, x_index_range, ranges[1], data_min[1], data_width[1], imgsize[1])
+        yinds = _scaled_indices(ytf, y_index_range, ranges[2], data_min[2], data_width[2], imgsize[2])
+        interpolated = image(xinds::Vector{Float32}, yinds::Vector{Float32})
+    end
     return EndPoints{Float32}(ranges[1]), EndPoints{Float32}(ranges[2]), interpolated
 end
 
+function _scaled_indices(tf, index_range, nrange, data_min, data_width, si)::Vector{Float32}
+    tf === identity && return index_range
+    # `image` places its pixels uniformly in *transformed* space, so we pick data
+    # coordinates that are evenly spaced after applying the axis transform and only
+    # then convert them to (fractional) indices.
+    # Float64 to avoid quantizing the sample positions for data far from 0 (limits are Float32).
+    # Converting back to Float32 is safe once we are in (small) index space.
+    tlo, thi = apply_transform(tf, Float64(nrange[1])), apply_transform(tf, Float64(nrange[2]))
+    data_coords = apply_transform(inverse_transform(tf), LinRange(tlo, thi, length(index_range)))
+    indices = ((data_coords .- data_min) ./ data_width) .* (si - 1) .+ 1
+    # prevent oob due to rounding
+    return clamp.(indices, 1, si)
+end
 
 function convert_arguments(::Type{<:Union{Image, Heatmap}}, image::Resampler)
     x, y, _ = convert_arguments(Heatmap, image.data)
@@ -808,8 +839,12 @@ function Makie.plot!(p::Union{HeatmapShader, ImageShader})
 
 
     T = eltype(p.image[].data) <: Colors.Colorant ? RGB{Float32} : Float32
-    map!(p.attributes, [:image, :x, :y, :max_resolution, :data_limits, :colorrange], [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]) do image, x, y, max_resolution, image_area, crange
-        x, y, img = resample_image(x, y, image.data, max_resolution, image_area)
+    map!(
+        p.attributes,
+        [:image, :x, :y, :max_resolution, :data_limits, :colorrange, :transform_func],
+        [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]
+    ) do image, x, y, max_resolution, image_area, crange, transform_func
+        x, y, img = resample_image(x, y, image.data, max_resolution, image_area, transform_func)
         cr = calculate_colorrange(img, crange)
         if image.lowres_background
             val = cr isa Vec2 ? mean(cr) : 0.0f0 # TODO color mean?
@@ -822,11 +857,11 @@ function Makie.plot!(p::Union{HeatmapShader, ImageShader})
 
     ComputePipeline.map!(
         p.attributes,
-        [:image, :x, :y, :max_resolution, :slow_limits],
+        [:image, :x, :y, :max_resolution, :slow_limits, :transform_func],
         [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible],
-        init = (p.x[], p.x[], fill(zero(T), 2, 2), false)
-    ) do image, x, y, max_resolution, limits
-        xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
+        init = (p.x[], p.y[], fill(zero(T), 2, 2), false)
+    ) do image, x, y, max_resolution, limits, transform_func
+        xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits, transform_func)
         isnothing(xe_ye_oimg) && return nothing
         return (xe_ye_oimg..., true)
     end
