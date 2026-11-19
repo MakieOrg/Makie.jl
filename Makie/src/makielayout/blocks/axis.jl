@@ -639,7 +639,7 @@ function initialize_limit_computations!(ax)
 
     map!(
         adjustlimits, attr,
-        [:targetlimits, :autolimitaspect, :viewport, :xautolimitmargin, :yautolimitmargin],
+        [:targetlimits, :autolimitaspect, :viewport, :xautolimitmargin, :yautolimitmargin, :xscale, :yscale],
         :finallimits
     )
 
