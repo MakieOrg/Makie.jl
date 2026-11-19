@@ -90,7 +90,11 @@ function argument_dims(::Type{<:CrossBar}, x, y, ymin, ymax; orientation)
     return ifelse(orientation === :vertical, (1, 2, 2, 2), (2, 1, 1, 1))
 end
 
-function Makie.plot!(plot::CrossBar)
+function convert_arguments(::Type{<:CrossBar}, a, b, c, d)
+    return map(x -> x isa Union{AbstractArray, Categorical} ? x : [x], (a, b, c, d))
+end
+
+function plot!(plot::CrossBar)
     map!(
         plot, [
             :x, :y, :ymin, :ymax, :width, :dodge, :n_dodge, :gap, :dodge_gap,
@@ -111,7 +115,7 @@ function Makie.plot!(plot::CrossBar)
         l, m, r = x̂ .- hw, x̂, x̂ .+ hw
 
         if show_notch && nmin !== automatic && nmax !== automatic
-            if any(nmin < ymin || nmax > ymax)
+            if any(nmin .< ymin .|| nmax .> ymax)
                 @warn("Crossbar's notch went outside hinges. Set notch to false.")
             end
             # when notchmin = ymin || notchmax == ymax, fill disappears from

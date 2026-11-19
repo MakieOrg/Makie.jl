@@ -1062,17 +1062,39 @@ using ComputePipeline: ComputeGraphView
     @testset "set_type!" begin
         graph = ComputeGraph()
         add_input!(graph, :a, :a, :a, 1)
-        ComputePipeline.set_type!(graph.a.a.a, Any)
         add_input!(graph, (:a, :a, :b), 2)
-        ComputePipeline.set_type!(graph.a.a, Integer)
         add_input!(graph.a, :b, 3)
         add_input!(graph.a, :c, :a, 4)
-        ComputePipeline.set_type!(graph.a, Real)
+
+        @test !isdefined(graph.a.a.a, :value)
+        @test !isdefined(graph.a.a.b, :value)
+        @test !isdefined(graph.a.b, :value)
+        @test !isdefined(graph.a.c.a, :value)
+
+        ComputePipeline.set_type!(graph.a.a.a, Any)
+        ComputePipeline.set_type!(graph.a.a.b, Integer)
+        ComputePipeline.set_type!(graph.a.b, Real)
+        ComputePipeline.set_type!(graph.a.c.a, Real)
 
         @test graph.a.a.a.value isa Ref{Any}
         @test graph.a.a.b.value isa Ref{Integer}
         @test graph.a.b.value isa Ref{Real}
         @test graph.a.c.a.value isa Ref{Real}
+
+        @test_throws ErrorException ComputePipeline.set_type!(graph.a, Any)
+        ComputePipeline.set_type!(graph.a.a.a, Any) # skip, no error
+
+        # replace
+        @test_throws ErrorException ComputePipeline.set_type!(graph.a.a.a, Real)
+        ComputePipeline.set_type!(graph.a.a.a, Real, true)
+        @test graph.a.a.a.value isa Ref{Real}
+
+        # replace with value
+        graph.a.a.a[]
+        @test_throws ErrorException ComputePipeline.set_type!(graph.a.a.a, Int32)
+        ComputePipeline.set_type!(graph.a.a.a, Int32, true)
+        @test graph.a.a.a.value isa Ref{Int32}
+        @test graph.a.a.a.value[] == 1
     end
 end
 

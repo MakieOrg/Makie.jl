@@ -75,7 +75,7 @@ using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
 
-using Pkg.Artifacts # load early to cut down REPLExt init time
+using Artifacts
 using LaTeXStrings
 using MathTeXEngine
 using Random
@@ -199,6 +199,7 @@ include("RenderGraph/defaults.jl")
 include("RenderGraph/gui.jl")
 
 include("dim-converts/dim-converts.jl")
+include("dim-converts/color_dim_converts.jl")
 include("dim-converts/unitful-integration.jl")
 include("dim-converts/dynamic-quantities-integration.jl")
 include("dim-converts/categorical-integration.jl")
