@@ -141,7 +141,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     initialize_limit_computations!(ax)
 
     add_input!(ax, :computedbbox, ax.layoutobservables.computedbbox)
-    map!(calculate_scenearea, ax, [:computedbbox, :finallimits, :aspect], :scenearea)
+    map!(calculate_scenearea, ax, [:computedbbox, :finallimits, :aspect, :xscale, :yscale], :scenearea)
     connect!(scene.viewport, ax.scenearea)
 
     if !isnothing(palette)
@@ -248,40 +248,14 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     ax.yaxis = yaxis
 
-    map!(
-        ax,
-        [:viewport, :spinewidth, :xaxisposition],
-        :xoppositelinepoints
-    ) do r, sw, xaxpos
-        if xaxpos === :top
-            y = bottom(r)
-            p1 = Point2f(left(r) - 0.5sw, y)
-            p2 = Point2f(right(r) + 0.5sw, y)
-            return [p1, p2]
-        else
-            y = top(r)
-            p1 = Point2f(left(r) - 0.5sw, y)
-            p2 = Point2f(right(r) + 0.5sw, y)
-            return [p1, p2]
-        end
+    map!(ax, [:viewport, :xaxisposition], :xoppositelinepoints) do r, xaxpos
+        y = xaxpos === :top ? bottom(r) : top(r)
+        return [Point2f(left(r), y), Point2f(right(r), y)]
     end
 
-    map!(
-        ax,
-        [:viewport, :spinewidth, :yaxisposition],
-        :yoppositelinepoints
-    ) do r, sw, yaxpos
-        if yaxpos === :right
-            x = left(r)
-            p1 = Point2f(x, bottom(r) - 0.5sw)
-            p2 = Point2f(x, top(r) + 0.5sw)
-            return [p1, p2]
-        else
-            x = right(r)
-            p1 = Point2f(x, bottom(r) - 0.5sw)
-            p2 = Point2f(x, top(r) + 0.5sw)
-            return [p1, p2]
-        end
+    map!(ax, [:viewport, :yaxisposition], :yoppositelinepoints) do r, yaxpos
+        x = yaxpos === :right ? left(r) : right(r)
+        return [Point2f(x, bottom(r)), Point2f(x, top(r))]
     end
 
     map!(
@@ -335,8 +309,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     xoppositeline = linesegments!(
         blockscene, ax.xoppositelinepoints, linewidth = ax.spinewidth,
         visible = ax.xoppositespinevisible, color = ax.xoppositespinecolor,
-        inspectable = false,
-        linestyle = nothing
+        inspectable = false, linestyle = nothing, linecap = :square
     )
     elements[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
@@ -344,8 +317,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     yoppositeline = linesegments!(
         blockscene, ax.yoppositelinepoints, linewidth = ax.spinewidth,
         visible = ax.yoppositespinevisible, color = ax.yoppositespinecolor,
-        inspectable = false,
-        linestyle = nothing
+        inspectable = false, linestyle = nothing, linecap = :square
     )
     elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
@@ -766,7 +738,7 @@ function calculate_local_limits(ax, (user_xlims, user_ylims), tf, itf, xmargins,
 
 end
 
-function adjustlimits(limits, autolimitaspect, viewport, xautolimitmargin, yautolimitmargin)
+function adjustlimits(limits, autolimitaspect, viewport, xautolimitmargin, yautolimitmargin, xscale, yscale)
     # in the simplest case, just update the final limits with the target limits
     if isnothing(autolimitaspect) || width(viewport) == 0 || height(viewport) == 0
         return limits
@@ -775,9 +747,11 @@ function adjustlimits(limits, autolimitaspect, viewport, xautolimitmargin, yauto
     xlims = (left(limits), right(limits))
     ylims = (bottom(limits), top(limits))
 
+    # issue #5909: aspect ratios and expansions are computed in scaled (e.g. log10) coordinates
     viewport_aspect = width(viewport) / height(viewport)
-    data_aspect = (xlims[2] - xlims[1]) / (ylims[2] - ylims[1])
+    data_aspect = scaled_width(xscale, xlims...) / scaled_width(yscale, ylims...)
     aspect_ratio = data_aspect / viewport_aspect
+
 
     correction_factor = autolimitaspect / aspect_ratio
 
@@ -785,12 +759,12 @@ function adjustlimits(limits, autolimitaspect, viewport, xautolimitmargin, yauto
         # need to go wider
         marginsum = sum(xautolimitmargin)
         ratios = (marginsum == 0) ? (0.5, 0.5) : (xautolimitmargin ./ marginsum)
-        xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)..., identity) # don't use scale here?
+        xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)..., xscale)
     elseif correction_factor < 1
         # need to go taller
         marginsum = sum(yautolimitmargin)
         ratios = (marginsum == 0) ? (0.5, 0.5) : (yautolimitmargin ./ marginsum)
-        ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., identity) # don't use scale here?
+        ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., yscale)
     end
 
     return BBox(xlims[1], xlims[2], ylims[1], ylims[2])
@@ -933,18 +907,18 @@ function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axispo
         opp = axisposition === :left ? right(a) : left(a)
         sign = axisposition === :left ? 1 : -1
     end
-    d = ticksize * sign
+    # same geometry as the primary ticks, see `tick_extents`; outward is `+sign` here
+    outer, inner = tick_extents(tickalign, ticksize, spinewidth)
     points = Vector{Point2f}(undef, 2 * length(tickpositions))
-    spineoffset = sign * (0.5 * spinewidth)
     if side === :x
         for (i, (x, _)) in enumerate(tickpositions)
-            points[2i - 1] = Point2f(x, opp - d * tickalign + spineoffset)
-            points[2i] = Point2f(x, opp + d - d * tickalign + spineoffset)
+            points[2i - 1] = Point2f(x, opp - sign * inner)
+            points[2i] = Point2f(x, opp + sign * outer)
         end
     else
         for (i, (_, y)) in enumerate(tickpositions)
-            points[2i - 1] = Point2f(opp - d * tickalign + spineoffset, y)
-            points[2i] = Point2f(opp + d - d * tickalign + spineoffset, y)
+            points[2i - 1] = Point2f(opp - sign * inner, y)
+            points[2i] = Point2f(opp + sign * outer, y)
         end
     end
     return points

@@ -100,6 +100,7 @@ end
     end
 
     include("scene_updates.jl")
+    include("uniform_updates.jl")
     include("glyph_sync.jl")
     include("resync.jl")
 
