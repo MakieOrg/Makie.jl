@@ -8,11 +8,17 @@
 
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::Screen, scene::Scene)
+    # So animations based on tick events can finish
+    screen.last_render_time = Makie.next_tick!(
+        events(scene).tick, Makie.OneTimeRenderTick, screen.creation_time, screen.last_render_time
+    )
+
     Cairo.save(screen.context)
     draw_background(screen, scene)
 
     allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
     sort!(allplots; by = Makie.zvalue2d)
+
     # If the backend is not a vector surface (i.e., PNG/ARGB),
     # then there is no point in rasterizing twice.
     should_rasterize = is_vector_backend(screen.surface)

@@ -1,6 +1,6 @@
 function skipped_attributes(inheritor, parent)
-    target = Set(keys(Makie.documented_attributes(inheritor).d))
-    source = Set(keys(Makie.documented_attributes(parent).d))
+    target = Set(keys(Makie.documented_attributes(inheritor).merged_keys))
+    source = Set(keys(Makie.documented_attributes(parent).merged_keys))
     return setdiff(source, target)
 end
 
@@ -18,7 +18,7 @@ function all_attributes_connect_to_children(
         plot::Plot, exclude = Set{Symbol}(
             [
                 :palettes, :dim_conversions, :cycle_index, :transform_func, :cycle,
-                :model, :palette_lookup, :f32c,
+                :model, :palette_lookup, :f32c, :color_dim_convert,
             ]
         )
     )
@@ -89,4 +89,23 @@ end
     @test p2.color[] == to_color(:blue)
     @test p3.color[] == to_color(:red)
     @test length(attr) == 1
+end
+
+
+@testset "plot attributes from theme" begin
+    f, a, p = with_theme(
+        Scatter = Attributes(color = :red, markersize = 99),
+        Axis3D = Attributes(
+            ticks = Attributes(gap = 12, textcolor = :blue),
+            padding = 0.3
+        )
+    ) do
+        scatter(rand(Point3f, 10))
+    end
+    ax = a.scene[OldAxis]
+    @test ax.padding[] == 0.3
+    @test ax.ticks.gap[] == 12
+    @test ax.ticks.textcolor[] == :blue
+    @test p.markersize[] == Vec2f(99)
+    @test p.color[] == to_color(:red)
 end

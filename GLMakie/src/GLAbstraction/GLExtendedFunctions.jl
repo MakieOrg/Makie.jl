@@ -44,6 +44,8 @@ function get_attribute_location(program::GLuint, name::String)
     return location
 end
 
+get_attribute_count(program::GLuint) = glGetProgramiv(program, GL_ACTIVE_ATTRIBUTES)
+
 
 get_uniform_location(program::GLuint, name::Symbol) = get_uniform_location(program, String(name))
 function get_uniform_location(program::GLuint, name::String)
@@ -75,7 +77,8 @@ function glGetActiveUniform(programID::GLuint, index::Integer)
     actualLength[1] <= 0 &&  error("No active uniform at given index. Index: ", index)
 
     uname = unsafe_string(pointer(name), actualLength[1])
-    uname = Symbol(replace(uname, r"\[\d*\]" => "")) # replace array brackets. This is not really a good solution.
+    # replace array brackets. This is not really a good solution.
+    uname = cached_Symbol(replace(uname, r"\[\d*\]" => ""))
     return (uname, typ[1], uniformSize[1])
 end
 
@@ -91,7 +94,8 @@ function glGetActiveAttrib(programID::GLuint, index::Integer)
     actualLength[1] <= 0 && error("No active uniform at given index. Index: ", index)
 
     uname = unsafe_string(pointer(name), actualLength[1])
-    uname = Symbol(replace(uname, r"\[\d*\]" => "")) # replace array brackets. This is not really a good solution.
+    # replace array brackets. This is not really a good solution.
+    uname = cached_Symbol(replace(uname, r"\[\d*\]" => ""))
     return (uname, typ[1], attributeSize[1])
 end
 
@@ -245,13 +249,17 @@ Makie.@noconstprop function glTexImage(
     glTexImage1D(ttype, level, internalFormat, w, border, format, datatype, data)
 end
 
+const GLSL_VERSION_NUMBER = Ref{VersionNumber}()
 function glsl_version_number()
-    glsl = split(unsafe_string(glGetString(GL_SHADING_LANGUAGE_VERSION)), ['.', ' '])
-    if length(glsl) >= 2
-        return VersionNumber(parse(Int, glsl[1]), parse(Int, glsl[2]))
-    else
-        error("could not parse GLSL version: $glsl")
+    if !isassigned(GLSL_VERSION_NUMBER)
+        glsl = split(unsafe_string(glGetString(GL_SHADING_LANGUAGE_VERSION)), ['.', ' '])
+        if length(glsl) >= 2
+            GLSL_VERSION_NUMBER[] = VersionNumber(parse(Int, glsl[1]), parse(Int, glsl[2]))
+        else
+            error("could not parse GLSL version: $glsl")
+        end
     end
+    return GLSL_VERSION_NUMBER[]
 end
 
 function opengl_version_number()
@@ -263,9 +271,13 @@ function opengl_version_number()
     end
 end
 
+const GLSL_VERSION_STRING = Ref{String}()
 function glsl_version_string()
-    glsl = glsl_version_number()
-    glsl.major == 1 && glsl.minor <= 2 && error("OpenGL shading Language version too low. Try updating graphic driver!")
-    glsl_version = string(glsl.major) * rpad(string(glsl.minor), 2, "0")
-    return "#version $(glsl_version)\n"
+    if !isassigned(GLSL_VERSION_STRING)
+        glsl = glsl_version_number()
+        glsl.major == 1 && glsl.minor <= 2 && error("OpenGL shading Language version too low. Try updating graphic driver!")
+        glsl_version = string(glsl.major) * rpad(string(glsl.minor), 2, "0")
+        GLSL_VERSION_STRING[] = "#version $(glsl_version)\n"
+    end
+    return GLSL_VERSION_STRING[]
 end

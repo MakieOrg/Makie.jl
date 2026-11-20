@@ -27,6 +27,7 @@ include("../../ReferenceTests/src/refimage_manifest.jl")
 include("../../ReferenceTests/src/refimage_cache.jl")
 include("manifest.jl")
 include("bonito-app.jl")
+include("update_from_previous_version.jl")
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 

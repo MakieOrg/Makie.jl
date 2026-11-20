@@ -26,3 +26,9 @@ function Combined(args...; kwargs...)
     @warn "Makie.Combined() is deprecated, use Makie.Plot() instead" maxlog = 1
     return Plot(args...; kwargs...)
 end
+
+# For deprecated (primitive plot) attributes. This si not automatic because a
+# deprecated attribute may not use the same conversions as its replacement.
+convert_attribute(x, ::key"rotations", p::key"scatter") = convert_attribute(x, Key{:rotation}(), p)
+convert_attribute(x, ::key"rotations", p::key"meshscatter") = convert_attribute(x, Key{:rotation}(), p)
+convert_attribute(x, ::key"textsize", p::key"text") = convert_attribute(x, Key{:fontsize}(), p)

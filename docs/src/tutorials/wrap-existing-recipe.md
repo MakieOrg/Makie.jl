@@ -35,7 +35,9 @@ fields we have in the `MyHist` type basically tell us how to draw it as a BarPlo
 following method for this type of customization:
 
 ```@example recipe
-Makie.convert_arguments(P::Type{<:BarPlot}, h::MyHist) = convert_arguments(P, h.bincenters, h.bincounts)
+function Makie.convert_arguments(P::Type{<:BarPlot}, h::MyHist)
+    return convert_arguments(P, h.bincenters, h.bincounts)
+end
 nothing # hide
 ```
 
@@ -49,16 +51,36 @@ barplot(h)
 
 The second recipe we want to customize for our `MyHist` type is the `Hist()` recipe. This cannot be
 achieved by `convert_arguments` as we did for `BarPlot()`, because normally `Makie.hist()` takes raw
-data as input, but we already have the binned data in our `MyHist` type.
+data as input instead of the already binned data in our `MyHist` type.
 
 The first thing one might try is to override the `plot!` method for `Hist` recipe:
 
-```@figure recipe
+```@example recipe
 function Makie.plot!(plot::Hist{<:Tuple{<:MyHist}})
     barplot!(plot, plot[1])
     plot
 end
 h = MyHist([1, 10, 100], 1:3)
+try # hide
+hist(h; color=:red, direction=:x)
+catch e; showerror(stderr, e); end # hide
+```
+
+As you can see this produces error complaining about `MyHist` not converting to the correct type.
+Any plot that includes typed converted arguments in `@recipe PlotName (converted1::Type, ...)` or defines `Makie.types_for_plot_arguments(::Trait)` for the plots conversion trait will fail like this.
+To fix this we need introduce a conversion trait for `MyHist` and tell Makie that it is a valid conversion target, i.e. a valid input for the function we defined above.
+
+```@figure recipe
+struct MyHistConversion <: Makie.ConversionTrait end
+Makie.conversion_trait(::Type{<:Hist}, ::MyHist) = MyHistConversion()
+
+# Note:
+# types_for_plot_arguments(::Trait) also exists, but will be ignored if
+# the plot is typed via @recipe. This method will work in either case.
+function Makie.types_for_plot_arguments(::Type{<:Hist}, ::MyHistConversion)
+    return Tuple{MyHist}
+end
+
 hist(h; color=:red, direction=:x)
 ```
 

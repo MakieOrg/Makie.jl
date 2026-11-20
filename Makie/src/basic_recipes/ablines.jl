@@ -1,12 +1,17 @@
 """
-    ablines(intercepts, slopes; attrs...)
+Creates a line defined by `f(x) = slope * x + intercept` crossing a whole `Axis`
+at its current limits.
 
-Creates a line defined by `f(x) = slope * x + intercept` crossing a whole `Scene` with 2D projection at its current limits.
-You can pass one or multiple intercepts or slopes.
+## Arguments
+
+* `intercept, slope` Defines lines where `intercept` is a `Real` or `AbstractVector{<:Real}`
+    containing y intercepts, and `slope` is a `Real` or `AbstractVector{<:Real}` containing slopes.
 """
 @recipe ABLines (intercept, slope) begin
     documented_attributes(LineSegments)...
 end
+
+argument_dims(::Type{<:ABLines}, args...) = nothing
 
 function Makie.plot!(p::ABLines)
     scene = Makie.parent_scene(p)

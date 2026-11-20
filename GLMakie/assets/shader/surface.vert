@@ -1,5 +1,6 @@
 {{GLSL_VERSION}}
 {{GLSL_EXTENSIONS}}
+{{vertex_output_aliases}}
 
 struct Grid2D{
     ivec2 lendiv;
@@ -235,7 +236,8 @@ void main()
 
     o_color = vec4(0.0);
     o_id = uvec2(objectid, 0); // calculated from uv in mesh.frag
-    o_InstanceID = 0; // for meshscatter uv_transforms, irrelevant here
+    // grid cell index for stroke data lookup (uv_transform indexing ignores it here)
+    o_InstanceID = gl_InstanceID;
 
     render(model * vec4(pos, 1), normalvec, view, projection);
 }

@@ -28,5 +28,6 @@ metrics/ttfp/benchmark-projects/*
 benchmark_results
 WGLMakie/test/electron.log
 reference_images_site/build/
+docs/src/reference/plots/
 .scratch/
 WGLMakie/test/stress/results/

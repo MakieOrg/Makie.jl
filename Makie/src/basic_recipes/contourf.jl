@@ -1,12 +1,6 @@
 """
-    contourf(xs, ys, zs; kwargs...)
-
-Plots a filled contour of the height information in `zs` at horizontal grid positions `xs`
-and vertical grid positions `ys`.
-
-`xs` and `ys` can be vectors for rectilinear grids
-or matrices for curvilinear grids,
-similar to how [`surface`](@ref) works.
+Plots a filled contour where each pixel in the grid defined by `xs` and `ys` is
+colored based on the level its `data` values map to.
 """
 @recipe Contourf (x, y, z) begin
     """
@@ -43,12 +37,6 @@ similar to how [`surface`](@ref) works.
     # TODO, Isoband doesn't seem to support nans?
     mixin_colormap_attributes(exclude = (:lowclip, :highclip))...
 end
-
-# these attributes are computed dynamically and needed for colorbar e.g.
-# _computed_levels
-# _computed_colormap
-# _computed_extendlow
-# _computed_extendhigh
 
 _get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels + 1))
 
@@ -182,8 +170,11 @@ end
 function register_contourf_computations!(graph, argname)
     map!(apply_scale, graph, [:colorscale, argname], :scaled_zs)
 
-    map!(graph, [:scaled_zs, :colorscale, :levels, :mode], :computed_levels) do zs, scale, levels, mode
-        if levels isa Integer
+    map!(
+        graph, [:scaled_zs, :colorscale, :levels, :mode],
+        [:computed_levels, :auto_colorrange]
+    ) do zs, scale, levels, mode
+        combined_levels = if levels isa Integer
             mi, ma = extrema_nan(vec(zs))
             if isapprox(mi, ma)
                 delta = max(one(mi), abs(mi))
@@ -191,18 +182,18 @@ function register_contourf_computations!(graph, argname)
                 # With an even number it coincides with a band edge, where floating point noise
                 # in `zs` splits the field over two neighbouring bands.
                 nbands = isodd(levels) ? levels : levels + 1
-                return Float32.(range(mi - delta, ma + delta; length = nbands + 1))
+                Float32.(range(mi - delta, ma + delta; length = nbands + 1))
+            else
+                _get_isoband_levels(Val(mode), levels, vec(zs))
             end
-            return _get_isoband_levels(Val(mode), levels, vec(zs))
         else
-            return _get_isoband_levels(Val(mode), apply_scale(scale, levels), vec(zs))
+            _get_isoband_levels(Val(mode), apply_scale(scale, levels), vec(zs))
         end
+        return combined_levels, extrema(combined_levels)
     end
     map!(edges -> length(edges) - 1, graph, :computed_levels, :nlevels)
 
-    map!(graph, [:colorrange, :colorscale, :computed_levels], :computed_colorrange) do colorrange, scale, levels
-        return combined_colorrange(scale, colorrange, extrema_nan(levels))
-    end
+    register_colorrange!(graph, output = :computed_colorrange)
 
     map!(graph, [:nlevels, :colormap, :extendlow, :extendhigh], :base_colormap) do n, cmap, elow, ehigh
         _cmap = to_colormap(cmap)
