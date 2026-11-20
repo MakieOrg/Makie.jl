@@ -1094,6 +1094,28 @@ function filter_to_indices(attr, allow, exclude)
             keep[i] = -1
         end
     end
+
+    # Second pass deprecations - either keep both or drop both
+    if !isempty(attr.deprecation_indices)
+        needs_shifting = false
+        for (old, new) in attr.deprecation_indices
+            if xor(keep[old] == -1, keep[new] == -1)
+                needs_shifting = true
+                keep[old] = -1
+                keep[new] = -1
+            end
+        end
+        if needs_shifting
+            counter = 1
+            for i in eachindex(keep)
+                if keep[i] != -1
+                    keep[i] = counter
+                    counter += 1
+                end
+            end
+        end
+    end
+
     return keep
 end
 
@@ -1137,6 +1159,12 @@ function apply_filtered_indices!(attr::DocumentedAttributes, keep::Vector{Int})
 
     # remove flagged indices from inherit to (this is a list of leaf attribute indices)
     filter!(idx -> keep[idx] > 0, attr.inherit)
+
+    # deprecation indices - these are excluded pair-wise
+    filter!(p -> keep[p[1]] > 0, attr.deprecation_indices)
+    for (i, (old, new)) in enumerate(attr.deprecation_indices)
+        attr.deprecation_indices[i] = Pair(keep[old], keep[new])
+    end
 
     return
 end
