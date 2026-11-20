@@ -86,12 +86,22 @@ function check_screen(screen) {
     return true;
 }
 
-export function render_scene(scene, picking = false) {
+// Intersection of two [x, y, w, h] rects
+function intersect_rects([ax, ay, aw, ah], [bx, by, bw, bh]) {
+    const x = Math.max(ax, bx);
+    const y = Math.max(ay, by);
+    const w = Math.max(0, Math.min(ax + aw, bx + bw) - x);
+    const h = Math.max(0, Math.min(ay + ah, by + bh) - y);
+    return [x, y, w, h];
+}
+
+// `clip` is the area shared by all ancestor viewports, in device pixels
+export function render_scene(scene, picking = false, clip = null) {
     const { renderer, camera, px_per_unit } = scene.screen;
     if (!check_screen(scene.screen)) {
         return false;
     }
-    // dont render invisible scenes
+    // dont render invisible scenes (and their children)
     if (!scene.visible.value) {
         return true;
     }
@@ -99,8 +109,9 @@ export function render_scene(scene, picking = false) {
     const area = scene.viewport.value;
     if (area) {
         const [x, y, w, h] = area.map((x) => x * px_per_unit);
+        clip = clip ? intersect_rects(clip, [x, y, w, h]) : [x, y, w, h];
         renderer.setViewport(x, y, w, h);
-        renderer.setScissor(x, y, w, h);
+        renderer.setScissor(...clip);
         renderer.setScissorTest(true);
         if (picking) {
             renderer.setClearAlpha(0);
@@ -111,7 +122,7 @@ export function render_scene(scene, picking = false) {
         }
         renderer.render(scene, camera);
     }
-    return scene.scene_children.every((x) => render_scene(x, picking));
+    return scene.scene_children.every((x) => render_scene(x, picking, clip));
 }
 
 function start_renderloop(three_scene) {

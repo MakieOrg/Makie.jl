@@ -339,7 +339,7 @@ function initialize_block!(m::Menu; default = 1)
         else
             # If not inside menuscene, we check the state for the menu button
             # (use position because selectionpoly is in blockscene)
-            if position in selectionpoly.converted[][1]
+            if is_mouseinside(blockscene) && position in selectionpoly.converted[][1]
                 # If over, we either click it to open/close the menu, or we just hover it
                 is_over_button = true
                 was_inside_button[] = true

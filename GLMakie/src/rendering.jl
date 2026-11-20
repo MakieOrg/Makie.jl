@@ -12,8 +12,8 @@ function setup!(screen::Screen, fb)
     glEnable(GL_SCISSOR_TEST)
     ppu = screen.px_per_unit[]
     for (id, scene) in screen.screens
-        if scene.visible[] && scene.clear[]
-            a = viewport(scene)[]
+        if scene.clear[] && Makie.scene_visible(scene)
+            a = Makie.effective_clip(scene)
             rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             glViewport(rt...)
             glScissor(rt...)

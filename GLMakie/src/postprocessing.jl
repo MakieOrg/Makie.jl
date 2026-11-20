@@ -301,23 +301,27 @@ function run_stage(screen, glscene, stage::RenderPlots)
 
         set_draw_buffers(stage.framebuffer)
 
+        glEnable(GL_SCISSOR_TEST)
         for (zindex, screenid, elem) in screen.renderlist
             elem.visible && haskey(elem.variants, stage.target) || continue
 
             found, scene = id2scene(screen, screenid)
-            (found && scene.visible[]) || continue
+            (found && Makie.scene_visible(scene)) || continue
 
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
+            clip = Makie.effective_clip(scene)
 
             require_context(screen.glscreen)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            glScissor(round.(Int, ppu .* minimum(clip))..., round.(Int, ppu .* widths(clip))...)
             elem[:px_per_unit] = ppu
 
             stage.prerender(elem[:overdraw]::UInt8)
 
             render(elem, elem.variants[stage.target])
         end
+        glDisable(GL_SCISSOR_TEST)
     catch e
         @error "Error while rendering!" exception = e
         rethrow(e)
@@ -441,11 +445,11 @@ function run_stage(screen, glscene, stage::RenderPass{:SSAO1})
         # This should be per scene because projection may vary between
         # scenes. It should be a leaf scene to avoid repeatedly shading
         # the same region (though this is not guaranteed...)
-        if !isempty(scene.children) || isempty(scene.plots) ||
+        if !isempty(scene.children) || isempty(scene.plots) || !Makie.scene_visible(scene) ||
                 !any(p -> to_value(get(p.attributes, :ssao, false)), scene.plots)
             continue
         end
-        a = viewport(scene)[]
+        a = Makie.effective_clip(scene)
         glScissor(ppu(minimum(a))..., ppu(widths(a))...)
         # update uniforms
         data[:projection] = Mat4f(scene.camera.projection[])
@@ -475,8 +479,8 @@ function run_stage(screen, glscene, stage::RenderPass{:SSAO2})
     data = stage.robj.uniforms
     for (screenid, scene) in screen.screens
         # Select the area of one leaf scene
-        isempty(scene.children) || continue
-        a = viewport(scene)[]
+        (isempty(scene.children) && Makie.scene_visible(scene)) || continue
+        a = Makie.effective_clip(scene)
         glScissor(ppu(minimum(a))..., ppu(widths(a))...)
         # update uniforms
         data[:blur_range] = scene.ssao.blur
