@@ -858,7 +858,7 @@ function has_nested_key(attr::DocumentedAttributes, idx::Int, keys::Tuple)
         if idx < 0 || !haskey(attr.nesting.keytables[idx], key)
             return false
         end
-        idx = attr.nesting.keytables[idx]
+        idx = attr.nesting.keytables[idx][key]
     end
     return true
 end
