@@ -286,3 +286,28 @@
     display(scene, update = false)
     =#
 end
+
+@testset "pixel_position" begin
+    fig = Figure(size = (600, 400))
+    ax = Axis(fig[1, 1])
+    limits!(ax, 0, 10, 0, 10)
+    sc = scatter!(ax, [Point2f(1, 1), Point2f(2, 2)])
+    translate!(sc, 1, 1, 0)
+    axlog = Axis(fig[1, 2], xscale = log10)
+    limits!(axlog, 1, 100, 0, 1)
+    hm = heatmap!(axlog, 1 .. 100, 0 .. 1, rand(3, 3))
+    Makie.update_state_before_display!(fig)
+
+    # the mouse at the pixel position of a data point is at that data point
+    events(fig).mouseposition[] = Tuple(pixel_position(ax, Point2f(3, 4)))
+    @test mouseposition(ax) ≈ Point2f(3, 4)
+    # plot transformations are applied
+    @test pixel_position(sc, 2) ≈ pixel_position(ax, Point2f(3, 3))
+    # the scene's transform_func is applied: 10 is in the middle of 1..100 on a log axis
+    vp = viewport(axlog.scene)[]
+    @test pixel_position(axlog, Point2f(10, 0.5)) ≈ Point2d(minimum(vp) .+ widths(vp) ./ 2)
+    bb = ax.layoutobservables.computedbbox[]
+    @test pixel_position(ax, (0.5, 0.25); relative = true) ≈ Point2d(minimum(bb) .+ (0.5, 0.25) .* widths(bb))
+    @test pixel_position(fig.scene, (1, 1); relative = true) ≈ Point2d(600, 400)
+    @test_throws ArgumentError pixel_position(hm, 1)
+end

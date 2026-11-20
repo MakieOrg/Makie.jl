@@ -569,3 +569,33 @@ end
     updater(Makie.RegularRenderTick)
     @test received == [(4.0, -3.0), (0.0, 7.0)]
 end
+
+@testset "picking at pixel_position" begin
+    fig = Figure(size = (600, 400))
+    ax = Axis(fig[1, 1])
+    limits!(ax, 0, 10, 0, 10)
+    sc = scatter!(ax, [Point2f(2, 2), Point2f(5, 5), Point2f(8, 3)], markersize = 20)
+    ms = meshscatter!(ax, [Point3f(2, 8, 0), Point3f(6, 8, 0)], markersize = 0.5)
+    ls = lines!(ax, [Point2f(1, 6), Point2f(4, 6), Point2f(9, 7)], linewidth = 8)
+    screen = display(GLMakie.Screen(visible = false), fig)
+    colorbuffer(screen)
+    for (plot, i) in [(sc, 1), (sc, 2), (sc, 3), (ms, 2)]
+        @test pick(fig, pixel_position(plot, i)) == (plot, i)
+    end
+    # lines pick the closest segment end, so only the plot is guaranteed
+    @test first(pick(fig, pixel_position(ls, 2))) === ls
+    close(screen)
+end
+
+@testset "precompile_plot" begin
+    fig, ax, plt = scatter(1:10, markersize = 20)
+    inspector = DataInspector(fig)
+    GLMakie.precompile_plot(fig) do
+        events(fig).mouseposition[] = Tuple(pixel_position(plt, 3))
+    end
+    # the hover got handled before the last render
+    @test inspector.plot.visible[]
+    @test occursin("3", inspector.plot.text[])
+    @test isnothing(GLMakie.precompile_plot(lines(1:10)))
+    GLMakie.closeall()
+end

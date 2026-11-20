@@ -327,6 +327,16 @@ function on_hover(inspector)
     return Consume(false)
 end
 
+# Handle a queued hover of the figure's DataInspector right away instead of in its
+# background task, so that a backend's `precompile_plot` can render the result.
+function process_pending_hover!(figlike)
+    inspector = root(get_scene(figlike)).data_inspector
+    isnothing(inspector) && return
+    empty_channel!(inspector.hover_channel)
+    on_hover(inspector)
+    return
+end
+
 
 function show_data_recursion(inspector, plot, idx)
     processed = show_data_recursion(inspector, plot.parent, idx, plot)

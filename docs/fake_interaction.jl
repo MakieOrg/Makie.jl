@@ -347,7 +347,7 @@ end
 
 interaction_record(figlike, filepath, events::AbstractVector; kwargs...) = interaction_record((args...) -> nothing, figlike, filepath, events; kwargs...)
 
-relative_pos(block, rel) = Point2f(block.layoutobservables.computedbbox[].origin .+ rel .* block.layoutobservables.computedbbox[].widths)
+relative_pos(block, rel) = Point2f(pixel_position(block, rel; relative = true))
 
 """
     textbox_offset_pos(tb::Textbox, offset::Int)

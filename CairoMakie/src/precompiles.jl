@@ -5,11 +5,33 @@ macro compile(block)
         # Run the workload inside a `let` body, to avoid storing
         # f, ax, pl as module level globals that get stored in package images
         let
-            figlike = $(esc(block))
-            Makie.colorbuffer(figlike)
+            Makie.render_for_precompile(Screen, $(esc(block)))
+            nothing
         end
     end
 end
+
+"""
+    CairoMakie.precompile_plot(figlike)
+    CairoMakie.precompile_plot(f, figlike)
+
+Render `figlike`, so that rendering such plots gets compiled. Meant to be called inside a
+package's precompile workload, e.g. in a package extension for CairoMakie:
+
+```julia
+using PrecompileTools, CairoMakie
+
+@compile_workload begin
+    CairoMakie.precompile_plot(my_plot_function(data))
+end
+```
+
+With `f`, `f()` is called after the first render and the figure is rendered again afterwards, to
+also compile the updates `f` causes, e.g. changing attributes. CairoMakie can't pick, so hovers
+(e.g. for `DataInspector`) don't do anything.
+"""
+precompile_plot(figlike) = Makie.precompile_plot(CairoMakie, figlike)
+precompile_plot(f, figlike) = Makie.precompile_plot(CairoMakie, f, figlike)
 
 let
     @compile_workload begin

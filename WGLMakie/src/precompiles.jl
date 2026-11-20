@@ -3,21 +3,54 @@ using PrecompileTools
 macro compile(block)
     return quote
         let
-            figlike = $(esc(block))
-            # Exercise rendering without starting Electron during precompilation.
-            session = Session()
-            app = App(() -> DOM.div(figlike))
-            dom = Bonito.session_dom(session, app)
-            show(IOBuffer(), dom)
-            Makie.second_resolve(figlike, :wgl_renderobject)
-            serialize_scene(session, Makie.get_scene(figlike))
-            WGLMakie.poll_all_plots(Makie.get_scene(figlike))
-            close(session)
-            yield()
+            Makie.render_for_precompile(Screen, $(esc(block)))
             return nothing
         end
     end
 end
+
+# Exercise rendering without starting Electron during precompilation.
+function Makie.render_for_precompile(::Type{<:Screen}, figlike)
+    session = Session()
+    app = App(() -> DOM.div(figlike))
+    dom = Bonito.session_dom(session, app)
+    show(IOBuffer(), dom)
+    Makie.second_resolve(figlike, :wgl_renderobject)
+    serialize_scene(session, Makie.get_scene(figlike))
+    WGLMakie.poll_all_plots(Makie.get_scene(figlike))
+    close(session)
+    yield()
+    return true
+end
+
+function Makie.cleanup_after_precompile(::Type{<:Screen})
+    Bonito.cleanup_globals()
+    Makie.cleanup_globals()
+    return
+end
+
+"""
+    WGLMakie.precompile_plot(figlike)
+    WGLMakie.precompile_plot(f, figlike)
+
+Serialize `figlike` the way displaying it does (without starting a browser), so that displaying
+such plots gets compiled. Meant to be called inside a package's precompile workload, e.g. in a
+package extension for WGLMakie:
+
+```julia
+using PrecompileTools, WGLMakie
+
+@compile_workload begin
+    WGLMakie.precompile_plot(my_plot_function(data))
+end
+```
+
+With `f`, `f()` is called after the first serialization and the figure is serialized again
+afterwards, to also compile the updates `f` causes, e.g. changing attributes. Picking needs the
+browser, so hovers (e.g. for `DataInspector`) don't do anything.
+"""
+precompile_plot(figlike) = Makie.precompile_plot(WGLMakie, figlike)
+precompile_plot(f, figlike) = Makie.precompile_plot(WGLMakie, f, figlike)
 
 let
     @compile_workload begin
