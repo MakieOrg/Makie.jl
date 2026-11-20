@@ -160,22 +160,27 @@ function extract_examples(markdown_file_path::String)
     end
 
     examples = content[1:(isnothing(stopidx) ? end : (stopidx - 1))]
-    # Find all H3 headers
     h3_indices = findall(examples) do item
         item isa Markdown.Header{3}
     end
 
-    if isempty(h3_indices)
-        error("No H3 example headers found in file: $markdown_file_path")
+    result = Markdown.MD[]
+
+    # Content between `## Examples` and the first `### subhead` is an unlabeled
+    # lead example so the simplest call form can sit right under the docstring.
+    lead_stop = isempty(h3_indices) ? length(examples) + 1 : h3_indices[1]
+    if lead_stop > 1
+        push!(result, Markdown.MD(examples[1:(lead_stop - 1)]))
     end
 
-    # Extract each example
-    result = Markdown.MD[]
+    if isempty(h3_indices) && isempty(result)
+        error("No examples found in file: $markdown_file_path")
+    end
+
     for i in eachindex(h3_indices)
         idx = h3_indices[i]
         next_idx = i < length(h3_indices) ? h3_indices[i + 1] : length(examples) + 1
-        content = Markdown.MD(examples[idx:(next_idx - 1)])
-        push!(result, content)
+        push!(result, Markdown.MD(examples[idx:(next_idx - 1)]))
     end
     return result
 end
@@ -530,7 +535,6 @@ function document_recipe(::Type{PT}, user_docstring::Markdown.MD; max_examples =
         examples = examples * online_docs_link
     end
     examples_section = Markdown.parse(examples)
-    # Combine all sections into a single Markdown document
     user_docs = extract_before_arguments_section(user_docstring)
     combined = Markdown.MD()
     append!(combined.content, signatures.content)

@@ -500,6 +500,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
     image!(
         blockscene,
         cb.xlims, cb.ylims, cb.image_pixels;
+        orientation = (:right, :down),
         visible = cb.show_image,
         inspectable = false
     )

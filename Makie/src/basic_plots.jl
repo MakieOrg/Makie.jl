@@ -234,7 +234,7 @@ Fill in values that can only be calculated when we have all other attributes fil
 calculated_attributes!(plot::T) where {T} = calculated_attributes!(T, plot)
 
 """
-Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
+Plots an image on a rectangle bounded by `x` and `y`.
 """
 @recipe Image (
     x::EndPoints,
@@ -244,6 +244,20 @@ Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image)
     "Sets whether colors should be interpolated between pixels."
     interpolate = true
     """
+    A tuple `(d1, d2)` giving the direction in which the first and second
+    matrix index grow, each one of `:up`, `:down`, `:left`, `:right` (one
+    vertical, one horizontal). The default `(:down, :right)` is the usual image
+    layout (`FileIO.load`, NumPy, OpenCV): `image[1, 1]` is the top-left pixel,
+    rows go down, columns go right. For example, `(:left, :up)` puts
+    `image[1, 1]` at the bottom right, with the first index growing to the left.
+
+    Directions refer to an axis with `yreversed = true`, which `image` sets when
+    it creates the axis. On an axis with normal y direction, `:up` and `:down`
+    appear swapped on screen, so set `ax.yreversed = true` when using `image!`
+    on an existing axis.
+    """
+    orientation = (:down, :right)
+    """
     Hides the background image used when the `image` argument is a `Resampler`.
     This may be useful with transparent images. Has no effect for other inputs.
     """
@@ -252,15 +266,26 @@ Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image)
     mixin_colormap_attributes()...
     fxaa = false
     """
-    Sets a transform for uv coordinates, which controls how the image is mapped to its rectangular area.
-    The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
+    Sets an extra transform for the image's uv coordinates, composed on top of
+    `orientation`. It acts in the matrix's own uv space: `(0, 0)` sits at the
+    corner of `image[1, 1]`, the first uv coordinate runs along array dim 1 and
+    the second along dim 2, both normalized to `0..1`. The attribute can be `I`,
+    `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
     any of `:rotr90`, `:rotl90`, `:rot180`, `:swap_xy`/`:transpose`, `:flip_x`, `:flip_y`, `:flip_xy`, or most
     generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
     They can also be changed by passing a tuple `(op3, op2, op1)`.
+    In CairoMakie the transform only applies when the image is drawn as a single
+    texture; it is ignored when rendering falls back to per-cell rectangles
+    (vector output with `interpolate = false`, or with clip planes).
     """
     uv_transform = automatic
     colormap = [:black, :white]
 end
+
+# `orientation` is consumed by `convert_arguments` (it picks the default
+# extents), so it rides as a convert kwarg in addition to being readable as an
+# attribute from backends.
+used_attributes(::Type{<:Image}, args...) = (:orientation,)
 
 """
 Plots a `data` matrix as a heatmap, i.e. a collection of rectangles colored
