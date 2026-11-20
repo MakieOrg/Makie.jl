@@ -281,6 +281,9 @@ be tuples denoting a path to a nested attributes, e.g. `(outer, inner)`. When
 creating a plot or Block, both `old` and `new` will be added as inputs and merge
 into the `new` node. If `old` is changed, a deprecation warning is shown. This
 warning can be set by adding a string before the `@deprecate` entry (like docstrings).
+The default value of the deprecated attribute can be defined with a normal entry
+`old = ...` before the `@deprecate old new` entry. If omitted, the attribute
+will default to the same value as its replacement.
 
 ## Macro Examples
 
@@ -627,22 +630,28 @@ function _add_deprecated_attribute!(attr, state, old::Tuple, new::Tuple, default
     if has_nested_key(attr, current_layer, new)
         new_idx = nested_key_to_index(attr, new, current_layer)
 
-        default_value = attr.defaults[new_idx]
+        # Allow `old = ...` to exist so different defaults can be set
         docstring = something(docs, "$old has been deprecated in favor of $new.")
-        type = attr.types[attr.type_index[new_idx]]
+        if has_nested_key(attr, current_layer, old)
+            old_idx = nested_key_to_index(attr, old, current_layer)
+            attr.leaf_docstring[old_idx] = docstring
+        else
+            default_value = attr.defaults[new_idx]
+            type = attr.types[attr.type_index[new_idx]]
 
-        for key in Base.front(old)
-            _begin_nesting_layer!(attr, state, key)
-        end
-        _add_attribute!(
-            attr, state, last(old),
-            type, default_value, default_expr, docstring
-        )
-        for _ in Base.front(old)
-            _end_nesting_layer!(state)
+            for key in Base.front(old)
+                _begin_nesting_layer!(attr, state, key)
+            end
+            _add_attribute!(
+                attr, state, last(old),
+                type, default_value, default_expr, docstring
+            )
+            for _ in Base.front(old)
+                _end_nesting_layer!(state)
+            end
+            old_idx = nested_key_to_index(attr, old, current_layer)
         end
 
-        old_idx = nested_key_to_index(attr, old, current_layer)
         push!(attr.deprecation_indices, old_idx => new_idx)
     else
         error("Could not add deprecation `@deprecated $oldstr $newstr` because the replacement attribute does not exist. Make sure you add it before calling `@deprecate`.")
