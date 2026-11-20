@@ -101,7 +101,9 @@ function Base.write(io::IO, command::PathCommand)
 end
 
 function bbox(commands::Vector{PathCommand})
-    if length(commands) == 1
+    if length(commands) == 0
+        return Rect2d()
+    elseif length(commands) == 1
         c = only(commands)
         if !(c isa MoveTo)
             error("Can currently only handle single-command paths with a MoveTo, not $c")

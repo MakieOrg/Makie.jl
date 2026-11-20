@@ -273,3 +273,105 @@ end
     end
     @test attr.nested_docstring == [nothing, "shading"]
 end
+
+@testset "Theme Observables" begin
+    theme = Makie.current_default_theme()
+
+    @testset "Plot" begin
+        doc_attr = Makie.documented_attributes(Scatter)
+
+        # Check assumptions - if these change just switch to a different inherited attribute
+        @assert haskey(theme, :colormap)
+        @assert haskey(doc_attr, :colormap)
+        @assert Makie.get_flat_default(doc_attr, :colormap) isa Makie.Inherit
+        @assert Makie.get_flat_default(doc_attr, :colormap).keys === (:colormap,)
+
+        @test theme[:colormap] isa Union{Symbol, Vector, String, Tuple}
+        inherited = theme[:colormap]
+        f, a, p = scatter(rand(10))
+        @test p.colormap[] === inherited
+
+        @testset "Theme inherited" begin
+            color_obs = Observable{Any}(:magma)
+            with_theme(colormap = color_obs) do
+                @test theme[:colormap] === color_obs
+                @test isempty(color_obs.listeners)
+                scene = Scene()
+                @test isempty(color_obs.listeners)
+                p = scatter!(scene, rand(10))
+                @test length(color_obs.listeners) == 1
+                @test p.colormap[] === :magma
+                color_obs[] = :terrain
+                @test p.colormap[] === :terrain
+            end
+
+            GC.gc(true)
+            @test isempty(color_obs.listeners)
+        end
+
+        @testset "Theme overwrite" begin
+            color_obs = Observable{Any}(:RdBu)
+            with_theme(Scatter = Attributes(colormap = color_obs)) do
+                @test theme[:Scatter][:colormap] === color_obs
+                @test isempty(color_obs.listeners)
+                scene = Scene()
+                @test isempty(color_obs.listeners)
+                p = scatter!(scene, rand(10))
+                @test length(color_obs.listeners) == 1
+                @test p.colormap[] === :RdBu
+                color_obs[] = :greens
+                @test p.colormap[] === :greens
+            end
+
+            GC.gc(true)
+            @test isempty(color_obs.listeners)
+        end
+    end
+
+    @testset "Block" begin
+        doc_attr = Makie.documented_attributes(Axis)
+
+        # Check assumptions - if these change just switch to a different inherited attribute
+        @assert haskey(theme, :fontsize)
+        @assert haskey(doc_attr, :titlesize)
+        @assert Makie.get_flat_default(doc_attr, :titlesize) isa Makie.Inherit
+        @assert Makie.get_flat_default(doc_attr, :titlesize).keys === (:fontsize,)
+
+        @test theme[:fontsize] isa Real
+        inherited = theme[:fontsize]
+        f, a = Axis()
+        @test a.titlesize[] ≈ inherited
+
+        @testset "Theme inherited" begin
+            fontsize_obs = Observable{Float32}(20.0)
+            with_theme(fontsize = fontsize_obs) do
+                @test theme[:fontsize] === fontsize_obs
+                @test isempty(fontsize_obs.listeners)
+                f, a = Axis()
+                @test length(fontsize_obs.listeners) > 1
+                @test a.titlesize[] === 20.0
+                fontsize_obs[] = 10
+                @test a.titlesize[] === 10.0
+            end
+
+            GC.gc(true)
+            @test isempty(fontsize_obs.listeners)
+        end
+
+        @testset "Theme overwrite" begin
+            fontsize_obs = Observable{Float32}(30.0)
+            with_theme(Axis = Attributes(titlesize = fontsize_obs)) do
+                @test theme[:Axis][:titlesize] === fontsize_obs
+                @test isempty(fontsize_obs.listeners)
+                f, a = Axis()
+                @test length(fontsize_obs.listeners) == 1
+                @test a.titlesize[] === 30.0
+                fontsize_obs[] = 15
+                @test a.titlesize[] === 15.0
+            end
+
+            GC.gc(true)
+            @test isempty(fontsize_obs.listeners)
+        end
+    end
+end
