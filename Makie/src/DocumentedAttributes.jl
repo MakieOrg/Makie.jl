@@ -1253,7 +1253,7 @@ end
 """
     prepare_graph_for_attributes!(
         graph::ComputeGraph, attr::DocumentedAttributes, exclude = tuple();
-        is_block = false, is_primitive = false
+        restrict_types = false, is_primitive = false
     )
 
 Merges the nesting information of `attr` with the given compute graph and adds
@@ -1266,13 +1266,13 @@ until `add_remaining_inputs!()` or `add_remaining_block_inputs!()` is called.
 `exclude` can be used to skip over top level attributes defined in `attr`. Note
 that this currently only works for top level attributes, not nested attributes.
 
-If `is_block = true`, compute nodes are initialized with the types saved in
+If `restrict_types = true` compute nodes are initialized with the types saved in
 `attr`. Otherwise they are set to `Any` if `is_primitive = false` or left blank
 if `is_primitive = true`.
 """
 function prepare_graph_for_attributes!(
         graph::ComputeGraph, attr::DocumentedAttributes, exclude = tuple();
-        is_block = false, is_primitive = false
+        restrict_types = false, is_primitive = false
     )
 
     # copy nesting information from attr and re-add existing nesting if there
@@ -1292,7 +1292,7 @@ function prepare_graph_for_attributes!(
     # Might as well filter out unnested attributes
     filter!(kv -> !in(kv[1], exclude) && (kv[2] > 0), graph.nesting.keytables[1])
 
-    if is_block
+    if restrict_types
         for (indices, type) in zip(attr.type_indices, attr.types)
             add_typed_nodes!(graph, attr, indices, type, exclude)
         end

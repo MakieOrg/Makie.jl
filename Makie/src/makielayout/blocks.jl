@@ -563,7 +563,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     add_attributes!(T, graph, flattened_defaults)
 
     # prepare after user overwrites so users can use `add_input!()`
-    prepare_graph_for_attributes!(graph, attr, is_block = true)
+    prepare_graph_for_attributes!(graph, attr, restrict_types = true)
     add_remaining_block_inputs!(graph, attr, flattened_defaults)
     process_attribute_deprecations!(graph, attr, user_set_deprecated_attr)
 
