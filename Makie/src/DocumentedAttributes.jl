@@ -35,7 +35,7 @@ Inherit(f, keys::Tuple{Vararg{Symbol}}) = Inherit(f, keys, NoFallback())
 default_key_expr(x::Symbol) = :(($(QuoteNode(x)),))
 default_key_expr(x::QuoteNode) = :(($x,))
 function default_key_expr(expr::Expr)
-    if !(expr.head == :tuple && all(x -> x isa QuoteNode, expr.args))
+    if !(expr.head == :tuple && all(x -> x isa Union{QuoteNode, Symbol}, expr.args))
         error("$expr is not a valid. Should be a Symbol (`:var`), name (`var`) or tuple thereof (`(outer, inner)`).")
     end
     for i in eachindex(expr.args)
