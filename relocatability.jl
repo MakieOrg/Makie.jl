@@ -58,6 +58,7 @@ makie_dir = @__DIR__
 paths = ["Makie", "ComputePipeline", BACKEND]
 
 Pkg.develop(map(x -> (; path = joinpath(makie_dir, x)), paths))
+pkg"add GeometryBasics#master"
 if BACKEND == "WGLMakie"
     # Electron 6 passes `--no-sandbox` itself. Bonito 5 only disables the sandbox through
     # ElectronCall's SecurityConfig, and without the flag Chromium aborts on GitHub's

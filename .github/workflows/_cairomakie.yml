@@ -32,6 +32,7 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./CairoMakie ./ReferenceTests ./ComputePipeline"
+          pkg"add GeometryBasics#master"
       - name: Run the tests
         continue-on-error: true
         run: >
