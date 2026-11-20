@@ -159,7 +159,7 @@ value_or_obs_deepcopy(o::Observable{T}) where {T} = Observable{T}(o[])
 value_or_obs_deepcopy(x) = x
 
 """
-    merge_theme!(target::Attributes, source::Attributes, deepcopy_observables = false)
+    merge_theme!(target::Attributes, source::Attributes[; deepcopy_observables = false])
 
 Merges two themes recursively.
 
@@ -174,18 +174,18 @@ observables are added to `target` as is, and updating them will affect the same
 observable in source. With `deepcopy_observables = false` a new Observable with
 the same content is created, so that this connection is severed.
 """
-function merge_theme!(target::Attributes, source::Attributes, deepcopy_observables = false)
+function merge_theme!(target::Attributes, source::Attributes; deepcopy_observables = false)
     dict = attributes(target)
     for (key, value) in source
         if haskey(dict, key)
             # merge nested theme
             if dict[key] isa Attributes && value isa Attributes
-                merge_theme!(dict[key], value, deepcopy_observables)
+                merge_theme!(dict[key], value; deepcopy_observables)
             end
         else
             if value isa Attributes
                 # different Attributes object so modifying target doesn't affect source
-                dict[key] = merge_theme!(Attributes(), value)
+                dict[key] = merge_theme!(Attributes(), value; deepcopy_observables)
             else
                 dict[key] = deepcopy_observables ? value_or_obs_deepcopy(value) : value
             end
@@ -194,8 +194,8 @@ function merge_theme!(target::Attributes, source::Attributes, deepcopy_observabl
     return target
 end
 
-function fast_theme_copy(attributes, deepcopy_observalues = true)
-    return merge_theme!(Attributes(), attributes, deepcopy_observalues)
+function fast_theme_copy(attributes; deepcopy_observables = true)
+    return merge_theme!(Attributes(), attributes; deepcopy_observables)
 end
 
 current_default_theme() = CURRENT_DEFAULT_THEME
@@ -209,7 +209,18 @@ as keyword arguments.
 function set_theme!(new_theme = Attributes(); kwargs...)
     lock(THEME_LOCK) do
         empty!(CURRENT_DEFAULT_THEME)
-        resolved_theme = merge_theme!(fast_theme_copy(new_theme), MAKIE_DEFAULT_THEME, true)
+        # Globally defined themes should not be changed by changing anything in
+        # a scene.theme, so they should deepcopy Observables. The passed theme
+        # might be a globally define done, MAKIE_DEFAULT_THEME is one.
+        # TODO: Should we do `map(identity, obs)` instead of `Observable(obs[])`
+        # so that updates can still pass down? Would `off.(revserse(obs.inputs))`
+        # in empty!(CURRENT_DEFAULT_THEME) be enough to clean this up?
+        resolved_theme = merge_theme!(
+            fast_theme_copy(new_theme, deepcopy_observables = true),
+            MAKIE_DEFAULT_THEME, deepcopy_observables = true
+        )
+        # Observables from kwargs should be reused as is, so updating those
+        # Observables can affect the current theme.
         resolved_theme = mergeleft!(Theme(kwargs), resolved_theme)
         merge!(CURRENT_DEFAULT_THEME, resolved_theme)
     end
@@ -248,18 +259,7 @@ end
 
 theme(::Nothing, key::Symbol; default = nothing) = theme(key; default)
 theme(::Nothing) = CURRENT_DEFAULT_THEME
-function theme(key::Symbol; default = nothing)
-    if haskey(CURRENT_DEFAULT_THEME, key)
-        val = CURRENT_DEFAULT_THEME[key]
-        if val isa Observable
-            return Observable{Any}(to_value(val))
-        else
-            return val
-        end
-    else
-        return default
-    end
-end
+theme(key::Symbol; default = nothing) = get(CURRENT_DEFAULT_THEME, key, default)
 
 """
     update_theme!(with_theme::Theme; kwargs...)
