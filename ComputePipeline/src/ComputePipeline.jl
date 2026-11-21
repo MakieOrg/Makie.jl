@@ -1454,6 +1454,9 @@ function is_same(old::T, new::T) where {T}
     end
 end
 function is_same(old::Array, new::Array)
+    # All empty arrays share the same memory, so their pointers tell nothing about
+    # aliasing. Two distinct empty arrays hold no data that could have changed.
+    old !== new && isempty(old) && isempty(new) && return isequal(old, new)
     # same pointer means memory aliased (which does not require old === new)
     # and same memory means we can't compare before and after => assume not same
     is_distinct = pointer(old) !== pointer(new)

@@ -709,6 +709,27 @@ end
     @test !ComputePipeline.is_same(d, d)
 end
 
+@testset "is_same of empty arrays" begin
+    # every empty array has the same pointer, which must not read as aliased memory
+    v = Float32[]
+    @test pointer(v) == pointer(copy(v))
+    @test ComputePipeline.is_same(v, copy(v))
+    @test !ComputePipeline.is_same(zeros(0, 2), zeros(0, 3))
+    # an array emptied in place may have held anything before
+    @test !ComputePipeline.is_same(v, v)
+
+    # an observable of an empty output doesn't fire when its value stays empty
+    graph = ComputeGraph()
+    add_input!(graph, :in, Float32[])
+    map!(x -> copy(x), graph, :in, :out)
+    fired = Ref(0)
+    on(_ -> fired[] += 1, ComputePipeline.get_observable!(graph[:out]))
+    update!(graph, in = Float32[])
+    @test fired[] == 0
+    update!(graph, in = Float32[1])
+    @test fired[] == 1
+end
+
 @testset "map_latest!" begin
     @testset "Basic functionality" begin
         graph = ComputeGraph()
