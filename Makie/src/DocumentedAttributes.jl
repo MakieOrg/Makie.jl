@@ -31,6 +31,10 @@ Inherit(keys::Tuple{Vararg{Symbol}}) = Inherit(identity, keys, NoFallback())
 Inherit(keys::Tuple{Vararg{Symbol}}, fallback) = Inherit(identity, keys, fallback)
 Inherit(f, keys::Tuple{Vararg{Symbol}}) = Inherit(f, keys, NoFallback())
 
+Inherit(key::Symbol) = Inherit(identity, (key,), NoFallback())
+Inherit(key::Symbol, fallback) = Inherit(identity, (key,), fallback)
+Inherit(f, key::Symbol) = Inherit(f, (key,), NoFallback())
+
 # For replacing `@inherit x` with `@inherit :x`
 default_key_expr(x::Symbol) = :(($(QuoteNode(x)),))
 default_key_expr(x::QuoteNode) = :(($x,))
@@ -594,32 +598,88 @@ function _add_attribute!(
     return true
 end
 
-function _merge_attributes!(target::DocumentedAttributes, state, source::DocumentedAttributes)
-    _merge_attributes_rec!(target, state, source, tuple(), 1)
+"""
+    merge_documented_attributes!(target, source[, keys...; on_collision = :error])
+
+Merges a attributes from `source` into `target`.
+
+If `keys` are given they define the nesting layer in `target` into which the
+attributes from `source` merge. E.g. if `keys = (:a, :b)` all attributes from
+`source` will be in `target.a.b`. If the layer does not exist it will be created.
+
+The handling of collisions between `target` and `source` attributes can be set
+with `on_collision`. `:error` produces an error on collision, `:skip` keeps the
+existing attribute and `:replace` overwrites the existing attribute with the
+information from `source`.
+"""
+function merge_documented_attributes!(
+        target::DocumentedAttributes, source::DocumentedAttributes, keys::Symbol...;
+        on_collision::Symbol = :error
+    )
+    state = (Int[1], Symbol[])
+    for key in keys
+        _begin_nesting_layer!(target, state, key)
+    end
+    _merge_attributes!(target, state, source; on_collision)
+    return target
+end
+
+function _merge_attributes!(
+        target::DocumentedAttributes, state, source::DocumentedAttributes;
+        on_collision::Symbol = :error
+    )
+    on_collision in (:error, :skip, :replace) || error("Collision handling :$on_collision not handled. Must be :error, :skip or :replace.")
+
+    src2trg_idx = Vector{Int}(undef, length(source.merged_keys))
+    _merge_attributes_rec!(target, state, source, tuple(), 1, on_collision, src2trg_idx)
+
+    # Copy/Merge deprecations
+    for (old, new) in source.deprecation_indices
+        p = Pair(src2trg_idx[old], src2trg_idx[new])
+        if !in(p, target.deprecation_indices)
+            push!(target.deprecation_indices, p)
+        end
+    end
+
     return
 end
 
-function _merge_attributes_rec!(target, state, source, _trace, current_layer)
+function _merge_attributes_rec!(target, state, source, _trace, current_layer, on_collision, src2trg_idx)
     keytables = source.nesting.keytables
     for (key, layer_idx) in keytables[current_layer]
         if layer_idx > 0
             trace = (_trace..., key)
-            _begin_nesting_layer!(target, state, key, source.nested_docstring[layer_idx])
-            _merge_attributes_rec!(target, state, source, trace, layer_idx)
+            _begin_nesting_layer!(target, state, key, source.nested_docstring[layer_idx], on_collision !== :skip)
+            _merge_attributes_rec!(target, state, source, trace, layer_idx, on_collision, src2trg_idx)
             _end_nesting_layer!(state)
         else
-            idx = -layer_idx
-            type = source.types[source.type_index[idx]]
-            got_added = _add_attribute!(
-                target, state, key, type, source.defaults[idx],
-                source.default_expr[idx], source.leaf_docstring[idx],
-                allow_edit = false
-            )
-            if !got_added
-                target_path = join([state[2]..., string(key)], '.')
-                source_path = join([_trace..., string(key)], '.')
-                error("Could not add :$target_path from :$source_path because :$target_path already exists.")
+            src_idx = -layer_idx
+
+            # Check for and handle collision
+            trg_layers, trg_keys = state
+            trg_current_layer = last(trg_layers)
+            trg_keytable = target.nesting.keytables[trg_current_layer]
+            if haskey(trg_keytable, key)
+                if on_collision === :error
+                    target_path = join([state[2]..., string(key)], '.')
+                    source_path = join([_trace..., string(key)], '.')
+                    error("Could not add :$target_path from :$source_path because :$target_path already exists.")
+                elseif on_collision === :skip
+                    src2trg_idx[src_idx] = -trg_keytable[key]
+                    continue
+                elseif on_collision === :replace
+                    # handled by _add_attribute
+                end
             end
+
+            type = source.types[source.type_index[src_idx]]
+            got_added = _add_attribute!(
+                target, state, key, type, source.defaults[src_idx],
+                source.default_expr[src_idx], source.leaf_docstring[src_idx],
+                allow_edit = on_collision === :replace
+            )
+            @assert got_added "With collisions handled before _add_attribute!() should always succeed."
+            src2trg_idx[src_idx] = -trg_keytable[key]
         end
     end
     return
