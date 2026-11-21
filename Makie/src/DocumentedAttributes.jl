@@ -1033,6 +1033,15 @@ function nested_key_to_index(attr::DocumentedAttributes, keys::Tuple, layer::Int
     return -idx
 end
 
+function is_deprecated_attribute(attr::DocumentedAttributes, keys::Symbol...)
+    idx = nested_key_to_index(attr, keys)
+    return any(p -> p[1] == idx, attr.deprecation_indices)
+end
+
+function deprecated_attribute_keys(attr::DocumentedAttributes)
+    return [attr.merged_keys[i] for (i, _) in attr.deprecation_indices]
+end
+
 # If possible use the the methods that do this in bulk, for all attributes
 """
     lookup_default(type, scene, [kwargs], keys...)

@@ -54,8 +54,6 @@ BLOCK_UPDATES = let
     exclude = [
         # kwargs
         Axis => :palette, PolarAxis => :palette, Legend => :entrygroups, Menu => :default,
-        # deprecated
-        Legend => :bgcolor,
         # not settable
         Colorbar => :colormap,
         Colorbar => :values,
@@ -67,6 +65,12 @@ BLOCK_UPDATES = let
         # avoid
         Axis3 => :zoommode, Toggle => :toggleduration,
     ]
+    for T in block_types
+        attr = Makie.documented_attributes(T)
+        for name in Makie.deprecated_attribute_keys(attr)
+            push!(exclude, T => name)
+        end
+    end
     N = 0
     scene = Scene()
 
