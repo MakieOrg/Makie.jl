@@ -1,24 +1,27 @@
-function verify_colorbar_defaults(fig::Figure, plot; kwargs...)
-    cb = Colorbar(fig[1, 2], plot)
-    return verify_colorbar_defaults(cb, plot; kwargs...)
+using Makie.Unitful
+
+function verify_colorbar_defaults(fig::Figure, cb_plot, source = cb_plot; kwargs...)
+    cb = Colorbar(fig[1, 2], cb_plot)
+    return verify_colorbar_defaults(cb, source; kwargs...)
 end
 
 function verify_colorbar_defaults(
         cb::Colorbar, plot;
-        color = plot.color, colorrange = plot.colorrange,
+        color = haskey(plot, :raw_color) ? plot.raw_color : plot.color, colorrange = plot.colorrange,
         colormap = plot.colormap, colorscale = plot.colorscale,
         lowclip = plot.lowclip, highclip = plot.highclip,
         color_mapping_type = Makie.colormapping_type(colormap[])
     )
     @testset "$(Makie.plotsym(typeof(plot)))" begin
-        # @test cb.values.parent.inputs[1] == color
-        @test cb.values.parent.inputs[1] == color
-        @test cb.colorrange.parent.inputs[1] == colorrange
-        @test cb.colormap.parent.inputs[1] == colormap
-        @test cb.scale.parent.inputs[1] == colorscale
-        @test cb.lowclip.parent.inputs[1] == lowclip
-        @test cb.highclip.parent.inputs[1] == highclip
+        source = Makie.ComputePipeline.hasinput(cb.attributes, :values) ? cb.dc_values : cb.values
+        @test source.parent.inputs[1] == color
+        @test only(cb._colorrange.parent.inputs) == colorrange
+        @test only(cb.colormap.parent.inputs) == colormap
+        @test only(cb.scale.parent.inputs) == colorscale
+        @test only(cb.lowclip.parent.inputs) == lowclip
+        @test only(cb.highclip.parent.inputs) == highclip
         @test cb.color_mapping_type[] == color_mapping_type
+        # TODO: check color_dim_convert?
     end
     return
 end
@@ -26,7 +29,7 @@ end
 @testset "Colorbar from plots" begin
     @testset "Basic recipes" begin
         f, a, p = ablines([1, 2, 3], [1, 1.0, 2], color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p.plots[1])
 
         # no colormapping
         # f,a,p = annotation(rand(Point2f, 3), text = string.(1:3), color = 1:3)
@@ -39,13 +42,14 @@ end
         verify_colorbar_defaults(cb, p, color = p.raw_merged_color)
 
         f, a, p = arrows3d(rand(Point2f, 3), rand(Vec2f, 3), color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p.plots[1])
 
         f, a, p = band(1:3, 0:2, 1:3, color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[1])
 
+        # This doesn't render because mesh can't deal with color values per mesh?
         f, a, p = barplot(1:3, 1:3, color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[1].plots[1])
 
         # no colormapping
         # f,a,p = bracket(1:3, 0:2, 1:3, 1:3, color = 1:3)
@@ -54,7 +58,7 @@ end
         f, a, p = contourf([1 2; 3 4])
         cb = Colorbar(f[1, 2], p)
         verify_colorbar_defaults(
-            cb, p, color = p.cb_levels, colormap = p.cb_colormap,
+            cb, p, color = p.cb_levels, colormap = p.computed_colormap,
             colorrange = p.cb_limits, lowclip = p.cb_lowclip, highclip = p.cb_highclip
         )
 
@@ -86,58 +90,56 @@ end
         end
 
         f, a, p = heatmap(Resampler([1 2; 3 4]))
-        verify_colorbar_defaults(f, p.plots[1], color = p.plots[1].raw_color)
+        verify_colorbar_defaults(f, p, p.plots[1], color = p.plots[1].raw_color)
 
         f, a, p = errorbars(1:3, 0:2, ones(3), color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         f, a, p = rangebars(1:3, 0:2, 1:3, color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         f, a, p = hlines(1:3, color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         f, a, p = vlines(1:3, color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         f, a, p = hspan(0:2, 1:3, color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[1].plots[1])
 
         f, a, p = vspan(0:2, 1:3, color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[1].plots[1])
 
-        # one color for the whole string, so the range has to be given
-        f, a, p = pathtext(1:3, [1, 2, 1], text = "123", color = 2, colorrange = (1, 3))
-        verify_colorbar_defaults(f, p)
+        # pathtext resolves its single color before emitting glyphs.
 
         f, a, p = pie(1:3, color = 1:3)
-        verify_colorbar_defaults(f, p.plots[1])
+        verify_colorbar_defaults(f, p, p.plots[1].plots[1])
 
         f, a, p = poly([Rect2f(0, 0, 1, 1), Rect2f(1, 1, 1, 1)], color = 1:2)
-        verify_colorbar_defaults(f, p.plots[1])
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         # not colormapped
         # f,a,p = rainclouds(rand(1:2, 100), rand(100), color = 1:2)
 
         f, a, p = scatterlines(1:3, color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         # not colormapped
         # f,a,p = series(rand(5, 3))
 
         f, a, p = spy([1 2; 3 4])
-        verify_colorbar_defaults(f, p.plots[1])
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         # 3 args, 5 colors...?
         f, a, p = stairs(1:3, color = 1:5)
-        verify_colorbar_defaults(f, p.plots[1])
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         # stem has multiple independent colormaps (and no lowclip/highclip) so it's
         # not clear how this should interact with Colorbar
         # f,a,p = stem(1:3, color = 1:3)
 
         f, a, p = streamplot(xy -> Vec2f(xy[2], -xy[1]), Rect2f(-1, -1, 2, 2))
-        verify_colorbar_defaults(f, p.plots[1])
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         # also unclear
         # f,a,p = textlabel(1:3, text = ["A", "B", "C"], text_color = 1:3)
@@ -151,7 +153,7 @@ end
         f, a, p = tricontourf(rand(10), rand(10), 1:10)
         cb = Colorbar(f[1, 2], p)
         verify_colorbar_defaults(
-            cb, p, color = p.cb_levels, colormap = p.cb_colormap,
+            cb, p, color = p.cb_levels, colormap = p.computed_colormap,
             colorrange = p.cb_limits, lowclip = p.cb_lowclip, highclip = p.cb_highclip
         )
 
@@ -160,13 +162,13 @@ end
 
         # TODO: This should probably use p.volume instead of stepping down
         f, a, p = volumeslices(1:2, 1:2, 1:2, reshape(1:8, 2, 2, 2))
-        verify_colorbar_defaults(f, p.plots[1], color = p.plots[1].raw_color)
+        verify_colorbar_defaults(f, p, p.plots[1], color = p[4])
 
         f, a, p = voronoiplot([1 2; 3 4])
-        verify_colorbar_defaults(f, p.plots[1])
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         f, a, p = waterfall(1:3, color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[1].plots[1].plots[1])
 
         # may support, but doesn't make much sense?
         # wireframe
@@ -176,29 +178,29 @@ end
         cats = rand(1:3, 100)
         vals = rand(100)
         f, a, p = boxplot(cats, vals, color = cats)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[3].plots[1].plots[1])
 
         f, a, p = crossbar(1:3, 1:3, 0:2, 2:4, color = 1:3)
-        verify_colorbar_defaults(f, p)
+        verify_colorbar_defaults(f, p, p.plots[1].plots[1])
 
         f, a, p = dendrogram(Point2f.(1:4, 0), [(1, 2), (3, 4), (5, 6)], groups = [1, 1, 2, 2])
-        verify_colorbar_defaults(f, p.plots[1])
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         # colormapping not implemented?
         # qqplot, qqnorm
 
         f, a, p = density(vals, color = :x)
-        verify_colorbar_defaults(f, p.plots[1])
+        verify_colorbar_defaults(f, p, p.plots[1].plots[1])
 
         # not really supported
         # f,a,p = ecdfplot(vals, color = 1:201)
         # verify_colorbar_defaults(f, p.plots[1])
 
         f, a, p = hexbin(rand(Point2f, 100))
-        verify_colorbar_defaults(f, p.plots[1])
+        verify_colorbar_defaults(f, p, p.plots[1])
 
         f, a, p = hist(vals, color = 1:15)
-        verify_colorbar_defaults(f, p.plots[1])
+        verify_colorbar_defaults(f, p.plots[1].plots[1].plots[1])
 
         # not really supported
         # f,a,p = stephist(vals, color = 1:33)
@@ -242,4 +244,181 @@ end
         f, a, p = voxels(collect(reshape(1:8, 2, 2, 2)))
         verify_colorbar_defaults(f, p, color = p.chunk, colorrange = p.value_limits)
     end
+end
+
+@recipe CDCTest begin
+    color = :red
+end
+function Makie.plot!(p::CDCTest)
+    scatter!(p, p.attributes, p[1])
+    scatter!(p, p[1]; p.color)
+    return
+end
+
+@testset "color dim converts" begin
+    @testset "Unitful" begin
+        f, a, p = scatter(rand(10), color = (1:10) .* u"m")
+        @test p.resolved_cdc[] isa Makie.UnitfulConversion
+        @test p.dc_color[] == 1:10 # something needs to activate the dc before we can check unit
+        @test p.resolved_cdc[].unit[] == u"m"
+        @test p.scaled_colorrange[] == Vec2f(1, 10)
+
+        cb = Colorbar(f[1, 2], p)
+        @test cb.resolved_cdc[] === p.resolved_cdc[]
+        @test cb.color_mapping_type[] == Makie.continuous
+        @test cb.merged_color_mapping_type[] == Makie.continuous
+        @test isempty(cb.cb_colors[])
+        @test cb.dc_values[] == p.raw_color[]
+        @test cb.attributes.axis.tickvalues[] == Float64.(collect(1:10))
+        @test cb.attributes.axis.tickstrings[] == string.(1:10)
+        @test cb.attributes.axis.label_with_suffix[] == rich("[", rich("m"), "]")
+
+        p2 = scatter!(rand(10), color = (1:10) .* u"mm"; p.color_dim_convert)
+        @test p2.resolved_cdc[] === p.resolved_cdc[]
+        @test p2.resolved_cdc[].unit[] == u"m"
+        @test p2.dc_color[] == collect((1:10) .* 1.0f-3)
+        # Would be nice if the colorrange was shared but we need to figure out how
+        # to do that first (and also: colormap, colorscale, lowclip, highclip, nan_color)
+        @test p2.scaled_colorrange[] == Vec2f(0.001, 0.01)
+
+        # Sanity check - if this fails we should pick another unit above to verify
+        # that u"m" persists
+        f, a, p = scatter(rand(10), color = (1:10) .* u"mm")
+        p.dc_color[]
+        @test p.resolved_cdc[].unit[] == u"mm"
+    end
+
+    @testset "Categorical" begin
+        f, a, p = scatter(rand(3), color = Categorical(["A", "A", "B"]))
+        @test p.resolved_cdc[] isa Makie.CategoricalConversion
+        @test p.dc_color[] == [1.0, 1.0, 2.0]
+        @test only(p.resolved_cdc[].sets)[2] == ["A", "B"]
+        @test p.scaled_colorrange[] == Vec2f(1, 2)
+        key = only(p.resolved_cdc[].sets)[1]
+
+        cb = Colorbar(f[1, 2], p)
+        @test cb.resolved_cdc[] === p.resolved_cdc[]
+        @test cb.color_mapping_type[] == Makie.continuous
+        @test cb.merged_color_mapping_type[] == Makie.categorical
+        @test cb.cb_colors[] ≈ [1.0, 2.0]
+        @test cb.attributes.axis.tickvalues[] == [1.0, 2.0]
+        @test cb.attributes.axis.tickstrings[] == ["A", "B"]
+        @test cb.attributes.axis.label_with_suffix[] == ""
+
+        p2 = scatter!(1:3, color = Categorical(["B", "C", "C"]); p.color_dim_convert)
+        @test p2.resolved_cdc[] === p.resolved_cdc[]
+        @test p2.dc_color[] == [2.0, 3.0, 3.0]
+        @test length(p2.resolved_cdc[].sets) == 2
+        for (k, set) in p2.resolved_cdc[].sets
+            if k == key
+                @test set == ["A", "B"]
+            else
+                @test set == ["B", "C"]
+            end
+        end
+        @test p2.scaled_colorrange[] == Vec2f(1.0, 3.0)
+
+        # This one synchronizes automatic colorranges, so it'll update p and cb
+        @test p.scaled_colorrange[] == Vec2f(1.0, 3.0)
+        @test cb.cb_colors[] ≈ [1.0, 2.0, 3.0]
+        @test cb.attributes.axis.tickvalues[] == [1.0, 2.0, 3.0]
+        @test cb.attributes.axis.tickstrings[] == ["A", "B", "C"]
+    end
+
+    @testset "recipe passthrough" begin
+        f, a, p = scatter(rand(10), color = (1:10) .* u"m")
+        cdc = p.resolved_cdc[]
+        p2 = cdctest!(rand(10), color = (1:10) .* u"m"; p.color_dim_convert)
+        @test p2.resolved_cdc[] === cdc
+        @test p2.plots[1].resolved_cdc[] === cdc
+        @test p2.plots[2].resolved_cdc[] === cdc
+
+        # don't pass compute node
+        f, a, p = scatter(rand(10), color = (1:10) .* u"m")
+        p2 = cdctest!(rand(10), color = (1:10) .* u"m"; color_dim_convert = p.color_dim_convert[])
+        cdc = p.resolved_cdc[]
+        @test p2.resolved_cdc[] === cdc
+        @test p2.plots[1].resolved_cdc[] === cdc
+        @test p2.plots[2].resolved_cdc[] === cdc
+    end
+end
+
+@testset "ticks" begin
+    @testset "manual categorical ticks" begin
+        fig, ax, pl = barplot(1:3; color = 1:3, colormap = Makie.Categorical(:viridis))
+        cb = Colorbar(fig[1, 2], pl)
+        @test cb.attributes.axis.tickvalues[] == [1, 2, 3]
+        @test cb.attributes.axis.tickstrings[] == ["1", "2", "3"]
+        cb.ticks = (1:3, ["a", "b", "c"])
+        @test cb.attributes.axis.tickvalues[] == [1, 2, 3]
+        @test cb.attributes.axis.tickstrings[] == ["a", "b", "c"]
+    end
+
+    @testset "categorical tickformat" begin
+        data = ones(Int, 4, 4)
+        data[1:10] .= 1:10
+        f, a, hm = heatmap(data, colormap = Makie.Categorical(:inferno))
+        cb = Colorbar(f[1, 2], hm, tickformat = "1")
+        @test cb.attributes.axis.tickvalues[] == collect(1.0:1.0:10.0)
+        @test cb.attributes.axis.tickstrings[] == fill("1", 10)
+    end
+end
+
+@testset "color value filtering" begin
+    # If a scaled color is NaN or Inf it should be excluded from the colorrange
+    # so that Colorbar builds with a range of values it can actually display and
+    # find ticks for
+    f, a, p = heatmap([0 10; 100 10000], colorscale = log10)
+    cb = Colorbar(f[1, 2], p)
+    @test cb.attributes.axis.tickvalues[] == Float64[10, 100, 1000, 10000]
+    lbls = [rich("10", superscript(string(i), offset = Vec2f(0.1, 0))) for i in 1:4]
+    @test cb.attributes.axis.tickstrings[] == lbls
+end
+
+@testset "Categorical cell boundaries" begin
+    for values in ([1.0], [1.0, 2.0, 10.0]), scale in (identity, log10, inv), vertical in (true, false)
+        f, a, p = scatter(1:length(values); color = values, colormap = Categorical(:viridis), colorscale = scale)
+        cb = Colorbar(f[1, 2], p; vertical)
+        borders = Makie.edges(values)
+        @test cb.ticklimits[] == (first(borders), last(borders))
+        @test all(isfinite, scale.(cb.ticklimits[]))
+        @test cb.attributes.axis.tickvalues[] == values
+        positions = vertical ? cb.yrange[] : cb.xrange[]
+        normalized = (scale.(borders) .- scale(first(borders))) ./ (scale(last(borders)) - scale(first(borders)))
+        @test (positions .- first(positions)) ./ (last(positions) - first(positions)) ≈ normalized
+    end
+
+    f, a, p = scatter(1:3; color = Categorical(fill("A", 3)))
+    cb = Colorbar(f[1, 2], p)
+    @test cb.resolved_colorrange[] == p.scaled_colorrange[] == Vec2f(0.5, 1.5)
+    @test cb.ticklimits[] == (0.5, 1.5)
+    @test cb.attributes.axis.tickstrings[] == ["A"]
+    p.color = Categorical(["A", "B", "C"])
+    @test cb.ticklimits[] == (0.5, 3.5)
+    @test cb.attributes.axis.tickstrings[] == ["A", "B", "C"]
+end
+
+@testset "Series colorranges" begin
+    for scale in (identity, log10, inv), limits in (Makie.automatic, (Makie.automatic, 10.0), (1.0, 10.0))
+        f, a, p = series(reshape(1:12, 3, 4); color = [1.0, 2.0, 10.0], colorscale = scale, colorrange = limits)
+        colors = p.series_color[]
+        @test length(colors) == 3
+        @test colors[1] != colors[end]
+    end
+    f, a, p = series(reshape(1:12, 3, 4); color = fill(1.0, 3))
+    @test all(==(first(p.series_color[])), p.series_color[])
+end
+
+@testset "Color dim conversion listener cleanup" begin
+    f, a, p = scatter(1:3; color = Categorical(["A", "B", "C"]))
+    cdc = p.color_dim_convert[]
+    count = length(cdc.update.listeners)
+    q = scatter!(a, 1:3; color = Categorical(["A", "B", "C"]), color_dim_convert = cdc)
+    @test length(cdc.update.listeners) == count + 1
+    delete!(a, q)
+    @test length(cdc.update.listeners) == count
+    cb = Colorbar(f[1, 2]; values = Categorical(["A", "B", "C"]), dim_conversion = cdc)
+    @test length(cdc.update.listeners) > count
+    delete!(cb)
+    @test length(cdc.update.listeners) == count
 end

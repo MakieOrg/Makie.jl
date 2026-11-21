@@ -396,19 +396,20 @@ end
         g
     end
     c, b = parent.outputs[:c].parent, parent.outputs[:b].parent
-    own(i) = children[i].outputs[:d].parent
-    @test c.dependents == [own(i) for i in 1:4]
-    @test b.dependents == [own(i) for i in 1:4]
+    # Taken before disconnecting, which gives a child's nodes new parent edges.
+    own = [children[i].outputs[:d].parent for i in 1:4]
+    @test c.dependents == own
+    @test b.dependents == own
 
     # Any order, and only the edge asked for.
-    ComputePipeline.unsafe_disconnect_from_parents!(children[2])
-    @test c.dependents == [own(1), own(3), own(4)]
-    @test b.dependents == [own(1), own(3), own(4)]
+    ComputePipeline.disconnect!(children[2])
+    @test c.dependents == own[[1, 3, 4]]
+    @test b.dependents == own[[1, 3, 4]]
     # Twice is once.
-    ComputePipeline.unsafe_atomic_delete!(own(2))
-    @test c.dependents == [own(1), own(3), own(4)]
+    delete!(own[2])
+    @test c.dependents == own[[1, 3, 4]]
     for i in (4, 1, 3)
-        ComputePipeline.unsafe_disconnect_from_parents!(children[i])
+        ComputePipeline.disconnect!(children[i])
     end
     @test isempty(c.dependents)
     @test isempty(b.dependents)

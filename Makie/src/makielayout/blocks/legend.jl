@@ -122,12 +122,7 @@ function initialize_block!(leg::Legend; entrygroups)
         enlarge(la, -lm[1], -lm[2], -lm[3], -lm[4])
     end
 
-    backgroundcolor = if !isnothing(leg.bgcolor[])
-        @warn("Keyword argument `bgcolor` is deprecated, use `backgroundcolor` instead.")
-        leg.bgcolor
-    else
-        leg.backgroundcolor
-    end
+    backgroundcolor = leg.backgroundcolor
 
     bg = poly!(
         scene,

@@ -22,6 +22,7 @@ export function add_plot(scene, plot_data) {
     const p = create_plot(scene, plot_data);
     plot_cache[p.uuid] = p.mesh;
     scene.add(p.mesh);
+    scene.screen.request_render?.();
     // execute all next insert callbacks
     const next_insert = new Set(ON_NEXT_INSERT); // copy
     next_insert.forEach((f) => f());
@@ -148,34 +149,26 @@ export function on_next_insert(f) {
 }
 
 
-// the plot order is different in WGLMakie (js) compared to serialization order
-// In julia, so we need to first go through all plots and update the glyphs.
-// Example: plota brings glyphs [a,b,c] from text "abc", plotb brings [d, e] from text "abcde".
-// If plotb gets serialized first, the glyphs from plota will be missing.
-function add_glyphs_from_plots(scene_data) {
-    const atlas = get_texture_atlas();
-    scene_data.plots.forEach((plot_data) => {
-        if (plot_data.glyph_data) {
-            const glyph_data = plot_data.glyph_data;
-            const { atlas_updates } = glyph_data;
-            if (atlas_updates) {
-                atlas.insert_glyphs(atlas_updates);
-            }
-        }
-    });
-    scene_data.children.forEach((child) => {
-        add_glyphs_from_plots(child);
-    });
-}
-
+// Glyph SDFs no longer ride plot data: they arrive on the root glyph channel
+// (`WGLMakie.insert_glyphs` evaljs batches, ordered BEFORE the scene snapshot)
+// and any gap self-heals through the atlas pull (`ensure_glyphs`), so there is
+// nothing to pre-walk here anymore.
 export function deserialize_scene(data, screen) {
-    add_glyphs_from_plots(data);
     return deserialize_scene_recursive(data, screen);
 }
 
 export function deserialize_scene_recursive(data, screen) {
     const scene = new THREE.Scene();
     scene.screen = screen;
+    scene.deregister_callbacks = [];
+    function on(observable, callback = () => {}) {
+        const update = value => {
+            callback(value);
+            screen.request_render?.();
+        };
+        observable.on(update);
+        scene.deregister_callbacks.push(() => observable.off(update));
+    }
     const { canvas } = screen;
     add_scene(data.uuid, scene);
     scene.scene_uuid = data.uuid;
@@ -187,6 +180,10 @@ export function deserialize_scene_recursive(data, screen) {
     scene.visible = data.visible;
 
     const camera = new Camera.MakieCamera();
+    // Give the camera a back-ref to the screen so update_matrices can request a
+    // redraw under on-demand rendering. One camera per scene, all sharing this
+    // screen, so the ref is unambiguous.
+    camera.screen = screen;
 
     scene.wgl_camera = camera;
 
@@ -214,12 +211,16 @@ export function deserialize_scene_recursive(data, screen) {
 
     update_cam(data.camera.value, true); // force update on first call
 
-    data.camera.on(update_cam);
+    on(data.camera, update_cam);
+    for (const observable of [data.viewport, data.backgroundcolor,
+        data.backgroundcolor_alpha, data.clearscene, data.visible]) {
+        on(observable);
+    }
 
     if (data.camera_relative_light.value) {
         camera.update_light_dir(data.light_direction.value);
         scene.light_direction = camera.light_direction;
-        data.light_direction.on((value) => {
+        on(data.light_direction, (value) => {
             camera.update_light_dir(value);
         });
     } else {
@@ -227,20 +228,20 @@ export function deserialize_scene_recursive(data, screen) {
             data.light_direction.value
         );
         scene.light_direction = new THREE.Uniform(light_dir);
-        data.light_direction.on((value) => {
+        on(data.light_direction, (value) => {
             scene.light_direction.value.fromArray(value);
         });
     }
 
     const ambient = new THREE.Vector3().fromArray(data.ambient.value);
     scene.ambient = new THREE.Uniform(ambient);
-    data.ambient.on((value) => {
+    on(data.ambient, (value) => {
         scene.ambient.value.fromArray(value);
     })
 
     const light_color = new THREE.Vector3().fromArray(data.light_color.value);
     scene.light_color = new THREE.Uniform(light_color);
-    data.light_color.on((value) => {
+    on(data.light_color, (value) => {
         scene.light_color.value.fromArray(value);
     })
 
@@ -255,10 +256,15 @@ export function deserialize_scene_recursive(data, screen) {
 }
 
 export function delete_plot(plot) {
-    plot.plot_object.dispose()
+    const screen = plot.plot_object.parent?.screen;
+    plot.plot_object.dispose();
+    screen?.request_render?.();
 }
 
 export function delete_three_scene(scene) {
+    scene.disposed = true;
+    scene.deregister_callbacks.forEach(off => off());
+    scene.orbitcontrols?.dispose();
     delete scene_cache[scene.scene_uuid];
     scene.scene_children.forEach(delete_three_scene);
     while (scene.children.length > 0) {

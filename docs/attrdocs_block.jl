@@ -2,7 +2,7 @@ abstract type AttrdocsBlocks <: Documenter.Expanders.NestedExpanderPipeline end
 
 
 Documenter.Selectors.order(::Type{AttrdocsBlocks}) = 8.0 # like @example
-Documenter.Selectors.matcher(::Type{AttrdocsBlocks}, node, page, doc) = Documenter.iscode(node, r"^@attrdocs")
+Documenter.Selectors.matcher(::Type{AttrdocsBlocks}, node, page, doc) = Documenter.iscodelang(node, "@attrdocs")
 
 # this type is just for a helper node which we can push child elements to that are
 # at the end flattened as if they were all on the level of the container

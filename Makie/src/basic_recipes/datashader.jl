@@ -719,8 +719,8 @@ end
 calculated_attributes!(::Type{Image}, ::ImageShader) = nothing
 calculated_attributes!(::Type{Heatmap}, ::HeatmapShader) = nothing
 
-extract_colormap_recursive(plot::ImageShader) = extract_colormap_recursive(plot.plots[1])
-extract_colormap_recursive(plot::HeatmapShader) = extract_colormap_recursive(plot.plots[1])
+extract_colormap(plot::ImageShader) = extract_colormap(plot.plots[1])
+extract_colormap(plot::HeatmapShader) = extract_colormap(plot.plots[1])
 
 
 function resample_image(x, y, image, max_resolution, limits)

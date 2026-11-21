@@ -2,7 +2,7 @@ abstract type FigureBlocks <: Documenter.Expanders.NestedExpanderPipeline end
 
 
 Documenter.Selectors.order(::Type{FigureBlocks}) = 8.0 # like @example
-Documenter.Selectors.matcher(::Type{FigureBlocks}, node, page, doc) = Documenter.iscode(node, r"^@figure")
+Documenter.Selectors.matcher(::Type{FigureBlocks}, node, page, doc) = Documenter.iscodelang(node, "@figure")
 
 module MakieDocsHelpers
     import ImageTransformations

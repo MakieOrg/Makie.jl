@@ -60,13 +60,13 @@ function create_gui_colorbar!(fig::Figure, ax, plot::AbstractPlot, options::Dict
     position = get(options, :position, [1, 2])
     options = filter(((name, _),) -> name != :position, options)
 
-    # `extract_colormap_recursive` has a generic method for every plot: it returns
-    # the mapping, an empty `Dict` when there is none, or errors with the reason
-    # (child plots whose colormaps disagree, so the caller has to pick one).
-    # Catching that turned an ambiguous colormap into a missing colorbar.
-    cmap = Makie.extract_colormap_recursive(plot)
+    # `extract_colormap` has a method for every plot: it returns the colormapping
+    # attributes, or errors with the reason (a recipe with several child plots that
+    # does not say which one is colormapped). Catching that turned an ambiguous
+    # colormap into a missing colorbar.
+    cmap = extract_colormap(plot)
     colorbar_attributes_complete(cmap) || return nothing
-    values = to_value(cmap[:color])
+    values = to_value(haskey(cmap, :color) ? cmap[:color] : cmap[:dim_converted])
     values isa Union{AbstractArray{<:Colorant}, Colorant, ShaderAbstractions.Sampler, AbstractPattern} && return nothing
     # Validate margin usage
     if haskey(options, :margin) && !(position isa Symbol)
