@@ -1881,20 +1881,107 @@ This always uses `BlockAttributeConvert{T}` where T is the attribute type
 defined in `attr` as the edge callback.
 """
 function add_remaining_block_inputs!(graph, attr, flattened)
+    return add_remaining_typed_inputs!(T -> BlockAttributeConvert{T}(), graph, attr, flattened)
+end
+
+function add_remaining_typed_inputs!(get_callback, graph, attr, flattened)
     for (indices, type) in zip(attr.type_indices, attr.types)
-        add_remaining_block_inputs!(graph, attr, indices, type, flattened)
+        add_remaining_typed_inputs!(get_callback(type), graph, attr, indices, type, flattened)
     end
     return graph
 end
 
-function add_remaining_block_inputs!(graph, attr, indices, ::Type{T}, source) where {T}
+function add_remaining_typed_inputs!(callback, graph, attr, indices, ::Type{T}, source) where {T}
     for i in indices
         key = attr.merged_keys[i]
         if !isconnected(graph, key)
             add_or_connect_value!(
-                BlockAttributeConvert{T}(), graph, key, source[i], graph[key]
+                callback, graph, key, source[i], graph[key]
             )
         end
     end
     return
+end
+
+########################################
+# Single call to create ComputeGraph (DataInspector)
+########################################
+
+"""
+    ComputeGraph(attr::DocumentedAttributes, scene, name_in_theme, kwdict[; kwargs...])
+
+Creates a ComputeGraph from `DocumentedAttributes`.
+
+## Arguments
+
+- `attr` are the `DocumentedAttributes` which define which inputs and nesting to
+    add to the ComputeGraph as well as the initial default values.
+- `scene` is the scene from which to source inherited defaults and overwrites
+- `name_in_theme` is the name used for overwrite lookups in the theme.
+- `kwdict` is a `Dict{Symbol, Any}` of the kwargs used for initializing the ComputeGraph.
+
+## Keyword Arguemnts
+
+- `exclude = tuple()` is a collection of names (Symbols) from the DocumentedAttributes
+    which will be skipped when initializing the ComputeGraph.
+- `restrict_types = false` if true, initializes type annotations based on the types
+    defined in DocumentedAttributes. Otherwise:
+- `use_any_types = true`: If `restrict_types = false`, controls whether all inputs
+    initialize to `Any` (true) or leave types up to ComputePipeline (false). In that
+    case types will be set by the initial value of the attribute/input.
+- `remove_used_kwargs = false` controls whether kwargs used to initialize the ComputeGraph
+    are removed from `kwdict` (true) or not (false).
+- `get_conversion_func = x -> ComputePipeline.compute_identity` defines a conversion
+    function that applies to an attribute. If `restrict_types = false`, `x` will be
+    the (merged) name of attribute/input. Otherwise it will be the type. For plots
+    this is `key -> AttributeConvert(key, plotname)` which lowers to a call to
+    `convert_attribute`, or the current default. For blocks this is
+    `T -> BlockAttributeConvert{T}()`. The signature of `get_conversion_func` may
+    change in the future.
+
+## Notes
+
+This function does not do everything that plot or block initialization does. Plots
+additionally handle cycled attributes. Blocks additionally allow users to initialize inputs.
+
+The priority of default values is:
+1. `kwdict`
+2. `scene` theme overwrites (e.g. `theme[:Scatter][:color]`)
+3. `attr` defaults, which can be `@inherit key fallback`
+    1. scene theme inheritted values `theme[key]`
+    2. `fallback` values (which may themself be another inherit expression)
+"""
+function ComputePipeline.ComputeGraph(
+        attr::DocumentedAttributes, scene,
+        name_in_theme::Symbol, kwdict::Dict{Symbol, Any};
+        exclude = tuple(),
+        restrict_types = false, use_any_types = true,
+        remove_used_kwargs = false,
+        get_conversion_func = @nospecialize(x) -> identity
+    )
+    graph = ComputeGraph()
+
+    # Collect indices of user-set deprecated attributes before they may get removed by resolve_defaults
+    user_set_deprecated_attr = collect_changed_deprecated_attributes(attr, kwdict)
+    flattened_defaults = resolve_defaults(attr, scene, name_in_theme, kwdict, exclude, remove_used_kwargs)
+
+    # create Computed nodes without connections
+    prepare_graph_for_attributes!(graph, attr, restrict_types = restrict_types, is_primitive = !use_any_types)
+
+    # connect to flattened defaults
+    if restrict_types
+        add_remaining_typed_inputs!(get_conversion_func, graph, attr, flattened_defaults)
+    else
+        for (i, key) in enumerate(attr.merged_keys)
+            if !isconnected(graph, key)
+                add_or_connect_value!(
+                    get_conversion_func(key), graph, key, flattened_defaults[i], graph[key]
+                )
+            end
+        end
+    end
+
+    process_attribute_deprecations!(graph, attr, user_set_deprecated_attr)
+
+    return graph
 end
