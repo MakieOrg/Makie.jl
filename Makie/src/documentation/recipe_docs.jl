@@ -316,6 +316,7 @@ If the listed attributes exist in `MyPlot` they will be printed as
 be skipped. If every attribute does not exist, the group will not be printed.
 """
 attribute_groups(::Type{<:AbstractPlot}) = Makie.DEFAULT_ATTRIBUTE_GROUPS
+attribute_groups(::Type) = Pair{String, Vector{Symbol}}[]
 
 function get_attribute_docs(::Type{T}; full = false) where {T}
     # Build attributes section
@@ -448,7 +449,7 @@ end
 
 function write_short_nested_attribute_docs!(io, attr, layer::Int, keys_used)
     keytable = attr.nesting.keytables[layer]
-    keys_sorted = sort(keys(keytable))
+    keys_sorted = sort(collect(keys(keytable)))
     print(io, '(')
     has_prev = false
     for key in keys_sorted
