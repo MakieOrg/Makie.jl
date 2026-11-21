@@ -908,8 +908,10 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         # their constructor, which means they can't be updated like this.
         batch_update_arguments!(updates, old_spec.args, spec.args)
     else
-        # TODO: replace layoutable if args need to update but can't update dynamically
-        @warn "Skipped args update for $T"
+        if spec.args != old_spec.args
+            # TODO: replace layoutable if args need to update but can't update dynamically
+            @warn "Skipped args update for $T"
+        end
     end
     batch_update_attributes!(updates, block, old_kw, new_kw)
     update!(block.attributes, updates)
