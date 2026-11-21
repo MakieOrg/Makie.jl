@@ -35,6 +35,10 @@ Inherit(key::Symbol) = Inherit(identity, (key,), NoFallback())
 Inherit(key::Symbol, fallback) = Inherit(identity, (key,), fallback)
 Inherit(f, key::Symbol) = Inherit(f, (key,), NoFallback())
 
+# disambiguate
+Inherit(keys::Tuple{Vararg{Symbol}}, fallback::Symbol) = Inherit(identity, keys, fallback)
+
+
 # For replacing `@inherit x` with `@inherit :x`
 default_key_expr(x::Symbol) = :(($(QuoteNode(x)),))
 default_key_expr(x::QuoteNode) = :(($x,))
