@@ -314,7 +314,7 @@ If the listed attributes exist in `MyPlot` they will be printed as
 "**My Attributes**: `myattrib1`, `myattrib2`". Attributes that don't exist will
 be skipped. If every attribute does not exist, the group will not be printed.
 """
-attribute_groups(::Type{<:AbstractPlot}) = Makie.DEFAULT_ATTRIBUTE_GROUPS
+attribute_groups(::Type{<:AbstractPlot}) = Makie.DEFAULT_PLOT_ATTRIBUTE_GROUPS
 attribute_groups(::Type) = Pair{String, Vector{Symbol}}[]
 
 function get_attribute_docs(::Type{T}; full = false) where {T}

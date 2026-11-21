@@ -30,7 +30,7 @@ function attribute_groups(::Type{Axis3})
         :dim1_conversion, :dim2_conversion, :dim3_conversion,
         :x_unit_in_ticklabel, :y_unit_in_ticklabel, :z_unit_in_ticklabel,
         :x_unit_in_label, :y_unit_in_label, :z_unit_in_label,
-        :xlabel_suffix, :ylabel_suffix, :zlabel_suffix
+        :xlabel_suffix, :ylabel_suffix, :zlabel_suffix,
     ]
 
     # Note xlabel_suffix and ylabel_suffix are in xlabel and ylabel too. They

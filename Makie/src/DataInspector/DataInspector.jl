@@ -84,7 +84,7 @@ const __DATAINSPECTOR_ATTRIBUTES = @DocumentedAttributes begin
         filtered_attributes(
             Tooltip, exclude = [
                 :visible, :xautolimits, :yautolimits, :zautolimits, :transformation,
-                :space, :placement, :text
+                :space, :placement, :text,
             ]
         )...
         draw_on_top = true
@@ -96,6 +96,25 @@ const __DATAINSPECTOR_ATTRIBUTES = @DocumentedAttributes begin
     @deprecate indicator_linewidth (indicator, linewidth)
     "DataInspector indicator attributes moved to nested attributes. Set them with `attr.indicator.linestyle = ...` and initialize them with `indicator = Attributes(linestyle = ...)`."
     @deprecate indicator_linestyle (indicator, linestyle)
+
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.offset = ...` and initialize them with `tooltip = Attributes(offset = ...)`"
+    @deprecate offset (tooltip, offset)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.align = ...` and initialize them with `tooltip = Attributes(align = ...)`"
+    @deprecate align (tooltip, align)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.textpadding = ...` and initialize them with `tooltip = Attributes(textpadding = ...)`"
+    @deprecate textpadding (tooltip, textpadding)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.fontsize = ...` and initialize them with `tooltip = Attributes(fontsize = ...)`"
+    @deprecate fontsize (tooltip, fontsize)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.textcolor = ...` and initialize them with `tooltip = Attributes(textcolor = ...)`"
+    @deprecate textcolor (tooltip, textcolor)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.font = ...` and initialize them with `tooltip = Attributes(font = ...)`"
+    @deprecate font (tooltip, font)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.backgroundcolor = ...` and initialize them with `tooltip = Attributes(backgroundcolor = ...)`"
+    @deprecate backgroundcolor (tooltip, backgroundcolor)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.outline_color = ...` and initialize them with `tooltip = Attributes(outline_color = ...)`"
+    @deprecate outline_color (tooltip, outline_color)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.outline_linewidth = ...` and initialize them with `tooltip = Attributes(outline_linewidth = ...)`"
+    @deprecate outline_linewidth (tooltip, outline_linewidth)
 end
 documented_attributes(::Type{DataInspector}) = __DATAINSPECTOR_ATTRIBUTES
 attribute_examples(::Type{DataInspector}) = Dict{Symbol, Vector{Example}}()
@@ -106,7 +125,7 @@ function attribute_groups(::Type{DataInspector})
         "DataInspector Attributes" => main,
         "Indicator Attributes" => Symbol[:indicator],
         "Tooltip Attributes" => Symbol[:tooltip],
-        "Deprecated Attributes" => Symbol[:indicator_color, :indicator_linewidth, :indicator_linestyle]
+        "Deprecated Attributes" => Symbol[:indicator_color, :indicator_linewidth, :indicator_linestyle],
     ]
 end
 
@@ -379,7 +398,7 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
     update!(
         di.dynamic_tooltip,
         to_ndim(Point3d, pos, 0), text = label, visible = true,
-        space = to_value(get(plot, :space, :data));
+        space = to_value(get(plot, :space, :data))
     )
 
     px_pos = di.dynamic_tooltip.pixel_positions[][1]

@@ -275,14 +275,14 @@ end
 end
 
 @testset "Modifying documented attributes" begin
-    old = @DocumentedAttributes begin
+    old = Makie.@DocumentedAttributes begin
         a = 1
         nested = @attributes begin
             b::Int = @inherit b 1
         end
     end
 
-    patch = @DocumentedAttributes begin
+    patch = Makie.@DocumentedAttributes begin
         "a doc"
         a = 2
         "nested doc"
@@ -309,7 +309,7 @@ end
         @test_throws ErrorException Makie.merge_documented_attributes!(old, patch, on_collision = :error)
 
         # working case + nesting
-        old = @DocumentedAttributes begin
+        old = Makie.@DocumentedAttributes begin
             a = 1
             nested = @attributes begin
                 b::Int = @inherit b 1
@@ -331,7 +331,7 @@ end
     end
 
     @testset "skip on collision" begin
-        old = @DocumentedAttributes begin
+        old = Makie.@DocumentedAttributes begin
             a = 1
             nested = @attributes begin
                 b::Int = @inherit b 1
@@ -354,7 +354,7 @@ end
     end
 
     @testset "replace on collision" begin
-        old = @DocumentedAttributes begin
+        old = Makie.@DocumentedAttributes begin
             a = 1
             nested = @attributes begin
                 b::Int = @inherit b 1
