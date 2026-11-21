@@ -157,6 +157,8 @@ function clip_shape(clip_planes::Vector{Plane3f}, shape::Rect2, space::Symbol, m
     if any(p -> Makie.is_clipped(clip_planes, p), ps)
         push!(ps, xy)
         ps = clip_poly(clip_planes, ps, space, model)
+        # Need at least 3 points after clipping to have a visible shape
+        length(ps) < 3 && return BezierPath(Makie.PathCommand[])
         commands = Makie.PathCommand[MoveTo(ps[1]), LineTo.(ps[2:end])..., ClosePath()]
         return BezierPath(commands::Vector{Makie.PathCommand})
     else

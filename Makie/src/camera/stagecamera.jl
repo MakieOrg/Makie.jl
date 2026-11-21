@@ -189,9 +189,9 @@ function StageCamera(
         error("Cannot set both mm and fov")
     end
 
-    overwrites = Attributes(kwargs)
+    overwrites = OAttributes(kwargs)
 
-    controls = Attributes(
+    controls = OAttributes(
         forward_key = Keyboard.w,
         backward_key = Keyboard.s,
         left_key = Keyboard.a,
@@ -218,7 +218,7 @@ function StageCamera(
 
     replace!(controls, :StageCamera, scene, overwrites)
 
-    settings = Attributes(
+    settings = OAttributes(
         keyboard_translationspeed = 0.5,
         keyboard_rotationspeed = 1.0,
         keyboard_zoomspeed = 1.0,

@@ -1063,6 +1063,8 @@ end
         alignmode = Inside()
         "Enable word wrapping to the suggested width of the Label."
         word_wrap::Bool = false
+
+        textsize = @inherit textsize 16
         "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
         @deprecate textsize fontsize
     end
@@ -1320,6 +1322,8 @@ end
         clicks = 0
         "The align mode of the button in its parent GridLayout."
         alignmode = Inside()
+
+        textsize = @inherit textsize 16
         "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
         @deprecate textsize fontsize
     end
@@ -1562,6 +1566,8 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
         search_placeholder = "Search…"
         "Predicate `(query::String, label::String) -> Bool` deciding whether an option matches the search. Used only when `searchable = true`."
         filter = (q, s) -> occursin(lowercase(q), lowercase(s))
+
+        textsize = @inherit textsize 16
         "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
         @deprecate textsize fontsize
     end
@@ -2212,6 +2218,8 @@ end
         restriction = nothing
         "The color of the cursor."
         cursorcolor = @inherit((:colors, :accent))
+
+        textsize = @inherit textsize 16
         "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
         @deprecate textsize fontsize
     end

@@ -281,6 +281,9 @@ be tuples denoting a path to a nested attributes, e.g. `(outer, inner)`. When
 creating a plot or Block, both `old` and `new` will be added as inputs and merge
 into the `new` node. If `old` is changed, a deprecation warning is shown. This
 warning can be set by adding a string before the `@deprecate` entry (like docstrings).
+The default value of the deprecated attribute can be defined with a normal entry
+`old = ...` before the `@deprecate old new` entry. If omitted, the attribute
+will default to the same value as its replacement.
 
 ## Macro Examples
 
@@ -627,22 +630,28 @@ function _add_deprecated_attribute!(attr, state, old::Tuple, new::Tuple, default
     if has_nested_key(attr, current_layer, new)
         new_idx = nested_key_to_index(attr, new, current_layer)
 
-        default_value = attr.defaults[new_idx]
+        # Allow `old = ...` to exist so different defaults can be set
         docstring = something(docs, "$old has been deprecated in favor of $new.")
-        type = attr.types[attr.type_index[new_idx]]
+        if has_nested_key(attr, current_layer, old)
+            old_idx = nested_key_to_index(attr, old, current_layer)
+            attr.leaf_docstring[old_idx] = docstring
+        else
+            default_value = attr.defaults[new_idx]
+            type = attr.types[attr.type_index[new_idx]]
 
-        for key in Base.front(old)
-            _begin_nesting_layer!(attr, state, key)
-        end
-        _add_attribute!(
-            attr, state, last(old),
-            type, default_value, default_expr, docstring
-        )
-        for _ in Base.front(old)
-            _end_nesting_layer!(state)
+            for key in Base.front(old)
+                _begin_nesting_layer!(attr, state, key)
+            end
+            _add_attribute!(
+                attr, state, last(old),
+                type, default_value, default_expr, docstring
+            )
+            for _ in Base.front(old)
+                _end_nesting_layer!(state)
+            end
+            old_idx = nested_key_to_index(attr, old, current_layer)
         end
 
-        old_idx = nested_key_to_index(attr, old, current_layer)
         push!(attr.deprecation_indices, old_idx => new_idx)
     else
         error("Could not add deprecation `@deprecated $oldstr $newstr` because the replacement attribute does not exist. Make sure you add it before calling `@deprecate`.")
@@ -838,6 +847,9 @@ function is_attribute(T::Type, name::Symbol)
     attr = documented_attributes(T)
     return has_flat_key(attr, name) || has_nested_key(attr, name)
 end
+
+Base.haskey(attr::DocumentedAttributes, key::Symbol) = has_flat_key(attr, key)
+Base.haskey(attr::DocumentedAttributes, key::Symbol, keys::Symbol...) = has_nested_key(attr, key, keys...)
 
 has_nested_key(attr::DocumentedAttributes, keys::Symbol...) = has_nested_key(attr, keys)
 has_nested_key(attr::DocumentedAttributes, keys::Tuple) = has_nested_key(attr, 1, keys)
@@ -1490,23 +1502,45 @@ function add_remaining_inputs!(get_callback, graph, attr, exclude = tuple())
 end
 
 """
-    add_theme!(graph::ComputeGraph, attr::DocumentedAttributes, T, scene, exclude, kwargs, cycle)
+    add_theme!(plot, attr::DocumentedAttributes, scene, exclude, kwargs, cycle)
 
 Resolves the theme (`theme(scene)[:Plot]` overwrites, inheriting from
 `theme(scene)` and fallbacks) for each attribute defined in `attributes` that
 is an `Input` not defined by `kwargs`. After this attributes are fully initialized.
 """
-function add_theme!(graph, attr, T, scene, exclude, kwargs, cycle)
+function add_theme!(plot::Plot{Func}, attr, scene, exclude, kwargs, cycle) where {Func}
+    graph = plot.attributes
+    T = Plot{Func}
+
     # add merged keys from kwargs to exclusion list
     collect_merged_keys!(exclude, attr, kwargs)
     # fill out an array with resolved defaults from theme + plot
     defaults = resolve_defaults(
         attr, scene, plotsym(T), NamedTuple(), exclude, false, cycle
     )
+
     # update anything that's an input and not excluded
     for (i, key) in enumerate(attr.merged_keys)
         if !(key in exclude) && haskey(graph.inputs, key)
-            val = to_value(defaults[i])
+            maybe_obs = defaults[i]
+            if maybe_obs isa Observable
+                on(x -> update!(graph, key => x), plot, maybe_obs)
+                # We can get an Observable from kwargs, theme overwrite or theme
+                # inheritance. The latter may add an in-between `map(inherit.callback, obs)`
+                # We need to track the related ObserverFunction for cleanup. To find
+                # it we check that the attribute could be inherited and looks like it
+                # came from inherit_default. (This is hopefully good enough)
+                if attr.defaults[i] isa Inherit
+                    cb = attr.defaults[i].callback
+                    if cb !== identity && length(maybe_obs.inputs) == 1 && maybe_obs.inputs[1].f.f === cb
+                        push!(plot.deregister_callbacks, only(maybe_obs.inputs))
+                    end
+                end
+                val = to_value(maybe_obs)
+            else
+                val = maybe_obs
+            end
+
             # Skipping setproperty/setindex from ComputePipeline to
             # avoid type inference for val.
             setfield!(graph.inputs[key], :value, val)
@@ -1631,7 +1665,12 @@ function inherit_default(inherit::Inherit, scene_theme)
     if result isa Inherit # nested inherit
         return inherit_default(result, scene_theme)
     end
-    return inherit.callback(to_value(result))
+    if result isa Observable
+        # keep this in line with add_theme!()'s checks
+        return inherit.callback === identity ? result : map(inherit.callback, result)
+    else
+        return inherit.callback(result)
+    end
 end
 
 function inherit_default(theme, fallback, key::Symbol, keys::Symbol...)

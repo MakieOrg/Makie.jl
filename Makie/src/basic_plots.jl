@@ -776,6 +776,8 @@ Plots one or multiple texts passed via the `text` keyword.
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
     fxaa = false
+
+    textsize = @inherit textsize 16
     "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
     @deprecate textsize fontsize
 end
