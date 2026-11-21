@@ -473,7 +473,8 @@ function build_documented_attributes!(output::Vector, expr::Expr, local_vars)
 end
 
 # Underscoring these to make them less visible
-function _begin_nesting_layer!(attr::DocumentedAttributes, state, key::Symbol, docstring = nothing)
+_begin_nesting_layer!(attr::DocumentedAttributes, state, key::Symbol) = _begin_nesting_layer!(attr, state, key, nothing, false)
+function _begin_nesting_layer!(attr::DocumentedAttributes, state, key::Symbol, docstring, update = true)
     layers, keys = state
     current_layer = last(layers)
     keytable = attr.nesting.keytables[current_layer]
@@ -482,7 +483,9 @@ function _begin_nesting_layer!(attr::DocumentedAttributes, state, key::Symbol, d
         if next_layer < 0
             error("$key in $(join(keys, '.')) can not nest because it already has a value.")
         end
-        attr.nested_docstring[next_layer] = docstring
+        if update
+            attr.nested_docstring[next_layer] = docstring
+        end
     else
         push!(attr.nesting.keytables, Dict{Symbol, Int}())
         next_layer = length(attr.nesting.keytables)
