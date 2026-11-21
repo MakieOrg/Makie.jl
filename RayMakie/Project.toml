@@ -27,13 +27,24 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [sources]
 Mantle = {url = "https://github.com/SimonDanisch/Mantle.jl", rev = "sd/lava-refactor"}
 Hikari = {url = "https://github.com/JuliaGraphics/Hikari.jl", rev = "master"}
-Raycore = {url = "https://github.com/JuliaGeometry/Raycore.jl", rev = "sd/with-texture"}
+Raycore = {url = "https://github.com/JuliaGeometry/Raycore.jl", rev = "master"}
 
 [compat]
+AcceleratedKernels = "0.5.13"
 Adapt = "4.4.0"
+Atomix = "1.5"
+Colors = "0.13"
 GLFW = "4"
+GPUArraysCore = "0.2.1"
+GeometryBasics = "0.5.13"
+Hikari = "0.1"
 ImageCore = "0.10.5"
-KernelAbstractions = "0.9, 0.10"
+KernelAbstractions = "0.10.7"
+LinearAlgebra = "1"
+Makie = "=0.24.17"
+Mantle = "0.1"
+Raycore = "0.3"
+StaticArrays = "1.9"
 
 [extras]
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
