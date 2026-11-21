@@ -247,8 +247,7 @@ end
 ### Main Documentation Function
 ################################################################################
 
-# Consider making a dedicated group for DataInspector?
-const DEFAULT_ATTRIBUTE_GROUPS = let
+const DEFAULT_PLOT_ATTRIBUTE_GROUPS = let
     generic = copy(Makie.mixin_generic_plot_attributes().merged_keys)
     push!(generic, :cycle)
     inspector = [:inspectable, :inspector_label]
@@ -269,7 +268,7 @@ end
 
 Returns a deepcopy of the default attribute groups for further modification.
 """
-default_attribute_groups() = deepcopy(DEFAULT_ATTRIBUTE_GROUPS)
+default_attribute_groups() = deepcopy(DEFAULT_PLOT_ATTRIBUTE_GROUPS)
 
 """
     uncategorized_attributes(PlotType, name = "\$PlotType Attributes")

@@ -307,7 +307,20 @@ function make_block_docstring(T::Type{<:Block}, docstring)
     """
 end
 
-attribute_groups(::Type{<:Block}) = Pair{String, Vector{Symbol}}[]
+
+const DEFAULT_BLOCK_ATTRIBUTE_GROUPS = let
+    layout = [:halign, :valign, :width, :height, :tellwidth, :tellheight, :alignmode]
+    Pair{String, Vector{Symbol}}["Layout Attributes" => sort!(layout)]
+end
+
+"""
+    default_block_attribute_groups()
+
+Returns a deepcopy of the default block attribute groups for further modification.
+"""
+default_block_attribute_groups() = deepcopy(DEFAULT_BLOCK_ATTRIBUTE_GROUPS)
+
+attribute_groups(::Type{<:Block}) = default_block_attribute_groups()
 
 function mixin_block_layout_attributes()
     return @DocumentedAttributes begin
