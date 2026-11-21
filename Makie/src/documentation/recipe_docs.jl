@@ -390,7 +390,7 @@ function write_attribute_docs!(io, PT, attr, full::Bool)
     end
 
     if !full
-        typename = string(plotsym(PT))
+        typename = PT isa AbstractPlot ? string(plotsym(PT)) : string(nameof(PT))
         info = if VERSION < v"1.12.2"
             "help($typename, :attribute)"
         else
