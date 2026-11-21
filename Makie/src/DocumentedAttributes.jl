@@ -543,19 +543,21 @@ function _add_attribute!(
         type_idx = attr.type_index[leaf_idx]
         old_type = attr.types[type_idx]
         if old_type != type
-            # type_indices are sorted
+            # remove from type_indices (which contain leaf indices per for each type)
             indices = attr.type_indices[type_idx]
             idx = searchsortedfirst(indices, leaf_idx)
             deleteat!(indices, idx)
 
+            # replace in type_idx (which maps leaf_idx -> type_idx)
             type_idx = findfirst(==(type), attr.types)
             if isnothing(type_idx)
                 push!(attr.types, type)
                 push!(attr.type_indices, Int[])
                 type_idx = length(attr.types)
             end
-            push!(attr.type_index, type_idx)
-            # keep it sorted
+            attr.type_index[leaf_idx] = type_idx
+
+            # add leaf_idx to type_indices of type
             indices = attr.type_indices[type_idx]
             idx = searchsortedfirst(indices, leaf_idx)
             insert!(indices, idx, leaf_idx)
