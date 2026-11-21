@@ -937,6 +937,40 @@ function has_key_in_level(attr::DocumentedAttributes, layer::Int, key::Symbol)
     return ComputePipeline.has_key_in_level(attr.nesting, layer, key)
 end
 
+Base.keys(attr::DocumentedAttributes) = attr.merged_keys
+
+"""
+    nested_merged_keys(attr::DocumentedAttributes, keys::Symbol...)
+
+Collects all merged keys that appear under anesting layer defined by `keys`
+within the given DocumentedAttributes.
+"""
+nested_merged_keys(attr::DocumentedAttributes, keys::Symbol...) = nested_merged_keys(attr, keys)
+function nested_merged_keys(attr::DocumentedAttributes, keys::Tuple{Vararg{Symbol}})
+    start_level = 1
+    for key in keys
+        if start_level < 0 || !haskey(attr.nesting.keytables[start_level], key)
+            error("Could not find nested layer $key in DocumentedAttributes. Requested nesting path: $keys.")
+        end
+        start_level = attr.nesting.keytables[start_level][key]
+    end
+
+    output = Symbol[]
+    nested_merged_keys_rec!(output, attr, start_level)
+    return output
+end
+
+function nested_merged_keys_rec!(buffer::Vector{Symbol}, attr::DocumentedAttributes, level::Int)
+    for idx in values(attr.nesting.keytables[level])
+        if idx > 0
+            nested_merged_keys_rec!(buffer, attr, idx)
+        else
+            push!(buffer, attr.merged_keys[-idx])
+        end
+    end
+    return
+end
+
 root_keys(attr::DocumentedAttributes) = keys(attr.nesting.keytables[1])
 flattened_keys(attr::DocumentedAttributes) = attr.merged_keys
 
