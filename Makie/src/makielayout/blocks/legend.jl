@@ -61,9 +61,16 @@ function initialize_block!(
     return initialize_block!(leg; entrygroups)
 end
 
-connect_sources!(l::Legend, ax::AbstractAxis) = connect_sources!(l, ax.scene)
-connect_sources!(l::Legend, scene::AbstractScene) = on(p -> notify(l.sources), l.blockscene, scene.onplot)
 connect_sources!(l::Legend, axs::AbstractArray) = foreach(ax -> connect_sources!(l, ax), axs)
+connect_sources!(l::Legend, ax::AbstractAxis) = connect_sources!(l, ax.scene)
+function connect_sources!(l::Legend, scene::AbstractScene)
+    on(l.blockscene, scene.onplot) do plotset
+        # We don't want to update when the plotset changes due to Julia exiting
+        # because that would trigger updates with freed font objects.
+        JULIA_IS_EXITING[] || notify(l.sources)
+    end
+    return
+end
 
 function initialize_block!(
         leg::Legend,

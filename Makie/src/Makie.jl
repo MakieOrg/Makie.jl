@@ -624,8 +624,10 @@ function cleanup_globals()
     empty!(DEFAULT_FONT)
     empty!(ALTERNATIVE_FONTS)
     empty!(TEXTURE_ATLASES)
+    JULIA_IS_EXITING[] = true
     return
 end
+const JULIA_IS_EXITING = Ref(false)
 
 export cleanup_globals
 
