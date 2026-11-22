@@ -230,6 +230,7 @@ function Base.Docs.getdoc(::Type{DataInspector})
     return combined
 end
 
+""
 function DataInspector(obj; blocking = false, kwargs...)
     parent = get_scene(obj)
     if !isnothing(parent.data_inspector)
