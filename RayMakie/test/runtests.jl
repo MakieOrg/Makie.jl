@@ -93,23 +93,13 @@ const TEST_FILES = [
     "test_renderbuffers.jl",
     "test_render_allocates_nothing.jl",
     "test_arena_growth_frame.jl",
-    # Leak / GC regressions.
+    # Leak / GC regressions, read through the device's buffer and byte counts.
     "test_materials_scene.jl",
     "test_lines_topology.jl",
     "test_screen_owns_its_tracer.jl",
+    "test_caching_gc_correctness.jl",
+    "test_meshscatter_traced_memory.jl",
 ]
-
-# The Vulkan runtime's DEFERRED-FREE LEDGER, and nothing else.
-#
-# `vk_flush!`, `vk_context()`, `drain_deferred_frees!`, `live_buffer_count` —
-# that ledger is how the Vulkan backend reclaims GPU memory, and it is that
-# backend's mechanism, not a Mantle verb every backend answers. A unified-memory
-# backend has nothing to defer and nothing to count. Same split Mantle's own
-# suite makes with `test/vulkan/` and `test/metal/`.
-#
-# Kept as a list rather than deleted: it is a LEAK regression, the coverage
-# least likely to be duplicated elsewhere.
-const VULKAN_RUNTIME_TEST_FILES = ["test_caching_gc_correctness.jl", "test_meshscatter_traced_memory.jl"]
 
 # NOT listed: test_dolphin_update_stress.jl — and here is exactly what is known,
 # so the next person does not have to re-derive it (2026-08-25).
@@ -168,7 +158,7 @@ const GRAPHICS_TEST_FILES = [
 
 # Named test files support focused device checks; an empty argument list runs all.
 const REQUESTED_TESTS = Set(ARGS)
-const UNKNOWN_TESTS = setdiff(REQUESTED_TESTS, Set([TEST_FILES; GRAPHICS_TEST_FILES; VULKAN_RUNTIME_TEST_FILES]))
+const UNKNOWN_TESTS = setdiff(REQUESTED_TESTS, Set([TEST_FILES; GRAPHICS_TEST_FILES]))
 isempty(UNKNOWN_TESTS) || error("Unknown RayMakie test files: $(join(sort!(collect(UNKNOWN_TESTS)), ", "))")
 
 @testset "RayMakie" begin
@@ -213,20 +203,5 @@ isempty(UNKNOWN_TESTS) || error("Unknown RayMakie test files: $(join(sort!(colle
     else
         @info "RayMakie tests: this backend does not rasterise; skipping the overlay files" backend =
             nameof(typeof(BACKEND)) files = GRAPHICS_TEST_FILES
-    end
-
-    # The DEVICE under test, not whether the Vulkan runtime is compiled in: a Mac
-    # compiles it too, for lavapipe, while its default device stays Metal.
-    if isdefined(Mantle, :LavaDevice) && Mantle.todevice(BACKEND) isa Mantle.LavaDevice
-        for fname in VULKAN_RUNTIME_TEST_FILES
-            isempty(REQUESTED_TESTS) || fname in REQUESTED_TESTS || continue
-            @info "RayMakie tests" file = fname
-            @testset "$fname" begin
-                include(joinpath(@__DIR__, fname))
-            end
-        end
-    else
-        @info "RayMakie tests: the device is not a Vulkan one; skipping its deferred-free \
-               ledger tests" files = VULKAN_RUNTIME_TEST_FILES
     end
 end

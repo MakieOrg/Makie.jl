@@ -2,7 +2,8 @@
 #
 # Tests Screen lifecycle, colorbuffer() flow, film clearing on dirty,
 # close() cleanup, scene state management, and rendering correctness.
-# All tests use Lava GPU backend to verify actual GPU memory management.
+# Each test runs on the default device and reads its buffer count, so a leak shows
+# on every device.
 
 using Test
 using RayMakie
@@ -11,13 +12,11 @@ using Hikari
 using Raycore
 using GeometryBasics
 using KernelAbstractions
-using Lava, Mantle
+using Mantle
 # Through Makie: Colors is not a test dependency, so `using Colors` only loaded
 # in an environment that happened to have it.
 using Makie.Colors
 
-# Whichever backend registered — `LavaBackend` is a Vulkan type and naming it
-# made this file unloadable anywhere else.
 const _gpu_device = Mantle.defaultbackend()
 
 # Helper: create a minimal Makie scene with one sphere

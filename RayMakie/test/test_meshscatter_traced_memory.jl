@@ -1,7 +1,6 @@
 # The memory half of `test_meshscatter_traced_interfaces.jl`: pushing the
-# interfaces one at a time held 2.7 GB of GPU memory at 20k instances. Read
-# through the Vulkan runtime's live-byte count, which is why this file is in
-# `VULKAN_RUNTIME_TEST_FILES` — Metal has no counterpart in Mantle to ask.
+# interfaces one at a time held 2.7 GB of GPU memory at 20k instances. Read through
+# the device's live-byte count (`Mantle.gpu_live_bytes`).
 
 using Test, Makie, RayMakie, GeometryBasics, Colors, Random
 import Mantle
