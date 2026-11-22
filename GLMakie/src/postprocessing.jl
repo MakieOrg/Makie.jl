@@ -409,7 +409,7 @@ function run_stage(screen, glscenes, stage::RenderPlots)
                 a = viewport(scene)[]
 
                 require_context(screen.glscreen)
-                glClear(GL_DEPTH_BUFFER_BIT)
+                # glClear(GL_DEPTH_BUFFER_BIT) requires different RenderGraph setup
                 glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
                 glScissor(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
 
