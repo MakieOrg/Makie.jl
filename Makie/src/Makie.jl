@@ -558,7 +558,11 @@ function get_cache_path()
     return makie_cache_dir[]
 end
 
+const JULIA_IS_EXITING = Ref(false)
+
 function __init__()
+    JULIA_IS_EXITING[] = false
+
     # Make GridLayoutBase default row and colgaps themeable when using Makie
     # This mutates module-level state so it could mess up other libraries using
     # GridLayoutBase at the same time as Makie, which is unlikely, though
@@ -627,7 +631,6 @@ function cleanup_globals()
     JULIA_IS_EXITING[] = true
     return
 end
-const JULIA_IS_EXITING = Ref(false)
 
 export cleanup_globals
 
