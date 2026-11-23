@@ -795,7 +795,7 @@ function attribute_name_allowlist()
 end
 
 validate_attribute_keys(plot::Plot) = validate_attribute_keys(plot, plot.kw, attribute_name_allowlist())
-validate_attribute_keys(::T, kw, allowlist) where {T} =  validate_attribute_keys(T, kw, allowlist)
+validate_attribute_keys(::T, kw, allowlist) where {T} = validate_attribute_keys(T, kw, allowlist)
 
 function validate_attribute_keys(::Type{T}, kw, allowlist) where {T}
     attr = documented_attributes(T)
