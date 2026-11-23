@@ -37,6 +37,7 @@ fig
 ## Labelled sliders and grids
 
 The functions [`labelslider!`](@ref) and [`labelslidergrid!`](@ref) are deprecated, use [`SliderGrid`](@ref) instead.
+For a labeled vertical slider (or several side by side), use `SliderGrid(..., horizontal = false)`.
 
 ## Attributes
 
