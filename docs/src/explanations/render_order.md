@@ -243,7 +243,7 @@ root = Scene(backgroundcolor = :gray, clear = true, size = (300, 300), camera = 
 p1 = scatter!(root, ps, markersize = 25, color = :black, depth_shift = -0.1, zorder_shift = 1000)
 translate!(p1, 0, 0, 1000)
 
-# behind based on depth attributes, but part of an overlayed sceen
+# behind based on depth attributes, but part of an overlaid scene
 # -> draws in front
 child = Scene(root, viewport = Rect2i(50, 50, 200, 200), camera = campixel!)
 p2 = scatter!(child, ps, markersize = 25, color = :red, depth_shift = 0.1, zorder_shift = -1000)
