@@ -2040,7 +2040,10 @@ Base.@nospecializeinfer function register_computation!(
         # come from the same edge
         parent_edge = input.parent::AbstractEdge
         dependents = parent_edge.dependents::Vector{ComputeEdge{ComputeGraph}}
-        if !in(new_edge, dependents)
+        # `new_edge` can only be in `dependents` already if an earlier input
+        # shares this parent edge, and then it was pushed last. Checking the
+        # whole vector would make creating many plots in one scene quadratic.
+        if isempty(dependents) || last(dependents) !== new_edge
             push!(dependents, new_edge)
         end
     end
