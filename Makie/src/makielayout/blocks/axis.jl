@@ -1,8 +1,8 @@
-function gridline_points(offset::Point2f, tickpositions::Vector{Point2f})
+function gridline_points(offset::Point2f, tickpositions::Vector{Point2f}, origin = Point2f(0))
     result = Point2f[]
     for gridstart in tickpositions
         opposite_tickpos = gridstart .+ offset
-        push!(result, gridstart, opposite_tickpos)
+        push!(result, gridstart - origin, opposite_tickpos - origin)
     end
     return result
 end
@@ -127,12 +127,16 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.elements = elements
 
     scene = Scene(
-        ax.blockscene, viewport = Rect2i(0, 0, 0, 0), visible = false,
+        ax.blockscene, viewport = Rect2i(0, 0, 0, 0), visible = false
+    )
+    bg_scene = Scene(
+        ax.blockscene, camera = campixel!, viewport = scene.viewport,
         clear = map(c -> alpha(to_color(c)) == 1, ax.backgroundcolor),
-        backgroundcolor = ax.backgroundcolor
+        backgroundcolor = ax.backgroundcolor, zindex = -1
     )
     decoration_scene = Scene(ax.blockscene, camera = campixel!)
     ax.decoration_scene = decoration_scene
+
     add_input!(ax, :viewport, scene.viewport)
     # Hide to block updates, will be unhidden! in constructor who calls this!
     @assert !scene.visible[]
@@ -357,6 +361,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
+    # axis.tickpositions are in global pixel space, we need viewport local
     map!(
         ax,
         [(:xaxis, :tickpositions), :xaxisposition, :viewport],
@@ -364,7 +369,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ) do tickpos, axispos, area
         local pxheight::Float32 = height(area)
         local offset::Float32 = axispos === :bottom ? pxheight : -pxheight
-        return gridline_points(Point2f(0, offset), tickpos)
+        return gridline_points(Point2f(0, offset), tickpos, origin(area))
     end
 
     map!(
@@ -374,7 +379,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ) do tickpos, axispos, area
         local pxwidth::Float32 = width(area)
         local offset::Float32 = axispos === :left ? pxwidth : -pxwidth
-        return gridline_points(Point2f(offset, 0), tickpos)
+        return gridline_points(Point2f(offset, 0), tickpos, origin(area))
     end
 
     map!(
@@ -384,7 +389,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ) do tickpos, axispos, area
         local pxheight::Float32 = height(area)
         local offset::Float32 = axispos === :bottom ? pxheight : -pxheight
-        return gridline_points(Point2f(0, offset), tickpos)
+        return gridline_points(Point2f(0, offset), tickpos, origin(area))
     end
 
     map!(
@@ -394,11 +399,11 @@ function initialize_block!(ax::Axis; palette = nothing)
     ) do tickpos, axispos, area
         local pxwidth::Float32 = width(area)
         local offset::Float32 = axispos === :left ? pxwidth : -pxwidth
-        return gridline_points(Point2f(offset, 0), tickpos)
+        return gridline_points(Point2f(offset, 0), tickpos, origin(area))
     end
 
     xgridlines = linesegments!(
-        decoration_scene, ax.xgrid_points, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
+        bg_scene, ax.xgrid_points, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
         color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -406,7 +411,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:xgridlines] = xgridlines
 
     xminorgridlines = linesegments!(
-        decoration_scene, ax.xminorgrid_points, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
+        bg_scene, ax.xminorgrid_points, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
         color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -414,7 +419,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:xminorgridlines] = xminorgridlines
 
     ygridlines = linesegments!(
-        decoration_scene, ax.ygrid_points, linewidth = ax.ygridwidth, visible = ax.ygridvisible,
+        bg_scene, ax.ygrid_points, linewidth = ax.ygridwidth, visible = ax.ygridvisible,
         color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -422,7 +427,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:ygridlines] = ygridlines
 
     yminorgridlines = linesegments!(
-        decoration_scene, ax.yminorgrid_points, linewidth = ax.yminorgridwidth, visible = ax.yminorgridvisible,
+        bg_scene, ax.yminorgrid_points, linewidth = ax.yminorgridwidth, visible = ax.yminorgridvisible,
         color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
