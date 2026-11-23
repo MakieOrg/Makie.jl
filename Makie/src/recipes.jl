@@ -794,10 +794,11 @@ function attribute_name_allowlist()
     )
 end
 
-function validate_attribute_keys(plot::P) where {P <: Plot}
-    allowlist = attribute_name_allowlist()
-    kw = plot.kw
-    attr = documented_attributes(P)
+validate_attribute_keys(plot::Plot) = validate_attribute_keys(plot, plot.kw, attribute_name_allowlist())
+validate_attribute_keys(::T, kw, allowlist) where {T} =  validate_attribute_keys(T, kw, allowlist)
+
+function validate_attribute_keys(::Type{T}, kw, allowlist) where {T}
+    attr = documented_attributes(T)
 
     invalid_names = Symbol[]
     for (k, v) in kw
@@ -814,7 +815,7 @@ function validate_attribute_keys(plot::P) where {P <: Plot}
     end
 
     if !isempty(invalid_names)
-        throw(InvalidAttributeError(P, Set(invalid_names)))
+        throw(InvalidAttributeError(T, Set(invalid_names)))
     end
 
     return

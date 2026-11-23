@@ -239,14 +239,15 @@ function DataInspector(obj; blocking = false, kwargs...)
 
     kwdict = Dict{Symbol, Any}(kwargs)
 
+    tick_priority = pop!(kwdict, :tick_priority, 1_000)
+    button_priority = pop!(kwdict, :button_priority, 1_000)
+
     attr = ComputeGraph(
         __DATAINSPECTOR_ATTRIBUTES,
         parent, :DataInspector, kwdict, restrict_types = true
     )
 
-    # TODO: keep these out of attributes?
-    tick_priority = pop!(kwdict, :tick_priority, 1_000)
-    button_priority = pop!(kwdict, :button_priority, 1_000)
+    validate_attribute_keys(DataInspector, kwdict, tuple())
 
     tt = tooltip!(
         obj, attr.tooltip, Point3d(0), text = "", visible = false,
@@ -313,6 +314,10 @@ function DataInspector(obj; blocking = false, kwargs...)
     push!(inspector.obsfuncs, tick_listener, mouse_listener)
 
     return inspector
+end
+
+function InvalidAttributeError(::Type{DataInspector}, attributes::Set{Symbol})
+    return InvalidAttributeError(DataInspector, "\b", attributes)
 end
 
 ################################################################################
