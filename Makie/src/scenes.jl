@@ -599,12 +599,9 @@ function free(plot::AbstractPlot)
     return
 end
 
-# Recipe children connect to the scene graph as well (camera, space conversions),
-# so disconnect the whole plot tree. Children are created after their parent, so
-# go in reverse creation order.
-function disconnect_from_parent_graphs!(plot::AbstractPlot)
-    foreach(disconnect_from_parent_graphs!, Iterators.reverse(plot.plots))
-    ComputePipeline.unsafe_disconnect_from_parents!(plot.attributes)
+function disconnect!(plot::AbstractPlot)
+    foreach(disconnect!, Iterators.reverse(plot.plots))
+    ComputePipeline.disconnect!(plot.attributes)
     return
 end
 
@@ -617,10 +614,12 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
         notify(scene.onplot)
     end
 
-    # Remove references to the plot compute graph from any parent compute graph.
-    # (E.g. the scene compute graph)
-    # This is meant to make the plot graph GC-able.
-    ComputePipeline.disconnect!(plot.attributes)
+    # Disconnect the ComputeGraphs of the plot and all of its children (recursive)
+    # from any other ComputeGraph so that they can be garbage collected. The other
+    # ComputeGraphs could just be this scene (e.g. camera matrices) but could also
+    # include other plots, scenes, blocks, or any other ComputeGraph.
+    # (Not disconnecting children may lead to them not being GC-able.)
+    disconnect!(plot)
 
     # TODO, if we want to delete a subplot of a plot,
     # It won't be in scene.plots directly, but will still be deleted
