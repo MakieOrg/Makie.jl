@@ -10,7 +10,7 @@ Plots with the `SampleBased` trait work with sample-based data where values are 
 """
 struct SampleBased <: ConversionTrait end
 
-function convert_arguments(::SampleBased, args::NTuple{N, AbstractVector{<:Number}}) where {N}
+function convert_arguments(::SampleBased, args::Tuple{Vararg{AbstractVector}})
     return args
 end
 
@@ -18,6 +18,6 @@ function convert_arguments(P::SampleBased, positions::Vararg{AbstractVector})
     return convert_arguments(P, positions)
 end
 
-function Makie.types_for_plot_arguments(::SampleBased)
+function types_for_plot_arguments(::SampleBased)
     return Tuple{AbstractVector{<:Real}, AbstractVector{<:Real}}
 end

@@ -75,7 +75,7 @@ using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
 
-using Pkg.Artifacts # load early to cut down REPLExt init time
+using Artifacts
 using LaTeXStrings
 using MathTeXEngine
 using Random
@@ -199,6 +199,7 @@ include("RenderGraph/defaults.jl")
 include("RenderGraph/gui.jl")
 
 include("dim-converts/dim-converts.jl")
+include("dim-converts/color_dim_converts.jl")
 include("dim-converts/unitful-integration.jl")
 include("dim-converts/dynamic-quantities-integration.jl")
 include("dim-converts/categorical-integration.jl")
@@ -557,7 +558,11 @@ function get_cache_path()
     return makie_cache_dir[]
 end
 
+const JULIA_IS_EXITING = Ref(false)
+
 function __init__()
+    JULIA_IS_EXITING[] = false
+
     # Make GridLayoutBase default row and colgaps themeable when using Makie
     # This mutates module-level state so it could mess up other libraries using
     # GridLayoutBase at the same time as Makie, which is unlikely, though
@@ -623,6 +628,7 @@ function cleanup_globals()
     empty!(DEFAULT_FONT)
     empty!(ALTERNATIVE_FONTS)
     empty!(TEXTURE_ATLASES)
+    JULIA_IS_EXITING[] = true
     return
 end
 

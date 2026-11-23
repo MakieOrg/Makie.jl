@@ -61,9 +61,16 @@ function initialize_block!(
     return initialize_block!(leg; entrygroups)
 end
 
-connect_sources!(l::Legend, ax::AbstractAxis) = connect_sources!(l, ax.scene)
-connect_sources!(l::Legend, scene::AbstractScene) = on(p -> notify(l.sources), l.blockscene, scene.onplot)
 connect_sources!(l::Legend, axs::AbstractArray) = foreach(ax -> connect_sources!(l, ax), axs)
+connect_sources!(l::Legend, ax::AbstractAxis) = connect_sources!(l, ax.scene)
+function connect_sources!(l::Legend, scene::AbstractScene)
+    on(l.blockscene, scene.onplot) do plotset
+        # We don't want to update when the plotset changes due to Julia exiting
+        # because that would trigger updates with freed font objects.
+        JULIA_IS_EXITING[] || notify(l.sources)
+    end
+    return
+end
 
 function initialize_block!(
         leg::Legend,
@@ -121,12 +128,7 @@ function initialize_block!(leg::Legend; entrygroups)
         enlarge(la, -lm[1], -lm[2], -lm[3], -lm[4])
     end
 
-    backgroundcolor = if !isnothing(leg.bgcolor[])
-        @warn("Keyword argument `bgcolor` is deprecated, use `backgroundcolor` instead.")
-        leg.bgcolor
-    else
-        leg.backgroundcolor
-    end
+    backgroundcolor = leg.backgroundcolor
 
     bg = poly!(
         scene,
@@ -354,7 +356,7 @@ function initialize_block!(leg::Legend; entrygroups)
                 # fill missing entry attributes with those carried by the legend
                 mergeleft!(entry.attributes, preset_attrs)
 
-                isnothing(entry.label[]) && continue
+                isnothing(to_value(entry.label)) && continue
 
                 # create the label
                 justification = map(leg.labeljustification, entry.labelhalign) do lj, lha
@@ -1084,7 +1086,7 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
     end
 
     labels_init = map(lplots_init) do l
-        l.label[]
+        to_value(l.label)
     end
 
     lplots_flat, labels_flat = if any(x -> x isa AbstractVector, labels_init)
@@ -1255,150 +1257,4 @@ function shade_visible_mode(visibilities)
     n_visible == 0 && return :show
     # partly show shade if some but not all are visible
     return :halfshow
-end
-
-function attribute_examples(::Type{Legend})
-    return Dict(
-        :colgap => [
-            Example(
-                code = """
-                fig = Figure()
-                ax = Axis(fig[1, 1])
-                lines!(ax, 1:10, linestyle = :dash, label = "Line")
-                poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
-                scatter!(ax, 4:13, label = "Scatter")
-                Legend(fig[1, 2], ax, "Default", nbanks = 2)
-                Legend(fig[1, 3], ax, "colgap = 40", nbanks = 2, colgap = 40)
-                fig
-                """
-            ),
-        ],
-        :groupgap => [
-            Example(
-                code = """
-                fig = Figure()
-                ax = Axis(fig[1, 1])
-                lin = lines!(ax, 1:10, linestyle = :dash)
-                pol = poly!(ax, [(5, 0), (10, 0), (7.5, 5)])
-                sca = scatter!(ax, 4:13)
-                Legend(fig[1, 2],
-                    [[lin], [pol], [sca]],
-                    [["Line"], ["Poly"], ["Scatter"]],
-                    ["Default", "Group 2", "Group 3"];
-
-                )
-                Legend(fig[1, 3],
-                    [[lin], [pol], [sca]],
-                    [["Line"], ["Poly"], ["Scatter"]],
-                    ["groupgap = 30", "Group 2", "Group 3"];
-                    groupgap = 30,
-                )
-                fig
-                """
-            ),
-        ],
-        :patchsize => [
-            Example(
-                code = """
-                fig = Figure()
-                ax = Axis(fig[1, 1])
-                lines!(ax, 1:10, linestyle = :dash, label = "Line")
-                poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
-                scatter!(ax, 4:13, label = "Scatter")
-                Legend(fig[1, 2], ax, "Default")
-                Legend(fig[1, 3], ax, "(40, 20)", patchsize = (40, 20))
-                fig
-                """
-            ),
-        ],
-        :patchlabelgap => [
-            Example(
-                code = """
-                fig = Figure()
-                ax = Axis(fig[1, 1])
-                lines!(ax, 1:10, linestyle = :dash, label = "Line")
-                poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
-                scatter!(ax, 4:13, label = "Scatter")
-                Legend(fig[1, 2], ax, "Default")
-                Legend(fig[1, 3], ax, "patchlabelgap\n= 20", patchlabelgap = 20)
-                fig
-                """
-            ),
-        ],
-        :orientation => [
-            Example(
-                code = """
-                fig = Figure()
-                ax = Axis(fig[1, 1])
-                lines!(ax, 1:10, linestyle = :dash, label = "Line")
-                poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
-                scatter!(ax, 4:13, label = "Scatter")
-                Legend(fig[2, 1], ax, "orientation\n= :horizontal", orientation = :horizontal)
-                Legend(fig[1, 2], ax, "orientation\n= :vertical", orientation = :vertical)
-                fig
-                """
-            ),
-        ],
-        :nbanks => [
-            Example(
-                code = """
-                fig = Figure()
-                ax = Axis(fig[1, 1])
-                lines!(ax, 1:10, linestyle = :dash, label = "Line")
-                poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
-                scatter!(ax, 4:13, label = "Scatter")
-                grid = GridLayout(fig[1, 2], tellheight = false)
-                Legend(grid[1, 1], ax, "nbanks = 1", nbanks = 1, tellheight = true)
-                Legend(grid[1, 2], ax, "nbanks = 2", nbanks = 2, tellheight = true)
-                Legend(grid[2, :], ax, "nbanks = 3", nbanks = 3, tellheight = true)
-                fig
-                """
-            ),
-            Example(
-                code = """
-                fig = Figure()
-                ax = Axis(fig[1, 1])
-                lines!(ax, 1:10, linestyle = :dash, label = "Line")
-                poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
-                scatter!(ax, 4:13, label = "Scatter")
-                grid = GridLayout(fig[2, 1], tellwidth = false)
-                Legend(grid[1, 1], ax, "nbanks = 1", nbanks = 1,
-                    orientation = :horizontal, tellwidth = true)
-                Legend(grid[2, 1], ax, "nbanks = 2", nbanks = 2,
-                    orientation = :horizontal, tellwidth = true)
-                Legend(grid[:, 2], ax, "nbanks = 3", nbanks = 3,
-                    orientation = :horizontal, tellwidth = true)
-                fig
-                """
-            ),
-        ],
-        :titleposition => [
-            Example(
-                code = """
-                fig = Figure()
-                ax = Axis(fig[1, 1])
-                lines!(ax, 1:10, linestyle = :dash, label = "Line")
-                poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
-                scatter!(ax, 4:13, label = "Scatter")
-                Legend(fig[1, 2], ax, "titleposition\n= :top", titleposition = :top)
-                Legend(fig[1, 3], ax, "titleposition\n= :left", titleposition = :left)
-                fig
-                """
-            ),
-        ],
-        :rowgap => [
-            Example(
-                code = """
-                fig = Figure()
-                ax = Axis(fig[1, 1])
-                lines!(ax, 1:10, linestyle = :dash, label = "Line")
-                poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
-                scatter!(ax, 4:13, label = "Scatter")
-                Legend(fig[1, 2], ax, "Default")
-                Legend(fig[1, 3], ax, "rowgap = 10", rowgap = 10)
-                fig
-                """
-            ),
-        ],
-    )
 end

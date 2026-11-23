@@ -375,7 +375,7 @@ function draw_axis3d(plot)
         rotation = plot.text_rotation, fontsize = plot.text_fontsize,
         align = plot.text_align, font = plot.text_font, text_handler = plot.text_handler,
         transparency = true, markerspace = :data, inspectable = plot.inspectable,
-        visible = plot.visible,
+        visible = plot.visible, clip_planes = plot.clip_planes,
         zorder_shift = plot.zorder_shift
     )
 
@@ -432,7 +432,7 @@ function draw_axis3d(plot)
     linesegments!(
         plot, plot.line_positions, color = plot.line_colors, linewidth = plot.line_widths,
         transparency = true, inspectable = plot.inspectable, visible = plot.visible,
-        zorder_shift = plot.zorder_shift
+        zorder_shift = plot.zorder_shift, clip_planes = plot.clip_planes
     )
     return
 end
