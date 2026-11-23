@@ -674,6 +674,98 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
     return repl_docstring(nameof(t), s, docs, examples, default_str)
 end
 
+"""
+    function tooltip!(b::Block, str::AbstractString; enabled=true, delay=0, depth=9e3, kwargs...)
+
+Adds a tooltip to a block.  `delay` specifies the interval in seconds before the
+tooltip appears if `enabled` is `true`.  `depth` should be large to ensure that
+the tooltip is in front.  See `tooltip` for more details.
+
+# Examples
+```julia-repl
+julia> f = Figure()
+
+julia> t = Toggle(f[1,1])
+Toggle()
+
+julia> tooltip!(t, "I'm a Toggle")
+Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
+
+julia> b = Button(f[2,1])
+Button()
+
+julia> e = Observable(false)
+Observable(false)
+
+julia> tt = tooltip!(b, "I'm a Button", placement = :below, enabled = e, delay = 1)
+Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
+
+julia> e[] = true
+:always
+```
+"""
+function tooltip!(b::Block, str::AbstractString; enabled = true, delay = 0, depth = 9.0e3, kwargs...)
+    _enabled = convert(Observable, enabled)
+    _delay = convert(Observable, delay)
+    _depth = convert(Observable, depth)
+
+    position = Observable(Point2f(0))
+    tt = tooltip!(b.blockscene, position, str; visible = false, kwargs...)
+    on(z -> translate!(tt, 0, 0, z), _depth)
+
+    t0, last_mp = time(), b.blockscene.events.mouseposition[]
+    tt_timer = nothing
+
+    function update_viz(mp, bbox)
+        if mp in bbox
+            if !(last_mp in bbox)
+                isnothing(tt_timer) || close(tt_timer)
+                tt_timer = Timer(_delay[]) do _
+                    last_mp in b.layoutobservables.computedbbox[] && (tt.visible[] = true)
+                end
+            end
+            last_mp = mp
+            position[] = mp
+        else
+            last_mp = mp
+            isnothing(tt_timer) || (close(tt_timer); tt_timer = nothing)
+            tt.visible[] = false
+        end
+        return
+    end
+
+    was_open = false
+    channel = Channel{Tuple}(Inf) do ch
+        for (mp, bbox) in ch
+            if isopen(b.blockscene)
+                was_open = true
+                update_viz(mp, bbox)
+            end
+            !isopen(b.blockscene) && was_open && break
+        end
+    end
+
+    obsfun = nothing
+    on(_enabled) do e
+        if e && isnothing(obsfun)
+            obsfun = onany(b.blockscene.events.mouseposition, b.layoutobservables.computedbbox) do mp, bbox
+                if isopen(channel)
+                    empty_channel!(channel)
+                    put!(channel, (mp, bbox))
+                end
+            end
+        elseif !e && !isnothing(obsfun)
+            foreach(off, obsfun)
+            obsfun = nothing
+            tt.visible[] = false
+        end
+    end
+
+    notify(_enabled)
+    notify(_depth)
+    return tt
+end
+
 # collect() doesn't seem to be necessary but the propertynames docstring says
 # "tuple or vector" so lets not return a KeySet
 Base.propertynames(::Type{T}) where {T <: Block} = collect(keys(_attribute_docs(T)))
