@@ -24,7 +24,7 @@ is_freed(x::GLMakie.GPUArray) = x.id == 0
     # a = Axis(f[1, 1])
     # display(screen, f)
     Ns = 18
-    Np = 8
+    Np = 7
 
     # Shaders for scatter + linesegments + poly etc (axis)
     display(screen, scatter(1:4))
@@ -51,10 +51,19 @@ is_freed(x::GLMakie.GPUArray) = x.id == 0
     @test length(cache.program_cache) == Np + 2
 
     # For second time no new shaders should be added
-    display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
+    figure, axis, plot = heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4))
+    display(screen, figure)
     @test length(cache.shader_cache) == Ns + 2
     @test length(cache.template_cache) == Ns + 2
     @test length(cache.program_cache) == Np + 2
+
+    # Rectangle selection compiles its program only when first used.
+    zoom = axis.interactions[:rectanglezoom][2]
+    @test !zoom.mesh_initialized
+    Makie.initialize_selection_mesh!(zoom, axis)
+    @test length(cache.program_cache) == Np + 3
+    Makie.initialize_selection_mesh!(zoom, axis)
+    @test length(cache.program_cache) == Np + 3
 end
 
 @testset "Changing mesh and surface strokes" begin

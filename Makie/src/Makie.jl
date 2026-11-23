@@ -75,12 +75,7 @@ using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
 
-# Import FilePaths for invalidations
-# When loading Electron for WGLMakie, which depends on FilePaths
-# It invalidates half of Makie. Simplest fix is to load it early on in Makie
-# So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
-import FilePaths
-using Pkg.Artifacts # load early to cut down REPLExt init time
+using Artifacts
 using LaTeXStrings
 using MathTeXEngine
 using Random
@@ -204,6 +199,7 @@ include("RenderGraph/defaults.jl")
 include("RenderGraph/gui.jl")
 
 include("dim-converts/dim-converts.jl")
+include("dim-converts/color_dim_converts.jl")
 include("dim-converts/unitful-integration.jl")
 include("dim-converts/dynamic-quantities-integration.jl")
 include("dim-converts/categorical-integration.jl")
@@ -562,7 +558,11 @@ function get_cache_path()
     return makie_cache_dir[]
 end
 
+const JULIA_IS_EXITING = Ref(false)
+
 function __init__()
+    JULIA_IS_EXITING[] = false
+
     # Make GridLayoutBase default row and colgaps themeable when using Makie
     # This mutates module-level state so it could mess up other libraries using
     # GridLayoutBase at the same time as Makie, which is unlikely, though
@@ -627,12 +627,36 @@ function cleanup_globals()
     empty!(FONT_CACHE)
     empty!(DEFAULT_FONT)
     empty!(ALTERNATIVE_FONTS)
+    empty!(TEXTURE_ATLASES)
+    JULIA_IS_EXITING[] = true
     return
 end
 
 export cleanup_globals
 
+import PrecompileTools
+
 const SHARED_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile.jl")
+const SHARED_PRECOMPILE_FULL_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile-full.jl")
+
+"""
+    shared_precompile_paths()
+
+Returns the workload files Makie and the backends include during
+precompilation. Controlled by the Makie preference
+`precompile_workload_level`:
+
+- `"default"`: the standard workload (`shared-precompile.jl`)
+- `"full"`: additionally covers the long tail of common recipes
+  (`shared-precompile-full.jl`) for a near compile-free first plot of most
+  plot types, at the cost of longer package precompilation.
+"""
+function shared_precompile_paths()
+    level = PrecompileTools.Preferences.@load_preference("precompile_workload_level", "default")
+    paths = String[SHARED_PRECOMPILE_PATH]
+    level == "full" && push!(paths, SHARED_PRECOMPILE_FULL_PATH)
+    return paths
+end
 
 include("precompiles.jl")
 

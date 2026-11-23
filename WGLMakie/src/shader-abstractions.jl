@@ -90,7 +90,7 @@ function create_shader(vertex_attr, uniforms, vertshader, fragshader)
     frag = SHADER_PRECISION_HEADER * "\nout vec4 fragment_color;\n" * uniform_block * fragshader
     up(x) = replace(x, "#version 300 es" => "")
     filter!(((name, _),) -> !endswith(string(name), "_getter"), uniforms)
-    return Dict(
+    return Dict{Symbol, Any}(
         :vertexarrays => serialize_named_buffer(vertex_dict),
         :faces => to_face_buffer(vertex_dict[:faces]),
         :uniforms => serialize_uniforms(uniforms),

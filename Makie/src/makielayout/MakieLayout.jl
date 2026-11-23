@@ -15,6 +15,7 @@ include("helpers.jl")
 include("defaultattributes.jl")
 include("lineaxis.jl")
 include("interactions.jl")
+
 include("blocks/axis.jl")
 include("blocks/axis3d.jl")
 include("blocks/polaraxis.jl")
@@ -32,6 +33,13 @@ include("blocks/scene.jl")
 include("blocks/menu.jl")
 include("blocks/textbox.jl")
 include("blocks/container.jl")
+
+include("docs/axis.jl")
+include("docs/axis3.jl")
+include("docs/box.jl")
+include("docs/colorbar.jl")
+include("docs/legend.jl")
+include("docs/polaraxis.jl")
 
 export @Block, Block
 export axislegend

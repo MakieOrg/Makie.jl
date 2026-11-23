@@ -8,7 +8,7 @@ To initialize DataInspector it needs to be constructed with an axis-like Block o
 
 ```@figure backend=GLMakie
 f, a, p = lines(0..2pi, sin)
-inspector = Makie.DataInspector(a)
+inspector = DataInspector(a)
 events(f).mouseposition[] = (300, 300) # hide
 colorbuffer(f) # hide
 while !inspector.dynamic_tooltip.visible[] # hide
@@ -18,8 +18,8 @@ f
 ```
 
 !!! note
-	`DataInspector` has been reworked in Makie TODO.
-	It now works per scene rather than globally, uses a new callback syntax for `inspector_label` and is no longer extended using `show_data(...)` methods.
+	`DataInspector` has been reworked in Makie 0.25.
+	It now works per scene rather than globally, uses a new callback syntax for `inspector_label` and is no longer extended using `Makie.show_data(...)` methods.
 
 ### Persistent Tooltips
 
@@ -34,7 +34,7 @@ The first is a plain String, which will be displayed when hovering any element o
 
 ```@figure backend=GLMakie
 f, a, p = lines(0..2pi, sin, inspector_label = "constant label")
-inspector = Makie.DataInspector(a)
+inspector = DataInspector(a)
 events(f).mouseposition[] = (300, 300) # hide
 colorbuffer(f) # hide
 while !inspector.dynamic_tooltip.visible[] # hide
@@ -44,12 +44,12 @@ f
 ```
 
 The second is an array (or other indexable collection) of strings.
-This will map the labels to the elements of the plot.
+Each element will be mapped to an element of the plot, e.g. a marker or heatmap cell.
 For this the plot needs to be discrete like `scatter` rather than continuous like `lines`.
 
 ```@figure backend=GLMakie
 f, a, p = scatter(1:10, inspector_label = ["Label $i" for i in 1:10])
-inspector = Makie.DataInspector(a)
+inspector = DataInspector(a)
 events(f).mouseposition[] = (340, 255) # hide
 colorbuffer(f) # hide
 while !inspector.dynamic_tooltip.visible[] # hide
@@ -60,23 +60,23 @@ f
 
 The third option is to manually construct a label from plot data using a callback function.
 It will be called with a `PlotElement` and the position of the tooltip.
-The position should be in the same space as the arguments passed to the function.
+The position is in the same space as the arguments passed to the function.
 
 The `PlotElement` combines the plot with indexing or interpolation information to represent the currently hovered element.
-When accessing an attribute on a `PlotElement`, e.g. `element.color`, the attribute will automatically be indexed or interpolated.
+When accessing an attribute of a `PlotElement`, e.g. `element.color`, the attribute will automatically be indexed or interpolated.
 
 ```@figure backend=GLMakie
 function mylabel(element, pos)
 	# As a discrete plot, scatter elements contain an index.
 `element.attribute`
-	# will apply that index when possible so element.color will return the value
+	# will apply that index if possible, so element.color will return the value
 	# of the `color` attribute at the hovered marker
 	picked_color = element.color
 	return "color = $picked_color\npos = $pos"
 end
 
 f,a,p = scatter(1:10, color = range(0, 1, 10), inspector_label = mylabel)
-inspector = Makie.DataInspector(a)
+inspector = DataInspector(a)
 events(f).mouseposition[] = (340, 255) # hide
 colorbuffer(f) # hide
 while !inspector.dynamic_tooltip.visible[] # hide
@@ -102,7 +102,7 @@ If there are other plots nearby, tooltips will be generated for the next closest
 
 ```@figure backend=GLMakie
 f, a, p = scatter(1:10, inspectable = false)
-inspector = Makie.DataInspector(a)
+inspector = DataInspector(a)
 f
 ```
 
@@ -256,49 +256,67 @@ end
 ### Indicators
 
 Indicators are extra visualizations shown when inspecting specific plots.
-To add them for a given recipe a specialized method of `update_indicator!(...)` needs to be implemented.
+To add them for a given recipe a specialized method of `update_indicator!(inspector, element, pos)` needs to be implemented.
 As the name suggests, it should update the indicator plot(s) according to the currently selected element.
 Let's look at barplot to give a relatively easy example.
 Barplot processes user given x positions and heights into discrete bars, represented by 2D rectangles.
 The `PlotElement` will select one of these bars/rectangles.
 To highlight it, we will need to get the rectangle and draw its outline with `lines`.
-Since `barplot` has not yet been updated to use the compute graph, we can't get the generated rectangles directly from the plot.
-Instead we need to check the input of the `poly` child plot.
 
-```julia
-poly_element = child(element)
-rect = poly_element.arg1
-```
+The rectangles (technically `GeometryBasics.Polygon`) are contained in `barplot.bar_rectangles`.
+Since there is one rectangle per position / height, we can rely on the indexing done by the `PlotElement`.
+The currently hovered rectangle is thus just `element.bar_rectangles`.
 
-To draw the outline we need a `lines` plot.
-These kinds of plots are cached to avoid constant deletion and re-creation by indicator updates.
-We can get the cached plot from the DataInspector using `get_indicator(inspector, PlotType)`.
+To draw the outline we need a `lines` plot (or similar).
+DataInspector includes a system for caching and managing visibility of indicator plots.
+We can get a cached plot from the DataInspector using `get_indicator(inspector, PlotType)`.
 This requires `construct_indicator_plot(inspector, PlotType)` to exist.
 For `Lines` this function already exists and looks like this:
 
 ```julia
 function construct_indicator_plot(di::DataInspector, ::Type{<:Lines})
-    a = di.inspector_attributes
+    a = di.indicator
     return lines!(
-        di.parent, Point3d[], color = a.indicator_color,
-        linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
+        di.parent, Point3d[], color = a.color,
+        linewidth = a.linewidth, linestyle = a.linestyle,
         visible = false, inspectable = false, depth_shift = -1.0f-6
     )
 end
 ```
 
-Note that the plot is created with `Point3d[]`.
-This fixes the argument type of a vector of 3D points.
-We can convert our rectangle to that with `convert_arguments(...)` and `to_ndim(...)`.
-The whole `update_indicator!(...)` then becomes:
+The other plot types that are implemented are `Scatter` and `LineSegments`.
+If you need other plots you can implement the respective `construct_indicator_plot` method.
+You can also add extra attributes to `inspector.indicator` by calling
+
+```julia
+Makie.add_indicator_attributes!(Makie.@DocumentedAttributes begin
+	"Sets something for my indicator"
+	something = :red
+	"Sets attributes specifically for my indicator"
+	my_indicator = @attributes begin
+		color = :red
+	end
+end)
+```
+
+After calling this example, `DataInspector` will include `inspector.indicator.something` and `inspector.indicator.my_indicator.color`.
+These can then be passed to the cached plot created by `construct_indicator_plot`.
+
+Let's get back to our barplot example.
+The `lines` plot created by `construct_indicator_plot` is created with a `Point3d[]` which fixes the argument type.
+To update the plot, we must convert our rectangle to a matching format.
+This can be done with `convert_arguments(...)` and `to_ndim(...)`.
+The whole `update_indicator!(...)` may look like this:
 
 ```julia
 function update_indicator!(di::DataInspector, element::PlotElement{<:BarPlot}, pos)
-    poly_element = child(element)
-    rect = poly_element.arg1
+    # Get the Rect (Polygon) of the currently hovered element
+	rect = element.bar_rectangles
+	# convert Polygon -> Point2 vector -> Point3d vector
     ps = to_ndim.(Point3d, convert_arguments(Lines, rect)[1], 0)
-
+	# get the cached Lines plot
     indicator = get_indicator_plot(di, Lines)
+	# update the positions and reveal the plot
     update!(indicator, arg1 = ps, visible = true)
 
     return

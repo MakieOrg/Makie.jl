@@ -33,7 +33,7 @@ end
 
 function create_linepoints(
         position::Float32, extents::NTuple{2, Float32}, horizontal::Bool,
-        spine_width::Number, trimspine::Union{Bool, Tuple{Bool, Bool}},
+        spinewidth::Number, trimspine::Union{Bool, Tuple{Bool, Bool}},
         tickpositions::Vector{Point2f}, tickwidth::Number
     )
 
@@ -41,33 +41,34 @@ function create_linepoints(
         trimspine = (trimspine, trimspine)
     end
 
+    # The spine ends exactly at the axis corners (or the outer ticks when trimmed).
+    # Corner coverage is handled by the :square linecap on the spine, which scales
+    # correctly with the stroke width if the exported figure is restyled.
     return if trimspine == (false, false) || length(tickpositions) < 2
         if horizontal
             y = position
-            p1 = Point2f(extents[1] - 0.5spine_width, y)
-            p2 = Point2f(extents[2] + 0.5spine_width, y)
-            return [p1, p2]
+            return [Point2f(extents[1], y), Point2f(extents[2], y)]
         else
             x = position
-            p1 = Point2f(x, extents[1] - 0.5spine_width)
-            p2 = Point2f(x, extents[2] + 0.5spine_width)
-            return [p1, p2]
+            return [Point2f(x, extents[1]), Point2f(x, extents[2])]
         end
     else
-        extents_oriented = last(tickpositions) > first(tickpositions) ? extents : reverse(extents)
+        # A trimmed end should finish flush with the outer edge of the outermost tick,
+        # i.e. half a tick width past its center. The :square linecap already extends the
+        # spine by half a spine width, so the geometry only has to make up the difference.
+        # The first tick is at the far end of a reversed axis, so the sign follows the ticks.
+        increasing = last(tickpositions) > first(tickpositions)
+        trim = (increasing ? 0.5f0 : -0.5f0) * (tickwidth - spinewidth)
+        extents_oriented = increasing ? extents : reverse(extents)
         if horizontal
             y = position
-            pstart = Point2f(-0.5f0 * tickwidth, 0)
-            pend = Point2f(0.5f0 * tickwidth, 0)
-            from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(extents_oriented[1] - 0.5spine_width, y)
-            to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(extents_oriented[2] + 0.5spine_width, y)
+            from = trimspine[1] ? tickpositions[1] .- Point2f(trim, 0) : Point2f(extents_oriented[1], y)
+            to = trimspine[2] ? tickpositions[end] .+ Point2f(trim, 0) : Point2f(extents_oriented[2], y)
             return [from, to]
         else
             x = position
-            pstart = Point2f(0, -0.5f0 * tickwidth)
-            pend = Point2f(0, 0.5f0 * tickwidth)
-            from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(x, extents_oriented[1] - 0.5spine_width)
-            to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(x, extents_oriented[2] + 0.5spine_width)
+            from = trimspine[1] ? tickpositions[1] .- Point2f(0, trim) : Point2f(x, extents_oriented[1])
+            to = trimspine[2] ? tickpositions[end] .+ Point2f(0, trim) : Point2f(x, extents_oriented[2])
             return [from, to]
         end
     end
@@ -132,20 +133,41 @@ function adjust_ticklabel_placement(
     return Point2f[pos .+ shift for pos in tickpositions]
 end
 
+"""
+    tick_extents(tickalign, ticksize, spinewidth)
+
+Distances from the axis spine centerline to the outer and inner tip of a tick mark, whose
+absolute drawn length is `ticksize`. A numeric `tickalign` slides the mark between the two
+spine edges: `0` starts it at the outer spine edge pointing out, `1` at the inner edge
+pointing in, and `0.5` centers it on the spine.
+`tickalign` may also be a `Symbol`, with two allowed values: `:out_spine` and `:in_spine`,
+which instead begin the tick at the axis spine centerline, pointing out- and inward,
+respectively. This is helpful to ensure that the tickmark stays attached if the spine is
+restroked at another width in postprocessing outside Makie.
+"""
+function tick_extents(tickalign::Real, ticksize, spinewidth)
+    shift = tickalign * (ticksize + spinewidth)
+    half_spinewidth = 0.5f0 * spinewidth
+    return (Float32(ticksize + half_spinewidth - shift), Float32(shift - half_spinewidth))
+end
+
+function tick_extents(tickalign::Symbol, ticksize, spinewidth)
+    tickalign === :out_spine && return (Float32(ticksize), 0.0f0)
+    tickalign === :in_spine && return (0.0f0, Float32(ticksize))
+    throw(ArgumentError(lazy"`tickalign` must be a number, `:out_spine`, or `:in_spine`; got `:$tickalign`"))
+end
+
 function calculated_aligned_ticks(horizontal, flipped, tickpositions, tickalign, ticksize, spinewidth)
     result = Point2f[]
     sign = ifelse(flipped, -1, 1)
+    outer, inner = tick_extents(tickalign, ticksize, spinewidth)
     if horizontal
         for tp in tickpositions
-            tstart = tp + sign * Point2f(0.0f0, tickalign * ticksize - 0.5f0 * spinewidth)
-            tend = tstart + sign * Point2f(0.0f0, -ticksize)
-            push!(result, tstart, tend)
+            push!(result, tp + sign * Point2f(0.0f0, inner), tp + sign * Point2f(0.0f0, -outer))
         end
     else
         for tp in tickpositions
-            tstart = tp + sign * Point2f(tickalign * ticksize - 0.5f0 * spinewidth, 0.0f0)
-            tend = tstart + sign * Point2f(-ticksize, 0.0f0)
-            push!(result, tstart, tend)
+            push!(result, tp + sign * Point2f(inner, 0.0f0), tp + sign * Point2f(-outer, 0.0f0))
         end
     end
     return result
@@ -177,6 +199,11 @@ function compute_minor_ticks(
     else
         return [Point2f(position, y) for y in tick_scenecoords]
     end
+end
+
+# last arg comes from a trigger node. No useful content there
+function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label, _)
+    return build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label)
 end
 
 function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label)
@@ -244,20 +271,16 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
 
     map!(calculate_horizontal_extends, graph, endpoints, [:position, :extents, :horizontal])
 
-    # TODO: Does this have side effects on Axis, plots?
-    # TODO: Does this propagate enough on same value updates?
-    # make sure we update tick calculation when needed
-    obs = needs_tick_update_observable(dim_convert)
-    if !isnothing(obs)
-        on(x -> ComputePipeline.mark_dirty!(dim_convert), obs)
+    add_input!(graph, :dc_trigger, needs_tick_update_observable(dim_convert)) do _
+        return ExplicitUpdate(nothing, :force)
     end
 
     map!(
         graph,
         # TODO: Why was :pos_extents_horizontal in here?
-        [dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel],
+        [dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel, :dc_trigger],
         [:tickvalues_unfiltered, :tickstrings_unfiltered],
-    ) do dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel
+    ) do dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel, _
         should_show = show_dim_convert_in_ticklabel(dim_convert, unit_in_ticklabel)
         vals, strs = get_ticks(dim_convert, ticks, scale, tickformat, limits..., should_show)
         return vals, convert(Vector{Any}, strs)
@@ -305,7 +328,8 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         px_o = extents[1]
         px_width = extents[2] - extents[1]
         tickvalues_scaled = scale.(tickvalues)
-        tick_fractions = (tickvalues_scaled .- scale(limits[1])) ./ (scale(limits[2]) - scale(limits[1]))
+        low, high = minmax(scale(limits[1]), scale(limits[2]))
+        tick_fractions = (tickvalues_scaled .- low) ./ (high - low)
 
         tick_scenecoords = px_o .+ px_width .* tick_fractions
 
@@ -364,7 +388,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
 
     decorations[:axisline] = linesegments!(
         parent, graph.linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, inspectable = false, linestyle = nothing
+        color = spinecolor, inspectable = false, linestyle = nothing, linecap = :square
     )
     translate!(decorations[:axisline], 0, 0, 20)
 
@@ -372,8 +396,13 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     ### Tick Labels
     ######################################
 
-    map!(graph, [ticksvisible, ticksize, tickalign], :tickspace) do ticksvisible, ticksize, tickalign
-        return ticksvisible ? max(0.0f0, ticksize * (1.0f0 - tickalign)) : 0.0f0
+    map!(graph, [ticksvisible, ticksize, tickalign, spinewidth], :tickspace) do ticksvisible, ticksize, tickalign, spinewidth
+        if ticksvisible
+            outer = first(tick_extents(tickalign, ticksize, spinewidth))
+            max(0.0f0, outer - 0.5f0 * spinewidth)
+        else
+            0.0f0
+        end
     end
 
     map!(
@@ -501,7 +530,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     # label + dim convert suffix
     map!(
         build_label_with_unit_suffix, graph,
-        [dim_convert, suffix_formatter, label, unit_in_label],
+        [dim_convert, suffix_formatter, label, unit_in_label, :dc_trigger],
         :label_with_suffix
     )
     ComputePipeline.set_type!(graph.label_with_suffix, Any)
