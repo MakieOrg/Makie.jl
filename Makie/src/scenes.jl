@@ -98,10 +98,10 @@ mutable struct Scene <: AbstractScene
     plots::Vector{Plot}
 
     """
-    Observable that triggers with `true => plot` after a plot is added to the
-    scene and `false => plot` after one is deleted.
+    Contains the current set of plots, updating whenever a plot is added to or
+    removed from this scene. Emptying the scene will empty the set in one go.
     """
-    onplot::Observable{Pair{Bool, AbstractPlot}}
+    onplot::Observable{Set{Plot}}
 
     theme::Attributes
 
@@ -154,7 +154,7 @@ mutable struct Scene <: AbstractScene
             transformation,
             nothing,
             plots,
-            Observable{Pair{Bool, AbstractPlot}}(),
+            Observable(Set{Plot}()),
             theme,
             children,
             current_screens,
@@ -523,6 +523,10 @@ end
 
 function Base.empty!(scene::Scene; reset_theme = true)
     foreach(empty!, copy(scene.children))
+
+    empty!(scene.onplot[])
+    notify(scene.onplot)
+
     # clear plots of this scene
     for plot in copy(scene.plots)
         delete!(scene, plot)
@@ -598,7 +602,10 @@ end
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
 
-    scene.onplot[] = false => plot
+    if plot in scene.onplot[] # don't retrigger if `empty!` cleared the set
+        delete!(scene.onplot[], plot)
+        notify(scene.onplot)
+    end
 
     # Remove references to the plot compute graph from any parent compute graph.
     # (E.g. the scene compute graph)

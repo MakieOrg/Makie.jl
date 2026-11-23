@@ -14,16 +14,14 @@ mutable struct DataInspector
     last_selection::UInt64
     last_plot_element::PlotElement
 
-    inspector_attributes::Attributes
-    tooltip_attributes::Attributes
-    indicator_attributes::Attributes
+    attributes::ComputeGraph
 
     obsfuncs::Vector{Any}
     update_channel::Channel{Nothing}
 
     function DataInspector(
             parent, persistent, dynamic, plot_cache,
-            inspector_attr, tooltip_attr, indicator_attr,
+            attributes,
             obsfuncs, channel
         )
 
@@ -31,14 +29,104 @@ mutable struct DataInspector
             parent,
             persistent, dynamic, plot_cache,
             (0.0, 0.0), 0x00, PlotElement((persistent,), IndexedAccessor(0, 0)),
-            inspector_attr, tooltip_attr, indicator_attr,
-            obsfuncs, channel
+            attributes, obsfuncs, channel
         )
 
         finalizer(destroy!, inspector)
 
         return inspector
     end
+end
+
+function default_tooltip_formatter end
+
+const __DATAINSPECTOR_ATTRIBUTES = @DocumentedAttributes begin
+    """
+    Sets the (maximum) range of plot picking. This sets the maximum
+    distance between the cursor and a plot element for which a tooltip shows up.
+    """
+    range::Int = 10
+    "Sets the key/button combination for creating and deleting persistent tooltips."
+    persistent_tooltip_key = Keyboard.left_shift & Mouse.left
+    """
+    Sets the pixel distance to the left/right/bottom/top side of the axis/scene
+    below which the tooltip will change its placement to avoid the edge.
+    """
+    dodge_margins::VecTypes{4, Real} = (30, 30, 30, 30)
+    """
+    Allows disabling all indicators for this DataInspector.
+    Note that plots can disable indicators individually by setting `show_indicator = false`.
+    """
+    show_indicators::Bool = true
+    "When set to true any tick update triggers a tooltip update."
+    no_tick_discard::Bool = false
+    """
+    Sets the formatter for tooltip labels. This formatter applies to single values
+    by default. For example it applies per field for a `RGBf`, converting the
+    red, green and blue values to strings. `apply_tooltip_format(formatter, value)`
+    can be extended to change this behavior. The default implementation works with
+    callback functions and Format.jl compatible strings.
+    """
+    formatter = default_tooltip_formatter
+
+    "Collection of attributes passed to indicator plots"
+    indicator = @attributes begin
+        "Sets the color of indicator plots."
+        color = :red
+        "Sets the linewidth of indicator plots."
+        linewidth = 2
+        "Sets the linestyle of indicator plots."
+        linestyle = nothing
+    end
+
+    "Collection of attributes passed on to tooltips."
+    tooltip = @attributes begin
+        filtered_attributes(
+            Tooltip, exclude = [
+                :visible, :xautolimits, :yautolimits, :zautolimits, :transformation,
+                :space, :placement, :text,
+            ]
+        )...
+        draw_on_top = true
+    end
+
+    "DataInspector indicator attributes moved to nested attributes. Set them with `attr.indicator.color = ...` and initialize them with `indicator = Attributes(color = ...)`."
+    @deprecate indicator_color (indicator, color)
+    "DataInspector indicator attributes moved to nested attributes. Set them with `attr.indicator.linewidth = ...` and initialize them with `indicator = Attributes(linewidth = ...)`."
+    @deprecate indicator_linewidth (indicator, linewidth)
+    "DataInspector indicator attributes moved to nested attributes. Set them with `attr.indicator.linestyle = ...` and initialize them with `indicator = Attributes(linestyle = ...)`."
+    @deprecate indicator_linestyle (indicator, linestyle)
+
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.offset = ...` and initialize them with `tooltip = Attributes(offset = ...)`"
+    @deprecate offset (tooltip, offset)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.align = ...` and initialize them with `tooltip = Attributes(align = ...)`"
+    @deprecate align (tooltip, align)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.textpadding = ...` and initialize them with `tooltip = Attributes(textpadding = ...)`"
+    @deprecate textpadding (tooltip, textpadding)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.fontsize = ...` and initialize them with `tooltip = Attributes(fontsize = ...)`"
+    @deprecate fontsize (tooltip, fontsize)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.textcolor = ...` and initialize them with `tooltip = Attributes(textcolor = ...)`"
+    @deprecate textcolor (tooltip, textcolor)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.font = ...` and initialize them with `tooltip = Attributes(font = ...)`"
+    @deprecate font (tooltip, font)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.backgroundcolor = ...` and initialize them with `tooltip = Attributes(backgroundcolor = ...)`"
+    @deprecate backgroundcolor (tooltip, backgroundcolor)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.outline_color = ...` and initialize them with `tooltip = Attributes(outline_color = ...)`"
+    @deprecate outline_color (tooltip, outline_color)
+    "DataInspector tooltip attributes moved to nested attributes. Set them with `attr.tooltip.outline_linewidth = ...` and initialize them with `tooltip = Attributes(outline_linewidth = ...)`"
+    @deprecate outline_linewidth (tooltip, outline_linewidth)
+end
+documented_attributes(::Type{DataInspector}) = __DATAINSPECTOR_ATTRIBUTES
+attribute_examples(::Type{DataInspector}) = Dict{Symbol, Vector{Example}}()
+function attribute_groups(::Type{DataInspector})
+    main = [:range, :persistent_tooltip_key, :dodge_margins, :show_indicators, :no_tick_discard, :formatter]
+
+    return Pair{String, Vector{Symbol}}[
+        "DataInspector Attributes" => main,
+        "Indicator Attributes" => Symbol[:indicator],
+        "Tooltip Attributes" => Symbol[:tooltip],
+        "Deprecated Attributes" => Symbol[:indicator_color, :indicator_linewidth, :indicator_linestyle],
+    ]
 end
 
 Base.show(io::IO, ::MIME"text/plain", inspector::DataInspector) = print(io, "DataInspector()")
@@ -62,136 +150,115 @@ end
 
 Base.delete!(inspector::DataInspector) = destroy!(inspector)
 
+function Base.getproperty(inspector::DataInspector, s::Symbol)
+    if hasfield(DataInspector, s)
+        return getfield(inspector, s)
+    else
+        return getproperty(getfield(inspector, :attributes), s)
+    end
+end
 
-"""
-    DataInspector(axis; kwargs...)
-    DataInspector(scenelike; kwargs...)
+function Base.setproperty!(inspector::DataInspector, s::Symbol, value)
+    if hasfield(DataInspector, s)
+        return setfield!(inspector, s, value)
+    else
+        return setproperty!(getfield(inspector, :attributes), s, value)
+    end
+end
 
-Create a DataInspector for the given `axis` or `scene`-like object. This will
-enable tooltips for plots within the axis/parent scene.
+function Base.Docs.getdoc(::Type{DataInspector})
+    docstring_start = md"""
+        DataInspector(axis; kwargs...)
+        DataInspector(scenelike; kwargs...)
 
-If the given axis or scene already has a `DataInspector` the current one will
-be returned instead. An existing `DataInspector` can be deleted by
-`delete!(inspector)`.
+    Create a DataInspector for the given `axis` or `scene`-like object. This will
+    enable tooltips for plots within the axis/parent scene.
 
-Tooltips can be disabled on a per-plot basis by setting `inspectable = false`.
-The tooltip string can also be adjusted on a per plot basis using the
-`inspector_label` attribute. It can be set to:
-- a string which is used for every tooltip of the plot
-- a vector of strings where each string maps to an element of the plot. For this
-    the plot needs to be treated as a discrete visualization (E.g. scatter, but not lines)
-- a callback function `(element::PlotElement, position) -> string` which builds a
-    string from the selected `PlotElement` and position
+    If the given axis or scene already has a `DataInspector` the current one will
+    be returned instead. An existing `DataInspector` can be deleted by
+    `delete!(inspector)`.
 
-## Keyword Arguments
+    Tooltips can be disabled on a per-plot basis by setting `inspectable = false`.
+    The tooltip string can also be adjusted on a per plot basis using the
+    `inspector_label` attribute. It can be set to:
+    - a string which is used for every tooltip of the plot
+    - a vector of strings where each string maps to an element of the plot. For this
+        the plot needs to be treated as a discrete visualization (E.g. scatter, but not lines)
+    - a callback function `(element::PlotElement, position) -> string` which builds a
+        string from the selected `PlotElement` and position
 
-There are keyword arguments for controlling the core DataInspector functionality,
-the tooltip styling and indicator styling/defaults.
+    ##  DataInspector Settings
 
-### DataInspector Settings
+    - `tick_priority = 1000` sets the priority of the `events.tick` listener used
+        for dynamic/hover tooltips
+    - `button_priority = 1000` sets the priority of the `events.mousebutton` listener
+        used for persistent tooltips
+    - `blocking = false` when set to true tooltip updates block further event processing
+        and rendering.
+    """
 
-- `range = 10` sets the (maximum) range of plot picking. This sets the maximum
-    distance between the cursor and a plot element for which a tooltip shows up.
-- `tick_priority = 1000` sets the priority of the `events.tick` listener used
-    for dynamic/hover tooltips
-- `button_priority = 1000` sets the priority of the `events.mousebutton` listener
-    used for persistent tooltips
-- `persistent_tooltip_key = Keyboard.left_shift & Mouse.left` sets the key/button
-    combination for creating and deleting persistent tooltips
-- `dodge_margins = (30, 30, 30, 30)` sets the pixel distance to the
-    left/right/bottom/top side of the axis/scene below which the tooltip will change
-    its placement to avoid the edge
-- `show_indicators = true` allows disabling all indicators for this DataInspector.
-    Note that plots can disable indicators individually by setting `show_indicator = false`.
-- `blocking = false` when set to true tooltip updates block further event processing
-    and rendering.
-- `no_tick_discard = false` when set to true any tick update triggers a tooltip
-    update.
+    attribute_section = get_attribute_docs(DataInspector; full = false)
+    pop!(attribute_section.content)
 
-### Indicator Attributes
+    docstring_tail = md"""
+    ## Extension
 
-Any keyword argument prefixed with `indicator_` will be sorted into
-`inspector.indicator_attributes` without the prefix. These may then be used to
-style indicator plots. The default attributes are:
+    By default, DataInspector falls back onto known recipes to build tooltips. If
+    that is not enough or produces undesirable results, the various steps in creating
+    a tooltip can be extended. These include:
 
-- `indicator_color = :red`
-- `indicator_linewidth = 2`
-- `indicator_linestyle = nothing`
+    - `get_accessor(plot, idx, plot_stack)` constructs a accessor which abstracts
+        the picked element of a higher level plot. This is used to build the `PlotElement`.
+    - `get_tooltip_position(element)` returns the transformed position of a `PlotElement`.
+        (After applying the plots transform function.)
+    - `get_tooltip_label([formatter,] element, position)` constructs the displayed
+        string of the tooltip. Can also return data which will be converted to a string
+        by the formatter.
+    - `add_indicator_attributes!(attr)` adds attributes to the `indicator` section
+        of the DataInspector attributes
+    - `update_indicator!(inspector, element)` updates an indicator to match the
+        currently selected plot element.
+    - `construct_indicator_plot(inspector, PlotType)` creates a plot to be used as
+        an indicator
 
-### Tooltip Attributes
+    See the relevant functions for more detail.
+    """
 
-The remaining attributes are sorted into `inspector.tooltip_attributes` and
-used when creating dynamic and persistent tooltips. Default attributes include:
+    combined = Markdown.MD()
+    push!(combined, docstring_start, attribute_section, docstring_tail)
 
-- `draw_on_top = true`
+    return combined
+end
 
-## Extension
-
-By default, DataInspector falls back onto known recipes to build tooltips. If
-that is not enough or produces undesirable results, the various steps in creating
-a tooltip can be extended. These include:
-
-- `get_accessor(plot, idx, plot_stack)` constructs a accessor which abstracts
-    the picked element of a higher level plot. This is used to build the `PlotElement`.
-- `get_tooltip_position(element)` returns the transformed position of a `PlotElement`.
-    (After applying the plots transform function.)
-- `get_tooltip_label([formatter,] element, position)` constructs the displayed
-    string of the tooltip. Can also return data which will be converted to a string
-    by the formatter.
-- `update_indicator!(inspector, element)` updates an indicator to match the
-    currently selected plot element.
-- `construct_indicator_plot(inspector, PlotType)` creates a plot to be used as
-    an indicator
-
-See the relevant functions for more detail.
-"""
-function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...)
+""
+function DataInspector(obj; blocking = false, kwargs...)
     parent = get_scene(obj)
     if !isnothing(parent.data_inspector)
         return parent.data_inspector
     end
 
-    kwarg_dict = Dict{Symbol, Any}(kwargs)
-    tick_priority = pop!(kwarg_dict, :tick_priority, 1_000)
-    button_priority = pop!(kwarg_dict, :button_priority, 1_000)
+    kwdict = Dict{Symbol, Any}(kwargs)
 
-    inspector_attr = Attributes(
-        range = convert(Observable{Float32}, pop!(kwarg_dict, :range, 10)),
-        persistent_tooltip_key = pop!(kwarg_dict, :persistent_tooltip_key, Keyboard.left_shift & Mouse.left),
-        dodge_margins = to_lrbt_padding(pop!(kwarg_dict, :dodge_margins, 30)),
-        formatter = pop!(kwarg_dict, :formatter, default_tooltip_formatter),
-        show_indicators = pop!(kwarg_dict, :show_indicators, true),
+    tick_priority = pop!(kwdict, :tick_priority, 1_000)
+    button_priority = pop!(kwdict, :button_priority, 1_000)
+
+    attr = ComputeGraph(
+        __DATAINSPECTOR_ATTRIBUTES,
+        parent, :DataInspector, kwdict, restrict_types = true
     )
 
-    # Settings for indicators (plots that highlight the current selection)
-    indicator_attr = Attributes(
-        color = pop!(kwarg_dict, :indicator_color, :red),
-        linewidth = pop!(kwarg_dict, :indicator_linewidth, 2),
-        linestyle = pop!(kwarg_dict, :indicator_linestyle, nothing),
-    )
-
-    for k in collect(keys(kwarg_dict))
-        keystr = string(k)
-        if startswith(keystr, "indicator_")
-            indicator_attr[Symbol(keystr[11:end])] = pop!(kwarg_dict, k)
-        end
-    end
-
-    # defaults for plot attrib
-    get!(kwarg_dict, :draw_on_top, true)
+    validate_attribute_keys(DataInspector, kwdict, tuple())
 
     tt = tooltip!(
-        obj, Point3d(0), text = "", visible = false,
+        obj, attr.tooltip, Point3d(0), text = "", visible = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
-        transformation = :nothing;
-        kwarg_dict...
+        transformation = :nothing
     )
     register_projected_positions!(tt, input_name = :positions, output_name = :pixel_positions)
 
     inspector = DataInspector(
         parent, Dict{UInt64, Tooltip}(), tt, Dict{Type, Plot}(),
-        inspector_attr, Attributes(kwarg_dict), indicator_attr,
-        Any[], Channel{Nothing}(Inf)
+        attr, Any[], Channel{Nothing}(Inf)
     )
 
     parent.data_inspector = inspector
@@ -218,12 +285,12 @@ function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...
     end
     inspector.update_channel = channel
     e = events(parent)
-    tick_listener = on(e.tick, priority = tick_priority) do tick
 
+    tick_listener = on(e.tick, priority = tick_priority) do tick
         # This should be one frame behind in GLMakie. Maybe we should make ticks
         # predictive based on whether renderobjects need updates.
         # Not sure if this expands to WGLMakie...
-        has_rendered = no_tick_discard || (tick.state === RegularRenderTick)
+        has_rendered = attr.no_tick_discard[]::Bool || (tick.state === RegularRenderTick)
         tooltip_needs_to_move = inspector.last_mouseposition != e.mouseposition[]
 
         if has_rendered || tooltip_needs_to_move
@@ -249,6 +316,10 @@ function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...
     return inspector
 end
 
+function InvalidAttributeError(::Type{DataInspector}, attributes::Set{Symbol})
+    return InvalidAttributeError(DataInspector, "\b", attributes)
+end
+
 ################################################################################
 ### Dynamic Tooltips
 ################################################################################
@@ -272,7 +343,7 @@ function update_tooltip!(di::DataInspector)
     end
 
 
-    for (plot, idx) in pick_sorted(di.parent, mp, to_value(di.inspector_attributes.range))
+    for (plot, idx) in pick_sorted(di.parent, mp, di.range[]::Int)
         # Areas of scenes can overlap so we need to make sure the plot is
         # actually in the correct scene
         if parent_scene(plot) == di.parent && plot.inspectable[]
@@ -294,7 +365,7 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
     function border_dodging_placement(di::DataInspector, proj_pos)
         wx, wy = widths(viewport(di.parent)[])
         px, py = proj_pos
-        l, r, b, t = to_value(di.inspector_attributes[:dodge_margins])
+        l, r, b, t = di.dodge_margins[]::VecTypes{4, Real}
 
         placement = :above
         placement = ifelse(py > max(0.5wy, wy - t), :below, placement)
@@ -324,7 +395,7 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
 
     itf = inverse_transform(transform_func(di.parent))
     input_pos = apply_transform(itf, pos)
-    formatter = to_value(di.inspector_attributes[:formatter])
+    formatter = di.formatter[]
     label = get_tooltip_label(formatter, element, input_pos)
 
     # maybe also allow kwargs changes from plots?
@@ -333,8 +404,7 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
     update!(
         di.dynamic_tooltip,
         to_ndim(Point3d, pos, 0), text = label, visible = true,
-        space = to_value(get(plot, :space, :data));
-        di.tooltip_attributes...
+        space = to_value(get(plot, :space, :data))
     )
 
     px_pos = di.dynamic_tooltip.pixel_positions[][1]
@@ -343,7 +413,7 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
     apply_tooltip_overwrites!(element, di.dynamic_tooltip)
 
     # TODO: Why not also allow plots to disable their indicator?
-    if to_value(di.inspector_attributes[:show_indicators]) && get(element, :show_indicator, true)
+    if di.show_indicators[]::Bool && get(element, :show_indicator, true)
         update_indicator_internal!(di, element, pos)
     end
 
@@ -606,8 +676,42 @@ function get_indicator_plot(di::DataInspector, PlotType)
 end
 
 ########################################
-### cacheable indicator plots
+### cached indicator plots
 ########################################
+
+"""
+    add_indicator_attributes!(attr::DocumentedAttributes)
+
+Adds the given `DocumentedAttributes` to the default attributes of `DataInspector`
+under `indicator`. Existing attributes will not be overwritten.
+
+This should be called if a new indicator plot needs extra/more user accessible
+attributes.
+
+## Example
+
+This would add `inspector.indicator.myattrib` and `inspector.indicator.mygroup.color`:
+
+```
+Makie.add_indicator_attributes!(
+    @DocumentedAttributes begin
+        "Sets something for my indicator plot type"
+        myattrib = :red
+        "Sets attributes for my indicator plot type"
+        mygroup = @attributes begin
+            "Sets the color for my indicator plot type to avoid collisions with other indicator colors"
+            color = :red
+        end
+    end
+)
+```
+"""
+function add_indicator_attributes!(attr::DocumentedAttributes)
+    merge_documented_attributes!(
+        __DATAINSPECTOR_ATTRIBUTES, :indicator, attr, on_collision = :skip
+    )
+    return
+end
 
 """
     construct_indicator_plot(inspector, PlotType)
@@ -627,7 +731,7 @@ end
 ```
 """
 function construct_indicator_plot(di::DataInspector, ::Type{<:LineSegments})
-    a = di.indicator_attributes
+    a = di.indicator
     return linesegments!(
         di.parent, Point3d[], color = a.color,
         linewidth = a.linewidth, linestyle = a.linestyle,
@@ -637,7 +741,7 @@ function construct_indicator_plot(di::DataInspector, ::Type{<:LineSegments})
 end
 
 function construct_indicator_plot(di::DataInspector, ::Type{<:Lines})
-    a = di.indicator_attributes
+    a = di.indicator
     return lines!(
         di.parent, Point3d[], color = a.color,
         linewidth = a.linewidth, linestyle = a.linestyle,
@@ -647,14 +751,16 @@ function construct_indicator_plot(di::DataInspector, ::Type{<:Lines})
 end
 
 function construct_indicator_plot(di::DataInspector, ::Type{<:Scatter})
-    a = di.indicator_attributes
-    range = di.inspector_attributes.range
+    a = di.indicator
+    # draw marker occupies (markersize + 2 * strokewidth + ~1 AA pixel)
+    # To be able to pick the plot behind the indicator, this needs to be < 2 * range
+    map!(di.attributes.indicator, [di.range, :linewidth], :shrunk_markersize) do r, w
+        return 2r - 4 - 2w
+    end
     return scatter!(
         di.parent, Point3d(0), color = RGBAf(0, 0, 0, 0),
         marker = Rect,
-        # draw marker occupies (markersize + 2 * strokewidth + ~1 AA pixel)
-        # To be able to pick the plot behind the indicator, this needs to be < 2 * range
-        markersize = map((r, w) -> min(2r - 4 - 2w, 100), range, a.linewidth),
+        markersize = a.shrunk_markersize,
         strokecolor = a.color,
         strokewidth = a.linewidth,
         inspectable = false, visible = false,
@@ -755,12 +861,12 @@ end
 function update_persistent_tooltips!(di::DataInspector)
     e = events(di.parent)
 
-    if !ispressed(e, to_value(di.inspector_attributes.persistent_tooltip_key)) || !is_mouseinside(di.parent)
+    if !ispressed(e, di.persistent_tooltip_key[]) || !is_mouseinside(di.parent)
         return Consume(false)
     end
 
     mp = e.mouseposition[]
-    for (plot, idx) in pick_sorted(di.parent, mp, to_value(di.inspector_attributes[:range]))
+    for (plot, idx) in pick_sorted(di.parent, mp, di.range[]::Int)
         (parent_scene(plot) != di.parent) && continue
 
         if plot.inspectable[]
@@ -832,13 +938,12 @@ function add_persistent_tooltip!(di::DataInspector, element::PlotElement{PT}) wh
     if haskey(di.persistent_tooltips, id)
         tt = di.persistent_tooltips[id]
         elements = push!(tt.arg1[], element)
-        update!(tt, arg1 = elements; di.tooltip_attributes...)
+        update!(tt, arg1 = elements)
         apply_tooltip_overwrites!(element, tt)
     else
-        formatter = to_value(di.inspector_attributes[:formatter])
         tt = datainspectortooltip!(
-            di.parent, PlotElement{PT}[element],
-            _formatter = formatter; di.tooltip_attributes...
+            di.parent, di.tooltip, PlotElement{PT}[element],
+            _formatter = di.formatter[]
         )
         apply_tooltip_overwrites!(element, tt)
         di.persistent_tooltips[id] = tt

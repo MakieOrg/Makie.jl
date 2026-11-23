@@ -307,7 +307,20 @@ function make_block_docstring(T::Type{<:Block}, docstring)
     """
 end
 
-attribute_groups(::Type{<:Block}) = Pair{String, Vector{Symbol}}[]
+
+const DEFAULT_BLOCK_ATTRIBUTE_GROUPS = let
+    layout = [:halign, :valign, :width, :height, :tellwidth, :tellheight, :alignmode]
+    Pair{String, Vector{Symbol}}["Layout Attributes" => sort!(layout)]
+end
+
+"""
+    default_block_attribute_groups()
+
+Returns a deepcopy of the default block attribute groups for further modification.
+"""
+default_block_attribute_groups() = deepcopy(DEFAULT_BLOCK_ATTRIBUTE_GROUPS)
+
+attribute_groups(::Type{<:Block}) = default_block_attribute_groups()
 
 function mixin_block_layout_attributes()
     return @DocumentedAttributes begin
@@ -563,7 +576,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     add_attributes!(T, graph, flattened_defaults)
 
     # prepare after user overwrites so users can use `add_input!()`
-    prepare_graph_for_attributes!(graph, attr, is_block = true)
+    prepare_graph_for_attributes!(graph, attr, restrict_types = true)
     add_remaining_block_inputs!(graph, attr, flattened_defaults)
     process_attribute_deprecations!(graph, attr, user_set_deprecated_attr)
 
