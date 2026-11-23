@@ -284,7 +284,7 @@ end
 
     xs = 0:9        # data
     ys = zeros(10)
-    colors = Makie.DEFAULT_PALETTES.color[]
+    colors = Makie.DEFAULT_PALETTES.color
     plots = map(1:N) do i # plot lines
         lines!(
             ax,
@@ -1207,6 +1207,24 @@ end
     end
 end
 
+@reference_test "tickalign" begin
+    f = Figure(size = (900, 400))
+    for (i, align) in enumerate([0, 0.5, 1, :out_spine, :in_spine])
+        Axis(
+            f[1, i], title = string(align), limits = (0, 1, 0, 1), spinewidth = 8,
+            xtickalign = align, ytickalign = align, xticksize = 16, yticksize = 16,
+            xtickcolor = (:red, 0.6), ytickcolor = (:red, 0.6), xtickwidth = 3, ytickwidth = 3,
+            xticksmirrored = true, yticksmirrored = true,
+            xminorticksvisible = true, xminortickalign = align, xminorticksize = 10, xminortickcolor = :blue,
+        )
+        Colorbar(
+            f[2, i], limits = (0, 1), vertical = false, spinewidth = 6, ticksize = 12,
+            tickalign = align, tickcolor = :red, tickwidth = 2,
+        )
+    end
+    f
+end
+
 @reference_test "hexbin bin int" begin
     f = Figure(size = (800, 800))
 
@@ -1919,7 +1937,7 @@ end
 @reference_test "Clip planes - CairoMakie overrides" begin
     f = Figure()
     a = Axis(f[1, 1])
-    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(1, 0, 0), 0)]
+    a.scene.theme[:clip_planes] = [Plane3f(Vec3f(1, 0, 0), 0)]
     xlims!(a, -3.5, 3.5)
     ylims!(a, -3.5, 3.5)
 

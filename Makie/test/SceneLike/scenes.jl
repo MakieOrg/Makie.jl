@@ -112,19 +112,17 @@ end
 @testset "onplot" begin
     scene = Scene()
     p = scatter!(scene, rand(10))
-    @test scene.onplot[] == Pair(true, p)
+    @test scene.onplot[] == Set(scene.plots)
     p2 = scatterlines!(scene, rand(10))
-    @test scene.onplot[] == Pair(true, p2)
+    @test scene.onplot[] == Set(scene.plots)
     delete!(scene, p)
-    @test scene.onplot[] == Pair(false, p)
+    @test scene.onplot[] == Set(scene.plots)
     p3 = lines!(scene, rand(10))
-    @test scene.onplot[] == Pair(true, p3)
+    @test scene.onplot[] == Set(scene.plots)
     buffer = []
-    on(x -> push!(buffer, x), scene.onplot)
+    on(x -> push!(buffer, nothing), scene.onplot)
     Makie.free(scene)
-    @test Pair(false, p2) in buffer
-    @test Pair(false, p3) in buffer
-    @test length(buffer) == 2
+    @test length(buffer) == 1
 end
 
 @testset "Deleting plots disconnects them from the scene graph" begin

@@ -106,7 +106,7 @@ end
     cmap = Makie.extract_colormap(tr)
     @test cmap isa Dict
     @test cmap[:colorrange][] == tr.computed_colorrange[]
-    @test cmap[:color][] == tr.computed_levels[]
+    @test cmap[:dim_converted][] == tr.computed_levels[]
     @test cmap[:lowclip] === tr.lowclip
     @test cmap[:highclip] === tr.highclip
 end
@@ -119,7 +119,7 @@ end
     cmap = Makie.extract_colormap(p)
     @test cmap isa Dict
     @test cmap[:colorrange] === p.computed_colorrange
-    @test cmap[:color] === p.zlevels
+    @test cmap[:dim_converted] === p.zlevels
     @test cmap[:colorscale] === p.colorscale
     @test cmap[:lowclip][] == Makie.automatic
     @test cmap[:highclip][] == Makie.automatic

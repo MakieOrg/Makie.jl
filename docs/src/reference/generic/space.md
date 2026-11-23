@@ -14,8 +14,6 @@ Your options for this are limited to:
 - `space = :clip`: The plot is in a -1..1 normalized space.
 
 ```@figure
-using GLMakie
-
 f = Figure()
 a = Axis(f[1, 1], limits = (-10, 10, -10, 10),
     xminorgridvisible = true, xminorticksvisible = true, xminorticks = IntervalsBetween(5),

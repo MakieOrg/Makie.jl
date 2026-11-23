@@ -1,10 +1,3 @@
-function check_textsize_deprecation(@nospecialize(dictlike))
-    if haskey(dictlike, :textsize)
-        throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
-    end
-    return
-end
-
 # We sort out position vs string(-like) vs mixed arguments before convert_arguments,
 # so that we only get positions here
 conversion_trait(::Type{<:Text}) = PointBased()
