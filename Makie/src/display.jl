@@ -56,21 +56,21 @@ end
 
 function set_screen_config!(backend::Module, new_values)
     key = nameof(backend)
-    backend_defaults = CURRENT_DEFAULT_THEME[key]
+    backend_defaults = current_default_theme()[key]
     bkeys = keys(backend_defaults)
-    for (k, v) in pairs(new_values)
+    for k in keys(new_values)
         if !(k in bkeys)
             error("$k is not a valid screen config. Applicable options: $(keys(backend_defaults)). For help, check `?$(backend).ScreenConfig`")
         end
-        backend_defaults[k] = v
     end
-    return backend_defaults
+    update_theme!(Attributes(key => Attributes(new_values)))
+    return current_default_theme()[key]
 end
 
 function merge_screen_config(::Type{Config}, config::Dict) where {Config}
     backend = parentmodule(Config)
     key = nameof(backend)
-    backend_defaults = CURRENT_DEFAULT_THEME[key]
+    backend_defaults = current_default_theme()[key]
     arguments = map(fieldnames(Config)) do name
         if haskey(config, name)
             return config[name]
