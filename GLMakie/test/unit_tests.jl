@@ -618,6 +618,21 @@ end
     @test length(screen.render_tick.listeners) == N
 end
 
+@testset "Rendering a non-clearing root scene" begin
+    root = Scene(; size = (40, 40), backgroundcolor = :transparent, camera = campixel!)
+    scatter!(root, Point2f[(10, 20)]; markersize = 10, color = :red)
+    @test colorbuffer(root; px_per_unit = 1)[20, 10] == RGBf(1, 0, 0)
+
+    Scene(root; viewport = Rect2i(20, 0, 20, 40), clear = true, backgroundcolor = :blue)
+    img = colorbuffer(root; px_per_unit = 1)
+    @test img[20, 10] == RGBf(1, 0, 0)
+    @test img[20, 30] == RGBf(0, 0, 1)
+
+    screen = Makie.getscreen(root, GLMakie)
+    clear_stage = findfirst(stage -> stage isa GLMakie.ClearStage, screen.render_pipeline.stages)
+    @test size(GLMakie.stage_output(screen, clear_stage)) == (40, 40)
+end
+
 @testset "scroll event coalescing" begin
     scroll = Observable((0.0, 0.0))
     received = Tuple{Float64, Float64}[]

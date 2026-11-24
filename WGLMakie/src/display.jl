@@ -526,6 +526,10 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
         # on this).
         try
             live = get_screen_session(screen; error = "Plot needs to be displayed to insert additional plots")
+            if isnothing(live)
+                screen.needs_resync = true
+                return
+            end
             if js_uuid(scene) in screen.displayed_scenes
                 insert_plot!(live, scene, plot)
             else
@@ -556,8 +560,22 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
 end
 
 function Makie.insert_scene!(screen::Screen, scene::Scene)
-    session = get_screen_session(screen; error = "Root parent scene needs to be displayed to insert additional scenes")
-    insert_scene!(session, screen, scene)
+    session = screen.session
+    (isnothing(session) || Bonito.isclosed(session)) && return
+    if isready(screen.plot_initialized) && connection_live(screen)
+        try
+            live = get_screen_session(screen; error = "Root parent scene needs to be displayed to insert additional scenes")
+            if !isnothing(live)
+                insert_scene!(live, screen, scene)
+                return
+            end
+        catch e
+            e isa InterruptException && rethrow()
+            connection_live(screen) && rethrow()
+            @debug "Connection lost during scene insertion; scheduling resync" exception = (e, catch_backtrace())
+        end
+    end
+    screen.needs_resync = true
     return
 end
 

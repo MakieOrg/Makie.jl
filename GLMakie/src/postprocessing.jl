@@ -152,14 +152,12 @@ end
 function clear_scenes!(screen, glscenes, framebuffer)
     set_draw_buffers(framebuffer, :color)
 
-    # Clear everything for safety (in case top level scene does not clear)
-    # (should be at least depth)
-    # glDisable(GL_SCISSOR_TEST)
-    # glDisable(GL_STENCIL_TEST)
-    # wh = size(framebuffer)
-    # glViewport(0, 0, wh[1], wh[2])
-    # glClearColor(1, 1, 1, 1)
-    # glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+    # Standard blending preserves the background alpha, which FXAA uses.
+    if !isempty(glscenes) && !first(glscenes).scene.clear[]
+        glDisable(GL_SCISSOR_TEST)
+        glClearColor(1, 1, 1, 1)
+        glClear(GL_COLOR_BUFFER_BIT)
+    end
 
     # Draw scene backgrounds for cleared scenes
     glEnable(GL_SCISSOR_TEST)
@@ -338,7 +336,6 @@ function update_stencil!(screen, glscene, fb)
     GLAbstraction.bind(fb)
 
     # draw 1 to stencil buffer for every cleared scene viewport
-    glEnable(GL_SCISSOR_TEST)
     glEnable(GL_STENCIL_TEST)
     glStencilFunc(GL_ALWAYS, 0, 0xff)
     glClearStencil(1)
@@ -349,8 +346,6 @@ function update_stencil!(screen, glscene, fb)
         glScissor(rt...)
         glClear(GL_STENCIL_BUFFER_BIT)
     end
-    glDisable(GL_SCISSOR_TEST)
-
     # And reset to a useful stencil function
     glStencilFunc(GL_EQUAL, 0, 0xff)
 
@@ -393,9 +388,10 @@ function run_stage(screen, glscenes, stage::RenderPlots)
 
         start = length(glscenes) + 1
         while start > 1
-            # Find current clear = [true, false, ..., false] block
+            # The first block can start with a non-clearing root scene.
             stop = start - 1
-            for i in stop:-1:1
+            start = 1
+            for i in stop:-1:2
                 if glscenes[i].scene.clear[]
                     start = i
                     break
@@ -409,7 +405,6 @@ function run_stage(screen, glscenes, stage::RenderPlots)
                 a = viewport(scene)[]
 
                 require_context(screen.glscreen)
-                # glClear(GL_DEPTH_BUFFER_BIT) requires different RenderGraph setup
                 glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
                 glScissor(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
 
@@ -424,6 +419,7 @@ function run_stage(screen, glscenes, stage::RenderPlots)
 
             update_stencil!(screen, glscenes[start], stage.framebuffer)
         end
+        glDisable(GL_SCISSOR_TEST)
         glDisable(GL_STENCIL_TEST)
     catch e
         @error "Error while rendering!" exception = e

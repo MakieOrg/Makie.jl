@@ -383,7 +383,7 @@ function register_has_transparent_color!(attr::ComputeGraph)
     haskey(attr, :has_transparent_color) && return
     # This should be false if all colors are fully opaque or fully transparent,
     # i.e. if alpha == 0.0 or 1.0.
-    map!(
+    return map!(
         attr,
         [:scaled_color, :alpha_colormap, :lowclip_color, :highclip_color, :nan_color],
         :has_transparent_color

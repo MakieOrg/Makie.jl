@@ -874,6 +874,14 @@ end
 end
 
 @reference_test "Scene render order and clearing" begin
+    depth_scene = Scene(; size = (40, 40), camera = campixel!, clear = true)
+    scatter!(depth_scene, Point3f[(20, 20, 25)]; color = :red, markersize = 14)
+    overlay = Scene(depth_scene; camera = campixel!, clear = false)
+    scatter!(overlay, Point3f[(20, 20, -25)]; color = :blue, markersize = 14)
+    @test RGBf(Makie.Colors.color(colorbuffer(depth_scene; px_per_unit = 1)[20, 20])) == RGBf(1, 0, 0)
+    overlay.clear[] = true
+    @test RGBf(Makie.Colors.color(colorbuffer(depth_scene; px_per_unit = 1)[20, 20])) == RGBf(0, 0, 1)
+
     scene = Scene(size = (600, 450), backgroundcolor = :darkblue, clear = true)
     # trigger screen creation so we see what dynamically adding scenes does
     colorbuffer(scene)

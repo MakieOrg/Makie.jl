@@ -109,7 +109,7 @@ export function render_scene(scene, picking = false) {
             const alpha = scene.backgroundcolor_alpha.value;
             renderer.setClearColor(scene.backgroundcolor.value, alpha);
         }
-        if (!scene.clearscene.value)
+        if (!scene.clearscene.value && scene === scene.screen.root_scene)
             renderer.clearDepth();
         renderer.render(scene, camera);
     }

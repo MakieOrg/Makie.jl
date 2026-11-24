@@ -65,12 +65,13 @@ function stage_output(
     poll_updates(screen)
 
     prepare_frame(screen, false)
+    glscenes = screen.render_context.scenes
 
     # Render up to target stage
     for idx in 1:stage_index
         stage = screen.render_pipeline.stages[idx]
         require_context(screen.glscreen)
-        run_stage(screen, nothing, stage)
+        run_stage(screen, glscenes, stage)
     end
 
     glFinish()
@@ -80,11 +81,11 @@ function stage_output(
     end
     fast_color_data!(screen.framecache, ctex)
 
-    # Render remainign stages
+    # Render remaining stages
     for idx in (stage_index + 1):length(screen.render_pipeline.stages)
         stage = screen.render_pipeline.stages[idx]
         require_context(screen.glscreen)
-        run_stage(screen, nothing, stage)
+        run_stage(screen, glscenes, stage)
     end
 
     if screen.config.visible
