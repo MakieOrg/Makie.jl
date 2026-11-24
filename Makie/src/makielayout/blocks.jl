@@ -456,7 +456,7 @@ function init_layout!(b, args...; kwargs...)
     # connect the block's layoutobservables.computedbbox to the align action that
     # usually the GridLayout executes itself
     onany(GridLayoutBase.align_to_bbox!, b.layout, lobservables.computedbbox)
-    return
+    return b.layout
 end
 
 """
@@ -941,6 +941,32 @@ function Base.delete!(block::Block)
     block.parent = nothing
     return
 end
+
+"""
+    clear!(x)
+
+Remove GUI content. A Makie `Block` is deleted from its figure; a `GridLayout`
+is cleared recursively (blocks and nested layouts removed). `nothing` is
+ignored. Replaces ad-hoc `hasmethod` reflection with plain dispatch.
+"""
+clear!(block::Block) = delete!(block)
+
+function clear!(gl::GridLayout)
+    for gc in reverse(copy(gl.content))
+        obj = gc.content
+        if obj isa GridLayout
+            clear!(obj)
+            GridLayoutBase.remove_from_gridlayout!(gc)
+        else
+            clear!(obj)
+        end
+    end
+    GridLayoutBase.trim!(gl)
+    return nothing
+end
+
+clear!(::Nothing) = nothing
+clear!(::Any) = nothing
 
 function unhide!(block::Block)
     # Only unhide if the parent scene is visible — otherwise we'd

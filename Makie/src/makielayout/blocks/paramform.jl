@@ -308,29 +308,3 @@ function initialize_block!(pf::ParamForm, spec, accessory = nothing)
 end
 
 free(pf::ParamForm) = clear!(pf.layout)
-
-"""
-    clear!(x)
-
-Remove GUI content. A Makie `Block` is deleted from its figure; a `GridLayout`
-is cleared recursively (blocks and nested layouts removed). `nothing` is
-ignored. Replaces ad-hoc `hasmethod` reflection with plain dispatch.
-"""
-clear!(block::Block) = (delete!(block); nothing)
-
-function clear!(gl::GridLayout)
-    for gc in reverse(copy(gl.content))
-        obj = gc.content
-        if obj isa GridLayout
-            clear!(obj)
-            GridLayoutBase.remove_from_gridlayout!(gc)
-        else
-            clear!(obj)
-        end
-    end
-    GridLayoutBase.trim!(gl)
-    return nothing
-end
-
-clear!(::Nothing) = nothing
-clear!(::Any) = nothing
