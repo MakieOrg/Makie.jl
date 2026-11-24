@@ -91,6 +91,7 @@ const TEST_FILES = [
     "test_light_updates.jl",
     "test_trace_visibility.jl",
     "test_ray_visibility.jl",
+    "test_depth_of_field.jl",
     "test_renderbuffers.jl",
     "test_render_allocates_nothing.jl",
     "test_arena_growth_frame.jl",

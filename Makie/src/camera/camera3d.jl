@@ -22,8 +22,10 @@ struct Camera3D <: AbstractCamera3D
     bounding_sphere::Observable{Sphere{Float64}}
 
     # depth of field
-    lens_radius::Observable{Float64}
-    focal_distance::Observable{Float64}
+    fstop::Observable{Float64}
+    focus::Observable{Any}
+    aperture_blades::Observable{Int}
+    aperture_rotation::Observable{Float64}
 end
 
 """
@@ -104,6 +106,13 @@ Some keyword arguments are used to initialize fields. These include
 - `fov = 45.0` is the field of view. This is irrelevant if the camera uses an orthographic projection.
 - `near = automatic` sets the position of the near clip plane. Anything between the camera and the near clip plane is hidden. Must be greater 0. Usage depends on `clipping_mode`.
 - `far = automatic` sets the position of the far clip plane. Anything further away than the far clip plane is hidden. Usage depends on `clipping_mode`. Defaults to `1` for `clipping_mode = :bbox_relative`, `2` for `:view_relative` or a value derived from limits for `:static`.
+
+Depth of field, which only ray tracing backends render:
+
+- `fstop = Inf`: the f-number of the lens, whose focal length follows from `fov` on a 36 mm sensor across the longer side of the image, so scene units are meters. `Inf` keeps everything sharp.
+- `focus = nothing`: what is sharp. `nothing` is the `lookat` point, a number a distance along the view, a point or a plot (the center of its bounding box) its depth along the view.
+- `aperture_blades = 0`: a polygonal aperture of that many corners, which gives out-of-focus highlights that shape. `0` is a round one.
+- `aperture_rotation = 0.0`: the rotation of a polygonal aperture in radians.
 
 Note that updating these observables in an active camera requires a call to `update_cam(scene)`
 for them to be applied. For updating `eyeposition`, `lookat` and/or upvector
@@ -200,8 +209,10 @@ function Camera3D(scene::Scene; kwargs...)
         Sphere(Point3d(0), 1.0),
 
         # depth of field
-        get(overwrites, :lens_radius, Observable(0.0)),
-        get(overwrites, :focal_distance, Observable(1e6)),
+        get(overwrites, :fstop, Observable(Inf)),
+        get(overwrites, :focus, Observable{Any}(nothing)),
+        get(overwrites, :aperture_blades, Observable(0)),
+        get(overwrites, :aperture_rotation, Observable(0.0)),
     )
 
     disconnect!(camera(scene))
