@@ -553,12 +553,7 @@ function Base.close(screen::Screen)
         Mantle.supports_batch_queue(d) && Mantle.reclaim!(Mantle.batchqueue(d))
     end
 
-    # The atlas is global and outlives this screen, so the hook has to come off
-    # or it keeps the screen alive and marks a dead one dirty forever.
-    if screen.gfx_atlas_hook !== nothing
-        Makie.remove_font_render_callback!(Makie.get_texture_atlas(), screen.gfx_atlas_hook)
-        screen.gfx_atlas_hook = nothing
-    end
+    unhook_atlas!(screen)
 
     # No flush, and nothing reaching into a backend by module lookup. Every
     # allocation above is a pool region: `free!` retires it and the next
@@ -1673,6 +1668,16 @@ function Base.delete!(screen::Screen, scene::Scene)
     end
     empty!(screen.scene_states)
     screen.state = nothing
+    unhook_atlas!(screen)
+end
+
+# The atlas is global and outlives every screen, so the hook has to come off when
+# the screen is closed or its scene goes, or the atlas collects one per screen.
+function unhook_atlas!(screen::Screen)
+    screen.gfx_atlas_hook === nothing && return
+    Makie.remove_font_render_callback!(Makie.get_texture_atlas(), screen.gfx_atlas_hook)
+    screen.gfx_atlas_hook = nothing
+    return
 end
 
 function free_state_gpu!(state::RayMakieState)

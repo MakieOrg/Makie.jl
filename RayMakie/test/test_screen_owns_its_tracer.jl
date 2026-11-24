@@ -78,6 +78,21 @@ config(; kw...) = Makie.merge_screen_config(RayMakie.ScreenConfig, Dict{Symbol, 
         close(s)
     end
 
+    @testset "a screen whose scene goes leaves the glyph atlas" begin
+        # The atlas is global. Its hook held the screen and only `close` took it
+        # off, so every screen whose scene was freed without `close` (Makie's
+        # finalizer path) stayed alive with its buffers, and a leak check further
+        # on saw them go whenever something else let go of them.
+        callbacks = Makie.get_texture_atlas().font_render_callback
+        before = length(callbacks)
+        s = traced_screen()
+        Makie.colorbuffer(s)
+        @test length(callbacks) == before + 1
+        delete!(s, s.scene)
+        @test length(callbacks) == before
+        close(s)
+    end
+
     @testset "`integrator` is refused, not ignored" begin
         # A per-call config is merged key by key and an unknown key is dropped,
         # so an old `integrator = VolPath(...)` would have rendered with the

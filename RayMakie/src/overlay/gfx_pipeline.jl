@@ -35,11 +35,13 @@ used and that label draws whatever the atlas held in those texels before.
 function get_atlas_bindings(screen)
     atlas = Makie.get_texture_atlas()
 
-    # Registered once, and kept so `close` can take it off again: an atlas is
-    # global and outlives any one screen, so a hook per screen that never comes
-    # off is a leak that also keeps the screen alive.
+    # Registered once, and kept so `close` and `delete!(screen, scene)` can take it
+    # off again: an atlas is global and outlives any one screen. The hook holds the
+    # flag, not the screen, since a hook that held it kept every screen whose scene
+    # was collected without `close` alive, with its buffers.
     if screen.gfx_atlas_hook === nothing
-        hook = (_sd, _area) -> (screen.gfx_atlas_dirty[] = true; nothing)
+        dirty = screen.gfx_atlas_dirty
+        hook = (_sd, _area) -> (dirty[] = true; nothing)
         screen.gfx_atlas_hook = hook
         Makie.font_render_callback!(hook, atlas)
     end
