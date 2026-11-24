@@ -136,9 +136,9 @@ function addmouseevents!(scene, bbox::Observables.AbstractObservable{<:Rect2}; p
     # `mouseposition_px` is viewport-relative and stops matching the absolute
     # bboxes as soon as the blockscene inherits an offset viewport (e.g. for
     # a widget placed inside a ScrollArea/Tabs content scene).
-    to_px(scene) = Point2f(events(scene).mouseposition[])
-    is_mouse_over_relevant_area() = scene.visible[] && (to_px(scene) in bbox[])
-    return _addmouseevents!(scene, is_mouse_over_relevant_area, to_px, priority)
+    global_mouseposition_px(scene) = Point2f(events(scene).mouseposition[])
+    is_mouse_over_relevant_area() = scene.visible[] && (global_mouseposition_px(scene) in bbox[])
+    return _addmouseevents!(scene, is_mouse_over_relevant_area, global_mouseposition_px, priority)
 end
 
 
@@ -197,7 +197,7 @@ function to_click_event(b::Mouse.Button)
     return error("No recognized mouse button $b")
 end
 
-function _addmouseevents!(scene, is_mouse_over_relevant_area, to_px, priority)
+function _addmouseevents!(scene, is_mouse_over_relevant_area, global_mouseposition_px, priority)
     Mouse = Makie.Mouse
     dblclick_max_interval = 0.2
 
@@ -206,7 +206,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, to_px, priority)
     )
     # initialize state variables
     last_mouseevent = Ref{Mouse.Action}(Mouse.release)
-    prev_px = Ref(Point2f(to_px(scene)))
+    prev_px = Ref(Point2f(global_mouseposition_px(scene)))
     prev_data = Ref(to_world(scene, prev_px[]))
     mouse_downed_inside = Ref(false)
     mouse_downed_button = Ref{Optional{Mouse.Button}}(nothing)
