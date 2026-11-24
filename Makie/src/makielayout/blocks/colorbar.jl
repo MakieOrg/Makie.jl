@@ -223,7 +223,7 @@ function colorbar_attributes_complete(dictlike)
     return issubset(full, keys(dictlike)) && (haskey(dictlike, :color) || haskey(dictlike, :dim_converted))
 end
 
-function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+function extract_and_process_colormap(plot::AbstractPlot, kwargs)
     cmap = try
         temp = extract_colormap(plot)
         # Autocomplete + ColorMapping deprecation
@@ -259,6 +259,11 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
         )
     end
 
+    return cmap
+end
+
+function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+    cmap = extract_and_process_colormap(plot, kwargs)
     return Colorbar(fig_or_scene; cmap..., kwargs...)
 end
 
@@ -479,7 +484,6 @@ function initialize_block!(cb::Colorbar; kwargs...)
         colorrange = cb.resolved_colorrange,
         colorscale = cb.scale,
         visible = cb.show_heatmap,
-        inspectable = false,
     )
 
     map!(cb, :barbox, [:xlims, :ylims]) do bb
@@ -505,7 +509,6 @@ function initialize_block!(cb::Colorbar; kwargs...)
         blockscene,
         cb.xlims, cb.ylims, cb.image_pixels;
         visible = cb.show_image,
-        inspectable = false
     )
 
     map!(cb, [:barbox, :vertical], :clip_tris) do box, vertical
@@ -533,7 +536,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     poly!(
         blockscene, cb.clip_tris, color = cb.clip_tri_colors,
-        strokecolor = :transparent, inspectable = false
+        strokecolor = :transparent
     )
 
     map!(
@@ -566,7 +569,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
-    lines!(blockscene, cb.borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor, inspectable = false)
+    lines!(blockscene, cb.borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor)
 
     map!(cb, [:barbox, :vertical, :flipaxis], :axispoints) do scenearea, vertical, flipaxis
         if vertical
@@ -712,20 +715,12 @@ function Colorbar(
         position = :rt, margin = (6, 50, 6, 6), kwargs...
     )
     pos_kw = legend_position_to_aligns(position)
-    # Extract colormap from the plot
-    cmap = extract_colormap_recursive(plot)
-    func = plotfunc(plot)
-    if isnothing(cmap)
-        error("Neither $(func) nor any of its children use a colormap. Cannot create a Colorbar from this plot, please create it manually.")
-    end
-    if !(cmap isa ColorMapping)
-        error("extract_colormap(::$(Plot{func})) returned an invalid value: $cmap. Needs to return a `Makie.ColorMapping`.")
-    end
+    cmap = extract_and_process_colormap(plot, kwargs)
     return Colorbar(
         ax.parent;
-        colormap = cmap,
         bbox = ax.scene.viewport,
         margin = margin,
+        cmap...,
         pos_kw...,
         kwargs...
     )

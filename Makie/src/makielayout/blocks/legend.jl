@@ -1186,19 +1186,16 @@ Legend(ax; position=:lt, title="My Legend")
 """
 function Legend(
         ax::Union{Axis, Axis3}, _title = nothing;
-        position = :rt, margin = (6, 6, 6, 6),
-        merge = false, unique = false, title = _title, kwargs...
+        position = :rt, kwargs...
     )
-    plots, labels = get_labeled_plots(ax, merge = merge, unique = unique)
-    isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
+    # This effectively replaces the default set for margin in @Block without
+    # breaking theming rules. It prioritizes kwargs > theme overwrites > default
+    margin = get(
+        kwargs, :margin,
+        get(something(theme(:Legend), NamedTuple()), :margin, (6, 6, 6, 6))
+    )
     pos_kw = legend_position_to_aligns(position)
-    return Legend(
-        ax.parent, plots, labels, title;
-        bbox = ax.scene.viewport,
-        margin = margin,
-        pos_kw...,
-        kwargs...
-    )
+    return Legend(ax.parent, _title; margin, bbox = a.scene.viewport, pos_kw..., kwargs...)
 end
 
 # convenience constructor for axis legend
@@ -1229,11 +1226,10 @@ to one occurrence.
 
 Note: This is equivalent to `Legend(ax; position, kwargs...)`.
 """
-function axislegend(ax, args...; position = :rt, margin = (6, 6, 6, 6), kwargs...)
+function axislegend(ax, args...; position = :rt, kwargs...)
     return Legend(
-        ax.parent, args...;
+        ax, args...;
         bbox = ax.scene.viewport,
-        margin = margin,
         legend_position_to_aligns(position)...,
         kwargs...
     )
