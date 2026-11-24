@@ -22941,6 +22941,10 @@ function delete_scene(scene_id) {
         scene.remove(scene.children[0]);
     }
     delete scene_cache[scene_id];
+    Object.entries(scene_cache).forEach(([id, parent])=>{
+        const idx = parent.scene_children.findIndex((child)=>child.uuid === scene.uuid);
+        if (idx !== -1) parent.scene_children.splice(idx, 1);
+    });
 }
 function find_plots(plot_uuids) {
     const plots = [];
@@ -23166,7 +23170,7 @@ class Plot {
         this.mesh.plot_uuid = this.plot_data.uuid;
         this.mesh.frustumCulled = false;
         this.mesh.matrixAutoUpdate = false;
-        this.mesh.renderOrder = this.plot_data.zvalue;
+        this.mesh.renderOrder = this.plot_data.gl_zindex;
         this.mesh.plot_object = this;
         this.mesh.visible = this.plot_data.visible;
     }
@@ -23210,6 +23214,8 @@ class Plot {
                 this.update_faces(value);
             } else if (key === "visible") {
                 this.mesh.visible = value;
+            } else if (key === "gl_zindex") {
+                this.mesh.renderOrder = value;
             } else {
                 console.warn(`Unknown key ${key} in Plot: ${this.name}`);
             }
@@ -24748,6 +24754,7 @@ function render_scene(scene, picking = false) {
             const alpha = scene.backgroundcolor_alpha.value;
             renderer.setClearColor(scene.backgroundcolor.value, alpha);
         }
+        if (!scene.clearscene.value) renderer.clearDepth();
         renderer.render(scene, camera);
     }
     return scene.scene_children.every((x1)=>render_scene(x1, picking));

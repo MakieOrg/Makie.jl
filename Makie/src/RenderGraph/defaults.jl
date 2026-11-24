@@ -9,6 +9,18 @@ Sorts plots based on the z translation of their model matrix.
 SortStage() = RenderStage(:ZSort)
 
 """
+    SceneClearStage()
+
+Clears the color and depth buffer based on the `clear` values of scenes.
+"""
+function SceneClearStage()
+    return RenderStage(
+        :SceneClear,
+        outputs = [:color => BufferFormat(4, N0f8), :depth => BufferFormat(1, BFT.depth24)]
+    )
+end
+
+"""
     PlotRenderStage([; fxaa, ssao, oit])
 
 Renders plots with depth, color and objectid outputs.
@@ -199,6 +211,7 @@ on different postprocessing effects.
 function default_pipeline(; ssao = false, fxaa = true, oit = true)
     pipeline = RenderGraph()
     push!(pipeline, SortStage())
+    clear = push!(pipeline, SceneClearStage())
 
     # Note - order important!
     # TODO: maybe add insert!()?
@@ -225,6 +238,7 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
         connect!(pipeline, render1, _ssao)
         connect!(pipeline, _ssao, fxaa ? _fxaa : display, :color)
     end
+    connect!(pipeline, clear, ssao ? _ssao : (fxaa ? _fxaa : display))
     connect!(pipeline, render2, fxaa ? _fxaa : display)
     if oit
         connect!(pipeline, render3, _oit)
@@ -248,8 +262,10 @@ Constructs the minimal pipeline needed for rendering.
 """
 function minimal_render_pipeline()
     pipeline = RenderGraph()
+    clear = push!(pipeline, SceneClearStage())
     render = push!(pipeline, PlotRenderStage())
     display = push!(pipeline, DisplayStage())
+    connect!(pipeline, clear, display)
     connect!(pipeline, render, display)
     return pipeline
 end

@@ -1,9 +1,24 @@
 abstract type AbstractCamera end
 abstract type AbstractAxis <: Block end
 
+"""
+    is3D(camera::AbstractCamera)
+
+Marks a camera controller as 2D (false) or 3D (true). This information will
+propagate to the scene which uses the camera and may affect some rendering
+details.
+
+Custom camera controllers are expected to implement this.
+"""
+function is3D(cam::AbstractCamera)
+    @warn "Camera Controller $(typeof(cam)) does not implement `is3D`. Assuming true."
+    return true
+end
+
 # placeholder if no camera is present
 struct EmptyCamera <: AbstractCamera end
 get_space(::EmptyCamera) = :clip
+is3D(::EmptyCamera) = false
 
 @enum RaymarchAlgorithm begin
     IsoValue # 0

@@ -25,6 +25,13 @@ mutable struct GLFramebuffer
 
         return obj
     end
+
+    function GLFramebuffer(::Nothing)
+        return new(
+            0, (0, 0), nothing,
+            Dict{Symbol, Int}(), GLenum[], Texture[], UInt32(0)
+        )
+    end
 end
 
 function bind(fb::GLFramebuffer, target = fb.id)
@@ -70,6 +77,15 @@ function unsafe_free(x::GLFramebuffer)
     id = Ref(x.id)
     glDeleteFramebuffers(1, id)
     x.id = 0
+    return
+end
+
+function Base.empty!(fb::GLFramebuffer)
+    fb.size = (0, 0)
+    empty!(fb.name2idx)
+    empty!(fb.attachments)
+    empty!(fb.buffers)
+    fb.counter = 0
     return
 end
 
