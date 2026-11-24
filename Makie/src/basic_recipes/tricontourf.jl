@@ -108,7 +108,7 @@ function _calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Floa
 
     for (fc, lc) in zip(filledcontours, levelcenters)
         pointvecs = map(fc.polylines) do vecs
-            map(Point2f, vecs)
+            map(Point2d, vecs)
         end
         if isempty(pointvecs)
             continue
@@ -137,7 +137,7 @@ function plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<
         is_extended_low = !isnothing(low)
         is_extended_high = !isnothing(high)
         if isnothing(cached)
-            polys = Polygon{2, Float32}[]
+            polys = Polygon{2, Float64}[]
             colors = Float64[]
         else
             polys, colors = empty!.(values(cached))

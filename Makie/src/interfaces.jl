@@ -124,7 +124,7 @@ plottype(::MultiPoint) = Scatter
 
 
 clip_planes_obs(parent::AbstractPlot) = attributes(parent).clip_planes
-clip_planes_obs(parent::Scene) = parent.theme[:clip_planes]
+clip_planes_obs(parent::Scene) = convert(Observable{Vector{Plane3f}}, parent.theme[:clip_planes])
 
 # all the plotting functions that get a plot type
 const PlotFunc = Type{<:AbstractPlot}
@@ -219,7 +219,11 @@ Base.@nospecializeinfer function handle_transformation!(plot::Plot, parent::Scen
     return
 end
 
-notify_onplot(scene::Scene, plot::Plot) = scene.onplot[] = true => plot
+function notify_onplot(scene::Scene, plot::Plot)
+    push!(scene.onplot[], plot)
+    notify(scene.onplot)
+    return
+end
 notify_onplot(::Plot, ::Plot) = nothing
 notify_onplot(scene, plot::Plot) = @error("Did not notify scene of plot when adding $plot to $scene")
 
