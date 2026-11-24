@@ -595,18 +595,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         To make a `GridLayout` aware of aspect ratio constraints, refer to the `Aspect` column or row size setting.
         """
         aspect = nothing
-        "The vertical alignment of the axis within its suggested bounding box."
-        valign = :center
-        "The horizontal alignment of the axis within its suggested bounding box."
-        halign = :center
-        "The width of the axis."
-        width = nothing
-        "The height of the axis."
-        height = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight::Bool = true
         "The relative margins added to the autolimits in x direction."
         xautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
         "The relative margins added to the autolimits in y direction."
@@ -738,8 +726,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         The function `limits!` is another option to set both x and y simultaneously.
         """
         limits = (nothing, nothing)
-        "The align mode of the axis in its parent GridLayout."
-        alignmode = Inside()
         "Controls if the y axis goes upwards (false) or downwards (true)"
         yreversed::Bool = false
         "Controls if the x axis goes rightwards (false) or leftwards (true)"
@@ -948,10 +934,6 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         rightspinecolor = RGBf(0, 0, 0)
         "The color of the bottom spine."
         bottomspinecolor = RGBf(0, 0, 0)
-        "The vertical alignment of the colorbar in its suggested bounding box."
-        valign = :center
-        "The horizontal alignment of the colorbar in its suggested bounding box."
-        halign = :center
         "Controls if the colorbar is oriented vertically."
         vertical = true
         "Flips the axis to the right if vertical and to the top if horizontal."
@@ -960,12 +942,6 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         flip_vertical_label = false
         "The width setting of the colorbar. Use `size` to set width or height relative to colorbar orientation instead."
         width = Auto()
-        "The height setting of the colorbar."
-        height = Auto()
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
 
         "The colormap that the colorbar uses."
         colormap = @inherit(:colormap, :viridis)
@@ -999,9 +975,6 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         Can also be a plain String replacing an active dim conversion label.
         """
         label_suffix = "[{}]"
-
-        "The align mode of the colorbar in its parent GridLayout."
-        alignmode = Inside()
 
         "The number of samples used for drawing the colormap. (This only affects continuous and banded colormaps.)"
         nsteps = 100
@@ -1044,24 +1017,10 @@ end
         justification = :center
         "The lineheight multiplier for the text."
         lineheight::Float32 = 1.0
-        "The vertical alignment of the text in its suggested boundingbox"
-        valign = :center
-        "The horizontal alignment of the text in its suggested boundingbox"
-        halign = :center
         "The counterclockwise rotation of the text in radians."
         rotation::Float32 = 0.0f0
         "The extra space added to the sides of the text boundingbox."
         padding = (0.0f0, 0.0f0, 0.0f0, 0.0f0)
-        "The height setting of the text."
-        height = Auto()
-        "The width setting of the text."
-        width = Auto()
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight::Bool = true
-        "The align mode of the text in its parent GridLayout."
-        alignmode = Inside()
         "Enable word wrapping to the suggested width of the Label."
         word_wrap::Bool = false
 
@@ -1085,11 +1044,8 @@ start/stop the frame animation.
         color::RGBAf = @inherit((:colors, :accent), :black)
         frames::Vector{String} = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         frame_interval::Float32 = 0.09f0
-        halign = :center
-        valign = :center
         tellwidth::Bool = false
         tellheight::Bool = false
-        alignmode = Inside()
         visible::Bool = true
     end
 end
@@ -1100,10 +1056,6 @@ end
         visible = true
         "The color of the rectangle."
         color = RGBf(0.9, 0.9, 0.9)
-        "The vertical alignment of the rectangle in its suggested boundingbox"
-        valign = :center
-        "The horizontal alignment of the rectangle in its suggested boundingbox"
-        halign = :center
         "The line width of the rectangle's border."
         strokewidth = 1.0f0
         "Controls if the border of the rectangle is visible."
@@ -1118,12 +1070,6 @@ end
         width = nothing
         "The height setting of the rectangle."
         height = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
-        "The align mode of the rectangle in its parent GridLayout."
-        alignmode = Inside()
         "Sets the z value of the Box"
         z = 0.0
     end
@@ -1132,20 +1078,8 @@ end
 @Block Slider begin
     selected_index::Observable{Int}
     @attributes begin
-        "The horizontal alignment of the element in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the element in its suggested bounding box."
-        valign = :center
-        "The width setting of the element."
-        width = Auto()
-        "The height setting of the element."
-        height = Auto()
         "The range of values that the slider can pick from."
         range = 0:0.01:10
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight::Bool = true
         "The start value of the slider or the value that is closest in the slider range."
         startvalue = automatic
         "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
@@ -1160,8 +1094,6 @@ end
         color_inactive::RGBAf = @inherit((:colors, :surface))
         "Controls if the slider has a horizontal orientation or not."
         horizontal::Bool = true
-        "The align mode of the slider in its parent GridLayout."
-        alignmode = Inside()
         "If false, slider only updates value once dragging stops"
         update_while_dragging = true
         "Controls if the button snaps to valid positions or moves freely"
@@ -1173,20 +1105,8 @@ end
     selected_indices::Observable{Tuple{Int, Int}}
     displayed_sliderfractions::Observable{Tuple{Float64, Float64}}
     @attributes begin
-        "The horizontal alignment of the slider in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the slider in its suggested bounding box."
-        valign = :center
-        "The width setting of the slider."
-        width = Auto()
-        "The height setting of the slider."
-        height = Auto()
         "The range of values that the slider can pick from."
         range = 0:0.01:10
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight::Bool = true
         "The start values of the slider or the values that are closest in the slider range."
         startvalues = Makie.automatic
         "The current interval of the slider. Don't set this manually, use the function `set_close_to!`."
@@ -1201,8 +1121,6 @@ end
         color_inactive::RGBAf = @inherit((:colors, :surface))
         "Controls if the slider has a horizontal orientation or not."
         horizontal::Bool = true
-        "The align mode of the slider in its parent GridLayout."
-        alignmode = Inside()
         "Controls if the buttons snap to valid positions or move freely"
         snap::Bool = true
     end
@@ -1255,20 +1173,6 @@ end
     valuelabels::Vector{Label}
     labels::Vector{Label}
     @attributes begin
-        "The horizontal alignment of the block in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the block in its suggested bounding box."
-        valign = :center
-        "The width setting of the block."
-        width = Auto()
-        "The height setting of the block."
-        height = Auto()
-        "Controls if the parent layout can adjust to this block's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this block's height"
-        tellheight::Bool = true
-        "The align mode of the block in its parent GridLayout."
-        alignmode = Inside()
         "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
         value_column_width = automatic
     end
@@ -1276,10 +1180,6 @@ end
 
 @Block Button begin
     @attributes begin
-        "The horizontal alignment of the button in its suggested boundingbox"
-        halign = :center
-        "The vertical alignment of the button in its suggested boundingbox"
-        valign = :center
         "The extra space added to the sides of the button label's boundingbox."
         padding = (8.0f0, 8.0f0, 8.0f0, 8.0f0)
         "The font size of the button label."
@@ -1288,14 +1188,6 @@ end
         label = "Button"
         "The font family of the button label."
         font = :regular
-        "The width setting of the button."
-        width = Auto()
-        "The height setting of the button."
-        height = Auto()
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
         "The radius of the rounded corners of the button."
         cornerradius = 4
         "The number of poly segments used for each rounded corner."
@@ -1318,8 +1210,6 @@ end
         buttoncolor_hover = @inherit((:colors, :accent_subtle))
         "The number of clicks that have been registered by the button."
         clicks = 0
-        "The align mode of the button in its parent GridLayout."
-        alignmode = Inside()
 
         textsize = @inherit textsize 16
         "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
@@ -1337,18 +1227,6 @@ const CHECKMARK_BEZIER = scale(
 
 @Block Checkbox begin
     @attributes begin
-        "The horizontal alignment of the checkbox in its suggested boundingbox"
-        halign = :center
-        "The vertical alignment of the checkbox in its suggested boundingbox"
-        valign = :center
-        "The width setting of the checkbox."
-        width = Auto()
-        "The height setting of the checkbox."
-        height = Auto()
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
         "The size (width/height) of the checkbox"
         size = 11
         "The size of the checkmark, relative to the size."
@@ -1371,8 +1249,6 @@ const CHECKMARK_BEZIER = scale(
         checkmarkcolor_unchecked = :transparent
         "The color of the checkmark when the mouse clicks the checkbox."
         checkmarkcolor_checked = @inherit((:colors, :text_on_accent))
-        "The align mode of the checkbox in its parent GridLayout."
-        alignmode = Inside()
         "If the checkbox is currently checked. This value should not be modified directly."
         checked = false
         "A function that is called when the user clicks to check or uncheck. The function is passed the current status as a `Bool` and needs to return a `Bool` that decides the checked status after the click. Intended for implementation of radio buttons."
@@ -1403,18 +1279,10 @@ end
 """
 @Block Toggle begin
     @attributes begin
-        "The horizontal alignment of the toggle in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the toggle in its suggested bounding box."
-        valign = :center
-        "The width of the bounding box.  Use `length` and `markersize` to set the dimensions of the toggle."
+        "The width of the bounding box. Use `length` and `markersize` to set the dimensions of the toggle."
         width = Auto()
-        "The height of the bounding box.  Use `length` and `markersize` to set the dimensions of the toggle."
+        "The height of the bounding box. Use `length` and `markersize` to set the dimensions of the toggle."
         height = Auto()
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
         "The number of poly segments in each rounded corner."
         cornersegments = 15
         # strokewidth = 2f0
@@ -1432,8 +1300,6 @@ end
         toggleduration = 0.15
         "The border width as a fraction of the toggle height "
         rimfraction = 0.33
-        "The align mode of the toggle in its parent GridLayout."
-        alignmode = Inside()
         "The orientation of the toggle.  Can be :horizontal, :vertical, or -pi to pi.  0 is horizontal with \"on\" being to the right."
         orientation = :horizontal
         "The length of the toggle."
@@ -1506,20 +1372,8 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
 """
 @Block Menu begin
     @attributes begin
-        "The height setting of the menu."
-        height = Auto()
-        "The width setting of the menu."
+        # value overwrite
         width = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
-        "The horizontal alignment of the menu in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the menu in its suggested bounding box."
-        valign = :center
-        "The alignment of the menu in its suggested bounding box."
-        alignmode = Inside()
         "Index of selected item. Should not be set by the user."
         i_selected = 0
         "Selected item value. This is the output observable that you should listen to to react to menu interaction. Should not be set by the user."
@@ -1740,12 +1594,6 @@ closable). The active tab is the scalar `active` attribute.
         tellwidth = false
         "Controls if the parent layout can adjust to this element's height."
         tellheight = false
-        "The horizontal alignment of the block in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the block in its suggested bounding box."
-        valign = :center
-        "The alignment of the block in its suggested bounding box."
-        alignmode = Inside()
     end
 end
 
@@ -1915,14 +1763,6 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
     _tellwidth::Observable{Bool}
     grid::GridLayout
     @attributes begin
-        "The horizontal alignment of the legend in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the legend in its suggested bounding box."
-        valign = :center
-        "The width setting of the legend."
-        width = Auto()
-        "The height setting of the legend."
-        height = Auto()
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = automatic
         "Controls if the parent layout can adjust to this element's height"
@@ -2102,8 +1942,6 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         gridshalign = :center
         "The vertical alignment of entry groups in their parent GridLayout."
         gridsvalign = :center
-        "The align mode of the legend in its parent GridLayout."
-        alignmode = Inside()
 
         "The background color of the legend. DEPRECATED - use `backgroundcolor` instead."
         @deprecate bgcolor backgroundcolor
@@ -2130,16 +1968,6 @@ end
         height = nothing
         "The width setting of the scene."
         width = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
-        "The horizontal alignment of the scene in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the scene in its suggested bounding box."
-        valign = :center
-        "The alignment of the scene in its suggested bounding box."
-        alignmode = Inside()
         "Controls the visibility of the 3D axis plot object."
         show_axis::Bool = true
     end
@@ -2150,20 +1978,6 @@ end
     # consumers can drive cursor and selection state directly. Internal.
     editor::Any
     @attributes begin
-        "The height setting of the textbox."
-        height = Auto()
-        "The width setting of the textbox."
-        width = Auto()
-        "Controls if the parent layout can adjust to this element's width."
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height."
-        tellheight = true
-        "The horizontal alignment of the textbox in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the textbox in its suggested bounding box."
-        valign = :center
-        "The alignment of the textbox in its suggested bounding box."
-        alignmode = Inside()
         "A placeholder text that is displayed when the saved string is nothing."
         placeholder = "Click to edit..."
         "The currently stored string."
@@ -2281,16 +2095,6 @@ end
         height = nothing
         "The width setting of the scene."
         width = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
-        "The horizontal alignment of the scene in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the scene in its suggested bounding box."
-        valign = :center
-        "The alignment of the scene in its suggested bounding box."
-        alignmode = Inside()
         "The elevation (up / down) angle of the camera. Possible values are between -pi/2 (looking from the bottom up) and +pi/2 (looking from the top down)."
         elevation = pi / 8
         """
@@ -2641,17 +2445,6 @@ end
         height = nothing
         "The width setting of the scene."
         width = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight::Bool = true
-        "The horizontal alignment of the scene in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the scene in its suggested bounding box."
-        valign = :center
-        "The alignment of the scene in its suggested bounding box."
-        alignmode = Inside()
-
         # Background / clip settings
 
         "The background color of the axis."
@@ -3015,19 +2808,9 @@ subtree receives events.
         min_size = (280, 140)
         "Maximum body size (width, height) in pixels when auto-sizing; content beyond this scrolls."
         max_size = (Inf, Inf)
-        "Body width in pixels, or `Auto()` to size to the content."
-        width = Auto()
-        "Body height in pixels, or `Auto()` to size to the content."
-        height = Auto()
-        "The horizontal alignment of the block in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the block in its suggested bounding box."
-        valign = :center
         "Controls if the parent layout can adjust to this element's width."
         tellwidth = false
         "Controls if the parent layout can adjust to this element's height."
         tellheight = false
-        "The alignment of the block in its suggested bounding box."
-        alignmode = Inside()
     end
 end
