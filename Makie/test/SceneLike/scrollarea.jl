@@ -1,7 +1,7 @@
 @testset "refresh_contentsize! is idempotent" begin
     f = Figure()
     sf = ScrollArea(f.scene; bbox = Observable(Rect2f(0, 0, 300, 300)))
-    Button(sf.layout[1, 1]; label = "x", width = 80, height = 20)
+    Button(sf[1, 1]; label = "x", width = 80, height = 20)
     Makie.update_state_before_display!(f)
 
     first = refresh_contentsize!(sf)
@@ -16,7 +16,7 @@ end
 
     add_rows!(n) = replace_content!(m) do sf
         for i in 1:n
-            Button(sf.layout[i, 1]; label = "b$i", width = 100, height = 20)
+            Button(sf[i, 1]; label = "b$i", width = 100, height = 20)
         end
     end
 
@@ -48,7 +48,7 @@ end
     for n in (6, 2, 9, 1)
         replace_content!(m) do sf
             for i in 1:n
-                Button(sf.layout[i, 1]; label = "b$i", width = 60, height = 18)
+                Button(sf[i, 1]; label = "b$i", width = 60, height = 18)
             end
         end
         Makie.update_state_before_display!(f)
@@ -66,8 +66,8 @@ end
     # detaches the grid, so without a recursive delete its blocks keep their
     # scenes and every rebuild stacks another copy on top of the last.
     build!(labels) = replace_content!(m) do sf
-        Label(sf.layout[1, 1], "header")
-        inner = GridLayout(sf.layout[2, 1])
+        Label(sf[1, 1], "header")
+        inner = GridLayout(sf[2, 1])
         for (i, l) in enumerate(labels)
             Checkbox(inner[1, 2i - 1]; checked = false)
             Label(inner[1, 2i], l)
