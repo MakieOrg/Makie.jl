@@ -347,21 +347,6 @@ end
 Base.getindex(t::Tabs, i::Integer) = t.tabs[i].content
 Base.length(t::Tabs) = length(t.tabs)
 
-# Generic `Block` indexing would lazy-init a fresh, disconnected `GridLayout`
-# on `t.layout` — a silent foot-gun: `Axis(tabs[1, 1])` would create an
-# orphan that never displays. Force users to specify which tab.
-function Base.getindex(
-        ::Tabs,
-        ::Union{Integer, Colon, AbstractRange},
-        ::Union{Integer, Colon, AbstractRange},
-        side = GridLayoutBase.Inner()
-    )
-    error(
-        "`Tabs` doesn't have a top-level grid layout — index into a specific " *
-            "tab first: `tabs[i][row, col]` (or `tabs[i].layout[row, col]`)."
-    )
-end
-
 """
     content_scene(tabs::Tabs, i::Integer)
 
