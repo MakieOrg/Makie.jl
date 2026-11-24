@@ -11,10 +11,11 @@ end
 function initialize_block!(g::HoverMenu)
     fig = g.parent
     if !(fig isa Figure)
-        # TODO, when does this actually happen?
+        # parent can be a Scene if HoverMenu(scene, ...) is used to create this,
+        # if HoverMenu is created in a Container-like Block or if it is created
+        # within a Block recipe.
         error("HoverMenu block must be a child of a Figure.")
     end
-    visible = Observable(false)
 
     # Background box spanning the three buttons. `g[1, 1:3]` indexes the
     # block's forwarded layout directly.
@@ -48,17 +49,9 @@ function initialize_block!(g::HoverMenu)
 
     colgap!(g.layout, 8)
 
-    # Visibility toggle
-    on(g.blockscene, visible; update = true) do v
-        g.box.blockscene.visible[] = v
-        g.save_button.blockscene.visible[] = v
-        g.copy_button.blockscene.visible[] = v
-        g.reset_button.blockscene.visible[] = v
-    end
-
     # Reset button
     on(g.blockscene, g.reset_button.clicks) do _
-        visible[] = false
+        g.blockscene.visible[] = false
         ax = g.target_axis[]
         if !isnothing(ax)
             reset_limits!(ax)
@@ -67,7 +60,7 @@ function initialize_block!(g::HoverMenu)
 
     # Save button
     on(g.blockscene, g.save_button.clicks) do _
-        visible[] = false
+        g.blockscene.visible[] = false
         if !isnothing(fig)
             file = save_file_dialogue()
             if !isnothing(file)
@@ -78,7 +71,7 @@ function initialize_block!(g::HoverMenu)
 
     # Copy button
     on(g.blockscene, g.copy_button.clicks) do _
-        visible[] = false
+        g.blockscene.visible[] = false
         if !isnothing(fig)
             img = colorbuffer(fig; update = false)
             ImageClipboard.clipboard_img(img)
@@ -91,11 +84,7 @@ function initialize_block!(g::HoverMenu)
             vp = fig.scene.viewport[]
             hover_height = 60
             rect = Rect2f(0, widths(vp)[2] - hover_height, widths(vp)[1], hover_height)
-            if mp in rect
-                visible[] = true
-            else
-                visible[] = false
-            end
+            g.blockscene.visible[] = mp in rect
         end
     end
 

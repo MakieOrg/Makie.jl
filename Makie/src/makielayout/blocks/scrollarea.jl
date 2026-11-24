@@ -60,7 +60,7 @@ function initialize_block!(sa::ScrollArea)
 
     poly!(
         blockscene, content_area;
-        color = sa.backgroundcolor, visible = is_visible, inspectable = false
+        color = sa.backgroundcolor, visible = is_visible
     )
 
     sa.scroll = Observable(Vec2f(0, 0); ignore_equal_values = true)
@@ -96,16 +96,16 @@ function initialize_block!(sa::ScrollArea)
     # Rounded thumbs (capsule-shaped) computed from the bar rects. The track
     # rectangles aren't drawn — `sa.scrollbar_color` is exposed for users who
     # want a track, but the default is transparent.
-    poly!(blockscene, vbar_rect; color = sa.scrollbar_color, visible = lift(&, is_visible, vvis), inspectable = false)
-    poly!(blockscene, hbar_rect; color = sa.scrollbar_color, visible = lift(&, is_visible, hvis), inspectable = false)
+    poly!(blockscene, vbar_rect; color = sa.scrollbar_color, visible = lift(&, is_visible, vvis))
+    poly!(blockscene, hbar_rect; color = sa.scrollbar_color, visible = lift(&, is_visible, hvis))
     vthumb_poly = lift(blockscene, vthumb_rect) do r
         roundedrectvertices(r, min(widths(r)...) / 2, 8)
     end
     hthumb_poly = lift(blockscene, hthumb_rect) do r
         roundedrectvertices(r, min(widths(r)...) / 2, 8)
     end
-    poly!(blockscene, vthumb_poly; color = vthumb_color, visible = lift(&, is_visible, vvis), inspectable = false)
-    poly!(blockscene, hthumb_poly; color = hthumb_color, visible = lift(&, is_visible, hvis), inspectable = false)
+    poly!(blockscene, vthumb_poly; color = vthumb_color, visible = lift(&, is_visible, vvis))
+    poly!(blockscene, hthumb_poly; color = hthumb_color, visible = lift(&, is_visible, hvis))
 
     function update_scrollbars!()
         ca = scene.viewport[]
@@ -206,15 +206,13 @@ function initialize_block!(sa::ScrollArea)
         return
     end
 
-    """
-    Scrolled-out content must also stop RECEIVING clicks. A block's mouse
-    machinery gates on its own `blockscene.visible` and its own bbox — and a
-    scrollable subfigure moves content freely past its viewport, so a widget
-    scrolled out of sight still sits somewhere in the window and swallows
-    presses meant for whatever is drawn there (measured: a panel 1213 px tall in
-    a 714 px viewport put its buttons over the timeline underneath, where they
-    ate the clicks). Hide what does not intersect the viewport.
-    """
+    # Scrolled-out content must also stop RECEIVING clicks. A block's mouse
+    # machinery gates on its own `blockscene.visible` and its own bbox — and a
+    # scrollable subfigure moves content freely past its viewport, so a widget
+    # scrolled out of sight still sits somewhere in the window and swallows
+    # presses meant for whatever is drawn there (measured: a panel 1213 px tall in
+    # a 714 px viewport put its buttons over the timeline underneath, where they
+    # ate the clicks). Hide what does not intersect the viewport.
     clip_content_to_viewport!() = clip_content!(sa)
     onany(blockscene, layout_bbox, scene.viewport) do _, _
         clip_content_to_viewport!()
