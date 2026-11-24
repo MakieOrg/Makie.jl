@@ -20,7 +20,7 @@ pf = ParamForm(fig[1, 1], (
 ); title = "Solver settings")
 
 Label(fig[2, 1], lift(vals -> "tolerance = $(vals.tolerance)",
-                      pf.graph[:values]); tellwidth = false)
+                      pf.values); tellwidth = false)
 
 fig
 nothing # hide
@@ -37,11 +37,11 @@ nothing # hide
 
 ## Reading values
 
-`pf.graph[:values][]` returns the current validated `NamedTuple`. Wire it to
+`pf.values[]` returns the current validated `NamedTuple`. Wire it to
 other observables with `on` or `lift`:
 
 ```julia
-on(pf.graph[:values]) do vals
+on(pf.values) do vals
     run_solver(vals.method; tol = vals.tolerance, iters = vals.iterations)
 end
 ```
@@ -53,7 +53,7 @@ end
 ```julia
 modal = Modal(fig; title = "Settings")
 pf    = ParamForm(modal[1, 1], (alpha = (0.5, Between(0.0, 1.0)),))
-on(pf.graph[:values]) do vals; update_plot!(vals) end
+on(pf.values) do vals; update_plot!(vals) end
 on(_ -> open!(modal), settings_button.clicks)
 ```
 

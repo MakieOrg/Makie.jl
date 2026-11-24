@@ -190,8 +190,8 @@ pf = ParamForm(fig[1, 1], (
 ```
 
 Each field renders as a right-aligned label and a widget chosen by
-[`widget_for`](@ref). `pf.graph[:values]` is the live `NamedTuple` of
-validated current values; read it with `pf.graph[:values][]`. The individual
+[`widget_for`](@ref). `pf.values` is the live `NamedTuple` of
+validated current values; read it with `pf.values[]`. The individual
 widget blocks are available by field name in `pf.widgets` (e.g.
 `pf.widgets[:alpha]`).
 
@@ -210,29 +210,13 @@ pf = ParamForm(fig[1, 1], (gain = (1.0, Between(0.0, 4.0)),),
 ```
 """
 @Block ParamForm begin
-    @forwarded_layout
-    # Compute graph filled by initialize_block!; pf.graph[:values][] is the
-    # current validated NamedTuple.
-    graph::ComputeGraph
     # Field name => the widget block created for it, e.g. pf.widgets[:alpha].
     widgets::Dict{Symbol, Any}
     # Field name => the block returned by the `accessory` builder, if any.
     accessories::Dict{Symbol, Any}
     @attributes begin
-        "The horizontal alignment of the block in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the block in its suggested bounding box."
-        valign = :center
-        "The width setting of the block."
-        width = Auto()
-        "The height setting of the block."
-        height = Auto()
         "Controls if the parent layout can adjust to this block's width."
         tellwidth = false
-        "Controls if the parent layout can adjust to this block's height."
-        tellheight = true
-        "The align mode of the block in its parent GridLayout."
-        alignmode = Inside()
         "Optional section title drawn above the fields (spans both columns). `nothing` = no title."
         title = nothing
         "Colour of the field-name labels."
@@ -258,7 +242,7 @@ end
     build_field!(pf, field, T, constraint, default, row, accessory)
 
 Build one form row (label + widget) at `row` in `pf.layout` and wire the
-widget into `pf.graph`: the widget's value observable becomes input
+widget into `pf.attributes`: the widget's value observable becomes input
 `Symbol(field, "__raw")`, and a node named `field` converts + validates it via
 [`try_field_value`](@ref), returning `nothing` on invalid input so the graph
 keeps its last valid value.
@@ -273,8 +257,8 @@ function build_field!(pf::ParamForm, field, ::Type{T}, constraint, default, row,
     w = widget_for(pf.layout[row, 2], T, constraint, default, pf.widgetwidth[])
     pf.widgets[field] = w
     raw = Symbol(field, "__raw")
-    add_input!(pf.graph, raw, value_observable(w))
-    register_computation!(pf.graph, [raw], [field]) do inputs, _, _
+    add_input!(pf, raw, value_observable(w))
+    register_computation!(pf, [raw], [field]) do inputs, _, _
         v = try_field_value(w, inputs[1], T, constraint)
         return v === nothing ? nothing : (v,)
     end
@@ -286,13 +270,13 @@ function build_field!(pf::ParamForm, field, ::Type{T}, constraint, default, row,
 end
 
 function initialize_block!(pf::ParamForm, spec, accessory = nothing)
+    init_layout!(pf)
     fields = convert_form_input(spec)
-    pf.graph = ComputeGraph()
     pf.widgets = Dict{Symbol, Any}()
     pf.accessories = Dict{Symbol, Any}()
     row = 1
     if pf.title[] !== nothing
-        Label(pf.layout[row, 1:2], pf.title[]; font = :bold, halign = :left, color = pf.titlecolor)
+        Label(pf[row, 1:2], pf.title[]; font = :bold, halign = :left, color = pf.titlecolor)
         row += 1
     end
     for f in fields
@@ -300,9 +284,9 @@ function initialize_block!(pf::ParamForm, spec, accessory = nothing)
         row += 1
     end
     if isempty(fields)
-        add_constant!(pf.graph, :values, NamedTuple())
+        add_constant!(pf.attributes, :values, NamedTuple())
     else
-        register_computation!(pf.graph, [f.field for f in fields], [:values]) do inputs, _, _
+        register_computation!(pf, [f.field for f in fields], [:values]) do inputs, _, @nospecialize(_)
             return (inputs,)
         end
     end
