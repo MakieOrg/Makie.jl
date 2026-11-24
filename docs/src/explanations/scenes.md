@@ -1,4 +1,4 @@
-# Scenes
+# [Scenes](@id scene-explanation)
 
 ## What is a `Scene`?
 
@@ -27,7 +27,7 @@ A subscene is no different than a normal Scene, except that it is linked to a "p
 
 ## Scene Attributes
 
-* `scene.clear = true`: Scenes are drawn parent first onto the same image. If `clear = true` for a (sub)scene it will clear the previously drawn things in its region to its `backgroundcolor`. Otherwise the plots in `scene` will be drawn on top and the backgroundcolor will be ignored. Note that this is not technically an attribute but just a field of `Scene`.
+* `clear`: A clearing scene replaces the color in its viewport with its background color. Each scene draws with independent depth. See [Render Order](@ref) for details.
 * `ssao = SSAO(bias = 0.025, blur=2, radius=0.5)`: Controls SSAO settings, see lighting documentation.
 * `size = (800, 600)`: Sets the size of the created window if the scene is the root scene.
 

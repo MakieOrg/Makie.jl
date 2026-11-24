@@ -5,6 +5,7 @@ uniform sampler2D occlusion_buffer;
 uniform sampler2D color_buffer;
 uniform usampler2D objectid_buffer;
 uniform vec2 inv_texel_size;
+uniform vec4 scene_viewport;
 // Settings/Attributes
 uniform int blur_range;
 
@@ -32,14 +33,18 @@ void main(void)
             // Without this, a high (low) occlusion from one object can bleed
             // into the low (high) occlusion of another, giving an unwanted
             // shine effect.
-            uvec2 id = texture(objectid_buffer, frag_uv + offset).xy;
+            vec2 sample_uv = frag_uv + offset;
+            if (any(lessThan(sample_uv, scene_viewport.xy)) ||
+                any(greaterThanEqual(sample_uv, scene_viewport.xy + scene_viewport.zw))) continue;
+            uvec2 id = texture(objectid_buffer, sample_uv).xy;
             float valid = float(id == id0);
-            blurred_occlusion += valid * texture(occlusion_buffer, frag_uv + offset).x;
+            blurred_occlusion += valid * texture(occlusion_buffer, sample_uv).x;
             weight += valid;
         }
     }
     blurred_occlusion = 1.0 - blurred_occlusion / weight;
-    fragment_color = texture(color_buffer, frag_uv) * blurred_occlusion;
+    fragment_color = texture(color_buffer, frag_uv);
+    fragment_color.rgb *= blurred_occlusion;
     // Display occlusion instead:
     // fragment_color = vec4(vec3(blurred_occlusion), 1.0);
 }

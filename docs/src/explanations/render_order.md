@@ -40,7 +40,7 @@ p4 = scatter!(scene, 150, 200, -10, markersize = 250, color = :darkblue)
 scene
 ```
 
-### CairoMakie
+### Plot depth in CairoMakie
 
 CairoMakie generally can't resolve visual order pixel by pixel.
 Instead it is resolved plot by plot, using the depth of the center of the plots bounding box.
@@ -191,8 +191,10 @@ High values are drawn late (in front), low values early (behind).
 
 A scene is drawn in three steps.
 1. If `clear == true` the scene will erase everything drawn in its `viewport` and replace it with its `backgroundcolor`. Otherwise the previously drawn content is kept.
-2. The scene will draw all the plots attached to it. This happens independently of the plots drawn by previous scenes. (I.e. the depth buffer will be cleared beforehand.)
+2. The scene draws its plots with fresh depth.
 3. The scene will iterate through its children, drawing each child scene.
+
+An uncleared scene draws over the colors left by earlier scenes. Scene order decides which scene is on top, and plot depth only affects ordering within a scene.
 
 ```@figure
 root = Scene(backgroundcolor = :gray, clear = true, size = (500, 300))
@@ -232,8 +234,6 @@ Scene(root, zindex = -1, backgroundcolor = :black, clear = true, viewport = Rect
 root
 ```
 
-Scenes naturally act as overlays. If scene B is ordered after scene A, every plot in B will draw on top of the plots from scene A, regardless of depth, overdraw, etc.
-
 ```@figure
 ps = [Point2f(x, y) for x in -40:20:320 for y in -40:20:100]
 
@@ -243,13 +243,12 @@ root = Scene(backgroundcolor = :gray, clear = true, size = (300, 300), camera = 
 p1 = scatter!(root, ps, markersize = 25, color = :black, depth_shift = -0.1, zorder_shift = 1000)
 translate!(p1, 0, 0, 1000)
 
-# behind based on depth attributes, but part of an overlaid scene
-# -> draws in front
+# the child still draws over the parent despite the lower plot depth
 child = Scene(root, viewport = Rect2i(50, 50, 200, 200), camera = campixel!)
 p2 = scatter!(child, ps, markersize = 25, color = :red, depth_shift = 0.1, zorder_shift = -1000)
 translate!(p2, 0, 0, -1000)
 
-# cleared scene erases what's behind it (only root, because zindex orders it before child)
+# clearing scene also replaces the color in its viewport
 Scene(root, viewport = Rect2i(175, 25, 100, 150), backgroundcolor = :navy, zindex = -1, clear = true)
 
 root

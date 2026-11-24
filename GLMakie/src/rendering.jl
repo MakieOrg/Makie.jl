@@ -17,6 +17,7 @@ function prepare_frame(screen, resize_buffers)
     wh = size(fb)
     glDisable(GL_SCISSOR_TEST)
     glDisable(GL_STENCIL_TEST)
+    glDepthMask(GL_TRUE)
     set_draw_buffers(fb)
     glViewport(0, 0, wh[1], wh[2])
     glClearColor(0, 0, 0, 0)
@@ -65,27 +66,19 @@ function stage_output(
     poll_updates(screen)
 
     prepare_frame(screen, false)
-
-    # Render up to target stage
-    for idx in 1:stage_index
-        stage = screen.render_pipeline.stages[idx]
-        require_context(screen.glscreen)
-        run_stage(screen, nothing, stage)
-    end
-
-    glFinish()
-
     if size(ctex) != size(screen.framecache)
         screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
     end
-    fast_color_data!(screen.framecache, ctex)
-
-    # Render remainign stages
-    for idx in (stage_index + 1):length(screen.render_pipeline.stages)
-        stage = screen.render_pipeline.stages[idx]
-        require_context(screen.glscreen)
-        run_stage(screen, nothing, stage)
+    captured = false
+    function capture(idx)
+        idx == stage_index || return
+        glFinish()
+        fast_color_data!(screen.framecache, ctex)
+        captured = true
+        return
     end
+    render_frame(screen, screen.render_context.scenes, screen.render_pipeline, capture)
+    captured || capture(stage_index)
 
     if screen.config.visible
         GLFW.SwapBuffers(to_native(screen))
