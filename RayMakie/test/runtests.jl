@@ -1,9 +1,10 @@
 using Test
 
-if get(ENV, "RAYMAKIE_TEST_LAVAPIPE", "false") == "true"
+const TEST_LAVAPIPE = get(ENV, "RAYMAKIE_TEST_LAVAPIPE", "false") == "true"
+if TEST_LAVAPIPE
+    # Loading it adds its driver to the Vulkan loader's search path. The device is
+    # selected by name below, so a runner's hardware driver is not picked instead.
     using Lavapipe_jll
-    ENV["VK_DRIVER_FILES"] = Lavapipe_jll.lvp_icd
-    ENV["VK_ICD_FILENAMES"] = Lavapipe_jll.lvp_icd
 end
 
 
@@ -19,10 +20,15 @@ end
 # Mantle registers the platform backend itself. The test sandbox need not list
 # its compiler packages as direct dependencies to select an available device.
 using Mantle
-const BACKEND = haskey(ENV, "RAYMAKIE_TEST_DEVICE") ?
-    Mantle.defaultdevice!(ENV["RAYMAKIE_TEST_DEVICE"]) : Mantle.defaultbackend()
+const BACKEND = if haskey(ENV, "RAYMAKIE_TEST_DEVICE")
+    Mantle.defaultdevice!(ENV["RAYMAKIE_TEST_DEVICE"])
+elseif TEST_LAVAPIPE
+    Mantle.defaultdevice!("lavapipe")
+else
+    Mantle.defaultbackend()
+end
 
-if get(ENV, "RAYMAKIE_TEST_LAVAPIPE", "false") == "true"
+if TEST_LAVAPIPE
     @testset "Lavapipe_jll test device" begin
         @test isfile(Lavapipe_jll.lvp_icd)
         @test occursin("llvmpipe", lowercase(Mantle.devicename(Mantle.todevice(Mantle.defaultbackend()))))
