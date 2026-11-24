@@ -74,9 +74,6 @@ cards[2].open = false        # header stays, body folds away
 chance), which is what a list selects on.
 """
 @Block Card begin
-    # The card sizes to its content: header + (body when open) + spacing, all
-    # forwarded to the parent layout through the block's own layout.
-    @forwarded_layout
     scene::Scene                     # the whole card's scene — see `initialize_block!`
     bodyscene::Scene                 # nested under it, visible only while unfolded
     body::GridLayout                 # what `card[i, j]` indexes
@@ -175,28 +172,26 @@ row of them stays clear of the title.
 """
 card_accessory(c::Card) = c.header[1, 1]
 
-function initialize_block!(c::Card)
-    blockscene = c.blockscene
+function initialize_block!(card::Card)
+    blockscene = card.blockscene
 
-    # `@forwarded_layout` had `_block` create this and connect its autosize to
-    # the block's, so what the card reports upward is what its content measures.
-    layout = c.layout
-    c.body = GridLayout(layout[2, 1])
-    c.headerclicks = Observable(0)
-    c.userheight = Base.RefValue{Any}(c.height[])
+    layout = init_layout!(card)
+    card.body = GridLayout(layout[2, 1])
+    card.headerclicks = Observable(0)
+    card.userheight = Base.RefValue{Any}(card.height[])
 
-    is_visible = lift(identity, blockscene, c.visible)
+    is_visible = lift(identity, blockscene, card.visible)
 
     # The header is a Fixed row so the bar has the same height whether or not
     # anything is in its accessory cell. The card's bottom margin is padding on
     # the card's own layout rather than a gap in the parent's — that is what
     # makes the spacing travel with the card when it is hidden.
-    rowsize!(layout, 1, Fixed(c.headerheight[]))
-    on(blockscene, c.headerheight) do h
+    rowsize!(layout, 1, Fixed(card.headerheight[]))
+    on(blockscene, card.headerheight) do h
         rowsize!(layout, 1, Fixed(h))
         return
     end
-    on(blockscene, c.spacing; update = true) do s
+    on(blockscene, card.spacing; update = true) do s
         layout.alignmode[] = Outside(0.0f0, 0.0f0, Float32(s), 0.0f0)
         GridLayoutBase.update!(layout)
         return
@@ -212,24 +207,24 @@ function initialize_block!(c::Card)
     # scrolled-out content cannot un-hide a card that is folded or filtered out.
     # (That bug looked like four cards' sliders painted on top of the one card
     #  the filter had left.)
-    contentarea = lift(blockscene, c.layoutobservables.computedbbox, c.spacing) do bb, sp
+    contentarea = lift(blockscene, card.layoutobservables.computedbbox, card.spacing) do bb, sp
         s = min(Float32(sp), bb.widths[2])
         return round_to_IRect2D(Rect2f(Point2f(bb.origin[1], bb.origin[2] + s),
                                        Vec2f(bb.widths[1], bb.widths[2] - s)))
     end
-    c.scene = Scene(blockscene; camera = campixel!, viewport = contentarea,
+    card.scene = Scene(blockscene; camera = campixel!, viewport = contentarea,
                     visible = is_visible, clear = false)
     # A SECOND scene for the body, nested in the first: hiding the card hides
     # both, and FOLDING hides only this one. Without the nesting, folding had the
     # same defect hiding did — the body's widgets kept drawing over the card
     # below, because the cull walk found them under a visible parent.
-    bodyarea = lift(blockscene, contentarea, c.headerheight) do ca, hh
+    bodyarea = lift(blockscene, contentarea, card.headerheight) do ca, hh
         h = max(Float32(ca.widths[2]) - Float32(hh), 0.0f0)
         return round_to_IRect2D(Rect2f(Point2f(ca.origin), Vec2f(ca.widths[1], h)))
     end
-    c.bodyscene = Scene(c.scene; camera = campixel!, viewport = bodyarea,
-                        visible = lift(identity, blockscene, c.open), clear = false)
-    c.body.parent = c.bodyscene
+    card.bodyscene = Scene(card.scene; camera = campixel!, viewport = bodyarea,
+                        visible = lift(identity, blockscene, card.open), clear = false)
+    card.body.parent = card.bodyscene
 
     # The header's own grid: [ arrow | title | accessory ]. The arrow and title
     # are drawn as text (they are decoration, and a Label here would fight the
@@ -238,33 +233,33 @@ function initialize_block!(c::Card)
     headergl = GridLayout(layout[1, 1])
     Box(headergl[1, 1]; color = (:transparent, 0.0), strokewidth = 0, width = Auto(), height = 1, tellheight = false)
     # inset from the rounded corner, so an accessory button is not flush with it
-    c.header = GridLayout(headergl[1, 2]; halign = :right, valign = :center,
+    card.header = GridLayout(headergl[1, 2]; halign = :right, valign = :center,
                           alignmode = Outside(0.0f0, 6.0f0, 0.0f0, 0.0f0))
-    c.header.parent = c.scene
+    card.header.parent = card.scene
     colsize!(headergl, 1, Auto(true, 1.0f0))
     colgap!(headergl, 0)
 
     # ---------------------------------------------------------------- geometry
     # The card's rect is its bbox minus the spacing row at the bottom: the
     # spacing is layout, not paint.
-    cardrect = lift(blockscene, c.layoutobservables.computedbbox, c.spacing) do bb, sp
+    cardrect = lift(blockscene, card.layoutobservables.computedbbox, card.spacing) do bb, sp
         s = min(Float32(sp), bb.widths[2])
         # y grows upward, so the spacing below the card is at the bottom of the
         # bbox and the paint starts above it.
         return Rect2f(Point2f(bb.origin[1], bb.origin[2] + s), Vec2f(bb.widths[1], bb.widths[2] - s))
     end
-    headerrect = lift(blockscene, cardrect, c.headerheight) do r, hh
+    headerrect = lift(blockscene, cardrect, card.headerheight) do r, hh
         h = min(Float32(hh), r.widths[2])
         return Rect2f(Point2f(r.origin[1], r.origin[2] + r.widths[2] - h), Vec2f(r.widths[1], h))
     end
 
-    cardpoly = lift(blockscene, cardrect, c.cornerradius) do r, cr
+    cardpoly = lift(blockscene, cardrect, card.cornerradius) do r, cr
         return roundedrectvertices(r, min(Float32(cr), min(r.widths...) / 2), 12)
     end
     # The header shares the card's top corners and is SQUARE at the bottom, so
     # it meets the body without a seam — which `roundedrectvertices` cannot do,
     # its corners being all or nothing.
-    headerpoly = lift(blockscene, headerrect, c.cornerradius) do r, cr
+    headerpoly = lift(blockscene, headerrect, card.cornerradius) do r, cr
         rr = min(Float32(cr), min(r.widths...) / 2)
         x0, y0 = Float32.(r.origin)
         x1, y1 = x0 + Float32(r.widths[1]), y0 + Float32(r.widths[2])
@@ -279,48 +274,48 @@ function initialize_block!(c::Card)
         return pts
     end
 
-    poly!(blockscene, cardpoly; color = c.backgroundcolor, strokecolor = c.strokecolor,
-          strokewidth = c.strokewidth, visible = is_visible, inspectable = false)
-    headerfill = lift(blockscene, c.selected, c.headercolor, c.headercolor_selected) do sel, plain, chosen
+    poly!(blockscene, cardpoly; color = card.backgroundcolor, strokecolor = card.strokecolor,
+          strokewidth = card.strokewidth, visible = is_visible)
+    headerfill = lift(blockscene, card.selected, card.headercolor, card.headercolor_selected) do sel, plain, chosen
         return to_color(sel ? chosen : plain)
     end
     poly!(blockscene, headerpoly; color = headerfill, strokewidth = 0,
-          visible = is_visible, inspectable = false)
+          visible = is_visible)
     # The selection outline is drawn last so it sits over both fills.
-    poly!(blockscene, cardpoly; color = (:transparent, 0.0), strokecolor = c.selectioncolor,
-          strokewidth = lift((s, w) -> s ? Float32(w) : 0.0f0, blockscene, c.selected, c.selectionwidth),
-          visible = is_visible, inspectable = false)
+    poly!(blockscene, cardpoly; color = (:transparent, 0.0), strokecolor = card.selectioncolor,
+          strokewidth = lift((s, w) -> s ? Float32(w) : 0.0f0, blockscene, card.selected, card.selectionwidth),
+          visible = is_visible)
 
-    arrowpos = lift(blockscene, headerrect, c.titleoffset) do r, off
+    arrowpos = lift(blockscene, headerrect, card.titleoffset) do r, off
         return Point2f(r.origin[1] + off, r.origin[2] + r.widths[2] / 2)
     end
-    arrowtext = lift(o -> o ? "▾" : "▸", blockscene, c.open)
-    arrowvis = lift(&, blockscene, is_visible, c.foldable)
+    arrowtext = lift(o -> o ? "▾" : "▸", blockscene, card.open)
+    arrowvis = lift(&, blockscene, is_visible, card.foldable)
     text!(blockscene, arrowpos; text = arrowtext, align = (:left, :center),
-          color = c.arrowcolor, fontsize = c.titlesize, visible = arrowvis, inspectable = false)
+          color = card.arrowcolor, fontsize = card.titlesize, visible = arrowvis)
 
-    titlepos = lift(blockscene, headerrect, c.titleoffset, c.foldable) do r, off, fold
+    titlepos = lift(blockscene, headerrect, card.titleoffset, card.foldable) do r, off, fold
         return Point2f(r.origin[1] + off + (fold ? 15 : 0), r.origin[2] + r.widths[2] / 2)
     end
-    text!(blockscene, titlepos; text = c.title, align = (:left, :center), color = c.titlecolor,
-          font = c.titlefont, fontsize = c.titlesize, visible = is_visible, inspectable = false)
+    text!(blockscene, titlepos; text = card.title, align = (:left, :center), color = card.titlecolor,
+          font = card.titlefont, fontsize = card.titlesize, visible = is_visible)
 
     # ---------------------------------------------------------------- folding
-    on(blockscene, c.bodypadding; update = true) do pad
+    on(blockscene, card.bodypadding; update = true) do pad
         sides = pad isa Number ? (pad, pad, pad, pad) : pad
-        c.body.alignmode[] = Outside(to_rectsides(sides))
-        GridLayoutBase.update!(c.body)
+        card.body.alignmode[] = Outside(to_rectsides(sides))
+        GridLayoutBase.update!(card.body)
         return
     end
 
     function apply_open!(isopen::Bool)
         # A folded body is BOTH inert (its blocks stop drawing and stop taking
         # clicks) and zero-height, so the card shrinks to its header.
-        set_content_visible!(c.body, isopen && c.visible[])
-        c.body.height[] = isopen ? Auto(true, 1.0f0) : Fixed(0)
+        set_content_visible!(card.body, isopen && card.visible[])
+        card.body.height[] = isopen ? Auto(true, 1.0f0) : Fixed(0)
         return
     end
-    on(blockscene, c.open) do isopen
+    on(blockscene, card.open) do isopen
         apply_open!(isopen)
         return
     end
@@ -330,17 +325,17 @@ function initialize_block!(c::Card)
     # what makes a filtered list close up instead of showing gaps. The user's
     # own `height` is remembered so restoring does not clobber it.
     function apply_visible!(vis::Bool)
-        set_content_visible!(c.body, vis && c.open[])
-        set_content_visible!(c.header, vis)
+        set_content_visible!(card.body, vis && card.open[])
+        set_content_visible!(card.header, vis)
         if vis
-            c.height = c.userheight[]
+            card.height = card.userheight[]
         else
-            c.userheight[] = c.height[]
-            c.height = 0
+            card.userheight[] = card.height[]
+            card.height = 0
         end
         return
     end
-    on(blockscene, c.visible) do vis
+    on(blockscene, card.visible) do vis
         apply_visible!(vis)
         return
     end
@@ -348,23 +343,23 @@ function initialize_block!(c::Card)
     # ------------------------------------------------------------ interaction
     on(blockscene, blockscene.events.mousebutton; priority = 55) do ev
         (ev.button === Mouse.left && ev.action === Mouse.press) || return Consume(false)
-        c.visible[] || return Consume(false)
+        card.visible[] || return Consume(false)
         receives_events(blockscene) || return Consume(false)
         pos = Point2f(blockscene.events.mouseposition[])
         pos in headerrect[] || return Consume(false)
         # The accessory cell belongs to whatever the user put there — a press
         # over it is that widget's, not the card's. An EMPTY layout reports the
         # default 0..100 box, which would swallow presses on the whole header.
-        if !isempty(c.header.content)
-            pos in c.header.layoutobservables.computedbbox[] && return Consume(false)
+        if !isempty(card.header.content)
+            pos in card.header.layoutobservables.computedbbox[] && return Consume(false)
         end
-        c.headerclicks[] = c.headerclicks[] + 1
-        c.foldable[] && (c.open = !c.open[])
+        card.headerclicks[] = card.headerclicks[] + 1
+        card.foldable[] && (card.open = !card.open[])
         return Consume(true)
     end
 
-    apply_open!(c.open[])
-    c.visible[] || apply_visible!(false)
+    apply_open!(card.open[])
+    card.visible[] || apply_visible!(false)
     return
 end
 
