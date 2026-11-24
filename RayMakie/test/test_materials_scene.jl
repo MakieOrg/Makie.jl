@@ -118,7 +118,7 @@ end
     # render maps HDR radiance straight to the display and saturates to white,
     # which took test_window_frame.jl's sphere out of its own picture.
     theme_before = let t = Makie.current_default_theme()[:RayMakie]
-        Dict(k => t[k][] for k in (:device, :exposure, :tonemap, :gamma))
+        Dict(k => t[k] for k in (:device, :exposure, :tonemap, :gamma))
     end
 
     # On the GPU: Mantle has had no host device since 5c2d4c6, and a CPU
@@ -132,7 +132,7 @@ end
     @testset "renders on its own config and leaves the defaults alone" begin
         t = Makie.current_default_theme()[:RayMakie]
         for (k, v) in theme_before
-            @test t[k][] === v
+            @test t[k] === v
         end
     end
 end
