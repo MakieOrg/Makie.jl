@@ -37,13 +37,27 @@ function _make_makie_scene(; sz=(32, 32))
     return scene
 end
 
-# Helper: flush GPU and GC to get accurate buffer counts
-function _flush_all!()
-    GC.gc(true)
-    Mantle.flush!(Mantle.Device())
-    Mantle.drain!(Mantle.batchqueue(Mantle.Device()))
-    GC.gc(true)
-    Mantle.drain!(Mantle.batchqueue(Mantle.Device()))
+# Helper: flush GPU and GC until the buffer count settles. A collected scene is
+# freed by an `@async` task its finalizer schedules, which runs at the next yield,
+# and what that free lets go of can be a scene of its own, collected and freed a
+# round later. Without the yields the screens of scenes earlier test files dropped
+# were freed inside the renders between two counts (221 -> 39 buffers after the
+# suite's first 34 files on Lavapipe), and "buffer count stable" read that as a change.
+function _flush_all!(; rounds = 10)
+    count = -1
+    for _ in 1:rounds
+        GC.gc(true)
+        yield()
+        GC.gc(true)
+        Mantle.flush!(Mantle.Device())
+        Mantle.drain!(Mantle.batchqueue(Mantle.Device()))
+        GC.gc(true)
+        Mantle.drain!(Mantle.batchqueue(Mantle.Device()))
+        settled = Mantle.live_buffer_count()
+        settled == count && return
+        count = settled
+    end
+    error("the buffer count did not settle in $rounds rounds of collection and yield")
 end
 
 @testset "RayMakie Caching, GC & Correctness" begin
