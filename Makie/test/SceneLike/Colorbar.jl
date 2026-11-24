@@ -422,3 +422,17 @@ end
     delete!(cb)
     @test length(cdc.update.listeners) == count
 end
+
+@testset "Colorbars given no dim conversion each get their own" begin
+    # The default was one ColorDimConvert made for all colorbars. It collected
+    # every colorbar's listener, so no figure that ever had a colorbar could be
+    # collected, and it took on every colorbar's values: a categorical colorbar
+    # after a numeric one failed to resolve its colors.
+    f = Figure()
+    cb1 = Colorbar(f[1, 1]; colorrange = (0, 1))
+    cb2 = Colorbar(f[1, 2]; values = Categorical(["A", "B", "C"]))
+    @test cb1.dim_conversion[] isa Makie.ColorDimConvert
+    @test cb1.dim_conversion[] !== cb2.dim_conversion[]
+    @test !isempty(cb1.dim_conversion[].update.listeners)
+    @test cb2.dim_conversion[].dim_convert isa Makie.CategoricalConversion
+end

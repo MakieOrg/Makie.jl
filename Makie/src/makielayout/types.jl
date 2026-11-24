@@ -986,8 +986,8 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "Sets the alpha value of the colormap."
         alpha = 1.0
 
-        "Sets the color dim conversion."
-        dim_conversion = ColorDimConvert()
+        "Sets the color dim conversion. `automatic` gives the colorbar a conversion of its own."
+        dim_conversion = automatic
         "Controls whether the dim conversion is shown in ticklabels."
         unit_in_ticklabel::Union{Bool, Automatic} = automatic
         "Controls whether the dim conversion is shown in the Colorbar label."

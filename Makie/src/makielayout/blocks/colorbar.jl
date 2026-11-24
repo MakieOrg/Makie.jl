@@ -285,6 +285,12 @@ function initialize_block!(cb::Colorbar; kwargs...)
     register_colormapping_without_color!(cb.attributes)
 
     # Auto dim conversion
+    # A default is made once for all colorbars, so a shared ColorDimConvert held
+    # every colorbar's listener below, and with it every figure that ever had one,
+    # and took on each colorbar's values: each colorbar gets its own.
+    if hasinput(cb.attributes, :dim_conversion) && cb.dim_conversion[] === automatic
+        update!(cb, dim_conversion = ColorDimConvert())
+    end
     cdc = cb.dim_conversion[]
     if hasinput(cb.attributes, :dim_conversion)
         # If :dim_conversion is a node rather than a ComputePipeline.Input it is
