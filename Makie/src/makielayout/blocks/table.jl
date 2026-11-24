@@ -57,35 +57,29 @@ function convert_arguments(::Type{<:TablePlot}, data::Dict{Symbol})
     return (Dict{Symbol, Any}(data),)
 end
 
-function plot!(p::TablePlot)
-    # The recipe's attributes IS a ComputeGraph, so we use it directly
-    attr = p.attributes
-
-    # ===== COMPUTED NODES =====
-    # All computations use map! on the attribute graph
-
+function plot!(plot::TablePlot)
     # Basic dimensions from data
-    map!(attr, :data, :n_cols) do data
+    map!(plot, :data, :n_cols) do data
         length(keys(data))
     end
 
-    map!(attr, :data, :n_rows) do data
+    map!(plot, :data, :n_rows) do data
         cols = values(data)
         isempty(cols) ? 0 : length(first(cols))
     end
 
     # Column keys (for consistent ordering with Dict)
-    map!(attr, [:data, :column_names], :col_keys) do data, names
+    map!(plot, [:data, :column_names], :col_keys) do data, names
         names === automatic ? collect(keys(data)) : collect(Symbol.(names))
     end
 
     # Column names for display
-    map!(attr, :col_keys, :col_names) do col_keys
+    map!(plot, :col_keys, :col_names) do col_keys
         String.(col_keys)
     end
 
     # Sort permutation - recomputed when sort settings or data change
-    map!(attr, [:sort_column, :sort_direction, :data, :n_rows, :col_keys], :sort_perm) do col, dir, data, nr, col_keys
+    map!(plot, [:sort_column, :sort_direction, :data, :n_rows, :col_keys], :sort_perm) do col, dir, data, nr, col_keys
         if col == 0 || nr == 0 || col > length(col_keys)
             collect(1:nr)
         else
@@ -95,13 +89,13 @@ function plot!(p::TablePlot)
     end
 
     # Visible rows based on max setting
-    map!(attr, [:n_rows, :max_visible_rows], :visible_rows) do nr, mvr
+    map!(plot, [:n_rows, :max_visible_rows], :visible_rows) do nr, mvr
         mvr === nothing ? nr : min(nr, mvr)
     end
 
     # Column widths - computed from bbox and settings
     # Note: :fit mode requires calling auto_fit_columns! after first render
-    map!(attr, [:bbox, :n_cols, :column_widths], :col_widths) do bbox, nc, cw
+    map!(plot, [:bbox, :n_cols, :column_widths], :col_widths) do bbox, nc, cw
         w = width(bbox)
         if nc == 0
             Float32[]
@@ -117,7 +111,7 @@ function plot!(p::TablePlot)
     end
 
     # Row heights - can be uniform or per-row
-    map!(attr, [:visible_rows, :row_height, :row_heights], :row_height_vec) do vr, default_rh, rh
+    map!(plot, [:visible_rows, :row_height, :row_heights], :row_height_vec) do vr, default_rh, rh
         if rh === automatic
             fill(Float32(default_rh), vr)
         elseif rh isa Number
@@ -134,7 +128,7 @@ function plot!(p::TablePlot)
     end
 
     # Table dimensions (for layout feedback)
-    map!(attr, [:visible_rows, :header_height, :col_widths, :row_height_vec], [:table_width, :table_height]) do vr, hh, cw, rhv
+    map!(plot, [:visible_rows, :header_height, :col_widths, :row_height_vec], [:table_width, :table_height]) do vr, hh, cw, rhv
         w = isempty(cw) ? 200.0f0 : sum(cw)
         h = Float32(hh + (isempty(rhv) ? 0.0f0 : sum(rhv)))
         (w, h)
@@ -143,7 +137,7 @@ function plot!(p::TablePlot)
     # ===== GEOMETRY - single computation for all positions =====
     # Using scatter with BezierPath rectangle marker is more efficient than poly for many rects
     map!(
-        attr, [
+        plot, [
             :bbox, :data, :col_widths, :col_names, :col_keys, :sort_perm,
             :n_cols, :n_rows, :visible_rows, :scroll_offset,
             :row_height_vec, :header_height, :cell_padding,
@@ -228,7 +222,7 @@ function plot!(p::TablePlot)
     # ===== COLORS - separate from geometry for efficient hover/selection updates =====
     # Supports both row-level and cell-level selection/hover
     map!(
-        attr, [
+        plot, [
             :n_cols, :visible_rows, :scroll_offset, :sort_perm,
             :i_selected, :i_selected_cell, :hovered_row, :hovered_cell,
             :header_color, :cell_color, :cell_color_even, :cell_color_odd, :cell_color_hover, :cell_color_selected,
@@ -280,7 +274,7 @@ function plot!(p::TablePlot)
 
     # Text styling - supports per-cell text colors via matrix
     map!(
-        attr, [
+        plot, [
             :n_cols, :visible_rows, :scroll_offset, :sort_perm,
             :header_textcolor, :cell_textcolor, :header_fontsize, :cell_fontsize,
         ],
@@ -317,34 +311,27 @@ function plot!(p::TablePlot)
 
     # ===== CHILD PLOTS - pass computed nodes directly =====
 
-    # Rectangle marker: draws from (0,0) going right and down
-    # Position is top-left, markersize is (width, height)
-    rect_marker = BezierPath(
-        [
-            MoveTo(0, 0),
-            LineTo(1, 0),
-            LineTo(1, -1),
-            LineTo(0, -1),
-            ClosePath(),
-        ]
-    )
+    map!(plot, :cell_sizes, :marker_offsets) do sizes
+        return [Vec2f(0.5 * v[1], -0.5 * v[2]) for v in sizes]
+    end
 
     # Single scatter for all cell rectangles (more efficient than poly for many rects)
     scatter!(
-        p, attr[:cell_positions];
-        marker = rect_marker,
-        markersize = attr[:cell_sizes],
-        color = attr[:rect_colors],
+        plot, plot[:cell_positions];
+        marker = Rect,
+        markersize = plot[:cell_sizes],
+        marker_offset = plot.marker_offsets,
+        color = plot[:rect_colors],
         markerspace = :data,
         inspectable = false
     )
 
     # Single text for all labels
     tp = text!(
-        p, attr[:text_positions];
-        text = attr[:text_strings],
-        color = attr[:text_colors],
-        fontsize = attr[:text_fontsizes],
+        plot, plot[:text_positions];
+        text = plot[:text_strings],
+        color = plot[:text_colors],
+        fontsize = plot[:text_fontsizes],
         align = (:left, :center),
         inspectable = false
     )
@@ -352,14 +339,14 @@ function plot!(p::TablePlot)
 
     # Single linesegments for grid
     lp = linesegments!(
-        p, attr[:line_points];
-        color = attr[:grid_color],
-        linewidth = attr[:grid_linewidth],
+        plot, plot[:line_points];
+        color = plot[:grid_color],
+        linewidth = plot[:grid_linewidth],
         inspectable = false
     )
     translate!(lp, 0, 0, 0.5)
 
-    return p
+    return plot
 end
 
 # ===== HELPER FUNCTIONS FOR INTERACTION =====
