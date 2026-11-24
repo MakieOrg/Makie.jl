@@ -82,7 +82,14 @@ struct RenderObjectUpdater <: Function
 end
 
 function (updater::RenderObjectUpdater)(args::NamedTuple, changed::NamedTuple, @nospecialize(last))
+    stroke_changed = haskey(updater.gl_names, :stroke_data_packed) &&
+        haskey(changed, :strokewidth) && changed.strokewidth &&
+        iszero(args.strokewidth) != iszero(updater.robj.uniforms[:strokewidth])
     update_robjs!(updater.robj, args, changed, updater.gl_names)
+    if stroke_changed
+        GLAbstraction.clear_instructions!(updater.robj)
+        initialize_renderobject!(updater.screen, updater.robj, updater.screen.cache2plot[updater.robj.id])
+    end
     updater.screen.requires_update = true
     return (updater.robj,)
 end

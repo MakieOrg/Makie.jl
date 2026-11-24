@@ -10,6 +10,8 @@ function try_empty_plot(func, args...; kwargs...)
 end
 
 @testset "empty primitives" begin
+    @info "testing empty primitives"
+
     @test try_empty_plot(scatter!, Point2f[])
     @test try_empty_plot(text!, Point2f[], text = String[])
     @test try_empty_plot(lines!, Point2f[])
@@ -18,20 +20,12 @@ end
     @test try_empty_plot(mesh!, GeometryBasics.mesh(Point2f[], GLTriangleFace[]))
     @test try_empty_plot(meshscatter!, Point2f[])
 
-    # fails setting up value limits. fix if someone cares
-    @test_broken try_empty_plot(voxels!, Array{Float32, 3}(undef, 0, 0, 0))
+    @test try_empty_plot(heatmap!, Matrix{Float32}(undef, 0, 0))
+    @test try_empty_plot(image!, Matrix{Float32}(undef, 0, 0))
+    @test try_empty_plot(surface!, Matrix{Float32}(undef, 0, 0))
 
-    if Symbol(Makie.current_backend()) === :WGLMakie
-        @test_broken try_empty_plot(volume!, Array{Float32, 3}(undef, 0, 0, 0))
-        @test_broken try_empty_plot(heatmap!, Matrix{Float32}(undef, 0, 0))
-        @test_broken try_empty_plot(image!, Matrix{Float32}(undef, 0, 0))
-        @test_broken try_empty_plot(surface!, Matrix{Float32}(undef, 0, 0))
-    else
-        @test try_empty_plot(volume!, Array{Float32, 3}(undef, 0, 0, 0))
-        @test try_empty_plot(heatmap!, Matrix{Float32}(undef, 0, 0))
-        @test try_empty_plot(image!, Matrix{Float32}(undef, 0, 0))
-        @test try_empty_plot(surface!, Matrix{Float32}(undef, 0, 0))
-    end
+    @test try_empty_plot(volume!, Array{Float32, 3}(undef, 0, 0, 0))
+    @test try_empty_plot(voxels!, Array{Float32, 3}(undef, 0, 0, 0))
 
     # CairoMakie special cases (no harm testing these for every backend. Maybe
     # we should test all recipes anyway?)

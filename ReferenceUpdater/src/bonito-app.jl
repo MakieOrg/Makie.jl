@@ -559,7 +559,11 @@ function build_card_grid(img_names, backends, should_include, card_builder)
     return cards
 end
 
-function create_simple_grid_content(root_path, filename, image_folder, backends; extra_paths = String[], review_only::Bool = false, pinned_paths = nothing)
+function create_simple_grid_content(
+        root_path, filename, image_folder, backends;
+        extra_paths = String[], review_only::Bool = false, pinned_paths = nothing
+    )
+
     path = joinpath(root_path, filename)
     files = unique(vcat(isfile(path) ? readlines(path) : String[], collect(extra_paths)))
     filter!(!isempty, files)

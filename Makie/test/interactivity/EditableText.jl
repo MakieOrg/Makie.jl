@@ -341,6 +341,45 @@ end
         @test et.text[] == "7\n"
     end
 
+    @testset "Paste events" begin
+        f, et = _make_editor("hello world"; cursors = [EditCursor(0, 5), EditCursor(6, 11)])
+        ev = events(f)
+        edits = String[]
+        characters = Char[]
+        on(text -> push!(edits, text), et.text)
+        on(char -> push!(characters, char), ev.unicode_input; priority = 100)
+
+        # Replace all selections in one edit, including non-ASCII text.
+        ev.paste[] = "αβ"
+        @test et.text[] == "αβ αβ"
+        @test et.cursors[] == [EditCursor(2), EditCursor(5)]
+        @test edits == ["αβ αβ"]
+        @test isempty(characters)
+
+        # Empty or fully filtered pastes leave selections intact.
+        et.cursors[] = [EditCursor(0, 2)]
+        ev.paste[] = ""
+        et.input_filter[] = isdigit
+        ev.paste[] = "abc"
+        @test et.text[] == "αβ αβ"
+        @test et.cursors[] == [EditCursor(0, 2)]
+        ev.paste[] = "a1\nb2"
+        @test et.text[] == "12 αβ"
+
+        et.focused[] = false
+        ev.paste[] = "3"
+        @test et.text[] == "12 αβ"
+
+        et.focused[] = true
+        et.input_filter[] = _ -> true
+        et.cursors[] = [EditCursor(0, length(et.text[]))]
+        empty!(edits)
+        content = repeat("x", 3000)
+        ev.paste[] = content
+        @test edits == [content]
+        @test isempty(characters)
+    end
+
     @testset "Copy / cut / paste" begin
         # Round-trip via the system clipboard; on a CI box this still works
         # because Julia's `clipboard(text)` and `clipboard()` use the same

@@ -51,17 +51,19 @@ end
 
 @specialize
 
-function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Surface, view::Dict{String, String})
+function default_shader(screen::Screen, @nospecialize(robj::RenderObject), plot::Surface, view::Dict{String, String})
     shading = Makie.get_shading_mode(plot)
     view["shading"] = light_calc(shading)
     view["picking_mode"] = "#define PICKING_INDEX_FROM_UV"
     view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
     view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
 
+    stroke_enabled = !iszero(robj.uniforms[:strokewidth])
     shader = GLVisualizeShader(
         screen,
         "util.vert", "surface.vert",
-        "fragment_output.frag", "lighting.frag", "mesh.frag", "mesh_stroke.frag",
+        (stroke_enabled ? ("mesh.geom",) : ())...,
+        "fragment_output.frag", "lighting.frag", "mesh.frag", (stroke_enabled ? "mesh_stroke.frag" : "mesh_nostroke.frag"),
         view = view
     )
     return shader

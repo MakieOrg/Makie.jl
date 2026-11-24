@@ -35,6 +35,7 @@ function register_voxel_conversions!(attr)
     map!(attr, [:chunk, :updated_indices, :colorrange, :is_air], :value_limits) do chunk, (is, js, ks), colorrange, is_air
         colorrange !== automatic && return colorrange
         eltype(chunk) <: native_types && return (1, 255)
+        isempty(chunk) && return (0.0, 1.0)
 
         mini, maxi = (Inf, -Inf)
         for k in ks, j in js, i in is

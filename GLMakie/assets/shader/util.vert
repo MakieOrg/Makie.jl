@@ -1,4 +1,5 @@
 {{GLSL_VERSION}}
+{{vertex_output_aliases}}
 
 // Sets which shading procedures to use
 // Options:
@@ -251,7 +252,9 @@ vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm
 
 uniform int num_clip_planes;
 uniform vec4 clip_planes[8];
+#ifndef MESH_GEOMETRY_SHADER
 out float gl_ClipDistance[8];
+#endif
 
 void process_clip_planes(vec3 world_pos)
 {

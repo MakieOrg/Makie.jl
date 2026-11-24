@@ -1,5 +1,6 @@
 {{GLSL_VERSION}}
 {{GLSL_EXTENSIONS}}
+{{vertex_output_aliases}}
 
 struct Grid2D{
     ivec2 lendiv;

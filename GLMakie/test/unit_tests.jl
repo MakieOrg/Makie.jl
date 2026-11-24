@@ -24,7 +24,7 @@ is_freed(x::GLMakie.GPUArray) = x.id == 0
     # a = Axis(f[1, 1])
     # display(screen, f)
     Ns = 18
-    Np = 8
+    Np = 7
 
     # Shaders for scatter + linesegments + poly etc (axis)
     display(screen, scatter(1:4))
@@ -51,10 +51,42 @@ is_freed(x::GLMakie.GPUArray) = x.id == 0
     @test length(cache.program_cache) == Np + 2
 
     # For second time no new shaders should be added
-    display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
+    figure, axis, plot = heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4))
+    display(screen, figure)
     @test length(cache.shader_cache) == Ns + 2
     @test length(cache.template_cache) == Ns + 2
     @test length(cache.program_cache) == Np + 2
+
+    # Rectangle selection compiles its program only when first used.
+    zoom = axis.interactions[:rectanglezoom][2]
+    @test !zoom.mesh_initialized
+    Makie.initialize_selection_mesh!(zoom, axis)
+    @test length(cache.program_cache) == Np + 3
+    Makie.initialize_selection_mesh!(zoom, axis)
+    @test length(cache.program_cache) == Np + 3
+end
+
+@testset "Changing mesh and surface strokes" begin
+    for plot_mesh in (true, false)
+        scene = Scene(size = (200, 200), camera = campixel!)
+        plot = if plot_mesh
+            mesh!(scene, Rect2f(20, 20, 160, 160); color = :red, shading = NoShading)
+        else
+            surface!(
+                scene, range(20, 180, length = 3), range(20, 180, length = 3), zeros(3, 3);
+                color = :red, shading = NoShading, strokeedges = :all
+            )
+        end
+        plain = copy(colorbuffer(scene))
+        plot.strokewidth[] = 8
+        stroked = copy(colorbuffer(scene))
+        @test plain != stroked
+        plot.strokewidth[] = 0
+        @test colorbuffer(scene) == plain
+        plot.strokewidth[] = 8
+        @test colorbuffer(scene) == stroked
+    end
+    GLMakie.closeall()
 end
 
 @testset "unit tests" begin

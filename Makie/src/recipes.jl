@@ -277,7 +277,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         ($funcname!)(args...; kw...) = _create_plot!($funcname, to_dict(kw), args...)
 
         const $attr_placeholder = $attr_expr
-        $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
+        $(Makie)._documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
@@ -294,8 +294,23 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     return expr
 end
 
-# this can be used for inheriting from other recipes
-documented_attributes(::Any) = DocumentedAttributes()
+"""
+    documented_attributes(::Type{<:Plot})
+    documented_attributes(::Type{<:Block})
+
+Returns the `DocumentedAttributes` of a plot or block type as they were generated
+from `@recipe`, `@Block` or `@DocumentedAttributes`.
+
+`DocumentedAttributes` can be used within the aforementioned macros as mixins.
+For example this will add all the attributes of `Scatter` to `MyPlot`
+```
+@recipe MyPlot begin
+    documented_attributes(Scatter)...
+end
+```
+"""
+documented_attributes(x) = _documented_attributes(x)
+_documented_attributes(::Any) = DocumentedAttributes()
 
 function create_args_type_expr(PlotType, args::Nothing)
     return [], :()
@@ -541,10 +556,6 @@ e.g.:
 """
 plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
 
-# plot types can overload this to throw errors or show warnings when deprecated attributes are used.
-# this is easier than if every plot type added manual checks in its `plot!` methods
-deprecated_attributes(_) = ()
-
 struct InvalidAttributeError <: Exception
     type::Type
     object_name::String # Generic name like plot, block
@@ -783,15 +794,15 @@ function attribute_name_allowlist()
     )
 end
 
-function validate_attribute_keys(plot::P) where {P <: Plot}
-    allowlist = attribute_name_allowlist()
-    deprecations = deprecated_attributes(P)::Tuple{Vararg{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}}
-    kw = plot.kw
-    attr = documented_attributes(P)
+validate_attribute_keys(plot::Plot) = validate_attribute_keys(plot, plot.kw, attribute_name_allowlist())
+validate_attribute_keys(::T, kw, allowlist) where {T} = validate_attribute_keys(T, kw, allowlist)
+
+function validate_attribute_keys(::Type{T}, kw, allowlist) where {T}
+    attr = documented_attributes(T)
 
     invalid_names = Symbol[]
     for (k, v) in kw
-        if k in allowlist || k in deprecations
+        if k in allowlist
             continue
         end
 
@@ -804,19 +815,9 @@ function validate_attribute_keys(plot::P) where {P <: Plot}
     end
 
     if !isempty(invalid_names)
-        throw(InvalidAttributeError(P, Set(invalid_names)))
+        throw(InvalidAttributeError(T, Set(invalid_names)))
     end
 
-    for (deprecated, message, should_error) in deprecations
-        if haskey(kw, deprecated)
-            full_message = "Keyword `$deprecated` is deprecated for plot type $P. $message"
-            if should_error
-                throw(ArgumentError(full_message))
-            else
-                @warn full_message
-            end
-        end
-    end
     return
 end
 

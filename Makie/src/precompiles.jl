@@ -20,7 +20,7 @@ let
         logo()
         f = Figure()
         ax = Axis(f[1, 1])
-        include(SHARED_PRECOMPILE_PATH)
+        foreach(include, shared_precompile_paths())
         # Cleanup globals to avoid serializing stale state (fonts, figures, tasks)
         # Note: __init__ doesn't run during precompilation, so we must always clean up here
         cleanup_globals()

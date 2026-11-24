@@ -1,4 +1,5 @@
 {{GLSL_VERSION}}
+{{vertex_output_aliases}}
 
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed

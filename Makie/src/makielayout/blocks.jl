@@ -307,7 +307,20 @@ function make_block_docstring(T::Type{<:Block}, docstring)
     """
 end
 
-attribute_groups(::Type{<:Block}) = Pair{String, Vector{Symbol}}[]
+
+const DEFAULT_BLOCK_ATTRIBUTE_GROUPS = let
+    layout = [:halign, :valign, :width, :height, :tellwidth, :tellheight, :alignmode]
+    Pair{String, Vector{Symbol}}["Layout Attributes" => sort!(layout)]
+end
+
+"""
+    default_block_attribute_groups()
+
+Returns a deepcopy of the default block attribute groups for further modification.
+"""
+default_block_attribute_groups() = deepcopy(DEFAULT_BLOCK_ATTRIBUTE_GROUPS)
+
+attribute_groups(::Type{<:Block}) = default_block_attribute_groups()
 
 function mixin_block_layout_attributes()
     return @DocumentedAttributes begin
@@ -419,10 +432,10 @@ function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
     return
 end
 
-function init_layout!(b)
+function init_layout!(b, args...; kwargs...)
     # create the gridlayout and set its parent to blockscene so that
     # one can create objects in the layout and scene more easily
-    b.layout = GridLayout()
+    b.layout = GridLayout(args...; kwargs...)
     b.layout.parent = b.blockscene
 
     lobservables = b.layoutobservables
@@ -546,23 +559,26 @@ function (::BlockAttributeConvert{T})(x, @nospecialize(changed), @nospecialize(c
 end
 
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdict::Dict, bbox; kwdict_complete = false)
-
     # first sort out all user kwargs that correspond to block attributes
-    check_textsize_deprecation(kwdict)
-
     graph = ComputeGraph()
 
     topscene = get_topscene(fig_or_scene)
     blockname = nameof(T)
     attr = documented_attributes(T)
+
+    # Collect indices of user-set deprecated attributes before they get removed
+    # by resolve_defaults
+    user_set_deprecated_attr = collect_changed_deprecated_attributes(attr, kwdict)
+
     flattened_defaults = resolve_defaults(attr, topscene, blockname, kwdict, tuple(), true)
 
     # User overwrites
     add_attributes!(T, graph, flattened_defaults)
 
     # prepare after user overwrites so users can use `add_input!()`
-    prepare_graph_for_attributes!(graph, attr, is_block = true)
+    prepare_graph_for_attributes!(graph, attr, restrict_types = true)
     add_remaining_block_inputs!(graph, attr, flattened_defaults)
+    process_attribute_deprecations!(graph, attr, user_set_deprecated_attr)
 
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
@@ -651,6 +667,12 @@ end
 
 # allow this to be overwritten for explicit argument handling (without args in @Block)
 function initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block}
+    return _initialize_block!(block, arg, _args...; kwargs...)
+end
+
+# defer to a different name so it's possible to return to when implementing a custom
+# initialize_block!() method
+function _initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block}
     args = (arg, _args...)
     kw_dict = Dict{Symbol, Any}(kwargs)
 
