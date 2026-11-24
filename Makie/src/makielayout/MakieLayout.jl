@@ -13,6 +13,7 @@ include("helpers.jl")
 include("defaultattributes.jl")
 include("lineaxis.jl")
 include("interactions.jl")
+
 include("blocks/axis.jl")
 include("blocks/axis3d.jl")
 include("blocks/polaraxis.jl")
@@ -39,6 +40,13 @@ include("blocks/modal.jl")
 include("blocks/paramform.jl")
 include("rebuild.jl")          # replace_content! that reuses the blocks it finds
 # HoverMenu type is defined in types.jl; its implementation is in GUI/hovermenu.jl
+
+include("docs/axis.jl")
+include("docs/axis3.jl")
+include("docs/box.jl")
+include("docs/colorbar.jl")
+include("docs/legend.jl")
+include("docs/polaraxis.jl")
 
 export @Block, Block
 export axislegend, axiscolorbar

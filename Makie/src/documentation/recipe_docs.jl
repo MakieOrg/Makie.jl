@@ -247,8 +247,7 @@ end
 ### Main Documentation Function
 ################################################################################
 
-# Consider making a dedicated group for DataInspector?
-const DEFAULT_ATTRIBUTE_GROUPS = let
+const DEFAULT_PLOT_ATTRIBUTE_GROUPS = let
     generic = copy(Makie.mixin_generic_plot_attributes().merged_keys)
     push!(generic, :cycle)
     inspector = [:inspectable, :inspector_label]
@@ -269,7 +268,7 @@ end
 
 Returns a deepcopy of the default attribute groups for further modification.
 """
-default_attribute_groups() = deepcopy(DEFAULT_ATTRIBUTE_GROUPS)
+default_attribute_groups() = deepcopy(DEFAULT_PLOT_ATTRIBUTE_GROUPS)
 
 """
     uncategorized_attributes(PlotType, name = "\$PlotType Attributes")
@@ -315,7 +314,8 @@ If the listed attributes exist in `MyPlot` they will be printed as
 "**My Attributes**: `myattrib1`, `myattrib2`". Attributes that don't exist will
 be skipped. If every attribute does not exist, the group will not be printed.
 """
-attribute_groups(::Type{<:AbstractPlot}) = Makie.DEFAULT_ATTRIBUTE_GROUPS
+attribute_groups(::Type{<:AbstractPlot}) = Makie.DEFAULT_PLOT_ATTRIBUTE_GROUPS
+attribute_groups(::Type) = Pair{String, Vector{Symbol}}[]
 
 function get_attribute_docs(::Type{T}; full = false) where {T}
     # Build attributes section
@@ -389,7 +389,7 @@ function write_attribute_docs!(io, PT, attr, full::Bool)
     end
 
     if !full
-        typename = string(plotsym(PT))
+        typename = PT isa AbstractPlot ? string(plotsym(PT)) : string(nameof(PT))
         info = if VERSION < v"1.12.2"
             "help($typename, :attribute)"
         else
@@ -448,7 +448,7 @@ end
 
 function write_short_nested_attribute_docs!(io, attr, layer::Int, keys_used)
     keytable = attr.nesting.keytables[layer]
-    keys_sorted = sort(keys(keytable))
+    keys_sorted = sort(collect(keys(keytable)))
     print(io, '(')
     has_prev = false
     for key in keys_sorted

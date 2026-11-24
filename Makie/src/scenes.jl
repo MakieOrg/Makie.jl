@@ -98,10 +98,10 @@ mutable struct Scene <: AbstractScene
     plots::Vector{Plot}
 
     """
-    Observable that triggers with `true => plot` after a plot is added to the
-    scene and `false => plot` after one is deleted.
+    Contains the current set of plots, updating whenever a plot is added to or
+    removed from this scene. Emptying the scene will empty the set in one go.
     """
-    onplot::Observable{Pair{Bool, AbstractPlot}}
+    onplot::Observable{Set{Plot}}
 
     theme::Attributes
 
@@ -162,7 +162,7 @@ mutable struct Scene <: AbstractScene
             transformation,
             nothing,
             plots,
-            Observable{Pair{Bool, AbstractPlot}}(),
+            Observable(Set{Plot}()),
             theme,
             children,
             current_screens,
@@ -601,9 +601,13 @@ function free(scene::Scene)
 end
 
 function Base.empty!(scene::Scene; reset_theme = true)
-    foreach(empty!, copy(scene.children))
-    # clear plots of this scene, newest first: each one's graph edges are then at the tail of
-    # the lists they are removed from (`ComputePipeline._disconnect_edge_from_inputs!`)
+    foreach(empty!, reverse(scene.children))
+
+    empty!(scene.onplot[])
+    notify(scene.onplot)
+
+    # clear plots of this scene, newest first so that removing their compute
+    # edges from the scene graph finds them at the end of the dependents
     for plot in reverse(scene.plots)
         delete!(scene, plot)
     end
@@ -742,16 +746,27 @@ function free(plot::AbstractPlot)
     return
 end
 
+function disconnect!(plot::AbstractPlot)
+    foreach(disconnect!, Iterators.reverse(plot.plots))
+    ComputePipeline.disconnect!(plot.attributes)
+    return
+end
+
 # Note: can be called from scene finalizer
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
 
-    scene.onplot[] = false => plot
+    if plot in scene.onplot[] # don't retrigger if `empty!` cleared the set
+        delete!(scene.onplot[], plot)
+        notify(scene.onplot)
+    end
 
-    # Remove references to the plot compute graph from any parent compute graph.
-    # (E.g. the scene compute graph)
-    # This is meant to make the plot graph GC-able.
-    ComputePipeline.disconnect!(plot.attributes)
+    # Disconnect the ComputeGraphs of the plot and all of its children (recursive)
+    # from any other ComputeGraph so that they can be garbage collected. The other
+    # ComputeGraphs could just be this scene (e.g. camera matrices) but could also
+    # include other plots, scenes, blocks, or any other ComputeGraph.
+    # (Not disconnecting children may lead to them not being GC-able.)
+    disconnect!(plot)
 
     # TODO, if we want to delete a subplot of a plot,
     # It won't be in scene.plots directly, but will still be deleted

@@ -274,6 +274,108 @@ end
     @test attr.nested_docstring == [nothing, "shading"]
 end
 
+@testset "Modifying documented attributes" begin
+    old = Makie.@DocumentedAttributes begin
+        a = 1
+        nested = @attributes begin
+            b::Int = @inherit b 1
+        end
+    end
+
+    patch = Makie.@DocumentedAttributes begin
+        "a doc"
+        a = 2
+        "nested doc"
+        nested = @attributes begin
+            "bob doc"
+            bob::Real = @inherit :bob 2
+            "c doc"
+            c = @inherit :c 2
+            "b deprecated by bob"
+            @deprecate b bob
+        end
+        "other doc"
+        other = @attributes begin
+            "d doc"
+            d::String = "2"
+        end
+    end
+
+    # These tests are a bit lazy. Technically these entries are allowed to move
+    # around as long as the information of one attribute moves together.
+
+    @testset "error on collision" begin
+        # TODO: Maybe this should do a prepass to not add some attributes before erroring?
+        @test_throws ErrorException Makie.merge_documented_attributes!(old, patch, on_collision = :error)
+
+        # working case + nesting
+        old = Makie.@DocumentedAttributes begin
+            a = 1
+            nested = @attributes begin
+                b::Int = @inherit b 1
+            end
+        end
+
+        Makie.merge_documented_attributes!(old, patch, :new, on_collision = :error)
+
+        @test old.merged_key_to_index == Dict([:a => 1, Symbol("nested.b") => 2, Symbol("new.a") => 3, Symbol("new.nested.b") => 4, Symbol("new.nested.bob") => 5, Symbol("new.nested.c") => 6, Symbol("new.other.d") => 7])
+        @test old.merged_keys == [:a, Symbol("nested.b"), Symbol("new.a"), Symbol("new.nested.b"), Symbol("new.nested.bob"), Symbol("new.nested.c"), Symbol("new.other.d")]
+        @test old.defaults == Any[1, Makie.Inherit(:b, 1), 2, Makie.Inherit(:bob, 2), Makie.Inherit(:bob, 2), Makie.Inherit(:c, 2), "2"]
+        @test old.leaf_docstring == Union{Nothing, String}[nothing, nothing, "a doc", "b deprecated by bob", "bob doc", "c doc", "d doc"]
+        @test old.nested_docstring == Union{Nothing, String}[nothing, nothing, nothing, "nested doc", "other doc"]
+        @test old.types == Type[Any, Int, Real, String]
+        @test old.type_index == [1, 2, 1, 3, 3, 1, 4]
+        @test old.type_indices == [[1, 3, 6], Int[2], [4, 5], [7]]
+        @test old.inherit == [2, 4, 5, 6]
+        @test old.deprecation_indices == [4 => 5]
+    end
+
+    @testset "skip on collision" begin
+        old = Makie.@DocumentedAttributes begin
+            a = 1
+            nested = @attributes begin
+                b::Int = @inherit b 1
+            end
+        end
+
+        # TODO: The deprecation logic doesn't really make sense here...
+        Makie.merge_documented_attributes!(old, patch, on_collision = :skip)
+
+        @test old.merged_key_to_index == Dict([:a => 1, Symbol("nested.c") => 4, Symbol("nested.b") => 2, Symbol("other.d") => 5, Symbol("nested.bob") => 3])
+        @test old.merged_keys == [:a, Symbol("nested.b"), Symbol("nested.bob"), Symbol("nested.c"), Symbol("other.d")]
+        @test old.defaults == Any[1, Makie.Inherit(:b, 1), Makie.Inherit(:bob, 2), Makie.Inherit(:c, 2), "2"]
+        @test old.leaf_docstring == Union{Nothing, String}[nothing, nothing, "bob doc", "c doc", "d doc"]
+        @test old.nested_docstring == Union{Nothing, String}[nothing, nothing, "other doc"]
+        @test old.types == Type[Any, Int, Real, String]
+        @test old.type_index == [1, 2, 3, 1, 4]
+        @test old.type_indices == [[1, 4], [2], [3], [5]]
+        @test old.inherit == [2, 3, 4]
+        @test old.deprecation_indices == [2 => 3]
+    end
+
+    @testset "replace on collision" begin
+        old = Makie.@DocumentedAttributes begin
+            a = 1
+            nested = @attributes begin
+                b::Int = @inherit b 1
+            end
+        end
+
+        Makie.merge_documented_attributes!(old, patch, on_collision = :replace)
+
+        @test old.merged_key_to_index == Dict([:a => 1, Symbol("nested.c") => 4, Symbol("nested.b") => 2, Symbol("other.d") => 5, Symbol("nested.bob") => 3])
+        @test old.merged_keys == [:a, Symbol("nested.b"), Symbol("nested.bob"), Symbol("nested.c"), Symbol("other.d")]
+        @test old.defaults == Any[2, Makie.Inherit(:bob, 2), Makie.Inherit(:bob, 2), Makie.Inherit(:c, 2), "2"]
+        @test old.leaf_docstring == Union{Nothing, String}["a doc", "b deprecated by bob", "bob doc", "c doc", "d doc"]
+        @test old.nested_docstring == Union{Nothing, String}[nothing, "nested doc", "other doc"]
+        @test old.types == Type[Any, Int, Real, String]
+        @test old.type_index == [1, 3, 3, 1, 4]
+        @test old.type_indices == [[1, 4], Int[], [2, 3], [5]]
+        @test old.inherit == [2, 3, 4]
+        @test old.deprecation_indices == [2 => 3]
+    end
+end
+
 @testset "Theme Observables" begin
     theme = Makie.current_default_theme()
 
