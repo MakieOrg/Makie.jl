@@ -57,6 +57,9 @@ For example a `N0f8` may upgrade to `Float16` or an undetermined `magfilter` may
 The `RenderGraph` holds on to multiple stages and tracks the connections between them.
 The stages execute in the order they are added and the connections describe the flow of data between them.
 
+In the default pipeline, GLMakie completes the scene clear, plot, SSAO and transparency passes for each scene before starting the next. FXAA and display run on the composed frame.
+Custom graphs with a contiguous block of those passes and the same color, depth and picking connections can use the same scene-by-scene execution. Other custom graphs retain their frame-wide stage order.
+
 The most basic functional pipeline we can create contains a render and a display stage.
 These stages can be created using some default constructors from Makie:
 

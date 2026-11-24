@@ -27,7 +27,7 @@ A subscene is no different than a normal Scene, except that it is linked to a "p
 
 ## Scene Attributes
 
-* `clear`: A clearing scene replaces the color and depth in its viewport. An uncleared scene shares depth with earlier scenes in its group. See [Render Order](@ref) for details.
+* `clear`: A clearing scene replaces the color in its viewport with its background color. Each scene draws with independent depth. See [Render Order](@ref) for details.
 * `ssao = SSAO(bias = 0.025, blur=2, radius=0.5)`: Controls SSAO settings, see lighting documentation.
 * `size = (800, 600)`: Sets the size of the created window if the scene is the root scene.
 

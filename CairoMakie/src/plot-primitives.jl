@@ -33,39 +33,32 @@ function cairo_draw(screen::Screen, root_scene::Scene)
 
     root_height = widths(viewport(Makie.root(root_scene))[])[2]
 
-    scenes = Makie.collect_scenes!(Scene[], root_scene; skip_invisible = true)
-    plots = Makie.AbstractPlot[]
-    for scene in scenes
-        if scene.clear[]
-            cairo_draw_group(screen, plots, should_rasterize, root_height)
-            empty!(plots)
-            draw_background(screen, scene, root_height)
-        end
-        Makie.collect_atomic_plots(scene.plots, plots; is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
-    end
-    cairo_draw_group(screen, plots, should_rasterize, root_height)
+    cairo_draw_rec(screen, root_scene, should_rasterize, root_height)
+
     return
 end
 
-function cairo_draw_group(screen::Screen, plots, should_rasterize::Bool, root_height)
-    isempty(plots) && return
+function cairo_draw_rec(screen::Screen, scene::Scene, should_rasterize::Bool, root_height)
+    scene.visible[] || return
+
+    Cairo.save(screen.context)
+
+    if scene.clear[]
+        draw_background(screen, scene, root_height)
+    end
+
+    # Collect and depth sort all plots within the current scene group
+    # (high depth = back, low depth = front)
+    plots = Makie.collect_atomic_plots(scene.plots, is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
     sort!(plots; by = cairo_zindex)
 
     Cairo.save(screen.context)
-    last_scene = nothing
+    prepare_for_scene(screen, scene, root_height)
 
     for p in plots
         check_parent_plots(p) do plot
             to_value(get(plot, :visible, true))
         end || continue
-
-        scene = Makie.parent_scene(p)::Scene
-        if scene !== last_scene
-            Cairo.restore(screen.context)
-            Cairo.save(screen.context)
-            prepare_for_scene(screen, scene, root_height)
-            last_scene = scene
-        end
 
         Cairo.save(screen.context)
 
@@ -85,7 +78,13 @@ function cairo_draw_group(screen::Screen, plots, should_rasterize::Bool, root_he
         end
         Cairo.restore(screen.context)
     end
-    Cairo.restore(screen.context)
+    Cairo.restore(screen.context) # prepare_for_scene
+    Cairo.restore(screen.context) # scene
+
+    for child in scene.children
+        cairo_draw_rec(screen, child, should_rasterize, root_height)
+    end
+
     return
 end
 

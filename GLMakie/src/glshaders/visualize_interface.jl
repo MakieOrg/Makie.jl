@@ -159,7 +159,7 @@ function initialize_renderobject!(screen, stage::RenderPlots, robj, plot)
     lazy_shader = default_shader(screen, robj, plot, view)::GLVisualizeShader
     pre = get_prerender(plot)
     post = get_postrender(plot)
-    add_instructions!(robj, name, lazy_shader, pre = pre, post = post)
+    add_instructions!(robj, stage.variant, lazy_shader, pre = pre, post = post)
     return
 end
 

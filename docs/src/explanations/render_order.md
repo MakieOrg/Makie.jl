@@ -191,10 +191,10 @@ High values are drawn late (in front), low values early (behind).
 
 A scene is drawn in three steps.
 1. If `clear == true` the scene will erase everything drawn in its `viewport` and replace it with its `backgroundcolor`. Otherwise the previously drawn content is kept.
-2. The scene will draw all the plots attached to it.
+2. The scene draws its plots with fresh depth.
 3. The scene will iterate through its children, drawing each child scene.
 
-Clearing scenes start a new depth group. Uncleared scenes share depth with earlier scenes in the group, so their plots can pass behind earlier plots. CairoMakie sorts the plots in each group together by estimated depth.
+An uncleared scene draws over the colors left by earlier scenes. Scene order decides which scene is on top, and plot depth only affects ordering within a scene.
 
 ```@figure
 root = Scene(backgroundcolor = :gray, clear = true, size = (500, 300))
@@ -243,12 +243,12 @@ root = Scene(backgroundcolor = :gray, clear = true, size = (300, 300), camera = 
 p1 = scatter!(root, ps, markersize = 25, color = :black, depth_shift = -0.1, zorder_shift = 1000)
 translate!(p1, 0, 0, 1000)
 
-# behind the parent plots where they overlap because the child shares depth
+# the child still draws over the parent despite the lower plot depth
 child = Scene(root, viewport = Rect2i(50, 50, 200, 200), camera = campixel!)
 p2 = scatter!(child, ps, markersize = 25, color = :red, depth_shift = 0.1, zorder_shift = -1000)
 translate!(p2, 0, 0, -1000)
 
-# clearing scene starts a fresh depth group in its viewport
+# clearing scene also replaces the color in its viewport
 Scene(root, viewport = Rect2i(175, 25, 100, 150), backgroundcolor = :navy, zindex = -1, clear = true)
 
 root
