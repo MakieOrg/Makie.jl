@@ -60,7 +60,7 @@ function apply_real_size!(
         done_init::Observable{Any}, initial_size::Tuple{Int, Int}, size_arr
     )
     try
-        size_tuple = (round.(Int, (size_arr))...,)
+        size_tuple = (round(Int, size_arr[1]), round(Int, size_arr[2]))
         # Resize the scene to the actual canvas size before serialization
         serialized = fetch(scene_serialized_task)
         if size_tuple != initial_size

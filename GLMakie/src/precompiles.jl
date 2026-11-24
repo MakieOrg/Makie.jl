@@ -41,6 +41,10 @@ let
                 destroy!(screen)
 
                 foreach(include, Makie.shared_precompile_paths())
+                # Cover screen reuse through the same path as a second colorbuffer call.
+                fig = scatter(x)
+                Makie.colorbuffer(fig; px_per_unit = 1)
+                Makie.colorbuffer(fig; px_per_unit = 1)
                 display(plot(x); visible = false)
 
                 screen = Screen(Scene(); visible = false)
