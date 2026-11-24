@@ -25,7 +25,7 @@ RayMakie = {path = ".."}
 Hikari = {url = "https://github.com/JuliaGraphics/Hikari.jl", rev = "master"}
 Lava = {url = "https://github.com/SimonDanisch/Lava.jl", rev = "main"}
 Mantle = {url = "https://github.com/SimonDanisch/Mantle.jl", rev = "sd/lava-refactor"}
-Metal = {url = "https://github.com/SimonDanisch/Metal.jl", rev = "sd/lava-refactor"}
+Metal = {url = "https://github.com/SimonDanisch/Metal.jl", rev = "sd/mantle-upstream"}
 Raycore = {url = "https://github.com/JuliaGeometry/Raycore.jl", rev = "master"}
 
 [compat]
