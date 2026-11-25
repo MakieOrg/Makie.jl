@@ -17,6 +17,7 @@ using GeometryBasics
     f
 end
 
+@compile lines(rand(10))
 @compile lines(rand(10), rand(10), color = rand(10), linewidth = 10)
 @compile lines(rand(10), rand(10), color = rand(RGBAf, 10), linewidth = 10)
 @compile lines(Circle(Point2f(0), Float32(1)))

@@ -357,7 +357,9 @@ end
 function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
     result = f(map(getindex, inputs), dirty, nothing)
-    outputs = _init_outputs(result, edge)
+    refs = _init_outputs(result, edge)
+    names = ntuple(i -> edge.outputs[i].name, length(refs))
+    outputs = NamedTuple{names}(refs)
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
 
@@ -1203,11 +1205,7 @@ end
 function locked_resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
-        vals = map(getindex, edge.outputs)
-        names = ntuple(Val(length(vals))) do i
-            edge.output_nodes[i].name
-        end
-        last = NamedTuple{names}(vals)
+        last = map(getindex, edge.outputs)
         result = edge.callback(map(getindex, edge.inputs), dirty, last)
         set_result!(edge, result)
     end
@@ -2040,7 +2038,10 @@ Base.@nospecializeinfer function register_computation!(
         # come from the same edge
         parent_edge = input.parent::AbstractEdge
         dependents = parent_edge.dependents::Vector{ComputeEdge{ComputeGraph}}
-        if !in(new_edge, dependents)
+        # `new_edge` can only be in `dependents` already if an earlier input
+        # shares this parent edge, and then it was pushed last. Checking the
+        # whole vector would make creating many plots in one scene quadratic.
+        if isempty(dependents) || last(dependents) !== new_edge
             push!(dependents, new_edge)
         end
     end
