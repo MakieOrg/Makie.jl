@@ -1,12 +1,12 @@
 # Render Order
 
-## Plots
+## [Plots](@id render-order-plots)
 
 The goal is to render plots based on the distance from the camera/viewer.
 Plots that are further away should appear behind plots that are closer.
 When this distinction can not be made plots are rendered in the order were created in.
 
-### Depth
+### [Depth](@id render-order-depth)
 
 The distance from the camera/viewer follows from the plots coordinates after all transformation and projections were applied.
 This distance is generally referred to as depth.
@@ -40,7 +40,7 @@ p4 = scatter!(scene, 150, 200, -10, markersize = 250, color = :darkblue)
 scene
 ```
 
-### CairoMakie
+### [CairoMakie](@id render-order-cairo)
 
 CairoMakie generally can't resolve visual order pixel by pixel.
 Instead it is resolved plot by plot, using the depth of the center of the plots bounding box.
@@ -80,7 +80,7 @@ p4 = scatter!(
 scene
 ```
 
-### GLMakie and WGLMakie
+### [GLMakie and WGLMakie](@id render-order-gl)
 
 GLMakie and WGLMakie both use a "depth buffer" for rendering.
 The depth buffer keeps track of each pixels depth as plots are drawn.
@@ -169,7 +169,7 @@ p3 = scatter!(
 scene
 ```
 
-#### Draw Order
+#### [Draw Order](@id render-order-draw-order)
 
 Backends are allowed some freedom in their draw order.
 For GLMakie and WGLMakie it is preferable to draw opaque objects front to back (to avoid drawing over a pixel multiple times) and semi-transparent objects later (to not draw under opaque objects), in back to front order (to correctly order transparent pixels).
@@ -187,7 +187,7 @@ If you you want to firmly place a plot into the background and draw with `overdr
 Note that you can query the final zorder value with `plot.gl_zindex` on primitive plots.
 High values are drawn late (in front), low values early (behind).
 
-## Scenes
+## [Scenes](@id render-order-Scenes)
 
 A scene is drawn in three steps.
 1. If `clear == true` the scene will erase everything drawn in its `viewport` and replace it with its `backgroundcolor`. Otherwise the previously drawn content is kept.

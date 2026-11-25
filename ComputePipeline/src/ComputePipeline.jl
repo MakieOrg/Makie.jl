@@ -1580,7 +1580,7 @@ function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
         edge.outputs[i].dirty = true
     end
 
-    # If the outputs of this egde were previously orphaned by delete! or by being
+    # If the outputs of this edge were previously orphaned by delete! or by being
     # created with add_node! they may have added dependents that were already
     # resolved with the old ref's. Fix them.
     _update_refs_in_dependents!(edge)

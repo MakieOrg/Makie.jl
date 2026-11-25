@@ -70,7 +70,7 @@ function stage_output(
     for idx in 1:stage_index
         stage = screen.render_pipeline.stages[idx]
         require_context(screen.glscreen)
-        run_stage(screen, nothing, stage)
+        run_stage(screen, screen.render_context.scenes, stage)
     end
 
     glFinish()
@@ -84,7 +84,7 @@ function stage_output(
     for idx in (stage_index + 1):length(screen.render_pipeline.stages)
         stage = screen.render_pipeline.stages[idx]
         require_context(screen.glscreen)
-        run_stage(screen, nothing, stage)
+        run_stage(screen, screen.render_context.scenes, stage)
     end
 
     if screen.config.visible

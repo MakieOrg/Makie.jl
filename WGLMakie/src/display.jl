@@ -526,6 +526,10 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
         # on this).
         try
             live = get_screen_session(screen; error = "Plot needs to be displayed to insert additional plots")
+            if isnothing(live)
+                screen.needs_resync = true
+                return
+            end
             if js_uuid(scene) in screen.displayed_scenes
                 insert_plot!(live, scene, plot)
             else

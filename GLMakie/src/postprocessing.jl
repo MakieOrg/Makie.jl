@@ -396,7 +396,7 @@ function run_stage(screen, glscenes, stage::RenderPlots)
             # Find current clear = [true, false, ..., false] block
             stop = start - 1
             for i in stop:-1:1
-                if glscenes[i].scene.clear[]
+                if (i == 1) || glscenes[i].scene.clear[]
                     start = i
                     break
                 end

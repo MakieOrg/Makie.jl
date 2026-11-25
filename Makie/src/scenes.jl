@@ -580,7 +580,7 @@ end
 function Base.delete!(scene::Scene)
     empty!(scene)
     # empty! only removes child scenes from screens, the scene itself must go as well
-    for screen in copy(scene.current_screens)
+    for screen in reverse(scene.current_screens)
         delete!(screen, scene)
     end
     empty!(scene.current_screens)
@@ -590,16 +590,7 @@ end
 # TODO: Shouldn't empty just remove content from the given scene, rather than
 # resetting everything and removing the scene from its parent?
 function Base.empty!(scene::Scene; reset_theme = true)
-    for child in reverse(scene.children)
-        empty!(child)
-
-        # if we call `empty!(parent)` all the children should be disconnected
-        # and no longer be displayed. The parent should still be displayed.
-        for screen in child.current_screens
-            delete!(screen, child)
-        end
-        empty!(child.current_screens)
-    end
+    foreach(delete!, reverse(scene.children))
 
     empty!(scene.onplot[])
     notify(scene.onplot)

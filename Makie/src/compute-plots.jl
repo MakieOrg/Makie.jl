@@ -402,6 +402,7 @@ function register_has_transparent_color!(attr::ComputeGraph)
             return true
         end
     end
+    return
 end
 
 function register_colormapping!(attr::ComputeGraph, colorname = :color)
