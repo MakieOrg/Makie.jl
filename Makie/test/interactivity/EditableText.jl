@@ -481,3 +481,23 @@ end
         @test caret.visible[] == false
     end
 end
+
+@testset "Edit relative text in an offset viewport" begin
+    scene = Scene(size = (400, 300))
+    child = Scene(scene; viewport = Rect2i(60, 80, 200, 100), camera = campixel!)
+    text = editabletext!(
+        child, "hello"; position = Point2f(0.5), space = :relative, align = (:left, :baseline),
+        cursors = [EditCursor(0, 3)], focused = true,
+    )
+    selection, glyphs, caret = text.plots
+    anchor = only(glyphs.markerspace_positions[])
+    @test Point2f(anchor) ≈ Point2f(100, 50)
+    @test selection.space[] === caret.space[] === :pixel
+    @test first(only(selection.polygon[]))[1] ≈ anchor[1]
+    @test first(caret.positions[])[1] > anchor[1]
+
+    e = events(scene)
+    e.mouseposition[] = (160.0, 130.0)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    @test text.cursors[] == [EditCursor(0)]
+end

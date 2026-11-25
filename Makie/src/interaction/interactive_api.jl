@@ -273,7 +273,7 @@ function select_rectangle(scene; blocking = false, priority = 2, strokewidth = 3
 
     on(events(scene).mousebutton, priority = priority) do event
         if event.button == key
-            if event.action == Mouse.press && is_mouseinside(scene)
+            if event.action == Mouse.press && mouse_over_scene(scene)
                 mp = mouseposition(scene)
                 waspressed[] = true
                 plotted_rect[:visible] = true # start displaying
@@ -336,7 +336,7 @@ function select_line(scene; blocking = false, priority = 2, kwargs...)
     )
 
     on(events(scene).mousebutton, priority = priority) do event
-        if event.button == key && is_mouseinside(scene)
+        if event.button == key && mouse_over_scene(scene)
             mp = mouseposition(scene)
             if event.action == Mouse.press
                 waspressed[] = true
@@ -397,7 +397,7 @@ function select_point(scene; blocking = false, priority = 2, kwargs...)
     )
 
     on(events(scene).mousebutton, priority = priority) do event
-        if event.button == key && is_mouseinside(scene)
+        if event.button == key && mouse_over_scene(scene)
             mp = mouseposition(scene)
             if event.action == Mouse.press
                 waspressed[] = true

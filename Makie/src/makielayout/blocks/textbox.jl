@@ -162,7 +162,7 @@ function initialize_block!(tbox::Textbox)
     on(topscene, events(scene).mousebutton, priority = 70) do event
         event.button == Mouse.left || return Consume(false)
         if event.action == Mouse.press
-            inside = Makie.is_mouseinside(scene)
+            inside = mouse_over_scene(scene)
             if inside
                 tbox.focused[] || focus!(tbox)
             else

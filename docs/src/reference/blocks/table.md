@@ -44,13 +44,8 @@ data = (
 
 t = Table(fig[1, 1];
     data = data,
-    header_color = RGBf(0.2, 0.4, 0.6),
-    header_textcolor = :white,
-    cell_color_even = RGBf(0.95, 0.95, 1.0),
-    cell_color_odd = RGBf(0.9, 0.9, 0.95),
-    cell_color_selected = RGBf(0.7, 0.85, 1.0),
-    row_height = 30.0,
-    header_height = 35.0
+    header = (color = RGBf(0.2, 0.4, 0.6), textcolor = :white, height = 35.0),
+    cell = (color_even = RGBf(0.95, 0.95, 1.0), color_odd = RGBf(0.9, 0.9, 0.95), color_selected = RGBf(0.7, 0.85, 1.0), height = 30.0)
 )
 
 # Select row 3 by default
@@ -84,7 +79,7 @@ fig
 
 ## Per-Cell Colors
 
-You can provide a matrix for `cell_color` and/or `cell_textcolor` to color individual cells:
+You can provide a matrix for `cell.color` and/or `cell.textcolor` to color individual cells:
 
 ```@figure backend=GLMakie
 
@@ -106,7 +101,7 @@ colors = [
 
 t = Table(fig[1, 1];
     data = data,
-    cell_color = colors
+    cell = (color = colors,)
 )
 
 fig
@@ -129,7 +124,7 @@ data = (
 t = Table(fig[1, 1];
     data = data,
     sortable = true,
-    show_sort_indicator = true
+    header = (show_sort_indicator = true,)
 )
 
 # Sort by the second column (count), descending

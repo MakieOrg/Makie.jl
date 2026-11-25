@@ -45,13 +45,14 @@ function initialize_block!(t::Tabs, labels::AbstractVector = ["Tab 1", "Tab 2"];
     on(_ -> refresh_visibility!(t), blockscene, t.active)
 
     on(blockscene, blockscene.events.mouseposition) do pos
-        t.hovered[] = tab_at(t, pos)
-        t.close_hovered[] = close_at(t, pos)
+        inside = mouse_over_scene(blockscene)
+        t.hovered[] = inside ? tab_at(t, pos) : 0
+        t.close_hovered[] = inside ? close_at(t, pos) : 0
         return Consume(false)
     end
 
     on(blockscene, blockscene.events.mousebutton; priority = 60) do ev
-        if ev.button == Mouse.left && ev.action == Mouse.press
+        if ev.button == Mouse.left && ev.action == Mouse.press && mouse_over_scene(blockscene)
             pos = blockscene.events.mouseposition[]
             # Close button takes precedence over the tab body click: clicking
             # the × removes the tab without first making it active.
@@ -149,16 +150,8 @@ function add_tab!(
     if !t.font_metrics_captured
         t.font_metrics_captured = true
         on(blockscene, labelplot.selected_font; update = true) do f
-            try
-                asc = Float32(Makie.FreeTypeAbstraction.ascender(f))
-                des = Float32(Makie.FreeTypeAbstraction.descender(f))
-                ext = Makie.FreeTypeAbstraction.get_extent(f, 'x')
-                bb = Makie.FreeTypeAbstraction.inkboundingbox(ext)
-                xh = Float32(widths(bb)[2])
-                t.font_metrics[] = TabFontMetrics(asc, des, xh)
-            catch
-                # keep defaults
-            end
+            x = GlyphExtent(f, 'x')
+            t.font_metrics[] = TabFontMetrics(x.ascender, x.descender, height(x.ink_bounding_box))
             return
         end
     end

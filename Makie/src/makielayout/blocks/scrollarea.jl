@@ -18,13 +18,8 @@ end
 """
     clip_content!(sa::ScrollArea)
 
-Hide content that lies outside the visible viewport and show content that
-lies inside, so scrolled-away blocks stop drawing and stop taking clicks.
-
-Driven by the layout and viewport observables. Call it directly after
-replacing content in place: blocks are culled using the bbox they have when
-the check runs, and one built mid-rebuild is measured before the layout has
-placed it.
+Hide blocks outside the scroll viewport. Call this after replacing the layout
+content, once the new blocks have been positioned.
 """
 function clip_content!(sa::ScrollArea)
     sa.visible[] || return
@@ -53,7 +48,7 @@ function initialize_block!(sa::ScrollArea)
     is_visible = lift(identity, blockscene, sa.visible)
 
     # Share the parent's `Events`: the scene-stacking event router
-    # (`receives_events`, honored by `is_mouseinside`/`addmouseevents!`) keeps
+    # (`receives_events`, honored by `mouse_over_scene`/`addmouseevents!`) keeps
     # hidden subtrees inert, so no separate `Events`/event forwarding is needed.
     scene = Scene(blockscene; camera = campixel!, viewport = content_area, visible = is_visible, clear = false)
     sa.scene = scene
@@ -83,8 +78,7 @@ function initialize_block!(sa::ScrollArea)
         return
     end
 
-    # Scrollbar primitives drawn in the parent's blockscene so they sit above
-    # the content area; sized in `update_scrollbars!`.
+    # Scrollbar primitives; sized in `update_scrollbars!`.
     vbar_rect = Observable(Rect2f(0, 0, 0, 0))
     vthumb_rect = Observable(Rect2f(0, 0, 0, 0))
     vthumb_color = Observable(to_color(sa.scrollbar_thumb_color[]))
@@ -164,11 +158,11 @@ function initialize_block!(sa::ScrollArea)
     # Wheel scrolling runs below the default priority so an inner block (e.g.
     # an Axis zoom-on-scroll handler at priority 0) gets the event first; the
     # area only scrolls when nothing else consumed. Since the events are shared
-    # with the parent, it also checks `is_mouseinside(scene)` so stacked areas
+    # with the parent, it also checks `mouse_over_scene(scene)` so stacked areas
     # don't all scroll on every wheel event.
     on(blockscene, scene.events.scroll; priority = -1) do (dx, dy)
         sa.scrollable[] || return Consume(false)
-        is_mouseinside(scene) || return Consume(false)
+        mouse_over_scene(scene) || return Consume(false)
         cs = sa.contentsize[]
         ca = scene.viewport[]
         vw, vh = Float32.(widths(ca))
@@ -202,20 +196,13 @@ function initialize_block!(sa::ScrollArea)
             append!(stack, flatten_layout_content(block))
             v ? unhide!(block) : hide!(block)
         end
-        v && clip_content_to_viewport!()
+        v && clip_content!(sa)
         return
     end
 
-    # Scrolled-out content must also stop RECEIVING clicks. A block's mouse
-    # machinery gates on its own `blockscene.visible` and its own bbox — and a
-    # scrollable subfigure moves content freely past its viewport, so a widget
-    # scrolled out of sight still sits somewhere in the window and swallows
-    # presses meant for whatever is drawn there (measured: a panel 1213 px tall in
-    # a 714 px viewport put its buttons over the timeline underneath, where they
-    # ate the clicks). Hide what does not intersect the viewport.
-    clip_content_to_viewport!() = clip_content!(sa)
+    # Cull whole blocks even on backends that only scissor to each scene's viewport.
     onany(blockscene, layout_bbox, scene.viewport) do _, _
-        clip_content_to_viewport!()
+        clip_content!(sa)
         return
     end
     on(blockscene, blockscene.events.mousebutton) do ev
@@ -240,7 +227,7 @@ function initialize_block!(sa::ScrollArea)
 
     on(blockscene, blockscene.events.mouseposition; priority = 60) do pos
         is_visible[] || return Consume(false)
-        kind = bar_at(pos)
+        kind = mouse_over_scene(scene) ? bar_at(pos) : :none
         st = drag_state[][1]
         v_highlight = st === :vdrag || kind in (:vthumb, :vtrack)
         h_highlight = st === :hdrag || kind in (:hthumb, :htrack)
@@ -278,7 +265,7 @@ function initialize_block!(sa::ScrollArea)
 
     on(blockscene, blockscene.events.mousebutton; priority = 60) do ev
         is_visible[] || return Consume(false)
-        if ev.button == Mouse.left && ev.action == Mouse.press
+        if ev.button == Mouse.left && ev.action == Mouse.press && mouse_over_scene(scene)
             pos = blockscene.events.mouseposition[]
             kind = bar_at(pos)
             if kind === :vthumb

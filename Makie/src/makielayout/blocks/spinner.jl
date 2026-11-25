@@ -6,7 +6,7 @@ function initialize_block!(sp::Spinner)
     displayed = lift(
         topscene, frame_idx, sp.message, sp.frames, sp.running
     ) do i, msg, frames, running
-        running || return ""
+        (running && !isempty(frames)) || return ""
         return "$(frames[mod1(i, length(frames))])  $msg"
     end
 
@@ -18,16 +18,13 @@ function initialize_block!(sp::Spinner)
         inspectable = false
     )
 
-    textbb = Ref(BBox(0, 1, 0, 1))
     onany(topscene, displayed, sp.fontsize) do _, _
-        textbb[] = Rect2f(boundingbox(t, :data))
-        layoutobservables.autosize[] = (width(textbb[]), height(textbb[]))
+        bb = boundingbox(t, :data)
+        layoutobservables.autosize[] = (width(bb), height(bb))
         return
     end
 
-    onany(topscene, layoutobservables.computedbbox) do bbox
-        tw = width(textbb[])
-        th = height(textbb[])
+    on(topscene, layoutobservables.computedbbox) do bbox
         tx = bbox.origin[1] + 0.5 * width(bbox)
         ty = bbox.origin[2] + 0.5 * height(bbox)
         if all(isfinite, (tx, ty))
@@ -38,7 +35,7 @@ function initialize_block!(sp::Spinner)
 
     # Advance the frame on ticks (matches record framerate; no async).
     accum = Ref(0.0)
-    on(events(topscene).tick) do tick
+    on(topscene, events(topscene).tick) do tick
         if sp.running[]
             accum[] += tick.delta_time
             if accum[] >= sp.frame_interval[]
@@ -52,6 +49,6 @@ function initialize_block!(sp::Spinner)
     end
 
     notify(displayed)
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(layoutobservables.suggestedbbox)
     return sp
 end

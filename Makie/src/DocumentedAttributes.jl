@@ -1264,13 +1264,17 @@ function apply_filtered_indices!(attr::DocumentedAttributes, keep::Vector{Int})
     for indices in attr.type_indices
         # (this is a list of leaf attribute indices)
         filter!(idx -> keep[idx] > 0, indices)
+        map!(idx -> keep[idx], indices, indices)
     end
     drop = map(isempty, attr.type_indices)
+    type_map = cumsum(.!drop)
+    map!(idx -> type_map[idx], attr.type_index, attr.type_index)
     deleteat!(attr.types, drop)
     deleteat!(attr.type_indices, drop)
 
     # remove flagged indices from inherit to (this is a list of leaf attribute indices)
     filter!(idx -> keep[idx] > 0, attr.inherit)
+    map!(idx -> keep[idx], attr.inherit, attr.inherit)
 
     # deprecation indices - these are excluded pair-wise
     filter!(p -> keep[p[1]] > 0, attr.deprecation_indices)

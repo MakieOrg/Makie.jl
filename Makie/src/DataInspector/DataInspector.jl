@@ -335,7 +335,7 @@ function update_tooltip!(di::DataInspector)
     # di.needs_update || return
 
     # Mouse outside relevant area, hide tooltip
-    if !is_mouseinside(di.parent)
+    if !mouse_over_scene(di.parent)
         hide_indicators!(di)
         update!(di.dynamic_tooltip, visible = false)
         di.last_plot_element = PlotElement((di.dynamic_tooltip,), IndexedAccessor(0, 0))
@@ -861,7 +861,7 @@ end
 function update_persistent_tooltips!(di::DataInspector)
     e = events(di.parent)
 
-    if !ispressed(e, di.persistent_tooltip_key[]) || !is_mouseinside(di.parent)
+    if !ispressed(e, di.persistent_tooltip_key[]) || !mouse_over_scene(di.parent)
         return Consume(false)
     end
 

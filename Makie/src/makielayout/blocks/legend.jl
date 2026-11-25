@@ -1186,7 +1186,7 @@ Legend(ax; position=:lt, title="My Legend")
 """
 function Legend(
         ax::Union{Axis, Axis3}, _title = nothing;
-        position = :rt, kwargs...
+        position = :rt, title = _title, kwargs...
     )
     # This effectively replaces the default set for margin in @Block without
     # breaking theming rules. It prioritizes kwargs > theme overwrites > default
@@ -1195,7 +1195,7 @@ function Legend(
         get(something(theme(:Legend), NamedTuple()), :margin, (6, 6, 6, 6))
     )
     pos_kw = legend_position_to_aligns(position)
-    return Legend(ax.parent, _title; margin, bbox = a.scene.viewport, pos_kw..., kwargs...)
+    return Legend(ax.parent, ax, title; margin, bbox = ax.scene.viewport, pos_kw..., kwargs...)
 end
 
 # convenience constructor for axis legend

@@ -16,7 +16,7 @@ using Test
     # Isolation is by visibility: only the active tab is visible, and a hidden
     # scene is inert to the event router (`receives_events` short-circuits on
     # `visible[] == false`). Handlers that guard on `receives_events` /
-    # `is_mouseinside` therefore fire only for the active tab.
+    # `mouse_over_scene` therefore fire only for the active tab.
     t.active[] = 1
     @test s1.visible[] == true
     @test s2.visible[] == false
@@ -45,7 +45,8 @@ end
     @test child.visible[] == true                 # own flag untouched
     @test Makie.scene_visible(child) == false     # but hidden through its parent
     @test receives_events(child) == false
-    @test Makie.is_mouseinside(child) == false
+    @test Makie.is_mouseinside(child)
+    @test !Makie.mouse_over_scene(child)
 
     container.visible[] = true
     @test receives_events(child) == true
@@ -55,6 +56,7 @@ end
     f = Figure(size = (600, 400))
     t = Tabs(f[1, 1], ["A", "B"])
     ax = Axis(t[1][1, 1])
+    t[2].scrollable = true
     for i in 1:20
         Label(t[2][i, 1], "row $i")
         Makie.GridLayoutBase.rowsize!(t[2].layout, i, Makie.GridLayoutBase.Fixed(30))
@@ -136,4 +138,31 @@ end
 
     add_tab!(t, "back")
     @test t.active[] == 1                         # first tab on empty becomes active
+end
+
+@testset "Input outside an ancestor viewport" begin
+    root = Scene(size = (400, 400))
+    parent = Scene(root; viewport = Rect2i(50, 50, 200, 200))
+    child = Scene(parent; viewport = Rect2i(200, 200, 100, 100))
+    e = events(root)
+    e.mouseposition[] = (275.0, 275.0)
+    @test Makie.is_mouseinside(child)
+    @test !Makie.mouse_over_scene(child)
+    e.mouseposition[] = (225.0, 225.0)
+    @test Makie.mouse_over_scene(child)
+end
+
+@testset "Modal blocks pointer input without changing containment" begin
+    f = Figure()
+    sibling = Scene(f.scene)
+    modal = Modal(f; width = 240, height = 180)
+    e = events(f)
+    e.mouseposition[] = (20.0, 20.0)
+    @test receives_events(sibling)
+    open!(modal)
+    @test Makie.is_mouseinside(sibling)
+    @test !receives_events(sibling)
+    e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+    @test !modal.open[]
+    @test receives_events(sibling)
 end

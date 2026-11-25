@@ -3,8 +3,6 @@ import Animations
 using GridLayoutBase
 using GridLayoutBase: GridSubposition
 
-const FPS = Observable(30)
-
 include("blocks.jl")
 include("geometrybasics_extension.jl")
 include("mousestatemachine.jl")

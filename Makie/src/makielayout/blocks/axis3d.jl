@@ -254,7 +254,7 @@ function initialize_block!(ax::Axis3)
     setfield!(ax, :keysevents, keysevents)
 
     on(scene, scene.events.scroll) do s
-        if is_mouseinside(scene)
+        if mouse_over_scene(scene)
             ax.scrollevents[] = ScrollEvent(s[1], s[2])
             return Consume(true)
         end

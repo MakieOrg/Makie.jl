@@ -1,5 +1,7 @@
-# ===== TABLE PLOT RECIPE =====
-# A recipe that renders tabular data efficiently with one poly, one text, and one linesegments plot
+###################
+# TABLE PLOT RECIPE
+###################
+# A recipe that renders tabular data efficiently with one scatter, one text, and one linesegments plot
 
 @recipe TablePlot (data::Dict{Symbol, Any},) begin
     # Data
@@ -18,33 +20,9 @@
 
     # Geometry
     bbox = Rect2d(0, 0, 200, 200)
-    header_height = 30.0
-    row_height = 25.0
-    cell_padding = Vec4f(8, 8, 4, 4)  # left, right, top, bottom
     max_visible_rows = nothing
 
-    # Header styling
-    header_color = RGBf(0.2, 0.2, 0.2)
-    header_textcolor = :white
-    header_fontsize = 14.0f0
-    show_sort_indicator = true
-
-    # Cell styling - can be single color, or matrix for per-cell colors
-    cell_color = automatic  # automatic uses even/odd, or Matrix{<:Colorant} for per-cell
-    cell_color_even = RGBf(0.98, 0.98, 0.98)
-    cell_color_odd = RGBf(0.94, 0.94, 0.94)
-    cell_color_hover = @inherit((:colors, :accent_subtle))
-    cell_color_selected = @inherit((:colors, :accent))
-    cell_textcolor = :black  # single color or Matrix for per-cell
-    cell_fontsize = 12.0f0
-
-    # Grid
-    show_grid = true
-    grid_color = RGBf(0.8, 0.8, 0.8)
-    grid_linewidth = 1.0
-    show_vertical_lines = true
-    show_horizontal_lines = true
-
+    table_style_attributes()...
     mixin_generic_plot_attributes()...
 end
 
@@ -111,7 +89,7 @@ function plot!(plot::TablePlot)
     end
 
     # Row heights - can be uniform or per-row
-    map!(plot, [:visible_rows, :row_height, :row_heights], :row_height_vec) do vr, default_rh, rh
+    map!(plot, [:visible_rows, (:cell, :height), :row_heights], :row_height_vec) do vr, default_rh, rh
         if rh === automatic
             fill(Float32(default_rh), vr)
         elseif rh isa Number
@@ -128,21 +106,23 @@ function plot!(plot::TablePlot)
     end
 
     # Table dimensions (for layout feedback)
-    map!(plot, [:visible_rows, :header_height, :col_widths, :row_height_vec], [:table_width, :table_height]) do vr, hh, cw, rhv
+    map!(plot, [:visible_rows, (:header, :height), :col_widths, :row_height_vec], [:table_width, :table_height]) do vr, hh, cw, rhv
         w = isempty(cw) ? 200.0f0 : sum(cw)
         h = Float32(hh + (isempty(rhv) ? 0.0f0 : sum(rhv)))
         (w, h)
     end
 
-    # ===== GEOMETRY - single computation for all positions =====
+    #################################################
+    # GEOMETRY - single computation for all positions
+    #################################################
     # Using scatter with BezierPath rectangle marker is more efficient than poly for many rects
     map!(
         plot, [
             :bbox, :data, :col_widths, :col_names, :col_keys, :sort_perm,
             :n_cols, :n_rows, :visible_rows, :scroll_offset,
-            :row_height_vec, :header_height, :cell_padding,
-            :show_grid, :show_horizontal_lines, :show_vertical_lines,
-            :sort_column, :sort_direction, :show_sort_indicator,
+            :row_height_vec, (:header, :height), (:cell, :padding),
+            (:grid, :visible), (:grid, :show_horizontal_lines), (:grid, :show_vertical_lines),
+            :sort_column, :sort_direction, (:header, :show_sort_indicator),
         ], [:cell_positions, :cell_sizes, :text_positions, :text_strings, :line_points]
     ) do bbox, data, cw, col_names, col_keys, perm, nc, nr, vr, offset, rhv, hh, pad, show_grid, show_h, show_v, sort_col, sort_dir, show_indicator
 
@@ -219,13 +199,15 @@ function plot!(plot::TablePlot)
         (cell_pos, cell_sz, text_pos, text_str, lines)
     end
 
-    # ===== COLORS - separate from geometry for efficient hover/selection updates =====
+    #######################################################################
+    # COLORS - separate from geometry for efficient hover/selection updates
+    #######################################################################
     # Supports both row-level and cell-level selection/hover
     map!(
         plot, [
             :n_cols, :visible_rows, :scroll_offset, :sort_perm,
             :i_selected, :i_selected_cell, :hovered_row, :hovered_cell,
-            :header_color, :cell_color, :cell_color_even, :cell_color_odd, :cell_color_hover, :cell_color_selected,
+            (:header, :color), (:cell, :color), (:cell, :color_even), (:cell, :color_odd), (:cell, :color_hover), (:cell, :color_selected),
         ], :rect_colors
     ) do nc, vr, offset, perm, selected_row, selected_cell, hovered_row, hovered_cell, hdr_c, cell_c, even_c, odd_c, hover_c, sel_c
 
@@ -233,13 +215,12 @@ function plot!(plot::TablePlot)
         colors = Vector{RGBAf}(undef, n_rects)
         nc == 0 && return colors
 
-        hdr_color = to_color(hdr_c)
-        for i in 1:nc
-            colors[i] = hdr_color
-        end
+        fill!(@view(colors[1:nc]), to_color(hdr_c))
 
-        # Check if cell_color is a matrix (per-cell coloring)
         use_matrix = cell_c isa AbstractMatrix
+        uniform_color = cell_c === automatic || use_matrix ? nothing : to_color(cell_c)
+        even_color, odd_color = to_color(even_c), to_color(odd_c)
+        hover_color, selected_color = to_color(hover_c), to_color(sel_c)
         sel_cell_row, sel_cell_col = selected_cell
         hov_cell_row, hov_cell_col = hovered_cell
 
@@ -250,22 +231,22 @@ function plot!(plot::TablePlot)
                 # Priority: cell selection > row selection > cell hover > row hover > matrix color > alternating
                 colors[idx] = if sel_cell_row == actual_row && sel_cell_col == col
                     # Cell-level selection (highest priority)
-                    to_color(sel_c)
+                    selected_color
                 elseif actual_row == selected_row
                     # Row-level selection
-                    to_color(sel_c)
+                    selected_color
                 elseif hov_cell_row == row && hov_cell_col == col
                     # Cell-level hover
-                    to_color(hover_c)
+                    hover_color
                 elseif row == hovered_row
                     # Row-level hover
-                    to_color(hover_c)
+                    hover_color
                 elseif use_matrix && actual_row <= size(cell_c, 1) && col <= size(cell_c, 2)
                     to_color(cell_c[actual_row, col])
-                elseif iseven(row)
-                    to_color(even_c)
+                elseif uniform_color !== nothing
+                    uniform_color
                 else
-                    to_color(odd_c)
+                    iseven(row) ? even_color : odd_color
                 end
             end
         end
@@ -276,7 +257,7 @@ function plot!(plot::TablePlot)
     map!(
         plot, [
             :n_cols, :visible_rows, :scroll_offset, :sort_perm,
-            :header_textcolor, :cell_textcolor, :header_fontsize, :cell_fontsize,
+            (:header, :textcolor), (:cell, :textcolor), (:header, :fontsize), (:cell, :fontsize),
         ],
         [:text_colors, :text_fontsizes]
     ) do nc, vr, offset, perm, hdr_tc, cell_tc, hdr_fs, cell_fs
@@ -309,7 +290,9 @@ function plot!(plot::TablePlot)
         (colors, sizes)
     end
 
-    # ===== CHILD PLOTS - pass computed nodes directly =====
+    ############################################
+    # CHILD PLOTS - pass computed nodes directly
+    ############################################
 
     map!(plot, :cell_sizes, :marker_offsets) do sizes
         return [Vec2f(0.5 * v[1], -0.5 * v[2]) for v in sizes]
@@ -340,8 +323,8 @@ function plot!(plot::TablePlot)
     # Single linesegments for grid
     lp = linesegments!(
         plot, plot[:line_points];
-        color = plot[:grid_color],
-        linewidth = plot[:grid_linewidth],
+        color = plot.attributes.grid.color,
+        linewidth = plot.attributes.grid.linewidth,
         inspectable = false
     )
     translate!(lp, 0, 0, 0.5)
@@ -349,22 +332,25 @@ function plot!(plot::TablePlot)
     return plot
 end
 
-# ===== HELPER FUNCTIONS FOR INTERACTION =====
+##################################
+# HELPER FUNCTIONS FOR INTERACTION
+##################################
 # These work with the plot's ComputeGraph
 
 function table_row_at_position(p::TablePlot, mp::Point2f)
     attr = p.attributes
     bbox = attr[:bbox][]
-    hh = attr[:header_height][]
-    rh = attr[:row_height][]
+    hh = attr.header.height[]
     y_top = top(bbox)
 
     mp[2] > y_top - hh && return :header
 
     y_offset = y_top - hh - mp[2]
-    row = floor(Int, y_offset / rh) + 1
-    vr = attr[:visible_rows][]
-    return (row >= 1 && row <= vr) ? row : 0
+    for (row, height) in enumerate(attr[:row_height_vec][])
+        0 <= y_offset < height && return row
+        y_offset -= height
+    end
+    return 0
 end
 
 function table_col_at_position(p::TablePlot, mp::Point2f)
@@ -373,9 +359,9 @@ function table_col_at_position(p::TablePlot, mp::Point2f)
     isempty(cw) && return 0
 
     x_offset = mp[1] - left(attr[:bbox][])
-    cumw = cumsum(cw)
-    for (i, cx) in enumerate(cumw)
-        x_offset <= cx && return i
+    for (col, width) in enumerate(cw)
+        0 <= x_offset <= width && return col
+        x_offset -= width
     end
     return 0
 end
@@ -421,13 +407,12 @@ Automatically resize columns to fit their content based on text bounding boxes.
 Call this after the table has been rendered at least once.
 """
 function auto_fit_columns!(p::TablePlot)
-    # Get the text plot (third child: poly, lines, text)
     text_plot = p.plots[2]::Text
 
     attr = p.attributes
     nc = attr[:n_cols][]
     vr = attr[:visible_rows][]
-    pad = attr[:cell_padding][]
+    pad = attr.cell.padding[]
 
     nc == 0 && return p
 
@@ -475,7 +460,7 @@ function auto_fit_rows!(p::TablePlot)
     attr = p.attributes
     nc = attr[:n_cols][]
     vr = attr[:visible_rows][]
-    pad = attr[:cell_padding][]
+    pad = attr.cell.padding[]
 
     vr == 0 && return p
 
@@ -504,7 +489,9 @@ function auto_fit_rows!(p::TablePlot)
 end
 
 
-# ===== TABLE BLOCK INITIALIZATION =====
+############################
+# TABLE BLOCK INITIALIZATION
+############################
 
 function initialize_block!(t::Table)
     scene = t.blockscene
@@ -531,19 +518,18 @@ function initialize_block!(t::Table)
         end
     end
 
-    # ===== EVENT HANDLING =====
+    ################
+    # EVENT HANDLING
+    ################
     e = scene.events
     last_click_time = Ref(0.0)
     last_click_cell = Ref((0, 0))
     was_inside = Ref(false)
 
-    # Mouse position + button handler (priority to consume events)
-    onany(scene, e.mouseposition, e.mousebutton; priority = 63) do position, butt
-        # Inert when hidden or when another scene covers the pointer.
-        Makie.receives_events(scene) || return Consume(false)
-        mp = screen_relative(scene, position)
+    function handle_pointer(position, butt)
+        mp = Point2f(position)
 
-        if !is_inside_table(plot, mp)
+        if !is_inside_table(plot, mp) || !mouse_over_scene(scene)
             if was_inside[]
                 was_inside[] = false
                 update!(attr; hovered_row = 0, hovered_cell = (0, 0))
@@ -562,7 +548,7 @@ function initialize_block!(t::Table)
             update!(attr; hovered_row = row isa Int ? row : 0, hovered_cell = (0, 0))
         end
 
-        # Handle left clicks
+        butt === nothing && return Consume(false)
         if butt.button == Mouse.left && butt.action == Mouse.press
             if row == :header && col > 0 && t.sortable[]
                 # Sort by column
@@ -625,10 +611,16 @@ function initialize_block!(t::Table)
         return Consume(false)
     end
 
-    # Scroll handling
-    on(scene, e.scroll; priority = 62) do (x, y)
-        Makie.receives_events(scene) || return Consume(false)
-        mp = screen_relative(scene, e.mouseposition[])
+    on(scene, e.mouseposition; priority = 63) do pos
+        handle_pointer(pos, nothing)
+    end
+    on(scene, e.mousebutton; priority = 63) do event
+        handle_pointer(e.mouseposition[], event)
+    end
+
+    on(scene, e.scroll; priority = 62) do (_, y)
+        mouse_over_scene(scene) || return Consume(false)
+        mp = Point2f(e.mouseposition[])
 
         if is_inside_table(plot, mp)
             nr = attr[:n_rows][]

@@ -256,7 +256,7 @@ function StageCamera(
 
     on(camera(scene), events(scene).mousebutton, priority = 100) do event
         if event.action == Mouse.press
-            cam.selected[] = is_mouseinside(scene)
+            cam.selected[] = mouse_over_scene(scene)
         end
         return Consume(false)
     end
@@ -470,7 +470,7 @@ function add_mouse_controls!(scene, cam::StageCamera)
     e = events(scene)
 
     on(camera(scene), e.mousebutton) do event
-        if event.action == Mouse.press && is_mouseinside(scene)
+        if event.action == Mouse.press && mouse_over_scene(scene)
             if ispressed(scene, reposition_button[])
                 plot, _, position = ray_assisted_pick(scene)
                 p3d = to_ndim(Point3d, position, 0.0)
@@ -516,7 +516,7 @@ function add_mouse_controls!(scene, cam::StageCamera)
     end
 
     return on(camera(scene), e.scroll) do scroll
-        if is_mouseinside(scene) && ispressed(scene, scroll_mod[])
+        if mouse_over_scene(scene) && ispressed(scene, scroll_mod[])
             if ispressed(scene, zoom_mod[])
                 zoom_cam!(cam, (1.0 + 0.1 * mouse_zoomspeed[])^scroll[2])
             elseif ispressed(scene, focal_length_mod[])

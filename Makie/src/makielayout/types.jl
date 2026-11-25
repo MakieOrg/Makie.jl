@@ -1038,14 +1038,21 @@ start/stop the frame animation.
 """
 @Block Spinner begin
     @attributes begin
+        "Text displayed beside the spinner."
         message = "Working…"
+        "Whether to display and animate the spinner."
         running::Bool = false
+        "Font size of the spinner and message."
         fontsize::Float32 = @inherit(:fontsize, 20.0f0)
+        "Color of the spinner and message."
         color::RGBAf = @inherit((:colors, :accent), :black)
+        "Sequence of glyphs used as animation frames."
         frames::Vector{String} = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        "Time between animation frames in seconds."
         frame_interval::Float32 = 0.09f0
         tellwidth::Bool = false
         tellheight::Bool = false
+        "Whether the spinner block is visible."
         visible::Bool = true
     end
 end
@@ -1598,6 +1605,56 @@ closable). The active tab is the scalar `active` attribute.
 end
 
 
+table_style_attributes() = @DocumentedAttributes begin
+    "Header appearance and geometry."
+    header = @attributes begin
+        "Background color of the header."
+        color = RGBf(0.2, 0.2, 0.2)
+        "Text color of the header."
+        textcolor = :white
+        "Font size of the header."
+        fontsize = 14.0f0
+        "Height of the header in pixels."
+        height = 30.0
+        "Whether to show the sort direction indicator."
+        show_sort_indicator = true
+    end
+    "Data cell appearance and geometry."
+    cell = @attributes begin
+        "A background color or matrix of per-cell colors. `automatic` alternates row colors."
+        color = automatic
+        "Background color of even rows."
+        color_even = RGBf(0.98, 0.98, 0.98)
+        "Background color of odd rows."
+        color_odd = RGBf(0.94, 0.94, 0.94)
+        "Background color of the hovered row."
+        color_hover = @inherit((:colors, :accent_subtle))
+        "Background color of the selected row."
+        color_selected = @inherit((:colors, :accent))
+        "A text color or matrix of per-cell text colors."
+        textcolor = :black
+        "Font size of data cell text."
+        fontsize = 12.0f0
+        "Default row height in pixels."
+        height = 25.0
+        "Padding inside cells as (left, right, bottom, top)."
+        padding = (8, 8, 4, 4)
+    end
+    "Grid line styling."
+    grid = @attributes begin
+        "Whether to show grid lines."
+        visible = true
+        "Color of grid lines."
+        color = RGBf(0.8, 0.8, 0.8)
+        "Width of grid lines."
+        linewidth = 1.0
+        "Whether to show vertical grid lines."
+        show_vertical_lines = true
+        "Whether to show horizontal grid lines."
+        show_horizontal_lines = true
+    end
+end
+
 """
     Table(fig_or_scene; kwargs...)
 
@@ -1633,16 +1690,16 @@ end
         column_names = automatic
         "Column widths. Can be `:auto` (equal widths), `:fit` (auto-fit to content), a number (all same width), or a vector of widths."
         column_widths = :auto
-        "Row heights. Can be `automatic` (uniform using row_height), a number, or a vector of heights per row."
+        "Row heights. Can be `automatic` (uniform using `cell.height`), a number, or a vector of heights per row."
         row_heights = automatic
 
         "Index of the currently selected row. 0 means no selection."
         i_selected = 0
-        "The data of the currently selected row as a NamedTuple. This is the output observable to listen to."
+        "The data of the currently selected row as a NamedTuple. Use this attribute to observe selection changes."
         selection = nothing
         "Selected cell as (row, col) tuple. (0, 0) means no cell selection."
         i_selected_cell = (0, 0)
-        "The data of the currently selected cell. This is the output observable for cell-level selection."
+        "The data of the currently selected cell. Use this attribute to observe cell selection changes."
         cell_selection = nothing
 
         "Index of the column to sort by. 0 means no sorting."
@@ -1659,46 +1716,7 @@ end
         "Scroll speed multiplier for mouse wheel scrolling."
         scroll_speed = 3.0
 
-        "Background color of the header row."
-        header_color = RGBf(0.2, 0.2, 0.2)
-        "Text color of the header row."
-        header_textcolor = :white
-        "Font size of the header text."
-        header_fontsize = 14.0f0
-        "Height of the header row in pixels."
-        header_height = 30.0
-        "Whether to show sort direction indicator (↑/↓) in the header."
-        show_sort_indicator = true
-
-        "Per-cell background colors as a Matrix. If `automatic`, uses even/odd coloring."
-        cell_color = automatic
-        "Background color of even-numbered data rows (when cell_color is automatic)."
-        cell_color_even = RGBf(0.98, 0.98, 0.98)
-        "Background color of odd-numbered data rows (when cell_color is automatic)."
-        cell_color_odd = RGBf(0.94, 0.94, 0.94)
-        "Background color of the hovered row."
-        cell_color_hover = @inherit((:colors, :accent_subtle))
-        "Background color of the selected row."
-        cell_color_selected = @inherit((:colors, :accent))
-        "Text color of data cells."
-        cell_textcolor = :black
-        "Font size of data cell text."
-        cell_fontsize = 12.0f0
-        "Height of each data row in pixels."
-        row_height = 25.0
-        "Padding inside cells as (left, right, bottom, top)."
-        cell_padding = (8, 8, 4, 4)
-
-        "Whether to show grid lines."
-        show_grid = true
-        "Color of grid lines."
-        grid_color = RGBf(0.8, 0.8, 0.8)
-        "Width of grid lines."
-        grid_linewidth = 1.0
-        "Whether to show vertical grid lines."
-        show_vertical_lines = true
-        "Whether to show horizontal grid lines."
-        show_horizontal_lines = true
+        table_style_attributes()...
 
         "Callback function `(table, row_index, row_data) -> nothing` called on row click."
         on_row_click = nothing
@@ -2703,45 +2721,46 @@ SomeBlock(fig[i, j][1, 1], ...)
 """
 @Block Container
 
+"""
+    HoverMenu(figposition; kwargs...)
+
+A bar that appears near the top of a figure and offers Save, Copy, and Reset.
+Style the bar through `box` and its buttons through `button`.
+"""
 @Block HoverMenu begin
-    @forwarded_layout
-    box::Box
-    save_button::Button
-    copy_button::Button
-    reset_button::Button
     @attributes begin
-        "The horizontal alignment of the HoverMenu bar"
+        "The horizontal alignment of the bar."
         halign = :center
-        "The vertical alignment of the HoverMenu bar"
+        "The vertical alignment of the bar."
         valign = :top
-        "The width of the HoverMenu bar"
+        "The width of the bar."
         width = 220
-        "The height of the HoverMenu bar"
+        "The height of the bar."
         height = 40
-        "Controls if the parent layout can adjust to this element's width"
         tellwidth = false
-        "Controls if the parent layout can adjust to this element's height"
         tellheight = false
-        "The background color of the bar"
-        bar_color = @inherit((:colors, :surface))
-        "The stroke color of the bar"
-        bar_strokecolor = @inherit((:colors, :border))
-        "The corner radius of the bar"
-        corner_radius = 8
-        "The button background color"
-        button_color = @inherit((:colors, :surface))
-        "The button hover color"
-        button_color_hover = @inherit((:colors, :accent_subtle))
-        "The button color while pressed"
-        button_color_active = @inherit((:colors, :accent))
-        "The button label color"
-        label_color = @inherit((:colors, :text))
-        "The button label color while pressed"
-        label_color_active = @inherit((:colors, :text_on_accent))
-        "The button font"
-        font = :regular
-        "The button font size"
-        fontsize = 12
+
+        "Styling for the bar's background."
+        box = @attributes begin
+            filtered_attributes(Box; allow = (:color, :strokecolor, :strokewidth, :cornerradius))...
+            color = @inherit((:colors, :surface))
+            strokecolor = @inherit((:colors, :border))
+            cornerradius = 8
+        end
+        "Styling shared by the Save, Copy, and Reset buttons."
+        button = @attributes begin
+            filtered_attributes(
+                Button;
+                allow = (
+                    :buttoncolor, :buttoncolor_hover, :buttoncolor_active, :labelcolor,
+                    :labelcolor_hover, :labelcolor_active, :font, :fontsize, :cornerradius,
+                ),
+            )...
+            labelcolor_hover = @inherit((:colors, :text))
+            font = :regular
+            fontsize = 12
+            cornerradius = 4
+        end
         "The axis to reset when clicking the reset button"
         target_axis = nothing
     end
@@ -2762,9 +2781,7 @@ The body auto-sizes to its content (floored at `min_size`); pass numbers for
 body but does not scroll by default — nest a [`ScrollArea`](@ref) for a
 scrollable region (e.g. a fixed header beside a scrolling body).
 
-Pointer isolation uses the scene-stacking event router: the overlay scene is
-marked `captures_mouse = true`, so while the modal is open only its own
-subtree receives events.
+While the modal is open, its overlay blocks pointer input to sibling scenes.
 """
 @Block Modal begin
     overlay::Scene

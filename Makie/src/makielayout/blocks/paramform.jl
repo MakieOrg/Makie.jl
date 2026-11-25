@@ -118,21 +118,15 @@ function scalar_widget(gridpos, ::Type{T}, constraint, default, width) where {T}
     return tb
 end
 
-"""
-    value_observable(widget) -> Observable
-
-The observable carrying a widget's current value, wired into the form's
-compute graph as an input node.
-"""
-value_observable(m::Menu) = m.selection
-value_observable(s::Slider) = s.value
-value_observable(t::Toggle) = t.active
-value_observable(tb::Textbox) = tb.stored_string
+widget_value(m::Menu) = m.selection
+widget_value(s::Slider) = s.value
+widget_value(t::Toggle) = t.active
+widget_value(tb::Textbox) = tb.stored_string
 
 """
     raw_value(widget, raw, T::Type)
 
-Convert the widget's raw observable value toward field type `T`. Menu, Slider
+Convert the widget's raw value toward field type `T`. Menu, Slider
 and Toggle values are already typed; Textbox values are parsed via `parse`.
 """
 raw_value(::Union{Menu, Slider, Toggle}, raw, ::Type) = raw
@@ -242,7 +236,7 @@ end
     build_field!(pf, field, T, constraint, default, row, accessory)
 
 Build one form row (label + widget) at `row` in `pf.layout` and wire the
-widget into `pf.attributes`: the widget's value observable becomes input
+widget into `pf.attributes`: the widget's value becomes input
 `Symbol(field, "__raw")`, and a node named `field` converts + validates it via
 [`try_field_value`](@ref), returning `nothing` on invalid input so the graph
 keeps its last valid value.
@@ -257,10 +251,10 @@ function build_field!(pf::ParamForm, field, ::Type{T}, constraint, default, row,
     w = widget_for(pf.layout[row, 2], T, constraint, default, pf.widgetwidth[])
     pf.widgets[field] = w
     raw = Symbol(field, "__raw")
-    add_input!(pf, raw, value_observable(w))
+    add_input!(pf, raw, widget_value(w))
     register_computation!(pf, [raw], [field]) do inputs, _, _
         v = try_field_value(w, inputs[1], T, constraint)
-        return v === nothing ? nothing : (v,)
+        return v === nothing ? ComputePipeline.skip_update : (v,)
     end
     if accessory !== nothing
         a = accessory(field, pf.layout[row, 3])

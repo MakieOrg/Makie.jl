@@ -121,12 +121,8 @@ end
 ```
 """
 function addmouseevents!(scene, elements...; priority = 1)
-    # A hidden scene shouldn't generate mouse events for anything anchored
-    # to it — without this check, Block widgets (Button, Checkbox, …) keep
-    # firing clicks/hover on their bbox even after the block has been
-    # visually hidden by `block.blockscene.visible[] = false`.
-    is_mouse_over_relevant_area() = scene.visible[] &&
-        (isempty(elements) ? Makie.is_mouseinside(scene) : mouseover(scene, elements...))
+    is_mouse_over_relevant_area() = mouse_over_scene(scene) &&
+        (isempty(elements) || mouseover(scene, elements...))
     return _addmouseevents!(scene, is_mouse_over_relevant_area, Makie.mouseposition_px, priority)
 end
 function addmouseevents!(scene, bbox::Observables.AbstractObservable{<:Rect2}; priority = 1)
@@ -137,7 +133,7 @@ function addmouseevents!(scene, bbox::Observables.AbstractObservable{<:Rect2}; p
     # bboxes as soon as the blockscene inherits an offset viewport (e.g. for
     # a widget placed inside a ScrollArea/Tabs content scene).
     global_mouseposition_px(scene) = Point2f(events(scene).mouseposition[])
-    is_mouse_over_relevant_area() = scene.visible[] && (global_mouseposition_px(scene) in bbox[])
+    is_mouse_over_relevant_area() = global_mouseposition_px(scene) in bbox[] && mouse_over_scene(scene)
     return _addmouseevents!(scene, is_mouse_over_relevant_area, global_mouseposition_px, priority)
 end
 

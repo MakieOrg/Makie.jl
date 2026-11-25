@@ -7,8 +7,8 @@ function initialize_block!(m::Modal)
 
     # Overlay scene: full-figure, translucent backdrop drawn as a plot, lifted
     # far above regular content. `captures_mouse = true` makes it the pointer
-    # cover for the whole window while visible, so only the modal's own
-    # subtree receives events (see `covers_pointer`).
+    # cover for the whole window while visible, so sibling scenes cannot
+    # receive pointer events.
     overlay = Scene(
         blockscene; clear = false,
         viewport = blockscene.viewport, visible = is_open
@@ -116,12 +116,11 @@ function initialize_block!(m::Modal)
     # on the shared events; inert while closed.
     e = events(blockscene)
     on(blockscene, e.mouseposition; priority = 90) do mp
-        is_open[] || return Consume(false)
-        close_hovered[] = Point2f(mp) in close_rect[]
+        close_hovered[] = mouse_over_scene(overlay) && Point2f(mp) in close_rect[]
         return Consume(false)
     end
     on(blockscene, e.mousebutton; priority = 90) do ev
-        (is_open[] && ev.button == Mouse.left && ev.action == Mouse.press) || return Consume(false)
+        (ev.button == Mouse.left && ev.action == Mouse.press && mouse_over_scene(overlay)) || return Consume(false)
         mp = Point2f(e.mouseposition[])
         if mp in close_rect[]
             close!(m)
@@ -154,7 +153,7 @@ end
 """
     replace_content!(f, m::Modal)
 
-Clear the modal's content and rebuild it by calling `f(subfigure)`, then
+Clear the modal's content and rebuild it by calling `f(content)`, then
 resize the modal to the new content.
 
 Deleting blocks leaves their rows and columns behind, so rebuilding
@@ -171,7 +170,7 @@ end
 ```
 """
 function replace_content!(f, m::Modal)
-    sf = m.subfigure
+    sf = m.content
     layout = sf.layout
     for c in copy(contents(layout))
         delete_content!(c)

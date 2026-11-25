@@ -60,14 +60,14 @@ const FOLDEDHEIGHT = 26 + 8
     @testset "a hidden card's content is inert" begin
         fig, stack, cards = cardstack(3)
         label = contents(cards[2][1, 1])[1]
-        @test label.blockscene.visible[]
+        @test Makie.scene_visible(label.blockscene)
         cards[2].visible = false
-        @test !label.blockscene.visible[]
+        @test !Makie.scene_visible(label.blockscene)
         cards[2].visible = true
-        @test label.blockscene.visible[]
+        @test Makie.scene_visible(label.blockscene)
         # Folding hides the body too, without collapsing the card away.
         cards[2].open = false
-        @test !label.blockscene.visible[]
+        @test !Makie.scene_visible(label.blockscene)
     end
 
     @testset "hide! does NOT collapse" begin
@@ -88,7 +88,7 @@ const FOLDEDHEIGHT = 26 + 8
         cards[2].visible = false
         label = contents(cards[2][1, 1])[1]
         Makie.unhide!(cards[2])            # e.g. scrolled back into view
-        @test !label.blockscene.visible[]  # still filtered out
+        @test !Makie.scene_visible(label.blockscene)  # still filtered out
         @test stackheight(stack) == 2 * CARDHEIGHT
     end
 
@@ -133,12 +133,6 @@ const FOLDEDHEIGHT = 26 + 8
 end
 
 @testset "Card scenes" begin
-    # The card owns a scene for itself and a nested one for its body. Both matter:
-    # a container that only hides its OWN scene leaves the blocks a caller placed
-    # in it drawing, because those are separate blocks with separate scenes — and
-    # a Subfigure culling its scrolled-out content will happily `unhide!` them
-    # again. Parenting makes the card's state win, because `unhide!` returns early
-    # on a block whose parent scene is invisible.
     fig, stack, cards = cardstack(3)
     c = cards[2]
     label = contents(c[1, 1])[1]

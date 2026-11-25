@@ -10,33 +10,6 @@ struct CardVisuals
 end
 
 """
-Recursively `hide!`/`unhide!` every block placed inside `gl`.
-
-Blocks that CONTAIN blocks (`ParamForm`, `Container`, another `Card`) keep them
-in a layout of their own, and every one of those has its own blockscene — so
-hiding the container's scene leaves its children drawing. A hidden card whose
-sliders kept painting over the card below it is what this recursion is for.
-
-A nested `Card` is left to its own `hide!`, which knows whether that card is
-folded or filtered out and must not be overridden from outside.
-"""
-function set_content_visible!(gl::GridLayout, visible::Bool)
-    for gc in gl.content
-        c = gc.content
-        if c isa GridLayout
-            set_content_visible!(c, visible)
-        elseif c isa Card
-            visible ? unhide!(c) : hide!(c)
-        elseif c isa Block
-            visible ? unhide!(c) : hide!(c)
-            inner = getfield(c, :layout)
-            inner isa GridLayout && set_content_visible!(inner, visible)
-        end
-    end
-    return
-end
-
-"""
     Card(fig_or_scene; title = "Card", kwargs...)
 
 A titled, foldable container: a header bar with a fold arrow, a title and an
@@ -139,13 +112,7 @@ end
 """
     filter_cards!(predicate, stack::GridLayout, cards)
 
-Set each card's `visible` to `predicate(card)`, relayouting `stack` ONCE
-instead of once per card. This is how a filter box over a card list should
-run: cards whose state does not change are not touched at all.
-
-Measured on a stack of 100 cards, toggling 50: 147 ms one at a time, 14 ms
-through here — and 433 ms to throw the cards away and build them again, which
-is what makes rebuilding on every keystroke the wrong shape.
+Set each card's `visible` to `predicate(card)` and update the layout once.
 
 ```julia
 filter_cards!(stack, cards) do card
@@ -199,25 +166,16 @@ function initialize_block!(card::Card)
     rowgap!(layout, 0)
     colsize!(layout, 1, Relative(1.0))
 
-    # THE BODY GETS ITS OWN SCENE, for the same reason `Subfigure` has one: the
-    # blocks a caller puts in `card[i, j]` are separate blocks with separate
-    # scenes, and a container that only hides ITS scene leaves them drawing.
-    # Parenting them here makes the card's state win — `unhide!` returns early on
-    # a block whose parent scene is invisible, so a `Subfigure` culling its
-    # scrolled-out content cannot un-hide a card that is folded or filtered out.
-    # (That bug looked like four cards' sliders painted on top of the one card
-    #  the filter had left.)
+    # Header and body both inherit the card's visibility. Folding hides the body.
     contentarea = lift(blockscene, card.layoutobservables.computedbbox, card.spacing) do bb, sp
         s = min(Float32(sp), bb.widths[2])
         return round_to_IRect2D(Rect2f(Point2f(bb.origin[1], bb.origin[2] + s),
                                        Vec2f(bb.widths[1], bb.widths[2] - s)))
     end
-    card.scene = Scene(blockscene; camera = campixel!, viewport = contentarea,
-                    visible = is_visible, clear = false)
-    # A SECOND scene for the body, nested in the first: hiding the card hides
-    # both, and FOLDING hides only this one. Without the nesting, folding had the
-    # same defect hiding did — the body's widgets kept drawing over the card
-    # below, because the cull walk found them under a visible parent.
+    card.scene = Scene(
+        blockscene; camera = campixel!, viewport = contentarea,
+        visible = is_visible, clear = false
+    )
     bodyarea = lift(blockscene, contentarea, card.headerheight) do ca, hh
         h = max(Float32(ca.widths[2]) - Float32(hh), 0.0f0)
         return round_to_IRect2D(Rect2f(Point2f(ca.origin), Vec2f(ca.widths[1], h)))
@@ -309,9 +267,6 @@ function initialize_block!(card::Card)
     end
 
     function apply_open!(isopen::Bool)
-        # A folded body is BOTH inert (its blocks stop drawing and stop taking
-        # clicks) and zero-height, so the card shrinks to its header.
-        set_content_visible!(card.body, isopen && card.visible[])
         card.body.height[] = isopen ? Auto(true, 1.0f0) : Fixed(0)
         return
     end
@@ -325,8 +280,6 @@ function initialize_block!(card::Card)
     # what makes a filtered list close up instead of showing gaps. The user's
     # own `height` is remembered so restoring does not clobber it.
     function apply_visible!(vis::Bool)
-        set_content_visible!(card.body, vis && card.open[])
-        set_content_visible!(card.header, vis)
         if vis
             card.height = card.userheight[]
         else
@@ -344,7 +297,7 @@ function initialize_block!(card::Card)
     on(blockscene, blockscene.events.mousebutton; priority = 55) do ev
         (ev.button === Mouse.left && ev.action === Mouse.press) || return Consume(false)
         card.visible[] || return Consume(false)
-        receives_events(blockscene) || return Consume(false)
+        mouse_over_scene(blockscene) || return Consume(false)
         pos = Point2f(blockscene.events.mouseposition[])
         pos in headerrect[] || return Consume(false)
         # The accessory cell belongs to whatever the user put there — a press
@@ -372,29 +325,14 @@ end
 Base.firstindex(c::Card, dim) = firstindex(c.body, dim)
 Base.lastindex(c::Card, dim) = lastindex(c.body, dim)
 
-# `hide!` is the SCROLL-CULLING path (a Subfigure hides content that scrolled
-# out of view) and it must not change the layout — a card that collapsed
-# because it scrolled away would change the very content size that decides
-# what is scrolled away. Collapsing is `visible`, and only `visible`.
+# Scroll culling uses the outer scene so the card keeps its layout size.
 function hide!(c::Card)
     c.blockscene.visible[] && (c.blockscene.visible[] = false)
-    # `_block` hides every block once before `initialize_block!` runs, so the
-    # sub-layouts are not there yet on that first call.
-    isdefined(c, :body) || return
-    set_content_visible!(c.body, false)
-    set_content_visible!(c.header, false)
     return
 end
 
 function unhide!(c::Card)
-    pv = parent(c.blockscene)
-    pv === nothing || pv.visible[] || return
     c.blockscene.visible[] || (c.blockscene.visible[] = true)
-    isdefined(c, :body) || return
-    # Re-sync with the bound state rather than forcing `true`: a card that is
-    # filtered out stays gone when it scrolls back into view.
-    set_content_visible!(c.body, c.visible[] && c.open[])
-    set_content_visible!(c.header, c.visible[])
     return
 end
 

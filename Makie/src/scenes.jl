@@ -126,10 +126,8 @@ mutable struct Scene <: AbstractScene
     data_inspector::Any
 
     """
-    Pointer-routing opt-in: when `true`, this scene claims the pointer for its
-    subtree while visible (see `covers_pointer`/`receives_events`), regardless
-    of `clear`/z. For overlays that paint a translucent backdrop via plots
-    (e.g. a modal dialog) instead of an opaque `clear = true` background.
+    When `true`, this visible scene can block pointer input to overlapping
+    sibling scenes, as used by modal dialogs.
     """
     captures_mouse::Bool
 

@@ -132,7 +132,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
     ) do scene, cam, startpos, active, event
         mp = e.mouseposition[]
         if ispressed(scene, cam.panbutton[])
-            if event.action == Mouse.press && is_mouseinside(scene) && !active[]
+            if event.action == Mouse.press && mouse_over_scene(scene) && !active[]
                 startpos[] = mp
                 active[] = true
                 return Consume(true)
@@ -173,7 +173,7 @@ function add_zoom!(scene::SceneLike, cam::Camera2D)
     return on(camera(scene), e.scroll) do x
         @extractvalue cam (zoomspeed, zoombutton, area)
         zoom = Float64(x[2])
-        if zoom != 0 && ispressed(scene, zoombutton) && is_mouseinside(scene)
+        if zoom != 0 && ispressed(scene, zoombutton) && mouse_over_scene(scene)
             pa = viewport(scene)[]
             z = (1.0 - zoomspeed)^zoom
             mp = Vec2d(e.mouseposition[]) - minimum(pa)
@@ -222,7 +222,7 @@ function selection_rect!(scene, cam, key)
     )
     waspressed = RefValue(false)
     on(camera(scene), events(scene).mousebutton, key) do event, key
-        if ispressed(scene, key) && is_mouseinside(scene)
+        if ispressed(scene, key) && mouse_over_scene(scene)
             mp = camspace(scene, cam, events(scene).mouseposition[])
             if event.action == Mouse.press && !waspressed[]
                 waspressed[] = true
@@ -252,7 +252,7 @@ function selection_rect!(scene, cam, key)
 
     on(camera(scene), events(scene).mouseposition, key) do mp, key
         # this is only true after a mousebutton update
-        if ispressed(scene, key) && is_mouseinside(scene)
+        if ispressed(scene, key) && mouse_over_scene(scene)
             mp = camspace(scene, cam, mp)
             mini = minimum(rect[])
             rect[] = Rectf(mini, mp - mini)

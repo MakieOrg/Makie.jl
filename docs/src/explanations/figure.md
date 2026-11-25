@@ -207,9 +207,9 @@ Customize the hover bar appearance:
 ```julia
 f = Figure(;
     gui=(
-        bar_color=(:gray90, 0.95),
-        bar_height=45,
-        button_color=RGBf(0.2, 0.4, 0.6),
+        box = (color = (:gray90, 0.95),),
+        height = 45,
+        button = (buttoncolor = RGBf(0.2, 0.4, 0.6),),
     ),
 )
 ```

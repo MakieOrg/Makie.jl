@@ -34,13 +34,13 @@ function create_gui_legend!(fig::Figure, ax, plot::AbstractPlot, options::Dict{S
         error("`margin` is only valid for overlay positioning (Symbol like :rt). For grid positions, use padding on the layout instead.")
     end
 
-    # Use Legend(ax; ...) for overlay, Legend(fig[pos...], ...) for grid
     if position isa Symbol
         return Legend(ax; options...)
     else
-        legend_options = filter(kv -> kv.first != :position, options)
-        title = get(options, :title, nothing)
-        return Legend(fig[position...], plots, labels, title; legend_options...)
+        legend_options = copy(options)
+        delete!(legend_options, :position)
+        title = pop!(legend_options, :title, nothing)
+        return Legend(fig[position...], ax, title; legend_options...)
     end
 end
 
@@ -60,14 +60,16 @@ function create_gui_colorbar!(fig::Figure, ax, plot::AbstractPlot, options::Dict
     position = get(options, :position, [1, 2])
     options = filter(((name, _),) -> name != :position, options)
 
-    # Check if plot has a colormap
-    cmap = nothing
-    try
-        cmap = Makie.extract_colormap_recursive(plot)
-    catch
+    cmap = try
+        extract_colormap(plot)
+    catch err
+        err isa ErrorException || rethrow()
         return nothing
     end
-    isnothing(cmap) && return nothing
+    colorbar_attributes_complete(cmap) || return nothing
+    colors = to_value(get(cmap, :dim_converted, get(cmap, :color, nothing)))
+    colors isa Union{AbstractArray{<:Colorant}, Colorant, ShaderAbstractions.Sampler, AbstractPattern} && return nothing
+
     # Validate margin usage
     if haskey(options, :margin) && !(position isa Symbol)
         error("`margin` is only valid for overlay positioning (Symbol like :rt). For grid positions, use padding on the layout instead.")

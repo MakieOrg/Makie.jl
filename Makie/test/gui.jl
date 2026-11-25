@@ -133,7 +133,7 @@ end
     colorbar4 = f4.gui_state.colorbar
     @test !isnothing(colorbar4)
     # Colorbar should have a colormap (derived from plot)
-    @test length(to_value(colorbar4.colormap)) > 0
+    @test colorbar4.colormap[] == pl4.colormap[]
 end
 
 @testset "Hover bar attributes" begin
@@ -150,7 +150,7 @@ end
     # Test hover bar with custom style (styling params directly in gui=)
     f2 = Figure(;
         gui = (
-            bar_color = :red,
+            box = (color = :red,),
             height = 50,
             width = 300,
         )
@@ -165,6 +165,10 @@ end
     # Check that custom style was applied
     @test gui2.height[] == 50
     @test gui2.width[] == 300
+    box = only(filter(b -> b isa Box, gui2.blocks))
+    @test Makie.to_color(box.color[]) == Makie.to_color(:red)
+    Makie.update!(gui2.attributes.box; color = :blue)
+    @test Makie.to_color(box.color[]) == Makie.to_color(:blue)
 end
 
 @testset "Figure constructor with GUI options" begin
@@ -285,7 +289,7 @@ end
     Makie.add_gui!(f2, ax2, pl2)
     @test !isnothing(f2.gui_state.colorbar)
     # Colorbar should have a colormap (derived from plot)
-    @test length(to_value(f2.gui_state.colorbar.colormap)) > 0
+    @test f2.gui_state.colorbar.colormap[] == pl2.colormap[]
 
     # Series with legend - multiple labels
     f3, ax3, pl3 = series(
@@ -372,4 +376,76 @@ end
     pl2 = lines!(ax2, rand(10))  # no colormap
     Makie.add_gui!(f2, ax2, pl2)
     @test isnothing(f2.gui_state.colorbar)
+end
+
+@testset "ParamForm values" begin
+    f = Figure()
+    p = ParamForm(
+        f[1, 1], (
+            gain = (0.5, Between(0.0, 1.0)),
+            mode = ("fast", OneOf(["fast", "slow"])),
+            enabled = (false, nothing),
+            count = (2, x -> x > 0),
+        ),
+        (field, pos) -> field === :count ? Button(pos; label = "Reset") : nothing,
+    )
+    @test p.values[] == (gain = 0.5, mode = "fast", enabled = false, count = 2)
+    @test p.accessories[:count] isa Button
+    set_close_to!(p.widgets[:gain], 0.25)
+    p.widgets[:mode].i_selected = 2
+    p.widgets[:enabled].active = true
+    box = p.widgets[:count]
+    box.stored_string = "invalid"
+    @test p.values[] == (gain = 0.25, mode = "slow", enabled = true, count = 2)
+    box.stored_string = "4"
+    @test p.values[].count == 4
+    @test ParamForm(f[2, 1], (;)).values[] == (;)
+end
+
+@testset "Spinner follows ticks and releases its listener" begin
+    f = Figure()
+    spinner = Spinner(f[1, 1]; frames = ["a", "b"], frame_interval = 0.1)
+    tick = events(f).tick
+    text = only(spinner.blockscene.plots)
+    @test only(text.text[]) == ""
+    spinner.running = true
+    @test startswith(only(text.text[]), "a")
+    tick[] = Makie.Tick(Makie.RegularRenderTick, 1, 0.15, 0.15)
+    @test startswith(only(text.text[]), "b")
+    spinner.running = false
+    @test only(text.text[]) == ""
+    n = length(tick.listeners)
+    delete!(spinner)
+    @test length(tick.listeners) == n - 1
+end
+
+@testset "Table input" begin
+    f = Figure()
+    clicked = Int[]
+    t = Table(
+        f[1, 1]; data = (n = [3, 1, 2, 4],), row_heights = [20, 40],
+        max_visible_rows = 2, cell = (color = :red,),
+        on_row_click = (_, row, _) -> push!(clicked, row),
+    )
+    Makie.update_state_before_display!(f)
+    p = only(t.blockscene.plots)
+    @test p.rect_colors[][2] == Makie.to_color(:red)
+    Makie.update!(t.attributes.cell; color = :blue)
+    @test p.rect_colors[][2] == Makie.to_color(:blue)
+    bbox = p.bbox[]
+    x = minimum(bbox)[1] + 4
+    y = maximum(bbox)[2]
+    e = events(f)
+
+    e.mouseposition[] = (x, y - 4)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    @test t.sort_column[] == 1
+
+    # Moving with the button held must not generate another click.
+    e.mouseposition[] = (x, y - p.header.height[] - 55)
+    @test isempty(clicked)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    @test clicked == [3]
+    @test t.selection[] == (n = 2,)
 end
