@@ -130,6 +130,7 @@ end
     @testset "Interactivity" begin
         include("interactivity/events.jl")
         include("interactivity/MouseStateMachine.jl")
+        include("interactivity/mouse_routing.jl")
         include("interactivity/camera_controls.jl")
         include("interactivity/Axis.jl")
         include("interactivity/Axis3.jl")

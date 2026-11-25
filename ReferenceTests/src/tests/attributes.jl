@@ -6,6 +6,20 @@
     fig
 end
 
+@reference_test "nested scene clipping and visibility" begin
+    scene = Scene(size = (300, 300), camera = campixel!)
+    parent = Scene(scene; viewport = Rect2i(50, 50, 150, 150), clear = true, backgroundcolor = :lightgray, camera = campixel!)
+    # extends past its parent, so only the overlap is drawn
+    child = Scene(parent; viewport = Rect2i(100, 100, 150, 150), clear = true, backgroundcolor = :orange, camera = campixel!)
+    scatter!(child, Point2f[(30, 30), (90, 90), (140, 140)], markersize = 40)
+    lines!(child, Point2f[(0, 60), (150, 60)], linewidth = 10)
+    # a visible scene inside a hidden one is not drawn
+    hidden = Scene(scene; viewport = Rect2i(210, 10, 80, 80), clear = true, backgroundcolor = :red, visible = false, camera = campixel!)
+    inner = Scene(hidden; viewport = Rect2i(220, 20, 60, 60), clear = true, backgroundcolor = :blue, visible = true, camera = campixel!)
+    scatter!(inner, Point2f(30, 30), markersize = 30, color = :black)
+    scene
+end
+
 @reference_test "(mesh)scatter with NaN rotation and markersize, edge cases" begin
     parent = Scene(size = (300, 300))
     scene = Scene(parent, viewport = Rect2f(0, 0, 150, 300))
