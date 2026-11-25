@@ -137,7 +137,7 @@ end
 
     fig, ax, p = image(rand(10, 10))
     bb = boundingbox(p)
-    @test bb.origin ≈ Point3f(0)
+    @test bb.origin ≈ Point3f(0.5, 0.5, 0)
     @test bb.widths ≈ Vec3f(10.0, 10.0, 0)
 
     fig, ax, p = image(1 .. 0, 1 .. 10, rand(10, 10))

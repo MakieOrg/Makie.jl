@@ -68,7 +68,7 @@ We can also now give the parent scene a more exciting background by using `campi
 campixel!(scene)
 w, h = size(scene) # get the size of the scene in pixels
 # this draws a line at the scene window boundary
-image!(scene, [sin(i/w) + cos(j/h) for i in 1:w, j in 1:h])
+image!(scene, 0..w, 0..h, [sin(i/w) + cos(j/h) for i in 1:w, j in 1:h], orientation = (:right, :down))
 scene
 ```
 
