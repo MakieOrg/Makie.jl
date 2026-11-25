@@ -19,6 +19,7 @@ using Makie: ClosedInterval, (..)
 using Makie: to_native
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 using Makie: BudgetedTimer, reset!
+using Makie: insert_scene!
 import Makie: to_font, el32convert, Shape, CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
 
 using ShaderAbstractions

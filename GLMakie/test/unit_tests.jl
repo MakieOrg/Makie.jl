@@ -13,7 +13,6 @@ is_freed(x::GLMakie.GPUArray) = x.id == 0
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache
-
     # Postprocessing shaders
     @test length(cache.shader_cache) == 4
     @test length(cache.template_cache) == 4
@@ -171,7 +170,8 @@ end
         picks = unique(pick(ax.scene, rect_px))
 
         # objects returned in plot_idx should be either grid lines (i.e. LineSegments) or Scatter points
-        @test all(pi -> pi[1] isa Union{LineSegments, Scatter, Makie.Mesh}, picks)
+        # Note: if Axis uses clear instead of a poly we get a nothing pick over a mesh pick
+        @test all(pi -> pi[1] isa Union{LineSegments, Scatter, Makie.Mesh, Nothing}, picks)
         # scatter points should have indices equal to those in 99991:99998
         scatter_plot_idx = filter(pi -> pi[1] isa Scatter, picks)
         @test Set(last.(scatter_plot_idx)) == Set(99991:99998)
@@ -191,14 +191,16 @@ end
     @test screen in fig.scene.current_screens
     @test length(fig.scene.current_screens) == 1
     @testset "all got freed" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test is_freed(v)
+        for glscene in screen.render_context.scenes
+            for robj in glscene.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test is_freed(v)
+                    end
                 end
-            end
-            for inst in values(robj.variants)
-                @test inst.vertexarray.id == 0
+                for inst in values(robj.variants)
+                    @test inst.vertexarray.id == 0
+                end
             end
         end
     end
@@ -207,19 +209,21 @@ end
     lines!(ax, 1:5, rand(5); linewidth = 3)
     text!(ax, [Point2f(2)], text = ["hi"])
     @testset "no freed object after replotting" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test !is_freed(v)
+        for glscene in screen.render_context.scenes
+            for robj in glscene.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test !is_freed(v)
+                    end
                 end
-            end
-            for inst in values(robj.variants)
-                @test inst.vertexarray.id != 0
+                for inst in values(robj.variants)
+                    @test inst.vertexarray.id != 0
+                end
             end
         end
     end
     close(screen)
-    @test isempty(screen.renderlist)
+    @test isempty(screen.render_context)
 end
 
 @testset "empty!(ax)" begin
@@ -233,7 +237,7 @@ end
 
     @test ax.scene.plots == [hmp, lp, tp]
 
-    robjs = map(x -> screen.cache[objectid(x)], [hmp, lp, tp.plots[1]])
+    robjs = map(x -> x.gl_renderobject[], [hmp, lp, tp.plots[1], tp.plots[2].plots...])
 
     empty!(ax)
 
@@ -253,19 +257,21 @@ end
     lines!(ax, 1:5, rand(5); linewidth = 3)
     text!(ax, [Point2f(2)], text = ["hi"])
     @testset "no freed object after replotting" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test !is_freed(v)
+        for glscene in screen.render_context.scenes
+            for robj in glscene.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test !is_freed(v)
+                    end
                 end
-            end
-            for inst in values(robj.variants)
-                @test inst.vertexarray.id != 0
+                for inst in values(robj.variants)
+                    @test inst.vertexarray.id != 0
+                end
             end
         end
     end
     close(screen)
-    @test isempty(screen.renderlist)
+    @test isempty(screen.render_context)
 end
 
 @testset "closing" begin
@@ -331,11 +337,8 @@ end
     for screen in screens
         @test !isopen(screen)
 
-        @test isempty(screen.screen2scene)
-        @test isempty(screen.screens)
-        @test isempty(screen.renderlist)
-        @test isempty(screen.cache)
         @test isempty(screen.cache2plot)
+        @test isempty(screen.render_context)
 
         @test isempty(screen.window_open.listeners)
         @test isempty(screen.render_tick.listeners)
@@ -527,7 +530,7 @@ end
     lines!(ax, sin.(0.0:0.1:2pi))
     text!(ax, 10.0, 0.0, text = "sine wave")
     empty!(ax)
-    ids = [robj.id for (_, _, robj) in screen.renderlist]
+    ids = [robj.id for glscene in screen.render_context.scenes for robj in glscene.renderobjects]
 
     lobj = lines!(ax, sin.(0.0:0.1:2pi))
     tex = text!(ax, 10.0, 0.0, text = "sine wave")
@@ -549,7 +552,7 @@ end
     scene = Scene()
     p = lines!(scene, Point2f[])
     screen = display(scene, visible = false)
-    robj = screen.cache[objectid(p)]
+    robj = p.gl_renderobject[]
     indexbuffer = robj.indices
     @test isempty(indexbuffer)
     @test length(indexbuffer) == 0 # skip condition for draw call
@@ -636,4 +639,45 @@ end
     updater(nothing, 0.0, 7.0)
     updater(Makie.RegularRenderTick)
     @test received == [(4.0, -3.0), (0.0, 7.0)]
+end
+
+@testset "Rendering a non-clearing root scene" begin
+    root = Scene(; size = (40, 40), backgroundcolor = :transparent, camera = campixel!)
+    scatter!(root, Point2f[(10, 20)]; markersize = 10, color = :red)
+    @test colorbuffer(root; px_per_unit = 1)[20, 10] == RGBf(1, 0, 0)
+
+    Scene(root; viewport = Rect2i(20, 0, 20, 40), clear = true, backgroundcolor = :blue)
+    img = colorbuffer(root; px_per_unit = 1)
+    @test img[20, 10] == RGBf(1, 0, 0)
+    @test img[20, 30] == RGBf(0, 0, 1)
+
+    screen = Makie.getscreen(root, GLMakie)
+    clear_stage = findfirst(stage -> stage isa GLMakie.ClearStage, screen.render_pipeline.stages)
+    @test size(GLMakie.stage_output(screen, clear_stage)) == (40, 40)
+end
+
+@testset "Per-scene depth with postprocessing" begin
+    for (ssao, oit) in ((false, false), (false, true), (true, true))
+        root = Scene(; size = (80, 80), camera = campixel!, clear = true, backgroundcolor = :white)
+        behind = scatter!(root, Point3f[(40, 40, 25), (24, 24, 25)]; color = :red, markersize = 12)
+        overlay = Scene(root; camera = campixel!, viewport = Rect2i(20, 20, 40, 40), backgroundcolor = :white)
+        front = scatter!(overlay, Point3f[(20, 20, -25)]; color = (:blue, 0.5), transparency = true, markersize = 12)
+        if ssao
+            mesh!(overlay, Rect2f(29, 29, 9, 9); ssao = true, color = :green)
+        end
+
+        pipeline = Makie.default_pipeline(; ssao, oit)
+        img = colorbuffer(root; px_per_unit = 1, render_pipeline = pipeline)
+        @test isapprox(RGBf(img[40, 40]), RGBf(0.5, 0, 0.5); atol = 4 / 255)
+        @test pick(root, Point2f(40, 40))[1] === front
+        @test pick(root, Point2f(24, 24))[1] === behind
+        if ssao
+            @test Makie.green(img[26, 53]) > 0.25
+        end
+
+        overlay.clear[] = true
+        img = colorbuffer(root; px_per_unit = 1)
+        @test isapprox(RGBf(img[40, 40]), RGBf(0.5, 0.5, 1); atol = 4 / 255)
+        @test pick(root, Point2f(24, 24)) == (nothing, 0)
+    end
 end
