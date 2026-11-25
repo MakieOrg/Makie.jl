@@ -54,6 +54,7 @@ void process_clip_planes(vec3 world_pos)
 uniform mat4 preprojection, projectionview, model;
 uniform int markerspace;
 uniform float px_per_unit;
+uniform mat4 scene_frame;
 uniform vec3 upvector;
 uniform vec3 f32c_scale;
 
@@ -99,7 +100,7 @@ void main(){
         }
         clip_pos += full_projectionview * vec4(f32c_scale * marker_offset, 0);
     }
-    gl_Position = vec4(clip_pos.xy, clip_pos.z + (clip_pos.w * depth_shift), clip_pos.w);
+    gl_Position = scene_frame * vec4(clip_pos.xy, clip_pos.z + (clip_pos.w * depth_shift), clip_pos.w);
 
     colorize(color_map, color, color_norm);
     o_objectid  = uvec2(objectid, gl_VertexID+1);

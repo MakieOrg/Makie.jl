@@ -206,7 +206,7 @@ Normalizes mouse position `pos` relative to the screen rectangle.
 """
 screen_relative(x, mpos) = screen_relative(get_scene(x), mpos)
 function screen_relative(scene::Scene, mpos)
-    return Point2f(mpos) .- Point2f(minimum(viewport(scene)[]))
+    return figure_px_to_scene_px(scene, mpos) .- Point2f(minimum(viewport(scene)[]))
 end
 
 @deprecate to_screen(scene::Scene, mpos) screen_relative false

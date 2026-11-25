@@ -29,6 +29,7 @@ uniform vec3 eyeposition;
 uniform vec3 view_direction;
 uniform lowp usampler3D voxel_id;
 uniform float depth_shift;
+uniform mat4 scene_frame;
 uniform bool depthsorting;
 uniform float gap;
 
@@ -152,6 +153,7 @@ void main() {
     o_world_pos = world_pos.xyz;
     gl_Position = projectionview * world_pos;
     gl_Position.z += gl_Position.w * depth_shift;
+    gl_Position = scene_frame * gl_Position;
 
     // For each plane the normal is constant in
     // +- normal = +- world_normalmatrix * unit_vecs[dim] direction. We just need

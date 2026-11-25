@@ -33,6 +33,7 @@ flat out float f_alpha_weight;
 flat out float f_cumulative_length;
 flat out ivec2 f_capmode;
 flat out vec4 f_linepoints;
+out vec2 f_local_px;
 flat out vec4 f_miter_vecs;
 out float gl_ClipDistance[8];
 
@@ -44,6 +45,7 @@ uniform float pattern_length;
 uniform vec2 resolution;
 uniform vec2 scene_origin;
 uniform float px_per_unit;
+uniform mat4 scene_frame;
 
 uniform int linecap;
 uniform int joinstyle;
@@ -79,7 +81,8 @@ struct LineVertex {
 };
 
 void emit_vertex(LineVertex vertex) {
-    gl_Position    = vec4(2.0 * vertex.position.xy / (px_per_unit * resolution) - 1.0, vertex.position.z, 1.0);
+    gl_Position    = scene_frame * vec4(2.0 * vertex.position.xy / (px_per_unit * resolution) - 1.0, vertex.position.z, 1.0);
+    f_local_px     = vertex.position.xy;
     f_quad_sdf    = vertex.quad_sdf;
     f_truncation   = vertex.truncation;
     f_linestart    = vertex.linestart;
@@ -446,14 +449,14 @@ void main(void)
     // two segments. I.e. (previous segment).p2 == (next segment).p1 and
     // (previous segment).miter_v2 == (next segment).miter_v1 should be the case.
     if (isvalid[0] && is_truncated[0] && (adjustment[0] == 0.0)) {
-        f_linepoints.xy = p1.xy + px_per_unit * scene_origin; // FragCoords are relative to the window
+        f_linepoints.xy = p1.xy; // FragCoords are relative to the window
         f_miter_vecs.xy = -miter_v1.xy;         // but p1/p2 is relative to the scene origin
     } else {
         f_linepoints.xy = vec2(-1e12);          // FragCoord > 0
         f_miter_vecs.xy = normalize(vec2(-1));
     }
     if (isvalid[3] && is_truncated[1] && (adjustment[1] == 0.0)) {
-        f_linepoints.zw = p2.xy + px_per_unit * scene_origin;
+        f_linepoints.zw = p2.xy;
         f_miter_vecs.zw = miter_v2.xy;
     } else {
         f_linepoints.zw = vec2(-1e12);

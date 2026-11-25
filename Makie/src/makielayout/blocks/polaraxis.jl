@@ -32,8 +32,9 @@ function initialize_block!(po::PolarAxis; palette = nothing)
     map!(to_color, po.scene, po.scene.backgroundcolor, po.backgroundcolor)
 
     po.overlay = Scene(
-        po.scene, scenearea, clear = false, backgroundcolor = :transparent,
+        po.blockscene, scenearea, clear = false, backgroundcolor = :transparent,
         transformation = Transformation(po.scene, transform_func = identity),
+        clip = nothing,
     )
 
     if !isnothing(palette)
@@ -153,7 +154,7 @@ function initialize_block!(po::PolarAxis; palette = nothing)
         align = @lift(($(po.titlealign), :bottom)),
         visible = po.titlevisible,
     )
-    translate!(titleplot, 0, 0, 9100) # Make sure this draws on top of clip
+    titleplot.zorder = 9100 # Make sure this draws on top of clip
 
     # Protrusions are space reserved for ticks and labels outside `scenearea`.
     # Since we handle ticks within out `scenearea` this only needs to reserve
@@ -587,6 +588,14 @@ function _polar_clip_polygon(
 end
 
 
+function polar_clip_shape(rlims, thetalims, r0, dir, theta_0, pv, area_widths)
+    to_px(p) = Point2f(((pv * Vec4f(p[1], p[2], 0, 1))[Vec(1, 2)] .+ 1) ./ 2 .* area_widths)
+    center = to_px(Point2f(0))
+    rmax_px = norm(to_px(Point2f(1, 0)) - center)
+    rmin_px = rmax_px * (rlims[1] - r0) / (rlims[2] - r0)
+    return AnnularSector(center, (rmin_px, rmax_px), dir .* (thetalims .+ theta_0))
+end
+
 function _tick_angle(theta_0, dir, ps, mirror)
     return dir * (last.(ps) .+ (theta_0 + ifelse(mirror, -pi, 0)))
 end
@@ -762,9 +771,16 @@ function draw_axis!(po::PolarAxis)
 
     # plot using the created observables
 
+    # grids live inside the clipped data scene so `gridz` orders them relative to the data
+    gridscene = Scene(
+        po.scene, po.overlay.viewport; clear = false, backgroundcolor = :transparent,
+        camera = po.overlay.camera, transformation = Transformation(po.overlay),
+        clip = nothing, zorder = po.gridz,
+    )
+
     # major grids
     rgridplot = lines!(
-        po.overlay, rgridpoints;
+        gridscene, rgridpoints;
         color = po.rgridcolor,
         linestyle = po.rgridstyle,
         linewidth = po.rgridwidth,
@@ -772,7 +788,7 @@ function draw_axis!(po::PolarAxis)
     )
 
     thetagridplot = linesegments!(
-        po.overlay, thetagridpoints;
+        gridscene, thetagridpoints;
         color = po.thetagridcolor,
         linestyle = po.thetagridstyle,
         linewidth = po.thetagridwidth,
@@ -780,7 +796,7 @@ function draw_axis!(po::PolarAxis)
     )
     # minor grids
     rminorgridplot = lines!(
-        po.overlay, rminorgridpoints;
+        gridscene, rminorgridpoints;
         color = po.rminorgridcolor,
         linestyle = po.rminorgridstyle,
         linewidth = po.rminorgridwidth,
@@ -788,7 +804,7 @@ function draw_axis!(po::PolarAxis)
     )
 
     thetaminorgridplot = linesegments!(
-        po.overlay, thetaminorgridpoints;
+        gridscene, thetaminorgridpoints;
         color = po.thetaminorgridcolor,
         linestyle = po.thetaminorgridstyle,
         linewidth = po.thetaminorgridwidth,
@@ -807,7 +823,7 @@ function draw_axis!(po::PolarAxis)
         po.overlay,
         outer_clip,
         color = clipcolor,
-        visible = po.clip,
+        visible = false,
         fxaa = false,
         transformation = Transformation(), # no polar transform for this
         shading = NoShading
@@ -829,7 +845,7 @@ function draw_axis!(po::PolarAxis)
         po.overlay,
         inner_clip,
         color = clipcolor,
-        visible = po.clip,
+        visible = false,
         fxaa = false,
         transformation = Transformation(),
         shading = NoShading
@@ -848,6 +864,15 @@ function draw_axis!(po::PolarAxis)
     end
 
     notify(po.target_r0)
+
+    onany(
+        po.blockscene, po.clip, po.target_rlims, po.target_thetalims, po.target_r0,
+        po.direction, po.target_theta_0,
+        po.overlay.camera.projectionview, po.overlay.viewport; update = true
+    ) do clip, rlims, thetalims, r0, dir, theta_0, pv, area
+        po.scene.clip[] = clip ? polar_clip_shape(rlims, thetalims, r0, dir, theta_0, pv, widths(area)) : automatic
+        return
+    end
 
     # spine traces circle sector - inner circle
     spine_points = map(
@@ -958,12 +983,9 @@ function draw_axis!(po::PolarAxis)
     # updates and z order
     notify(po.target_thetalims)
 
-    translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 9000)
-    translate!(spineplot, 0, 0, 9001)
-    translate!.((rticklabelplot, thetaticklabelplot, rtickplot, thetatickplot, rminortickplot, thetaminortickplot), 0, 0, 9002)
-    on(po.blockscene, po.gridz, update = true) do depth
-        translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot), 0, 0, depth)
-    end
+    foreach(p -> p.zorder = 9000, (outer_clip_plot, inner_clip_plot))
+    spineplot.zorder = 9001
+    foreach(p -> p.zorder = 9002, (rticklabelplot, thetaticklabelplot, rtickplot, thetatickplot, rminortickplot, thetaminortickplot))
 
     return rticklabelplot, thetaticklabelplot
 end

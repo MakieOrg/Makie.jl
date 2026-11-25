@@ -10,6 +10,7 @@ layout(triangle_strip, max_vertices = 4) out;
 
 uniform vec2 resolution;
 uniform float px_per_unit;
+uniform mat4 scene_frame;
 uniform float pattern_length;
 {{pattern_type}} pattern;
 uniform int linecap;
@@ -35,6 +36,7 @@ flat out float f_alpha_weight;
 flat out float f_cumulative_length;
 flat out ivec2 f_capmode;
 flat out vec4 f_linepoints;
+out vec2 f_local_px;
 flat out vec4 f_miter_vecs;
 
 const float AA_RADIUS = 0.8;
@@ -169,7 +171,8 @@ void main(void)
             // Get offset in y direction & compute vertex position
             float n_offset = (2 * y - 1) * (halfwidth + AA_THICKNESS);
             vec3 position = vec3[2](p1, p2)[x] + v_offset * v1 + n_offset * vec3(n1, 0);
-            gl_Position = vec4(2.0 * position.xy / (px_per_unit * resolution) - 1.0, position.z, 1.0);
+            gl_Position = scene_frame * vec4(2.0 * position.xy / (px_per_unit * resolution) - 1.0, position.z, 1.0);
+            f_local_px = position.xy;
 
             // Generate SDF's
 

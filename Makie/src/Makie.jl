@@ -207,6 +207,7 @@ include("dim-converts/dates-integration.jl")
 include("dim-converts/argument_dims.jl")
 
 include("scenes.jl")
+include("scene_frames.jl")
 include("float32-scaling.jl")
 
 include("interfaces.jl")
@@ -592,6 +593,7 @@ export content
 export resize_to_layout!
 
 include("makielayout/MakieLayout.jl")
+include("makielayout/block_frames.jl")
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/glyphs.jl")

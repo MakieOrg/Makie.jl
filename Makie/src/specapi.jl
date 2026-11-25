@@ -712,6 +712,7 @@ function diff_plotlist!(
                 push!(plotlist.plots, plot_obj)
             else
                 push!(scene.plots, plot_obj)
+                push!(scene.draw_order, plot_obj)
             end
             push_without_add!(scene, plot_obj)
             new_plots[plotspec] = plot_obj
