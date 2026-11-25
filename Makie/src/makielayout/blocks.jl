@@ -456,7 +456,7 @@ function init_layout!(b, args...; kwargs...)
     # connect the block's layoutobservables.computedbbox to the align action that
     # usually the GridLayout executes itself
     onany(GridLayoutBase.align_to_bbox!, b.layout, lobservables.computedbbox)
-    return
+    return b.layout
 end
 
 """
@@ -609,7 +609,12 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, graph)
 
-    b.blockscene = Scene(topscene, clear = false, camera = campixel!)
+    # Block content is positioned in the window-absolute coordinates of the
+    # layout `computedbbox`, so the blockscene uses `campixel!(; absolute = true)`
+    # (identical to the default at the window origin, but correct when the block
+    # lives inside an offset scene such as a `ScrollArea`/`Tabs` content area).
+    b.blockscene = Scene(topscene, clear = false)
+    campixel!(b.blockscene; absolute = true)
 
     if has_forwarded_layout(T)
         init_layout!(b)
@@ -937,7 +942,39 @@ function Base.delete!(block::Block)
     return
 end
 
+"""
+    clear!(x)
+
+Remove GUI content. A Makie `Block` is deleted from its figure; a `GridLayout`
+is cleared recursively (blocks and nested layouts removed). `nothing` is
+ignored. Replaces ad-hoc `hasmethod` reflection with plain dispatch.
+"""
+clear!(block::Block) = delete!(block)
+
+function clear!(gl::GridLayout)
+    for gc in reverse(copy(gl.content))
+        obj = gc.content
+        if obj isa GridLayout
+            clear!(obj)
+            GridLayoutBase.remove_from_gridlayout!(gc)
+        else
+            clear!(obj)
+        end
+    end
+    GridLayoutBase.trim!(gl)
+    return nothing
+end
+
+clear!(::Nothing) = nothing
+clear!(::Any) = nothing
+
 function unhide!(block::Block)
+    # Only unhide if the parent scene is visible — otherwise we'd
+    # override the parent → child visibility cascade and leave the
+    # blockscene rendering inside a hidden parent (e.g. a popup that
+    # hasn't been opened yet).
+    pv = parent(block.blockscene)
+    pv === nothing || pv.visible[] || return
     if !block.blockscene.visible[]
         block.blockscene.visible[] = true
     end

@@ -290,7 +290,7 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # scroll to zoom
     on(po.blockscene, e.scroll) do scroll
-        if is_mouseinside(po.scene) && (!po.rzoomlock[] || !po.thetazoomlock[])
+        if mouse_over_scene(po.scene) && (!po.rzoomlock[] || !po.thetazoomlock[])
             mp = mouseposition(po.scene)
             r = norm(mp)
             zoom_scale = (1.0 - po.zoomspeed[])^scroll[2]
@@ -376,7 +376,7 @@ function setup_camera_matrices!(po::PolarAxis)
     last_pos = RefValue(Point2f(0))
     last_px_pos = RefValue(Point2f(0))
     on(po.blockscene, e.mousebutton) do e
-        if e.action == Mouse.press && is_mouseinside(po.scene)
+        if e.action == Mouse.press && mouse_over_scene(po.scene)
             drag_state[] = (
                 ispressed(po.scene, po.r_translation_button[]),
                 ispressed(po.scene, po.theta_translation_button[]),
@@ -460,7 +460,7 @@ function setup_camera_matrices!(po::PolarAxis)
 
     # Reset button
     onany(po.blockscene, e.mousebutton, e.keyboardbutton) do e1, e2
-        if ispressed(e, po.reset_button[]) && is_mouseinside(po.scene) &&
+        if ispressed(e, po.reset_button[]) && mouse_over_scene(po.scene) &&
                 (e1.action == Mouse.press) && (e2.action == Keyboard.press)
             old_thetalims = po.target_thetalims[]
             if ispressed(e, Keyboard.left_shift)

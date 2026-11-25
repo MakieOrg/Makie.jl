@@ -316,7 +316,7 @@ function initialize_block!(m::Menu; default = 1)
         is_inside_menuscene = false
         consume = false
 
-        if Makie.is_mouseinside(menuscene) # the whole scene containing all options
+        if Makie.mouse_over_scene(menuscene) # the whole scene containing all options
             is_inside_menuscene = true
             # Is inside the expanded menu selection (the polys cover the whole
             # selectable area and are in pixel space relative to menuscene)
@@ -389,7 +389,7 @@ function initialize_block!(m::Menu; default = 1)
     end
 
     on(blockscene, menuscene.events.scroll; priority = 61) do (x, y)
-        if is_mouseinside(menuscene)
+        if mouse_over_scene(menuscene)
             t = translation(menuscene)[]
             # Hack to differentiate mousewheel and trackpad scrolling
             step = m.scroll_speed[] * y

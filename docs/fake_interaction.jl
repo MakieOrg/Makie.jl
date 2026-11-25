@@ -15,6 +15,7 @@ export KeyPress
 export KeyDown, KeyUp
 export Lazy
 export Wait
+export Scroll
 export relative_pos
 export textbox_offset_pos
 
@@ -96,6 +97,16 @@ struct Wait
 end
 
 duration(w::Wait, prev_position) = w.duration
+
+# Wait until `pred()` returns true (records frames meanwhile), up to `timeout`
+# seconds. Use for load-dependent async work (e.g. a GPU analysis whose duration
+# varies with recording overhead) instead of guessing a fixed Wait.
+struct WaitUntil
+    pred::Function
+    timeout::Float64
+end
+WaitUntil(pred; timeout = 60.0) = WaitUntil(pred, Float64(timeout))
+duration(w::WaitUntil, prev_position) = w.timeout
 
 struct LeftClick end
 
@@ -187,6 +198,40 @@ duration(::KeyUp, _) = 0.0
 keyboardevents_start(k::KeyUp) = [Makie.KeyEvent(k.key, Keyboard.release)]
 
 
+"""
+    Scroll(delta; duration = 0.8)
+
+Emits `events.scroll` events over `duration` seconds so that the totals sum to
+`delta` (a `(dx, dy)` tuple in scroll units). Use to animate a wheel/trackpad
+scroll over a scrollable container.
+"""
+struct Scroll
+    delta::Tuple{Float64, Float64}
+    duration::Float64
+end
+Scroll(delta; duration = 0.8) = Scroll(Tuple(Float64.(delta)), duration)
+duration(s::Scroll, _) = s.duration
+
+function scrollevents_frame(s::Scroll, time, prev_time)
+    s.duration <= 0 && return []
+    frac = (time - prev_time) / s.duration
+    frac <= 0 && return []
+    return [Tuple(frac .* s.delta)]
+end
+
+"""
+    DropFiles(paths...)
+
+Delivers `paths` as an `events.dropped_files` event — what GLFW emits when
+the user drags files from a file manager onto the window.
+"""
+struct DropFiles
+    files::Vector{String}
+end
+DropFiles(paths::AbstractString...) = DropFiles(collect(String, paths))
+duration(::DropFiles, _) = 0.1
+droppedfiles_start(d::DropFiles) = d.files
+
 mouseevents_start(obj) = []
 mouseevents_end(obj) = []
 mouseevents_frame(obj, t) = []
@@ -196,6 +241,8 @@ mousepositions_frame(obj, startpos, t) = []
 keyboardevents_start(obj) = []
 keyboardevents_end(obj) = []
 unicode_inputs_frame(obj, time, prev_time) = []
+scrollevents_frame(obj, time, prev_time) = []
+droppedfiles_start(obj) = String[]
 
 function alpha_blend(fg::Makie.RGBA, bg::Makie.RGB)
     r = (fg.r * fg.alpha + bg.r * (1 - fg.alpha))
@@ -268,7 +315,11 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
                 event = event.f(figlike)
             end
 
-            t_event += current_duration # from previous
+            # Advance to where the recording clock actually is, not by the
+            # previous event's declared duration. They agree for events that
+            # run to completion, but a `WaitUntil` that breaks early would
+            # otherwise leave its unused timeout as dead time in the video.
+            t_event = t
             event_startposition = Point2f(content_scene.events.mouseposition[])
             current_duration = duration(event, event_startposition)
 
@@ -279,6 +330,8 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
             for keyevent in keyboardevents_start(event)
                 content_scene.events.keyboardbutton[] = keyevent
             end
+            dropped = droppedfiles_start(event)
+            isempty(dropped) || (content_scene.events.dropped_files[] = dropped)
             mousepositions = mousepositions_start(event, event_startposition)
             for mouseposition in mousepositions
                 content_scene.events.mouseposition[] = tuple(mouseposition...)
@@ -287,6 +340,8 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
 
             prev_t_in_event = 0.0
             while t < t_event + current_duration
+                # WaitUntil ends as soon as its predicate holds (timeout = current_duration)
+                event isa WaitUntil && event.pred() && break
                 t_in_event = t - t_event
                 mouseevents = mouseevents_frame(event, t_in_event)
                 for mouseevent in mouseevents
@@ -299,6 +354,9 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
                 end
                 for c in unicode_inputs_frame(event, t_in_event, prev_t_in_event)
                     content_scene.events.unicode_input[] = c
+                end
+                for sc in scrollevents_frame(event, t_in_event, prev_t_in_event)
+                    content_scene.events.scroll[] = sc
                 end
                 prev_t_in_event = t_in_event
 

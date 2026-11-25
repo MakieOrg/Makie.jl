@@ -552,7 +552,7 @@ function plot!(plot::EditableText)
     # The block's projected pixel position. `text!` always renders one block
     # per position vector, so `only` matches that invariant — it errors if the
     # text plot is ever set up with more than one position.
-    block_pos_obs = lift(mps -> Point2f(only(mps)), text_plot.markerspace_positions)
+    block_pos_obs = lift(mps -> only(mps), text_plot.markerspace_positions)
 
     chars_obs = lift(collect, plot.text)
 
@@ -582,7 +582,7 @@ function plot!(plot::EditableText)
     # the current anchor range absorbs the transient mismatch; the second fire
     # produces the final, correct rectangles.
     selection_rects_obs = lift(plot.cursors, anchors_obs, line_idx_obs, block_pos_obs) do cursors, m, li, bp
-        rects = Rect2f[]
+        rects = Vector{Point3f}[]
         # li can be shorter than anchors mid-update because the two come from
         # different graphs, so the clamp has to respect both lengths
         n = min(length(m.anchors), length(li)) - 1
@@ -590,7 +590,7 @@ function plot!(plot::EditableText)
             cc = EditCursor(clamp(c.anchor, 0, n), clamp(c.head, 0, n))
             is_selection(cc) || continue
             for r in selection_rects_for_range(sel_lo(cc), sel_hi(cc), m.anchors, li, m.ascender, m.descender, m.line_h)
-                push!(rects, Rect2f(minimum(r) + bp, widths(r)))
+                push!(rects, [bp + Vec3f(p[1], p[2], 0) for p in coordinates(r)])
             end
         end
         return rects
@@ -614,13 +614,14 @@ function plot!(plot::EditableText)
     # Each caret is a vertical segment spanning descender..ascender. See
     # `selection_rects_obs` above for the clamp rationale.
     cursor_segments_obs = lift(plot.cursors, anchors_obs, block_pos_obs) do cursors, m, bp
-        segs = Point2f[]
+        segs = Point3f[]
         n = length(m.anchors) - 1
         for c in cursors
             head = clamp(c.head, 0, n)
-            p = m.anchors[head + 1] + bp
-            push!(segs, p + Point2f(0, m.descender))
-            push!(segs, p + Point2f(0, m.ascender))
+            a = m.anchors[head + 1]
+            p = bp + Vec3f(a[1], a[2], 0)
+            push!(segs, p + Vec3f(0, m.descender, 0))
+            push!(segs, p + Vec3f(0, m.ascender, 0))
         end
         return segs
     end
@@ -712,7 +713,7 @@ function attach_editabletext_events!(
         # cursor anchor list, then snap to the nearest offset.
         anchors = anchors_obs[].anchors
         line_idx = line_idx_obs[]
-        local_pt = state_data - block_pos_obs[]
+        local_pt = state_data - Point2f(block_pos_obs[])
         return offset_from_pixel_point(local_pt, anchors, line_idx)
     end
 
@@ -721,11 +722,12 @@ function attach_editabletext_events!(
             event.button == Mouse.left || return Consume(false)
 
             if event.action == Mouse.press
-                mpos = mouseposition_px(parent)
+                inside = mouse_over_scene(parent)
+                mpos = screen_relative(parent, events(parent).mouseposition[])
                 if plot.manage_focus[]
                     # Auto-focus on clicks within the text bbox; auto-defocus
                     # on clicks outside.
-                    if !is_click_inside_text(text_plot, plot, mpos)
+                    if !(inside && is_click_inside_text(text_plot, plot, mpos))
                         if plot.focused[]
                             plot.focused[] = false
                         end
@@ -734,7 +736,7 @@ function attach_editabletext_events!(
                 else
                     # Parent owns focus. Only place a cursor if we're actually
                     # focused right now; otherwise leave the click for the parent.
-                    plot.focused[] || return Consume(false)
+                    (inside && plot.focused[]) || return Consume(false)
                 end
 
                 offset = _mouse_to_offset(Point2f(mpos))
@@ -791,9 +793,10 @@ function attach_editabletext_events!(
         plot.deregister_callbacks, on(events(parent).mouseposition, priority = 60) do _
             anchor = drag_anchor[]
             anchor === nothing && return Consume(false)
+            receives_events(parent) || return Consume(false)
             Mouse.left in events(parent).mousebuttonstate || return Consume(false)
-            mpos = mouseposition_px(parent)
-            head = _mouse_to_offset(Point2f(mpos))
+            mpos = screen_relative(parent, events(parent).mouseposition[])
+            head = _mouse_to_offset(mpos)
             cursors = plot.cursors[]
             # Only rewrite the last cursor (the one created by the press) so prior
             # multi-cursors stay intact. Skip if its head hasn't moved — mouseposition
@@ -809,7 +812,7 @@ function attach_editabletext_events!(
 
     # Both backend paste events and the keyboard shortcut insert in one edit.
     function paste_text!(content)
-        plot.focused[] || return Consume(false)
+        (plot.focused[] && receives_events(parent)) || return Consume(false)
         filtered = String(filter(plot.input_filter[], collect(content)))
         isempty(filtered) && return Consume(true)
         new_text, new_cursors = apply_edits(plot.text[], plot.cursors[], c -> _replace_op(c, filtered))
@@ -821,7 +824,7 @@ function attach_editabletext_events!(
     # Unicode character input — type a character.
     push!(
         plot.deregister_callbacks, on(events(parent).unicode_input, priority = 60) do char
-            plot.focused[] || return Consume(false)
+            (plot.focused[] && receives_events(parent)) || return Consume(false)
             char == '\0' && return Consume(false)
             plot.input_filter[](char) || return Consume(true)  # filtered out, but consume so other listeners don't double-handle
             new_text, new_cursors = apply_edits(plot.text[], plot.cursors[], c -> _replace_op(c, string(char)))
@@ -833,7 +836,7 @@ function attach_editabletext_events!(
     # Keyboard.
     push!(
         plot.deregister_callbacks, on(events(parent).keyboardbutton, priority = 60) do event
-            plot.focused[] || return Consume(false)
+            (plot.focused[] && receives_events(parent)) || return Consume(false)
             event.action == Keyboard.release && return Consume(false)
 
             key = event.key
@@ -963,14 +966,10 @@ end
 function is_click_inside_text(text_plot, plot, mpos)
     # Best-effort: use `markerspace_positions` and pad by half the font size
     # so an empty editor still receives clicks at its anchor point.
-    bbs = try
-        fast_string_boundingboxes(text_plot)
-    catch
-        nothing
-    end
+    bbs = fast_string_boundingboxes(text_plot)
     bp = Point2f(only(text_plot.markerspace_positions[]))
     pad = Float32(plot.fontsize[]) * 0.5f0
-    if bbs === nothing || isempty(bbs)
+    if isempty(bbs)
         # Empty text — accept clicks within a small box at the anchor.
         rect = Rect2f(bp - Point2f(pad), Vec2f(2pad, plot.fontsize[]))
         return Point2f(mpos[1], mpos[2]) in rect

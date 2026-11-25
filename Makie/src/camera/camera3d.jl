@@ -211,7 +211,7 @@ function Camera3D(scene::Scene; kwargs...)
     deselect_all_cameras!(root(scene))
     on(camera(scene), events(scene).mousebutton, priority = 100) do event
         if event.action == Mouse.press
-            cam.selected[] = is_mouseinside(scene)
+            cam.selected[] = mouse_over_scene(scene)
         end
         return Consume(false)
     end
@@ -409,7 +409,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
     # drag start/stop
     on(camera(scene), e.mousebutton) do event
         # Drag start translation/rotation
-        if event.action == Mouse.press && is_mouseinside(scene)
+        if event.action == Mouse.press && mouse_over_scene(scene)
             if ispressed(scene, translation_button[])
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = (false, true)
@@ -442,7 +442,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
             end
 
             # reposition
-            if ispressed(scene, reposition_button[], event.button) && is_mouseinside(scene)
+            if ispressed(scene, reposition_button[], event.button) && mouse_over_scene(scene)
                 plt, _, p = ray_assisted_pick(scene)
                 p3d = to_ndim(Point3d, p, 0.0)
                 if !isnan(p3d) && is_data_space(plt) && parent_scene(plt) == scene
@@ -482,7 +482,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
 
     #zoom
     return on(camera(scene), e.scroll) do scroll
-        if is_mouseinside(scene) && ispressed(scene, scroll_mod[])
+        if mouse_over_scene(scene) && ispressed(scene, scroll_mod[])
             zoom_step = (1.0 + 0.1 * mouse_zoomspeed[])^-scroll[2]
             zoom!(scene, cam, zoom_step, cad[], zoom_shift_lookat[])
             return Consume(true)

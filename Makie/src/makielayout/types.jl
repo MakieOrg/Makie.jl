@@ -595,18 +595,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         To make a `GridLayout` aware of aspect ratio constraints, refer to the `Aspect` column or row size setting.
         """
         aspect = nothing
-        "The vertical alignment of the axis within its suggested bounding box."
-        valign = :center
-        "The horizontal alignment of the axis within its suggested bounding box."
-        halign = :center
-        "The width of the axis."
-        width = nothing
-        "The height of the axis."
-        height = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight::Bool = true
         "The relative margins added to the autolimits in x direction."
         xautolimitmargin::Tuple{Float64, Float64} = (0.05f0, 0.05f0)
         "The relative margins added to the autolimits in y direction."
@@ -738,8 +726,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         The function `limits!` is another option to set both x and y simultaneously.
         """
         limits = (nothing, nothing)
-        "The align mode of the axis in its parent GridLayout."
-        alignmode = Inside()
         "Controls if the y axis goes upwards (false) or downwards (true)"
         yreversed::Bool = false
         "Controls if the x axis goes rightwards (false) or leftwards (true)"
@@ -948,10 +934,6 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         rightspinecolor = RGBf(0, 0, 0)
         "The color of the bottom spine."
         bottomspinecolor = RGBf(0, 0, 0)
-        "The vertical alignment of the colorbar in its suggested bounding box."
-        valign = :center
-        "The horizontal alignment of the colorbar in its suggested bounding box."
-        halign = :center
         "Controls if the colorbar is oriented vertically."
         vertical = true
         "Flips the axis to the right if vertical and to the top if horizontal."
@@ -960,12 +942,6 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         flip_vertical_label = false
         "The width setting of the colorbar. Use `size` to set width or height relative to colorbar orientation instead."
         width = Auto()
-        "The height setting of the colorbar."
-        height = Auto()
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
 
         "The colormap that the colorbar uses."
         colormap = @inherit(:colormap, :viridis)
@@ -1000,9 +976,6 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         """
         label_suffix = "[{}]"
 
-        "The align mode of the colorbar in its parent GridLayout."
-        alignmode = Inside()
-
         "The number of samples used for drawing the colormap. (This only affects continuous and banded colormaps.)"
         nsteps = 100
 
@@ -1020,6 +993,8 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         minorticks = IntervalsBetween(5)
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
         size = 12
+        "The additional space between the colorbar content and its suggested boundingbox. Only used for overlay positioning."
+        margin = (0.0f0, 0.0f0, 0.0f0, 0.0f0)
 
         "`limits` has been removed in favor of `colorrange` in Makie v0.25."
         @deprecate limits colorrange
@@ -1042,24 +1017,10 @@ end
         justification = :center
         "The lineheight multiplier for the text."
         lineheight::Float32 = 1.0
-        "The vertical alignment of the text in its suggested boundingbox"
-        valign = :center
-        "The horizontal alignment of the text in its suggested boundingbox"
-        halign = :center
         "The counterclockwise rotation of the text in radians."
         rotation::Float32 = 0.0f0
         "The extra space added to the sides of the text boundingbox."
         padding = (0.0f0, 0.0f0, 0.0f0, 0.0f0)
-        "The height setting of the text."
-        height = Auto()
-        "The width setting of the text."
-        width = Auto()
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight::Bool = true
-        "The align mode of the text in its parent GridLayout."
-        alignmode = Inside()
         "Enable word wrapping to the suggested width of the Label."
         word_wrap::Bool = false
 
@@ -1069,16 +1030,39 @@ end
     end
 end
 
+"""
+    Spinner(figposition; message = "Working…", running = false)
+
+Braille-frame busy indicator. Set `sp.running = true`/`false` to
+start/stop the frame animation.
+"""
+@Block Spinner begin
+    @attributes begin
+        "Text displayed beside the spinner."
+        message = "Working…"
+        "Whether to display and animate the spinner."
+        running::Bool = false
+        "Font size of the spinner and message."
+        fontsize::Float32 = @inherit(:fontsize, 20.0f0)
+        "Color of the spinner and message."
+        color::RGBAf = @inherit((:colors, :accent), :black)
+        "Sequence of glyphs used as animation frames."
+        frames::Vector{String} = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        "Time between animation frames in seconds."
+        frame_interval::Float32 = 0.09f0
+        tellwidth::Bool = false
+        tellheight::Bool = false
+        "Whether the spinner block is visible."
+        visible::Bool = true
+    end
+end
+
 @Block Box begin
     @attributes begin
         "Controls if the rectangle is visible."
         visible = true
         "The color of the rectangle."
         color = RGBf(0.9, 0.9, 0.9)
-        "The vertical alignment of the rectangle in its suggested boundingbox"
-        valign = :center
-        "The horizontal alignment of the rectangle in its suggested boundingbox"
-        halign = :center
         "The line width of the rectangle's border."
         strokewidth = 1.0f0
         "Controls if the border of the rectangle is visible."
@@ -1093,12 +1077,6 @@ end
         width = nothing
         "The height setting of the rectangle."
         height = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
-        "The align mode of the rectangle in its parent GridLayout."
-        alignmode = Inside()
         "Sets the z value of the Box"
         z = 0.0
     end
@@ -1107,20 +1085,8 @@ end
 @Block Slider begin
     selected_index::Observable{Int}
     @attributes begin
-        "The horizontal alignment of the element in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the element in its suggested bounding box."
-        valign = :center
-        "The width setting of the element."
-        width = Auto()
-        "The height setting of the element."
-        height = Auto()
         "The range of values that the slider can pick from."
         range = 0:0.01:10
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight::Bool = true
         "The start value of the slider or the value that is closest in the slider range."
         startvalue = automatic
         "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
@@ -1128,15 +1094,13 @@ end
         "The width of the slider line"
         linewidth::Float32 = 10
         "The color of the slider when the mouse hovers over it."
-        color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
+        color_active_dimmed::RGBAf = @inherit((:colors, :accent_subtle))
         "The color of the slider when the mouse clicks and drags the slider."
-        color_active::RGBAf = COLOR_ACCENT[]
+        color_active::RGBAf = @inherit((:colors, :accent))
         "The color of the slider when it is not interacted with."
-        color_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
+        color_inactive::RGBAf = @inherit((:colors, :surface))
         "Controls if the slider has a horizontal orientation or not."
         horizontal::Bool = true
-        "The align mode of the slider in its parent GridLayout."
-        alignmode = Inside()
         "If false, slider only updates value once dragging stops"
         update_while_dragging = true
         "Controls if the button snaps to valid positions or moves freely"
@@ -1148,20 +1112,8 @@ end
     selected_indices::Observable{Tuple{Int, Int}}
     displayed_sliderfractions::Observable{Tuple{Float64, Float64}}
     @attributes begin
-        "The horizontal alignment of the slider in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the slider in its suggested bounding box."
-        valign = :center
-        "The width setting of the slider."
-        width = Auto()
-        "The height setting of the slider."
-        height = Auto()
         "The range of values that the slider can pick from."
         range = 0:0.01:10
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight::Bool = true
         "The start values of the slider or the values that are closest in the slider range."
         startvalues = Makie.automatic
         "The current interval of the slider. Don't set this manually, use the function `set_close_to!`."
@@ -1169,15 +1121,13 @@ end
         "The width of the slider line"
         linewidth::Float64 = 10.0
         "The color of the slider when the mouse hovers over it."
-        color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
+        color_active_dimmed::RGBAf = @inherit((:colors, :accent_subtle))
         "The color of the slider when the mouse clicks and drags the slider."
-        color_active::RGBAf = COLOR_ACCENT[]
+        color_active::RGBAf = @inherit((:colors, :accent))
         "The color of the slider when it is not interacted with."
-        color_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
+        color_inactive::RGBAf = @inherit((:colors, :surface))
         "Controls if the slider has a horizontal orientation or not."
         horizontal::Bool = true
-        "The align mode of the slider in its parent GridLayout."
-        alignmode = Inside()
         "Controls if the buttons snap to valid positions or move freely"
         snap::Bool = true
     end
@@ -1230,20 +1180,6 @@ end
     valuelabels::Vector{Label}
     labels::Vector{Label}
     @attributes begin
-        "The horizontal alignment of the block in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the block in its suggested bounding box."
-        valign = :center
-        "The width setting of the block."
-        width = Auto()
-        "The height setting of the block."
-        height = Auto()
-        "Controls if the parent layout can adjust to this block's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this block's height"
-        tellheight::Bool = true
-        "The align mode of the block in its parent GridLayout."
-        alignmode = Inside()
         "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
         value_column_width = automatic
     end
@@ -1251,10 +1187,6 @@ end
 
 @Block Button begin
     @attributes begin
-        "The horizontal alignment of the button in its suggested boundingbox"
-        halign = :center
-        "The vertical alignment of the button in its suggested boundingbox"
-        valign = :center
         "The extra space added to the sides of the button label's boundingbox."
         padding = (8.0f0, 8.0f0, 8.0f0, 8.0f0)
         "The font size of the button label."
@@ -1263,14 +1195,6 @@ end
         label = "Button"
         "The font family of the button label."
         font = :regular
-        "The width setting of the button."
-        width = Auto()
-        "The height setting of the button."
-        height = Auto()
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
         "The radius of the rounded corners of the button."
         cornerradius = 4
         "The number of poly segments used for each rounded corner."
@@ -1280,21 +1204,19 @@ end
         "The color of the button border."
         strokecolor = :transparent
         "The color of the button."
-        buttoncolor = RGBf(0.94, 0.94, 0.94)
+        buttoncolor = @inherit((:colors, :surface))
         "The color of the label."
         labelcolor = @inherit(:textcolor, :black)
         "The color of the label when the mouse hovers over the button."
-        labelcolor_hover = :black
+        labelcolor_hover = @inherit((:colors, :text))
         "The color of the label when the mouse clicks the button."
-        labelcolor_active = :white
+        labelcolor_active = @inherit((:colors, :text_on_accent))
         "The color of the button when the mouse clicks the button."
-        buttoncolor_active = COLOR_ACCENT[]
+        buttoncolor_active = @inherit((:colors, :accent))
         "The color of the button when the mouse hovers over the button."
-        buttoncolor_hover = COLOR_ACCENT_DIMMED[]
+        buttoncolor_hover = @inherit((:colors, :accent_subtle))
         "The number of clicks that have been registered by the button."
         clicks = 0
-        "The align mode of the button in its parent GridLayout."
-        alignmode = Inside()
 
         textsize = @inherit textsize 16
         "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
@@ -1312,18 +1234,6 @@ const CHECKMARK_BEZIER = scale(
 
 @Block Checkbox begin
     @attributes begin
-        "The horizontal alignment of the checkbox in its suggested boundingbox"
-        halign = :center
-        "The vertical alignment of the checkbox in its suggested boundingbox"
-        valign = :center
-        "The width setting of the checkbox."
-        width = Auto()
-        "The height setting of the checkbox."
-        height = Auto()
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
         "The size (width/height) of the checkbox"
         size = 11
         "The size of the checkmark, relative to the size."
@@ -1335,19 +1245,17 @@ const CHECKMARK_BEZIER = scale(
         "The strokewidth of the checkbox poly."
         checkboxstrokewidth = 1.5
         "The color of the checkbox background when checked."
-        checkboxcolor_checked = COLOR_ACCENT[]
+        checkboxcolor_checked = @inherit((:colors, :accent))
         "The color of the checkbox background when unchecked."
         checkboxcolor_unchecked = @inherit(:backgroundcolor, :white)
         "The strokecolor of the checkbox background when checked."
-        checkboxstrokecolor_checked = COLOR_ACCENT[]
+        checkboxstrokecolor_checked = @inherit((:colors, :accent))
         "The strokecolor of the checkbox background when unchecked."
-        checkboxstrokecolor_unchecked = COLOR_ACCENT[]
+        checkboxstrokecolor_unchecked = @inherit((:colors, :accent))
         "The color of the checkmark when unchecked."
         checkmarkcolor_unchecked = :transparent
         "The color of the checkmark when the mouse clicks the checkbox."
-        checkmarkcolor_checked = :white
-        "The align mode of the checkbox in its parent GridLayout."
-        alignmode = Inside()
+        checkmarkcolor_checked = @inherit((:colors, :text_on_accent))
         "If the checkbox is currently checked. This value should not be modified directly."
         checked = false
         "A function that is called when the user clicks to check or uncheck. The function is passed the current status as a `Bool` and needs to return a `Bool` that decides the checked status after the click. Intended for implementation of radio buttons."
@@ -1378,37 +1286,27 @@ end
 """
 @Block Toggle begin
     @attributes begin
-        "The horizontal alignment of the toggle in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the toggle in its suggested bounding box."
-        valign = :center
-        "The width of the bounding box.  Use `length` and `markersize` to set the dimensions of the toggle."
+        "The width of the bounding box. Use `length` and `markersize` to set the dimensions of the toggle."
         width = Auto()
-        "The height of the bounding box.  Use `length` and `markersize` to set the dimensions of the toggle."
+        "The height of the bounding box. Use `length` and `markersize` to set the dimensions of the toggle."
         height = Auto()
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
         "The number of poly segments in each rounded corner."
         cornersegments = 15
         # strokewidth = 2f0
         # strokecolor = :transparent
         "The color of the border when the toggle is inactive."
-        framecolor_inactive = RGBf(0.94, 0.94, 0.94)
+        framecolor_inactive = @inherit((:colors, :surface))
         "The color of the border when the toggle is hovered."
-        framecolor_active = COLOR_ACCENT_DIMMED[]
+        framecolor_active = @inherit((:colors, :accent_subtle))
         # buttoncolor = RGBf(0.2, 0.2, 0.2)
         "The color of the toggle button."
-        buttoncolor = COLOR_ACCENT[]
+        buttoncolor = @inherit((:colors, :accent))
         "Indicates if the toggle is active or not."
         active = false
         "The duration of the toggle animation."
         toggleduration = 0.15
         "The border width as a fraction of the toggle height "
         rimfraction = 0.33
-        "The align mode of the toggle in its parent GridLayout."
-        alignmode = Inside()
         "The orientation of the toggle.  Can be :horizontal, :vertical, or -pi to pi.  0 is horizontal with \"on\" being to the right."
         orientation = :horizontal
         "The length of the toggle."
@@ -1481,20 +1379,8 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
 """
 @Block Menu begin
     @attributes begin
-        "The height setting of the menu."
-        height = Auto()
-        "The width setting of the menu."
+        # value overwrite
         width = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
-        "The horizontal alignment of the menu in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the menu in its suggested bounding box."
-        valign = :center
-        "The alignment of the menu in its suggested bounding box."
-        alignmode = Inside()
         "Index of selected item. Should not be set by the user."
         i_selected = 0
         "Selected item value. This is the output observable that you should listen to to react to menu interaction. Should not be set by the user."
@@ -1502,17 +1388,17 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
         "Is the menu showing the available options"
         is_open = false
         "Cell color when hovered"
-        cell_color_hover::RGBAf = COLOR_ACCENT_DIMMED[]
+        cell_color_hover = @inherit((:colors, :accent_subtle))
         "Cell color when active"
-        cell_color_active::RGBAf = COLOR_ACCENT[]
+        cell_color_active = @inherit((:colors, :accent))
         "Cell color when inactive even"
-        cell_color_inactive_even::RGBAf = RGBf(0.97, 0.97, 0.97)
+        cell_color_inactive_even = @inherit((:colors, :surface_subtle))
         "Cell color when inactive odd"
-        cell_color_inactive_odd::RGBAf = RGBf(0.97, 0.97, 0.97)
+        cell_color_inactive_odd = @inherit((:colors, :surface_subtle))
         "Selection cell color when inactive"
-        selection_cell_color_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
+        selection_cell_color_inactive = @inherit((:colors, :surface))
         "Color of the dropdown arrow"
-        dropdown_arrow_color = (:black, 0.2)
+        dropdown_arrow_color = @inherit((:colors, :text_muted))
         "Size of the dropdown arrow"
         dropdown_arrow_size = 10
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
@@ -1522,11 +1408,11 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
         "Padding of entry texts"
         textpadding = (8, 10, 8, 8)
         "Color of entry texts"
-        textcolor::RGBAf = :black
-        "Color of the text of the entry that is the current selection"
-        textcolor_active::RGBAf = :white
-        "Color of the text of the entry that is hovered"
-        textcolor_hover::RGBAf = :black
+        textcolor = @inherit(:textcolor, :black)
+        "Color of entry text in the currently selected row of the open dropdown."
+        textcolor_active = @inherit((:colors, :text_on_accent))
+        "Color of the text of the hovered entry."
+        textcolor_hover = @inherit(:textcolor, :black)
         "The opening direction of the menu (:up or :down)"
         direction = automatic
         "The default message prompting a selection when i == 0"
@@ -1543,6 +1429,305 @@ menu4 = Menu(fig[1, 1], options = ["sin", "sinh", "cos", "cosh"],
         textsize = @inherit textsize 16
         "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
         @deprecate textsize fontsize
+    end
+end
+
+
+"""
+    ScrollArea(fig_or_scene; kwargs...)
+
+A clipped, scrollable region with its own `Scene` paired with a `GridLayout` —
+the same shape as a `Figure`, scoped to a sub-region. Place blocks via
+`Axis(area[1, 1])` etc., or plot directly into `content_scene(area)` (in
+viewport-local pixel coords).
+
+Because a `ScrollArea` is just a `Block`, it composes into any layout slot — a
+figure cell, a `Modal`, a `Tabs` tab, or nested inside another `ScrollArea`.
+That makes it the building block for "make this content scrollable": wrap the
+content in a `ScrollArea`, and keep fixed content beside it in the parent
+layout.
+
+Content larger than the area scrolls vertically and horizontally; scrollbars
+appear only when there is overflow. Content size is derived from the inner
+`GridLayout`'s determinable size, so setting fixed row / column sizes makes the
+area overflow and scroll. With `scrollable = false` the area still clips its
+content but shows no scrollbars and takes no scroll input — a plain clipped
+panel (this is how `Modal`/`Tabs` host their content, leaving scrolling opt-in).
+
+The `visible::Observable{Bool}` attribute controls whether the area is shown.
+When hidden it renders nothing and, because the scene-stacking event router
+(`receives_events`) treats hidden subtrees as inert, receives no mouse or
+keyboard input either.
+"""
+@Block ScrollArea begin
+    scene::Scene
+    scroll::Observable{Vec2f}
+    contentsize::Observable{Vec2f}
+    @attributes begin
+        "Whether the area is shown. When `false` it renders nothing and receives no input."
+        visible = true
+        "Padding (in pixels) around the content, as a number or a (left, right, bottom, top) tuple."
+        contentpadding = 10
+        "Background color of the content area."
+        backgroundcolor = :transparent
+        "Whether the content scrolls on overflow (scrollbars + wheel/drag). `false` clips only."
+        scrollable = true
+        "Speed of wheel/trackpad scrolling."
+        scroll_speed = 15.0
+        "Thickness in pixels of the scrollbar thumbs shown when content overflows."
+        scrollbar_size = 6
+        "Background color of the scrollbar track (default transparent — only the thumb is drawn)."
+        scrollbar_color = RGBAf(0, 0, 0, 0)
+        "Color of the scrollbar thumb (the draggable handle)."
+        scrollbar_thumb_color = RGBAf(0, 0, 0, 0.3)
+        "Color of the scrollbar thumb when hovered or dragged."
+        scrollbar_thumb_color_active = RGBAf(0, 0, 0, 0.5)
+        # halign / valign / alignmode match the block layout mixin defaults and
+        # are added automatically; only the ones that differ are set here.
+        "The height setting of the area."
+        height = nothing
+        "The width setting of the area."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = false
+    end
+end
+
+
+"""
+Resolved metrics of a tab label's font, in EM units (multiply by fontsize for
+pixels). Used to size and baseline-align the close `×`.
+"""
+struct TabFontMetrics
+    ascent::Float32
+    descent::Float32
+    x_height::Float32
+end
+
+"""
+Per-tab state for [`Tabs`](@ref): the tab's content [`ScrollArea`](@ref), its
+label and closability, and the observables backing its header rendering. One
+`TabData` exists per live tab, so closing a tab in the middle is a single
+`deleteat!` with nothing to keep in sync. Mutate via [`add_tab!`](@ref),
+[`remove_tab!`](@ref), [`set_tab!`](@ref) rather than directly.
+"""
+struct TabData
+    content::ScrollArea
+    label::Observable{Any}
+    closable::Observable{Bool}
+    visible::Observable{Bool}
+    rect::Observable{Rect2f}
+    bgcolor::Observable{RGBAf}
+    labelpos::Observable{Point2f}
+    labelcolor::Observable{RGBAf}
+    labelboundingboxes::Observable
+    close_segments::Observable{Vector{Point2f}}
+    close_color::Observable{RGBAf}
+    close_rect::Observable{Rect2f}
+    close_visible::Observable{Bool}
+    plots::Tuple{Any, Any, Any}  # (poly, label, close) for deletion
+end
+
+"""
+    Tabs(fig_or_scene, labels = ["Tab 1", "Tab 2"]; closable = true, kwargs...)
+
+A tabbed container. Each tab hosts a clipped content area: place blocks with
+`tabs[i][row, col] = Axis(...)` or plot directly into `content_scene(tabs, i)`.
+Only the active tab is visible, and because hidden scenes are inert to the event
+router, only the active tab receives mouse / keyboard events. Tab content is
+clipped to the tab but does not scroll by default; nest a [`ScrollArea`](@ref)
+in a tab for a scrollable region.
+
+`labels` (a positional argument) and the `closable` keyword seed the initial
+tabs; they are not reactive attributes. Change the set of tabs afterwards with
+the setter functions [`add_tab!`](@ref), [`remove_tab!`](@ref) and
+[`set_tab!`](@ref). `closable` may be a single `Bool` (applied to every initial
+tab) or a `Vector{Bool}` (one entry per tab; tabs beyond its length are not
+closable). The active tab is the scalar `active` attribute.
+"""
+@Block Tabs begin
+    tabs::Vector{TabData}
+    content_area::Observable{Rect2i}
+    headerheight::Observable{Float64}
+    separator_path::Observable{Vector{Point2f}}
+    hovered::Observable{Int}
+    close_hovered::Observable{Int}
+    font_metrics::Observable{TabFontMetrics}
+    font_metrics_captured::Bool
+    @attributes begin
+        "Index of the active (visible) tab, or `0` when there are no tabs."
+        active = 1
+        "Height of the tab header strip in pixels, or `automatic` to derive it from the label size."
+        tabheight = automatic
+        "Font size of the tab labels."
+        fontsize = @inherit(:fontsize, 16.0f0)
+        "Font of the tab labels."
+        font = :regular
+        "Padding (left, right, bottom, top) around each tab label in pixels."
+        tabpadding = (12, 12, 8, 8)
+        "Corner radius of the tab header backgrounds."
+        cornerradius = 0
+        "Number of vertices used to render rounded tab corners."
+        cornersegments = 10
+        "Background color of the active tab header."
+        tabcolor_active = :white
+        "Background color of inactive tab headers."
+        tabcolor_inactive = :white
+        "Background color of a hovered, inactive tab header (brief gray feedback while pointing/clicking)."
+        tabcolor_hover = RGBf(0.92, 0.92, 0.92)
+        "Color of the active tab label."
+        labelcolor_active = :black
+        "Color of inactive tab labels."
+        labelcolor_inactive = RGBf(0.4, 0.4, 0.4)
+        "Color of the close (×) icon when idle."
+        closecolor = RGBf(0.5, 0.5, 0.5)
+        "Color of the close (×) icon when hovered."
+        closecolor_hover = RGBf(0, 0, 0)
+        "Gap in pixels between adjacent tab headers."
+        tabgap = 0
+        "Color of the thin separator line drawn under the header strip (broken under the active tab)."
+        separator_color = RGBf(0.82, 0.82, 0.82)
+        "Thickness in pixels of the header bottom separator."
+        separator_thickness = 1
+        "Padding (in pixels) forwarded to each tab's content area."
+        contentpadding = 10
+        "The height setting of the tabs block."
+        height = nothing
+        "The width setting of the tabs block."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = false
+    end
+end
+
+
+table_style_attributes() = @DocumentedAttributes begin
+    "Header appearance and geometry."
+    header = @attributes begin
+        "Background color of the header."
+        color = RGBf(0.2, 0.2, 0.2)
+        "Text color of the header."
+        textcolor = :white
+        "Font size of the header."
+        fontsize = 14.0f0
+        "Height of the header in pixels."
+        height = 30.0
+        "Whether to show the sort direction indicator."
+        show_sort_indicator = true
+    end
+    "Data cell appearance and geometry."
+    cell = @attributes begin
+        "A background color or matrix of per-cell colors. `automatic` alternates row colors."
+        color = automatic
+        "Background color of even rows."
+        color_even = RGBf(0.98, 0.98, 0.98)
+        "Background color of odd rows."
+        color_odd = RGBf(0.94, 0.94, 0.94)
+        "Background color of the hovered row."
+        color_hover = @inherit((:colors, :accent_subtle))
+        "Background color of the selected row."
+        color_selected = @inherit((:colors, :accent))
+        "A text color or matrix of per-cell text colors."
+        textcolor = :black
+        "Font size of data cell text."
+        fontsize = 12.0f0
+        "Default row height in pixels."
+        height = 25.0
+        "Padding inside cells as (left, right, bottom, top)."
+        padding = (8, 8, 4, 4)
+    end
+    "Grid line styling."
+    grid = @attributes begin
+        "Whether to show grid lines."
+        visible = true
+        "Color of grid lines."
+        color = RGBf(0.8, 0.8, 0.8)
+        "Width of grid lines."
+        linewidth = 1.0
+        "Whether to show vertical grid lines."
+        show_vertical_lines = true
+        "Whether to show horizontal grid lines."
+        show_horizontal_lines = true
+    end
+end
+
+"""
+    Table(fig_or_scene; kwargs...)
+
+A table widget for displaying tabular data with interactive features like row selection,
+column sorting, and scrolling.
+
+## Example
+
+```julia
+fig = Figure()
+data = (name = ["Alice", "Bob", "Charlie"], age = [25, 30, 35], city = ["NYC", "LA", "Chicago"])
+t = Table(fig[1,1]; data = data)
+
+# Listen to selection changes
+on(t.selection) do sel
+    println("Selected: ", sel)
+end
+```
+
+## Attributes
+"""
+@Block Table begin
+    @attributes begin
+        # Only `width` differs from the block layout mixin defaults; the rest
+        # (height, tellwidth, tellheight, halign, valign, alignmode) are added
+        # automatically with the same values.
+        "The width setting of the table."
+        width = nothing
+
+        "The tabular data to display. Can be a NamedTuple or Dict{Symbol, Any} where each value is a column vector."
+        data = (a = [1, 2, 3], b = ["x", "y", "z"])
+        "Custom column names to display. If `automatic`, uses the data's keys."
+        column_names = automatic
+        "Column widths. Can be `:auto` (equal widths), `:fit` (auto-fit to content), a number (all same width), or a vector of widths."
+        column_widths = :auto
+        "Row heights. Can be `automatic` (uniform using `cell.height`), a number, or a vector of heights per row."
+        row_heights = automatic
+
+        "Index of the currently selected row. 0 means no selection."
+        i_selected = 0
+        "The data of the currently selected row as a NamedTuple. Use this attribute to observe selection changes."
+        selection = nothing
+        "Selected cell as (row, col) tuple. (0, 0) means no cell selection."
+        i_selected_cell = (0, 0)
+        "The data of the currently selected cell. Use this attribute to observe cell selection changes."
+        cell_selection = nothing
+
+        "Index of the column to sort by. 0 means no sorting."
+        sort_column = 0
+        "Sort direction, either `:ascending` or `:descending`."
+        sort_direction = :ascending
+        "Whether clicking column headers enables sorting."
+        sortable = true
+
+        "Maximum number of visible rows. If `nothing`, shows all rows."
+        max_visible_rows = nothing
+        "Current scroll offset (row index to start displaying from)."
+        scroll_offset = 0
+        "Scroll speed multiplier for mouse wheel scrolling."
+        scroll_speed = 3.0
+
+        table_style_attributes()...
+
+        "Callback function `(table, row_index, row_data) -> nothing` called on row click."
+        on_row_click = nothing
+        "Callback function `(table, row_index, row_data) -> nothing` called on row double-click."
+        on_row_doubleclick = nothing
+        "Callback function `(table, column_index, direction) -> nothing` called when sort changes."
+        on_sort_change = nothing
+        "Callback function `(table, row, col, cell_data) -> nothing` called on cell click."
+        on_cell_click = nothing
+        "Callback function `(table, row, col, cell_data) -> nothing` called on cell right-click."
+        on_cell_rightclick = nothing
     end
 end
 
@@ -1596,14 +1781,6 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
     _tellwidth::Observable{Bool}
     grid::GridLayout
     @attributes begin
-        "The horizontal alignment of the legend in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the legend in its suggested bounding box."
-        valign = :center
-        "The width setting of the legend."
-        width = Auto()
-        "The height setting of the legend."
-        height = Auto()
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = automatic
         "Controls if the parent layout can adjust to this element's height"
@@ -1783,8 +1960,6 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         gridshalign = :center
         "The vertical alignment of entry groups in their parent GridLayout."
         gridsvalign = :center
-        "The align mode of the legend in its parent GridLayout."
-        alignmode = Inside()
 
         "The background color of the legend. DEPRECATED - use `backgroundcolor` instead."
         @deprecate bgcolor backgroundcolor
@@ -1811,16 +1986,6 @@ end
         height = nothing
         "The width setting of the scene."
         width = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
-        "The horizontal alignment of the scene in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the scene in its suggested bounding box."
-        valign = :center
-        "The alignment of the scene in its suggested bounding box."
-        alignmode = Inside()
         "Controls the visibility of the 3D axis plot object."
         show_axis::Bool = true
     end
@@ -1831,20 +1996,6 @@ end
     # consumers can drive cursor and selection state directly. Internal.
     editor::Any
     @attributes begin
-        "The height setting of the textbox."
-        height = Auto()
-        "The width setting of the textbox."
-        width = Auto()
-        "Controls if the parent layout can adjust to this element's width."
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height."
-        tellheight = true
-        "The horizontal alignment of the textbox in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the textbox in its suggested bounding box."
-        valign = :center
-        "The alignment of the textbox in its suggested bounding box."
-        alignmode = Inside()
         "A placeholder text that is displayed when the saved string is nothing."
         placeholder = "Click to edit..."
         "The currently stored string."
@@ -1858,7 +2009,7 @@ end
         "Text color."
         textcolor = @inherit(:textcolor, :black)
         "Text color for the placeholder."
-        textcolor_placeholder = RGBf(0.5, 0.5, 0.5)
+        textcolor_placeholder = @inherit((:colors, :text_muted))
         "Font family."
         font = :regular
         "Color of the box."
@@ -1870,11 +2021,11 @@ end
         "Color of the box when hovered."
         boxcolor_hover = :transparent
         "Color of the box border."
-        bordercolor = RGBf(0.8, 0.8, 0.8)
+        bordercolor = @inherit((:colors, :border))
         "Color of the box border when hovered."
-        bordercolor_hover = COLOR_ACCENT_DIMMED[]
+        bordercolor_hover = @inherit((:colors, :accent_subtle))
         "Color of the box border when focused."
-        bordercolor_focused = COLOR_ACCENT[]
+        bordercolor_focused = @inherit((:colors, :accent))
         "Color of the box border when focused and invalid."
         bordercolor_focused_invalid = RGBf(1, 0, 0)
         "Width of the box border."
@@ -1892,7 +2043,8 @@ end
         "Restricts the allowed unicode input via is_allowed(char, restriction)."
         restriction = nothing
         "The color of the cursor."
-        cursorcolor = COLOR_ACCENT[]
+        cursorcolor = @inherit((:colors, :accent))
+
 
         textsize = @inherit textsize 16
         "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."
@@ -1961,16 +2113,6 @@ end
         height = nothing
         "The width setting of the scene."
         width = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
-        "The horizontal alignment of the scene in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the scene in its suggested bounding box."
-        valign = :center
-        "The alignment of the scene in its suggested bounding box."
-        alignmode = Inside()
         "The elevation (up / down) angle of the camera. Possible values are between -pi/2 (looking from the bottom up) and +pi/2 (looking from the top down)."
         elevation = pi / 8
         """
@@ -2321,17 +2463,6 @@ end
         height = nothing
         "The width setting of the scene."
         width = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth::Bool = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight::Bool = true
-        "The horizontal alignment of the scene in its suggested bounding box."
-        halign = :center
-        "The vertical alignment of the scene in its suggested bounding box."
-        valign = :center
-        "The alignment of the scene in its suggested bounding box."
-        alignmode = Inside()
-
         # Background / clip settings
 
         "The background color of the axis."
@@ -2589,3 +2720,114 @@ SomeBlock(fig[i, j][1, 1], ...)
 ```
 """
 @Block Container
+
+"""
+    HoverMenu(figposition; kwargs...)
+
+A bar that appears near the top of a figure and offers Save, Copy, and Reset.
+Style the bar through `box` and its buttons through `button`.
+"""
+@Block HoverMenu begin
+    @attributes begin
+        "The horizontal alignment of the bar."
+        halign = :center
+        "The vertical alignment of the bar."
+        valign = :top
+        "The width of the bar."
+        width = 220
+        "The height of the bar."
+        height = 40
+        tellwidth = false
+        tellheight = false
+
+        "Styling for the bar's background."
+        box = @attributes begin
+            filtered_attributes(Box; allow = (:color, :strokecolor, :strokewidth, :cornerradius))...
+            color = @inherit((:colors, :surface))
+            strokecolor = @inherit((:colors, :border))
+            cornerradius = 8
+        end
+        "Styling shared by the Save, Copy, and Reset buttons."
+        button = @attributes begin
+            filtered_attributes(
+                Button;
+                allow = (
+                    :buttoncolor, :buttoncolor_hover, :buttoncolor_active, :labelcolor,
+                    :labelcolor_hover, :labelcolor_active, :font, :fontsize, :cornerradius,
+                ),
+            )...
+            labelcolor_hover = @inherit((:colors, :text))
+            font = :regular
+            fontsize = 12
+            cornerradius = 4
+        end
+        "The axis to reset when clicking the reset button"
+        target_axis = nothing
+    end
+end
+
+"""
+    Modal(fig; title = "", kwargs...)
+
+A modal dialog floating above the figure: a translucent backdrop dims and
+blocks pointer input to everything underneath, while a centered body holds a
+`GridLayout` for content. Place content with `modal[row, col] = ...` (or
+`Axis(modal[1, 1])` etc.), then show it with `open!(modal)` and hide it with
+`close!(modal)` (also triggered by the × button and — unless
+`dismiss_on_backdrop_click = false` — by clicking the backdrop).
+
+The body auto-sizes to its content (floored at `min_size`); pass numbers for
+`width`/`height` to fix the body size instead. The content area clips to the
+body but does not scroll by default — nest a [`ScrollArea`](@ref) for a
+scrollable region (e.g. a fixed header beside a scrolling body).
+
+While the modal is open, its overlay blocks pointer input to sibling scenes.
+"""
+@Block Modal begin
+    overlay::Scene
+    content::ScrollArea
+    @attributes begin
+        "Title shown in the modal's header."
+        title = ""
+        "Whether the modal is currently shown. Use `open!`/`close!` or set directly."
+        open = false
+        "Color of the backdrop dimming the figure behind the modal."
+        backdrop_color = (:black, 0.35)
+        "Background color of the modal body."
+        color = @inherit((:colors, :background))
+        "Border color of the modal body."
+        strokecolor = @inherit((:colors, :border))
+        "Border line width of the modal body."
+        strokewidth = 1.0
+        "Corner radius of the modal body."
+        cornerradius = 8
+        "Number of vertices used per rounded corner."
+        cornersegments = 10
+        "Font size of the title."
+        titlesize = 16.0f0
+        "Font of the title."
+        titlefont = :bold
+        "Color of the title."
+        titlecolor = @inherit((:colors, :text))
+        "Color of the separator line under the header."
+        separator_color = @inherit((:colors, :border))
+        "Color of the close (×) icon when idle."
+        closecolor = @inherit((:colors, :text_muted))
+        "Color of the close (×) icon when hovered."
+        closecolor_hover = @inherit((:colors, :text))
+        "Whether clicking the backdrop (outside the body) closes the modal."
+        dismiss_on_backdrop_click = true
+        "Padding in pixels between the body border and the content layout."
+        contentpadding = 16
+        "Height in pixels of the title header strip."
+        header_height = 40
+        "Minimum body size (width, height) in pixels when auto-sizing."
+        min_size = (280, 140)
+        "Maximum body size (width, height) in pixels when auto-sizing; content beyond this scrolls."
+        max_size = (Inf, Inf)
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = false
+    end
+end

@@ -64,6 +64,40 @@ end
     fig
 end
 
+@reference_test "table" begin
+    fig = Figure(size = (600, 400))
+
+    data = (
+        name = ["Alice", "Bob", "Charlie", "Diana", "Eve"],
+        age = [28, 35, 42, 31, 25],
+        city = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"],
+    )
+
+    t = Table(
+        fig[1, 1];
+        data = data,
+        header = (color = RGBf(0.2, 0.4, 0.6), textcolor = :white),
+        cell = (
+            color_even = RGBf(0.95, 0.95, 1.0), color_odd = RGBf(0.9, 0.9, 0.95),
+            color_selected = RGBf(0.7, 0.85, 1.0),
+        ),
+        i_selected = 3
+    )
+
+    fig
+end
+
+@reference_test "Modal with hover menu" begin
+    fig = Figure(size = (480, 320); gui = true)
+    Table(fig[1, 1]; data = (label = ["a", "b"],), header = (color = :blue,))
+    modal = Modal(fig; title = "Settings", width = 260, height = 160)
+    ParamForm(modal[1, 1], (level = (0.5, Between(0.0, 1.0)),))
+    Makie.add_gui!(fig)
+    events(fig).mouseposition[] = (20.0, 300.0)
+    open!(modal)
+    fig
+end
+
 @reference_test "Menu search" begin
     fig = Figure(size = (200, 300))
 

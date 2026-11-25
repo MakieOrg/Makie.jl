@@ -148,7 +148,7 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
     dragging = RefValue(false)
     on(camera(scene), scene.events.mousebutton) do event
         if event.button == key[] && ispressed(scene, button[])
-            if event.action == Mouse.press && is_mouseinside(scene)
+            if event.action == Mouse.press && mouse_over_scene(scene)
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return Consume(true)
@@ -176,7 +176,7 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
     end
 
     return on(camera(scene), scene.events.scroll) do scroll
-        if ispressed(scene, button[]) && is_mouseinside(scene)
+        if ispressed(scene, button[]) && mouse_over_scene(scene)
             cam_res = Vec2d(widths(scene))
             mouse_pos_normalized = mouseposition_px(scene) ./ cam_res
             mouse_pos_normalized = 2 * mouse_pos_normalized .- 1.0
@@ -195,7 +195,7 @@ function add_rotation!(scene, cam, button, key, fixed_axis::Bool)
 
     on(camera(scene), e.mousebutton) do event
         if event.button == button[] && ispressed(scene, key[])
-            if event.action == Mouse.press && is_mouseinside(scene)
+            if event.action == Mouse.press && mouse_over_scene(scene)
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return Consume(true)

@@ -223,7 +223,7 @@ function colorbar_attributes_complete(dictlike)
     return issubset(full, keys(dictlike)) && (haskey(dictlike, :color) || haskey(dictlike, :dim_converted))
 end
 
-function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+function extract_and_process_colormap(plot::AbstractPlot, kwargs)
     cmap = try
         temp = extract_colormap(plot)
         # Autocomplete + ColorMapping deprecation
@@ -259,6 +259,11 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
         )
     end
 
+    return cmap
+end
+
+function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+    cmap = extract_and_process_colormap(plot, kwargs)
     return Colorbar(fig_or_scene; cmap..., kwargs...)
 end
 
@@ -267,14 +272,18 @@ block_kwargs(::Type{Colorbar}) = (:dim_converted,)
 function initialize_block!(cb::Colorbar; kwargs...)
     blockscene = cb.blockscene
 
-    map!(cb, [:size, :vertical], :autosize) do sz, vertical
-        return vertical ? (sz, nothing) : (nothing, sz)
+    # `margin` (l, r, b, t) insets the drawable colorbar from its layout cell,
+    # so it also has to be added to the space the block requests.
+    map!(cb, [:size, :vertical, :margin], :autosize) do sz, vertical, margin
+        return vertical ? (sz + sum(margin[1:2]), nothing) : (nothing, sz + sum(margin[3:4]))
     end
     ComputePipeline.set_type!(cb.autosize, Any)
     map!(identity, blockscene, cb.layoutobservables.autosize, cb.autosize)
 
     add_input!(cb, :computedbbox, cb.layoutobservables.computedbbox)
-    map!(round_to_IRect2D, cb, :computedbbox, :framebox)
+    map!(cb, [:computedbbox, :margin], :framebox) do bbox, margin
+        return round_to_IRect2D(enlarge(bbox, -margin[1], -margin[2], -margin[3], -margin[4]))
+    end
 
     # Run the normal color(map) processing. This either uses the inputs given
     # to `Colorbar()` explicitly, or the inputs extracted from a plot.
@@ -475,7 +484,6 @@ function initialize_block!(cb::Colorbar; kwargs...)
         colorrange = cb.resolved_colorrange,
         colorscale = cb.scale,
         visible = cb.show_heatmap,
-        inspectable = false,
     )
 
     map!(cb, :barbox, [:xlims, :ylims]) do bb
@@ -501,7 +509,6 @@ function initialize_block!(cb::Colorbar; kwargs...)
         blockscene,
         cb.xlims, cb.ylims, cb.image_pixels;
         visible = cb.show_image,
-        inspectable = false
     )
 
     map!(cb, [:barbox, :vertical], :clip_tris) do box, vertical
@@ -529,7 +536,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
 
     poly!(
         blockscene, cb.clip_tris, color = cb.clip_tri_colors,
-        strokecolor = :transparent, inspectable = false
+        strokecolor = :transparent
     )
 
     map!(
@@ -562,7 +569,7 @@ function initialize_block!(cb::Colorbar; kwargs...)
         end
     end
 
-    lines!(blockscene, cb.borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor, inspectable = false)
+    lines!(blockscene, cb.borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor)
 
     map!(cb, [:barbox, :vertical, :flipaxis], :axispoints) do scenearea, vertical, flipaxis
         if vertical
@@ -675,3 +682,92 @@ function scaled_steps(steps, scale, lims)
     # then rescale to 0 to 1
     return @. (steps_lim_scaled - steps_lim_scaled[begin]) / (steps_lim_scaled[end] - steps_lim_scaled[begin])
 end
+
+"""
+    Colorbar(ax::Axis, plot::AbstractPlot; position = :rt, kwargs...)
+    Colorbar(ax::Axis; position = :rt, kwargs...)
+
+Create a colorbar positioned inside an Axis's plot area.
+
+This is a convenience constructor that automatically extracts the colormap from the plot
+and positions the colorbar using the `position` argument.
+
+## Arguments
+- `ax`: The axis to place the colorbar in
+- `plot`: The plot to extract colormap from (defaults to first plot in axis)
+
+## Keyword Arguments
+- `position`: Position symbol (`:rt`, `:lt`, `:rb`, `:lb`, `:ct`, `:cb`, `:lc`, `:rc`, `:cc`)
+              or tuple `(halign, valign)`. Default: `:rt`
+- `margin`: Margin around the colorbar. Default: `(6, 50, 6, 6)` for `(left, right, bottom, top)` to leave space for tick labels
+- All other keyword arguments are passed to `Colorbar`
+
+## Examples
+```julia
+fig, ax, pl = heatmap(rand(10, 10))
+Colorbar(ax, pl)  # Creates colorbar at default position :rt
+
+Colorbar(ax, pl; position=:lt, label="Temperature")
+```
+"""
+function Colorbar(
+        ax::AbstractAxis, plot::AbstractPlot;
+        position = :rt, margin = (6, 50, 6, 6), kwargs...
+    )
+    pos_kw = legend_position_to_aligns(position)
+    cmap = extract_and_process_colormap(plot, kwargs)
+    return Colorbar(
+        ax.parent;
+        bbox = ax.scene.viewport,
+        margin = margin,
+        cmap...,
+        pos_kw...,
+        kwargs...
+    )
+end
+
+# Version that uses the first plot in the axis
+function Colorbar(ax::AbstractAxis; kwargs...)
+    plots = ax.scene.plots
+    isempty(plots) && error("No plots in axis to extract colormap from")
+    return Colorbar(ax, first(plots); kwargs...)
+end
+
+# convenience constructor for axis colorbar (analogous to axislegend)
+axiscolorbar(ax = current_axis(); kwargs...) = Colorbar(ax; kwargs...)
+
+axiscolorbar(ax, plot::AbstractPlot; kwargs...) = Colorbar(ax, plot; kwargs...)
+
+"""
+    axiscolorbar(ax, plot::AbstractPlot; position = :rt, kwargs...)
+    axiscolorbar(ax = current_axis(); kwargs...)
+
+Create a colorbar that sits inside an Axis's plot area.
+
+The position can be a Symbol where the first letter controls the horizontal
+alignment and can be l, r or c, and the second letter controls the vertical
+alignment and can be t, b or c. Or it can be a tuple where the first
+element is set as the Colorbar's halign and the second element as its valign.
+
+## Arguments
+- `ax`: The axis to place the colorbar in
+- `plot`: The plot to extract colormap from (defaults to first plot in axis)
+
+## Keyword Arguments
+- `position`: Position symbol (`:rt`, `:lt`, etc.) or tuple `(halign, valign)`. Default: `:rt`
+- `margin`: Margin around the colorbar. Default: `(6, 50, 6, 6)` for `(left, right, bottom, top)` to leave space for tick labels
+- All other keyword arguments are passed to `Colorbar`
+
+Note: This is equivalent to `Colorbar(ax, plot; position, kwargs...)`.
+
+## Examples
+```julia
+fig, ax, pl = heatmap(rand(10, 10))
+axiscolorbar(ax, pl, position = :rt)
+
+# Or with the current axis
+heatmap!(rand(10, 10))
+axiscolorbar(position = :lt)
+```
+"""
+axiscolorbar

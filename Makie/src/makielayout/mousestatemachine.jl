@@ -121,12 +121,20 @@ end
 ```
 """
 function addmouseevents!(scene, elements...; priority = 1)
-    is_mouse_over_relevant_area() = isempty(elements) ? Makie.is_mouseinside(scene) : mouseover(scene, elements...)
-    return _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+    is_mouse_over_relevant_area() = mouse_over_scene(scene) &&
+        (isempty(elements) || mouseover(scene, elements...))
+    return _addmouseevents!(scene, is_mouse_over_relevant_area, Makie.mouseposition_px, priority)
 end
 function addmouseevents!(scene, bbox::Observables.AbstractObservable{<:Rect2}; priority = 1)
-    is_mouse_over_relevant_area() = Makie.mouseposition_px(scene) in bbox[]
-    return _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+    # Block geometry (`computedbbox`, slider endpoints, …) lives in absolute
+    # window-pixel coordinates and blockscene cameras are window-absolute
+    # (campixel!), so hit-test and report event positions in that same frame.
+    # `mouseposition_px` is viewport-relative and stops matching the absolute
+    # bboxes as soon as the blockscene inherits an offset viewport (e.g. for
+    # a widget placed inside a ScrollArea/Tabs content scene).
+    global_mouseposition_px(scene) = Point2f(events(scene).mouseposition[])
+    is_mouse_over_relevant_area() = global_mouseposition_px(scene) in bbox[] && mouse_over_scene(scene)
+    return _addmouseevents!(scene, is_mouse_over_relevant_area, global_mouseposition_px, priority)
 end
 
 
@@ -185,7 +193,7 @@ function to_click_event(b::Mouse.Button)
     return error("No recognized mouse button $b")
 end
 
-function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+function _addmouseevents!(scene, is_mouse_over_relevant_area, global_mouseposition_px, priority)
     Mouse = Makie.Mouse
     dblclick_max_interval = 0.2
 
@@ -194,8 +202,8 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     )
     # initialize state variables
     last_mouseevent = Ref{Mouse.Action}(Mouse.release)
-    prev_data = Ref(mouseposition(scene))
-    prev_px = Ref(Makie.mouseposition_px(scene))
+    prev_px = Ref(Point2f(global_mouseposition_px(scene)))
+    prev_data = Ref(to_world(scene, prev_px[]))
     mouse_downed_inside = Ref(false)
     mouse_downed_button = Ref{Optional{Mouse.Button}}(nothing)
     drag_ongoing = Ref(false)

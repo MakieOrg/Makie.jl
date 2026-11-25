@@ -132,7 +132,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
     ) do scene, cam, startpos, active, event
         mp = e.mouseposition[]
         if ispressed(scene, cam.panbutton[])
-            if event.action == Mouse.press && is_mouseinside(scene) && !active[]
+            if event.action == Mouse.press && mouse_over_scene(scene) && !active[]
                 startpos[] = mp
                 active[] = true
                 return Consume(true)
@@ -173,7 +173,7 @@ function add_zoom!(scene::SceneLike, cam::Camera2D)
     return on(camera(scene), e.scroll) do x
         @extractvalue cam (zoomspeed, zoombutton, area)
         zoom = Float64(x[2])
-        if zoom != 0 && ispressed(scene, zoombutton) && is_mouseinside(scene)
+        if zoom != 0 && ispressed(scene, zoombutton) && mouse_over_scene(scene)
             pa = viewport(scene)[]
             z = (1.0 - zoomspeed)^zoom
             mp = Vec2d(e.mouseposition[]) - minimum(pa)
@@ -222,7 +222,7 @@ function selection_rect!(scene, cam, key)
     )
     waspressed = RefValue(false)
     on(camera(scene), events(scene).mousebutton, key) do event, key
-        if ispressed(scene, key) && is_mouseinside(scene)
+        if ispressed(scene, key) && mouse_over_scene(scene)
             mp = camspace(scene, cam, events(scene).mouseposition[])
             if event.action == Mouse.press && !waspressed[]
                 waspressed[] = true
@@ -252,7 +252,7 @@ function selection_rect!(scene, cam, key)
 
     on(camera(scene), events(scene).mouseposition, key) do mp, key
         # this is only true after a mousebutton update
-        if ispressed(scene, key) && is_mouseinside(scene)
+        if ispressed(scene, key) && mouse_over_scene(scene)
             mp = camspace(scene, cam, mp)
             mini = minimum(rect[])
             rect[] = Rectf(mini, mp - mini)
@@ -326,26 +326,43 @@ struct UpdatePixelCam
     camera::Camera
     near::Float64
     far::Float64
+    absolute::Bool
 end
 
 function (cam::UpdatePixelCam)(window_size)
     w, h = Float64.(widths(window_size))
-    projection = orthographicprojection(0.0, w, 0.0, h, cam.near, cam.far)
+    # `absolute = false` (default): project the viewport-local range
+    # `(0..w, 0..h)`, so plot coordinates are relative to the scene's own
+    # viewport wherever it sits in the window.
+    # `absolute = true`: project absolute window pixels `(vx..vx+w, vy..vy+h)`,
+    # so a coordinate `(X, Y)` renders at window pixel `(X, Y)`. For a viewport
+    # at the window origin the two are identical.
+    vx, vy = cam.absolute ? Float64.(minimum(window_size)) : (0.0, 0.0)
+    projection = orthographicprojection(vx, vx + w, vy, vy + h, cam.near, cam.far)
     return set_proj_view!(cam.camera, projection, Mat4d(I))
 end
 
 """
-    campixel!(scene; nearclip=-1000.0, farclip=1000.0)
+    campixel!(scene; nearclip=-10_000.0, farclip=10_000.0, absolute=false)
 
-Creates a pixel camera for the given `scene`. This means that the positional
-data of a plot will be interpreted in pixel units. This camera does not feature
-controls.
+Pixel camera: positional data of a plot is interpreted in pixel units. This
+camera has no controls.
+
+With `absolute = false` (the default) coordinates are viewport-local — a plot at
+`(x, y)` is drawn `x` pixels from the left and `y` pixels from the bottom of the
+scene's *own* viewport, wherever that viewport sits in the window.
+
+With `absolute = true` coordinates are window-absolute — a plot at `(x, y)` is
+drawn at window pixel `(x, y)` regardless of the scene's viewport offset. This is
+what Makie's Block scenes use, since their content is positioned in the
+window-absolute coordinates of the layout `computedbbox`. For a viewport at the
+window origin the two modes are identical.
 """
-function campixel!(scene::Scene; nearclip = -10_000.0, farclip = 10_000.0)
+function campixel!(scene::Scene; nearclip = -10_000.0, farclip = 10_000.0, absolute::Bool = false)
     disconnect!(camera(scene))
     camera(scene).view_direction[] = Vec3f(0, 0, -1)
     update_once = Observable(false)
-    closure = UpdatePixelCam(camera(scene), nearclip, farclip)
+    closure = UpdatePixelCam(camera(scene), nearclip, farclip, absolute)
     on(closure, camera(scene), viewport(scene))
     cam = PixelCamera()
     # update once
@@ -354,6 +371,7 @@ function campixel!(scene::Scene; nearclip = -10_000.0, farclip = 10_000.0)
     update_once[] = true
     return cam
 end
+
 
 struct RelativeCamera <: AbstractCamera end
 get_space(::RelativeCamera) = :relative
