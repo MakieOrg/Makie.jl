@@ -1,13 +1,17 @@
 """
-    series(curves)
-
-Curves can be:
-* `AbstractVector{<: AbstractVector{<: Point2}}`: the native representation of a series as a vector of lines
-* `AbstractMatrix`: each row represents y coordinates of the line, while `x` goes from `1:size(curves, 1)`
-* `AbstractVector, AbstractMatrix`: the same as the above, but the first argument sets the x values for all lines
-* `AbstractVector{<: Tuple{X<: AbstractVector, Y<: AbstractVector}}`: A vector of tuples, where each tuple contains a vector for the x and y coordinates
+Plots multiple curves as a series.
 
 If any of `marker`, `markersize`, `markercolor`, `strokecolor` or `strokewidth` is set != nothing, a scatterplot is added.
+
+## Arguments
+
+* `curves` An `AbstractVector{<:AbstractVector{<:Point2}}` representing a series as a vector of lines.
+* `curves` An `AbstractMatrix` where each row represents y coordinates of the line, while x goes from
+    `1:size(curves, 1)`.
+* `x, curves` Where `x` is an `AbstractVector` setting x values for all lines and `curves` is an
+    `AbstractMatrix` where each row represents y coordinates.
+* `curves` An `AbstractVector{<:Tuple{X<:AbstractVector, Y<:AbstractVector}}` where each tuple
+    contains vectors for the x and y coordinates.
 """
 @recipe Series (curves::AbstractVector{<:Union{BezierPath, AbstractVector{<:Point}}},) begin
     filtered_attributes(Lines, exclude = (:cycle,))...
@@ -121,13 +125,14 @@ function plot!(plot::Series)
             if color isa RealVector
                 # TODO: Is it reasonable to just run the categorical_colors()
                 # code after this to resolve cycling/dropping of extra samples?
-                cr = combined_colorrange(colorscale, colorrange, extrema_nan(color))
+                autorange = distinct_extrema_nan(apply_scale(colorscale, color))
+                cr = combined_colorrange(NoDimConversion(), colorscale, colorrange, autorange)
                 cm = to_colormap(colormap)
-                lc = default_automatic(to_color(lowclip), first(cm))
-                hc = default_automatic(to_color(highclip), last(cm))
+                lc = lowclip === automatic ? first(cm) : to_color(lowclip)
+                hc = highclip === automatic ? last(cm) : to_color(highclip)
                 nc = to_color(nan_color)
                 color = map(color) do value
-                    sample_color(cm, value, cr, lc, hc, nc)
+                    sample_color(cm, apply_scale(colorscale, value), cr, lc, hc, nc)
                 end
             end
             if cycle === automatic

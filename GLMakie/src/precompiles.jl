@@ -41,6 +41,10 @@ let
                 destroy!(screen)
 
                 foreach(include, Makie.shared_precompile_paths())
+                # Cover screen reuse through the same path as a second colorbuffer call.
+                fig = scatter(x)
+                Makie.colorbuffer(fig; px_per_unit = 1)
+                Makie.colorbuffer(fig; px_per_unit = 1)
                 display(plot(x); visible = false)
 
                 screen = Screen(Scene(); visible = false)
@@ -75,7 +79,7 @@ let
 end
 
 precompile(Screen, (Scene, ScreenConfig))
-precompile(GLFramebuffer, (NTuple{2, Int},))
+precompile(FramebufferManager, (NTuple{2, Int},))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{Float32}))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBAf}))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBf}))

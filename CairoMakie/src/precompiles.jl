@@ -15,6 +15,13 @@ let
     @compile_workload begin
         CairoMakie.activate!()
         foreach(include, Makie.shared_precompile_paths())
+        # The second render reuses the screen and resolves computations after layout updates.
+        fig = scatter(1:4; color = 1:4, colormap = :turbo, markersize = 20, visible = true)
+        Makie.colorbuffer(fig; px_per_unit = 1)
+        Makie.colorbuffer(fig; px_per_unit = 1)
+        mktempdir() do dir
+            save(joinpath(dir, "scatter.png"), fig)
+        end
         # Cleanup globals to avoid serializing stale state (fonts, figures, tasks)
         # Note: __init__ doesn't run during precompilation, so we must always clean up here
         Makie.cleanup_globals()

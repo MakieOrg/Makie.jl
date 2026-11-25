@@ -3,18 +3,15 @@ S. Axen implementation from https://github.com/MakieOrg/StatsMakie.jl/blob/maste
 The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
 """
-    crossbar(x, y, ymin, ymax; kwargs...)
-
 Draw a crossbar. A crossbar represents a range with a (potentially notched) box.
 It is most commonly used as part of the `boxplot`.
 
 ## Arguments
-- `x`: position of the box
-- `y`: position of the midline within the box
-- `ymin`: lower limit of the box
-- `ymax`: upper limit of the box
+
+- `xs, ys, ymins, ymaxs` Defines the x positions of each box with `xs`, the midline height with `ys`,
+and the limits of the box with `ymins` and `ymaxs`. Each argument is given as an `AbstractVector{<:Real}`.
 """
-@recipe CrossBar (x, y, ymin, ymax) begin
+@recipe CrossBar (x::RealVector, y::RealVector, ymin::RealVector, ymax::RealVector) begin
     "Sets the color of the drawn boxes. These can be values for colormapping."
     color = @inherit patchcolor
 
@@ -88,7 +85,16 @@ It is most commonly used as part of the `boxplot`.
     mixin_generic_plot_attributes()...
 end
 
-function Makie.plot!(plot::CrossBar)
+argument_dim_kwargs(::Type{<:CrossBar}) = (:orientation,)
+function argument_dims(::Type{<:CrossBar}, x, y, ymin, ymax; orientation)
+    return ifelse(orientation === :vertical, (1, 2, 2, 2), (2, 1, 1, 1))
+end
+
+function convert_arguments(::Type{<:CrossBar}, a, b, c, d)
+    return map(x -> x isa Union{AbstractArray, Categorical} ? x : [x], (a, b, c, d))
+end
+
+function plot!(plot::CrossBar)
     map!(
         plot, [
             :x, :y, :ymin, :ymax, :width, :dodge, :n_dodge, :gap, :dodge_gap,
@@ -109,7 +115,7 @@ function Makie.plot!(plot::CrossBar)
         l, m, r = x̂ .- hw, x̂, x̂ .+ hw
 
         if show_notch && nmin !== automatic && nmax !== automatic
-            if any(nmin < ymin || nmax > ymax)
+            if any(nmin .< ymin .|| nmax .> ymax)
                 @warn("Crossbar's notch went outside hinges. Set notch to false.")
             end
             # when notchmin = ymin || notchmax == ymax, fill disappears from

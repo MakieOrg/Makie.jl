@@ -35,7 +35,7 @@ end
 get_tickvalues(ticks::WilkinsonTicks, vmin, vmax) = get_tickvalues(ticks, Float64(vmin), Float64(vmax))
 
 function get_tickvalues(ticks::WilkinsonTicks, vmin::Float64, vmax::Float64)
-
+    vmin <= vmax || error("Tick limits not sorted: ($vmin, $vmax)")
     ticklocations, _ = PlotUtils.optimize_ticks(
         Float64(vmin), Float64(vmax);
         extend_ticks = false, strict_span = true, span_buffer = nothing,

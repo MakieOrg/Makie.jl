@@ -8,11 +8,19 @@
 
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::Screen, scene::Scene)
+    # So animations based on tick events can finish
+    screen.last_render_time = Makie.next_tick!(
+        events(scene).tick, Makie.OneTimeRenderTick, screen.creation_time, screen.last_render_time
+    )
+
     Cairo.save(screen.context)
     draw_background(screen, scene)
 
     allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot_or_rasterized)
     sort!(allplots; by = Makie.zvalue2d)
+
+    prepare_plots!(allplots)
+
     # If the backend is not a vector surface (i.e., PNG/ARGB),
     # then there is no point in rasterizing twice.
     should_rasterize = is_vector_backend(screen.surface)
@@ -194,4 +202,42 @@ end
 
 function draw_atomic(::Scene, ::Screen, x)
     return @warn "$(typeof(x)) is not supported by cairo right now"
+end
+
+# CategoricalConversions that involve multiple plots may need a synchronization
+# pass to bring all Categories into the conversion. E.g.:
+# plot 1 adds :A, :C - Conversion knows about :A, :C
+# plot 2 adds :A, :B - Conversion knows about :A, :B, :C
+# If we render immediately plot 1 may render without knowledge of :B, resulting
+# in incorrect categories. (With color dim converts this happens immediately.
+# With positions Axis triggers an early resolve which causes the plots to render
+# correctly but Axis limits being behind.)
+function prepare_plots!(plots)
+    for plot in plots
+        #=
+        This would fix:
+            scene = Scene(camera = cam2d!)
+            update_cam!(scene, Rect2f(0, 0, 4, 4))
+            p = scatter!(scene, [1, 1], Categorical(["A", "A"]));
+            p2 = scatter!(scene, [2, 2], Categorical(["A", "A"]))
+            p.arg2 = Categorical(["A", "C"])
+            p2.arg2 = Categorical(["A", "B"])
+            scene
+        which is pretty unusual so probably not worth fixing?
+        =#
+        # if haskey(plot, :dim_convert_1) || haskey(plot, :dim_convert_2) || haskey(plot, :dim_convert_3)
+        #     if haskey(plot, :dim_converted)
+        #         plot.dim_converted[]
+        #     end
+        # end
+
+        # This fixes Categorical ColorDimConvert synchronization
+        if haskey(plot, :resolved_cdc) && isa(plot.resolved_cdc[], Makie.CategoricalConversion)
+            # Could be either
+            haskey(plot, :dc_color) && plot.dc_color[]
+            haskey(plot, :dim_converted) && plot.dim_converted[]
+        end
+        # TODO: Do we need to resolve child plots too? For overrides?
+    end
+    return
 end

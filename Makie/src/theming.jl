@@ -39,6 +39,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     ),
     fontsize = 14,
     textcolor = :black,
+    text_handler = nothing,
     padding = Vec3f(0.05),
     figure_padding = 16,
     rowgap = 18,
@@ -67,7 +68,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     legend = Attributes(),
     axis_type = automatic,
     camera = automatic,
-    limits = automatic,
+    limits = Observable{Any}(automatic),
     SSAO = Attributes(
         # enable = false,
         bias = 0.025f0,       # z threshold for occlusion
@@ -76,7 +77,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # N_samples = 64,       # number of samples (requires shader reload)
     ),
     inspectable = true,
-    clip_planes = Vector{Plane3f}(),
+    clip_planes = Observable(Plane3f[]),
 
     # Vec is equivalent to 36° right/east, 39° up/north from camera position
     # The order here is Vec3f(right of, up from, towards) viewer/camera
@@ -98,9 +99,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         visible = true,
         start_renderloop = false,
         pdf_version = nothing
-    ),
-
-    GLMakie = Attributes(
+    ), GLMakie = Attributes(
         # Renderloop
         renderloop = automatic,
         pause_renderloop = false,
@@ -124,6 +123,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         oit = true,
         fxaa = true,
         ssao = false,
+        render_pipeline = automatic,
         # This adjusts a factor in the rendering shaders for order independent
         # transparency. This should be the same for all of them (within one rendering
         # pipeline) otherwise depth "order" will be broken.
@@ -131,9 +131,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # maximum number of lights with shading = MultiLightShading
         max_lights = 64,
         max_light_parameters = 5 * 64
-    ),
-
-    WGLMakie = Attributes(
+    ), WGLMakie = Attributes(
         framerate = 30.0,
         render_on_demand = true,
         resize_to = nothing,
@@ -157,49 +155,50 @@ const MAKIE_DEFAULT_THEME = Attributes(
 const CURRENT_DEFAULT_THEME = deepcopy(MAKIE_DEFAULT_THEME)
 const THEME_LOCK = Base.ReentrantLock()
 
-# Basically like deepcopy but while merging it into another Attribute dict
-function merge_without_obs!(result::Attributes, theme::Attributes)
-    dict = attributes(result)
-    for (key, value) in theme
-        if !haskey(dict, key)
-            dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
-        else
-            current_value = result[key]
-            if value isa Attributes && current_value isa Attributes
-                # if nested attribute, we merge recursively
-                merge_without_obs!(current_value, value)
-            end
-            # we're good! result already has a value, can ignore theme
-        end
-    end
-    return result
-end
+value_or_obs_deepcopy(o::Observable{T}) where {T} = Observable{T}(o[])
+value_or_obs_deepcopy(x) = x
 
-# Same as above, but second argument gets priority so, `merge_without_obs_reverse!(Attributes(a=22), Attributes(a=33)) -> Attributes(a=33)`
-function merge_without_obs_reverse!(result::Attributes, priority::Attributes)
-    result_dict = attributes(result)
-    for (key, value) in priority
-        if !haskey(result_dict, key)
-            result_dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+"""
+    merge_theme!(target::Attributes, source::Attributes[; deepcopy_observables = false])
+
+Merges two themes recursively.
+
+Any attributes already set in `target` are preserved. Note that this is different
+from `Base.merge!(target, source)` which would overwrite them.
+
+Nested attributes are placed in a new `Attributes` container to avoid changes in
+`target` affecting `source`.
+
+Observable attributes are treated as values by default. This means that
+observables are added to `target` as is, and updating them will affect the same
+observable in source. With `deepcopy_observables = false` a new Observable with
+the same content is created, so that this connection is severed.
+"""
+function merge_theme!(target::Attributes, source::Attributes; deepcopy_observables = false)
+    dict = attributes(target)
+    for (key, value) in source
+        if haskey(dict, key)
+            # merge nested theme
+            if dict[key] isa Attributes && value isa Attributes
+                merge_theme!(dict[key], value; deepcopy_observables)
+            end
         else
-            current_value = result[key]
-            if value isa Attributes && current_value isa Attributes
-                # if nested attribute, we merge recursively
-                merge_without_obs_reverse!(current_value, value)
+            if value isa Attributes
+                # different Attributes object so modifying target doesn't affect source
+                dict[key] = merge_theme!(Attributes(), value; deepcopy_observables)
             else
-                result_dict[key] = Observable{Any}(to_value(value))
+                dict[key] = deepcopy_observables ? value_or_obs_deepcopy(value) : value
             end
         end
     end
-    return result
+    return target
 end
 
-# Use copy with no obs to quickly deepcopy
-fast_deepcopy(attributes) = merge_without_obs!(Attributes(), attributes)
-
+function fast_theme_copy(attributes; deepcopy_observables = true)
+    return merge_theme!(Attributes(), attributes; deepcopy_observables)
+end
 
 current_default_theme() = CURRENT_DEFAULT_THEME
-
 
 """
     set_theme!(theme; kwargs...)
@@ -210,8 +209,19 @@ as keyword arguments.
 function set_theme!(new_theme = Attributes(); kwargs...)
     lock(THEME_LOCK) do
         empty!(CURRENT_DEFAULT_THEME)
-        resolved_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
-        resolved_theme = merge!(Theme(kwargs), resolved_theme)
+        # Globally defined themes should not be changed by changing anything in
+        # a scene.theme, so they should deepcopy Observables. The passed theme
+        # might be a globally define done, MAKIE_DEFAULT_THEME is one.
+        # TODO: Should we do `map(identity, obs)` instead of `Observable(obs[])`
+        # so that updates can still pass down? Would `off.(revserse(obs.inputs))`
+        # in empty!(CURRENT_DEFAULT_THEME) be enough to clean this up?
+        resolved_theme = merge_theme!(
+            fast_theme_copy(new_theme, deepcopy_observables = true),
+            MAKIE_DEFAULT_THEME, deepcopy_observables = true
+        )
+        # Observables from kwargs should be reused as is, so updating those
+        # Observables can affect the current theme.
+        resolved_theme = mergeleft!(Theme(kwargs), resolved_theme)
         merge!(CURRENT_DEFAULT_THEME, resolved_theme)
     end
     return
@@ -235,7 +245,7 @@ end
 """
 function with_theme(f, theme = Theme(); kwargs...)
     return lock(THEME_LOCK) do
-        previous_theme = fast_deepcopy(CURRENT_DEFAULT_THEME)
+        previous_theme = fast_theme_copy(CURRENT_DEFAULT_THEME)
         try
             set_theme!(theme; kwargs...)
             f()
@@ -249,18 +259,7 @@ end
 
 theme(::Nothing, key::Symbol; default = nothing) = theme(key; default)
 theme(::Nothing) = CURRENT_DEFAULT_THEME
-function theme(key::Symbol; default = nothing)
-    if haskey(CURRENT_DEFAULT_THEME, key)
-        val = to_value(CURRENT_DEFAULT_THEME[key])
-        if val isa Union{NamedTuple, Attributes}
-            return val
-        else
-            Observable{Any}(val)
-        end
-    else
-        return default
-    end
-end
+theme(key::Symbol; default = nothing) = get(CURRENT_DEFAULT_THEME, key, default)
 
 """
     update_theme!(with_theme::Theme; kwargs...)
@@ -285,7 +284,7 @@ update_theme!(Theme(colormap=:greys))
 """
 function update_theme!(with_theme = Attributes(); kwargs...)
     return lock(THEME_LOCK) do
-        new_theme = merge!(with_theme, Attributes(kwargs))
+        new_theme = mergeleft!(with_theme, Attributes(kwargs))
         _update_attrs!(CURRENT_DEFAULT_THEME, new_theme)
         return
     end

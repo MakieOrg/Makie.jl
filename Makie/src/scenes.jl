@@ -1,21 +1,43 @@
+"""
+    struct SSAO
+
+Settings for Screen Space Ambient Occlusion.
+
+Screen Space Ambient Occlusion darkens corners and creases. To do this, each
+pixel samples depth values from its surrounding area and compares them to itself.
+The more samples are in front of the pixel, the more occluded it is. The
+occlusion information gets blurred with neighboring pixels before being applied
+to reduce aliasing.
+
+Settings:
+- `radius`: Controls the sample range, in world space units.
+- `bias`: Sets the minimum difference in depth required to treat a sample as
+    "in front". This is needed to differentiate smoothly curved surfaces from
+    corners and creases.
+- `blur`: Sets the range of blurring.
+
+Note: SSAO is only implemented in GLMakie and needs to be explicitly turned on
+with `GLMakie.activate!(ssao = true)`, `display(figure/scene, ssao = true)` or
+by setting the render pipeline to one that includes SSAO.
+"""
 struct SSAO
     """
-    sets the range of SSAO. You may want to scale this up or
-    down depending on the limits of your coordinate system
+    Sets the range of SSAO, i.e. how far away a sample point can be from the
+    point whose occlusion is getting calculated. This should be scaled to the
+    scene so that only nearby points are considered.
     """
     radius::Observable{Float32}
 
     """
-    sets the minimum difference in depth required for a pixel to
-    be occluded. Increasing this will typically make the occlusion
-    effect stronger.
+    Sets the minimum difference in depth required for a pixel to be occluded.
+    Decreasing this will strengthen the occlusion effect but may also add
+    occlusion to smoothly varying surfaces.
     """
     bias::Observable{Float32}
 
     """
-    sets the (pixel) range of the blur applied to the occlusion texture.
-    The texture contains a (random) pattern, which is washed out by
-    blurring. Small `blur` will be faster, sharper and more patterned.
+    Sets the (pixel) range of the blur applied to the occlusion texture to
+    decrease aliasing. Small `blur` will be faster, sharper and more aliased.
     Large `blur` will be slower and smoother. Typically `blur = 2` is
     a good compromise.
     """
@@ -26,7 +48,8 @@ function Base.show(io::IO, ssao::SSAO)
     println(io, "SSAO:")
     println(io, "    radius: ", ssao.radius[])
     println(io, "    bias:   ", ssao.bias[])
-    return println(io, "    blur:   ", ssao.blur[])
+    println(io, "    blur:   ", ssao.blur[])
+    return
 end
 
 function SSAO(; radius = nothing, bias = nothing, blur = nothing)
@@ -74,6 +97,12 @@ mutable struct Scene <: AbstractScene
     "The plots contained in the Scene."
     plots::Vector{Plot}
 
+    """
+    Contains the current set of plots, updating whenever a plot is added to or
+    removed from this scene. Emptying the scene will empty the set in one go.
+    """
+    onplot::Observable{Set{Plot}}
+
     theme::Attributes
 
     "Children of the Scene inherit its transformation."
@@ -93,7 +122,7 @@ mutable struct Scene <: AbstractScene
 
     conversions::DimConversions
     isclosed::Bool
-    # Cant type this, dont have the type yet
+    # Can't type this, don't have the type yet
     data_inspector::Any
 
     function Scene(
@@ -114,6 +143,7 @@ mutable struct Scene <: AbstractScene
             lights::Vector;
             deregister_callbacks = Observables.ObserverFunction[]
         )
+        replace_computed_with_obs!(theme)
         scene = new(
             parent,
             events,
@@ -124,6 +154,7 @@ mutable struct Scene <: AbstractScene
             transformation,
             nothing,
             plots,
+            Observable(Set{Plot}()),
             theme,
             children,
             current_screens,
@@ -138,7 +169,9 @@ mutable struct Scene <: AbstractScene
         )
         add_camera_computation!(scene.compute, scene)
         add_light_computation!(scene.compute, scene, lights)
-        add_input!((k, v) -> Ref{Any}(v), scene.compute, :transform_func, transformation.transform_func)
+        add_input!(scene.compute, :transform_func, transformation.transform_func)
+        ComputePipeline.set_type!(scene.compute.transform_func, Any)
+        add_input!(scene.compute, :cycle_counters, Dict{Symbol, Int}())
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true
@@ -157,6 +190,15 @@ mutable struct Scene <: AbstractScene
         end
         return scene
     end
+end
+
+function replace_computed_with_obs!(theme::Union{Dict, Attributes})
+    for (key, val) in theme
+        if val isa Computed
+            theme[key] = ComputePipeline.get_observable!(val)
+        end
+    end
+    return
 end
 
 isclosed(scene::Scene) = scene.isclosed
@@ -253,22 +295,22 @@ function Scene(;
         theme_kw...
     )
 
-    global_theme = merge_without_obs!(copy(theme), current_default_theme())
-    m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
+    global_theme = merge_theme!(copy(theme), current_default_theme())
+    m_theme = merge_theme!(Attributes(theme_kw), global_theme)
 
-    bg = if haskey(theme_kw, :backgroundcolor)
-        map(to_color, convert(Observable{Any}, theme_kw[:backgroundcolor]), ignore_equal_values = true)
-    else
-        Observable{RGBAf}(to_color(to_value(m_theme[:backgroundcolor])))
+    bg = let
+        # prioritize kwargs over theme
+        init = get(theme_kw, :backgroundcolor, m_theme[:backgroundcolor])
+        map(to_color, convert(Observable{Any}, init), ignore_equal_values = true)
     end
 
     wasnothing = isnothing(viewport)
     scene_viewport = if wasnothing
         sz = if haskey(m_theme, :resolution)
             @warn "Found `resolution` in the theme when creating a `Scene`. The `resolution` keyword for `Scene`s and `Figure`s has been deprecated. Use `Figure(; size = ...` or `Scene(; size = ...)` instead, which better reflects that this is a unitless size and not a pixel resolution. The key could also come from `set_theme!` calls or related theming functions."
-            m_theme.resolution[]
+            to_value(m_theme.resolution)
         else
-            m_theme.size[]
+            to_value(m_theme.size)
         end
         Observable(Recti(0, 0, sz); ignore_equal_values = true)
     else
@@ -282,19 +324,20 @@ function Scene(;
         haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `light_direction` instead.")
 
         if haskey(m_theme, :lights)
-            copyto!(_lights, m_theme.lights[])
+            copyto!(_lights, to_value(m_theme.lights))
         else
             haskey(m_theme, :light_direction) || error("Theme must contain `light_direction::Vec3f` or an explicit `lights::Vector`!")
             haskey(m_theme, :light_color) || error("Theme must contain `light_color::RGBf` or an explicit `lights::Vector`!")
             haskey(m_theme, :camera_relative_light) || @warn("Theme should contain `camera_relative_light::Bool`.")
 
             if haskey(m_theme, :ambient)
-                push!(_lights, AmbientLight(m_theme[:ambient][]))
+                push!(_lights, AmbientLight(to_value(m_theme[:ambient])))
             end
 
             push!(
                 _lights, DirectionalLight(
-                    m_theme[:light_color][], m_theme[:light_direction][],
+                    to_value(m_theme[:light_color]),
+                    to_value(m_theme[:light_direction]),
                     to_value(get(m_theme, :camera_relative_light, false))
                 )
             )
@@ -325,6 +368,10 @@ function Scene(;
         end
     end
 
+    # track ObserverFunctions that we are not tracking with on/map(f, scene, inputs...)
+    # TODO: Do we need to track more?
+    append!(scene.deregister_callbacks::Vector{Observables.ObserverFunction}, bg.inputs)
+
     return scene
 end
 
@@ -346,7 +393,7 @@ function Scene(
     child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values = true)
     deregister_callbacks = Observables.ObserverFunction[]
     _visible = Observable(true)
-    if visible isa Observable
+    if visible isa Union{Computed, Observable}
         listener = on(visible; update = true) do v
             _visible[] = v
         end
@@ -354,7 +401,7 @@ function Scene(
     elseif visible isa Bool
         _visible[] = visible
     else
-        error("Unsupported typer visible: $(typeof(visible))")
+        error("Unsupported type visible: $(typeof(visible))")
     end
     child = Scene(;
         events = events,
@@ -475,9 +522,14 @@ function free(scene::Scene)
 end
 
 function Base.empty!(scene::Scene; reset_theme = true)
-    foreach(empty!, copy(scene.children))
-    # clear plots of this scene
-    for plot in copy(scene.plots)
+    foreach(empty!, reverse(scene.children))
+
+    empty!(scene.onplot[])
+    notify(scene.onplot)
+
+    # clear plots of this scene, newest first so that removing their compute
+    # edges from the scene graph finds them at the end of the dependents
+    for plot in reverse(scene.plots)
         delete!(scene, plot)
     end
 
@@ -490,9 +542,9 @@ function Base.empty!(scene::Scene; reset_theme = true)
     empty!(scene.plots)
     empty!(scene.theme)
 
-    # conditional, since in free we dont want this!
+    # conditional, since in free we don't want this!
     if reset_theme
-        merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
+        merge_theme!(scene.theme, CURRENT_DEFAULT_THEME)
     end
 
     disconnect!(scene.camera)
@@ -547,14 +599,27 @@ function free(plot::AbstractPlot)
     return
 end
 
+function disconnect!(plot::AbstractPlot)
+    foreach(disconnect!, Iterators.reverse(plot.plots))
+    ComputePipeline.disconnect!(plot.attributes)
+    return
+end
+
 # Note: can be called from scene finalizer
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
 
-    # Remove references to the plot compute graph from any parent compute graph.
-    # (E.g. the scene compute graph)
-    # This is meant to make the plot graph GC-able.
-    ComputePipeline.unsafe_disconnect_from_parents!(plot.attributes)
+    if plot in scene.onplot[] # don't retrigger if `empty!` cleared the set
+        delete!(scene.onplot[], plot)
+        notify(scene.onplot)
+    end
+
+    # Disconnect the ComputeGraphs of the plot and all of its children (recursive)
+    # from any other ComputeGraph so that they can be garbage collected. The other
+    # ComputeGraphs could just be this scene (e.g. camera matrices) but could also
+    # include other plots, scenes, blocks, or any other ComputeGraph.
+    # (Not disconnecting children may lead to them not being GC-able.)
+    disconnect!(plot)
 
     # TODO, if we want to delete a subplot of a plot,
     # It won't be in scene.plots directly, but will still be deleted
@@ -596,7 +661,7 @@ function move_to!(plot::Plot, scene::Scene)
 
     # TODO: This requires surgery, disconnecting the plot from the old scene
     # compute graph and connecting it to the new scene compute graph.
-    # unsafe_disconnect_from_parents!() + register_computation!() is not enough
+    # disoconnect!() + register_computation!() is not enough
 
     if is_space_compatible(plot, scene)
         obsfunc = connect!(transformation(scene), transformation(plot))
@@ -688,6 +753,7 @@ end
 
 parent_scene(x) = parent_scene(get_scene(x))
 parent_scene(x::Plot) = parent_scene(parent(x))::Scene
+parent_scene(x::Block) = parent_scene(x.blockscene)::Scene
 parent_scene(x::Scene) = x
 parent_scene(::Nothing) = nothing
 
@@ -725,7 +791,21 @@ struct FigureAxisPlot
     plot::AbstractPlot
 end
 
-const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+struct FigureBlock
+    figure::Figure
+    block::Block
+end
+
+const FigureAxis = FigureBlock
+function Base.getproperty(fb::FigureBlock, name::Symbol)
+    if name === :axis
+        return getfield(fb, :block)
+    else
+        return getfield(fb, name)
+    end
+end
+
+const FigureLike = Union{Scene, Figure, FigureAxisPlot, FigureBlock}
 
 """
     is_atomic_plot(plot::Plot)
@@ -735,8 +815,6 @@ Backends may have a different definition of what is considered an atomic plot,
 but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
 """
 is_atomic_plot(plot::Plot) = isempty(plot.plots)
-# Text is special, since it contains lines for latexstrings, but is still atomic itself
-is_atomic_plot(plot::Text) = true
 
 """
     collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
@@ -753,15 +831,6 @@ function collect_atomic_plots(xplot::Plot, plots = AbstractPlot[]; is_atomic_plo
         for elem in xplot.plots
             collect_atomic_plots(elem, plots; is_atomic_plot = is_atomic_plot)
         end
-    end
-    return plots
-end
-
-# Text is atomic but contains another atomic (lines for latexstrings)
-function collect_atomic_plots(xplot::Text, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
-    push!(plots, xplot)
-    for elem in xplot.plots
-        collect_atomic_plots(elem, plots; is_atomic_plot = is_atomic_plot)
     end
     return plots
 end

@@ -12,11 +12,10 @@ include("geometrybasics_extension.jl")
 include("mousestatemachine.jl")
 include("types.jl")
 include("helpers.jl")
-include("ticklocators/linear.jl")
-include("ticklocators/wilkinson.jl")
 include("defaultattributes.jl")
 include("lineaxis.jl")
 include("interactions.jl")
+
 include("blocks/axis.jl")
 include("blocks/axis3d.jl")
 include("blocks/polaraxis.jl")
@@ -33,24 +32,18 @@ include("blocks/legend.jl")
 include("blocks/scene.jl")
 include("blocks/menu.jl")
 include("blocks/textbox.jl")
+include("blocks/container.jl")
 
-export Axis
-export Axis3
-export PolarAxis
-export Slider
-export SliderGrid
-export IntervalSlider
-export Button
-export Checkbox
-export Colorbar
-export Label
-export Box
-export Toggle
-export Legend, axislegend
+include("docs/axis.jl")
+include("docs/axis3.jl")
+include("docs/box.jl")
+include("docs/colorbar.jl")
+include("docs/legend.jl")
+include("docs/polaraxis.jl")
+
+export @Block, Block
+export axislegend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
-export LScene
-export Menu
-export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!, reset_limits!, rlims!, thetalims!

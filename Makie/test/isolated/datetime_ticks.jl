@@ -106,7 +106,10 @@ end
 end
 
 @testset "time ticks close to edges" begin
-    f(vmin, vmax) = Makie.get_ticks(Makie.DateTimeConversion(Time), Makie.automatic, identity, Makie.automatic, vmin, vmax)
+    f(vmin, vmax) = Makie.get_ticks(
+        Makie.DateTimeConversion(Time), Makie.automatic, identity, Makie.automatic,
+        vmin, vmax, false
+    )
     tmin = Time(0)
     tmax = Time(0) - Nanosecond(1)
     num_tmin = Makie.date_to_number(Time, tmin)

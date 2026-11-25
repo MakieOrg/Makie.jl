@@ -1,13 +1,21 @@
 struct Axis3Camera <: AbstractCamera end
 
+function add_attributes!(T::Type{<:Axis3}, graph, flattened_defaults)
+    attr = documented_attributes(Axis3)
+    _, limits = get_typed_default(attr, flattened_defaults, :limits)
+    add_input!(graph, :limits, limits)
+    ComputePipeline.set_type!(graph.limits, Any)
+    graph.inputs[:limits].force_update = true
+    return
+end
+
 function initialize_block!(ax::Axis3)
 
     blockscene = ax.blockscene
 
-    on(blockscene, ax.protrusions) do prot
+    on(blockscene, ax.protrusions, update = true) do prot
         ax.layoutobservables.protrusions[] = to_protrusions(prot)
     end
-    notify(ax.protrusions)
 
     finallimits = Observable(Rect3d(Vec3d(0.0), Vec3d(100.0)))
     setfield!(ax, :finallimits, finallimits)
@@ -39,15 +47,7 @@ function initialize_block!(ax::Axis3)
             _planes = planes(lims)
             _planes = apply_transform.(Ref(model), _planes)
             nudge = 1.0f0 + 1.0f-5 # clip slightly outside to avoid float precision issues with 0 margin
-            clip_planes = map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
-            # Creating a plot in Axis3 will read scene.theme.clip_planes to initialize
-            # them in the plot, but update them afterwards. We need to do that manually
-            for plot in scene.plots
-                if !haskey(plot.kw, :clip_planes) # not set by user
-                    plot.clip_planes = clip_planes
-                end
-            end
-            return clip_planes
+            return map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
         else
             return Plane3f[]
         end
@@ -126,19 +126,63 @@ function initialize_block!(ax::Axis3)
         return
     end
 
+    x_dim_convert_updater = needs_tick_update_observable(ax.dim1_conversion)
+    y_dim_convert_updater = needs_tick_update_observable(ax.dim2_conversion)
+    z_dim_convert_updater = needs_tick_update_observable(ax.dim3_conversion)
+
     ticknode_1 = Observable{Any}()
-    map!(scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat) do lims, ticks, format
-        get_ticks(ax.scene.conversions[1], ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
+    map!(
+        scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat, ax.x_unit_in_ticklabel,
+        x_dim_convert_updater
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.scene.conversions[1]
+        should_show = show_dim_convert_in_ticklabel(dc, show_unit)
+        get_ticks(dc, ticks, identity, format, minimum(lims)[1], maximum(lims)[1], should_show)
     end
 
     ticknode_2 = Observable{Any}()
-    map!(scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat) do lims, ticks, format
-        get_ticks(ax.scene.conversions[2], ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
+    map!(
+        scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat, ax.y_unit_in_ticklabel,
+        y_dim_convert_updater
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.scene.conversions[2]
+        should_show = show_dim_convert_in_ticklabel(dc, show_unit)
+        get_ticks(dc, ticks, identity, format, minimum(lims)[2], maximum(lims)[2], should_show)
     end
 
     ticknode_3 = Observable{Any}()
-    map!(scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
-        get_ticks(ax.scene.conversions[3], ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
+    map!(
+        scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat, ax.z_unit_in_ticklabel,
+        z_dim_convert_updater
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.scene.conversions[3]
+        should_show = show_dim_convert_in_ticklabel(dc, show_unit)
+        get_ticks(dc, ticks, identity, format, minimum(lims)[3], maximum(lims)[3], should_show)
+    end
+
+    xlabel_node = Observable{Any}()
+    map!(
+        xlabel_node, ax.xlabel, ax.xlabel_suffix, ax.x_unit_in_label, x_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, _
+        dc = ax.scene.conversions[1]
+        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
+    end
+
+    ylabel_node = Observable{Any}()
+    map!(
+        ylabel_node, ax.ylabel, ax.ylabel_suffix, ax.y_unit_in_label, y_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, _
+        dc = ax.scene.conversions[2]
+        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
+    end
+
+    zlabel_node = Observable{Any}()
+    map!(
+        zlabel_node, ax.zlabel, ax.zlabel_suffix, ax.z_unit_in_label, z_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, _
+        dc = ax.scene.conversions[3]
+        x = build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
+        return x
     end
 
     add_panel!(blockscene, ax, 1, 2, 3, finallimits, mi3)
@@ -164,12 +208,18 @@ function initialize_block!(ax::Axis3)
         ax.xreversed, ax.yreversed, ax.zreversed
     )
 
-    xticks, xticklabels, xlabel =
-        add_ticks_and_ticklabels!(blockscene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
-    yticks, yticklabels, ylabel =
-        add_ticks_and_ticklabels!(blockscene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
-    zticks, zticklabels, zlabel =
-        add_ticks_and_ticklabels!(blockscene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
+    xticks, xticklabels, xlabel = add_ticks_and_ticklabels!(
+        blockscene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
+        ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, xlabel_node
+    )
+    yticks, yticklabels, ylabel = add_ticks_and_ticklabels!(
+        blockscene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
+        ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, ylabel_node
+    )
+    zticks, zticklabels, zlabel = add_ticks_and_ticklabels!(
+        blockscene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
+        ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, zlabel_node
+    )
 
     titlepos = lift(scene, ax.layoutobservables.computedbbox, ax.titlegap, ax.titlealign) do a, titlegap, align
 
@@ -218,11 +268,12 @@ function initialize_block!(ax::Axis3)
 
     ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    on(scene, ax.limits) do lims
+    limits_obs = ComputePipeline.get_observable!(ax.attributes, :limits, use_deepcopy = false)
+    on(scene, limits_obs, update = true) do lims
         reset_limits!(ax)
     end
 
-    on(scene, ax.targetlimits) do lims
+    on(scene, ax.targetlimits, update = true) do lims
         # adjustlimits!(ax)
         # we have no aspect constraints here currently, so just update final limits
         ax.finallimits[] = lims
@@ -249,9 +300,6 @@ function initialize_block!(ax::Axis3)
     register_interaction!(ax, :scrollzoom, ScrollZoom(0.05, NaN))
     register_interaction!(ax, :translation, DragPan(NaN))
     register_interaction!(ax, :cursorfocus, FocusOnCursor(length(ax.scene.plots)))
-
-    # in case the user set limits already
-    notify(ax.limits)
 
     return
 end
@@ -599,7 +647,10 @@ function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, tick
     return gridline1, gridline2, framelines
 end
 
-function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
+function add_ticks_and_ticklabels!(
+        topscene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth,
+        xreversed, yreversed, zreversed, label
+    )
 
     attr(sym) = getproperty(ax, Symbol((:x, :y, :z)[dim], sym))
 
@@ -703,7 +754,8 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
     onany(
         topscene,
         topscene.viewport, topscene.camera.projectionview, limits, miv, min1, min2,
-        attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
+        attr(:labeloffset), attr(:labelrotation), attr(:labelalign),
+        xreversed, yreversed, zreversed, update = true
     ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
@@ -776,11 +828,10 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
 
         return
     end
-    notify(attr(:labelalign))
 
-    label = text!(
+    labelplot = text!(
         topscene, label_position,
-        text = attr(:label),
+        text = label,
         color = attr(:labelcolor),
         fontsize = attr(:labelsize),
         font = attr(:labelfont),
@@ -791,7 +842,7 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
         space = :pixel
     )
 
-    return ticks, ticklabels_text, label
+    return ticks, ticklabels_text, labelplot
 end
 
 function dim3point(dim1, dim2, dim3, v1, v2, v3)
@@ -979,6 +1030,88 @@ function convert_limit_attribute(lims::Tuple{Any, Any, Any})
 end
 
 
+"""
+    reset_limits!(ax; xauto = true, yauto = true)
+
+Resets the axis limits depending on the value of `ax.limits`.
+If one of the two components of limits is nothing,
+that value is either copied from the targetlimits if `xauto` or `yauto` is false,
+respectively, or it is determined automatically from the plots in the axis.
+If one of the components is a tuple of two numbers, those are used directly.
+"""
+function reset_limits!(ax::Axis3; xauto = true, yauto = true, zauto = true)
+    mlims = convert_limit_attribute(ax.limits[])
+
+    mxlims, mylims, mzlims = mlims::Tuple{Any, Any, Any}
+
+    xlims = if isnothing(mxlims) || mxlims[1] === nothing || mxlims[2] === nothing
+        l = if xauto
+            xautolimits(ax)
+        else
+            minimum(ax.targetlimits[])[1], maximum(ax.targetlimits[])[1]
+        end
+        if mxlims === nothing
+            l
+        else
+            lo = mxlims[1] === nothing ? l[1] : mxlims[1]
+            hi = mxlims[2] === nothing ? l[2] : mxlims[2]
+            (lo, hi)
+        end
+    else
+        convert(Tuple{Float64, Float64}, tuple(mxlims...))
+    end
+    ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
+        l = if yauto
+            yautolimits(ax)
+        else
+            minimum(ax.targetlimits[])[2], maximum(ax.targetlimits[])[2]
+        end
+        if mylims === nothing
+            l
+        else
+            lo = mylims[1] === nothing ? l[1] : mylims[1]
+            hi = mylims[2] === nothing ? l[2] : mylims[2]
+            (lo, hi)
+        end
+    else
+        convert(Tuple{Float64, Float64}, tuple(mylims...))
+    end
+
+    zlims = if isnothing(mzlims) || mzlims[1] === nothing || mzlims[2] === nothing
+        l = if zauto
+            zautolimits(ax)
+        else
+            minimum(ax.targetlimits[])[3], maximum(ax.targetlimits[])[3]
+        end
+        if mzlims === nothing
+            l
+        else
+            lo = mzlims[1] === nothing ? l[1] : mzlims[1]
+            hi = mzlims[2] === nothing ? l[2] : mzlims[2]
+            (lo, hi)
+        end
+    else
+        convert(Tuple{Float32, Float32}, tuple(mzlims...))
+    end
+
+    if !(xlims[1] <= xlims[2])
+        error("Invalid x-limits as xlims[1] <= xlims[2] is not met for $xlims.")
+    end
+    if !(ylims[1] <= ylims[2])
+        error("Invalid y-limits as ylims[1] <= ylims[2] is not met for $ylims.")
+    end
+    if !(zlims[1] <= zlims[2])
+        error("Invalid z-limits as zlims[1] <= zlims[2] is not met for $zlims.")
+    end
+
+    tlims = Rect3f(
+        Vec3f(xlims[1], ylims[1], zlims[1]),
+        Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
+    )
+    ax.targetlimits[] = tlims
+    return nothing
+end
+
 function xautolimits(ax::Axis3)
     xlims = getlimits(ax, 1)
 
@@ -1045,7 +1178,7 @@ function xlims!(ax::Axis3, xlims)
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (xlims, mlims[2], mlims[3])
+    ax.limits = (xlims, mlims[2], mlims[3])
     reset_limits!(ax, yauto = false, zauto = false)
     return nothing
 end
@@ -1064,7 +1197,7 @@ function ylims!(ax::Axis3, ylims)
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (mlims[1], ylims, mlims[3])
+    ax.limits = (mlims[1], ylims, mlims[3])
     reset_limits!(ax, xauto = false, zauto = false)
     return nothing
 end
@@ -1083,7 +1216,7 @@ function zlims!(ax::Axis3, zlims)
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (mlims[1], mlims[2], zlims)
+    ax.limits = (mlims[1], mlims[2], zlims)
     reset_limits!(ax, xauto = false, yauto = false)
     return nothing
 end
@@ -1127,188 +1260,6 @@ function limits!(ax::Axis3, rect::Rect3)
     Makie.ylims!(ax, ymin, ymax)
     return Makie.zlims!(ax, zmin, zmax)
 end
-
-function attribute_examples(::Type{Axis3})
-    return Dict(
-        :aspect => [
-            Example(
-                code = """
-                fig = Figure()
-
-                Axis3(fig[1, 1], aspect = (1, 1, 1), title = "aspect = (1, 1, 1)")
-                Axis3(fig[1, 2], aspect = (2, 1, 1), title = "aspect = (2, 1, 1)")
-                Axis3(fig[2, 1], aspect = (1, 2, 1), title = "aspect = (1, 2, 1)")
-                Axis3(fig[2, 2], aspect = (1, 1, 2), title = "aspect = (1, 1, 2)")
-
-                fig
-                """
-            ),
-            Example(
-                code = """
-                using FileIO
-
-                fig = Figure()
-
-                brain = load(assetpath("brain.stl"))
-
-                ax1 = Axis3(fig[1, 1], aspect = :equal, title = "aspect = :equal")
-                ax2 = Axis3(fig[1, 2], aspect = :data, title = "aspect = :data")
-
-                for ax in [ax1, ax2]
-                    mesh!(ax, brain, color = :gray80)
-                end
-
-                fig
-                """
-            ),
-        ],
-        :viewmode => [
-            Example(
-                code = """
-                fig = Figure()
-
-                for (i, viewmode) in enumerate([:fit, :fitzoom, :stretch])
-                    for (j, elevation) in enumerate([0.1, 0.2, 0.3] .* pi)
-
-                        Label(fig[i, 1:3, Top()], "viewmode = \$(repr(viewmode))", font = :bold)
-
-                        # show the extent of each cell using a box
-                        Box(fig[i, j], strokewidth = 0, color = :gray95)
-
-                        ax = Axis3(fig[i, j]; viewmode, elevation, protrusions = 0, aspect = :equal)
-                        hidedecorations!(ax)
-
-                    end
-                end
-
-                fig
-                """
-            ),
-        ],
-        :perspectiveness => [
-            Example(
-                code = """
-                fig = Figure()
-
-                for (i, perspectiveness) in enumerate(range(0, 1, length = 6))
-                    ax = Axis3(fig[fldmod1(i, 3)...]; perspectiveness, protrusions = (0, 0, 0, 15),
-                        title = ":perspectiveness = \$(perspectiveness)")
-                    hidedecorations!(ax)
-                end
-
-                fig
-                """
-            ),
-        ],
-        :azimuth => [
-            Example(
-                code = """
-                fig = Figure()
-
-                for (i, azimuth) in enumerate([0, 0.1, 0.2, 0.3, 0.4, 0.5])
-                    Axis3(fig[fldmod1(i, 3)...], azimuth = azimuth * pi,
-                        title = "azimuth = \$(azimuth)π", viewmode = :fit)
-                end
-
-                fig
-                """
-            ),
-        ],
-        :elevation => [
-            Example(
-                code = """
-                fig = Figure()
-
-                for (i, elevation) in enumerate([0, 0.05, 0.1, 0.15, 0.2, 0.25])
-                    Axis3(fig[fldmod1(i, 3)...], elevation = elevation * pi,
-                        title = "elevation = \$(elevation)π", viewmode = :fit)
-                end
-
-                fig
-                """
-            ),
-        ],
-        :xreversed => [
-            Example(
-                code = """
-                using FileIO
-
-                fig = Figure()
-
-                brain = load(assetpath("brain.stl"))
-
-                ax1 = Axis3(fig[1, 1], title = "xreversed = false")
-                ax2 = Axis3(fig[2, 1], title = "xreversed = true", xreversed = true)
-                for ax in [ax1, ax2]
-                    mesh!(ax, brain, color = getindex.(brain.position, 1))
-                end
-
-                fig
-                    """
-            ),
-        ],
-        :yreversed => [
-            Example(
-                code = """
-                using FileIO
-
-                fig = Figure()
-
-                brain = load(assetpath("brain.stl"))
-
-                ax1 = Axis3(fig[1, 1], title = "yreversed = false")
-                ax2 = Axis3(fig[2, 1], title = "yreversed = true", yreversed = true)
-                for ax in [ax1, ax2]
-                    mesh!(ax, brain, color = getindex.(brain.position, 2))
-                end
-
-                fig
-                """
-            ),
-        ],
-        :zreversed => [
-            Example(
-                code = """
-                using FileIO
-
-                fig = Figure()
-
-                brain = load(assetpath("brain.stl"))
-
-                ax1 = Axis3(fig[1, 1], title = "zreversed = false")
-                ax2 = Axis3(fig[2, 1], title = "zreversed = true", zreversed = true)
-                for ax in [ax1, ax2]
-                    mesh!(ax, brain, color = getindex.(brain.position, 3))
-                end
-
-                fig
-                """
-            ),
-        ],
-        :protrusions => [
-            Example(
-                code = """
-                    fig = Figure(backgroundcolor = :gray97)
-                    Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
-                    Axis3(fig[1, 1], protrusions = 100, viewmode = :stretch,
-                        title = "protrusions = 100")
-                    fig
-                """
-            ),
-            Example(
-                code = """
-                    fig = Figure(backgroundcolor = :gray97)
-                    Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
-                    ax = Axis3(fig[1, 1], protrusions = (0, 0, 0, 20), viewmode = :stretch,
-                        title = "protrusions = (0, 0, 0, 20)")
-                    hidedecorations!(ax)
-                    fig
-                """
-            ),
-        ]
-    )
-end
-
 
 # Axis interface
 

@@ -4,6 +4,31 @@ With Makie it is easy to create animated plots.
 Animations work by making changes to data or plot attribute Observables and recording the changing figure frame by frame.
 You can find out more about the Observables workflow on the [Observables](@ref) page.
 
+## FFMPEG_jll requirement
+
+!!! compat "Makie 0.25"
+    Starting with Makie v0.25, `FFMPEG_jll` is no longer a hard dependency of Makie because it
+    transitively pulls in GPL-licensed libraries (e.g. libx264). To use `record`, `VideoStream`,
+    or any other video-related functionality, `FFMPEG_jll` must be available in your environment.
+
+    The first time you call `record` (or `VideoStream`), Makie will automatically try to load
+    `FFMPEG_jll`, so as long as it's in your project this works without any code change on your
+    part. If you'd rather load it explicitly (e.g. to be sure of when it gets loaded), do:
+
+    ```julia
+    using FFMPEG_jll
+    using CairoMakie  # or GLMakie, WGLMakie, etc.
+    ```
+
+    To use a custom `ffmpeg` binary (e.g. one with extra codecs compiled in), call
+    `Makie.ffmpeg_path!("/path/to/ffmpeg")`. To persist this setting across Julia sessions,
+    use [Preferences.jl](https://github.com/JuliaPackaging/Preferences.jl):
+
+    ```julia
+    using Preferences
+    set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")
+    ```
+
 ## A simple example
 
 To create an animation you need to use the [`record`](@ref) function.
@@ -52,7 +77,7 @@ record(change_function, fig, "color_animation.mp4", hue_iterator; framerate = fr
 
 ## File formats
 
-Video files are created with [`FFMPEG_jll.jl`](https://github.com/JuliaBinaryWrappers/FFMPEG_jll.jl).
+Video files are created with [`FFMPEG_jll.jl`](https://github.com/JuliaBinaryWrappers/FFMPEG_jll.jl) (must be loaded, or auto-loadable from your environment — see above).
 You can choose from the following file formats:
 
 - `.mkv` (the default, doesn't need to convert)

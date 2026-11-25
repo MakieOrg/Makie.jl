@@ -6,9 +6,9 @@
     color = range(0, 1, length = length(directions))
     fig, ax, pl = arrows2d(points, directions; color = color)
     cbar = Colorbar(fig[1, 2], pl)
-    @test cbar.limits[] == Vec2f(0, 1)
+    @test cbar.resolved_colorrange[] == Vec2f(0, 1)
     pl.colorrange = (0.5, 0.6)
-    @test cbar.limits[] ≈ Vec2f(0.5, 0.6)
+    @test cbar.resolved_colorrange[] ≈ Vec2f(0.5, 0.6)
 end
 
 @testset "arrows in scaled world" begin
@@ -112,7 +112,7 @@ end
     el = only(els)
     @test el isa PolyElement
     @test el.polycolor[] == [:blue, :blue, :blue]
-    @test el.plots == [p]
+    @test leg.entrygroups[][1][2][1].plots == [p]
     tail, shaft, tip = el.poly[]
     # The tail is not drawn by default and collapses to a point
     @test isempty(faces(tail))

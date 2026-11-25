@@ -13,4 +13,6 @@ Private = false
 Makie.And
 Makie.Not
 Makie.Or
+Makie.ffmpeg_path
+Makie.ffmpeg_path!
 ```

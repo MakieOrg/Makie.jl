@@ -1,4 +1,5 @@
 {{GLSL_VERSION}}
+{{vertex_output_aliases}}
 
 // Sets which shading procedures to use
 // Options:
@@ -251,7 +252,9 @@ vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm
 
 uniform int num_clip_planes;
 uniform vec4 clip_planes[8];
+#ifndef MESH_GEOMETRY_SHADER
 out float gl_ClipDistance[8];
+#endif
 
 void process_clip_planes(vec3 world_pos)
 {
@@ -279,6 +282,9 @@ uniform mat3 view_normalmatrix;
 out vec3 o_view_pos;
 out vec3 o_view_normal;
 
+// the fragment's own normalized device coordinates, for stroking
+noperspective out vec3 o_ndc;
+
 
 #if defined(FAST_SHADING) || defined(MULTI_LIGHT_SHADING)
 // transpose(inv(model))
@@ -300,6 +306,8 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
 
     // position in clip space (w/ depth)
     gl_Position = projection * view_pos;
+    // o_ndc before depth_shift so stroke depth comparisons match unshifted positions
+    o_ndc = gl_Position.xyz / gl_Position.w;
     gl_Position.z += gl_Position.w * depth_shift;
 
     // for lighting
@@ -314,4 +322,26 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
     o_view_pos = view_pos.xyz / view_pos.w;
     // SSAO + matcap
     o_view_normal = view_normalmatrix * normal;
+}
+
+void render(vec4 position_world, Nothing normal, mat4 view, mat4 projection)
+{
+    process_clip_planes(position_world.xyz);
+
+    // position in view space (as seen from camera)
+    vec4 view_pos = view * position_world;
+    view_pos /= view_pos.w;
+
+    // position in clip space (w/ depth)
+    gl_Position = projection * view_pos;
+    // o_ndc before depth_shift so stroke depth comparisons match unshifted positions
+    o_ndc = gl_Position.xyz / gl_Position.w;
+    gl_Position.z += gl_Position.w * depth_shift;
+
+    // lighting is irrelevant without normals
+
+    // for SSAO
+    o_view_pos = view_pos.xyz / view_pos.w;
+    // SSAO + matcap
+    o_view_normal = vec3(0);
 }

@@ -52,6 +52,7 @@ let
         Bonito.serve_workload(App(() -> DOM.div(Makie.scatter(1:4), Bonito.Slider(1:10))))
         # the canvas readback decodes a base64 png string (session2image)
         Bonito.Base64.base64decode(Bonito.Base64.base64encode(rand(UInt8, 256)))
+        Screen(; px_per_unit = 1)
         # Do not retain servers, figures or tasks in the package image.
         Bonito.cleanup_globals()
         Makie.cleanup_globals()
@@ -68,6 +69,7 @@ precompile(Tuple{typeof(Core.kwcall), NamedTuple{(:px_per_unit,), Tuple{Int64}},
 precompile(apply_real_size!, (Screen, Makie.Scene, Makie.TrackedTask, Observable{Union{Nothing, Dict{Symbol, Any}}}, Observable{Any}, Tuple{Int, Int}, Vector{Any}))
 # the canvas readback that colorbuffer waits on
 precompile(session2image, (Bonito.Session{Bonito.WebSocketConnection}, Makie.Scene))
+precompile(Bonito.print_js_code, (IOBuffer, Makie.Scene, Bonito.JSSourceContext))
 # the 100Hz renderobject polling task every display starts
 precompile(run_polling_loop, (Screen, Makie.Scene, Threads.Atomic{Bool}))
 # post-init wiring + per-tick body: these only run once the browser finishes

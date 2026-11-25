@@ -227,8 +227,8 @@ function add_light_computation!(graph, scene, lights)
         @error("Only one AmbientLights is allowed. Skipping AmbientLights beyond the first.")
     end
 
-    add_input!((k, c) -> RGBf(to_color(c)), graph, :ambient_color, ambient_color)
-    add_input!((k, lights) -> convert(Vector{AbstractLight}, lights), graph, :lights, filtered_lights)
+    add_input!(c -> RGBf(to_color(c)), graph, :ambient_color, ambient_color)
+    add_input!(l -> convert(Vector{AbstractLight}, l), graph, :lights, filtered_lights)
     add_input!(graph, :shading, get(scene.theme, :shading, automatic))
     graph[:shading].value = RefValue{Any}(nothing) # allow shading to switch between automatic and ShadingAlgorithm
 
@@ -248,8 +248,8 @@ function add_light_computation!(graph, scene, lights)
 
     # Split this to avoid updating WGLMakie
     # camera view matrix, not space adjusted plot matrix (right?)
-    map!(graph, [:dirlight_direction, :dirlight_cam_relative, :eye_to_world], :dirlight_final_direction) do dir, cam_relative, iview
-        final_dir = cam_relative ? Vec3f(iview[Vec(1, 2, 3), Vec(1, 2, 3)] * dir) : dir
+    map!(graph, [:dirlight_direction, :dirlight_cam_relative, :eye_to_world], :dirlight_final_direction) do dir, cam_relative, inv_view
+        final_dir = cam_relative ? Vec3f(inv_view[Vec(1, 2, 3), Vec(1, 2, 3)] * dir) : dir
         return final_dir
     end
 
@@ -332,7 +332,6 @@ end
 ################################################################################
 # Plot Interface
 
-
 add_resolved_shading!(@nospecialize(plot), scene) = nothing
 
 function add_resolved_shading!(plot::Union{Mesh, MeshScatter}, scene)
@@ -377,6 +376,10 @@ function add_resolved_shading!(plot::Union{Surface, Volume, Voxels}, scene)
         end
     end
     return
+end
+
+function get_shading_mode(plot::Plot)
+    return to_value(get(plot, :shading_mode, NoShading))::ShadingAlgorithm
 end
 
 ################################################################################
@@ -477,7 +480,7 @@ function set_lights!(graph::ComputeGraph, lights)
     if any(l -> l isa AmbientLight, lights)
         error("The ambient light should be unique and controlled by `set_ambient_light!()`")
     end
-    update!(graph, lights = lights)
+    update!(graph, lights = convert(Vector{AbstractLight}, lights))
     return
 end
 

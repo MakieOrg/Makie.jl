@@ -85,7 +85,7 @@ function Base.:(*)(quat::Quaternion{T}, vec::P) where {T, P <: StaticVector{3}}
 end
 
 function Base.:(*)(quat::Quaternion, bb::Rect3{T}) where {T}
-    points = corners(bb)
+    points = coordinates(bb)
     bb = Rect3{T}()
     for i in eachindex(points)
         bb = update_boundingbox(bb, Point3{T}(quat * points[i]))

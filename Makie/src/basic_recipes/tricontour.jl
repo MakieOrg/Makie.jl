@@ -1,13 +1,15 @@
 """
-    tricontour(triangulation, zs; kwargs...)
-    tricontour(xs, ys, zs; kwargs...)
+Plots isolines of a scalar field on an unstructured triangular grid.
 
-Plots isolines of the scalar field `zs` at the horizontal positions `xs` and vertical
-positions `ys` on an unstructured triangular grid. A `Triangulation` from
-DelaunayTriangulation.jl can also be provided instead of `xs` and `ys`, otherwise an
-unconstrained Delaunay triangulation of `xs` and `ys` is computed.
+## Arguments
+
+* `xs, ys, zs` Plots isolines based on positions defined by `xs` and `ys`
+    (`AbstractVector{<:Real}`) and a scalar field defines by `zs`. An
+    unconstrained triangulation of `xs` and `ys` is computed automatically.
+* `triangles, zs` Plots isolines based on given `triangles` defined by a
+    `Triangulation` from DelaunayTriangulation.jl and a given scalar field `zs`.
 """
-@recipe Tricontour begin
+@recipe Tricontour (tri::DelTri.Triangulation, zs::RealVector) begin
     mixin_colormap_attributes()...
     filtered_attributes(Lines, allow = (:linestyle, :linewidth, :joinstyle, :miter_limit))...
     """
@@ -35,16 +37,18 @@ unconstrained Delaunay triangulation of `xs` and `ys` is computed.
     fxaa = false
 end
 
-function used_attributes(::Type{<:Tricontour}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
+argument_dims(::Type{<:Tricontour}, x, y, z) = (1, 2, 4)
+argument_dims(::Type{<:Tricontour}, tri, z) = (0, 4)
+
+function used_attributes(::Type{<:Tricontour}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::Any)
     return (:triangulation,)
 end
 
 function convert_arguments(
-        ::Type{<:Tricontour}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
+        ::Type{<:Tricontour}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z;
         triangulation = DelaunayTriangulation()
     )
-    T = float_type(x, y, z)
-    z = elconvert(T, z)
+    T = float_type(x, y)
     points = [elconvert(T, x)'; elconvert(T, y)']
     if triangulation isa DelaunayTriangulation
         tri = DelTri.triangulate(points, randomise = false)
@@ -59,6 +63,10 @@ function convert_arguments(
         end
     end
     return (tri, z)
+end
+
+function convert_arguments(::Type{<:Tricontour}, tri::DelTri.Triangulation, z::AbstractVector{<:Real})
+    return (tri, float_convert(z))
 end
 
 function _get_tricontour_levels(zs, scale, levels)
@@ -94,25 +102,26 @@ function _calculate_tricontour_lines!(xs_out, ys_out, colors, triangulation, zs,
 end
 
 function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
-    map!(apply_scale, c, [:colorscale, :converted_2], :scaled_zs)
+    map!(apply_scale, c, [:colorscale, :zs], :scaled_zs)
     map!(_get_tricontour_levels, c, [:scaled_zs, :colorscale, :levels], :computed_levels)
 
     map!(
-        c, [:colorrange, :colorscale, :computed_levels, :scaled_zs], :computed_colorrange
-    ) do colorrange, scale, levels, zs
-        autorange = if isempty(levels)
+        c, [:computed_levels, :scaled_zs], :auto_colorrange
+    ) do levels, zs
+        if isempty(levels)
             c = Float32(first(zs))
             delta = max(one(c), abs(c))
-            (c - delta, c + delta)
+            return (c - delta, c + delta)
         else
-            extrema_nan(levels)
+            return extrema_nan(levels)
         end
-        return combined_colorrange(scale, colorrange, autorange)
     end
+
+    register_colorrange!(c.attributes, output = :computed_colorrange)
 
     register_computation!(
         c,
-        [:converted_1, :scaled_zs, :computed_levels],
+        [:tri, :scaled_zs, :computed_levels],
         [:line_xs, :line_ys, :line_colors]
     ) do (tri, zs, levels), _, cached
         if isnothing(cached)
@@ -127,7 +136,7 @@ function plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:
     end
 
     map!(c, [:color, :line_colors], :final_color) do col, lc
-        return isnothing(col) ? lc : col
+        return something(col, lc)
     end
 
     lines!(
