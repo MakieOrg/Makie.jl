@@ -365,6 +365,7 @@ function glyph_sync!(session::Bonito.Session)
                     h32 = UInt32(h)
                     idx = get(atlas.mapping, h32, nothing)
                     bounds = get(sync.bbox, h32, nothing)
+                    bounds === nothing && (bounds = lock(() -> get(GLYPH_METRICS.bounds, h32, nothing), GLYPH_METRICS.lock))
                     if idx === nothing || bounds === nothing
                         @warn "Glyph pull request for an unregistered glyph" hash = h32 maxlog = 5
                         continue
@@ -386,9 +387,38 @@ end
 struct AllGlyphs end
 Base.in(hash, ::AllGlyphs) = true
 
+"""
+Font metrics (width, minimum) of every glyph hash a plot laid out, process wide
+like the texture atlas they belong to. A page pulls a glyph its session never
+shipped when text changes again before an update's glyphs are synced (the sync
+ships the newer text's glyphs); the pull is answered from here, and without it
+the letter stayed missing on that page.
+"""
+struct GlyphMetrics
+    lock::ReentrantLock
+    bounds::Dict{UInt32, Tuple{Vec2f, Vec2f}}
+end
+const GLYPH_METRICS = GlyphMetrics(ReentrantLock(), Dict{UInt32, Tuple{Vec2f, Vec2f}}())
+
+function record_metrics!(m::GlyphMetrics, atlas, glyphs::AbstractVector, fonts, hashes)
+    lock(m.lock) do
+        for (i, h) in enumerate(hashes)
+            haskey(m.bounds, h) && continue
+            g = glyphs[i]
+            g isa Union{Makie.BezierPath, UInt64, Char} || continue     # raw atlas hashes have no metrics
+            _, tex_marker, ffont = Makie.get_marker_hash(atlas, g, Makie.sv_getindex(fonts, i))
+            w, mini = Makie.glyph_boundingbox(tex_marker, ffont)
+            m.bounds[h] = (Vec2f(w), Vec2f(mini))
+        end
+    end
+    return
+end
+
 # Plot data only carries hashes, and those are the same on every page.
 function glyph_hashes(glyphs, fonts)
-    hashes, _ = Makie.get_glyph_data(Makie.get_texture_atlas(), AllGlyphs(), glyphs, fonts)
+    atlas = Makie.get_texture_atlas()
+    hashes, _ = Makie.get_glyph_data(atlas, AllGlyphs(), glyphs, fonts)
+    record_metrics!(GLYPH_METRICS, atlas, glyphs isa AbstractVector ? glyphs : [glyphs], fonts, hashes)
     return hashes
 end
 

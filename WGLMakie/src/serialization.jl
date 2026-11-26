@@ -251,8 +251,12 @@ function serialize_plots(session::Session, scene::Scene, plots::Vector{Plot}, re
         # if no plots inserted, this truly is an atomic
         if Makie.is_atomic_plot(plot)
             plot_data = serialize_three(scene, plot)
-            sync_glyphs!(session, plot)
+            # Watch first, then ship: text that changes in between (the plot's
+            # owner updates it from another task) is shipped by one or the other.
+            # The other way round its glyphs were never shipped to this page, and
+            # the page's pull for them was refused: letters went missing.
             watch_glyphs!(session, plot)
+            sync_glyphs!(session, plot)
             plot_data[:uuid] = js_uuid(plot)
             push!(result, plot_data)
         end
