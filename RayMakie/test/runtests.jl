@@ -107,6 +107,7 @@ const TEST_FILES = [
     "test_screen_owns_its_tracer.jl",
     "test_caching_gc_correctness.jl",
     "test_meshscatter_traced_memory.jl",
+    "test_meshscatter_moving_emitters.jl",
 ]
 
 # NOT listed: test_dolphin_update_stress.jl — and here is exactly what is known,
