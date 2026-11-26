@@ -89,6 +89,20 @@ function connect_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window,
         events.dropped_files[] = String.(files)
     end)
 
+    # The cursor, in UNITS (see `unitscale`), from GLFW's callback as GLMakie does:
+    # only a real move of the pointer sets it. Polling it every input tick wrote the
+    # physical cursor over any position set from code (Makie's FakeInteraction, UI
+    # tests driving a live window), so a scripted click pressed on a button and was
+    # released wherever the real pointer happened to be. Y flips from GLFW (top-down)
+    # to Makie (bottom-up).
+    GLFW.SetCursorPosCallback(window, (_, x, y) -> begin
+        ppu = screen.px_per_unit
+        s = unitscale(window, ppu)
+        _, uh = unitsize(window, ppu)
+        mp = (Float64(x) * s, uh - Float64(y) * s)
+        mp != events.mouseposition[] && (events.mouseposition[] = mp)
+    end)
+
     # Window resize. UNITS, like the poll — see `unitsize`. The callback's own
     # `w, h` are points and are deliberately not used.
     GLFW.SetWindowSizeCallback(window, (_, _w, _h) -> begin
@@ -115,12 +129,8 @@ function poll_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window)
     uw, uh = unitsize(window, ppu)
     area = Makie.Recti(0, 0, uw, uh)
     area != events.window_area[] && (events.window_area[] = area)
-
-    # Y flips from GLFW (top-down) to Makie (bottom-up), in units.
-    s = unitscale(window, ppu)
-    x, y = GLFW.GetCursorPos(window)
-    mp = (Float64(x) * s, uh - Float64(y) * s)
-    mp != events.mouseposition[] && (events.mouseposition[] = mp)
+    # The cursor is not polled: `SetCursorPosCallback` in `connect_glfw_events!`
+    # reports real pointer moves only.
     return nothing
 end
 
