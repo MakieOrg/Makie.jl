@@ -290,7 +290,14 @@ function add_light_computation!(graph, scene, lights)
         local idx
         idx = findfirst(light -> light isa DirectionalLight, lights)
         if idx === nothing
-            return (RGBf(0, 0, 0), Vec3f(0), true)
+            # Without a directional light, the sun of a `SunSkyLight` is the one: a
+            # rasterizer that draws a single directional light (WGLMakie, fast shading)
+            # would otherwise leave a sun-and-sky scene unlit. Multi-light shading is
+            # unchanged; RayMakie adds the sun to that list itself, in its true colour.
+            sun = findfirst(light -> light isa SunSkyLight, lights)
+            sun === nothing && return (RGBf(0, 0, 0), Vec3f(0), true)
+            s = lights[sun]::SunSkyLight
+            return (RGBf(s.intensity, s.intensity, s.intensity), -s.direction, false)
         else
             light = lights[idx]::DirectionalLight
             color = light.color
