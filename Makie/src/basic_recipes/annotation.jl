@@ -447,10 +447,6 @@ function calculate_best_offsets!(
         )
     end
 
-    if reset
-        offsets .= zero.(eltype(offsets))
-    end
-
     if all(!isnan, textpositions_offset)
         offsets .= textpositions_offset .- textpositions
         return
@@ -459,15 +455,17 @@ function calculate_best_offsets!(
     # giving one component of the position could be cool, like only x in data space, but this
     # doesn't really work because projection into screen space needs x and y together
 
-    return calculate_best_offsets!(LabelRepel(), offsets, textpositions, textpositions_offset, text_bbs, bbox; maxiter, labelspace)
+    return calculate_best_offsets!(LabelRepel(), offsets, textpositions, textpositions_offset, text_bbs, bbox; maxiter, reset, labelspace)
 end
 
 function calculate_best_offsets!(
         algorithm::LabelRepel, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2},
         textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
-        maxiter::Union{Automatic, Int}, labelspace::Symbol,
+        maxiter::Union{Automatic, Int}, labelspace::Symbol, reset::Bool = false,
     )
 
+    # the annotation passes `reset` to any algorithm, the automatic one or one given by the user
+    reset && (offsets .= zero.(eltype(offsets)))
     maxiter = maxiter === automatic ? 200 : maxiter
 
     padded_bbs = map(text_bbs) do bb
