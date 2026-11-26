@@ -204,6 +204,13 @@ in the tracer an emitter is the light and does not shadow it. Not what has no
 surface (a glowing sheet): the tracer's rays pass it.
 """
 casts_shadow(::Nothing) = true
+"""
+A material the tracer's shadow rays pass (`MediumInterface(...; shadows > 0)`: water,
+or something that should throw no shadow at all with `shadows = 1`) casts none in the
+raster either, whatever its look.
+"""
+material_casts_shadow(m) = true
+material_casts_shadow(m::Hikari.MediumInterface) = m.shadows == 0.0f0
 casts_shadow(look::RasterLook{<:Colorant}) = look.emission[4] == 0.0f0 && alpha(look.color) > 0.0f0
 # An image is a sampled surface (modes 0 and 3) or what an emitter emits (mode 2).
 casts_shadow(look::RasterLook{<:AbstractMatrix}) = look.emission[4] == 0.0f0

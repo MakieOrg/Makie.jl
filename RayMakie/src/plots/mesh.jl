@@ -205,6 +205,9 @@ function trace_material_for_color(plot, args)
     return extract_material(plot, color_tex)
 end
 
+"""Makie's `uv_transform` for a mesh or meshscatter: the texture read as Hikari reads it."""
+const DEFAULT_UV_TRANSFORM = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+
 """
     traced_uvs(mesh, uv_transform) -> mesh
 
@@ -218,7 +221,7 @@ baked into the uvs. Without it the tracer ignored `uv_transform`, and a face
 animated by moving it over a sheet of expressions showed the whole sheet.
 """
 function traced_uvs(mesh::GeometryBasics.Mesh, t::Mat{2, 3})
-    t == Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0) && return mesh
+    t == DEFAULT_UV_TRANSFORM && return mesh
     hasproperty(mesh, :uv) || return mesh
     return GeometryBasics.mesh(mesh; uv = map(texturecoordinates(mesh)) do uv
         p = t * Vec3f(uv[1], uv[2], 1)
@@ -369,7 +372,7 @@ const RASTER_MESH_DEPS = [
 # The light list is the scene's Makie lights with its glowing meshes after them
 # (`with_emitters`, plots/raster_material.jl).
 const RASTER_LIGHT_NODES = (
-    :raster_ambient => :ambient_color, :raster_light_color => :dirlight_color,
+    :raster_ambient => :raster_ambient_color, :raster_light_color => :dirlight_color,
     :raster_light_direction => :dirlight_final_direction,
     :raster_N_lights => :raster_all_N_lights, :raster_light_types => :raster_all_light_types,
     :raster_light_colors => :raster_all_light_colors, :raster_light_parameters => :raster_all_light_parameters,
@@ -406,6 +409,11 @@ function register_raster_lights!(scene)
         Makie.ComputePipeline.map!(ls -> map(unit_sh, ls), graph, :raster_env_shapes, :raster_env_unit_sh)
         Makie.ComputePipeline.map!(environment_sh, graph, [:raster_env_lights, :raster_env_unit_sh],
                                    [:raster_env_sh, :raster_has_env])
+        # The tracer leaves an ambient light out under a sky (`init_lights!`), so the
+        # raster does too: it stays a fill for rasterizers without a sky (WGLMakie).
+        Makie.ComputePipeline.map!(graph, [:ambient_color, :raster_has_env], :raster_ambient_color) do ambient, has_env
+            return has_env == 0 ? ambient : RGBf(0, 0, 0)
+        end
     end
     register_raster_emitters!(graph)
     return
@@ -756,7 +764,8 @@ positions widened by the marker's reach at the largest scale. Reductions, so a
 device array of positions is not read back.
 """
 function instanced_bounds(geometry, instances)
-    isempty(geometry.positions) && return Rect3f()
+    # a meshscatter with no instances (yet) draws nothing, like an empty marker
+    (isempty(geometry.positions) || isempty(instances.positions)) && return Rect3f()
     # `local_bounds`, which reduces on the device when the points are there.
     marker = local_bounds(geometry.positions)
     length(instances.positions) == 1 && only(instances.scales) == Vec3f(1) &&
@@ -843,7 +852,7 @@ function mesh_raster!(screen, plot, args, changed, last_robj)
             emission = look === nothing ? NO_EMISSION : look.emission,
             # What the shadow map is drawn from, and when the mesh is drawn
             # (see-through after opaque); not stage arguments.
-            casts_shadow = casts_shadow(look),
+            casts_shadow = casts_shadow(look) && material_casts_shadow(overlay_material(plot)),
             see_through = see_through,
         ))
         vertex_count = 3 * length(geometry.faces)

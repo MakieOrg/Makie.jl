@@ -447,16 +447,18 @@ function ambient_changed(rscene::Makie.Scene, tl::TracedLights)
 end
 ambient_differs(value::Base.RefValue{RGBf}, tl::TracedLights) = value[] != tl.ambient
 
+"Whether the tracer lights the scene with a sky (a `SunSkyLight` or an `EnvironmentLight`)."
+has_sky(hikari_scene) = any(T -> T <: Hikari.EnvironmentLight, hikari_scene.lights.data_order)
+
 function init_lights!(hikari_scene, rscene)
     makie_lights = copy(Makie.get_lights(rscene))
     keys = [Hikari.SetKey[push!(hikari_scene.lights, l) for l in trace_lights(to_trace_light(light))]
             for light in makie_lights]
 
     # Add ambient light if present, but skip if we already have SunSkyLight or EnvironmentLight
-    has_infinite = any(T -> T <: Hikari.EnvironmentLight, hikari_scene.lights.data_order)
     ambient = scene_ambient(rscene)
     ambient_key = nothing
-    if !has_infinite && ambient != RGBf(0, 0, 0)
+    if !has_sky(hikari_scene) && ambient != RGBf(0, 0, 0)
         ambient_key = push!(hikari_scene.lights, Hikari.AmbientLight(RGB{Float32}(ambient)))
     end
 
@@ -506,11 +508,14 @@ function sync_lights!(state::RayMakieState, current::AbstractVector)
     end
     if ambient_changed(state.makie_scene, tl)
         ambient = scene_ambient(state.makie_scene)
-        tl.ambient_key === nothing && error(
-            "RayMakie: this scene was first traced without an ambient light, and one cannot be added afterwards.")
-        Hikari.update_light!(state.hikari_scene, tl.ambient_key, Hikari.AmbientLight(RGB{Float32}(ambient)))
+        if tl.ambient_key !== nothing
+            Hikari.update_light!(state.hikari_scene, tl.ambient_key, Hikari.AmbientLight(RGB{Float32}(ambient)))
+            changed = true
+        elseif !has_sky(state.hikari_scene)
+            error("RayMakie: this scene was first traced without an ambient light, and one cannot be added afterwards.")
+        end
+        # under a sky the ambient light is not traced (see `init_lights!`), so it may change freely
         tl.ambient = ambient
-        changed = true
     end
     changed && (state.needs_film_clear = true)
     return state
