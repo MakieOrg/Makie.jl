@@ -144,3 +144,11 @@ end
     empty!(scene)
     @test n_dependents(scene) == n_empty
 end
+
+@testset "Dropped scenes are garbage collected" begin
+    dropped() = (scene = Scene(); p = scatter!(scene, rand(Point2f, 10)); (WeakRef(scene), WeakRef(p)))
+    scene, plot = Base.invokelatest(dropped)    # not inlined: nothing of it stays rooted in this frame
+    GC.gc(true); GC.gc(true)
+    @test scene.value === nothing
+    @test plot.value === nothing
+end

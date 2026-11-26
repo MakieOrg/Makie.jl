@@ -201,6 +201,12 @@ end
         p = annotation!(ax, [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], text = ["A", "", "C"])
         @test !any(x -> any(isnan, x), p.offsets[])
     end
+
+    @testset "explicit LabelRepel algorithm" begin
+        f, a, p = annotation(Point2f.(1:5), text = string.(1:5), algorithm = Makie.LabelRepel())
+        @test length(p.offsets[]) == 5
+        @test !any(o -> any(isnan, o), p.offsets[])
+    end
 end
 
 @testset "Resampler" begin
