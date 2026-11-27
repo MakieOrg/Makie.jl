@@ -142,8 +142,8 @@ mutable struct RayMakieState
     # The scene's lights as last handed to the tracer; `nothing` for an
     # overlay-only scene. See `sync_lights!`.
     lights::Union{Nothing, TracedLights}
-    # The guide grid the film's depth, normal and albedo were last filled with,
-    # 0 once the film is cleared. See `refresh_guides!`.
+    # The full guide grid, -1 for depth only, and 0 for a cleared film.
+    # See `refresh_guides!`.
     guide_grid::Int
 end
 
@@ -598,21 +598,8 @@ function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene
     # Create camera with screen_window for the visible sub-region
     camera = to_trace_camera(rscene, film; screen_window)
 
-    # Clear film when Makie camera changes (rotation, zoom, pan)
-
     state = RayMakieState(rscene, film, camera, hikari_scene, false,
                           new_volpath(screen.config), false, false, 0, 0, lights, 0)
-    # Guard: only clear film when the projection matrix actually changes.
-    # Makie's Observable fires on every notify(), even when the value is identical.
-    # Without this guard, GLMakie re-renders (triggered by overlay image updates)
-    # fire spurious projectionview notifications that reset accumulation every frame.
-    last_pv = Ref(copy(rscene.camera.projectionview[]))
-    on(rscene, rscene.camera.projectionview) do pv
-        if pv != last_pv[]
-            last_pv[] = copy(pv)
-            state.needs_film_clear = true
-        end
-    end
     return state
 end
 

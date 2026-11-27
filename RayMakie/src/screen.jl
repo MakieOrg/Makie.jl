@@ -127,13 +127,9 @@ struct ScreenConfig
     vsync::Bool
     # ACCUMULATE across reads instead of restarting each one.
     #
-    # This is what a path-traced viewport does: hold still and the image
-    # converges, move the camera and it starts over. The machinery is already
-    # here — `colorbuffer`'s `clear` keyword, and the camera watcher that sets
-    # `needs_film_clear` — but a caller that does not name it gets `clear=true`
-    # and therefore a fresh fixed-budget render every read. `Makie.recordframe!`
-    # is such a caller, and cannot be otherwise: it is backend-generic. So the
-    # choice belongs to the screen.
+    # A path-traced viewport converges while the camera holds still and
+    # restarts after a move. `colorbuffer` defaults to a fresh render unless
+    # the screen opts in to accumulation, including for `Makie.recordframe!`.
     accumulate::Bool
     # RASTERISE instead of tracing, for every plot that can go either way.
     #
@@ -693,32 +689,32 @@ function render!(screen::Screen; finalize_framebuffer::Bool=true)
     end
     # (sync!(tlas) above already runs refit_tlas! when transforms are dirty.)
 
-    # Clear film and tracer if data changed
-    if state.needs_film_clear
-        Hikari.clear!(state.film)
-        Hikari.clear!(state.integrator)
-        state.needs_film_clear = false
-        state.guide_grid = 0
-    end
-
-    screen.config.denoise && refresh_guides!(screen, state)
-
-    tracesample!(state.integrator, state.hikari_scene, state.film, state.camera, finalize_framebuffer)
+    tracesample!(screen, state, state.hikari_scene, state.film, state.camera, finalize_framebuffer)
     return state.film
 end
 
-# One dynamic dispatch per sample, and on heap objects only. `RayMakieState`
-# types its scene and its camera observable loosely (the scene's type carries
-# the backend's arrays, the observable's carries the camera type), so a call
-# made from `render!` with `state.camera[]` already in hand was dynamic with a
-# 684-byte isbits camera among its arguments — boxed, every sample — and it
-# forwarded its keyword through a boxed NamedTuple. Here every type is
-# concrete: the observable read is typed, the call is static, and the flag is
-# a plain argument.
-function tracesample!(vp::Hikari.VolPath, scene::Hikari.AbstractScene,
+function sampled_camera(vp::Hikari.VolPath)
+    perrun = vp.perrun
+    return perrun === nothing ? nothing : perrun.stored_camera
+end
+
+# Snapshot the tracer camera before any GPU call can yield to input. Use
+# the same value for the reset, the depth guides and the color sample.
+function tracesample!(screen::Screen, state::RayMakieState, scene::Hikari.AbstractScene,
                       film::Hikari.Film, camera::Observable, finalize::Bool)
-    # One sample per call.
-    Hikari.render!(vp, scene, film, camera[]; finalize_framebuffer = finalize)
+    view = camera[]
+    vp = state.integrator
+    if state.needs_film_clear || (film.iteration_index[] != 0 && sampled_camera(vp) !== view)
+        state.needs_film_clear = false
+        state.guide_grid = 0
+        Hikari.clear!(film)
+        Hikari.clear!(vp)
+    end
+    if screen.config.denoise
+        grid = denoise_guide_grid(screen, state)
+        grid > 0 && refresh_guides!(screen, state; camera = view, grid)
+    end
+    Hikari.render!(vp, scene, film, view; finalize_framebuffer=finalize)
     return nothing
 end
 
@@ -760,7 +756,8 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
         return
     end
 
-    paints_sky = fillauxbuffers!(screen, scene_state)
+    grid = denoise_guide_grid(screen, scene_state)
+    paints_sky = fillauxbuffers!(screen, scene_state; guides = grid > 0, grid = max(1, grid))
 
     # Apply denoising if enabled (modifies framebuffer in-place)
     if config.denoise
@@ -786,6 +783,7 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
         gamma = config.gamma,
         background = scenebackground(screen.scene),
         sky = paints_sky,
+        wait = false,
     )
 
     # NOTE: Overlay rendering for 3D renderable scenes is intentionally skipped.
@@ -806,7 +804,9 @@ postprocess composites the background by, and what the HDR capture's guides and
 coverage are. `guides`: whether anything reads the normal and albedo, see
 [`refresh_guides!`](@ref).
 """
-function fillauxbuffers!(screen::Screen, scene_state::RayMakieState; guides::Bool = screen.config.denoise)
+function fillauxbuffers!(screen::Screen, scene_state::RayMakieState;
+                         guides::Bool = screen.config.denoise,
+                         grid::Int = guides ? guide_grid(screen.window !== nothing, scene_state.film.iteration_index[]) : 1)
     film = scene_state.film
     # Depth, normal and albedo. Unconditional: `postprocess!` below composites
     # the background wherever `isinf(depth)`, so a frame that skips this reads a
@@ -829,7 +829,7 @@ function fillauxbuffers!(screen::Screen, scene_state::RayMakieState; guides::Boo
     # background colour.
     paints_sky = any(paints_background, lights.data_order)
     if Raycore.n_instances(tlas) > 0
-        refresh_guides!(screen, scene_state; guides)
+        refresh_guides!(screen, scene_state; guides, grid)
     else
         # Nothing to hit, so every ray escapes. Any depth `Hikari.missed` accepts
         # will do; `Inf` is the clearest. No surface either: the guides are zero.
@@ -858,6 +858,13 @@ function guide_grid(live::Bool, samples::Integer)
     return maximum(grid for (grid, from) in GUIDE_GRIDS if samples >= from)
 end
 
+function denoise_guide_grid(screen::Screen, state::RayMakieState)
+    screen.config.denoise || return 0
+    grid = guide_grid(screen.window !== nothing, state.film.iteration_index[])
+    cfg = screen.config.denoise_config
+    return cfg === nothing ? grid : Hikari.denoise_guide_grid(cfg, state.film, grid)
+end
+
 """
     refresh_guides!(screen, state; guides = screen.config.denoise)
 
@@ -869,15 +876,28 @@ Without `guides` the grid stays at one ray per pixel: nothing reads the normal a
 depth is the centre ray's at every grid. An offscreen frame clears its film, so it would pay the
 finest grid, 81 rays a pixel, every time.
 """
-function refresh_guides!(screen::Screen, state::RayMakieState; guides::Bool = screen.config.denoise)
-    grid = guides ? guide_grid(screen.window !== nothing, state.film.iteration_index[]) : 1
-    grid > state.guide_grid || return
+function refresh_guides!(screen::Screen, state::RayMakieState; guides::Bool = screen.config.denoise,
+                         camera = nothing,
+                         grid::Int = guides ? guide_grid(screen.window !== nothing, state.film.iteration_index[]) : 1)
+    (guides ? state.guide_grid >= grid : !iszero(state.guide_grid)) && return
+    adapted_scene, view, has_infinite_lights = guide_inputs(screen, state, camera)
+    cfg = screen.config.denoise_config
+    if guides && cfg !== nothing
+        Hikari.fill_denoise_guides!(cfg, state.film, adapted_scene, view; has_infinite_lights, grid)
+    else
+        Hikari.fill_aux_buffers!(state.film, adapted_scene, view; has_infinite_lights, grid, guides)
+    end
+    state.guide_grid = guides ? grid : -1  # depth is ready but normal and albedo are not
+    return
+end
+
+function guide_inputs(screen::Screen, state::RayMakieState, camera = nothing)
     # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
     adapted_scene = Adapt.adapt(screen.config.device, state.hikari_scene)
     has_infinite_lights = any(Hikari.is_infinite_light, state.hikari_scene.lights.data_order)
-    Hikari.fill_aux_buffers!(state.film, adapted_scene, state.camera[]; has_infinite_lights, grid)
-    state.guide_grid = grid
-    return
+    view = camera === nothing ? sampled_camera(state.integrator) : camera
+    view = view === nothing ? state.camera[] : view
+    return adapted_scene, view, has_infinite_lights
 end
 
 # Postprocess every scene and composite it into the output buffer; returns the
@@ -1242,8 +1262,8 @@ function trace!(screen::Screen; clear::Bool, samples)
     # Render each scene for the configured number of samples, one per `render!`.
     #
     # Accumulating: ONE sample per read, so a still camera converges over the
-    # reads instead of re-rendering the same budget each time. The camera
-    # watcher clears the film when it moves, which is what starts it over.
+    # reads instead of re-rendering the same budget each time. The renderer
+    # clears the film when the sampled camera changes.
     # `samples` and `accumulate` answer DIFFERENT questions, and the config's
     # samples comes first for that reason: `accumulate` says whether the film is
     # cleared between reads, `samples` how many go into one read. Asking for both
@@ -1364,6 +1384,7 @@ function present_composited!(screen::Screen, win)
                           screen.output_buffer, robjs, w, h)
     Mantle.run!(plan)
     screen.fb_readback_buf = (; frame = out, key = :window)
+    Mantle.pacewindow!(win)
     return nothing
 end
 
@@ -1391,31 +1412,27 @@ function primary_monitor_scale()
     return Float32(sx <= 0 ? 1 : sx)
 end
 
-"""
-    start_renderloop!(screen::Screen, root_scene::Scene)
-
-Open a GLFW window and start an async render loop. Called automatically by
-`display` when `visible=true`. The loop renders progressively (1 sample per
-frame), presents to the window, and handles input events.
-"""
-function start_renderloop!(screen::Screen, root_scene::Scene)
-    w, h = size(root_scene)
-
-    # The scale the display actually uses, the way GLMakie takes it: a figure
-    # `size = (600, 450)` is 600x450 UNITS, so the window is 600x450 points and
-    # the drawable is that times the scale. Asking Mantle for `w, h` gave a
-    # drawable of exactly that many PIXELS — which on a 2x panel is a 300x225
-    # point window, half the size GLMakie shows.
-    #
-    # A GUESS, and only used to pick the initial window size. The window itself
-    # is the authority and corrects it below, before anything reads it.
+function initial_window_density(dev)
+    Mantle.syncbackend(dev) isa Mantle.WebGPUAPI && return Mantle.canvasdensity(dev)
     GLFW.Init() || error("RayMakie: GLFW could not initialise, so no window can be \
                           opened. Use `visible = false` for an offscreen screen.")
     GLFW.GetPlatform() == GLFW.PLATFORM_NULL && error(
         "RayMakie cannot open a visible window on GLFW's NULL platform. " *
             "Use `visible = false` for offscreen rendering."
     )
-    ppu = primary_monitor_scale()
+    return primary_monitor_scale()
+end
+
+"""
+    start_renderloop!(screen::Screen, root_scene::Scene)
+
+Open the device's window and start presenting progressive frames. Called by
+`display` when `visible=true`.
+"""
+function start_renderloop!(screen::Screen, root_scene::Scene)
+    w, h = size(root_scene)
+    dev = Mantle.todevice(screen.config.device)
+    ppu = initial_window_density(dev)
     screen.px_per_unit = ppu
     pw, ph = round(Int, w * ppu), round(Int, h * ppu)
 
@@ -1438,77 +1455,13 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
         @info "RayMakie: pipeline ready ($(round(time() - t0, digits=1))s) — opening window"
     end
 
-    # `pw, ph` — the DRAWABLE, in pixels. Mantle sizes the GLFW window so its
-    # framebuffer comes out `pw x ph`, by the framebuffer's ratio to the window.
-    win = Mantle.Window(screen.config.device, pw, ph; title=screen.config.title, vsync=screen.config.vsync,
+    # The requested drawable size is in pixels. Each frontend supplies its scale.
+    win = Mantle.Window(dev, pw, ph; title=screen.config.title, vsync=screen.config.vsync,
                             color_format=COMPOSITE_FORMAT)
     screen.window = win
 
-    # A WRONG GUESS IS CORRECTED, not only the scale adopted. `pw, ph` was the
-    # figure times the primary monitor's scale, and the window was sized from it
-    # in POINTS by dividing by its own. When the two scales differ the window
-    # comes out the wrong size, and the figure then reflows to fit it — the
-    # layout, not only the resolution, changes. It happened with the display
-    # asleep: no primary monitor, a guess of 1 on a 2x panel, and the isubd demo
-    # opened at half size with its control panel laid over its scene. Asking the
-    # window for the figure's size in points is what `GLMakie` gets by
-    # construction.
-    #
-    # Only the PLATFORM window is asked. The drawable follows on the first frame,
-    # through the same per-frame size check a user's resize goes through, on
-    # every backend; and it is done before `connect_glfw_events!`, so the figure
-    # never hears about the wrong size at all.
-    let (sx, _sy) = GLFW.GetWindowContentScale(win.handle)
-        if sx > 0 && !isapprox(sx, ppu)
-            GLFW.SetWindowSize(win.handle, w, h)       # the figure, in points
-            GLFW.PollEvents()
-        end
-    end
-
-    # THE WINDOW IS THE AUTHORITY ON ITS OWN SIZE. `pw, ph` above is a guess — it
-    # is the primary monitor's scale applied to the figure, made before any
-    # window exists so that one can be asked for. What the drawable actually
-    # came out as is `size(win)`, and only that can size the buffers blitted
-    # into it.
-    #
-    # Predicting it instead cost a `DimensionMismatch: blit source holds 2988672
-    # pixels and a 3144x1992 target needs 6262848` that killed the render loop on
-    # frame one: `3144 = 2172 * 1.4475`, the content scale applied a second time
-    # because the platform had already applied it once. Whether it does is a
-    # platform question with two answers (macOS scales the drawable, X11 with a
-    # scaled desktop does not), and neither has to be answered if the size is READ.
+    configure_window_inputs!(screen, root_scene, win, w, h, ppu)
     w, h = size(win)
-    resize!(screen, w, h)
-
-    # `px_per_unit` is a SCALE, and it comes from the window's content scale —
-    # not from `w / uw`. The drawable is that scale applied and then rounded to
-    # whole pixels, so `w/uw` and `h/uh` are not equal (2172/1500 is 1.4480,
-    # 1375/950 is 1.4474) and no single scalar is both. Measuring it back out
-    # picked one of them, and `round(size(img) / ppu)` then missed the figure's
-    # own height by a pixel.
-    #
-    # The WINDOW's scale and not the primary monitor's, though: it knows which
-    # display it landed on, and on a second display with a different scale every
-    # glyph, linewidth and viewport would be sized for the wrong panel. Set
-    # before any overlay exists, because `Makie.px_per_unit` is baked into every
-    # render object when a plot first resolves, which happens in the loop below.
-    let (sx, _sy) = GLFW.GetWindowContentScale(win.handle)
-        sx > 0 && (screen.px_per_unit = ppu = Float32(sx))
-    end
-    connect_glfw_events!(screen, root_scene, win.handle, screen.stop_renderloop)
-
-    # Track camera changes to clear the film for re-accumulation
-    for ss in screen.scene_states
-        ss.overlay_only && continue
-        makie_scene = ss.makie_scene
-        last_pv = Ref(copy(makie_scene.camera.projectionview[]))
-        on(root_scene, makie_scene.camera.projectionview) do pv
-            if !isapprox(pv, last_pv[])
-                last_pv[] = copy(pv)
-                ss.needs_film_clear = true
-            end
-        end
-    end
 
     screen.stop_renderloop[] = false
     # The screen's device, not the implicit global context: only the Vulkan
@@ -1547,6 +1500,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                 !isopen(win) && (exit_reason = :window_closed; break)
                 tick(Makie.RegularRenderTick)
 
+                Mantle.pollwindow!(win)
                 cur_w, cur_h = size(win)
                 if (cur_w, cur_h) != (w, h)
                     w, h = cur_w, cur_h
@@ -1598,7 +1552,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             try
                 Mantle.waitidle(screen.config.device)
             catch e
-                @error "RayMakie: device_wait_idle failed during render-loop teardown" exception = (e, catch_backtrace())
+                e isa EOFError || @error "RayMakie: device_wait_idle failed during render-loop teardown" exception = (e, catch_backtrace())
             end
             try
                 close(win)
@@ -1607,6 +1561,7 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
             end
             # Nothing to hand back: the loop allocated no channel. The frame
             # plans go with the screen.
+            root_scene.events.window_open[] = false
             screen.rendertask = nothing
         end
     end

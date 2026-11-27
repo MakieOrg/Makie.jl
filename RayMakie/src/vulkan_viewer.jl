@@ -98,6 +98,77 @@ function connect_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window,
     end)
 end
 
+function configure_window_inputs!(screen, scene, win::Mantle.Window, w, h, ppu)
+    let (sx, _sy) = GLFW.GetWindowContentScale(win.handle)
+        if sx > 0 && !isapprox(sx, ppu)
+            GLFW.SetWindowSize(win.handle, w, h)       # the figure, in points
+            GLFW.PollEvents()
+        end
+    end
+
+    resize!(screen, size(win)...)
+    sx, _ = GLFW.GetWindowContentScale(win.handle)
+    sx > 0 && (screen.px_per_unit = Float32(sx))
+    connect_glfw_events!(screen, scene, win.handle, screen.stop_renderloop)
+    return nothing
+end
+
+function configure_window_inputs!(screen, scene, win, w, h, ppu)
+    Mantle.pollwindow!(win)
+    screen.px_per_unit = Mantle.canvasdensity(win)
+    resize!(screen, size(win)...)
+    scene.events.window_open[] = true
+    on(scene, Mantle.canvasevents(win); update = true) do event
+        event === nothing || canvas_event!(screen, scene.events, event)
+    end
+    return nothing
+end
+
+const CANVAS_KEYS = Dict(
+    "Escape" => GLFW.KEY_ESCAPE, "Enter" => GLFW.KEY_ENTER, "Backspace" => GLFW.KEY_BACKSPACE,
+    "Delete" => GLFW.KEY_DELETE, "Space" => GLFW.KEY_SPACE, "Tab" => GLFW.KEY_TAB,
+    "ArrowLeft" => GLFW.KEY_LEFT, "ArrowRight" => GLFW.KEY_RIGHT,
+    "ArrowUp" => GLFW.KEY_UP, "ArrowDown" => GLFW.KEY_DOWN, "Home" => GLFW.KEY_HOME,
+    "End" => GLFW.KEY_END, "PageUp" => GLFW.KEY_PAGE_UP, "PageDown" => GLFW.KEY_PAGE_DOWN,
+    "ShiftLeft" => GLFW.KEY_LEFT_SHIFT, "ShiftRight" => GLFW.KEY_RIGHT_SHIFT,
+    "ControlLeft" => GLFW.KEY_LEFT_CONTROL, "ControlRight" => GLFW.KEY_RIGHT_CONTROL,
+    "AltLeft" => GLFW.KEY_LEFT_ALT, "AltRight" => GLFW.KEY_RIGHT_ALT,
+    "MetaLeft" => GLFW.KEY_LEFT_SUPER, "MetaRight" => GLFW.KEY_RIGHT_SUPER)
+
+function canvas_key(code::AbstractString)
+    startswith(code, "Key") && ncodeunits(code) == 4 && return Int(code[end])
+    startswith(code, "Digit") && ncodeunits(code) == 6 && return Int(code[end])
+    return Int(get(CANVAS_KEYS, code, GLFW.KEY_UNKNOWN))
+end
+
+function canvas_event!(screen, events, event)
+    kind = event[1]
+    if kind == "resize"
+        screen.px_per_unit = Float32(event[4])
+        area = Makie.Recti(0, 0, Int(event[2]), Int(event[3]))
+        events.window_area[] == area || (events.window_area[] = area)
+    elseif kind == "pointer"
+        events.mouseposition[] = (Float64(event[2]), Float64(event[3]))
+    elseif kind == "button"
+        button = event[2] == 1 ? 2 : event[2] == 2 ? 1 : Int(event[2])
+        events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.Button(button),
+                                                       Makie.Mouse.Action(Int(event[3])))
+    elseif kind == "scroll"
+        events.scroll[] = (Float64(event[2]), Float64(event[3]))
+    elseif kind == "entered"
+        events.entered_window[] = Bool(event[2])
+    elseif kind == "focus"
+        events.hasfocus[] = Bool(event[2])
+    elseif kind == "key"
+        key, text, action, modified = canvas_key(event[2]), event[3], Int(event[4]), Bool(event[5])
+        key == Int(GLFW.KEY_ESCAPE) && action == 1 && (screen.stop_renderloop[] = true)
+        key == Int(GLFW.KEY_UNKNOWN) || (events.keyboardbutton[] =
+            Makie.KeyEvent(Makie.Keyboard.Button(key), Makie.Keyboard.Action(action)))
+        action != 0 && !modified && length(text) == 1 && (events.unicode_input[] = only(text))
+    end
+    return nothing
+end
+
 function poll_glfw_events!(screen, scene::Makie.Scene, window::GLFW.Window)
     events = scene.events
 
@@ -162,7 +233,9 @@ The tick is the render loop's, once a frame: a tick is a frame Makie can draw in
 whatever an animation computes on it is drawn. Ticked from here, at the input rate, it
 was 120 frames a second that were never drawn.
 """
-function start_input_loop!(screen::Screen, root_scene, win)
+start_input_loop!(screen::Screen, root_scene, win) = nothing
+
+function start_input_loop!(screen::Screen, root_scene, win::Mantle.Window)
     return @async begin
         try
             while !screen.stop_renderloop[]

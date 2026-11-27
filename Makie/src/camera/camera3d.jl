@@ -424,14 +424,14 @@ function add_mouse_controls!(scene, cam::Camera3D)
             consume = false
 
             # Drag stop translation/rotation
-            if dragging[][1]
+            if dragging[][2]
                 mousepos = mouseposition_px(scene)
                 diff = _compute_diff(last_mousepos[] .- mousepos, projectiontype, cam, scene)
                 last_mousepos[] = mousepos
                 dragging[] = (false, false)
                 translate_cam!(scene, cam, mouse_translationspeed[] .* Vec3d(diff[1], diff[2], 0.0))
                 consume = true
-            elseif dragging[][2]
+            elseif dragging[][1]
                 mousepos = mouseposition_px(scene)
                 dragging[] = (false, false)
                 rot_scaling = mouse_rotationspeed[] * (e.window_dpi[] * 0.005)

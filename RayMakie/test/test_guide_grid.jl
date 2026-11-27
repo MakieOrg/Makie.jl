@@ -24,10 +24,56 @@ end
 @testset "a render nothing denoises traces one guide ray a pixel, and the capture asks for all of them" begin
     scr, traced = guidedscreen()
     picture = Makie.colorbuffer(scr)
-    @test traced.guide_grid == 1
+    @test traced.guide_grid == -1
+    @test all(iszero, Array(traced.film.normal))
     # The background is composited by depth, which needs only the centre ray.
     @test count(!=(picture[1, 1]), picture) > 0
     RayMakie.fillauxbuffers!(scr, traced; guides = true)
     @test traced.guide_grid == 9
     @test any(n -> n != Vec3f(0), Array(traced.film.normal))
+end
+
+@testset "camera input between color and depth passes" begin
+    scr, traced = guidedscreen(; accumulate = true)
+    try
+        Makie.colorbuffer(scr; samples = 2)
+        previous_depth = Array(traced.film.depth)
+        previous_color = Array(traced.film.framebuffer)
+        RayMakie.render!(scr)
+        @test traced.film.iteration_index[] == 3
+
+        # A camera event can arrive after a sample is submitted and before its
+        # depth pass is launched. The depth mask still belongs to that sample.
+        camera = cameracontrols(scr.scene)
+        camera.lookat[] += Vec3f(0.4, 0.2, 0)
+        Makie.update_cam!(scr.scene, camera)
+        traced.guide_grid = 0
+        RayMakie.fillauxbuffers!(scr, traced)
+        @test Array(traced.film.depth) == previous_depth
+
+        RayMakie.render!(scr)
+        @test traced.film.iteration_index[] == 1
+        RayMakie.fillauxbuffers!(scr, traced)
+        @test Array(traced.film.depth) != previous_depth
+        moved_color = Array(traced.film.framebuffer)
+        @test moved_color != previous_color
+
+        # A fresh plan uploads this view at construction. Matching it also
+        # checks that replay uploaded the changed camera to the old plan.
+        fresh, fresh_state = guidedscreen()
+        try
+            fresh_camera = cameracontrols(fresh.scene)
+            fresh_camera.lookat[] = camera.lookat[]
+            Makie.update_cam!(fresh.scene, fresh_camera)
+            Makie.colorbuffer(fresh; samples = 1)
+            @test moved_color ≈ Array(fresh_state.film.framebuffer)
+        finally
+            close(fresh)
+        end
+
+        RayMakie.render!(scr)
+        @test traced.film.iteration_index[] == 2
+    finally
+        close(scr)
+    end
 end

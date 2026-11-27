@@ -188,25 +188,16 @@ lines — and a renderer that drops it and reports success produces something
 nobody reading the picture can tell is incomplete. A skip with a warning is not
 an option here.
 
-A geometry stage needs EITHER a backend that has one or a backend that has a mesh
-pipeline, because `Mantle.compile_draw` lowers a geometry pipeline onto a mesh one
-where the stage does not exist. That is why this asks two questions and not one,
-and why nothing above here branches on which of the two ran.
+Mantle can draw a geometry pipeline with a native stage or by lowering it to
+the stages the backend provides.
 """
 function require_drawable(backend, p::Mantle.GraphicsPipeline)
-    if p.geometry !== nothing && !Mantle.supports_geometry_stage(backend) &&
-            !Mantle.supports_mesh_pipeline(backend)
+    if p.geometry !== nothing && !Mantle.supports_geometry_pipeline(backend)
         error("""
-            $(nameof(typeof(backend))) has neither a geometry stage nor a mesh
-            pipeline, and this overlay declares a geometry stage, so it CANNOT be
-            drawn — and it must not be silently dropped.
+            $(nameof(typeof(backend))) cannot draw this overlay's geometry pipeline.
 
               vertex stage    $(Mantle.stagefunction(p.vertex))
-              geometry stage  $(Mantle.stagefunction(p.geometry))
-
-            A backend with a mesh pipeline runs this through
-            `Mantle.lower_geometry_to_mesh`, which is what Metal does. One with
-            neither has to grow one of the two.""")
+              geometry stage  $(Mantle.stagefunction(p.geometry))""")
     end
     if p.tess_control !== nothing && !Mantle.supports_tessellation(backend)
         error("$(nameof(typeof(backend))) has no tessellation, and this overlay " *
