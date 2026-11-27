@@ -562,7 +562,7 @@ function set_parameters(t::Texture{T, N}, params::TextureParameters = t.paramete
         push!(result, (GL_TEXTURE_WRAP_R, data[:repeat][3]))
     end
     try
-        if GLFW.ExtensionSupported("GL_ARB_texture_filter_anisotropic")
+        if t.context isa GLFW.Window && GLFW.ExtensionSupported("GL_ARB_texture_filter_anisotropic")
             push!(result, (GL_TEXTURE_MAX_ANISOTROPY_EXT, params.anisotropic))
         end
     catch e

@@ -229,8 +229,8 @@ function ShaderAbstractions.native_context_alive(x::GLFW.Window)
 end
 
 function check_context(ctx)
-    !GLFW.is_initialized() && return "GLFW is not initialized, and therefore $ctx is invalid."
-    was_destroyed(ctx) && return "Context $ctx has been destroyed."
+    ctx isa GLFW.Window && !GLFW.is_initialized() && return "GLFW is not initialized, and therefore $ctx is invalid."
+    ShaderAbstractions.context_alive(ctx) || return "Context $ctx is no longer alive."
     return nothing
 end
 

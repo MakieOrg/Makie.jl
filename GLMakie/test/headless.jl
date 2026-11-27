@@ -1,6 +1,22 @@
 using Test, GLMakie, FileIO, Logging
 const GLFW = GLMakie.GLFW
 
+mutable struct ExternalTestContext
+    destroyed::Bool
+end
+GLMakie.ShaderAbstractions.native_context_alive(ctx::ExternalTestContext) = !ctx.destroyed
+
+@testset "external contexts without GLFW" begin
+    @test !GLFW.is_initialized()
+    ctx = ExternalTestContext(false)
+    @test isnothing(GLMakie.GLAbstraction.require_context(ctx, ctx))
+    @test_throws "must be current" GLMakie.GLAbstraction.require_context(ctx, ExternalTestContext(false))
+    ctx.destroyed = true
+    @test_throws "is no longer alive" GLMakie.GLAbstraction.require_context(ctx, ctx)
+    @test occursin("GLFW is not initialized", GLMakie.check_context(GLFW.Window(C_NULL)))
+    @test !GLFW.is_initialized()
+end
+
 @testset "headless GLMakie" begin
     @test !GLFW.is_initialized()
     @test isempty(GLMakie.ALL_SCREENS)
