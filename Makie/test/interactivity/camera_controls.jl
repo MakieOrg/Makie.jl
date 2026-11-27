@@ -99,6 +99,28 @@
     @test init == Makie._PICK_COUNTER[]
 end
 
+@testset "cam3d! preserves the drag mode on release" begin
+    for button in (Mouse.left, Mouse.right)
+        scene = Scene(size = (800, 600))
+        cam3d!(scene, fixed_axis = true, cad = false)
+        camera = cameracontrols(scene)
+        e = events(scene)
+        eye, target = camera.eyeposition[], camera.lookat[]
+        e.mouseposition[] = (400, 250)
+        e.mousebutton[] = MouseButtonEvent(button, Mouse.press)
+        # The latest position can be sampled by the release event itself.
+        e.mouseposition.val = (480, 290)
+        e.mousebutton[] = MouseButtonEvent(button, Mouse.release)
+        @test camera.eyeposition[] != eye
+        if button == Mouse.left
+            @test camera.lookat[] ≈ target
+        else
+            @test camera.lookat[] != target
+            @test camera.eyeposition[] - camera.lookat[] ≈ eye - target
+        end
+    end
+end
+
 # Every camera update has to reach the plots. The trigger the plots' camera
 # matrices listen to was `time()`, and ComputePipeline drops an update whose value
 # is unchanged: on Windows `time()` advances every 16 ms, so a second update inside
