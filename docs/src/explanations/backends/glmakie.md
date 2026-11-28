@@ -55,6 +55,21 @@ you may want to explicitly set `px_per_unit = 1` when saving figures to ensure c
 of results.
 
 
+#### Window Titles
+
+By default, GLMakie titles figures `Makie: Figure 1`, `Makie: Figure 2`, and so on, in the order
+they are first displayed in visible native windows. A figure keeps its number when displayed again,
+including after its window has been closed. Numbers increase throughout the Julia session;
+closing windows, including with `GLMakie.closeall()`, does not reset or reuse them.
+Creating a figure without displaying it, or saving or rendering an otherwise unseen figure
+offscreen, does not consume a number.
+
+Set a custom title with `display(fig; title = "My plot")`, or use
+`display(GLMakie.Screen(title = "My plot"), fig)` when opening a separate window.
+To set a title for subsequent displays, use `GLMakie.activate!(title = "My plot")`.
+Restore automatic titles with `GLMakie.activate!(title = Makie.automatic)`; this preserves the
+session's existing figure numbers and continues the same sequence.
+
 #### Multiple Windows
 
 GLMakie has experimental support for displaying multiple independent figures (or scenes). To open a new window, use `display(GLMakie.Screen(), figure_or_scene)`. To close all windows, use `GLMakie.closeall()`.

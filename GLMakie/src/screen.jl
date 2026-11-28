@@ -23,7 +23,7 @@ function renderloop end
 * `float = false`: Whether the window should float above other windows.
 * `focus_on_show = false`: If `true`, focuses the window when newly opened.
 * `decorated = true`: Whether or not to show window decorations.
-* `title::String = "Makie"`: Sets the window title.
+* `title = automatic`: Titles displayed figures "Makie: Figure 1", "Makie: Figure 2", etc. Numbers increase within each Julia session, are preserved when redisplaying figures, and are not reused after closing windows. Pass a string to set a custom window title.
 * `fullscreen = false`: Whether to start the window in fullscreen mode.
 * `debugging = false`: If `true`, starts the GLFW.Window/OpenGL context with debug output.
 * `monitor::Union{Nothing, GLFW.Monitor} = nothing`: Sets the monitor on which the window should be opened. If set to `nothing`, GLFW will decide which monitor to use.
@@ -52,7 +52,7 @@ mutable struct ScreenConfig
     float::Bool
     focus_on_show::Bool
     decorated::Bool
-    title::String
+    title::Union{Makie.Automatic, String}
     fullscreen::Bool
     debugging::Bool
     monitor::Union{Nothing, GLFW.Monitor}
@@ -79,7 +79,7 @@ mutable struct ScreenConfig
             float::Bool,
             focus_on_show::Bool,
             decorated::Bool,
-            title::AbstractString,
+            title::Union{Makie.Automatic, AbstractString},
             fullscreen::Bool,
             debugging::Bool,
             monitor::Union{Nothing, GLFW.Monitor},
@@ -364,6 +364,43 @@ end
 
 const SINGLETON_SCREEN = Screen[]
 
+const FIGURE_NUMBERS = WeakKeyDict{Scene, Int}()
+const FIGURE_NUMBER_COUNTER = Ref(0)
+const FIGURE_NUMBER_LOCK = ReentrantLock()
+
+"""
+    update_window_title!(screen, config = screen.config)
+
+Apply the configured title, assigning session-wide numbers to figures shown in native windows.
+Keep numbers with the root scene so window reuse and closing do not change a figure's title.
+"""
+function update_window_title!(screen::Screen, config::ScreenConfig = screen.config)
+    screen.owns_glscreen || return
+    scene = screen.scene
+    number = if isnothing(scene)
+        nothing
+    else
+        root_scene = Makie.root(scene)
+        lock(FIGURE_NUMBER_LOCK) do
+            if config.visible
+                get!(FIGURE_NUMBERS, root_scene) do
+                    FIGURE_NUMBER_COUNTER[] += 1
+                end
+            else
+                # Saving an undisplayed figure must not consume a number.
+                get(FIGURE_NUMBERS, root_scene, nothing)
+            end
+        end
+    end
+    title = if config.title isa Makie.Automatic
+        isnothing(number) ? "Makie" : "Makie: Figure $number"
+    else
+        config.title
+    end
+    GLFW.SetWindowTitle(screen.glscreen, title)
+    return
+end
+
 function singleton_screen(debugging::Bool)
     if !isempty(SINGLETON_SCREEN)
         if GLAbstraction.context_alive(SINGLETON_SCREEN[1].glscreen)
@@ -403,7 +440,7 @@ function _apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::
         gl_switch_context!(glw)
         GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
         GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
-        GLFW.SetWindowTitle(glw, config.title)
+        update_window_title!(screen, config)
         if GLFW.GetPlatform() != GLFW.PLATFORM_WAYLAND
             GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
         end
@@ -523,6 +560,7 @@ function display_scene!(screen::Screen, scene::Scene)
     Makie.push_screen!(scene, screen)
     connect_screen(scene, screen)
     screen.scene = scene
+    update_window_title!(screen)
     return
 end
 
